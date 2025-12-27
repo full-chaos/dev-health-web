@@ -5,8 +5,34 @@ import { NestedPieChart3D } from "@/components/charts/NestedPieChart3D";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
+import {
+  workItemFlowEfficiencyDailySample,
+  workItemMetricsDailySample,
+  workItemStatusTransitionSample,
+  workItemTypeByScopeSample,
+  workItemTypeSummarySample,
+} from "@/data/devHealthOpsSample";
+import {
+  toNestedPieData,
+  toSankeyData,
+  toSparklineSeries,
+  toTeamEfficiencyBarSeries,
+  toThroughputBarSeries,
+  toWorkItemTypeDonutData,
+} from "@/lib/chartTransforms";
 
 export default function Home() {
+  const throughput = toThroughputBarSeries(workItemMetricsDailySample, {
+    scopeOrder: ["auth", "api", "ui", "data", "ops", "docs"],
+  });
+  const efficiency = toTeamEfficiencyBarSeries(workItemFlowEfficiencyDailySample);
+  const sparkline = toSparklineSeries(workItemMetricsDailySample, {
+    workScopeId: "auth",
+  });
+  const donut = toWorkItemTypeDonutData(workItemTypeSummarySample);
+  const nestedPie = toNestedPieData(workItemTypeByScopeSample);
+  const sankey = toSankeyData(workItemStatusTransitionSample);
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
@@ -35,7 +61,7 @@ export default function Home() {
                 Trend
               </span>
             </div>
-            <SparklineChart />
+            <SparklineChart data={sparkline.values} categories={sparkline.categories} />
           </div>
 
           <div
@@ -48,7 +74,13 @@ export default function Home() {
                 Throughput
               </span>
             </div>
-            <VerticalBarChart />
+            <VerticalBarChart
+              categories={throughput.categories}
+              series={[
+                { name: "Planned", data: throughput.planned },
+                { name: "Actual", data: throughput.actual },
+              ]}
+            />
           </div>
 
           <div
@@ -61,7 +93,10 @@ export default function Home() {
                 Ranking
               </span>
             </div>
-            <HorizontalBarChart />
+            <HorizontalBarChart
+              categories={efficiency.categories}
+              values={efficiency.values}
+            />
           </div>
 
           <div
@@ -74,7 +109,7 @@ export default function Home() {
                 Investment
               </span>
             </div>
-            <DonutChart />
+            <DonutChart data={donut} />
           </div>
 
           <div
@@ -87,7 +122,10 @@ export default function Home() {
                 Work Mix
               </span>
             </div>
-            <NestedPieChart2D />
+            <NestedPieChart2D
+              categories={nestedPie.categories}
+              subtypes={nestedPie.subtypes}
+            />
           </div>
 
           <div
@@ -100,7 +138,10 @@ export default function Home() {
                 Work Depth
               </span>
             </div>
-            <NestedPieChart3D />
+            <NestedPieChart3D
+              categories={nestedPie.categories}
+              subtypes={nestedPie.subtypes}
+            />
           </div>
         </section>
 
@@ -114,7 +155,7 @@ export default function Home() {
               Investment / Dev
             </span>
           </div>
-          <SankeyChart />
+          <SankeyChart nodes={sankey.nodes} links={sankey.links} />
         </section>
       </main>
     </div>

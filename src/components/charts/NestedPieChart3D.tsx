@@ -4,9 +4,6 @@ import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
 import { chartColors, chartMutedText } from "./chartTheme";
-import { toNestedPieData } from "./chartTransforms";
-import { workItemTypeByScopeSample } from "@/data/devHealthOpsSample";
-import type { WorkItemTypeByScope } from "@/data/devHealthOpsTypes";
 
 const adjustHex = (hex: string, amount: number) => {
   const normalized = hex.replace("#", "");
@@ -24,7 +21,8 @@ const adjustHex = (hex: string, amount: number) => {
 };
 
 type NestedPieChart3DProps = {
-  data?: WorkItemTypeByScope[];
+  categories: Array<{ key: string; name: string; value: number }>;
+  subtypes: Array<{ name: string; value: number; parentKey: string }>;
   height?: number | string;
   width?: number | string;
   className?: string;
@@ -32,13 +30,13 @@ type NestedPieChart3DProps = {
 };
 
 export function NestedPieChart3D({
-  data = workItemTypeByScopeSample,
+  categories,
+  subtypes,
   height = 380,
   width = "100%",
   className,
   style,
 }: NestedPieChart3DProps) {
-  const { categories, subtypes } = toNestedPieData(data);
   const categoryColors = chartColors.slice(0, categories.length);
   const categoryColorMap = new Map(
     categories.map((category, index) => [category.key, categoryColors[index]])

@@ -4,12 +4,10 @@ import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
 import { chartMutedText } from "./chartTheme";
-import { toSankeyData } from "./chartTransforms";
-import { workItemStatusTransitionSample } from "@/data/devHealthOpsSample";
-import type { WorkItemStatusTransitionSummary } from "@/data/devHealthOpsTypes";
 
 type SankeyChartProps = {
-  data?: WorkItemStatusTransitionSummary[];
+  nodes: Array<{ name: string }>;
+  links: Array<{ source: string; target: string; value: number }>;
   height?: number | string;
   width?: number | string;
   className?: string;
@@ -17,13 +15,13 @@ type SankeyChartProps = {
 };
 
 export function SankeyChart({
-  data = workItemStatusTransitionSample,
+  nodes,
+  links,
   height = 320,
   width = "100%",
   className,
   style,
 }: SankeyChartProps) {
-  const { nodes, links } = toSankeyData(data);
   const mergedStyle: CSSProperties = {
     height,
     width,

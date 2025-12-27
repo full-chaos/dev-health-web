@@ -4,12 +4,10 @@ import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
 import { chartGridColor, chartMutedText } from "./chartTheme";
-import { toTeamEfficiencyBarSeries } from "./chartTransforms";
-import { workItemFlowEfficiencyDailySample } from "@/data/devHealthOpsSample";
-import type { WorkItemFlowEfficiencyDaily } from "@/data/devHealthOpsTypes";
 
 type HorizontalBarChartProps = {
-  data?: WorkItemFlowEfficiencyDaily[];
+  categories: string[];
+  values: number[];
   height?: number | string;
   width?: number | string;
   className?: string;
@@ -17,13 +15,13 @@ type HorizontalBarChartProps = {
 };
 
 export function HorizontalBarChart({
-  data = workItemFlowEfficiencyDailySample,
+  categories,
+  values,
   height = 240,
   width = "100%",
   className,
   style,
 }: HorizontalBarChartProps) {
-  const { categories, values } = toTeamEfficiencyBarSeries(data);
   const mergedStyle: CSSProperties = {
     height,
     width,

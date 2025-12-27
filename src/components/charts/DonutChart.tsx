@@ -4,12 +4,10 @@ import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
 import { chartMutedText } from "./chartTheme";
-import { toWorkItemTypeDonutData } from "./chartTransforms";
-import { workItemTypeSummarySample } from "@/data/devHealthOpsSample";
-import type { WorkItemTypeSummary } from "@/data/devHealthOpsTypes";
 
 type DonutChartProps = {
-  data?: WorkItemTypeSummary[];
+  data: Array<{ name: string; value: number }>;
+  selectedIndex?: number;
   height?: number | string;
   width?: number | string;
   className?: string;
@@ -17,15 +15,16 @@ type DonutChartProps = {
 };
 
 export function DonutChart({
-  data = workItemTypeSummarySample,
+  data,
+  selectedIndex = 0,
   height = 280,
   width = "100%",
   className,
   style,
 }: DonutChartProps) {
-  const segments = toWorkItemTypeDonutData(data).map((segment, index) => ({
+  const segments = data.map((segment, index) => ({
     ...segment,
-    selected: index === 0,
+    selected: index === selectedIndex,
   }));
 
   const mergedStyle: CSSProperties = {
