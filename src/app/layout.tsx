@@ -1,20 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const bodyFont = IBM_Plex_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const displayFont = Fraunces({
+  variable: "--font-display",
+  subsets: ["latin"],
+});
+
+const monoFont = IBM_Plex_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Dev Health Ops Charts",
-  description: "Interactive chart prototypes built with ECharts.",
+  title: "Dev Health Ops",
+  description: "Developer health control room.",
 };
 
 export default function RootLayout({
@@ -25,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
         {children}
       </body>

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("app shell renders chart sections", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/demo");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Chart prototypes powered by ECharts"
   );

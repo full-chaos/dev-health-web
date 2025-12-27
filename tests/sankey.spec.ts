@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("sankey chart renders and shows tooltip", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/demo");
   const chart = page.getByTestId("chart-sankey");
 
   await expect(chart.locator("canvas").first()).toBeVisible();
