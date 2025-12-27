@@ -2,14 +2,26 @@ import Link from "next/link";
 
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getOpportunities } from "@/lib/api";
+import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 
-export default async function OpportunitiesPage() {
+type OpportunitiesPageProps = {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function OpportunitiesPage({ searchParams }: OpportunitiesPageProps) {
   const health = await checkApiHealth();
   if (!health.ok) {
     return <ServiceUnavailable />;
   }
 
-  const data = await getOpportunities({}).catch(() => null);
+  const params = (await searchParams) ?? {};
+  const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const filters = encodedFilter
+    ? decodeFilter(encodedFilter)
+    : filterFromQueryParams(params);
+
+  const data = await getOpportunities(filters).catch(() => null);
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -27,7 +39,7 @@ export default async function OpportunitiesPage() {
             </p>
           </div>
           <Link
-            href="/"
+            href={withFilterParam("/", filters)}
             className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
           >
             Back to Home
@@ -48,7 +60,7 @@ export default async function OpportunitiesPage() {
                 {card.evidence_links.map((link) => (
                   <Link
                     key={link}
-                    href={link}
+                    href={buildExploreUrl({ api: link, filters })}
                     className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1"
                   >
                     Evidence

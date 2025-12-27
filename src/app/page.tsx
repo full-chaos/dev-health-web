@@ -3,21 +3,19 @@ import Link from "next/link";
 import { InvestmentPreview } from "@/components/home/InvestmentPreview";
 import { DataStatusBanner } from "@/components/home/DataStatusBanner";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { checkApiHealth, getHomeData } from "@/lib/api";
+import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue, formatPercent, formatTimestamp } from "@/lib/formatters";
 import type { HomeResponse } from "@/lib/types";
 
 const deltaAccent = (value: number) =>
   value > 0 ? "text-rose-600" : value < 0 ? "text-emerald-600" : "text-zinc-500";
 
-const loadHome = async (params: {
-  scopeType: string;
-  scopeId: string;
-  rangeDays: number;
-  compareDays: number;
-}): Promise<HomeResponse | null> => {
+const loadHome = async (filters: Parameters<typeof getHomeData>[0]): Promise<HomeResponse | null> => {
   try {
-    return await getHomeData(params);
+    return await getHomeData(filters);
   } catch {
     return null;
   }
@@ -45,12 +43,12 @@ export default async function Home({ searchParams }: HomePageProps) {
   }
 
   const params = (await searchParams) ?? {};
-  const scopeType = (params.scope_type as string) ?? "org";
-  const scopeId = (params.scope_id as string) ?? "";
-  const rangeDays = Number(params.range_days ?? 14);
-  const compareDays = Number(params.compare_days ?? 14);
+  const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const filters = encodedFilter
+    ? decodeFilter(encodedFilter)
+    : filterFromQueryParams(params);
 
-  const home = await loadHome({ scopeType, scopeId, rangeDays, compareDays });
+  const home = await loadHome(filters);
   const coverage = home?.freshness.coverage;
   const coverageLow = coverage ? coverage.repos_covered_pct < 70 : false;
   const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
@@ -77,10 +75,10 @@ export default async function Home({ searchParams }: HomePageProps) {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="rounded-full border border-[var(--card-stroke)] bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
-                  {scopeType} scope
+                  {filters.scope.level} scope
                 </div>
                 <div className="rounded-full border border-[var(--card-stroke)] bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
-                  {rangeDays}d view
+                  {filters.time.range_days}d view
                 </div>
               </div>
             </div>
@@ -129,6 +127,8 @@ export default async function Home({ searchParams }: HomePageProps) {
           </div>
         </header>
 
+        <FilterBar />
+
         <DataStatusBanner
           isUnavailable={!home}
           lastIngestedAt={lastIngestedAt}
@@ -139,7 +139,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           {deltas.map((delta) => (
             <Link
               key={delta.metric}
-              href={`/explore?metric=${delta.metric}`}
+              href={buildExploreUrl({ metric: delta.metric, filters })}
               data-testid="delta-tile"
               className="group rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 transition hover:-translate-y-1 hover:shadow-lg"
             >
@@ -166,7 +166,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               {(home?.summary ?? []).map((sentence) => (
                 <Link
                   key={sentence.id}
-                  href={sentence.evidence_link}
+                  href={buildExploreUrl({ api: sentence.evidence_link, filters })}
                   className="block rounded-2xl border border-transparent bg-white/60 px-4 py-3 transition hover:border-[var(--card-stroke)]"
                 >
                   {sentence.text}
@@ -186,7 +186,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 ? Object.entries(home.tiles).map(([key, tile]) => (
                     <Link
                       key={key}
-                      href={tile.link}
+                      href={withFilterParam(tile.link, filters)}
                       className="group rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 transition hover:-translate-y-1"
                     >
                       <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
@@ -223,7 +223,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-6">
             <div className="flex items-center justify-between">
               <h3 className="font-[var(--font-display)] text-xl">Constraint Evidence</h3>
-              <Link href="/explore?metric=review_latency" className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
+              <Link href={buildExploreUrl({ metric: "review_latency", filters })} className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
                 Drilldown
               </Link>
             </div>
@@ -234,7 +234,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               {(home?.constraint.evidence ?? []).map((item, idx) => (
                 <Link
                   key={`${item.label}-${idx}`}
-                  href={item.link}
+                  href={buildExploreUrl({ api: item.link, filters })}
                   className="block rounded-2xl border border-[var(--card-stroke)] bg-white/70 px-4 py-3"
                 >
                   {item.label}
@@ -256,7 +256,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-6">
             <div className="flex items-center justify-between">
               <h3 className="font-[var(--font-display)] text-xl">Events</h3>
-              <Link href="/explore" className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
+              <Link href={buildExploreUrl({ filters })} className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
                 Explore
               </Link>
             </div>
@@ -264,7 +264,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               {(home?.events ?? []).map((event, idx) => (
                 <Link
                   key={`${event.type}-${idx}`}
-                  href={event.link}
+                  href={buildExploreUrl({ api: event.link, filters })}
                   className="block rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3"
                 >
                   <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
@@ -292,13 +292,13 @@ export default async function Home({ searchParams }: HomePageProps) {
               Live work allocation preview, refreshed client-side.
             </p>
             <Link
-              href="/investment"
+              href={withFilterParam("/investment", filters)}
               className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
             >
               View investment →
             </Link>
           </div>
-          <InvestmentPreview />
+          <InvestmentPreview filters={filters} />
         </section>
       </main>
     </div>

@@ -72,6 +72,10 @@ export type ExplainResponse = {
   drilldown_links: Record<string, string>;
 };
 
+export type DrilldownResponse = {
+  items: Array<Record<string, unknown>>;
+};
+
 export type OpportunityCard = {
   id: string;
   title: string;

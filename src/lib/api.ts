@@ -1,10 +1,12 @@
 import type {
+  DrilldownResponse,
   ExplainResponse,
   HealthResponse,
   HomeResponse,
   InvestmentResponse,
   OpportunitiesResponse,
 } from "@/lib/types";
+import type { MetricFilter } from "@/lib/filters/types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
@@ -30,64 +32,53 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function getHomeData(params: {
-  scopeType?: string;
-  scopeId?: string;
-  rangeDays?: number;
-  compareDays?: number;
-}) {
-  const url = buildUrl("/api/v1/home", {
-    scope_type: params.scopeType ?? "org",
-    scope_id: params.scopeId ?? "",
-    range_days: params.rangeDays ?? 14,
-    compare_days: params.compareDays ?? 14,
+const postJson = async <T>(path: string, body: unknown, revalidate = 60) => {
+  const url = buildUrl(path);
+  return fetchJson<T>(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    next: { revalidate },
   });
-  return fetchJson<HomeResponse>(url, { next: { revalidate: 60 } });
+};
+
+export async function getHomeData(filters: MetricFilter) {
+  return postJson<HomeResponse>("/api/v1/home", { filters }, 60);
 }
 
 export async function getExplainData(params: {
   metric: string;
-  scopeType?: string;
-  scopeId?: string;
-  rangeDays?: number;
-  compareDays?: number;
+  filters: MetricFilter;
 }) {
-  const url = buildUrl("/api/v1/explain", {
-    metric: params.metric,
-    scope_type: params.scopeType ?? "org",
-    scope_id: params.scopeId ?? "",
-    range_days: params.rangeDays ?? 14,
-    compare_days: params.compareDays ?? 14,
-  });
-  return fetchJson<ExplainResponse>(url, { next: { revalidate: 60 } });
+  return postJson<ExplainResponse>(
+    "/api/v1/explain",
+    { metric: params.metric, filters: params.filters },
+    60
+  );
 }
 
-export async function getOpportunities(params: {
-  scopeType?: string;
-  scopeId?: string;
-  rangeDays?: number;
-  compareDays?: number;
-}) {
-  const url = buildUrl("/api/v1/opportunities", {
-    scope_type: params.scopeType ?? "org",
-    scope_id: params.scopeId ?? "",
-    range_days: params.rangeDays ?? 14,
-    compare_days: params.compareDays ?? 14,
-  });
-  return fetchJson<OpportunitiesResponse>(url, { next: { revalidate: 120 } });
+export async function getOpportunities(filters: MetricFilter) {
+  return postJson<OpportunitiesResponse>(
+    "/api/v1/opportunities",
+    { filters },
+    120
+  );
 }
 
-export async function getInvestment(params: {
-  scopeType?: string;
-  scopeId?: string;
-  rangeDays?: number;
-}) {
-  const url = buildUrl("/api/v1/investment", {
-    scope_type: params.scopeType ?? "org",
-    scope_id: params.scopeId ?? "",
-    range_days: params.rangeDays ?? 30,
-  });
-  return fetchJson<InvestmentResponse>(url, { next: { revalidate: 300 } });
+export async function getInvestment(filters: MetricFilter) {
+  return postJson<InvestmentResponse>(
+    "/api/v1/investment",
+    { filters },
+    300
+  );
+}
+
+export async function getDrilldown(
+  path: "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues",
+  filters: MetricFilter,
+  limit = 50
+) {
+  return postJson<DrilldownResponse>(path, { filters, limit }, 30);
 }
 
 export async function checkApiHealth() {

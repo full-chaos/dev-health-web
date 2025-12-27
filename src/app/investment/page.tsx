@@ -3,16 +3,28 @@ import Link from "next/link";
 import { InvestmentChart } from "@/components/investment/InvestmentChart";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getInvestment } from "@/lib/api";
+import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { withFilterParam } from "@/lib/filters/url";
 import { formatNumber } from "@/lib/formatters";
 import { mapInvestmentToNestedPie } from "@/lib/mappers";
 
-export default async function InvestmentPage() {
+type InvestmentPageProps = {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function InvestmentPage({ searchParams }: InvestmentPageProps) {
   const health = await checkApiHealth();
   if (!health.ok) {
     return <ServiceUnavailable />;
   }
 
-  const data = await getInvestment({}).catch(() => null);
+  const params = (await searchParams) ?? {};
+  const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const filters = encodedFilter
+    ? decodeFilter(encodedFilter)
+    : filterFromQueryParams(params);
+
+  const data = await getInvestment(filters).catch(() => null);
   const nested = data ? mapInvestmentToNestedPie(data) : { categories: [], subtypes: [] };
 
   return (
@@ -31,7 +43,7 @@ export default async function InvestmentPage() {
             </p>
           </div>
           <Link
-            href="/"
+            href={withFilterParam("/", filters)}
             className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
           >
             Back to Home
@@ -53,7 +65,7 @@ export default async function InvestmentPage() {
               {nested.categories.map((category) => (
                 <Link
                   key={category.key}
-                  href={`/explore?metric=throughput&view=align&category=${category.key}`}
+                  href={withFilterParam(`/explore?metric=throughput&view=align&category=${category.key}`, filters)}
                   className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-white/70 px-4 py-3"
                 >
                   <span>{category.name}</span>
@@ -70,7 +82,7 @@ export default async function InvestmentPage() {
               {nested.subtypes.map((subtype) => (
                 <Link
                   key={`${subtype.parentKey}-${subtype.name}`}
-                  href={`/explore?metric=throughput&view=align&stream=${subtype.name}`}
+                  href={withFilterParam(`/explore?metric=throughput&view=align&stream=${subtype.name}`, filters)}
                   className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-white/70 px-4 py-3"
                 >
                   <span>{subtype.name}</span>

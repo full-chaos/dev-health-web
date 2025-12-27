@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
+import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse } from "@/lib/types";
 import { mapInvestmentToNestedPie } from "@/lib/mappers";
 
@@ -14,13 +15,20 @@ const NestedPieChart2D = dynamic(
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
-export function InvestmentPreview() {
+type InvestmentPreviewProps = {
+  filters: MetricFilter;
+};
+
+export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
   const [data, setData] = useState<InvestmentResponse | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
 
     fetch(`${API_BASE}/api/v1/investment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filters }),
       signal: controller.signal,
     })
       .then((response) => (response.ok ? response.json() : null))
@@ -32,7 +40,7 @@ export function InvestmentPreview() {
       .catch(() => null);
 
     return () => controller.abort();
-  }, []);
+  }, [filters]);
 
   if (!data) {
     return (
