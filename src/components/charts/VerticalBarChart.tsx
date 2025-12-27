@@ -12,17 +12,24 @@ export function VerticalBarChart() {
     <Chart
       option={{
         tooltip: { trigger: "axis", confine: true },
-        legend: { data: ["Planned", "Actual"], textStyle: { color: chartMutedText } },
-        grid: { left: 24, right: 16, top: 32, bottom: 24 },
+        legend: {
+          data: ["Planned", "Actual"],
+          bottom: 0,
+          left: "center",
+          textStyle: { color: chartMutedText },
+        },
+        grid: { left: 24, right: 16, top: 32, bottom: 52, containLabel: true },
         xAxis: {
           type: "category",
           data: categories,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: chartGridColor } },
+          axisLabel: { color: chartMutedText },
         },
         yAxis: {
           type: "value",
           splitLine: { lineStyle: { color: chartGridColor } },
+          axisLabel: { color: chartMutedText },
         },
         series: [
           {
