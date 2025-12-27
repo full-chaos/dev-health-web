@@ -34,16 +34,16 @@ export default function Home() {
   const sankey = toSankeyData(workItemStatusTransitionSample);
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
         <header className="flex flex-col gap-3">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-zinc-500">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             Dev Health Ops
           </p>
           <h1 className="text-4xl font-semibold leading-tight tracking-tight">
             Chart prototypes powered by ECharts
           </h1>
-          <p className="max-w-2xl text-base text-zinc-600">
+          <p className="max-w-2xl text-base text-[var(--ink-muted)]">
             Interactive chart types inspired by the Grafana dashboards, built in
             React + Next.js. Each chart has a Playwright test running in a
             headless browser.
@@ -52,12 +52,12 @@ export default function Home() {
 
         <section className="grid gap-6 md:grid-cols-2">
           <div
-            className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
             data-testid="chart-sparkline"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Sparklines</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
                 Trend
               </span>
             </div>
@@ -65,12 +65,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
             data-testid="chart-vertical-bar"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Vertical Bars</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
                 Throughput
               </span>
             </div>
@@ -84,12 +84,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
             data-testid="chart-horizontal-bar"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Horizontal Bars</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
                 Ranking
               </span>
             </div>
@@ -100,12 +100,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
             data-testid="chart-donut"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Donut (Sliced)</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
                 Investment
               </span>
             </div>
@@ -113,12 +113,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
             data-testid="chart-nested-pie-2d"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Nested Pie (2D)</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
                 Work Mix
               </span>
             </div>
@@ -129,12 +129,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
             data-testid="chart-nested-pie-3d"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Nested Pie (3D)</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
                 Work Depth
               </span>
             </div>
@@ -146,12 +146,12 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+          className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
           data-testid="chart-sankey"
         >
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Sankey Flow</h2>
-            <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+            <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
               Investment / Dev
             </span>
           </div>
