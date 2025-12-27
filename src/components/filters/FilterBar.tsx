@@ -62,11 +62,38 @@ export function FilterBar({ condensed }: FilterBarProps) {
     }
   };
 
+  const scopeSummary = filters.scope.ids.length
+    ? `${filters.scope.level}: ${filters.scope.ids.join(", ")}`
+    : `${filters.scope.level}: All`;
+
+  const developers = filters.who.developers ?? [];
+  const roles = filters.who.roles ?? [];
+  const repos = filters.what.repos ?? [];
+  const artifacts = filters.what.artifacts ?? [];
+  const workCategory = filters.why.work_category ?? [];
+  const issueType = filters.why.issue_type ?? [];
+  const flowStage = filters.how.flow_stage ?? [];
+
+  const summaryChips = [
+    `Scope: ${scopeSummary}`,
+    developers.length
+      ? `Devs: ${developers.join(", ")}`
+      : null,
+    repos.length ? `Repos: ${repos.join(", ")}` : null,
+    workCategory.length
+      ? `Category: ${workCategory.join(", ")}`
+      : null,
+    flowStage.length
+      ? `Flow: ${flowStage.join(", ")}`
+      : null,
+    filters.how.blocked ? "Blocked only" : null,
+  ].filter(Boolean) as string[];
+
   return (
     <section
-      className={`rounded-[28px] border border-[var(--card-stroke)] bg-[var(--card-90)] p-5 shadow-sm ${
-        condensed ? "" : "sticky top-4"
-      }`}
+      className={`rounded-[28px] border border-[var(--card-stroke)] p-5 shadow-sm ${
+        condensed ? "bg-[var(--card-80)]" : "bg-[var(--card-90)]"
+      } ${condensed ? "" : "sticky top-4"}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -74,17 +101,10 @@ export function FilterBar({ condensed }: FilterBarProps) {
             Filters
           </p>
           <p className="mt-1 text-sm text-[var(--ink-muted)]">
-            Share or paste the filter JSON from this bar.
+            Global scope and date window for every view.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
-          <button
-            type="button"
-            onClick={copyFilters}
-            className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 uppercase tracking-[0.2em]"
-          >
-            Copy
-          </button>
           <button
             type="button"
             onClick={resetFilters}
@@ -92,10 +112,17 @@ export function FilterBar({ condensed }: FilterBarProps) {
           >
             Reset
           </button>
+          <button
+            type="button"
+            onClick={copyFilters}
+            className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 uppercase tracking-[0.2em]"
+          >
+            Copy
+          </button>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1.4fr]">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_1.1fr_1fr]">
         <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             Time
@@ -186,11 +213,22 @@ export function FilterBar({ condensed }: FilterBarProps) {
 
         <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-            Inspectable Filter
+            Active
           </p>
-          <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-3 text-[11px] text-[var(--ink-muted)]">
-            {JSON.stringify(filters, null, 2)}
-          </pre>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            {summaryChips.length ? (
+              summaryChips.map((chip) => (
+                <span
+                  key={chip}
+                  className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-1"
+                >
+                  {chip}
+                </span>
+              ))
+            ) : (
+              <span className="text-[var(--ink-muted)]">All data in scope.</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -205,7 +243,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
               <input
                 className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="alice, bob"
-                value={toValue(filters.who.developers)}
+                value={toValue(developers)}
                 onChange={(event) =>
                   updateFilters({
                     ...filters,
@@ -219,7 +257,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
               <input
                 className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="maintainer, reviewer"
-                value={toValue(filters.who.roles)}
+                value={toValue(roles)}
                 onChange={(event) =>
                   updateFilters({
                     ...filters,
@@ -241,7 +279,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
               <input
                 className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="org/api, org/ui"
-                value={toValue(filters.what.repos)}
+                value={toValue(repos)}
                 onChange={(event) =>
                   updateFilters({
                     ...filters,
@@ -255,7 +293,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
               <input
                 className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="pr, issue"
-                value={toValue(filters.what.artifacts)}
+                value={toValue(artifacts)}
                 onChange={(event) =>
                   updateFilters({
                     ...filters,
@@ -280,7 +318,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
               <input
                 className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="feature, maintenance"
-                value={toValue(filters.why.work_category)}
+                value={toValue(workCategory)}
                 onChange={(event) =>
                   updateFilters({
                     ...filters,
@@ -294,7 +332,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
               <input
                 className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="bug, story"
-                value={toValue(filters.why.issue_type)}
+                value={toValue(issueType)}
                 onChange={(event) =>
                   updateFilters({
                     ...filters,
@@ -316,7 +354,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
               <input
                 className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="review, build"
-                value={toValue(filters.how.flow_stage)}
+                value={toValue(flowStage)}
                 onChange={(event) =>
                   updateFilters({
                     ...filters,
@@ -341,6 +379,15 @@ export function FilterBar({ condensed }: FilterBarProps) {
           </div>
         </details>
       </div>
+
+      <details className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
+        <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+          Filter payload
+        </summary>
+        <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-3 text-[11px] text-[var(--ink-muted)]">
+          {JSON.stringify(filters, null, 2)}
+        </pre>
+      </details>
     </section>
   );
 }

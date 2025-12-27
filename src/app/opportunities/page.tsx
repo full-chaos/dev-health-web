@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { FilterBar } from "@/components/filters/FilterBar";
+import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getOpportunities } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -25,67 +27,72 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16 pt-12">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-              Opportunities
-            </p>
-            <h1 className="mt-2 font-[var(--font-display)] text-3xl">
-              Focus Cards
-            </h1>
-            <p className="mt-2 text-sm text-[var(--ink-muted)]">
-              Evidence-backed bets with suggested experiments.
-            </p>
-          </div>
-          <Link
-            href={withFilterParam("/", filters)}
-            className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
-          >
-            Back to Home
-          </Link>
-        </header>
-
-        <section className="grid gap-6 md:grid-cols-2">
-          {(data?.items ?? []).map((card) => (
-            <div
-              key={card.id}
-              className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6"
-            >
-              <h2 className="font-[var(--font-display)] text-xl">{card.title}</h2>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                {card.rationale}
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+        <PrimaryNav filters={filters} active="opportunities" />
+        <main className="flex min-w-0 flex-1 flex-col gap-8">
+          <header className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                Opportunities
               </p>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                {card.evidence_links.map((link) => (
-                  <Link
-                    key={link}
-                    href={buildExploreUrl({ api: link, filters })}
-                    className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1"
-                  >
-                    Evidence
-                  </Link>
-                ))}
-              </div>
-              <div className="mt-4 space-y-2 text-xs text-[var(--ink-muted)]">
-                {card.suggested_experiments.map((experiment) => (
-                  <div
-                    key={experiment}
-                    className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
-                  >
-                    {experiment}
-                  </div>
-                ))}
-              </div>
+              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+                Focus Cards
+              </h1>
+              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+                Evidence-backed bets with suggested experiments.
+              </p>
             </div>
-          ))}
-          {!data?.items?.length && (
-            <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-6 text-sm text-[var(--ink-muted)]">
-              Opportunity data unavailable.
-            </div>
-          )}
-        </section>
-      </main>
+            <Link
+              href={withFilterParam("/", filters)}
+              className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+            >
+              Back to Home
+            </Link>
+          </header>
+
+          <FilterBar />
+
+          <section className="grid gap-6 md:grid-cols-2">
+            {(data?.items ?? []).map((card) => (
+              <div
+                key={card.id}
+                className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6"
+              >
+                <h2 className="font-[var(--font-display)] text-xl">{card.title}</h2>
+                <p className="mt-2 text-sm text-[var(--ink-muted)]">
+                  {card.rationale}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                  {card.evidence_links.map((link) => (
+                    <Link
+                      key={link}
+                      href={buildExploreUrl({ api: link, filters })}
+                      className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1"
+                    >
+                      Evidence
+                    </Link>
+                  ))}
+                </div>
+                <div className="mt-4 space-y-2 text-xs text-[var(--ink-muted)]">
+                  {card.suggested_experiments.map((experiment) => (
+                    <div
+                      key={experiment}
+                      className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                    >
+                      {experiment}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {!data?.items?.length && (
+              <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-6 text-sm text-[var(--ink-muted)]">
+                Opportunity data unavailable.
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
