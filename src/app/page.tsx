@@ -1,10 +1,38 @@
 import { DonutChart } from "@/components/charts/DonutChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { NestedPieChart2D } from "@/components/charts/NestedPieChart2D";
+import { NestedPieChart3D } from "@/components/charts/NestedPieChart3D";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
+import {
+  workItemFlowEfficiencyDailySample,
+  workItemMetricsDailySample,
+  workItemStatusTransitionSample,
+  workItemTypeByScopeSample,
+  workItemTypeSummarySample,
+} from "@/data/devHealthOpsSample";
+import {
+  toNestedPieData,
+  toSankeyData,
+  toSparklineSeries,
+  toTeamEfficiencyBarSeries,
+  toThroughputBarSeries,
+  toWorkItemTypeDonutData,
+} from "@/lib/chartTransforms";
 
 export default function Home() {
+  const throughput = toThroughputBarSeries(workItemMetricsDailySample, {
+    scopeOrder: ["auth", "api", "ui", "data", "ops", "docs"],
+  });
+  const efficiency = toTeamEfficiencyBarSeries(workItemFlowEfficiencyDailySample);
+  const sparkline = toSparklineSeries(workItemMetricsDailySample, {
+    workScopeId: "auth",
+  });
+  const donut = toWorkItemTypeDonutData(workItemTypeSummarySample);
+  const nestedPie = toNestedPieData(workItemTypeByScopeSample);
+  const sankey = toSankeyData(workItemStatusTransitionSample);
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
@@ -33,7 +61,7 @@ export default function Home() {
                 Trend
               </span>
             </div>
-            <SparklineChart />
+            <SparklineChart data={sparkline.values} categories={sparkline.categories} />
           </div>
 
           <div
@@ -46,7 +74,13 @@ export default function Home() {
                 Throughput
               </span>
             </div>
-            <VerticalBarChart />
+            <VerticalBarChart
+              categories={throughput.categories}
+              series={[
+                { name: "Planned", data: throughput.planned },
+                { name: "Actual", data: throughput.actual },
+              ]}
+            />
           </div>
 
           <div
@@ -59,7 +93,10 @@ export default function Home() {
                 Ranking
               </span>
             </div>
-            <HorizontalBarChart />
+            <HorizontalBarChart
+              categories={efficiency.categories}
+              values={efficiency.values}
+            />
           </div>
 
           <div
@@ -72,7 +109,39 @@ export default function Home() {
                 Investment
               </span>
             </div>
-            <DonutChart />
+            <DonutChart data={donut} />
+          </div>
+
+          <div
+            className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+            data-testid="chart-nested-pie-2d"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Nested Pie (2D)</h2>
+              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                Work Mix
+              </span>
+            </div>
+            <NestedPieChart2D
+              categories={nestedPie.categories}
+              subtypes={nestedPie.subtypes}
+            />
+          </div>
+
+          <div
+            className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+            data-testid="chart-nested-pie-3d"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Nested Pie (3D)</h2>
+              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                Work Depth
+              </span>
+            </div>
+            <NestedPieChart3D
+              categories={nestedPie.categories}
+              subtypes={nestedPie.subtypes}
+            />
           </div>
         </section>
 
@@ -86,7 +155,7 @@ export default function Home() {
               Investment / Dev
             </span>
           </div>
-          <SankeyChart />
+          <SankeyChart nodes={sankey.nodes} links={sankey.links} />
         </section>
       </main>
     </div>

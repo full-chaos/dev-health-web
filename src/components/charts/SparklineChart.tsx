@@ -1,11 +1,35 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import { Chart } from "./Chart";
 import { chartMutedText } from "./chartTheme";
 
-const data = [12, 18, 14, 22, 19, 28, 25, 31, 29, 36, 33, 38];
+type SparklineChartProps = {
+  data: number[];
+  categories?: Array<string | number>;
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-export function SparklineChart() {
+export function SparklineChart({
+  data,
+  categories,
+  height = 120,
+  width = "100%",
+  className,
+  style,
+}: SparklineChartProps) {
+  const xCategories = categories ?? data.map((_, index) => index + 1);
+
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
+
   return (
     <Chart
       option={{
@@ -17,7 +41,7 @@ export function SparklineChart() {
         grid: { left: 8, right: 8, top: 10, bottom: 10 },
         xAxis: {
           type: "category",
-          data: data.map((_, i) => i + 1),
+          data: xCategories,
           boundaryGap: false,
           axisLabel: { show: false },
           axisLine: { show: false },
@@ -42,7 +66,8 @@ export function SparklineChart() {
           },
         ],
       }}
-      style={{ height: 120, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }

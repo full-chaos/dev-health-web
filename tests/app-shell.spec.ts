@@ -9,5 +9,7 @@ test("app shell renders chart sections", async ({ page }) => {
   await expect(page.getByTestId("chart-vertical-bar")).toBeVisible();
   await expect(page.getByTestId("chart-horizontal-bar")).toBeVisible();
   await expect(page.getByTestId("chart-donut")).toBeVisible();
+  await expect(page.getByTestId("chart-nested-pie-2d")).toBeVisible();
+  await expect(page.getByTestId("chart-nested-pie-3d")).toBeVisible();
   await expect(page.getByTestId("chart-sankey")).toBeVisible();
 });

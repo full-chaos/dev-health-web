@@ -1,45 +1,68 @@
 "use client";
 
+import type { CSSProperties } from "react";
+import type { BarSeriesOption } from "echarts";
+
 import { Chart } from "./Chart";
 import { chartGridColor, chartMutedText } from "./chartTheme";
 
-const categories = ["Auth", "API", "UI", "Data", "Ops", "Docs"];
-const planned = [12, 18, 9, 14, 7, 5];
-const actual = [10, 15, 12, 11, 9, 6];
+type VerticalBarChartProps = {
+  categories: string[];
+  series: Array<{ name: string; data: number[] }>;
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-export function VerticalBarChart() {
+export function VerticalBarChart({
+  categories,
+  series,
+  height = 260,
+  width = "100%",
+  className,
+  style,
+}: VerticalBarChartProps) {
+  const barSeries: BarSeriesOption[] = series.map((item) => ({
+    name: item.name,
+    type: "bar",
+    data: item.data,
+    barMaxWidth: 24,
+  }));
+
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
+
   return (
     <Chart
       option={{
         tooltip: { trigger: "axis", confine: true },
-        legend: { data: ["Planned", "Actual"], textStyle: { color: chartMutedText } },
-        grid: { left: 24, right: 16, top: 32, bottom: 24 },
+        legend: {
+          data: series.map((item) => item.name),
+          bottom: 0,
+          left: "center",
+          textStyle: { color: chartMutedText },
+        },
+        grid: { left: 24, right: 16, top: 32, bottom: 52, containLabel: true },
         xAxis: {
           type: "category",
           data: categories,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: chartGridColor } },
+          axisLabel: { color: chartMutedText },
         },
         yAxis: {
           type: "value",
           splitLine: { lineStyle: { color: chartGridColor } },
+          axisLabel: { color: chartMutedText },
         },
-        series: [
-          {
-            name: "Planned",
-            type: "bar",
-            data: planned,
-            barMaxWidth: 24,
-          },
-          {
-            name: "Actual",
-            type: "bar",
-            data: actual,
-            barMaxWidth: 24,
-          },
-        ],
+        series: barSeries,
       }}
-      style={{ height: 260, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }

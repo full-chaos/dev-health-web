@@ -1,16 +1,38 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import { Chart } from "./Chart";
 import { chartMutedText } from "./chartTheme";
 
-const segments = [
-  { name: "Refactor", value: 28, selected: true },
-  { name: "Feature", value: 34 },
-  { name: "Fix", value: 18 },
-  { name: "Chore", value: 20 },
-];
+type DonutChartProps = {
+  data: Array<{ name: string; value: number }>;
+  selectedIndex?: number;
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-export function DonutChart() {
+export function DonutChart({
+  data,
+  selectedIndex = 0,
+  height = 280,
+  width = "100%",
+  className,
+  style,
+}: DonutChartProps) {
+  const segments = data.map((segment, index) => ({
+    ...segment,
+    selected: index === selectedIndex,
+  }));
+
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
+
   return (
     <Chart
       option={{
@@ -41,7 +63,8 @@ export function DonutChart() {
           },
         ],
       }}
-      style={{ height: 280, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }

@@ -1,28 +1,33 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import { Chart } from "./Chart";
 import { chartMutedText } from "./chartTheme";
 
-const nodes = [
-  { name: "Backlog" },
-  { name: "In Progress" },
-  { name: "Review" },
-  { name: "Done" },
-  { name: "Bugs" },
-  { name: "Features" },
-  { name: "Tech Debt" },
-];
+type SankeyChartProps = {
+  nodes: Array<{ name: string }>;
+  links: Array<{ source: string; target: string; value: number }>;
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-const links = [
-  { source: "Backlog", target: "In Progress", value: 32 },
-  { source: "In Progress", target: "Review", value: 22 },
-  { source: "Review", target: "Done", value: 18 },
-  { source: "Backlog", target: "Bugs", value: 12 },
-  { source: "Backlog", target: "Features", value: 14 },
-  { source: "Backlog", target: "Tech Debt", value: 8 },
-];
+export function SankeyChart({
+  nodes,
+  links,
+  height = 320,
+  width = "100%",
+  className,
+  style,
+}: SankeyChartProps) {
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
 
-export function SankeyChart() {
   return (
     <Chart
       option={{
@@ -39,7 +44,8 @@ export function SankeyChart() {
           },
         ],
       }}
-      style={{ height: 320, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }

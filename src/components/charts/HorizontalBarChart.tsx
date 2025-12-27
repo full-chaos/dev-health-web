@@ -1,12 +1,45 @@
 "use client";
 
+import type { CSSProperties } from "react";
+import type { BarSeriesOption } from "echarts";
+
 import { Chart } from "./Chart";
 import { chartGridColor, chartMutedText } from "./chartTheme";
 
-const teams = ["Platform", "Growth", "Core", "Infra", "Mobile", "Data"];
-const scores = [92, 84, 76, 73, 68, 61];
+type HorizontalBarChartProps = {
+  categories: string[];
+  values: number[];
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-export function HorizontalBarChart() {
+export function HorizontalBarChart({
+  categories,
+  values,
+  height = 240,
+  width = "100%",
+  className,
+  style,
+}: HorizontalBarChartProps) {
+  const barSeries: BarSeriesOption = {
+    type: "bar",
+    data: values,
+    barMaxWidth: 18,
+    label: {
+      show: true,
+      position: "right",
+      color: chartMutedText,
+    },
+  };
+
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
+
   return (
     <Chart
       option={{
@@ -19,24 +52,15 @@ export function HorizontalBarChart() {
         },
         yAxis: {
           type: "category",
-          data: teams,
+          data: categories,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: chartGridColor } },
+          axisLabel: { color: chartMutedText },
         },
-        series: [
-          {
-            type: "bar",
-            data: scores,
-            barMaxWidth: 18,
-            label: {
-              show: true,
-              position: "right",
-              color: chartMutedText,
-            },
-          },
-        ],
+        series: [barSeries],
       }}
-      style={{ height: 240, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }
