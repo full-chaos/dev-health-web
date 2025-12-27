@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
-import { chartMutedText } from "./chartTheme";
+import { useChartTheme } from "./chartTheme";
 
 type SparklineChartProps = {
   data: number[];
@@ -22,6 +22,7 @@ export function SparklineChart({
   className,
   style,
 }: SparklineChartProps) {
+  const chartTheme = useChartTheme();
   const xCategories = categories ?? data.map((_, index) => index + 1);
 
   const mergedStyle: CSSProperties = {
@@ -62,7 +63,7 @@ export function SparklineChart({
             lineStyle: { width: 2 },
             areaStyle: { opacity: 0.15 },
             emphasis: { scale: true },
-            itemStyle: { color: chartMutedText },
+            itemStyle: { color: chartTheme.muted },
           },
         ],
       }}

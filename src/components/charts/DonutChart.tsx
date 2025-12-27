@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
-import { chartMutedText } from "./chartTheme";
+import { useChartTheme } from "./chartTheme";
 
 type DonutChartProps = {
   data: Array<{ name: string; value: number }>;
@@ -22,6 +22,7 @@ export function DonutChart({
   className,
   style,
 }: DonutChartProps) {
+  const chartTheme = useChartTheme();
   const segments = data.map((segment, index) => ({
     ...segment,
     selected: index === selectedIndex,
@@ -39,7 +40,7 @@ export function DonutChart({
         tooltip: { trigger: "item", confine: true },
         legend: {
           bottom: 0,
-          textStyle: { color: chartMutedText },
+          textStyle: { color: chartTheme.muted },
         },
         series: [
           {
@@ -56,7 +57,7 @@ export function DonutChart({
               shadowColor: "rgba(0,0,0,0.15)",
             },
             label: {
-              color: chartMutedText,
+              color: chartTheme.muted,
               formatter: "{b}: {d}%",
             },
             data: segments,

@@ -64,7 +64,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
 
   return (
     <section
-      className={`rounded-[28px] border border-[var(--card-stroke)] bg-[var(--card)]/90 p-5 shadow-sm ${
+      className={`rounded-[28px] border border-[var(--card-stroke)] bg-[var(--card-90)] p-5 shadow-sm ${
         condensed ? "" : "sticky top-4"
       }`}
     >
@@ -81,14 +81,14 @@ export function FilterBar({ condensed }: FilterBarProps) {
           <button
             type="button"
             onClick={copyFilters}
-            className="rounded-full border border-[var(--card-stroke)] bg-white/70 px-4 py-2 uppercase tracking-[0.2em]"
+            className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 uppercase tracking-[0.2em]"
           >
             Copy
           </button>
           <button
             type="button"
             onClick={resetFilters}
-            className="rounded-full border border-[var(--card-stroke)] bg-white/70 px-4 py-2 uppercase tracking-[0.2em]"
+            className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 uppercase tracking-[0.2em]"
           >
             Reset
           </button>
@@ -96,7 +96,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1.4fr]">
-        <div className="rounded-2xl border border-[var(--card-stroke)] bg-white/70 p-4">
+        <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             Time
           </p>
@@ -104,7 +104,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Range days</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 type="number"
                 min={1}
                 value={filters.time.range_days}
@@ -122,7 +122,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Compare days</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 type="number"
                 min={1}
                 value={filters.time.compare_days}
@@ -140,7 +140,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[var(--card-stroke)] bg-white/70 p-4">
+        <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             Scope
           </p>
@@ -148,7 +148,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Level</span>
               <select
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 value={filters.scope.level}
                 onChange={(event) =>
                   updateFilters({
@@ -170,7 +170,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">IDs</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="team-a, team-b"
                 value={toValue(filters.scope.ids)}
                 onChange={(event) =>
@@ -184,18 +184,18 @@ export function FilterBar({ condensed }: FilterBarProps) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[var(--card-stroke)] bg-white/70 p-4">
+        <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             Inspectable Filter
           </p>
-          <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-[var(--card-stroke)] bg-white/80 p-3 text-[11px] text-[var(--ink-muted)]">
+          <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-3 text-[11px] text-[var(--ink-muted)]">
             {JSON.stringify(filters, null, 2)}
           </pre>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <details className="rounded-2xl border border-[var(--card-stroke)] bg-white/70 p-4">
+        <details className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             Who
           </summary>
@@ -203,7 +203,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Developers</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="alice, bob"
                 value={toValue(filters.who.developers)}
                 onChange={(event) =>
@@ -217,7 +217,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Roles</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="maintainer, reviewer"
                 value={toValue(filters.who.roles)}
                 onChange={(event) =>
@@ -231,7 +231,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
           </div>
         </details>
 
-        <details className="rounded-2xl border border-[var(--card-stroke)] bg-white/70 p-4">
+        <details className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             What
           </summary>
@@ -239,7 +239,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Repos</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="org/api, org/ui"
                 value={toValue(filters.what.repos)}
                 onChange={(event) =>
@@ -253,7 +253,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Artifacts</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="pr, issue"
                 value={toValue(filters.what.artifacts)}
                 onChange={(event) =>
@@ -270,7 +270,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
           </div>
         </details>
 
-        <details className="rounded-2xl border border-[var(--card-stroke)] bg-white/70 p-4">
+        <details className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             Why
           </summary>
@@ -278,7 +278,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Work category</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="feature, maintenance"
                 value={toValue(filters.why.work_category)}
                 onChange={(event) =>
@@ -292,7 +292,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Issue type</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="bug, story"
                 value={toValue(filters.why.issue_type)}
                 onChange={(event) =>
@@ -306,7 +306,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
           </div>
         </details>
 
-        <details className="rounded-2xl border border-[var(--card-stroke)] bg-white/70 p-4">
+        <details className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
           <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
             How
           </summary>
@@ -314,7 +314,7 @@ export function FilterBar({ condensed }: FilterBarProps) {
             <label className="flex flex-col gap-2">
               <span className="text-xs text-[var(--ink-muted)]">Flow stage</span>
               <input
-                className="rounded-xl border border-[var(--card-stroke)] bg-white px-3 py-2"
+                className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
                 placeholder="review, build"
                 value={toValue(filters.how.flow_stage)}
                 onChange={(event) =>

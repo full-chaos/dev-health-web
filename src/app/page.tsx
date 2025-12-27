@@ -11,7 +11,11 @@ import { formatDelta, formatMetricValue, formatPercent, formatTimestamp } from "
 import type { HomeResponse } from "@/lib/types";
 
 const deltaAccent = (value: number) =>
-  value > 0 ? "text-rose-600" : value < 0 ? "text-emerald-600" : "text-zinc-500";
+  value > 0
+    ? "text-[var(--accent-3)]"
+    : value < 0
+      ? "text-[var(--accent-negative)]"
+      : "text-[var(--ink-muted)]";
 
 const loadHome = async (filters: Parameters<typeof getHomeData>[0]): Promise<HomeResponse | null> => {
   try {
@@ -56,9 +60,9 @@ export default async function Home({ searchParams }: HomePageProps) {
   const placeholderDeltas = !home?.deltas?.length;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7e8_0%,_#f7f1e6_38%,_#efe6d6_100%)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-[image:var(--hero-gradient)] text-[var(--foreground)]">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 pb-20 pt-12">
-        <header className="rounded-[32px] border border-[var(--card-stroke)] bg-[var(--card)]/80 p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
+        <header className="rounded-[32px] border border-[var(--card-stroke)] bg-[var(--card-80)] p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
           <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -74,17 +78,17 @@ export default async function Home({ searchParams }: HomePageProps) {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-full border border-[var(--card-stroke)] bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
+                <div className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
                   {filters.scope.level} scope
                 </div>
-                <div className="rounded-full border border-[var(--card-stroke)] bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
+                <div className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
                   {filters.time.range_days}d view
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-[1.4fr_0.6fr]">
-              <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-white/70 p-4 text-sm">
+              <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-4 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[var(--ink-muted)]">
                     Freshness: {formatTimestamp(lastIngestedAt)}
@@ -98,7 +102,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                     Object.entries(home.freshness.sources).map(([key, value]) => (
                       <div
                         key={key}
-                        className="flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2"
+                        className="flex items-center justify-between rounded-2xl bg-[var(--card-70)] px-3 py-2"
                       >
                         <span className="uppercase tracking-[0.2em]">{key}</span>
                         <span className="font-semibold text-[var(--foreground)]">
@@ -107,7 +111,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                       </div>
                     ))
                   ) : (
-                    <div className="col-span-2 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-white/60 px-3 py-2">
+                    <div className="col-span-2 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-2">
                       Source signals pending.
                     </div>
                   )}
@@ -160,20 +164,20 @@ export default async function Home({ searchParams }: HomePageProps) {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-6">
+          <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
             <h2 className="font-[var(--font-display)] text-2xl">System Summary</h2>
             <div className="mt-4 space-y-3 text-sm text-[var(--ink-muted)]">
               {(home?.summary ?? []).map((sentence) => (
                 <Link
                   key={sentence.id}
                   href={buildExploreUrl({ api: sentence.evidence_link, filters })}
-                  className="block rounded-2xl border border-transparent bg-white/60 px-4 py-3 transition hover:border-[var(--card-stroke)]"
+                  className="block rounded-2xl border border-transparent bg-[var(--card-60)] px-4 py-3 transition hover:border-[var(--card-stroke)]"
                 >
                   {sentence.text}
                 </Link>
               ))}
               {!home?.summary?.length && (
-                <p className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-white/60 px-4 py-3">
+                <p className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-4 py-3">
                   Summary will appear once data is ingested.
                 </p>
               )}
@@ -235,7 +239,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 <Link
                   key={`${item.label}-${idx}`}
                   href={buildExploreUrl({ api: item.link, filters })}
-                  className="block rounded-2xl border border-[var(--card-stroke)] bg-white/70 px-4 py-3"
+                  className="block rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3"
                 >
                   {item.label}
                 </Link>
@@ -245,7 +249,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               {(home?.constraint.experiments ?? []).map((experiment) => (
                 <span
                   key={experiment}
-                  className="rounded-full border border-[var(--card-stroke)] bg-white/70 px-3 py-1"
+                  className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1"
                 >
                   {experiment}
                 </span>
@@ -253,7 +257,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-6">
+          <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
             <div className="flex items-center justify-between">
               <h3 className="font-[var(--font-display)] text-xl">Events</h3>
               <Link href={buildExploreUrl({ filters })} className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">

@@ -89,7 +89,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
         <FilterBar condensed />
 
-        <section className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-5 text-sm">
+        <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
@@ -138,7 +138,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                   {items.map((item) => (
                     <span
                       key={item}
-                      className="rounded-full border border-[var(--card-stroke)] bg-white/60 px-3 py-1"
+                      className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-1"
                     >
                       {item}
                     </span>
@@ -149,7 +149,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
           </aside>
 
           <div className="space-y-6">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-6">
+            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
               <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
                 Current Window
               </p>
@@ -172,7 +172,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       <Link
                         key={driver.id}
                         href={buildExploreUrl({ api: driver.evidence_link, filters })}
-                        className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-white/70 px-4 py-3"
+                        className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3"
                       >
                         <span>{driver.label}</span>
                         <span className="text-xs text-[var(--ink-muted)]">
@@ -190,7 +190,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       <Link
                         key={contributor.id}
                         href={buildExploreUrl({ api: contributor.evidence_link, filters })}
-                        className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-white/70 px-4 py-3"
+                        className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3"
                       >
                         <span>{contributor.label}</span>
                         <span className="text-xs text-[var(--ink-muted)]">
@@ -204,7 +204,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             )}
 
             {view === "drilldown" && (
-              <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-5">
+              <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
                 <h2 className="font-[var(--font-display)] text-xl">Drilldown</h2>
                 <div className="mt-4 overflow-auto text-xs">
                   <table className="min-w-full border-collapse">
@@ -227,7 +227,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
               </div>
             )}
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-5">
+            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
               <h2 className="font-[var(--font-display)] text-xl">Evidence Links</h2>
               <div className="mt-3 flex flex-wrap gap-3 text-sm">
                 {Object.entries(data?.drilldown_links ?? {}).map(([label, link]) => (

@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import type { BarSeriesOption } from "echarts";
 
 import { Chart } from "./Chart";
-import { chartGridColor, chartMutedText } from "./chartTheme";
+import { useChartTheme } from "./chartTheme";
 
 type HorizontalBarChartProps = {
   categories: string[];
@@ -23,6 +23,7 @@ export function HorizontalBarChart({
   className,
   style,
 }: HorizontalBarChartProps) {
+  const chartTheme = useChartTheme();
   const barSeries: BarSeriesOption = {
     type: "bar",
     data: values,
@@ -30,7 +31,7 @@ export function HorizontalBarChart({
     label: {
       show: true,
       position: "right",
-      color: chartMutedText,
+      color: chartTheme.muted,
     },
   };
 
@@ -47,15 +48,15 @@ export function HorizontalBarChart({
         grid: { left: 80, right: 24, top: 20, bottom: 20 },
         xAxis: {
           type: "value",
-          splitLine: { lineStyle: { color: chartGridColor } },
-          axisLabel: { color: chartMutedText },
+          splitLine: { lineStyle: { color: chartTheme.grid } },
+          axisLabel: { color: chartTheme.muted },
         },
         yAxis: {
           type: "category",
           data: categories,
           axisTick: { show: false },
-          axisLine: { lineStyle: { color: chartGridColor } },
-          axisLabel: { color: chartMutedText },
+          axisLine: { lineStyle: { color: chartTheme.grid } },
+          axisLabel: { color: chartTheme.muted },
         },
         series: [barSeries],
       }}

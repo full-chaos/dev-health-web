@@ -53,20 +53,20 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         {nested.categories.length ? (
           <InvestmentChart categories={nested.categories} subtypes={nested.subtypes} />
         ) : (
-          <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-white/70 p-10 text-sm text-[var(--ink-muted)]">
+          <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-10 text-sm text-[var(--ink-muted)]">
             Investment data unavailable.
           </div>
         )}
 
         <section className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-5">
+          <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
             <h2 className="font-[var(--font-display)] text-xl">Categories</h2>
             <div className="mt-4 space-y-3 text-sm">
               {nested.categories.map((category) => (
                 <Link
                   key={category.key}
                   href={withFilterParam(`/explore?metric=throughput&view=align&category=${category.key}`, filters)}
-                  className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-white/70 px-4 py-3"
+                  className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3"
                 >
                   <span>{category.name}</span>
                   <span className="text-xs text-[var(--ink-muted)]">
@@ -76,14 +76,14 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
               ))}
             </div>
           </div>
-          <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-5">
+          <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
             <h2 className="font-[var(--font-display)] text-xl">Streams</h2>
             <div className="mt-4 space-y-3 text-sm">
               {nested.subtypes.map((subtype) => (
                 <Link
                   key={`${subtype.parentKey}-${subtype.name}`}
                   href={withFilterParam(`/explore?metric=throughput&view=align&stream=${subtype.name}`, filters)}
-                  className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-white/70 px-4 py-3"
+                  className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3"
                 >
                   <span>{subtype.name}</span>
                   <span className="text-xs text-[var(--ink-muted)]">

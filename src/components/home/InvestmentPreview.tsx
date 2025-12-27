@@ -44,7 +44,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
 
   if (!data) {
     return (
-      <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card)]/60 text-sm text-[var(--ink-muted)]">
+      <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] text-sm text-[var(--ink-muted)]">
         Loading investment mix…
       </div>
     );

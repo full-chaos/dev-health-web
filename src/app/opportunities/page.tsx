@@ -50,7 +50,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
           {(data?.items ?? []).map((card) => (
             <div
               key={card.id}
-              className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-6"
+              className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6"
             >
               <h2 className="font-[var(--font-display)] text-xl">{card.title}</h2>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
@@ -71,7 +71,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                 {card.suggested_experiments.map((experiment) => (
                   <div
                     key={experiment}
-                    className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-white/70 px-3 py-2"
+                    className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
                   >
                     {experiment}
                   </div>
@@ -80,7 +80,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
             </div>
           ))}
           {!data?.items?.length && (
-            <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-white/70 p-6 text-sm text-[var(--ink-muted)]">
+            <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-6 text-sm text-[var(--ink-muted)]">
               Opportunity data unavailable.
             </div>
           )}

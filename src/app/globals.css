@@ -1,17 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f1e6;
-  --foreground: #141414;
-  --ink-muted: #505050;
-  --accent: #ec5f3f;
-  --accent-2: #0b5b6a;
-  --accent-3: #f5c84b;
-  --card: #fffaf2;
-  --card-stroke: #e6dccb;
-  --chart-grid: #e8dfd1;
-  --chart-text: #1d1b19;
-  --chart-muted: #6b6255;
+  color-scheme: light;
+  --background: #f2e5bc;
+  --foreground: #3c3836;
+  --ink-muted: #665c54;
+  --accent: #d65d0e;
+  --accent-2: #076678;
+  --accent-3: #98971a;
+  --accent-negative: #cc241d;
+  --card: #fbf1c7;
+  --card-90: rgba(251, 241, 199, 0.9);
+  --card-80: rgba(251, 241, 199, 0.8);
+  --card-70: rgba(251, 241, 199, 0.7);
+  --card-60: rgba(251, 241, 199, 0.6);
+  --card-stroke: #d5c4a1;
+  --chart-grid: #e3d5b2;
+  --chart-text: #3c3836;
+  --chart-muted: #7c6f64;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #fbf1c7 0%,
+    #f2e5bc 45%,
+    #ebdbb2 100%
+  );
 }
 
 @theme inline {
@@ -23,9 +35,82 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --background: #1d2021;
+    --foreground: #ebdbb2;
+    --ink-muted: #a89984;
+    --accent: #fe8019;
+    --accent-2: #83a598;
+    --accent-3: #b8bb26;
+    --accent-negative: #fb4934;
+    --card: #282828;
+    --card-90: rgba(40, 40, 40, 0.9);
+    --card-80: rgba(40, 40, 40, 0.8);
+    --card-70: rgba(40, 40, 40, 0.7);
+    --card-60: rgba(40, 40, 40, 0.6);
+    --card-stroke: #3c3836;
+    --chart-grid: #3c3836;
+    --chart-text: #ebdbb2;
+    --chart-muted: #a89984;
+    --hero-gradient: radial-gradient(
+      circle_at_top,
+      #32302f 0%,
+      #1d2021 45%,
+      #141617 100%
+    );
   }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: #f2e5bc;
+  --foreground: #3c3836;
+  --ink-muted: #665c54;
+  --accent: #d65d0e;
+  --accent-2: #076678;
+  --accent-3: #98971a;
+  --accent-negative: #cc241d;
+  --card: #fbf1c7;
+  --card-90: rgba(251, 241, 199, 0.9);
+  --card-80: rgba(251, 241, 199, 0.8);
+  --card-70: rgba(251, 241, 199, 0.7);
+  --card-60: rgba(251, 241, 199, 0.6);
+  --card-stroke: #d5c4a1;
+  --chart-grid: #e3d5b2;
+  --chart-text: #3c3836;
+  --chart-muted: #7c6f64;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #fbf1c7 0%,
+    #f2e5bc 45%,
+    #ebdbb2 100%
+  );
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #1d2021;
+  --foreground: #ebdbb2;
+  --ink-muted: #a89984;
+  --accent: #fe8019;
+  --accent-2: #83a598;
+  --accent-3: #b8bb26;
+  --accent-negative: #fb4934;
+  --card: #282828;
+  --card-90: rgba(40, 40, 40, 0.9);
+  --card-80: rgba(40, 40, 40, 0.8);
+  --card-70: rgba(40, 40, 40, 0.7);
+  --card-60: rgba(40, 40, 40, 0.6);
+  --card-stroke: #3c3836;
+  --chart-grid: #3c3836;
+  --chart-text: #ebdbb2;
+  --chart-muted: #a89984;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #32302f 0%,
+    #1d2021 45%,
+    #141617 100%
+  );
 }
 
 body {

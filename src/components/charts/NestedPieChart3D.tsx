@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
-import { chartColors, chartMutedText } from "./chartTheme";
+import { chartColors, useChartTheme } from "./chartTheme";
 
 const adjustHex = (hex: string, amount: number) => {
   const normalized = hex.replace("#", "");
@@ -37,6 +37,7 @@ export function NestedPieChart3D({
   className,
   style,
 }: NestedPieChart3DProps) {
+  const chartTheme = useChartTheme();
   const categoryColors = chartColors.slice(0, categories.length);
   const categoryColorMap = new Map(
     categories.map((category, index) => [category.key, categoryColors[index]])
@@ -110,7 +111,7 @@ export function NestedPieChart3D({
           itemHeight: 8,
           itemGap: 16,
           pageIconSize: 10,
-          textStyle: { color: chartMutedText },
+          textStyle: { color: chartTheme.muted },
         },
         series: [
           {
@@ -144,7 +145,7 @@ export function NestedPieChart3D({
             center: ["50%", "40%"],
             padAngle: 2,
             label: {
-              color: chartMutedText,
+              color: chartTheme.muted,
               fontSize: 11,
               formatter: "{b}",
             },
@@ -158,7 +159,7 @@ export function NestedPieChart3D({
             center: ["50%", "40%"],
             padAngle: 2,
             label: {
-              color: chartMutedText,
+              color: chartTheme.muted,
               fontWeight: 600,
               formatter: "{b}\n{d}%",
             },

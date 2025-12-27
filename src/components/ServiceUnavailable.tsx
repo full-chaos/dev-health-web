@@ -14,7 +14,7 @@ export function ServiceUnavailable() {
           The API health check failed. Confirm ClickHouse and the API are
           running, then refresh this page.
         </p>
-        <div className="rounded-3xl border border-[var(--card-stroke)] bg-white/80 p-6 text-sm text-[var(--ink-muted)]">
+        <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6 text-sm text-[var(--ink-muted)]">
           <p>Quick checks:</p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
             <li>API at http://localhost:8000/docs</li>

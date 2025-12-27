@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import type { BarSeriesOption } from "echarts";
 
 import { Chart } from "./Chart";
-import { chartGridColor, chartMutedText } from "./chartTheme";
+import { useChartTheme } from "./chartTheme";
 
 type VerticalBarChartProps = {
   categories: string[];
@@ -23,6 +23,7 @@ export function VerticalBarChart({
   className,
   style,
 }: VerticalBarChartProps) {
+  const chartTheme = useChartTheme();
   const barSeries: BarSeriesOption[] = series.map((item) => ({
     name: item.name,
     type: "bar",
@@ -44,20 +45,20 @@ export function VerticalBarChart({
           data: series.map((item) => item.name),
           bottom: 0,
           left: "center",
-          textStyle: { color: chartMutedText },
+          textStyle: { color: chartTheme.muted },
         },
         grid: { left: 24, right: 16, top: 32, bottom: 52, containLabel: true },
         xAxis: {
           type: "category",
           data: categories,
           axisTick: { show: false },
-          axisLine: { lineStyle: { color: chartGridColor } },
-          axisLabel: { color: chartMutedText },
+          axisLine: { lineStyle: { color: chartTheme.grid } },
+          axisLabel: { color: chartTheme.muted },
         },
         yAxis: {
           type: "value",
-          splitLine: { lineStyle: { color: chartGridColor } },
-          axisLabel: { color: chartMutedText },
+          splitLine: { lineStyle: { color: chartTheme.grid } },
+          axisLabel: { color: chartTheme.muted },
         },
         series: barSeries,
       }}

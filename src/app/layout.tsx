@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const bodyFont = IBM_Plex_Sans({
   variable: "--font-body",
@@ -25,16 +26,32 @@ export const metadata: Metadata = {
   description: "Developer health control room.",
 };
 
+const themeScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem("theme");
+    if (stored === "light" || stored === "dark") {
+      document.documentElement.dataset.theme = stored;
+      document.documentElement.style.colorScheme = stored;
+    }
+  } catch {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <div className="fixed right-6 top-6 z-50">
+          <ThemeToggle />
+        </div>
         {children}
       </body>
     </html>
