@@ -1,8 +1,12 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import { Chart } from "./Chart";
 import { chartColors, chartMutedText } from "./chartTheme";
-import { workCategories } from "./workCategoryData";
+import { toNestedPieData } from "./chartTransforms";
+import { workItemTypeByScopeSample } from "@/data/devHealthOpsSample";
+import type { WorkItemTypeByScope } from "@/data/devHealthOpsTypes";
 
 const adjustHex = (hex: string, amount: number) => {
   const normalized = hex.replace("#", "");
@@ -19,35 +23,60 @@ const adjustHex = (hex: string, amount: number) => {
     .join("")}`;
 };
 
-const categoryColors = chartColors.slice(0, workCategories.length);
+type NestedPieChart2DProps = {
+  data?: WorkItemTypeByScope[];
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-const innerData = workCategories.map((category, index) => ({
-  name: category.name,
-  value: category.value,
-  itemStyle: {
-    color: categoryColors[index],
-    borderRadius: 4,
-  },
-}));
+export function NestedPieChart2D({
+  data = workItemTypeByScopeSample,
+  height = 360,
+  width = "100%",
+  className,
+  style,
+}: NestedPieChart2DProps) {
+  const { categories, subtypes } = toNestedPieData(data);
+  const categoryColors = chartColors.slice(0, categories.length);
+  const categoryColorMap = new Map(
+    categories.map((category, index) => [category.key, categoryColors[index]])
+  );
 
-const outerData = workCategories.flatMap((category, index) => {
-  return category.subtypes.map((subtype, subtypeIndex) => ({
-    name: subtype.name,
-    value: subtype.value,
+  const innerData = categories.map((category, index) => ({
+    name: category.name,
+    value: category.value,
     itemStyle: {
-      color: adjustHex(categoryColors[index], 18 + subtypeIndex * 10),
+      color: categoryColors[index],
       borderRadius: 4,
     },
   }));
-});
 
-export function NestedPieChart2D() {
+  const outerData = subtypes.map((subtype, subtypeIndex) => {
+    const baseColor = categoryColorMap.get(subtype.parentKey) ?? chartColors[0];
+    return {
+      name: subtype.name,
+      value: subtype.value,
+      itemStyle: {
+        color: adjustHex(baseColor, 18 + (subtypeIndex % 3) * 10),
+        borderRadius: 4,
+      },
+    };
+  });
+
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
+
   return (
     <Chart
       option={{
         tooltip: { trigger: "item", confine: true },
         legend: {
-          data: workCategories.map((category) => category.name),
+          data: categories.map((category) => category.name),
           type: "scroll",
           bottom: 0,
           left: "center",
@@ -89,7 +118,8 @@ export function NestedPieChart2D() {
           },
         ],
       }}
-      style={{ height: 360, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }

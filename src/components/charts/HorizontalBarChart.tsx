@@ -1,12 +1,35 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import { Chart } from "./Chart";
 import { chartGridColor, chartMutedText } from "./chartTheme";
+import { toTeamEfficiencyBarSeries } from "./chartTransforms";
+import { workItemFlowEfficiencyDailySample } from "@/data/devHealthOpsSample";
+import type { WorkItemFlowEfficiencyDaily } from "@/data/devHealthOpsTypes";
 
-const teams = ["Platform", "Growth", "Core", "Infra", "Mobile", "Data"];
-const scores = [92, 84, 76, 73, 68, 61];
+type HorizontalBarChartProps = {
+  data?: WorkItemFlowEfficiencyDaily[];
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-export function HorizontalBarChart() {
+export function HorizontalBarChart({
+  data = workItemFlowEfficiencyDailySample,
+  height = 240,
+  width = "100%",
+  className,
+  style,
+}: HorizontalBarChartProps) {
+  const { categories, values } = toTeamEfficiencyBarSeries(data);
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
+
   return (
     <Chart
       option={{
@@ -19,14 +42,15 @@ export function HorizontalBarChart() {
         },
         yAxis: {
           type: "category",
-          data: teams,
+          data: categories,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: chartGridColor } },
+          axisLabel: { color: chartMutedText },
         },
         series: [
           {
             type: "bar",
-            data: scores,
+            data: values,
             barMaxWidth: 18,
             label: {
               show: true,
@@ -36,7 +60,8 @@ export function HorizontalBarChart() {
           },
         ],
       }}
-      style={{ height: 240, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }

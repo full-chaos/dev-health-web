@@ -1,13 +1,40 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import { Chart } from "./Chart";
 import { chartGridColor, chartMutedText } from "./chartTheme";
+import { toThroughputBarSeries } from "./chartTransforms";
+import { workItemMetricsDailySample } from "@/data/devHealthOpsSample";
+import type { WorkItemMetricsDaily } from "@/data/devHealthOpsTypes";
 
-const categories = ["Auth", "API", "UI", "Data", "Ops", "Docs"];
-const planned = [12, 18, 9, 14, 7, 5];
-const actual = [10, 15, 12, 11, 9, 6];
+type VerticalBarChartProps = {
+  data?: WorkItemMetricsDaily[];
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-export function VerticalBarChart() {
+const scopeOrder = ["auth", "api", "ui", "data", "ops", "docs"];
+
+export function VerticalBarChart({
+  data = workItemMetricsDailySample,
+  height = 260,
+  width = "100%",
+  className,
+  style,
+}: VerticalBarChartProps) {
+  const { categories, planned, actual } = toThroughputBarSeries(data, {
+    scopeOrder,
+  });
+
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
+
   return (
     <Chart
       option={{
@@ -46,7 +73,8 @@ export function VerticalBarChart() {
           },
         ],
       }}
-      style={{ height: 260, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }

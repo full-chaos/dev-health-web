@@ -1,11 +1,38 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import { Chart } from "./Chart";
 import { chartMutedText } from "./chartTheme";
+import { toSparklineSeries } from "./chartTransforms";
+import { workItemMetricsDailySample } from "@/data/devHealthOpsSample";
+import type { WorkItemMetricsDaily } from "@/data/devHealthOpsTypes";
 
-const data = [12, 18, 14, 22, 19, 28, 25, 31, 29, 36, 33, 38];
+type SparklineChartProps = {
+  data?: WorkItemMetricsDaily[];
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+};
 
-export function SparklineChart() {
+export function SparklineChart({
+  data = workItemMetricsDailySample,
+  height = 120,
+  width = "100%",
+  className,
+  style,
+}: SparklineChartProps) {
+  const { categories, values } = toSparklineSeries(data, {
+    workScopeId: "auth",
+  });
+
+  const mergedStyle: CSSProperties = {
+    height,
+    width,
+    ...style,
+  };
+
   return (
     <Chart
       option={{
@@ -17,7 +44,7 @@ export function SparklineChart() {
         grid: { left: 8, right: 8, top: 10, bottom: 10 },
         xAxis: {
           type: "category",
-          data: data.map((_, i) => i + 1),
+          data: categories,
           boundaryGap: false,
           axisLabel: { show: false },
           axisLine: { show: false },
@@ -31,7 +58,7 @@ export function SparklineChart() {
         series: [
           {
             type: "line",
-            data,
+            data: values,
             smooth: true,
             symbol: "circle",
             symbolSize: 6,
@@ -42,7 +69,8 @@ export function SparklineChart() {
           },
         ],
       }}
-      style={{ height: 120, width: "100%" }}
+      className={className}
+      style={mergedStyle}
     />
   );
 }
