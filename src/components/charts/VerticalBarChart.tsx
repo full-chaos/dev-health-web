@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import type { BarSeriesOption } from "echarts";
 
 import { Chart } from "./Chart";
 import { chartGridColor, chartMutedText } from "./chartTheme";
@@ -22,6 +23,13 @@ export function VerticalBarChart({
   className,
   style,
 }: VerticalBarChartProps) {
+  const barSeries: BarSeriesOption[] = series.map((item) => ({
+    name: item.name,
+    type: "bar",
+    data: item.data,
+    barMaxWidth: 24,
+  }));
+
   const mergedStyle: CSSProperties = {
     height,
     width,
@@ -51,14 +59,7 @@ export function VerticalBarChart({
           splitLine: { lineStyle: { color: chartGridColor } },
           axisLabel: { color: chartMutedText },
         },
-        series: [
-          ...series.map((item) => ({
-            name: item.name,
-            type: "bar",
-            data: item.data,
-            barMaxWidth: 24,
-          })),
-        ],
+        series: barSeries,
       }}
       className={className}
       style={mergedStyle}
