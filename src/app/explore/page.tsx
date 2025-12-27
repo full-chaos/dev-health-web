@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { getExplainData } from "@/lib/api";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { checkApiHealth, getExplainData } from "@/lib/api";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 
 const FILTERS = {
@@ -11,11 +12,17 @@ const FILTERS = {
 };
 
 type ExplorePageProps = {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default async function Explore({ searchParams }: ExplorePageProps) {
-  const metric = (searchParams?.metric as string) ?? "cycle_time";
+  const health = await checkApiHealth();
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
+  const params = (await searchParams) ?? {};
+  const metric = (params.metric as string) ?? "cycle_time";
   const data = await getExplainData({ metric }).catch(() => null);
 
   return (

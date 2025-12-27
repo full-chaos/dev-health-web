@@ -1,5 +1,6 @@
 import type {
   ExplainResponse,
+  HealthResponse,
   HomeResponse,
   InvestmentResponse,
   OpportunitiesResponse,
@@ -87,4 +88,18 @@ export async function getInvestment(params: {
     range_days: params.rangeDays ?? 30,
   });
   return fetchJson<InvestmentResponse>(url, { next: { revalidate: 300 } });
+}
+
+export async function checkApiHealth() {
+  const url = buildUrl("/api/v1/health");
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) {
+      return { ok: false, data: null as HealthResponse | null };
+    }
+    const data = (await response.json()) as HealthResponse;
+    return { ok: data.status === "ok", data };
+  } catch {
+    return { ok: false, data: null as HealthResponse | null };
+  }
 }

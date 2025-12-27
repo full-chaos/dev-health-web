@@ -84,6 +84,11 @@ export type OpportunitiesResponse = {
   items: OpportunityCard[];
 };
 
+export type HealthResponse = {
+  status: string;
+  services: Record<string, string>;
+};
+
 export type InvestmentResponse = {
   categories: Array<{ key: string; name: string; value: number }>;
   subtypes: Array<{ name: string; value: number; parentKey: string }>;

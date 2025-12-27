@@ -1,8 +1,14 @@
 import Link from "next/link";
 
-import { getOpportunities } from "@/lib/api";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { checkApiHealth, getOpportunities } from "@/lib/api";
 
 export default async function OpportunitiesPage() {
+  const health = await checkApiHealth();
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
   const data = await getOpportunities({}).catch(() => null);
 
   return (

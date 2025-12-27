@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { InvestmentPreview } from "@/components/home/InvestmentPreview";
 import { DataStatusBanner } from "@/components/home/DataStatusBanner";
-import { getHomeData } from "@/lib/api";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { checkApiHealth, getHomeData } from "@/lib/api";
 import { formatDelta, formatMetricValue, formatPercent, formatTimestamp } from "@/lib/formatters";
 import type { HomeResponse } from "@/lib/types";
 
@@ -34,14 +35,20 @@ const fallbackDeltas = [
 ];
 
 type HomePageProps = {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default async function Home({ searchParams }: HomePageProps) {
-  const scopeType = (searchParams?.scope_type as string) ?? "org";
-  const scopeId = (searchParams?.scope_id as string) ?? "";
-  const rangeDays = Number(searchParams?.range_days ?? 14);
-  const compareDays = Number(searchParams?.compare_days ?? 14);
+  const health = await checkApiHealth();
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
+  const params = (await searchParams) ?? {};
+  const scopeType = (params.scope_type as string) ?? "org";
+  const scopeId = (params.scope_id as string) ?? "";
+  const rangeDays = Number(params.range_days ?? 14);
+  const compareDays = Number(params.compare_days ?? 14);
 
   const home = await loadHome({ scopeType, scopeId, rangeDays, compareDays });
   const coverage = home?.freshness.coverage;

@@ -1,11 +1,17 @@
 import Link from "next/link";
 
 import { InvestmentChart } from "@/components/investment/InvestmentChart";
-import { getInvestment } from "@/lib/api";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { checkApiHealth, getInvestment } from "@/lib/api";
 import { formatNumber } from "@/lib/formatters";
 import { mapInvestmentToNestedPie } from "@/lib/mappers";
 
 export default async function InvestmentPage() {
+  const health = await checkApiHealth();
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
   const data = await getInvestment({}).catch(() => null);
   const nested = data ? mapInvestmentToNestedPie(data) : { categories: [], subtypes: [] };
 
