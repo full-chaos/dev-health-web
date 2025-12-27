@@ -1,0 +1,88 @@
+name: Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Tag to create for the release (e.g. v0.1.0). Leave blank to use package.json version.
+        required: false
+      release_name:
+        description: Release title (defaults to tag)
+        required: false
+      draft:
+        description: Create as draft
+        required: false
+        default: "false"
+      prerelease:
+        description: Mark as prerelease
+        required: false
+        default: "false"
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate release tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          else
+            TAG="v${VERSION}"
+          fi
+          if ! printf "%s" "$TAG" | grep -Eq '^v[0-9]+\\.[0-9]+\\.[0-9]+([-.][0-9A-Za-z]+)*$'; then
+            echo "Tag must match vX.Y.Z (optionally with pre-release/build). Got: $TAG"
+            exit 1
+          fi
+          git fetch --tags --quiet
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag already exists: $TAG"
+            exit 1
+          fi
+      - name: Build
+        run: npm run build
+      - name: Pack npm package
+        id: pack
+        run: |
+          TARBALL=$(npm pack --silent)
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+      - name: Resolve release tag
+        id: tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          else
+            TAG="v${VERSION}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ steps.pack.outputs.tarball }}
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ inputs.release_name || steps.tag.outputs.tag }}
+          draft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
+          files: ${{ steps.pack.outputs.tarball }}
