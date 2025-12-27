@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import type { BarSeriesOption } from "echarts";
 
 import { Chart } from "./Chart";
 import { chartGridColor, chartMutedText } from "./chartTheme";
@@ -22,6 +23,17 @@ export function HorizontalBarChart({
   className,
   style,
 }: HorizontalBarChartProps) {
+  const barSeries: BarSeriesOption = {
+    type: "bar",
+    data: values,
+    barMaxWidth: 18,
+    label: {
+      show: true,
+      position: "right",
+      color: chartMutedText,
+    },
+  };
+
   const mergedStyle: CSSProperties = {
     height,
     width,
@@ -45,18 +57,7 @@ export function HorizontalBarChart({
           axisLine: { lineStyle: { color: chartGridColor } },
           axisLabel: { color: chartMutedText },
         },
-        series: [
-          {
-            type: "bar",
-            data: values,
-            barMaxWidth: 18,
-            label: {
-              show: true,
-              position: "right",
-              color: chartMutedText,
-            },
-          },
-        ],
+        series: [barSeries],
       }}
       className={className}
       style={mergedStyle}
