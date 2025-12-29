@@ -38,6 +38,14 @@ const getScatterSeries = (option: ReturnType<typeof buildQuadrantOption>) => {
   return series.filter((item) => item.type === "scatter");
 };
 
+const getPointSeries = (option: ReturnType<typeof buildQuadrantOption>) => {
+  const scatter = getScatterSeries(option);
+  return scatter.filter((series) => {
+    const data = Array.isArray(series.data) ? series.data : [];
+    return data.some((item) => (item as { point?: QuadrantPoint }).point);
+  });
+};
+
 const getSeriesPoints = (option: ReturnType<typeof buildQuadrantOption>) => {
   const scatter = getScatterSeries(option);
   return scatter.flatMap((series) => {
@@ -148,8 +156,8 @@ describe("buildQuadrantOption", () => {
       scopeType: "org",
     });
 
-    const scatter = getScatterSeries(option);
-    scatter.forEach((series) => {
+    const pointSeries = getPointSeries(option);
+    pointSeries.forEach((series) => {
       expect(typeof series.symbolSize).not.toBe("function");
       const encoded = JSON.stringify({
         encode: series.encode,

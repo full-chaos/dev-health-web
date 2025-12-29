@@ -69,9 +69,12 @@ export function QuadrantPanel({
     : (filters.scope.ids ?? []);
   const [selectedPoint, setSelectedPoint] = useState<QuadrantPoint | null>(null);
   const [selectedPointKey, setSelectedPointKey] = useState<string | null>(null);
-  const [showZoneOverlay, setShowZoneOverlay] = useState(false);
+  const [showZoneOverlay, setShowZoneOverlay] = useState(true);
   const [zoneQuestionsKey, setZoneQuestionsKey] = useState<string | null>(null);
   const zoneOverlay = useMemo(() => getZoneOverlay(data), [data]);
+  const hasInterpretationOverlay = Boolean(
+    zoneOverlay || data?.annotations?.length
+  );
   const dataKey = useMemo(() => {
     if (!data?.points?.length) {
       return null;
@@ -144,10 +147,9 @@ export function QuadrantPanel({
       : focusEntityIds.length
         ? "Unlabeled dots show the filtered cohort background; labels appear only for focus entities."
         : "Dots represent the filtered cohort; labels appear when a focus entity is selected.";
-  const zoneMeaning = zoneOverlay
-    ? "Experimental zone maps highlight fuzzy, overlapping regions derived from observed metrics."
-    : data.annotations?.length
-      ? "Shaded zones indicate operating conditions or pressure, not outcomes."
+  const zoneMeaning =
+    showZoneOverlay && hasInterpretationOverlay
+      ? "Zones are interpretive overlays that suggest common system modes; turn off anytime."
       : null;
 
   const metricExplainHref = activeSelectedPoint?.evidence_link
@@ -192,26 +194,31 @@ export function QuadrantPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-[var(--font-display)] text-xl">{title}</h2>
+          <p className="mt-1 text-xs text-[var(--ink-muted)]">
+            Operating modes under competing pressures
+          </p>
           <p className="mt-2 text-sm text-[var(--ink-muted)]">{description}</p>
         </div>
         <div className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
           Select a dot to investigate
         </div>
       </div>
-      {zoneOverlay ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--ink-muted)]">
-          <label className="inline-flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[11px]">
-            <input
-              type="checkbox"
-              checked={showZoneOverlay}
-              onChange={(event) => handleZoneToggle(event.target.checked)}
-              className="h-3.5 w-3.5 accent-[var(--accent-2)]"
-            />
-            <span>Show exploratory interpretation (experimental)</span>
-          </label>
-          <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-            Optional overlay
-          </span>
+      {hasInterpretationOverlay ? (
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-3 text-xs text-[var(--ink-muted)]">
+          <div className="space-y-1">
+            <label className="inline-flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[11px]">
+              <input
+                type="checkbox"
+                checked={showZoneOverlay}
+                onChange={(event) => handleZoneToggle(event.target.checked)}
+                className="h-3.5 w-3.5 accent-[var(--accent-2)]"
+              />
+              <span>Show exploratory interpretation</span>
+            </label>
+            <p className="text-[11px] text-[var(--ink-muted)]">
+              Highlights common system modes observed in similar systems.
+            </p>
+          </div>
         </div>
       ) : null}
       <div className="mt-4">
@@ -230,7 +237,7 @@ export function QuadrantPanel({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                {showZoneMenu ? "Context menu (experimental)" : "Next steps"}
+                {showZoneMenu ? "Interpretive context" : "Next steps"}
               </p>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
                 {selectedLabel}
@@ -285,7 +292,7 @@ export function QuadrantPanel({
             <div className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-3 text-[11px] text-[var(--ink-muted)]">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                  Experimental zone map
+                  Exploratory zone map
                 </p>
                 <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
                   Heuristic

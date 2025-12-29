@@ -8,7 +8,7 @@ import type {
   TooltipComponentFormatterCallbackParams,
 } from "echarts";
 
-import type { ZoneOverlay } from "@/lib/quadrantZones";
+import { findZoneMatches, type ZoneOverlay } from "@/lib/quadrantZones";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { Chart } from "./Chart";
@@ -62,6 +62,106 @@ const normalizeScopeType = (
   scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string
 ) => (scopeType === "developer" ? "person" : scopeType ?? "org");
 
+const rgbaPattern =
+  /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
+const hexPattern = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+const clampAlpha = (alpha: number) => Math.min(1, Math.max(0, alpha));
+
+const withAlpha = (color: string, alpha: number) => {
+  const nextAlpha = clampAlpha(alpha);
+  const trimmed = color.trim();
+  const match = trimmed.match(rgbaPattern);
+  if (match) {
+    const red = Number(match[1]);
+    const green = Number(match[2]);
+    const blue = Number(match[3]);
+    if ([red, green, blue].some((value) => Number.isNaN(value))) {
+      return color;
+    }
+    return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
+  }
+  const hexMatch = trimmed.match(hexPattern);
+  if (!hexMatch) {
+    return color;
+  }
+  const hex = hexMatch[1];
+  const normalized =
+    hex.length === 3 ? hex.split("").map((item) => item + item).join("") : hex;
+  const value = Number.parseInt(normalized, 16);
+  if (Number.isNaN(value)) {
+    return color;
+  }
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
+};
+
+const buildZoneGradient = (color: string) => ({
+  type: "radial",
+  x: 0.45,
+  y: 0.4,
+  r: 0.95,
+  colorStops: [
+    { offset: 0, color: withAlpha(color, 0.2) },
+    { offset: 0.6, color: withAlpha(color, 0.12) },
+    { offset: 1, color: withAlpha(color, 0) },
+  ],
+});
+
+const buildZoneSurfaceStyle = (
+  color: string,
+  options?: { outlineAlpha?: number; glowAlpha?: number; radius?: number }
+) => {
+  const outlineAlpha = options?.outlineAlpha ?? 0.32;
+  const glowAlpha = options?.glowAlpha ?? 0.22;
+  const radius = options?.radius ?? 32;
+  return {
+    color: buildZoneGradient(color),
+    opacity: 0.92,
+    borderWidth: 1,
+    borderColor: withAlpha(color, outlineAlpha),
+    borderType: "dashed" as const,
+    borderRadius: radius,
+    shadowBlur: 20,
+    shadowColor: withAlpha(color, glowAlpha),
+  };
+};
+
+const THIN_SPACE = "\u2009";
+const addLabelTracking = (label: string) =>
+  label
+    .split(" ")
+    .map((segment) => segment.split("").join(THIN_SPACE))
+    .join(" ");
+
+const normalizeLabelText = (label: string) =>
+  label.replace(/\bzone\b/i, "").trim();
+
+const abbreviateLabel = (label: string) => {
+  const cleaned = normalizeLabelText(label).replace(/[-–]/g, " ");
+  const segment = cleaned.split("/").pop()?.trim() ?? cleaned;
+  const words = segment.split(/\s+/).filter(Boolean);
+  if (words.length <= 2) {
+    return words.join(" ");
+  }
+  return `${words.slice(0, 2).join(" ")}...`;
+};
+
+const buildLabelAnchor = (
+  xRange: [number, number],
+  yRange: [number, number]
+) => {
+  const xSpan = xRange[1] - xRange[0];
+  const ySpan = yRange[1] - yRange[0];
+  const x =
+    xSpan > 0 ? xRange[0] + xSpan * 0.12 : (xRange[0] + xRange[1]) / 2;
+  const y =
+    ySpan > 0 ? yRange[1] - ySpan * 0.12 : (yRange[0] + yRange[1]) / 2;
+  return [x, y] as [number, number];
+};
+
 const toPoint = (data: unknown) => {
   if (!data || typeof data !== "object") {
     return null;
@@ -92,6 +192,12 @@ type QuadrantChartOptionParams = {
   scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string;
   zoneOverlay?: ZoneOverlay | null;
   showZoneOverlay?: boolean;
+};
+
+type OverlayLabelDatum = {
+  value: [number, number];
+  label: string;
+  shortLabel: string;
 };
 
 export const buildQuadrantOption = ({
@@ -140,51 +246,81 @@ export const buildQuadrantOption = ({
     point,
   }));
 
-  const activeZoneOverlay = showZoneOverlay ? zoneOverlay : null;
-  const annotationAreas: MarkAreaComponentOption["data"] = (
-    data.annotations ?? []
-  ).map((annotation) => [
-    {
-      name: `Condition: ${annotation.description}`,
-      xAxis: annotation.x_range[0],
-      yAxis: annotation.y_range[0],
-      itemStyle: {
-        color: "rgba(148, 163, 184, 0.08)",
-      },
-    },
-    {
-      xAxis: annotation.x_range[1],
-      yAxis: annotation.y_range[1],
-    },
-  ]);
-  const zoneAreas: MarkAreaComponentOption["data"] = (
-    activeZoneOverlay?.zones ?? []
-  ).map((zone) => [
-    {
-      name: zone.label,
-      xAxis: zone.xRange[0],
-      yAxis: zone.yRange[0],
-      itemStyle: {
-        color: zone.color,
-      },
-    },
-    {
-      xAxis: zone.xRange[1],
-      yAxis: zone.yRange[1],
-    },
-  ]);
+  const showInterpretation = Boolean(showZoneOverlay);
+  const activeZoneOverlay = showInterpretation ? zoneOverlay : null;
+  const annotationStyle = buildZoneSurfaceStyle("rgba(148, 163, 184, 0.2)", {
+    outlineAlpha: 0.24,
+    glowAlpha: 0.18,
+    radius: 28,
+  });
+  const annotationAreas: MarkAreaComponentOption["data"] = showInterpretation
+    ? (data.annotations ?? []).map((annotation) => [
+        {
+          name: `Condition: ${annotation.description}`,
+          xAxis: annotation.x_range[0],
+          yAxis: annotation.y_range[0],
+          itemStyle: annotationStyle,
+        },
+        {
+          xAxis: annotation.x_range[1],
+          yAxis: annotation.y_range[1],
+        },
+      ])
+    : [];
+  const zoneAreas: MarkAreaComponentOption["data"] = showInterpretation
+    ? (activeZoneOverlay?.zones ?? []).map((zone) => [
+        {
+          name: zone.label,
+          xAxis: zone.xRange[0],
+          yAxis: zone.yRange[0],
+          itemStyle: buildZoneSurfaceStyle(zone.color),
+        },
+        {
+          xAxis: zone.xRange[1],
+          yAxis: zone.yRange[1],
+        },
+      ])
+    : [];
   const markAreaData = [...annotationAreas, ...zoneAreas];
   const markArea: MarkAreaComponentOption | undefined = markAreaData.length
     ? {
-        label: {
-          show: true,
-          color: chartTheme.muted,
-          fontSize: 10,
-          formatter: "{b}",
-        },
+        silent: true,
+        z: 1,
+        label: { show: false },
         data: markAreaData,
       }
     : undefined;
+
+  const overlayLabelData: OverlayLabelDatum[] = showInterpretation
+    ? [
+        ...(activeZoneOverlay?.zones ?? []).map((zone) => ({
+          value: buildLabelAnchor(zone.xRange, zone.yRange),
+          label: zone.label,
+          shortLabel: abbreviateLabel(zone.label),
+        })),
+        ...(data.annotations ?? []).map((annotation) => ({
+          value: buildLabelAnchor(annotation.x_range, annotation.y_range),
+          label: annotation.description,
+          shortLabel: abbreviateLabel(annotation.description),
+        })),
+      ]
+    : [];
+  const labelFormatterFull = (params: DefaultLabelFormatterCallbackParams) => {
+    const datum = params.data as OverlayLabelDatum | undefined;
+    return datum?.label ? addLabelTracking(datum.label) : "";
+  };
+  const labelFormatterShort = (params: DefaultLabelFormatterCallbackParams) => {
+    const datum = params.data as OverlayLabelDatum | undefined;
+    return datum?.shortLabel ? addLabelTracking(datum.shortLabel) : "";
+  };
+  const overlaySeriesOverrides = (override: Record<string, unknown>) => {
+    const overrides: Record<string, unknown>[] = [{}];
+    if (hasFocus) {
+      overrides.push({});
+    }
+    overrides.push(override);
+    return overrides;
+  };
 
   const zoneLabelLookup = new Map(
     (activeZoneOverlay?.zones ?? []).map((zone) => [zone.label, zone])
@@ -231,6 +367,9 @@ export const buildQuadrantOption = ({
       "Always validate with drill-down evidence.",
     ].join("<br/>");
   };
+  const gridLineStyle = { color: chartTheme.grid, opacity: 0.16 };
+  const axisLineStyle = { color: chartTheme.grid, opacity: 0.28 };
+  const axisLabelColor = withAlpha(chartTheme.muted, 0.75);
 
   return {
     tooltip: {
@@ -260,13 +399,24 @@ export const buildQuadrantOption = ({
           : "the selected window";
         const subject = isPersonScope ? "Your position" : "This position";
         const entityLabel = isPersonScope ? "You" : point.entity_label;
-        return [
+        const zoneContext =
+          showZoneOverlay && zoneOverlay
+            ? findZoneMatches(zoneOverlay, point)
+            : [];
+        const zoneLine = zoneContext.length
+          ? `Zone context: ${zoneContext.map((zone) => zone.label).join(", ")}.`
+          : null;
+        const lines = [
           `<strong>${entityLabel}</strong>`,
           `${xLabel}: ${xValue}`,
           `${yLabel}: ${yValue}`,
           `Window: ${windowLabel(point.window_start, point.window_end)}`,
           `${subject} reflects ${xLabel} at ${xValue} and ${yLabel} at ${yValue} over ${dayLabel}.`,
-        ].join("<br/>");
+        ];
+        if (zoneLine) {
+          lines.push(zoneLine);
+        }
+        return lines.join("<br/>");
       },
     },
     grid: { left: 48, right: 24, top: 24, bottom: 48, containLabel: true },
@@ -275,18 +425,20 @@ export const buildQuadrantOption = ({
       nameLocation: "middle",
       nameGap: 30,
       type: "value",
-      axisLine: { lineStyle: { color: chartTheme.grid } },
-      axisLabel: { color: chartTheme.muted },
-      splitLine: { lineStyle: { color: chartTheme.grid } },
+      splitNumber: 4,
+      axisLine: { lineStyle: axisLineStyle },
+      axisLabel: { color: axisLabelColor },
+      splitLine: { lineStyle: gridLineStyle },
     },
     yAxis: {
       name: yAxisLabel,
       nameLocation: "middle",
       nameGap: 40,
       type: "value",
-      axisLine: { lineStyle: { color: chartTheme.grid } },
-      axisLabel: { color: chartTheme.muted },
-      splitLine: { lineStyle: { color: chartTheme.grid } },
+      splitNumber: 4,
+      axisLine: { lineStyle: axisLineStyle },
+      axisLabel: { color: axisLabelColor },
+      splitLine: { lineStyle: gridLineStyle },
     },
     series: [
       {
@@ -312,8 +464,11 @@ export const buildQuadrantOption = ({
           : undefined,
         labelLayout: showTeamLabels ? { hideOverlap: true } : undefined,
         markArea: backgroundData.length ? markArea : undefined,
-        emphasis: { scale: true },
-        z: 1,
+        emphasis: {
+          scale: true,
+          itemStyle: { borderColor: chartTheme.text, borderWidth: 2 },
+        },
+        z: 5,
       },
       ...(hasFocus
         ? [
@@ -338,11 +493,70 @@ export const buildQuadrantOption = ({
               },
               labelLayout: { hideOverlap: true },
               markArea: !backgroundData.length ? markArea : undefined,
+              emphasis: {
+                scale: true,
+                itemStyle: { borderColor: chartTheme.text, borderWidth: 2 },
+              },
+              z: 6,
+            },
+          ]
+        : []),
+      ...(overlayLabelData.length
+        ? [
+            {
+              type: "scatter" as const,
+              data: overlayLabelData,
+              symbol: "circle",
+              symbolSize: 6,
+              itemStyle: { color: "rgba(0, 0, 0, 0)" },
+              label: {
+                show: true,
+                formatter: labelFormatterFull,
+                color: withAlpha(chartTheme.text, 0.68),
+                fontSize: 11,
+                fontWeight: 400,
+                position: "inside",
+                padding: [2, 6],
+                borderRadius: 10,
+                backgroundColor: withAlpha(chartTheme.text, 0.05),
+              },
+              labelLayout: { hideOverlap: true, moveOverlap: "shiftY" },
+              tooltip: { show: false },
+              emphasis: {
+                label: {
+                  show: true,
+                  formatter: labelFormatterFull,
+                  color: chartTheme.text,
+                  fontWeight: 500,
+                  backgroundColor: withAlpha(chartTheme.text, 0.08),
+                  padding: [2, 6],
+                  borderRadius: 10,
+                },
+              },
               z: 3,
             },
           ]
         : []),
     ],
+    media:
+      overlayLabelData.length > 0
+        ? [
+            {
+              query: { maxWidth: 760 },
+              option: {
+                series: overlaySeriesOverrides({
+                  label: { formatter: labelFormatterShort, fontSize: 10 },
+                }),
+              },
+            },
+            {
+              query: { maxWidth: 560 },
+              option: {
+                series: overlaySeriesOverrides({ label: { show: false } }),
+              },
+            },
+          ]
+        : undefined,
   };
 };
 
