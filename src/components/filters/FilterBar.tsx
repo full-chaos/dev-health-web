@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { defaultMetricFilter } from "@/lib/filters/defaults";
@@ -290,11 +290,14 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
     };
   }, [openMenu]);
 
-  const updateUrl = (nextFilters: MetricFilter) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("f", encodeFilterParam(nextFilters));
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+  const updateUrl = useCallback(
+    (nextFilters: MetricFilter) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("f", encodeFilterParam(nextFilters));
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
   const updatePeopleQuery = (nextQuery: string) => {
     setPeopleQuery(nextQuery);
@@ -359,7 +362,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
     };
     setFilters(nextFilters);
     updateUrl(nextFilters);
-  }, [filters, scopeLock]);
+  }, [filters, scopeLock, updateUrl]);
 
   const scopeOptions = useMemo(() => {
     if (scopeLevel === "team") {

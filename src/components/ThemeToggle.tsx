@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type Theme = "light" | "dark";
 type Palette = "material" | "echarts" | "fullchaos" | "fullchaos-cosmic" | "flat";
@@ -85,16 +85,8 @@ const getCurrentPalette = (): Palette => {
 };
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("light");
-  const [palette, setPalette] = useState<Palette>("material");
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    setTheme(getCurrentTheme());
-    setPalette(getCurrentPalette());
-  }, []);
+  const [theme, setTheme] = useState<Theme>(() => getCurrentTheme());
+  const [palette, setPalette] = useState<Palette>(() => getCurrentPalette());
 
   const handleToggle = () => {
     if (typeof window === "undefined") {

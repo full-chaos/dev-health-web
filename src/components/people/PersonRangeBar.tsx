@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type PersonRangeBarProps = {
@@ -12,13 +11,11 @@ export function PersonRangeBar({ rangeDays, compareDays }: PersonRangeBarProps) 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [range, setRange] = useState(rangeDays);
-  const [compare, setCompare] = useState(compareDays);
-
-  useEffect(() => {
-    setRange(rangeDays);
-    setCompare(compareDays);
-  }, [rangeDays, compareDays]);
+  const rangeParam = Number(searchParams.get("range_days") ?? rangeDays);
+  const compareParam = Number(searchParams.get("compare_days") ?? compareDays);
+  const range = Number.isFinite(rangeParam) && rangeParam > 0 ? rangeParam : 1;
+  const compare =
+    Number.isFinite(compareParam) && compareParam > 0 ? compareParam : 1;
 
   const updateParams = (nextRange: number, nextCompare: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -49,7 +46,6 @@ export function PersonRangeBar({ rangeDays, compareDays }: PersonRangeBarProps) 
             value={range}
             onChange={(event) => {
               const next = Number(event.target.value || 1);
-              setRange(next);
               updateParams(next, compare);
             }}
           />
@@ -65,7 +61,6 @@ export function PersonRangeBar({ rangeDays, compareDays }: PersonRangeBarProps) 
             value={compare}
             onChange={(event) => {
               const next = Number(event.target.value || 1);
-              setCompare(next);
               updateParams(range, next);
             }}
           />

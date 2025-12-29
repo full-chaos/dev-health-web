@@ -1,6 +1,10 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import type {
+  CustomSeriesRenderItemAPI,
+  CustomSeriesRenderItemParams,
+} from "echarts";
 
 import type { FlameFrame } from "@/lib/types";
 
@@ -149,7 +153,10 @@ export function FlameDiagram({
         series: [
           {
             type: "custom",
-            renderItem: (params: any, api: any) => {
+            renderItem: (
+              params: CustomSeriesRenderItemParams,
+              api: CustomSeriesRenderItemAPI
+            ) => {
               const startValue = api.value(0);
               const endValue = api.value(1);
               const depth = api.value(2);
