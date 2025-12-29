@@ -99,7 +99,7 @@ const withAlpha = (color: string, alpha: number) => {
 };
 
 const buildZoneGradient = (color: string) => ({
-  type: "radial",
+  type: "radial" as const,
   x: 0.45,
   y: 0.4,
   r: 0.95,
@@ -112,54 +112,27 @@ const buildZoneGradient = (color: string) => ({
 
 const buildZoneSurfaceStyle = (
   color: string,
-  options?: { outlineAlpha?: number; glowAlpha?: number; radius?: number }
+  options?: {
+    outlineAlpha?: number;
+    glowAlpha?: number;
+    radius?: number;
+    active?: boolean;
+  }
 ) => {
   const outlineAlpha = options?.outlineAlpha ?? 0.32;
   const glowAlpha = options?.glowAlpha ?? 0.22;
   const radius = options?.radius ?? 32;
+  const isActive = options?.active ?? false;
   return {
     color: buildZoneGradient(color),
-    opacity: 0.92,
-    borderWidth: 1,
-    borderColor: withAlpha(color, outlineAlpha),
+    opacity: isActive ? 1 : 0.92,
+    borderWidth: isActive ? 2 : 1,
+    borderColor: withAlpha(color, isActive ? outlineAlpha + 0.14 : outlineAlpha),
     borderType: "dashed" as const,
     borderRadius: radius,
-    shadowBlur: 20,
-    shadowColor: withAlpha(color, glowAlpha),
+    shadowBlur: isActive ? 24 : 20,
+    shadowColor: withAlpha(color, isActive ? glowAlpha + 0.12 : glowAlpha),
   };
-};
-
-const THIN_SPACE = "\u2009";
-const addLabelTracking = (label: string) =>
-  label
-    .split(" ")
-    .map((segment) => segment.split("").join(THIN_SPACE))
-    .join(" ");
-
-const normalizeLabelText = (label: string) =>
-  label.replace(/\bzone\b/i, "").trim();
-
-const abbreviateLabel = (label: string) => {
-  const cleaned = normalizeLabelText(label).replace(/[-–]/g, " ");
-  const segment = cleaned.split("/").pop()?.trim() ?? cleaned;
-  const words = segment.split(/\s+/).filter(Boolean);
-  if (words.length <= 2) {
-    return words.join(" ");
-  }
-  return `${words.slice(0, 2).join(" ")}...`;
-};
-
-const buildLabelAnchor = (
-  xRange: [number, number],
-  yRange: [number, number]
-) => {
-  const xSpan = xRange[1] - xRange[0];
-  const ySpan = yRange[1] - yRange[0];
-  const x =
-    xSpan > 0 ? xRange[0] + xSpan * 0.12 : (xRange[0] + xRange[1]) / 2;
-  const y =
-    ySpan > 0 ? yRange[1] - ySpan * 0.12 : (yRange[0] + yRange[1]) / 2;
-  return [x, y] as [number, number];
 };
 
 const toPoint = (data: unknown) => {
@@ -192,12 +165,7 @@ type QuadrantChartOptionParams = {
   scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string;
   zoneOverlay?: ZoneOverlay | null;
   showZoneOverlay?: boolean;
-};
-
-type OverlayLabelDatum = {
-  value: [number, number];
-  label: string;
-  shortLabel: string;
+  highlightOverlayKey?: string | null;
 };
 
 export const buildQuadrantOption = ({
@@ -208,6 +176,7 @@ export const buildQuadrantOption = ({
   scopeType,
   zoneOverlay,
   showZoneOverlay = false,
+  highlightOverlayKey,
 }: QuadrantChartOptionParams): EChartsOption => {
   const xAxisLabel = data.axes.x.unit
     ? `${data.axes.x.label} (${data.axes.x.unit})`
@@ -248,24 +217,29 @@ export const buildQuadrantOption = ({
 
   const showInterpretation = Boolean(showZoneOverlay);
   const activeZoneOverlay = showInterpretation ? zoneOverlay : null;
-  const annotationStyle = buildZoneSurfaceStyle("rgba(148, 163, 184, 0.2)", {
-    outlineAlpha: 0.24,
-    glowAlpha: 0.18,
-    radius: 28,
-  });
+  const annotationColor = "rgba(148, 163, 184, 0.2)";
   const annotationAreas: MarkAreaComponentOption["data"] = showInterpretation
-    ? (data.annotations ?? []).map((annotation) => [
-        {
-          name: `Condition: ${annotation.description}`,
-          xAxis: annotation.x_range[0],
-          yAxis: annotation.y_range[0],
-          itemStyle: annotationStyle,
-        },
-        {
-          xAxis: annotation.x_range[1],
-          yAxis: annotation.y_range[1],
-        },
-      ])
+    ? (data.annotations ?? []).map((annotation, index) => {
+        const isActive =
+          highlightOverlayKey === `annotation:${index}`;
+        return [
+          {
+            name: `Condition: ${annotation.description}`,
+            xAxis: annotation.x_range[0],
+            yAxis: annotation.y_range[0],
+            itemStyle: buildZoneSurfaceStyle(annotationColor, {
+              outlineAlpha: 0.24,
+              glowAlpha: 0.18,
+              radius: 28,
+              active: isActive,
+            }),
+          },
+          {
+            xAxis: annotation.x_range[1],
+            yAxis: annotation.y_range[1],
+          },
+        ];
+      })
     : [];
   const zoneAreas: MarkAreaComponentOption["data"] = showInterpretation
     ? (activeZoneOverlay?.zones ?? []).map((zone) => [
@@ -273,7 +247,9 @@ export const buildQuadrantOption = ({
           name: zone.label,
           xAxis: zone.xRange[0],
           yAxis: zone.yRange[0],
-          itemStyle: buildZoneSurfaceStyle(zone.color),
+          itemStyle: buildZoneSurfaceStyle(zone.color, {
+            active: highlightOverlayKey === `zone:${zone.id}`,
+          }),
         },
         {
           xAxis: zone.xRange[1],
@@ -287,86 +263,10 @@ export const buildQuadrantOption = ({
         silent: true,
         z: 1,
         label: { show: false },
+        tooltip: { show: false },
         data: markAreaData,
       }
     : undefined;
-
-  const overlayLabelData: OverlayLabelDatum[] = showInterpretation
-    ? [
-        ...(activeZoneOverlay?.zones ?? []).map((zone) => ({
-          value: buildLabelAnchor(zone.xRange, zone.yRange),
-          label: zone.label,
-          shortLabel: abbreviateLabel(zone.label),
-        })),
-        ...(data.annotations ?? []).map((annotation) => ({
-          value: buildLabelAnchor(annotation.x_range, annotation.y_range),
-          label: annotation.description,
-          shortLabel: abbreviateLabel(annotation.description),
-        })),
-      ]
-    : [];
-  const labelFormatterFull = (params: DefaultLabelFormatterCallbackParams) => {
-    const datum = params.data as OverlayLabelDatum | undefined;
-    return datum?.label ? addLabelTracking(datum.label) : "";
-  };
-  const labelFormatterShort = (params: DefaultLabelFormatterCallbackParams) => {
-    const datum = params.data as OverlayLabelDatum | undefined;
-    return datum?.shortLabel ? addLabelTracking(datum.shortLabel) : "";
-  };
-  const overlaySeriesOverrides = (override: Record<string, unknown>) => {
-    const overrides: Record<string, unknown>[] = [{}];
-    if (hasFocus) {
-      overrides.push({});
-    }
-    overrides.push(override);
-    return overrides;
-  };
-
-  const zoneLabelLookup = new Map(
-    (activeZoneOverlay?.zones ?? []).map((zone) => [zone.label, zone])
-  );
-  const extractZone = (entry: TooltipEntry | null) => {
-    if (!entry) {
-      return null;
-    }
-    if (entry.name && zoneLabelLookup.has(entry.name)) {
-      return zoneLabelLookup.get(entry.name) ?? null;
-    }
-    const entryData = entry.data;
-    if (Array.isArray(entryData)) {
-      const first = entryData[0];
-      if (first && typeof first === "object" && "name" in first) {
-        const name = (first as { name?: string }).name;
-        if (name && zoneLabelLookup.has(name)) {
-          return zoneLabelLookup.get(name) ?? null;
-        }
-      }
-    }
-    if (entryData && typeof entryData === "object" && "name" in entryData) {
-      const name = (entryData as { name?: string }).name;
-      if (name && zoneLabelLookup.has(name)) {
-        return zoneLabelLookup.get(name) ?? null;
-      }
-    }
-    return null;
-  };
-  const formatZoneTooltip = (
-    zone: ZoneOverlay["zones"][number]
-  ): string => {
-    const signals = zone.signals.map((signal) => `- ${signal}`).join("<br/>");
-    const investigations = zone.investigations
-      .map((item) => `- ${item}`)
-      .join("<br/>");
-    return [
-      `<strong>${zone.label}</strong>`,
-      "Typical signals:",
-      signals,
-      "Questions to ask:",
-      investigations,
-      "This is a common pattern, not a conclusion.",
-      "Always validate with drill-down evidence.",
-    ].join("<br/>");
-  };
   const gridLineStyle = { color: chartTheme.grid, opacity: 0.16 };
   const axisLineStyle = { color: chartTheme.grid, opacity: 0.28 };
   const axisLabelColor = withAlpha(chartTheme.muted, 0.75);
@@ -379,11 +279,7 @@ export const buildQuadrantOption = ({
         const isMarkArea =
           entry?.componentType === "markArea" || Array.isArray(entry?.data);
         if (isMarkArea) {
-          const zone = extractZone(entry);
-          if (zone) {
-            return formatZoneTooltip(zone);
-          }
-          return entry?.name ?? "";
+          return "";
         }
         const point = entry ? toPoint(entry.data) : null;
         if (!point) {
@@ -404,7 +300,7 @@ export const buildQuadrantOption = ({
             ? findZoneMatches(zoneOverlay, point)
             : [];
         const zoneLine = zoneContext.length
-          ? `Zone context: ${zoneContext.map((zone) => zone.label).join(", ")}.`
+          ? `Falls within: ${zoneContext.map((zone) => zone.label).join(", ")}.`
           : null;
         const lines = [
           `<strong>${entityLabel}</strong>`,
@@ -501,62 +397,7 @@ export const buildQuadrantOption = ({
             },
           ]
         : []),
-      ...(overlayLabelData.length
-        ? [
-            {
-              type: "scatter" as const,
-              data: overlayLabelData,
-              symbol: "circle",
-              symbolSize: 6,
-              itemStyle: { color: "rgba(0, 0, 0, 0)" },
-              label: {
-                show: true,
-                formatter: labelFormatterFull,
-                color: withAlpha(chartTheme.text, 0.68),
-                fontSize: 11,
-                fontWeight: 400,
-                position: "inside",
-                padding: [2, 6],
-                borderRadius: 10,
-                backgroundColor: withAlpha(chartTheme.text, 0.05),
-              },
-              labelLayout: { hideOverlap: true, moveOverlap: "shiftY" },
-              tooltip: { show: false },
-              emphasis: {
-                label: {
-                  show: true,
-                  formatter: labelFormatterFull,
-                  color: chartTheme.text,
-                  fontWeight: 500,
-                  backgroundColor: withAlpha(chartTheme.text, 0.08),
-                  padding: [2, 6],
-                  borderRadius: 10,
-                },
-              },
-              z: 3,
-            },
-          ]
-        : []),
     ],
-    media:
-      overlayLabelData.length > 0
-        ? [
-            {
-              query: { maxWidth: 760 },
-              option: {
-                series: overlaySeriesOverrides({
-                  label: { formatter: labelFormatterShort, fontSize: 10 },
-                }),
-              },
-            },
-            {
-              query: { maxWidth: 560 },
-              option: {
-                series: overlaySeriesOverrides({ label: { show: false } }),
-              },
-            },
-          ]
-        : undefined,
   };
 };
 
@@ -571,6 +412,7 @@ type QuadrantChartProps = {
   scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string;
   zoneOverlay?: ZoneOverlay | null;
   showZoneOverlay?: boolean;
+  highlightOverlayKey?: string | null;
 };
 
 export function QuadrantChart({
@@ -584,6 +426,7 @@ export function QuadrantChart({
   scopeType,
   zoneOverlay,
   showZoneOverlay = false,
+  highlightOverlayKey,
 }: QuadrantChartProps) {
   const chartTheme = useChartTheme();
   const colors = useChartColors();
@@ -607,6 +450,7 @@ export function QuadrantChart({
         scopeType,
         zoneOverlay,
         showZoneOverlay,
+        highlightOverlayKey,
       })}
       className={className}
       style={mergedStyle}

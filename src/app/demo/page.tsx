@@ -463,9 +463,11 @@ export default function Home() {
           data-testid="chart-sankey"
         >
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Sankey Flow</h2>
+            <h2 className="text-lg font-semibold">
+              Sankey
+            </h2>
             <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-              Investment / Dev
+              Investment / Flow Breakdown
             </span>
           </div>
           <SankeyChart nodes={sankey.nodes} links={sankey.links} />
