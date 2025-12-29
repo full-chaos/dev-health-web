@@ -393,8 +393,19 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
   const workValue = formatSelection(workCategory, "All");
   const flowValue = formatSelection(flowStage, "All");
   const safeRangeDays = Math.max(1, filters.time.range_days);
-  const endDate = toLocalDate(new Date());
-  const startDate = addDays(endDate, -(safeRangeDays - 1));
+  const today = toLocalDate(new Date());
+  const parsedStart = filters.time.start_date
+    ? parseDateInput(filters.time.start_date)
+    : null;
+  const parsedEnd = filters.time.end_date
+    ? parseDateInput(filters.time.end_date)
+    : null;
+  const resolvedEnd = toLocalDate(parsedEnd ?? today);
+  const resolvedStart = toLocalDate(
+    parsedStart ?? addDays(resolvedEnd, -(safeRangeDays - 1))
+  );
+  const startDate = resolvedStart > resolvedEnd ? resolvedEnd : resolvedStart;
+  const endDate = resolvedStart > resolvedEnd ? resolvedStart : resolvedEnd;
   const dateValue = `${formatDateInput(startDate)} - ${formatDateInput(endDate)}`;
 
   const renderOptionList = (
@@ -657,13 +668,20 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                           if (!parsed) {
                             return;
                           }
-                          const nextRangeDays = diffDaysInclusive(parsed, endDate);
+                          const nextStart = toLocalDate(parsed);
+                          let nextEnd = endDate;
+                          if (nextStart > nextEnd) {
+                            nextEnd = nextStart;
+                          }
+                          const nextRangeDays = diffDaysInclusive(nextStart, nextEnd);
                           updateFilters({
                             ...filters,
                             time: {
                               ...filters.time,
                               range_days: nextRangeDays,
                               compare_days: nextRangeDays,
+                              start_date: formatDateInput(nextStart),
+                              end_date: formatDateInput(nextEnd),
                             },
                           });
                         }}
@@ -671,13 +689,34 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                     </label>
                     <label className="flex flex-col gap-2">
                       <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-                        End date (today)
+                        End date
                       </span>
                       <input
                         className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-sm"
                         type="date"
                         value={formatDateInput(endDate)}
-                        readOnly
+                        onChange={(event) => {
+                          const parsed = parseDateInput(event.target.value);
+                          if (!parsed) {
+                            return;
+                          }
+                          const nextEnd = toLocalDate(parsed);
+                          let nextStart = startDate;
+                          if (nextEnd < nextStart) {
+                            nextStart = nextEnd;
+                          }
+                          const nextRangeDays = diffDaysInclusive(nextStart, nextEnd);
+                          updateFilters({
+                            ...filters,
+                            time: {
+                              ...filters.time,
+                              range_days: nextRangeDays,
+                              compare_days: nextRangeDays,
+                              start_date: formatDateInput(nextStart),
+                              end_date: formatDateInput(nextEnd),
+                            },
+                          });
+                        }}
                       />
                     </label>
                   </div>
