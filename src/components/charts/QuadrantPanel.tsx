@@ -13,7 +13,7 @@ import { QuadrantChart } from "./QuadrantChart";
 
 const AXIS_DESCRIPTIONS: Record<string, string> = {
   churn: "Rate of code change, rework, and revision.",
-  throughput: "Completed delivery units over time.",
+  throughput: "Completed delivery units in the window.",
   cycle_time: "Elapsed time from start to delivery.",
   lead_time: "Elapsed time from request to delivery.",
   wip: "Average concurrent work in progress.",
@@ -127,35 +127,33 @@ export function QuadrantPanel({
 
   const axisXDescription = describeAxis(data.axes.x);
   const axisYDescription = describeAxis(data.axes.y);
-  const pointMeaning = isPersonScope
-    ? "A point represents your operating mode for a single time window."
-    : "A point represents an observed system state for the selected scope and time window.";
-  const movementMeaning = isPersonScope
-    ? "Movement reflects how your operating mode changes across time windows; direction matters more than absolute position."
-    : "Movement reflects change in operating mode across time windows; direction matters more than absolute position.";
-  const notMeaning = isPersonScope
-    ? "Quadrants do not indicate ranking or comparison, and they are not labels of your quality."
-    : "Quadrants do not indicate ranking or comparison, and they are not labels of team, repo, or developer quality.";
+  const pointMeaning =
+    "Each dot represents an observed system state over a fixed time window.";
+  const positionMeaning = "Position reflects operating mode, not performance.";
+  const quadrantMeaning = "Quadrants do not imply good or bad.";
+  const noRankingMeaning =
+    "Avoid ranking, percentile, or score language for this view.";
+  const snapshotMeaning =
+    "Compare snapshots by changing the time window; do not infer direction from a single view.";
   const cohortMeaning = isPersonScope
-    ? "Only your trajectory is shown; no peer comparison is displayed."
+    ? "Individual scope shows a single dot; no peer comparison is displayed."
     : scopeType === "team"
       ? focusEntityIds.length
-        ? "Team points are labeled for orientation; the focus team is highlighted."
-        : "Team points are labeled for orientation; labels do not imply ranking."
+        ? "Team dots are labeled for orientation; the focus team is highlighted."
+        : "Team dots are labeled for orientation; labels do not imply ranking."
       : focusEntityIds.length
-        ? "Unlabeled points show the filtered cohort background; labels appear only for focus entities."
-        : "Points represent the filtered cohort; labels appear when a focus entity is selected.";
+        ? "Unlabeled dots show the filtered cohort background; labels appear only for focus entities."
+        : "Dots represent the filtered cohort; labels appear when a focus entity is selected.";
   const zoneMeaning = zoneOverlay
     ? "Experimental zone maps highlight fuzzy, overlapping regions derived from observed metrics."
     : data.annotations?.length
       ? "Shaded zones indicate operating conditions or pressure, not outcomes."
       : null;
 
-  const explainHref =
-    activeSelectedPoint?.evidence_link
-      ? buildExploreUrl({ api: activeSelectedPoint.evidence_link, filters })
-      : null;
-  const workItemHref = explainHref ? `${explainHref}#evidence` : null;
+  const metricExplainHref = activeSelectedPoint?.evidence_link
+    ? buildExploreUrl({ api: activeSelectedPoint.evidence_link, filters })
+    : buildExploreUrl({ metric: data.axes.y.metric, filters });
+  const flameHref = metricExplainHref ? `${metricExplainHref}#evidence` : null;
   const heatmapLink = (relatedLinks ?? []).find((link) =>
     link.label.toLowerCase().includes("heatmap")
   );
@@ -168,8 +166,8 @@ export function QuadrantPanel({
 
   const selectedLabel = activeSelectedPoint
     ? isPersonScope
-      ? "Your operating mode"
-      : activeSelectedPoint.entity_label
+      ? "Selected dot: You"
+      : `Selected dot: ${activeSelectedPoint.entity_label}`
     : null;
   const showZoneMenu = zoneMatches.length > 0;
   const showZoneQuestions =
@@ -197,7 +195,7 @@ export function QuadrantPanel({
           <p className="mt-2 text-sm text-[var(--ink-muted)]">{description}</p>
         </div>
         <div className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-          Select a point to investigate
+          Select a dot to investigate
         </div>
       </div>
       {zoneOverlay ? (
@@ -255,12 +253,13 @@ export function QuadrantPanel({
               >
                 Investigate common constraints
               </button>
-            ) : explainHref ? (
+            ) : null}
+            {metricExplainHref ? (
               <Link
-                href={explainHref}
+                href={metricExplainHref}
                 className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
               >
-                Explain what changed
+                Open metric explain view
               </Link>
             ) : null}
             {heatmapHref ? (
@@ -271,14 +270,14 @@ export function QuadrantPanel({
                 {showZoneMenu ? "View related heatmaps" : "View related heatmap"}
               </Link>
             ) : null}
-            {workItemHref ? (
+            {flameHref ? (
               <Link
-                href={workItemHref}
+                href={flameHref}
                 className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
               >
                 {showZoneMenu
-                  ? "Inspect representative flame diagram"
-                  : "Inspect representative work item"}
+                  ? "Open representative flame diagram"
+                  : "Open flame diagram"}
               </Link>
             ) : null}
           </div>
@@ -324,7 +323,7 @@ export function QuadrantPanel({
         </div>
       ) : (
         <p className="mt-3 text-xs text-[var(--ink-muted)]">
-          Select a point to open investigation steps.
+          Select a dot to open investigation steps.
         </p>
       )}
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -342,26 +341,38 @@ export function QuadrantPanel({
               {data.axes.y.label} — {axisYDescription}
             </p>
             <p>
-              <span className="font-semibold text-[var(--foreground)]">Point:</span>{" "}
+              <span className="font-semibold text-[var(--foreground)]">Dot:</span>{" "}
               {pointMeaning}
             </p>
             <p>
               <span className="font-semibold text-[var(--foreground)]">
-                Movement:
+                Position:
               </span>{" "}
-              {movementMeaning}
+              {positionMeaning}
             </p>
             <p>
               <span className="font-semibold text-[var(--foreground)]">
-                Not a ranking:
+                Quadrants:
               </span>{" "}
-              {notMeaning}
+              {quadrantMeaning}
+            </p>
+            <p>
+              <span className="font-semibold text-[var(--foreground)]">
+                No ranking:
+              </span>{" "}
+              {noRankingMeaning}
             </p>
             <p>
               <span className="font-semibold text-[var(--foreground)]">
                 Cohort:
               </span>{" "}
               {cohortMeaning}
+            </p>
+            <p>
+              <span className="font-semibold text-[var(--foreground)]">
+                Time window:
+              </span>{" "}
+              {snapshotMeaning}
             </p>
             {zoneMeaning ? (
               <p>
@@ -381,22 +392,22 @@ export function QuadrantPanel({
             <p>
               <span className="font-semibold text-[var(--foreground)]">For:</span>{" "}
               {isPersonScope
-                ? "Track your operating mode across windows and notice shifts in constraints."
-                : "Classify operating modes and detect shifts in constraints across scopes."}
+                ? "See your current operating mode under competing pressures."
+                : "Identify operating modes and clusters under competing pressures."}
             </p>
             <p>
               <span className="font-semibold text-[var(--foreground)]">
                 Not for:
               </span>{" "}
               {isPersonScope
-                ? "Performance review, scoring, or peer comparison."
-                : "Leaderboards, rankings, or quality judgments."}
+                ? "Performance review, scoring, percentiles, or peer comparison."
+                : "Leaderboards, rankings, percentiles, or quality judgments."}
             </p>
             <p>
               <span className="font-semibold text-[var(--foreground)]">Next:</span>{" "}
               {isPersonScope
-                ? "Use the related heatmap and flame view to inspect what changed in your work."
-                : "Use the related heatmap and flame view to inspect representative work items."}
+                ? "Change the time window to compare snapshots, then use the heatmap, flame diagram, or metric explain view for causes."
+                : "Change the time window to compare snapshots, then use the heatmap, flame diagram, or metric explain view for causes."}
             </p>
           </div>
         </div>

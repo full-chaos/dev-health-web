@@ -96,7 +96,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                 Landscape Quadrants
               </h1>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                Classify system modes and track trajectory changes without ranking teams or people.
+                Classify system modes under competing pressures without ranking teams or people.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
