@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { findZoneMatches, getZoneOverlay } from "@/lib/quadrantZones";
+import { trackTelemetryEvent } from "@/lib/telemetry";
 import type { QuadrantAxis, QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantChart } from "./QuadrantChart";
@@ -66,14 +68,54 @@ export function QuadrantPanel({
     ? (filters.scope.ids ?? []).slice(0, 1)
     : (filters.scope.ids ?? []);
   const [selectedPoint, setSelectedPoint] = useState<QuadrantPoint | null>(null);
+  const [selectedPointKey, setSelectedPointKey] = useState<string | null>(null);
+  const [showZoneOverlay, setShowZoneOverlay] = useState(false);
+  const [zoneQuestionsKey, setZoneQuestionsKey] = useState<string | null>(null);
+  const zoneOverlay = useMemo(() => getZoneOverlay(data), [data]);
+  const dataKey = useMemo(() => {
+    if (!data?.points?.length) {
+      return null;
+    }
+    const pointsKey = data.points
+      .map(
+        (point) =>
+          `${point.entity_id}:${point.window_start}:${point.window_end}`
+      )
+      .join("|");
+    return `${data.axes.x.metric}:${data.axes.y.metric}:${pointsKey}`;
+  }, [data]);
+  const activeSelectedPoint =
+    dataKey && selectedPointKey === dataKey ? selectedPoint : null;
+  const zoneMatches =
+    activeSelectedPoint && showZoneOverlay && zoneOverlay
+      ? findZoneMatches(zoneOverlay, activeSelectedPoint)
+      : [];
+  const zoneIgnoredLogged = useRef(false);
+  const axesKey = data ? `${data.axes.x.metric}:${data.axes.y.metric}` : null;
 
   const handlePointSelect = (point: QuadrantPoint) => {
     setSelectedPoint(point);
+    setSelectedPointKey(dataKey);
+    setZoneQuestionsKey(null);
   };
 
   useEffect(() => {
-    setSelectedPoint(null);
-  }, [data]);
+    zoneIgnoredLogged.current = false;
+  }, [zoneOverlay]);
+
+  useEffect(() => {
+    if (!zoneOverlay || !axesKey || showZoneOverlay || !activeSelectedPoint) {
+      return;
+    }
+    if (zoneIgnoredLogged.current) {
+      return;
+    }
+    trackTelemetryEvent("quadrant_zone_overlay_ignored", {
+      axes: axesKey,
+      scope: scopeType,
+    });
+    zoneIgnoredLogged.current = true;
+  }, [activeSelectedPoint, axesKey, scopeType, showZoneOverlay, zoneOverlay]);
 
   if (!data || !data.points?.length) {
     return (
@@ -103,13 +145,15 @@ export function QuadrantPanel({
       : focusEntityIds.length
         ? "Unlabeled points show the filtered cohort background; labels appear only for focus entities."
         : "Points represent the filtered cohort; labels appear when a focus entity is selected.";
-  const zoneMeaning = data.annotations?.length
-    ? "Shaded zones indicate operating conditions or pressure, not outcomes."
-    : null;
+  const zoneMeaning = zoneOverlay
+    ? "Experimental zone maps highlight fuzzy, overlapping regions derived from observed metrics."
+    : data.annotations?.length
+      ? "Shaded zones indicate operating conditions or pressure, not outcomes."
+      : null;
 
   const explainHref =
-    selectedPoint?.evidence_link
-      ? buildExploreUrl({ api: selectedPoint.evidence_link, filters })
+    activeSelectedPoint?.evidence_link
+      ? buildExploreUrl({ api: activeSelectedPoint.evidence_link, filters })
       : null;
   const workItemHref = explainHref ? `${explainHref}#evidence` : null;
   const heatmapLink = (relatedLinks ?? []).find((link) =>
@@ -122,11 +166,28 @@ export function QuadrantPanel({
     (link) => !link.label.toLowerCase().includes("heatmap")
   );
 
-  const selectedLabel = selectedPoint
+  const selectedLabel = activeSelectedPoint
     ? isPersonScope
       ? "Your operating mode"
-      : selectedPoint.entity_label
+      : activeSelectedPoint.entity_label
     : null;
+  const showZoneMenu = zoneMatches.length > 0;
+  const showZoneQuestions =
+    zoneQuestionsKey !== null &&
+    zoneQuestionsKey === dataKey &&
+    showZoneOverlay &&
+    showZoneMenu;
+  const handleZoneToggle = (next: boolean) => {
+    setShowZoneOverlay(next);
+    setZoneQuestionsKey(null);
+    if (zoneOverlay && axesKey) {
+      trackTelemetryEvent("quadrant_zone_overlay_toggled", {
+        enabled: next,
+        axes: axesKey,
+        scope: scopeType,
+      });
+    }
+  };
 
   return (
     <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
@@ -139,6 +200,22 @@ export function QuadrantPanel({
           Select a point to investigate
         </div>
       </div>
+      {zoneOverlay ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--ink-muted)]">
+          <label className="inline-flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[11px]">
+            <input
+              type="checkbox"
+              checked={showZoneOverlay}
+              onChange={(event) => handleZoneToggle(event.target.checked)}
+              className="h-3.5 w-3.5 accent-[var(--accent-2)]"
+            />
+            <span>Show exploratory interpretation (experimental)</span>
+          </label>
+          <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+            Optional overlay
+          </span>
+        </div>
+      ) : null}
       <div className="mt-4">
         <QuadrantChart
           data={data}
@@ -146,25 +223,39 @@ export function QuadrantPanel({
           onPointSelect={handlePointSelect}
           focusEntityIds={focusEntityIds}
           scopeType={scopeType}
+          zoneOverlay={zoneOverlay}
+          showZoneOverlay={showZoneOverlay}
         />
       </div>
-      {selectedPoint ? (
+      {activeSelectedPoint ? (
         <div className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4 text-xs">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                Next steps
+                {showZoneMenu ? "Context menu (experimental)" : "Next steps"}
               </p>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
                 {selectedLabel}
               </p>
             </div>
             <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-              {selectedPoint.window_start} – {selectedPoint.window_end}
+              {activeSelectedPoint.window_start} – {activeSelectedPoint.window_end}
             </span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
-            {explainHref ? (
+            {showZoneMenu ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setZoneQuestionsKey((prev) =>
+                    dataKey && prev !== dataKey ? dataKey : null
+                  )
+                }
+                className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
+              >
+                Investigate common constraints
+              </button>
+            ) : explainHref ? (
               <Link
                 href={explainHref}
                 className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
@@ -177,7 +268,7 @@ export function QuadrantPanel({
                 href={heatmapHref}
                 className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
               >
-                View related heatmap
+                {showZoneMenu ? "View related heatmaps" : "View related heatmap"}
               </Link>
             ) : null}
             {workItemHref ? (
@@ -185,10 +276,51 @@ export function QuadrantPanel({
                 href={workItemHref}
                 className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
               >
-                Inspect representative work item
+                {showZoneMenu
+                  ? "Inspect representative flame diagram"
+                  : "Inspect representative work item"}
               </Link>
             ) : null}
           </div>
+          {showZoneMenu && showZoneQuestions ? (
+            <div className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-3 text-[11px] text-[var(--ink-muted)]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Experimental zone map
+                </p>
+                <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Heuristic
+                </span>
+              </div>
+              <div className="mt-3 space-y-4">
+                {zoneMatches.map((zone) => (
+                  <div key={zone.id} className="space-y-2">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">
+                      {zone.label}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Typical signals:
+                      </span>{" "}
+                      {zone.signals.join(", ")}.
+                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                      Questions to ask
+                    </p>
+                    <ul className="list-disc pl-4">
+                      {zone.investigations.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] text-[var(--ink-muted)]">
+                This is a common pattern, not a conclusion. Always validate with
+                drill-down evidence.
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="mt-3 text-xs text-[var(--ink-muted)]">

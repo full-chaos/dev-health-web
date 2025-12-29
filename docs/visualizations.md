@@ -49,6 +49,12 @@ evidence and follow up with heatmaps or flame diagrams for diagnosis.
    - Identify structural review bottlenecks and reviewer concentration.
    - Pair with flame diagrams to see handoff loops.
 
+### Zone maps (experimental)
+
+Zone maps are optional overlays that highlight fuzzy, overlapping regions with
+common constraint patterns derived from observed metrics. Zone maps are
+heuristics. If they feel prescriptive, turn them off.
+
 ### Scope guardrails
 
 - Org/team/repo views show teams, repos, or services only.

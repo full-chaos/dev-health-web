@@ -7,6 +7,7 @@ import type {
   TooltipComponentFormatterCallbackParams,
 } from "echarts";
 
+import type { ZoneOverlay } from "@/lib/quadrantZones";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { Chart } from "./Chart";
@@ -65,6 +66,8 @@ type QuadrantChartProps = {
   onPointSelect?: (point: QuadrantPoint) => void;
   focusEntityIds?: string[];
   scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string;
+  zoneOverlay?: ZoneOverlay | null;
+  showZoneOverlay?: boolean;
 };
 
 export function QuadrantChart({
@@ -76,6 +79,8 @@ export function QuadrantChart({
   onPointSelect,
   focusEntityIds,
   scopeType,
+  zoneOverlay,
+  showZoneOverlay = false,
 }: QuadrantChartProps) {
   const chartTheme = useChartTheme();
   const colors = useChartColors();
@@ -150,31 +155,49 @@ export function QuadrantChart({
       z: 2,
     }));
 
-  const annotations: MarkAreaComponentOption["data"] = (data.annotations ?? []).map(
-    (annotation) => [
-      {
-        name: `Condition: ${annotation.description}`,
-        xAxis: annotation.x_range[0],
-        yAxis: annotation.y_range[0],
+  const activeZoneOverlay = showZoneOverlay ? zoneOverlay : null;
+  const annotationAreas: MarkAreaComponentOption["data"] = (
+    data.annotations ?? []
+  ).map((annotation) => [
+    {
+      name: `Condition: ${annotation.description}`,
+      xAxis: annotation.x_range[0],
+      yAxis: annotation.y_range[0],
+      itemStyle: {
+        color: "rgba(148, 163, 184, 0.08)",
       },
-      {
-        xAxis: annotation.x_range[1],
-        yAxis: annotation.y_range[1],
+    },
+    {
+      xAxis: annotation.x_range[1],
+      yAxis: annotation.y_range[1],
+    },
+  ]);
+  const zoneAreas: MarkAreaComponentOption["data"] = (
+    activeZoneOverlay?.zones ?? []
+  ).map((zone) => [
+    {
+      name: zone.label,
+      xAxis: zone.xRange[0],
+      yAxis: zone.yRange[0],
+      itemStyle: {
+        color: zone.color,
       },
-    ]
-  );
-  const markArea: MarkAreaComponentOption | undefined = annotations?.length
+    },
+    {
+      xAxis: zone.xRange[1],
+      yAxis: zone.yRange[1],
+    },
+  ]);
+  const markAreaData = [...annotationAreas, ...zoneAreas];
+  const markArea: MarkAreaComponentOption | undefined = markAreaData.length
     ? {
-        itemStyle: {
-          color: "rgba(148, 163, 184, 0.08)",
-        },
         label: {
           show: true,
           color: chartTheme.muted,
           fontSize: 10,
           formatter: "{b}",
         },
-        data: annotations,
+        data: markAreaData,
       }
     : undefined;
 
@@ -186,14 +209,17 @@ export function QuadrantChart({
     return candidate.point ?? null;
   };
 
-  const getParamsEntry = (
-    params: unknown
-  ): DefaultLabelFormatterCallbackParams | null => {
+  type TooltipEntry = TooltipComponentFormatterCallbackParams & {
+    componentType?: string;
+    data?: unknown;
+    name?: string;
+  };
+  const getParamsEntry = (params: unknown): TooltipEntry | null => {
     const entry = Array.isArray(params) ? params[0] : params;
     if (!entry || typeof entry !== "object") {
       return null;
     }
-    return entry as DefaultLabelFormatterCallbackParams;
+    return entry as TooltipEntry;
   };
 
   const handleClick = (params: unknown) => {
@@ -204,6 +230,52 @@ export function QuadrantChart({
     }
   };
 
+  const zoneLabelLookup = new Map(
+    (activeZoneOverlay?.zones ?? []).map((zone) => [zone.label, zone])
+  );
+  const extractZone = (entry: TooltipEntry | null) => {
+    if (!entry) {
+      return null;
+    }
+    if (entry.name && zoneLabelLookup.has(entry.name)) {
+      return zoneLabelLookup.get(entry.name) ?? null;
+    }
+    const data = entry.data;
+    if (Array.isArray(data)) {
+      const first = data[0];
+      if (first && typeof first === "object" && "name" in first) {
+        const name = (first as { name?: string }).name;
+        if (name && zoneLabelLookup.has(name)) {
+          return zoneLabelLookup.get(name) ?? null;
+        }
+      }
+    }
+    if (data && typeof data === "object" && "name" in data) {
+      const name = (data as { name?: string }).name;
+      if (name && zoneLabelLookup.has(name)) {
+        return zoneLabelLookup.get(name) ?? null;
+      }
+    }
+    return null;
+  };
+  const formatZoneTooltip = (
+    zone: ZoneOverlay["zones"][number]
+  ): string => {
+    const signals = zone.signals.map((signal) => `- ${signal}`).join("<br/>");
+    const investigations = zone.investigations
+      .map((item) => `- ${item}`)
+      .join("<br/>");
+    return [
+      `<strong>${zone.label}</strong>`,
+      "Typical signals:",
+      signals,
+      "Questions to ask:",
+      investigations,
+      "This is a common pattern, not a conclusion.",
+      "Always validate with drill-down evidence.",
+    ].join("<br/>");
+  };
+
   return (
     <Chart
       option={{
@@ -211,6 +283,15 @@ export function QuadrantChart({
           confine: true,
           formatter: (params: TooltipComponentFormatterCallbackParams) => {
             const entry = getParamsEntry(params);
+            const isMarkArea =
+              entry?.componentType === "markArea" || Array.isArray(entry?.data);
+            if (isMarkArea) {
+              const zone = extractZone(entry);
+              if (zone) {
+                return formatZoneTooltip(zone);
+              }
+              return entry?.name ?? "";
+            }
             const point = entry ? toPoint(entry.data) : null;
             if (!point) {
               return "";

@@ -17,6 +17,11 @@ type PeopleSearchProps = {
   filters?: MetricFilter;
 };
 
+type PeopleSearchPlan = {
+  query?: string;
+  teamId?: string;
+};
+
 const matchesDeveloper = (
   person: PeopleSearchResult,
   selectedDevelopers: string[]
@@ -70,7 +75,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
     : canFallbackQuery
       ? selectedDevelopers[0]
       : "";
-  const fetchPlans = useMemo(() => {
+  const fetchPlans = useMemo<PeopleSearchPlan[]>(() => {
     if (teamIds.length) {
       return teamIds.map((teamId) => ({
         teamId,
