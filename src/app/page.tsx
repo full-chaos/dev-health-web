@@ -19,6 +19,37 @@ const deltaAccent = (value: number) =>
       ? "text-[var(--accent-negative)]"
       : "text-[var(--ink-muted)]";
 
+const MONITORING_VIEWS = [
+  {
+    id: "dora",
+    label: "DORA",
+    description: "Release speed and stability.",
+    focus: "Deploy frequency, cycle time, failure rate.",
+    href: "/metrics?tab=dora",
+  },
+  {
+    id: "flow",
+    label: "Flow",
+    description: "Idea to merge signal.",
+    focus: "Review latency, throughput, WIP.",
+    href: "/metrics?tab=flow",
+  },
+  {
+    id: "quality",
+    label: "Quality",
+    description: "Reliability and rework.",
+    focus: "Change failure, churn, blocked work.",
+    href: "/metrics?tab=quality",
+  },
+  {
+    id: "throughput",
+    label: "Throughput",
+    description: "Delivery volume and pacing.",
+    focus: "Throughput, WIP saturation, blocked work.",
+    href: "/metrics?tab=throughput",
+  },
+];
+
 const loadHome = async (filters: Parameters<typeof getHomeData>[0]): Promise<HomeResponse | null> => {
   try {
     return await getHomeData(filters);
@@ -49,6 +80,9 @@ export default async function Home({ searchParams }: HomePageProps) {
   const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
+  const scopeDetail = filters.scope.ids.length
+    ? filters.scope.ids.join(", ")
+    : `all ${filters.scope.level}s`;
 
   return (
     <div className="min-h-screen bg-[image:var(--hero-gradient)] text-[var(--foreground)]">
@@ -60,14 +94,14 @@ export default async function Home({ searchParams }: HomePageProps) {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.4em] text-[var(--ink-muted)]">
-                    Dev Health Ops
+                    Good morning
                   </p>
                   <h1 className="mt-3 font-[var(--font-display)] text-3xl leading-tight sm:text-4xl">
-                    Developer Health Control Room
+                    Developer Health Ops Cockpit
                   </h1>
                   <p className="mt-3 max-w-xl text-sm text-[var(--ink-muted)]">
-                    Fast signal on flow, risk, and investment. Every claim drills
-                    into evidence.
+                    System status, risks, and recommended moves for {scopeDetail} over
+                    the last {filters.time.range_days} days.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -84,10 +118,10 @@ export default async function Home({ searchParams }: HomePageProps) {
                 <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-4 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[var(--ink-muted)]">
-                      Freshness: {formatTimestamp(lastIngestedAt)}
+                      Latest ingest: {formatTimestamp(lastIngestedAt)}
                     </span>
                     <span className="rounded-full bg-[var(--accent-3)]/40 px-3 py-1 text-xs font-semibold">
-                      Live analytics
+                      System status
                     </span>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[var(--ink-muted)]">
@@ -111,7 +145,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   </div>
                 </div>
                 <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--accent-2)]/10 p-4 text-xs text-[var(--ink-muted)]">
-                  <p className="text-[var(--accent-2)]/90">Coverage</p>
+                  <p className="text-[var(--accent-2)]/90">Setup coverage</p>
                   <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
                     {coverage ? formatPercent(coverage.repos_covered_pct) : "--"}
                   </p>
@@ -126,42 +160,102 @@ export default async function Home({ searchParams }: HomePageProps) {
             </div>
           </header>
 
-          <FilterBar />
+          <FilterBar view="home" />
 
-        <DataStatusBanner
-          isUnavailable={!home}
-          lastIngestedAt={lastIngestedAt}
-          coverageLow={coverageLow}
-          filters={filters}
-        />
+          <DataStatusBanner
+            isUnavailable={!home}
+            lastIngestedAt={lastIngestedAt}
+            coverageLow={coverageLow}
+            filters={filters}
+          />
 
-          <section className="grid gap-4 md:grid-cols-4">
-            {deltas.map((delta) => (
+          <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Monitoring views
+                </p>
+                <p className="mt-1 text-sm text-[var(--ink-muted)]">
+                  Opinionated tabs for steady trend monitoring.
+                </p>
+              </div>
               <Link
-                key={delta.metric}
-                href={buildExploreUrl({ metric: delta.metric, filters })}
-                data-testid="delta-tile"
-                className="group rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 transition hover:-translate-y-1 hover:shadow-lg"
+                href={withFilterParam("/metrics?tab=dora", filters)}
+                className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
               >
-                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-                  <span>{delta.label}</span>
-                  <span className={deltaAccent(delta.delta_pct)}>
-                    {formatDelta(delta.delta_pct)}
-                  </span>
-                </div>
-                <p className="mt-4 text-2xl font-semibold">
-                  {placeholderDeltas ? "--" : formatMetricValue(delta.value, delta.unit)}
-                </p>
-                <p className="mt-3 text-xs text-[var(--ink-muted)]">
-                  Tap for evidence
-                </p>
+                Open metrics
               </Link>
-            ))}
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {MONITORING_VIEWS.map((view) => (
+                <Link
+                  key={view.id}
+                  href={withFilterParam(view.href, filters)}
+                  className="group rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1"
+                >
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                    <span>{view.label}</span>
+                    <span className="text-[var(--accent-2)]">Open</span>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+                    {view.description}
+                  </p>
+                  <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                    {view.focus}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Key signals
+                </p>
+                <p className="mt-1 text-sm text-[var(--ink-muted)]">
+                  Small shifts worth inspecting.
+                </p>
+              </div>
+              <Link
+                href={withFilterParam("/metrics?tab=flow", filters)}
+                className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+              >
+                View metrics
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              {deltas.map((delta) => (
+                <Link
+                  key={delta.metric}
+                  href={buildExploreUrl({ metric: delta.metric, filters })}
+                  data-testid="delta-tile"
+                  className="group rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 transition hover:-translate-y-1 hover:shadow-lg"
+                >
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                    <span>{delta.label}</span>
+                    <span className={deltaAccent(delta.delta_pct)}>
+                      {formatDelta(delta.delta_pct)}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-2xl font-semibold">
+                    {placeholderDeltas ? "--" : formatMetricValue(delta.value, delta.unit)}
+                  </p>
+                  <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                    Open evidence
+                  </p>
+                </Link>
+              ))}
+            </div>
           </section>
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
-              <h2 className="font-[var(--font-display)] text-2xl">System Summary</h2>
+              <h2 className="font-[var(--font-display)] text-2xl">Alerts and risks</h2>
+              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+                Short signals that deserve a quick drill-down.
+              </p>
               <div className="mt-4 space-y-3 text-sm text-[var(--ink-muted)]">
                 {(home?.summary ?? []).map((sentence) => (
                   <Link
@@ -180,19 +274,28 @@ export default async function Home({ searchParams }: HomePageProps) {
               </div>
             </div>
 
-            <div className="grid gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="font-[var(--font-display)] text-xl">Recommended actions</h3>
+                <Link
+                  href={withFilterParam("/opportunities", filters)}
+                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                >
+                  View all
+                </Link>
+              </div>
+              <div className="mt-4 grid gap-3">
                 {home?.tiles
                   ? Object.entries(home.tiles).map(([key, tile]) => (
                       <Link
                         key={key}
                         href={withFilterParam(tile.link, filters)}
-                        className="group rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 transition hover:-translate-y-1"
+                        className="group rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1"
                       >
                         <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
                           {tile.title}
                         </p>
-                        <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
+                        <p className="mt-2 text-base font-semibold text-[var(--foreground)]">
                           {tile.subtitle}
                         </p>
                         <p className="mt-3 text-xs text-[var(--ink-muted)]">
@@ -201,33 +304,33 @@ export default async function Home({ searchParams }: HomePageProps) {
                       </Link>
                     ))
                   : null}
+                <Link
+                  href={withFilterParam("/opportunities", filters)}
+                  className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--accent)]/15 px-4 py-3"
+                >
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                    Execute focus
+                  </p>
+                  <p className="mt-2 text-base font-semibold">
+                    {home?.constraint.title ?? "Constraint pending"}
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--ink-muted)]">
+                    {home?.constraint.claim ?? "Capture the limiting factor."}
+                  </p>
+                </Link>
               </div>
-            <Link
-              href={withFilterParam("/opportunities", filters)}
-              className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--accent)]/15 p-4"
-            >
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-                  Execute Focus
-                </p>
-                <p className="mt-2 text-base font-semibold">
-                  {home?.constraint.title ?? "Constraint pending"}
-                </p>
-                <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                  {home?.constraint.claim ?? "Capture the limiting factor."}
-                </p>
-              </Link>
             </div>
           </section>
 
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-[var(--font-display)] text-xl">Constraint Evidence</h3>
+                <h3 className="font-[var(--font-display)] text-xl">Focus constraint</h3>
                 <Link
                   href={buildExploreUrl({ metric: "review_latency", filters })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
-                  Drilldown
+                  Open evidence
                 </Link>
               </div>
               <p className="mt-3 text-sm text-[var(--ink-muted)]">
@@ -258,12 +361,12 @@ export default async function Home({ searchParams }: HomePageProps) {
 
             <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-[var(--font-display)] text-xl">Events</h3>
+                <h3 className="font-[var(--font-display)] text-xl">Recent events</h3>
                 <Link
                   href={buildExploreUrl({ filters })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
-                  Explore
+                  Open in Explore
                 </Link>
               </div>
               <div className="mt-4 space-y-4 text-sm">
@@ -293,9 +396,9 @@ export default async function Home({ searchParams }: HomePageProps) {
 
           <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
-              <h3 className="font-[var(--font-display)] text-xl">Investment Mix</h3>
+              <h3 className="font-[var(--font-display)] text-xl">Investment mix</h3>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                Live work allocation preview, refreshed client-side.
+                Live work allocation preview for the current scope.
               </p>
               <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
                 <Link

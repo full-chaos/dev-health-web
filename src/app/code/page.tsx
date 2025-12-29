@@ -1,11 +1,19 @@
 import Link from "next/link";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
+import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { checkApiHealth, getExplainData, getHomeData } from "@/lib/api";
+import {
+  checkApiHealth,
+  getExplainData,
+  getHeatmap,
+  getHomeData,
+  getQuadrant,
+} from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue } from "@/lib/formatters";
@@ -31,6 +39,13 @@ export default async function CodePage({ searchParams }: CodePageProps) {
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
+  const scopeId = filters.scope.ids[0] ?? "";
+  const quadrantScope: "org" | "team" | "repo" | "developer" =
+    filters.scope.level === "developer"
+      ? "developer"
+      : filters.scope.level === "team" || filters.scope.level === "repo"
+        ? filters.scope.level
+        : "org";
 
   const home = await getHomeData(filters).catch(() => null);
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
@@ -39,6 +54,20 @@ export default async function CodePage({ searchParams }: CodePageProps) {
   const churnMetric = getMetric(deltas, "churn");
   const churnExplain = await getExplainData({ metric: "churn", filters }).catch(() => null);
   const hotspots = (churnExplain?.contributors ?? []).slice(0, 6);
+  const hotspotHeatmap = await getHeatmap({
+    type: "risk",
+    metric: "hotspot_risk",
+    scope_type: filters.scope.level,
+    scope_id: scopeId,
+    range_days: filters.time.range_days,
+  }).catch(() => null);
+  const churnThroughput = await getQuadrant({
+    type: "churn_throughput",
+    scope_type: quadrantScope,
+    scope_id: scopeId,
+    range_days: filters.time.range_days,
+    bucket: "week",
+  }).catch(() => null);
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -61,11 +90,11 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               href={withFilterParam("/", filters)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
-              Back to Home
+              Back to cockpit
             </Link>
           </header>
 
-          <FilterBar />
+          <FilterBar view="code" />
 
           <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <MetricCard
@@ -91,6 +120,39 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 Ownership telemetry not yet configured.
               </div>
             </div>
+          </section>
+
+          <section>
+            <HeatmapPanel
+              title="Hotspot risk accumulation"
+              description="Track where churn and ownership load stack over time."
+              request={{
+                type: "risk",
+                metric: "hotspot_risk",
+                scope_type: filters.scope.level,
+                scope_id: scopeId,
+                range_days: filters.time.range_days,
+              }}
+              initialData={hotspotHeatmap}
+              emptyState="Hotspot risk heatmap unavailable."
+              evidenceTitle="Hotspot evidence"
+            />
+          </section>
+
+          <section>
+            <QuadrantPanel
+              title="Churn × Throughput landscape"
+              description="Detect thrashing vs stable progress without ranking teams or repos."
+              data={churnThroughput}
+              filters={filters}
+              relatedLinks={[
+                {
+                  label: "Open landscapes",
+                  href: withFilterParam("/explore/landscape", filters),
+                },
+              ]}
+              emptyState="Quadrant data unavailable for this scope."
+            />
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
@@ -129,7 +191,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-[var(--ink-muted)]">
-                  Hotspot ranking will appear once data is ingested.
+                  Hotspot detail will appear once data is ingested.
                 </p>
               )}
             </div>

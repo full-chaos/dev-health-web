@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
-import { chartColors, useChartTheme } from "./chartTheme";
+import { useChartColors, useChartTheme } from "./chartTheme";
 
 const adjustHex = (hex: string, amount: number) => {
   const normalized = hex.replace("#", "");
@@ -38,6 +38,7 @@ export function NestedPieChart2D({
   style,
 }: NestedPieChart2DProps) {
   const chartTheme = useChartTheme();
+  const chartColors = useChartColors();
   const categoryColors = chartColors.slice(0, categories.length);
   const categoryColorMap = new Map(
     categories.map((category, index) => [category.key, categoryColors[index]])

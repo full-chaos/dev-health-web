@@ -46,11 +46,11 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
               href={withFilterParam("/", filters)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
-              Back to Home
+              Back to cockpit
             </Link>
           </header>
 
-          <FilterBar />
+          <FilterBar view="opportunities" />
 
           <section className="grid gap-6 md:grid-cols-2">
             {(data?.items ?? []).map((card) => (

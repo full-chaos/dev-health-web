@@ -95,7 +95,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
   const breakdownParam = Array.isArray(params.breakdown) ? params.breakdown[0] : params.breakdown;
 
   const developers = filters.who.developers ?? [];
+  const roles = filters.who.roles ?? [];
   const repos = filters.what.repos ?? [];
+  const artifacts = filters.what.artifacts ?? [];
+  const workCategory = filters.why.work_category ?? [];
+  const issueType = filters.why.issue_type ?? [];
+  const flowStage = filters.how.flow_stage ?? [];
 
   const chips = [
     `Scope: ${filters.scope.level}`,
@@ -105,15 +110,27 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     developers.length
       ? `Devs: ${developers.join(", ")}`
       : null,
+    roles.length ? `Roles: ${roles.join(", ")}` : null,
     repos.length ? `Repos: ${repos.join(", ")}` : null,
+    artifacts.length ? `Artifacts: ${artifacts.join(", ")}` : null,
+    workCategory.length ? `Work type: ${workCategory.join(", ")}` : null,
+    issueType.length ? `Issue type: ${issueType.join(", ")}` : null,
     categoryParam ? `Category: ${categoryParam}` : null,
     streamParam ? `Stream: ${streamParam}` : null,
     breakdownParam ? `Breakdown: ${breakdownParam}` : null,
+    flowStage.length ? `Flow: ${flowStage.join(", ")}` : null,
     filters.how.blocked ? "Blocked only" : null,
   ].filter(Boolean) as string[];
 
   const drivers = (data?.drivers ?? []).slice(0, 5);
   const contributors = (data?.contributors ?? []).slice(0, 5);
+  const explanation =
+    view === "drilldown"
+      ? `Evidence table for ${metricLabel} in ${scopeDetail}.`
+      : view === "home"
+        ? "Snapshot of the cockpit payload for this scope."
+        : `This view explains ${metricLabel} for ${scopeDetail} over the last ${filters.time.range_days} days.`;
+  const breakdownNote = breakdownParam ? `Breakdown: ${breakdownParam}.` : null;
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -129,26 +146,32 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 {metricLabel}
               </h1>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                Drill-down inspector for drivers, contributors, and evidence.
+                Drill-down inspector. Monitor in Metrics, return here for evidence.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
+                href={withFilterParam("/explore/landscape", filters)}
+                className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+              >
+                Landscape
+              </Link>
+              <Link
                 href={withFilterParam("/metrics", filters)}
                 className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
-                Back to Metrics
+                Back to Metrics view
               </Link>
               <Link
                 href={withFilterParam("/", filters)}
                 className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
-                Back to Home
+                Back to cockpit
               </Link>
             </div>
           </header>
 
-          <FilterBar condensed />
+          <FilterBar condensed view="explore" />
 
           <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -162,33 +185,52 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 {view.toUpperCase()}
               </span>
             </div>
-            <p className="mt-3 text-sm text-[var(--ink-muted)]">
-              {view === "drilldown"
-                ? `Evidence table for ${metricLabel} in ${scopeDetail}.`
-                : view === "home"
-                  ? "Snapshot of the current home payload for this scope."
-                  : `This view shows ${metricLabel} for ${scopeDetail} over the last ${filters.time.range_days} days.`}
-            </p>
-            <p className="mt-2 text-xs text-[var(--ink-muted)]">
-              Source: {sourceLabel}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              {chips.map((chip) => (
-                <span
-                  key={chip}
-                  className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1"
-                >
-                  {chip}
-                </span>
-              ))}
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+              <div>
+                <p className="text-sm text-[var(--ink-muted)]">{explanation}</p>
+                <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                  Source: {sourceLabel}
+                </p>
+                {breakdownNote ? (
+                  <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                    {breakdownNote}
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Active filters
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  {chips.map((chip) => (
+                    <span
+                      key={chip}
+                      className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1"
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
+          </section>
+
+          <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+            <details>
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                Debug filters
+              </summary>
+              <pre className="mt-3 max-h-64 overflow-auto rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-xs text-[var(--ink-muted)]">
+                {JSON.stringify(filters, null, 2)}
+              </pre>
+            </details>
           </section>
 
           {view === "explain" && (
             <section className="grid gap-6 lg:grid-cols-3">
               <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
                 <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                  Current Window
+                  Signal snapshot
                 </p>
                 <div className="mt-3 flex flex-wrap items-baseline gap-3">
                   <span className="text-3xl font-semibold">
@@ -198,12 +240,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     {data ? formatDelta(data.delta_pct) : "--"} vs previous window
                   </span>
                 </div>
-                <Link
-                  href={buildExploreUrl({ metric: metricFromApi, filters })}
-                  className="mt-4 inline-flex text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
-                >
-                  Open in Explore
-                </Link>
+                <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                  Evidence links below stay in this scope.
+                </p>
               </div>
 
               <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
@@ -213,7 +252,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     href={buildExploreUrl({ metric: metricFromApi, filters })}
                     className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                   >
-                    Evidence
+                    Open evidence
                   </Link>
                 </div>
                 {drivers.length ? (
@@ -251,7 +290,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     href={buildExploreUrl({ metric: metricFromApi, filters })}
                     className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                   >
-                    Evidence
+                    Open evidence
                   </Link>
                 </div>
                 {contributors.length ? (
@@ -294,6 +333,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                   {drilldown?.items?.length ?? 0} items
                 </span>
               </div>
+              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                Rows link to source artifacts when available.
+              </p>
               <div className="mt-4 overflow-auto text-xs">
                 <table className="min-w-full border-collapse">
                   <thead className="text-left text-[var(--ink-muted)]">
@@ -309,6 +351,16 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                         filters,
                       });
                       const href = getItemHref(item, fallbackHref);
+                      const prFlameHref =
+                        typeof item.repo_id === "string" &&
+                        typeof item.number === "number"
+                          ? `/prs/${item.repo_id}:${item.number}`
+                          : null;
+                      const issueFlameHref =
+                        typeof item.work_item_id === "string"
+                          ? `/issues/${item.work_item_id}`
+                          : null;
+                      const flameHref = prFlameHref ?? issueFlameHref;
                       return (
                         <tr
                           key={`item-${idx}`}
@@ -323,9 +375,19 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             </a>
                           </td>
                           <td className="py-2 text-[var(--ink-muted)]">
-                            <a href={href} className="block">
-                              {JSON.stringify(item)}
-                            </a>
+                            <div className="space-y-2">
+                              <a href={href} className="block">
+                                {JSON.stringify(item)}
+                              </a>
+                              {flameHref ? (
+                                <Link
+                                  href={flameHref}
+                                  className="inline-flex items-center rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                                >
+                                  Open flame
+                                </Link>
+                              ) : null}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -356,7 +418,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
           {view === "explain" && (
             <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
-              <h2 className="font-[var(--font-display)] text-xl">Evidence Links</h2>
+              <h2 className="font-[var(--font-display)] text-xl">Evidence shortcuts</h2>
               <div className="mt-3 flex flex-wrap gap-3 text-sm">
                 {Object.entries(data?.drilldown_links ?? {}).map(([label, link]) => (
                   <Link

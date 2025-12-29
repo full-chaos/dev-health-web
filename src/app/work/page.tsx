@@ -1,11 +1,20 @@
 import Link from "next/link";
 
+import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { InvestmentChart } from "@/components/investment/InvestmentChart";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { checkApiHealth, getExplainData, getHomeData, getInvestment } from "@/lib/api";
+import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
+import {
+  checkApiHealth,
+  getExplainData,
+  getHeatmap,
+  getHomeData,
+  getInvestment,
+  getQuadrant,
+} from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatNumber, formatPercent } from "@/lib/formatters";
@@ -42,6 +51,13 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
+  const scopeId = filters.scope.ids[0] ?? "";
+  const quadrantScope: "org" | "team" | "repo" | "developer" =
+    filters.scope.level === "developer"
+      ? "developer"
+      : filters.scope.level === "team" || filters.scope.level === "repo"
+        ? filters.scope.level
+        : "org";
 
   const home = await getHomeData(filters).catch(() => null);
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
@@ -56,6 +72,34 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
   const wipExplain = await getExplainData({ metric: "wip_saturation", filters }).catch(() => null);
   const blockedExplain = await getExplainData({ metric: "blocked_work", filters }).catch(() => null);
+  const reviewHeatmap = await getHeatmap({
+    type: "temporal_load",
+    metric: "review_wait_density",
+    scope_type: filters.scope.level,
+    scope_id: scopeId,
+    range_days: filters.time.range_days,
+  }).catch(() => null);
+  const cycleThroughput = await getQuadrant({
+    type: "cycle_throughput",
+    scope_type: quadrantScope,
+    scope_id: scopeId,
+    range_days: filters.time.range_days,
+    bucket: "week",
+  }).catch(() => null);
+  const wipThroughput = await getQuadrant({
+    type: "wip_throughput",
+    scope_type: quadrantScope,
+    scope_id: scopeId,
+    range_days: filters.time.range_days,
+    bucket: "week",
+  }).catch(() => null);
+  const reviewLoadLatency = await getQuadrant({
+    type: "review_load_latency",
+    scope_type: quadrantScope,
+    scope_id: scopeId,
+    range_days: filters.time.range_days,
+    bucket: "week",
+  }).catch(() => null);
 
   const planned = investment
     ? findCategory(investment.categories, ["planned", "roadmap", "feature"])
@@ -95,11 +139,11 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               href={withFilterParam("/", filters)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
-              Back to Home
+              Back to cockpit
             </Link>
           </header>
 
-          <FilterBar />
+          <FilterBar view="work" />
 
           <section className="grid gap-4 lg:grid-cols-3">
             <MetricCard
@@ -128,6 +172,68 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               delta={placeholderDeltas ? undefined : throughputMetric?.delta_pct}
               spark={throughputMetric?.spark}
               caption="Delivery volume"
+            />
+          </section>
+
+          <section>
+            <HeatmapPanel
+              title="Review wait density"
+              description="Find the hours and weekdays where PRs accumulate review wait time."
+              request={{
+                type: "temporal_load",
+                metric: "review_wait_density",
+                scope_type: filters.scope.level,
+                scope_id: scopeId,
+                range_days: filters.time.range_days,
+              }}
+              initialData={reviewHeatmap}
+              emptyState="Review wait heatmap unavailable."
+              evidenceTitle="PR evidence"
+            />
+          </section>
+
+          <section className="grid gap-6 lg:grid-cols-2">
+            <QuadrantPanel
+              title="Cycle Time × Throughput"
+              description="Spot coordination debt before throughput drops."
+              data={cycleThroughput}
+              filters={filters}
+              relatedLinks={[
+                {
+                  label: "Open landscapes",
+                  href: withFilterParam("/explore/landscape", filters),
+                },
+              ]}
+              emptyState="Quadrant data unavailable for this scope."
+            />
+            <QuadrantPanel
+              title="WIP × Throughput"
+              description="Detect saturation points and flow bottlenecks."
+              data={wipThroughput}
+              filters={filters}
+              relatedLinks={[
+                {
+                  label: "Open landscapes",
+                  href: withFilterParam("/explore/landscape", filters),
+                },
+              ]}
+              emptyState="Quadrant data unavailable for this scope."
+            />
+          </section>
+
+          <section>
+            <QuadrantPanel
+              title="Review Load × Review Latency"
+              description="Expose structural review bottlenecks and concentration risk."
+              data={reviewLoadLatency}
+              filters={filters}
+              relatedLinks={[
+                {
+                  label: "Open landscapes",
+                  href: withFilterParam("/explore/landscape", filters),
+                },
+              ]}
+              emptyState="Quadrant data unavailable for this scope."
             />
           </section>
 

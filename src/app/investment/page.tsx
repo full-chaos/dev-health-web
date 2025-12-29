@@ -62,7 +62,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
             </div>
           </header>
 
-          <FilterBar />
+          <FilterBar view="investment" />
 
           {nested.categories.length ? (
             <InvestmentChart categories={nested.categories} subtypes={nested.subtypes} />

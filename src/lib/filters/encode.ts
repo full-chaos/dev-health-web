@@ -68,6 +68,8 @@ export const filterFromQueryParams = (
 ): MetricFilter => {
   const scopeType = (params.scope_type as MetricFilter["scope"]["level"]) ?? "org";
   const scopeId = (params.scope_id as string) ?? "";
+  const startDate = (params.start_date as string) ?? undefined;
+  const endDate = (params.end_date as string) ?? undefined;
   const rangeDays = Number(
     (params.range_days as string) ?? defaultMetricFilter.time.range_days
   );
@@ -80,6 +82,8 @@ export const filterFromQueryParams = (
     time: {
       range_days: Number.isNaN(rangeDays) ? defaultMetricFilter.time.range_days : rangeDays,
       compare_days: Number.isNaN(compareDays) ? defaultMetricFilter.time.compare_days : compareDays,
+      ...(startDate ? { start_date: startDate } : {}),
+      ...(endDate ? { end_date: endDate } : {}),
     },
     scope: {
       level: scopeType,

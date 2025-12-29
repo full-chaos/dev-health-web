@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Noto_Sans, Noto_Sans_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-const bodyFont = IBM_Plex_Sans({
+const bodyFont = Noto_Sans({
   variable: "--font-body",
-  weight: ["300", "400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
 });
 
-const displayFont = Fraunces({
+const displayFont = Noto_Sans({
   variable: "--font-display",
-  weight: ["400", "600"],
+  weight: ["500", "600", "700"],
   subsets: ["latin"],
 });
 
-const monoFont = IBM_Plex_Mono({
+const monoFont = Noto_Sans_Mono({
   variable: "--font-mono",
-  weight: ["400", "600"],
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
 });
 
@@ -29,10 +29,21 @@ export const metadata: Metadata = {
 const themeScript = `
 (() => {
   try {
-    const stored = localStorage.getItem("theme");
-    if (stored === "light" || stored === "dark") {
-      document.documentElement.dataset.theme = stored;
-      document.documentElement.style.colorScheme = stored;
+    const storedTheme = localStorage.getItem("theme");
+    const storedPalette = localStorage.getItem("palette");
+    const normalizedPalette = storedPalette === "tailwind" ? "echarts" : storedPalette;
+    if (
+      normalizedPalette === "material" ||
+      normalizedPalette === "echarts" ||
+      normalizedPalette === "fullchaos" ||
+      normalizedPalette === "fullchaos-cosmic" ||
+      normalizedPalette === "flat"
+    ) {
+      document.documentElement.dataset.palette = normalizedPalette;
+    }
+    if (storedTheme === "light" || storedTheme === "dark") {
+      document.documentElement.dataset.theme = storedTheme;
+      document.documentElement.style.colorScheme = storedTheme;
     }
   } catch {}
 })();
@@ -44,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-theme="light" data-palette="material" suppressHydrationWarning>
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >

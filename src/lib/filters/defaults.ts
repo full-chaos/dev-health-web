@@ -6,7 +6,7 @@ export const defaultMetricFilter: MetricFilter = {
     compare_days: 14,
   },
   scope: {
-    level: "org",
+    level: "team",
     ids: [],
   },
   who: {},

@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import type { EChartsOption } from "echarts";
 
-import { chartColors, useChartTheme } from "./chartTheme";
+import { useChartColors, useChartTheme } from "./chartTheme";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -18,13 +18,14 @@ type ChartProps = {
 
 export function Chart({ option, className, style, onEvents }: ChartProps) {
   const [isReady, setIsReady] = useState(false);
+  const chartColors = useChartColors();
   const chartTheme = useChartTheme();
 
   const baseOption: EChartsOption = {
     color: chartColors,
     textStyle: {
       color: chartTheme.text,
-      fontFamily: "var(--font-geist-sans, system-ui, sans-serif)",
+      fontFamily: "var(--font-body, system-ui, sans-serif)",
     },
     animationDuration: 600,
   };

@@ -12,7 +12,9 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { id: "home", label: "Home", href: "/", description: "Cockpit" },
+  { id: "people", label: "People", href: "/people", description: "Individual" },
   { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Monitor" },
+  { id: "landscape", label: "Landscape", href: "/explore/landscape", description: "Quadrants" },
   { id: "work", label: "Work", href: "/work", description: "Investment" },
   { id: "code", label: "Code", href: "/code", description: "Signals" },
   { id: "quality", label: "Quality", href: "/quality", description: "Reliability" },
@@ -69,7 +71,7 @@ export function PrimaryNav({ filters, active }: PrimaryNavProps) {
             })}
           </nav>
           <div className="mt-5 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-3 text-xs text-[var(--ink-muted)]">
-            Explore opens only from evidence links.
+            Explore opens from evidence links only. Use monitoring views for trends.
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
 export type TimeFilter = {
   range_days: number;
   compare_days: number;
+  start_date?: string;
+  end_date?: string;
 };
 
 export type ScopeFilter = {

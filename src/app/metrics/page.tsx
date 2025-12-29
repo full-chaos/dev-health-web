@@ -1,11 +1,12 @@
 import Link from "next/link";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { checkApiHealth, getExplainData, getHomeData } from "@/lib/api";
+import { checkApiHealth, getExplainData, getHomeData, getQuadrant } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
@@ -98,10 +99,25 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
   const home = await getHomeData(filters).catch(() => null);
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
+  const highlightMetric = getMetric(deltas, activeTab.highlight);
+  const highlightLabel = highlightMetric?.label ?? activeTab.highlight;
 
   const highlight = await getExplainData({
     metric: activeTab.highlight,
     filters,
+  }).catch(() => null);
+  const quadrantScope: "org" | "team" | "repo" | "developer" =
+    filters.scope.level === "developer"
+      ? "developer"
+      : filters.scope.level === "team" || filters.scope.level === "repo"
+        ? filters.scope.level
+        : "org";
+  const quadrant = await getQuadrant({
+    type: "churn_throughput",
+    scope_type: quadrantScope,
+    scope_id: filters.scope.ids[0] ?? "",
+    range_days: filters.time.range_days,
+    bucket: "week",
   }).catch(() => null);
 
   const drivers = (highlight?.drivers ?? []).slice(0, 5);
@@ -118,21 +134,21 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 Metrics
               </p>
               <h1 className="mt-2 font-[var(--font-display)] text-3xl">
-                Monitoring Views
+                Monitoring view
               </h1>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                Track trends, then drill into evidence when something moves.
+                Track trends over time. Use Explore only for evidence.
               </p>
             </div>
             <Link
               href={withFilterParam("/", filters)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
-              Back to Home
+              Back to cockpit
             </Link>
           </header>
 
-          <FilterBar />
+          <FilterBar view="metrics" tab={activeTab.id} />
 
           <nav className="flex flex-wrap gap-2">
             {METRIC_TABS.map((tab) => {
@@ -157,7 +173,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                  {activeTab.label} Focus
+                  {activeTab.label} monitoring
                 </p>
                 <p className="mt-1 text-sm text-[var(--ink-muted)]">
                   {activeTab.description}
@@ -166,9 +182,24 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               <Link
                 href={buildExploreUrl({ metric: activeTab.highlight, filters })}
                 className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                title={`Open evidence for ${highlightLabel}`}
               >
-                Open in Explore
+                Open evidence
               </Link>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs">
+              {activeTab.metrics.map((metric) => {
+                const data = getMetric(deltas, metric);
+                return (
+                  <Link
+                    key={`chip-${metric}`}
+                    href={buildExploreUrl({ metric, filters })}
+                    className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-muted)] transition hover:text-[var(--foreground)]"
+                  >
+                    {data?.label ?? metric}
+                  </Link>
+                );
+              })}
             </div>
           </section>
 
@@ -189,17 +220,33 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             })}
           </section>
 
+          <section>
+            <QuadrantPanel
+              title="Churn × Throughput landscape"
+              description="Classify system modes without ranking or scoring."
+              data={quadrant}
+              filters={filters}
+              relatedLinks={[
+                { label: "Open landscapes", href: withFilterParam("/explore/landscape", filters) },
+              ]}
+              emptyState="Quadrant data unavailable for this scope."
+            />
+          </section>
+
           <section className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Top Drivers</h2>
+                <h2 className="font-[var(--font-display)] text-xl">Likely drivers</h2>
                 <Link
                   href={buildExploreUrl({ metric: activeTab.highlight, filters })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
-                  Evidence
+                  Open evidence
                 </Link>
               </div>
+              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                Preview of the active window. Select a driver for drill-down.
+              </p>
               {drivers.length ? (
                 <div className="mt-4 space-y-4">
                   <HorizontalBarChart
@@ -230,14 +277,17 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
 
             <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Contributors</h2>
+                <h2 className="font-[var(--font-display)] text-xl">Primary contributors</h2>
                 <Link
                   href={buildExploreUrl({ metric: activeTab.highlight, filters })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
-                  Evidence
+                  Open evidence
                 </Link>
               </div>
+              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                Where the impact concentrates in this window.
+              </p>
               {contributors.length ? (
                 <div className="mt-4 space-y-4">
                   <HorizontalBarChart

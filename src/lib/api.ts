@@ -3,10 +3,18 @@ import type {
   ExplainResponse,
   HealthResponse,
   HomeResponse,
+  HeatmapResponse,
   InvestmentResponse,
   OpportunitiesResponse,
+  PeopleSearchResult,
+  PersonDrilldownResponse,
+  PersonMetricResponse,
+  PersonSummary,
+  FlameResponse,
+  QuadrantResponse,
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
+import { encodeFilterParam } from "@/lib/filters/encode";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
@@ -24,6 +32,13 @@ const buildUrl = (path: string, params?: Record<string, string | number>) => {
   return url.toString();
 };
 
+const normalizeFilters = (filters: MetricFilter): MetricFilter => {
+  if (filters.scope.level === "team" && !filters.scope.ids.length) {
+    return { ...filters, scope: { ...filters.scope, level: "org" } };
+  }
+  return filters;
+};
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -32,8 +47,13 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-const postJson = async <T>(path: string, body: unknown, revalidate = 60) => {
-  const url = buildUrl(path);
+const postJson = async <T>(
+  path: string,
+  body: unknown,
+  revalidate = 60,
+  params?: Record<string, string | number>
+) => {
+  const url = buildUrl(path, params);
   return fetchJson<T>(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -43,33 +63,45 @@ const postJson = async <T>(path: string, body: unknown, revalidate = 60) => {
 };
 
 export async function getHomeData(filters: MetricFilter) {
-  return postJson<HomeResponse>("/api/v1/home", { filters }, 60);
+  const normalized = normalizeFilters(filters);
+  return postJson<HomeResponse>(
+    "/api/v1/home",
+    { filters: normalized },
+    60,
+    { f: encodeFilterParam(normalized) }
+  );
 }
 
 export async function getExplainData(params: {
   metric: string;
   filters: MetricFilter;
 }) {
+  const normalized = normalizeFilters(params.filters);
   return postJson<ExplainResponse>(
     "/api/v1/explain",
-    { metric: params.metric, filters: params.filters },
-    60
+    { metric: params.metric, filters: normalized },
+    60,
+    { metric: params.metric, f: encodeFilterParam(normalized) }
   );
 }
 
 export async function getOpportunities(filters: MetricFilter) {
+  const normalized = normalizeFilters(filters);
   return postJson<OpportunitiesResponse>(
     "/api/v1/opportunities",
-    { filters },
-    120
+    { filters: normalized },
+    120,
+    { f: encodeFilterParam(normalized) }
   );
 }
 
 export async function getInvestment(filters: MetricFilter) {
+  const normalized = normalizeFilters(filters);
   return postJson<InvestmentResponse>(
     "/api/v1/investment",
-    { filters },
-    300
+    { filters: normalized },
+    300,
+    { f: encodeFilterParam(normalized) }
   );
 }
 
@@ -78,7 +110,12 @@ export async function getDrilldown(
   filters: MetricFilter,
   limit = 50
 ) {
-  return postJson<DrilldownResponse>(path, { filters, limit }, 30);
+  const normalized = normalizeFilters(filters);
+  return postJson<DrilldownResponse>(
+    path,
+    { filters: normalized, limit },
+    30
+  );
 }
 
 export async function checkApiHealth() {
@@ -93,4 +130,131 @@ export async function checkApiHealth() {
   } catch {
     return { ok: false, data: null as HealthResponse | null };
   }
+}
+
+export async function searchPeople(query: string, limit = 20) {
+  const url = buildUrl("/api/v1/people", { q: query, limit });
+  return fetchJson<PeopleSearchResult[]>(url, { cache: "no-store" });
+}
+
+export async function getPersonSummary(params: {
+  personId: string;
+  range_days: number;
+  compare_days: number;
+}) {
+  const url = buildUrl(`/api/v1/people/${params.personId}/summary`, {
+    range_days: params.range_days,
+    compare_days: params.compare_days,
+  });
+  return fetchJson<PersonSummary>(url, { cache: "no-store" });
+}
+
+export async function getPersonMetric(params: {
+  personId: string;
+  metric: string;
+  range_days: number;
+  compare_days: number;
+}) {
+  const url = buildUrl(`/api/v1/people/${params.personId}/metric`, {
+    metric: params.metric,
+    range_days: params.range_days,
+    compare_days: params.compare_days,
+  });
+  return fetchJson<PersonMetricResponse>(url, { cache: "no-store" });
+}
+
+export async function getPersonDrilldown(params: {
+  personId: string;
+  type: "prs" | "issues";
+  limit?: number;
+  cursor?: string;
+  metric?: string;
+}) {
+  const url = buildUrl(`/api/v1/people/${params.personId}/drilldown/${params.type}`, {
+    limit: params.limit ?? 50,
+    cursor: params.cursor ?? "",
+    metric: params.metric ?? "",
+  });
+  return fetchJson<PersonDrilldownResponse>(url, { cache: "no-store" });
+}
+
+export async function getHeatmap(params: {
+  type: "temporal_load" | "context_switch" | "risk" | "individual";
+  metric: string;
+  scope_type: string;
+  scope_id?: string;
+  range_days: number;
+  x?: string;
+  y?: string;
+  limit?: number;
+}) {
+  const url = buildUrl("/api/v1/heatmap", {
+    type: params.type,
+    metric: params.metric,
+    scope_type: params.scope_type,
+    scope_id: params.scope_id ?? "",
+    range_days: params.range_days,
+    x: params.x ?? "",
+    y: params.y ?? "",
+    limit: params.limit ?? 50,
+  });
+  return fetchJson<HeatmapResponse>(url, { cache: "no-store" });
+}
+
+export async function getFlame(params: {
+  entity_type: "issue" | "pr" | "deployment";
+  entity_id: string;
+}) {
+  const url = buildUrl("/api/v1/flame", {
+    entity_type: params.entity_type,
+    entity_id: params.entity_id,
+  });
+  return fetchJson<FlameResponse>(url, { cache: "no-store" });
+}
+
+export async function getQuadrant(params: {
+  type:
+    | "churn_throughput"
+    | "cycle_throughput"
+    | "wip_throughput"
+    | "review_load_latency";
+  scope_type: "org" | "team" | "repo" | "developer" | "person";
+  scope_id?: string;
+  range_days: number;
+  bucket: "week" | "month";
+}) {
+  const primaryScopeType =
+    params.scope_type === "team" && !params.scope_id ? "org" : params.scope_type;
+  const candidates =
+    primaryScopeType === "person"
+      ? ["person", "developer"]
+      : primaryScopeType === "developer"
+        ? ["developer", "person"]
+        : [primaryScopeType];
+
+  let lastError: unknown;
+  for (const scopeType of candidates) {
+    const url = buildUrl("/api/v1/quadrant", {
+      type: params.type,
+      scope_type: scopeType,
+      scope_id: params.scope_id ?? "",
+      range_days: params.range_days,
+      bucket: params.bucket,
+    });
+    const response = await fetch(url, { cache: "no-store" });
+    if (response.ok) {
+      return (await response.json()) as QuadrantResponse;
+    }
+    lastError = response;
+    if (candidates.length === 1) {
+      break;
+    }
+    if (response.status !== 400 && response.status !== 422) {
+      break;
+    }
+  }
+  if (lastError instanceof Response) {
+    throw new Error(`API error: ${lastError.status}`);
+  }
+  throw lastError ?? new Error("API error");
 }

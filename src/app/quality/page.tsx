@@ -62,11 +62,11 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
               href={withFilterParam("/", filters)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
-              Back to Home
+              Back to cockpit
             </Link>
           </header>
 
-          <FilterBar />
+          <FilterBar view="quality" />
 
           <section className="grid gap-4 lg:grid-cols-3">
             <MetricCard

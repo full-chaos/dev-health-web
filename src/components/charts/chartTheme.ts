@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
 
 export const chartColors = [
-  "#fe8019",
-  "#b8bb26",
-  "#83a598",
-  "#fabd2f",
-  "#d3869b",
-  "#8ec07c",
-  "#fb4934",
-  "#928374",
-  "#d65d0e",
-  "#689d6a",
+  "#1e88e5",
+  "#3949ab",
+  "#8e24aa",
+  "#00897b",
+  "#43a047",
+  "#7cb342",
+  "#f9a825",
+  "#fb8c00",
+  "#f4511e",
+  "#e53935",
 ];
 
 const fallbackTheme = {
-  text: "#3c3836",
-  grid: "#e3d5b2",
-  muted: "#7c6f64",
+  text: "#1c1b1f",
+  grid: "#e7e0ec",
+  muted: "#49454f",
 };
 
 export type ChartTheme = typeof fallbackTheme;
@@ -33,6 +33,18 @@ const readTheme = (): ChartTheme => {
     styles.getPropertyValue("--chart-muted").trim() || fallbackTheme.muted;
 
   return { text, grid, muted };
+};
+
+const readChartColors = (): string[] => {
+  if (typeof window === "undefined") {
+    return chartColors;
+  }
+
+  const styles = getComputedStyle(document.documentElement);
+  return chartColors.map((fallback, index) => {
+    const value = styles.getPropertyValue(`--chart-color-${index + 1}`).trim();
+    return value || fallback;
+  });
 };
 
 export function useChartTheme() {
@@ -55,7 +67,7 @@ export function useChartTheme() {
       const observer = new MutationObserver(updateTheme);
       observer.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ["data-theme"],
+        attributeFilter: ["data-theme", "data-palette"],
       });
       return () => {
         media.removeEventListener("change", updateTheme);
@@ -66,7 +78,7 @@ export function useChartTheme() {
     const observer = new MutationObserver(updateTheme);
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["data-theme"],
+      attributeFilter: ["data-theme", "data-palette"],
     });
     return () => {
       media.removeListener(updateTheme);
@@ -75,4 +87,46 @@ export function useChartTheme() {
   }, []);
 
   return theme;
+}
+
+export function useChartColors() {
+  const [colors, setColors] = useState<string[]>(chartColors);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const updateColors = () => {
+      setColors(readChartColors());
+    };
+
+    updateColors();
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    if (media.addEventListener) {
+      media.addEventListener("change", updateColors);
+      const observer = new MutationObserver(updateColors);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme", "data-palette"],
+      });
+      return () => {
+        media.removeEventListener("change", updateColors);
+        observer.disconnect();
+      };
+    }
+    media.addListener(updateColors);
+    const observer = new MutationObserver(updateColors);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme", "data-palette"],
+    });
+    return () => {
+      media.removeListener(updateColors);
+      observer.disconnect();
+    };
+  }, []);
+
+  return colors;
 }
