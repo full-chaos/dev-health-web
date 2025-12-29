@@ -9,6 +9,7 @@ import type { PeopleSearchResult } from "@/lib/types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+const EMPTY_LIST: string[] = [];
 
 type PeopleSearchProps = {
   query?: string;
@@ -54,20 +55,35 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
   const [error, setError] = useState<string | null>(null);
 
   const trimmedQuery = useMemo(() => (query ?? "").trim(), [query]);
-  const selectedDevelopers = filters?.who.developers ?? [];
-  const teamIds =
-    filters?.scope.level === "team" ? filters.scope.ids : [];
+  const selectedDevelopers = filters?.who?.developers ?? EMPTY_LIST;
+  const scopeLevel = filters?.scope?.level;
+  const scopeIds = filters?.scope?.ids ?? EMPTY_LIST;
+  const searchTerm = useMemo(() => {
+    if (trimmedQuery) {
+      return trimmedQuery;
+    }
+    if (selectedDevelopers.length) {
+      return selectedDevelopers[0];
+    }
+    return "";
+  }, [trimmedQuery, selectedDevelopers]);
+  const teamIds = scopeLevel === "team" ? scopeIds : EMPTY_LIST;
   const focusActive = selectedDevelopers.length > 0;
+  const searchActive = searchTerm.length > 0;
+  const baseResults = useMemo(
+    () => (searchActive ? results : EMPTY_LIST),
+    [results, searchActive]
+  );
   const hasTeamData = useMemo(
-    () => results.some((person) => Boolean(person.team_id)),
-    [results]
+    () => baseResults.some((person) => Boolean(person.team_id)),
+    [baseResults]
   );
   const visibleResults = useMemo(() => {
     if (!teamIds.length || !hasTeamData) {
-      return results;
+      return baseResults;
     }
-    return results.filter((person) => matchesTeam(person, teamIds));
-  }, [results, teamIds, hasTeamData]);
+    return baseResults.filter((person) => matchesTeam(person, teamIds));
+  }, [baseResults, teamIds, hasTeamData]);
   const focusMatches = useMemo(
     () =>
       new Set(
@@ -81,29 +97,16 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
   const emptyPrompt = teamIds.length
     ? "Team filter applied. Search by name/handle to find someone."
     : "Use the team filter or search by name/handle to find someone.";
-  const searchTerm = useMemo(() => {
-    if (trimmedQuery) {
-      return trimmedQuery;
-    }
-    if (selectedDevelopers.length) {
-      return selectedDevelopers[0];
-    }
-    return "";
-  }, [trimmedQuery, selectedDevelopers]);
 
   useEffect(() => {
     if (!searchTerm) {
-      setResults([]);
-      setError(null);
-      setIsLoading(false);
       return;
     }
-
     const controller = new AbortController();
-    setIsLoading(true);
-    setError(null);
 
     const timer = setTimeout(() => {
+      setIsLoading(true);
+      setError(null);
       const url = new URL("/api/v1/people", API_BASE);
       url.searchParams.set("q", searchTerm);
       url.searchParams.set("limit", "20");
@@ -146,22 +149,27 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
       </div>
 
       <div className="mt-4 space-y-3">
-        {isLoading && (
+        {searchActive && isLoading && (
           <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
             Searching people...
           </div>
         )}
-        {error && (
+        {searchActive && error && (
           <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
             {error}
           </div>
         )}
-        {!isLoading && !error && trimmedQuery && visibleResults.length === 0 && (
+        {searchActive &&
+          !isLoading &&
+          !error &&
+          trimmedQuery &&
+          visibleResults.length === 0 && (
           <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
             No matches yet. Try another spelling or handle.
           </div>
         )}
-        {!isLoading &&
+        {searchActive &&
+          !isLoading &&
           !error &&
           trimmedQuery &&
           visibleResults.length > 0 &&
@@ -171,7 +179,8 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
               No matches for the selected people filter.
             </div>
           )}
-        {!isLoading &&
+        {searchActive &&
+          !isLoading &&
           !error &&
           !trimmedQuery &&
           focusActive &&
@@ -180,7 +189,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
               No matches for the selected people filter.
             </div>
           )}
-        {!trimmedQuery && !focusActive && (
+        {!searchActive && !focusActive && (
           <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
             {emptyPrompt}
           </div>
