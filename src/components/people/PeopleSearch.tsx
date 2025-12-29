@@ -62,13 +62,30 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
   const teamIds = scopeLevel === "team" ? scopeIds : EMPTY_LIST;
   const hasTeamFilter = teamIds.length > 0;
   const queryActive = trimmedQuery.length > 0;
-  const fallbackQuery =
-    !hasTeamFilter && !queryActive && selectedDevelopers.length
+  const focusActive = selectedDevelopers.length > 0;
+  const canFallbackQuery =
+    !hasTeamFilter && !queryActive && selectedDevelopers.length === 1;
+  const searchTerm = queryActive
+    ? trimmedQuery
+    : canFallbackQuery
       ? selectedDevelopers[0]
       : "";
-  const searchTerm = queryActive ? trimmedQuery : fallbackQuery;
-  const shouldFetch = hasTeamFilter || Boolean(searchTerm);
-  const focusActive = selectedDevelopers.length > 0;
+  const fetchPlans = useMemo(() => {
+    if (teamIds.length) {
+      return teamIds.map((teamId) => ({
+        teamId,
+        query: searchTerm || undefined,
+      }));
+    }
+    if (searchTerm) {
+      return [{ query: searchTerm }];
+    }
+    if (focusActive) {
+      return selectedDevelopers.map((developer) => ({ query: developer }));
+    }
+    return [];
+  }, [focusActive, searchTerm, selectedDevelopers, teamIds]);
+  const shouldFetch = fetchPlans.length > 0;
   const baseResults = useMemo(
     () => (shouldFetch ? results : EMPTY_RESULTS),
     [results, shouldFetch]
@@ -93,6 +110,15 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
     [visibleResults, selectedDevelopers]
   );
   const hasFocusMatches = focusMatches.size > 0;
+  const displayResults = useMemo(() => {
+    if (focusActive) {
+      if (!hasFocusMatches) {
+        return EMPTY_RESULTS;
+      }
+      return visibleResults.filter((person) => focusMatches.has(person.person_id));
+    }
+    return visibleResults;
+  }, [focusActive, focusMatches, hasFocusMatches, visibleResults]);
   const emptyPrompt = hasTeamFilter
     ? "Team filter applied. Search by name/handle to refine results."
     : "Select a team or search by name/handle to find someone.";
@@ -112,21 +138,50 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
     const timer = setTimeout(() => {
       setIsLoading(true);
       setError(null);
-      const url = new URL("/api/v1/people", API_BASE);
-      if (searchTerm) {
-        url.searchParams.set("q", searchTerm);
-      }
-      url.searchParams.set("limit", "20");
-      if (teamIds.length) {
-        url.searchParams.set("scope_type", "team");
-        url.searchParams.set("scope_id", teamIds[0]);
-        url.searchParams.set("team_id", teamIds[0]);
-      }
+      const requests = fetchPlans.map((plan) => {
+        const url = new URL("/api/v1/people", API_BASE);
+        if (plan.query) {
+          url.searchParams.set("q", plan.query);
+        }
+        url.searchParams.set("limit", "20");
+        if (plan.teamId) {
+          url.searchParams.set("scope_type", "team");
+          url.searchParams.set("scope_id", plan.teamId);
+          url.searchParams.set("team_id", plan.teamId);
+        }
+        return fetch(url.toString(), { signal: controller.signal }).then(
+          (response) => {
+            if (!response.ok) {
+              throw new Error("API error");
+            }
+            return response.json();
+          }
+        );
+      });
 
-      fetch(url.toString(), { signal: controller.signal })
-        .then((response) => (response.ok ? response.json() : Promise.reject()))
-        .then((payload) => {
-          setResults((payload ?? []) as PeopleSearchResult[]);
+      Promise.allSettled(requests)
+        .then((payloads) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+          const fulfilled = payloads.filter(
+            (result): result is PromiseFulfilledResult<PeopleSearchResult[]> =>
+              result.status === "fulfilled"
+          );
+          if (!fulfilled.length) {
+            setError("Unable to load people right now.");
+            setIsLoading(false);
+            return;
+          }
+          const merged = new Map<string, PeopleSearchResult>();
+          fulfilled.forEach((result) => {
+            (result.value ?? []).forEach((person) => {
+              if (person && typeof person.person_id === "string") {
+                merged.set(person.person_id, person);
+              }
+            });
+          });
+          setResults(Array.from(merged.values()));
           setIsLoading(false);
         })
         .catch(() => {
@@ -141,7 +196,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [searchTerm, shouldFetch, teamIds]);
+  }, [fetchPlans, shouldFetch]);
 
   return (
     <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
@@ -197,7 +252,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
             {emptyPrompt}
           </div>
         )}
-        {visibleResults.map((person) => {
+        {displayResults.map((person) => {
           const isFocus = !focusActive || focusMatches.has(person.person_id);
           const href = filters
             ? withFilterParam(`/people/${person.person_id}`, filters)

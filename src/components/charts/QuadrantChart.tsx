@@ -49,6 +49,13 @@ const windowDays = (start: string, end: string) => {
   return Math.max(1, diffDays);
 };
 
+const windowLabel = (start: string, end: string) => {
+  if (start && end) {
+    return start === end ? start : `${start} – ${end}`;
+  }
+  return start || end || "Selected window";
+};
+
 type QuadrantChartProps = {
   data: QuadrantResponse;
   height?: number | string;
@@ -83,6 +90,7 @@ export function QuadrantChart({
   const normalizedScopeType =
     scopeType === "developer" ? "person" : scopeType ?? "org";
   const isPersonScope = normalizedScopeType === "person";
+  const showTeamLabels = normalizedScopeType === "team";
   const focusIds = (focusEntityIds ?? []).filter(Boolean);
   const focusSet = new Set(focusIds);
   const directFocusPoints = focusIds.length
@@ -116,7 +124,18 @@ export function QuadrantChart({
     .map((point, index) => ({
       type: "line" as const,
       name: point.entity_label,
-      data: (point.trajectory ?? []).map((step) => [step.x, step.y, step.window]),
+      data: (point.trajectory ?? []).map((step) => ({
+        value: [step.x, step.y],
+        point: {
+          entity_id: point.entity_id,
+          entity_label: point.entity_label,
+          x: step.x,
+          y: step.y,
+          window_start: step.window,
+          window_end: step.window,
+          evidence_link: point.evidence_link,
+        },
+      })),
       lineStyle: {
         color: colors[(index + 2) % colors.length] ?? colors[2],
         width: 2,
@@ -210,7 +229,7 @@ export function QuadrantChart({
               `<strong>${entityLabel}</strong>`,
               `${xLabel}: ${xValue}`,
               `${yLabel}: ${yValue}`,
-              `Window: ${point.window_start} – ${point.window_end}`,
+              `Window: ${windowLabel(point.window_start, point.window_end)}`,
               `${subject} reflects ${xLabel} at ${xValue} and ${yLabel} at ${yValue} over ${dayLabel}.`,
             ].join("<br/>");
           },
@@ -243,6 +262,19 @@ export function QuadrantChart({
               color: chartTheme.muted,
               opacity: backgroundOpacity,
             },
+            label: showTeamLabels
+              ? {
+                  show: true,
+                  formatter: (params: DefaultLabelFormatterCallbackParams) => {
+                    const point = toPoint(params.data);
+                    return point?.entity_label ?? "";
+                  },
+                  color: chartTheme.muted,
+                  fontSize: 10,
+                  position: "top",
+                }
+              : undefined,
+            labelLayout: showTeamLabels ? { hideOverlap: true } : undefined,
             markArea: backgroundData.length ? markArea : undefined,
             emphasis: { scale: true },
             z: 1,

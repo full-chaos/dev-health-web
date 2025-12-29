@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
@@ -65,17 +65,15 @@ export function QuadrantPanel({
   const focusEntityIds = isPersonScope
     ? (filters.scope.ids ?? []).slice(0, 1)
     : (filters.scope.ids ?? []);
-  const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
-  const selectedPoint = useMemo(() => {
-    if (!data || !selectedPointId) {
-      return null;
-    }
-    return data.points.find((point) => point.entity_id === selectedPointId) ?? null;
-  }, [data, selectedPointId]);
+  const [selectedPoint, setSelectedPoint] = useState<QuadrantPoint | null>(null);
 
   const handlePointSelect = (point: QuadrantPoint) => {
-    setSelectedPointId(point.entity_id);
+    setSelectedPoint(point);
   };
+
+  useEffect(() => {
+    setSelectedPoint(null);
+  }, [data]);
 
   if (!data || !data.points?.length) {
     return (
@@ -98,9 +96,13 @@ export function QuadrantPanel({
     : "Quadrants do not indicate ranking or comparison, and they are not labels of team, repo, or developer quality.";
   const cohortMeaning = isPersonScope
     ? "Only your trajectory is shown; no peer comparison is displayed."
-    : focusEntityIds.length
-      ? "Unlabeled points show the filtered cohort background; labels appear only for focus entities."
-      : "Points represent the filtered cohort; labels appear when a focus entity is selected.";
+    : scopeType === "team"
+      ? focusEntityIds.length
+        ? "Team points are labeled for orientation; the focus team is highlighted."
+        : "Team points are labeled for orientation; labels do not imply ranking."
+      : focusEntityIds.length
+        ? "Unlabeled points show the filtered cohort background; labels appear only for focus entities."
+        : "Points represent the filtered cohort; labels appear when a focus entity is selected.";
   const zoneMeaning = data.annotations?.length
     ? "Shaded zones indicate operating conditions or pressure, not outcomes."
     : null;
