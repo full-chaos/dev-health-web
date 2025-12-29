@@ -28,6 +28,27 @@ const formatValue = (value: number, unit: string) => {
   return `${value.toFixed(1)} ${unit}`.trim();
 };
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const parseDateValue = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+};
+
+const windowDays = (start: string, end: string) => {
+  const startDate = parseDateValue(start);
+  const endDate = parseDateValue(end);
+  if (!startDate || !endDate) {
+    return null;
+  }
+  const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
+  const diffDays = Math.floor(diffMs / MS_PER_DAY) + 1;
+  return Math.max(1, diffDays);
+};
+
 type QuadrantChartProps = {
   data: QuadrantResponse;
   height?: number | string;
@@ -61,16 +82,24 @@ export function QuadrantChart({
 
   const normalizedScopeType =
     scopeType === "developer" ? "person" : scopeType ?? "org";
+  const isPersonScope = normalizedScopeType === "person";
   const focusIds = (focusEntityIds ?? []).filter(Boolean);
   const focusSet = new Set(focusIds);
-  const focusPoints = focusIds.length
+  const directFocusPoints = focusIds.length
     ? data.points.filter((point) => focusSet.has(point.entity_id))
     : [];
+  const focusPoints =
+    isPersonScope && directFocusPoints.length === 0
+      ? data.points.slice(0, 1)
+      : directFocusPoints;
+  const focusPointIds = new Set(focusPoints.map((point) => point.entity_id));
   const hasFocus = focusPoints.length > 0;
-  const backgroundPoints = hasFocus
-    ? data.points.filter((point) => !focusSet.has(point.entity_id))
-    : data.points;
-  const backgroundOpacity = normalizedScopeType === "person" ? 0.2 : 1;
+  const backgroundPoints = isPersonScope
+    ? []
+    : hasFocus
+      ? data.points.filter((point) => !focusPointIds.has(point.entity_id))
+      : data.points;
+  const backgroundOpacity = 1;
 
   const focusData = focusPoints.map((point) => ({
     value: [point.x, point.y],
@@ -105,7 +134,7 @@ export function QuadrantChart({
   const annotations: MarkAreaComponentOption["data"] = (data.annotations ?? []).map(
     (annotation) => [
       {
-        name: annotation.description,
+        name: `Condition: ${annotation.description}`,
         xAxis: annotation.x_range[0],
         yAxis: annotation.y_range[0],
       },
@@ -169,11 +198,20 @@ export function QuadrantChart({
             }
             const xLabel = data.axes.x.label;
             const yLabel = data.axes.y.label;
+            const xValue = formatValue(point.x, data.axes.x.unit);
+            const yValue = formatValue(point.y, data.axes.y.unit);
+            const days = windowDays(point.window_start, point.window_end);
+            const dayLabel = days
+              ? `${days} day${days === 1 ? "" : "s"}`
+              : "the selected window";
+            const subject = isPersonScope ? "Your position" : "This position";
+            const entityLabel = isPersonScope ? "You" : point.entity_label;
             return [
-              `<strong>${point.entity_label}</strong>`,
-              `${xLabel}: ${formatValue(point.x, data.axes.x.unit)}`,
-              `${yLabel}: ${formatValue(point.y, data.axes.y.unit)}`,
+              `<strong>${entityLabel}</strong>`,
+              `${xLabel}: ${xValue}`,
+              `${yLabel}: ${yValue}`,
               `Window: ${point.window_start} – ${point.window_end}`,
+              `${subject} reflects ${xLabel} at ${xValue} and ${yLabel} at ${yValue} over ${dayLabel}.`,
             ].join("<br/>");
           },
         },

@@ -227,7 +227,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
           </section>
 
           {view === "explain" && (
-            <section className="grid gap-6 lg:grid-cols-3">
+            <section id="evidence" className="grid gap-6 lg:grid-cols-3">
               <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
                 <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
                   Signal snapshot

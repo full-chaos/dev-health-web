@@ -235,33 +235,6 @@ export default function Home() {
           { x: 3.1, y: 14, window: "W-1" },
         ],
       },
-      {
-        entity_id: "ic-2",
-        entity_label: "Anonymous",
-        x: 2.4,
-        y: 10,
-        window_start: "2025-01-01",
-        window_end: "2025-01-07",
-        evidence_link: "/api/v1/explain?metric=cycle_time",
-      },
-      {
-        entity_id: "ic-3",
-        entity_label: "Anonymous",
-        x: 4.9,
-        y: 9,
-        window_start: "2025-01-01",
-        window_end: "2025-01-07",
-        evidence_link: "/api/v1/explain?metric=cycle_time",
-      },
-      {
-        entity_id: "ic-4",
-        entity_label: "Anonymous",
-        x: 3.8,
-        y: 12,
-        window_start: "2025-01-01",
-        window_end: "2025-01-07",
-        evidence_link: "/api/v1/explain?metric=cycle_time",
-      },
     ],
     annotations: [],
   };
@@ -433,8 +406,8 @@ export default function Home() {
                 IC views with peer filters applied
               </h2>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                Other individuals remain filtered and unlabeled. Only the named
-                individual is visible.
+                Only the named individual is shown. No peer comparison appears
+                in this view.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">
@@ -442,7 +415,7 @@ export default function Home() {
                 Developer: L. Morales
               </span>
               <span className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1">
-                Other individuals: filtered
+                Peer comparison: off
               </span>
               <span className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1">
                 Range: 30d
