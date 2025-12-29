@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
@@ -105,6 +111,8 @@ type QuadrantPanelProps = {
   filters: MetricFilter;
   relatedLinks?: Array<{ label: string; href: string }>;
   emptyState?: string;
+  chartHeight?: number;
+  showViewGuide?: boolean;
 };
 
 type ZoneLegendItem = {
@@ -122,6 +130,8 @@ export function QuadrantPanel({
   filters,
   relatedLinks,
   emptyState = "Quadrant data unavailable.",
+  chartHeight = 340,
+  showViewGuide = true,
 }: QuadrantPanelProps) {
   const scopeType =
     filters.scope.level === "developer" ? "person" : filters.scope.level;
@@ -134,6 +144,7 @@ export function QuadrantPanel({
   const [showZoneOverlay, setShowZoneOverlay] = useState(true);
   const [zoneQuestionsKey, setZoneQuestionsKey] = useState<string | null>(null);
   const [hoveredOverlayKey, setHoveredOverlayKey] = useState<string | null>(null);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const zoneOverlay = useMemo(() => getZoneOverlay(data), [data]);
   const hasInterpretationOverlay = Boolean(
     zoneOverlay || data?.annotations?.length
@@ -189,6 +200,14 @@ export function QuadrantPanel({
     }
     return items;
   }, [data, showZoneOverlay, zoneOverlay]);
+  const activeHoveredOverlayKey = useMemo(() => {
+    if (!showZoneOverlay || !hoveredOverlayKey) {
+      return null;
+    }
+    return zoneLegendItems.some((item) => item.overlayKey === hoveredOverlayKey)
+      ? hoveredOverlayKey
+      : null;
+  }, [hoveredOverlayKey, showZoneOverlay, zoneLegendItems]);
   const zoneIgnoredLogged = useRef(false);
   const axesKey = data ? `${data.axes.x.metric}:${data.axes.y.metric}` : null;
 
@@ -201,10 +220,6 @@ export function QuadrantPanel({
   useEffect(() => {
     zoneIgnoredLogged.current = false;
   }, [zoneOverlay]);
-
-  useEffect(() => {
-    setHoveredOverlayKey(null);
-  }, [dataKey, showZoneOverlay]);
 
   useEffect(() => {
     if (!zoneOverlay || !axesKey || showZoneOverlay || !activeSelectedPoint) {
@@ -300,9 +315,22 @@ export function QuadrantPanel({
     }
   };
 
+  useEffect(() => {
+    if (!isGuideOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsGuideOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isGuideOpen]);
+
   return (
     <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-[var(--font-display)] text-xl">{title}</h2>
           <p className="mt-1 text-xs text-[var(--ink-muted)]">
@@ -310,49 +338,65 @@ export function QuadrantPanel({
           </p>
           <p className="mt-2 text-sm text-[var(--ink-muted)]">{description}</p>
         </div>
-        <div className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-          Select a dot to investigate
+        <div className="flex flex-col items-end gap-2 text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+          <span>Select a dot to investigate</span>
+          {showViewGuide ? (
+            <button
+              type="button"
+              onClick={() => setIsGuideOpen(true)}
+              className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-[var(--ink-muted)]"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--card-stroke)] bg-[var(--card)] text-[11px] text-[var(--foreground)]">
+                ⓘ
+              </span>
+              View guide
+            </button>
+          ) : null}
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap items-start gap-3 text-xs text-[var(--ink-muted)]">
-        {hasInterpretationOverlay ? (
-          <div className="space-y-1">
-            <label className="inline-flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[11px]">
-              <input
-                type="checkbox"
-                checked={showZoneOverlay}
-                onChange={(event) => handleZoneToggle(event.target.checked)}
-                className="h-3.5 w-3.5 accent-[var(--accent-2)]"
-              />
-              <span>Show exploratory interpretation</span>
-            </label>
-            <p className="text-[11px] text-[var(--ink-muted)]">
-              Highlights common system modes observed in similar systems.
-            </p>
-          </div>
-        ) : null}
-        <details className="relative ml-auto">
-          <summary className="flex list-none cursor-pointer items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-[var(--ink-muted)] [&::-webkit-details-marker]:hidden">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--card-stroke)] bg-[var(--card)] text-[11px] text-[var(--foreground)]">
-              ⓘ
-            </span>
-            View guide
-          </summary>
-          <div className="absolute right-0 z-10 mt-2 w-80 max-w-[90vw] rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 text-[11px] text-[var(--ink-muted)] shadow-[0_18px_40px_-24px_rgba(0,0,0,0.55)]">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-              {infoTitle}
-            </p>
-            <div className="mt-3 space-y-2">
+      {showViewGuide && isGuideOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setIsGuideOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5 text-[11px] text-[var(--ink-muted)] shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  {infoTitle}
+                </p>
+                <p className="mt-2 text-sm text-[var(--foreground)]">
+                  How to read this view
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGuideOpen(false)}
+                className="rounded-full border border-[var(--card-stroke)] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-4 space-y-2">
               <p>
-                <span className="font-semibold text-[var(--foreground)]">X-axis:</span>{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  X-axis:
+                </span>{" "}
                 {data.axes.x.label} — {axisXDescription}
               </p>
               <p>
-                <span className="font-semibold text-[var(--foreground)]">Y-axis:</span>{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  Y-axis:
+                </span>{" "}
                 {data.axes.y.label} — {axisYDescription}
               </p>
               <p>
-                <span className="font-semibold text-[var(--foreground)]">Dot:</span>{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  Dot:
+                </span>{" "}
                 {pointMeaning}
               </p>
               <p>
@@ -368,7 +412,9 @@ export function QuadrantPanel({
                 {quadrantMeaning}
               </p>
               <p>
-                <span className="font-semibold text-[var(--foreground)]">Cohort:</span>{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  Cohort:
+                </span>{" "}
                 {cohortMeaning}
               </p>
               <p>
@@ -378,11 +424,15 @@ export function QuadrantPanel({
                 {snapshotMeaning}
               </p>
               <p>
-                <span className="font-semibold text-[var(--foreground)]">For:</span>{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  For:
+                </span>{" "}
                 {forMeaning}
               </p>
               <p>
-                <span className="font-semibold text-[var(--foreground)]">Next:</span>{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  Next:
+                </span>{" "}
                 {nextMeaning}
               </p>
             </div>
@@ -419,7 +469,25 @@ export function QuadrantPanel({
               </p>
             </div>
           </div>
-        </details>
+        </div>
+      ) : null}
+      <div className="mt-3 flex flex-wrap items-start gap-3 text-xs text-[var(--ink-muted)]">
+        {hasInterpretationOverlay ? (
+          <div className="space-y-1">
+            <label className="inline-flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[11px]">
+              <input
+                type="checkbox"
+                checked={showZoneOverlay}
+                onChange={(event) => handleZoneToggle(event.target.checked)}
+                className="h-3.5 w-3.5 accent-[var(--accent-2)]"
+              />
+              <span>Show exploratory interpretation</span>
+            </label>
+            <p className="text-[11px] text-[var(--ink-muted)]">
+              Highlights common system modes observed in similar systems.
+            </p>
+          </div>
+        ) : null}
       </div>
       <div
         className={
@@ -431,13 +499,13 @@ export function QuadrantPanel({
         <div>
           <QuadrantChart
             data={data}
-            height={340}
+            height={chartHeight}
             onPointSelect={handlePointSelect}
             focusEntityIds={focusEntityIds}
             scopeType={scopeType}
             zoneOverlay={zoneOverlay}
             showZoneOverlay={showZoneOverlay}
-            highlightOverlayKey={hoveredOverlayKey}
+            highlightOverlayKey={activeHoveredOverlayKey}
           />
         </div>
         {showZoneLegend ? (
@@ -452,7 +520,7 @@ export function QuadrantPanel({
             </div>
             <div className="mt-3 space-y-3">
               {zoneLegendItems.map((item) => {
-                const isActive = hoveredOverlayKey === item.overlayKey;
+                const isActive = activeHoveredOverlayKey === item.overlayKey;
                 return (
                   <div
                     key={item.key}
@@ -461,11 +529,10 @@ export function QuadrantPanel({
                     onFocus={() => setHoveredOverlayKey(item.overlayKey)}
                     onBlur={() => setHoveredOverlayKey(null)}
                     tabIndex={0}
-                    className={`flex gap-3 rounded-xl border px-2 py-2 transition ${
-                      isActive
+                    className={`flex gap-3 rounded-xl border px-2 py-2 transition ${isActive
                         ? "border-[var(--card-stroke)] bg-[var(--card-70)]"
                         : "border-transparent"
-                    }`}
+                      }`}
                   >
                     <span
                       className="mt-1 h-3 w-3 shrink-0 rounded-full border"

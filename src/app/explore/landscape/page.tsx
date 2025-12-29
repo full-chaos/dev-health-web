@@ -35,6 +35,8 @@ const QUADRANT_CARDS = [
   },
 ];
 
+const PRIMARY_QUADRANT_TYPE = "churn_throughput";
+
 type LandscapePageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
@@ -82,6 +84,17 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
       )
     : QUADRANT_CARDS.map(() => null);
 
+  const primaryCardIndex = QUADRANT_CARDS.findIndex(
+    (card) => card.type === PRIMARY_QUADRANT_TYPE
+  );
+  const primaryCard =
+    primaryCardIndex >= 0 ? QUADRANT_CARDS[primaryCardIndex] : QUADRANT_CARDS[0];
+  const primaryData =
+    quadrantData[primaryCardIndex >= 0 ? primaryCardIndex : 0];
+  const secondaryCards = QUADRANT_CARDS.filter(
+    (card) => card.type !== primaryCard.type
+  );
+
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
@@ -97,6 +110,12 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
               </h1>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
                 Classify system modes under competing pressures without ranking teams or people.
+              </p>
+              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+                Explore system operating modes across multiple pressure pairs.
+              </p>
+              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                Each view highlights a different pressure pair. Investigation steps are shared.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -141,23 +160,46 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             </Link>
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-2">
-            {QUADRANT_CARDS.map((card, index) => (
-              <QuadrantPanel
-                key={card.type}
-                title={card.title}
-                description={card.description}
-                data={quadrantData[index]}
-                filters={filters}
-                relatedLinks={[
-                  {
-                    label: "Open heatmaps",
-                    href: withFilterParam(card.heatmapHref, filters),
-                  },
-                ]}
-                emptyState="Quadrant data unavailable for this scope."
-              />
-            ))}
+          <section className="flex flex-col gap-10">
+            <QuadrantPanel
+              key={primaryCard.type}
+              title={primaryCard.title}
+              description={primaryCard.description}
+              data={primaryData}
+              filters={filters}
+              chartHeight={380}
+              relatedLinks={[
+                {
+                  label: "Open heatmaps",
+                  href: withFilterParam(primaryCard.heatmapHref, filters),
+                },
+              ]}
+              emptyState="Quadrant data unavailable for this scope."
+            />
+            <div className="flex flex-col gap-8">
+              {secondaryCards.map((card) => {
+                const cardIndex = QUADRANT_CARDS.findIndex(
+                  (item) => item.type === card.type
+                );
+                return (
+                  <QuadrantPanel
+                    key={card.type}
+                    title={card.title}
+                    description={card.description}
+                    data={quadrantData[cardIndex]}
+                    filters={filters}
+                    chartHeight={300}
+                    relatedLinks={[
+                      {
+                        label: "Open heatmaps",
+                        href: withFilterParam(card.heatmapHref, filters),
+                      },
+                    ]}
+                    emptyState="Quadrant data unavailable for this scope."
+                  />
+                );
+              })}
+            </div>
           </section>
         </main>
       </div>
