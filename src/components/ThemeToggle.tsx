@@ -1,10 +1,22 @@
 "use client";
 
 import type { ChangeEvent } from "react";
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
 type Palette = "material" | "echarts" | "fullchaos" | "fullchaos-cosmic" | "flat";
+type Listener = () => void;
+
+const listeners = new Set<Listener>();
+
+const subscribe = (listener: Listener) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+
+const notify = () => {
+  listeners.forEach((listener) => listener());
+};
 
 const getStoredTheme = (): Theme | null => {
   if (typeof window === "undefined") {
@@ -46,14 +58,16 @@ const applyTheme = (theme: Theme) => {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
   localStorage.setItem("theme", theme);
+  notify();
 };
 
 const applyPalette = (palette: Palette) => {
   document.documentElement.dataset.palette = palette;
   localStorage.setItem("palette", palette);
+  notify();
 };
 
-const getCurrentTheme = (): Theme => {
+const getThemeSnapshot = (): Theme => {
   if (typeof window === "undefined") {
     return "light";
   }
@@ -68,7 +82,7 @@ const getCurrentTheme = (): Theme => {
   return getSystemTheme();
 };
 
-const getCurrentPalette = (): Palette => {
+const getPaletteSnapshot = (): Palette => {
   if (typeof window === "undefined") {
     return "material";
   }
@@ -84,9 +98,16 @@ const getCurrentPalette = (): Palette => {
   return "material";
 };
 
+const getThemeServerSnapshot = (): Theme => "light";
+const getPaletteServerSnapshot = (): Palette => "material";
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() => getCurrentTheme());
-  const [palette, setPalette] = useState<Palette>(() => getCurrentPalette());
+  const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);
+  const palette = useSyncExternalStore(
+    subscribe,
+    getPaletteSnapshot,
+    getPaletteServerSnapshot
+  );
 
   const handleToggle = () => {
     if (typeof window === "undefined") {
@@ -94,7 +115,6 @@ export function ThemeToggle() {
     }
     const nextTheme = theme === "dark" ? "light" : "dark";
     applyTheme(nextTheme);
-    setTheme(nextTheme);
   };
 
   const handlePaletteChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -103,7 +123,6 @@ export function ThemeToggle() {
     }
     const nextPalette = event.target.value as Palette;
     applyPalette(nextPalette);
-    setPalette(nextPalette);
   };
 
   return (

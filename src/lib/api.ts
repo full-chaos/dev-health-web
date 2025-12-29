@@ -119,6 +119,12 @@ export async function getDrilldown(
 }
 
 export async function checkApiHealth() {
+  if (process.env.DEV_HEALTH_TEST_MODE === "true") {
+    return {
+      ok: true,
+      data: { status: "ok", services: { api: "mock" } } as HealthResponse,
+    };
+  }
   const url = buildUrl("/api/v1/health");
   try {
     const response = await fetch(url, { cache: "no-store" });
@@ -169,11 +175,15 @@ export async function getPersonDrilldown(params: {
   limit?: number;
   cursor?: string;
   metric?: string;
+  range_days?: number;
+  compare_days?: number;
 }) {
   const url = buildUrl(`/api/v1/people/${params.personId}/drilldown/${params.type}`, {
     limit: params.limit ?? 50,
     cursor: params.cursor ?? "",
     metric: params.metric ?? "",
+    range_days: params.range_days ?? "",
+    compare_days: params.compare_days ?? "",
   });
   return fetchJson<PersonDrilldownResponse>(url, { cache: "no-store" });
 }
@@ -181,7 +191,7 @@ export async function getPersonDrilldown(params: {
 export async function getHeatmap(params: {
   type: "temporal_load" | "context_switch" | "risk" | "individual";
   metric: string;
-  scope_type: string;
+  scope_type: "org" | "team" | "repo" | "person" | "developer" | string;
   scope_id?: string;
   range_days: number;
   start_date?: string;
@@ -190,19 +200,43 @@ export async function getHeatmap(params: {
   y?: string;
   limit?: number;
 }) {
-  const url = buildUrl("/api/v1/heatmap", {
-    type: params.type,
-    metric: params.metric,
-    scope_type: params.scope_type,
-    scope_id: params.scope_id ?? "",
-    range_days: params.range_days,
-    start_date: params.start_date ?? "",
-    end_date: params.end_date ?? "",
-    x: params.x ?? "",
-    y: params.y ?? "",
-    limit: params.limit ?? 50,
-  });
-  return fetchJson<HeatmapResponse>(url, { cache: "no-store" });
+  const normalizedScopeType =
+    params.scope_type === "developer" ? "person" : params.scope_type;
+  const candidates =
+    normalizedScopeType === "person"
+      ? ["person", "developer"]
+      : [normalizedScopeType];
+
+  let lastError: unknown;
+  for (const scopeType of candidates) {
+    const url = buildUrl("/api/v1/heatmap", {
+      type: params.type,
+      metric: params.metric,
+      scope_type: scopeType,
+      scope_id: params.scope_id ?? "",
+      range_days: params.range_days,
+      start_date: params.start_date ?? "",
+      end_date: params.end_date ?? "",
+      x: params.x ?? "",
+      y: params.y ?? "",
+      limit: params.limit ?? 50,
+    });
+    const response = await fetch(url, { cache: "no-store" });
+    if (response.ok) {
+      return (await response.json()) as HeatmapResponse;
+    }
+    lastError = response;
+    if (candidates.length === 1) {
+      break;
+    }
+    if (response.status !== 400 && response.status !== 404 && response.status !== 422) {
+      break;
+    }
+  }
+  if (lastError instanceof Response) {
+    throw new Error(`API error: ${lastError.status}`);
+  }
+  throw lastError ?? new Error("API error");
 }
 
 export async function getFlame(params: {
@@ -229,14 +263,16 @@ export async function getQuadrant(params: {
   start_date?: string;
   end_date?: string;
 }) {
-  const primaryScopeType =
-    params.scope_type === "team" && !params.scope_id ? "org" : params.scope_type;
+  const normalizedScopeType =
+    params.scope_type === "developer" ? "person" : params.scope_type;
   const candidates =
-    primaryScopeType === "person"
+    normalizedScopeType === "person"
       ? ["person", "developer"]
-      : primaryScopeType === "developer"
-        ? ["developer", "person"]
-        : [primaryScopeType];
+      : !params.scope_id && normalizedScopeType === "team"
+        ? ["team", "org"]
+        : !params.scope_id && normalizedScopeType === "repo"
+          ? ["repo", "org"]
+          : [normalizedScopeType];
 
   let lastError: unknown;
   for (const scopeType of candidates) {
@@ -257,7 +293,7 @@ export async function getQuadrant(params: {
     if (candidates.length === 1) {
       break;
     }
-    if (response.status !== 400 && response.status !== 422) {
+    if (response.status !== 400 && response.status !== 404 && response.status !== 422) {
       break;
     }
   }

@@ -39,12 +39,12 @@ type LandscapePageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const scopeTypeMap: Record<string, "org" | "team" | "repo" | "developer"> = {
+const scopeTypeMap: Record<string, "org" | "team" | "repo" | "person"> = {
   org: "org",
   team: "team",
   repo: "repo",
-  developer: "developer",
-  person: "developer",
+  developer: "person",
+  person: "person",
 };
 
 export default async function LandscapePage({ searchParams }: LandscapePageProps) {
@@ -65,7 +65,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
   const scopeType = scopeTypeMap[filters.scope.level] ?? "org";
   const scopeId = filters.scope.ids[0] ?? "";
 
-  const canQuery = scopeType !== "developer" || Boolean(scopeId);
+  const canQuery = scopeType !== "person" || Boolean(scopeId);
   const quadrantData = canQuery
     ? await Promise.all(
         QUADRANT_CARDS.map((card) =>

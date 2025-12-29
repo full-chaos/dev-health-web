@@ -338,7 +338,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
 
   const visibility = resolveVisibility(view, tab);
   const allowAdvanced = view !== "people";
-  const scopeLock =
+  const scopeLock: MetricFilter["scope"]["level"] | null =
     view === "metrics" ||
     view === "quality" ||
     view === "work" ||

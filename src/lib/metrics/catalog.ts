@@ -11,7 +11,9 @@ export const METRIC_CATALOG = [
   { metric: "change_failure_rate", label: "Change Failure Rate", unit: "%" },
 ] as const;
 
-const metricMetaByKey = new Map(
+type MetricMeta = (typeof METRIC_CATALOG)[number];
+
+const metricMetaByKey = new Map<string, MetricMeta>(
   METRIC_CATALOG.map((item) => [item.metric, item])
 );
 

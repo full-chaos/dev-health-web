@@ -113,7 +113,7 @@ export default async function PersonMetricPage({
   const activeHoursHeatmap = await getHeatmap({
     type: "individual",
     metric: "active_hours",
-    scope_type: "developer",
+    scope_type: "person",
     scope_id: personId,
     range_days,
   }).catch(() => null);
@@ -145,6 +145,8 @@ export default async function PersonMetricPage({
         limit,
         cursor: cursorParam ?? undefined,
         metric,
+        range_days,
+        compare_days,
       }).catch(() => null)
     : null;
 

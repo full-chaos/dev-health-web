@@ -25,6 +25,10 @@ export function QuadrantPanel({
   relatedLinks,
   emptyState = "Quadrant data unavailable.",
 }: QuadrantPanelProps) {
+  const scopeType =
+    filters.scope.level === "developer" ? "person" : filters.scope.level;
+  const focusEntityIds = filters.scope.ids ?? [];
+
   const handlePointSelect = (point: QuadrantPoint) => {
     if (!point.evidence_link) {
       return;
@@ -53,8 +57,17 @@ export function QuadrantPanel({
         </div>
       </div>
       <div className="mt-4">
-        <QuadrantChart data={data} height={340} onPointSelect={handlePointSelect} />
+        <QuadrantChart
+          data={data}
+          height={340}
+          onPointSelect={handlePointSelect}
+          focusEntityIds={focusEntityIds}
+          scopeType={scopeType}
+        />
       </div>
+      <p className="mt-3 text-xs text-[var(--ink-muted)]">
+        Unlabeled points = filtered cohort.
+      </p>
       {relatedLinks?.length ? (
         <div className="mt-4 flex flex-wrap gap-3 text-xs">
           {relatedLinks.map((link) => (

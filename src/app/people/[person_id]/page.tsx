@@ -85,7 +85,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
   const quadrantFilters = {
     ...filters,
     time: { range_days, compare_days },
-    scope: { level: "developer", ids: [personId] },
+    scope: { level: "developer" as const, ids: [personId] },
   };
 
   const summary = await getPersonSummary({
@@ -95,7 +95,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
   }).catch(() => null);
   const quadrant = await getQuadrant({
     type: "churn_throughput",
-    scope_type: "developer",
+    scope_type: "person",
     scope_id: personId,
     range_days,
     bucket: "week",

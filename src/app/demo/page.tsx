@@ -214,6 +214,7 @@ export default function Home() {
       },
     ],
   };
+  const quadrantFocusIds = ["core"];
   const icQuadrantData: QuadrantResponse = {
     axes: {
       x: { metric: "cycle_time", label: "Cycle time", unit: "days" },
@@ -222,7 +223,7 @@ export default function Home() {
     points: [
       {
         entity_id: "ic-1",
-        entity_label: "Individual focus",
+        entity_label: "L. Morales",
         x: 3.1,
         y: 14,
         window_start: "2025-01-01",
@@ -234,9 +235,37 @@ export default function Home() {
           { x: 3.1, y: 14, window: "W-1" },
         ],
       },
+      {
+        entity_id: "ic-2",
+        entity_label: "Anonymous",
+        x: 2.4,
+        y: 10,
+        window_start: "2025-01-01",
+        window_end: "2025-01-07",
+        evidence_link: "/api/v1/explain?metric=cycle_time",
+      },
+      {
+        entity_id: "ic-3",
+        entity_label: "Anonymous",
+        x: 4.9,
+        y: 9,
+        window_start: "2025-01-01",
+        window_end: "2025-01-07",
+        evidence_link: "/api/v1/explain?metric=cycle_time",
+      },
+      {
+        entity_id: "ic-4",
+        entity_label: "Anonymous",
+        x: 3.8,
+        y: 12,
+        window_start: "2025-01-01",
+        window_end: "2025-01-07",
+        evidence_link: "/api/v1/explain?metric=cycle_time",
+      },
     ],
     annotations: [],
   };
+  const icFocusIds = ["ic-1"];
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -386,7 +415,12 @@ export default function Home() {
               Churn × Throughput
             </span>
           </div>
-          <QuadrantChart data={quadrantData} height={280} />
+          <QuadrantChart
+            data={quadrantData}
+            height={280}
+            focusEntityIds={quadrantFocusIds}
+            scopeType="team"
+          />
         </section>
 
         <section className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm">
@@ -441,7 +475,12 @@ export default function Home() {
                   Trajectory
                 </span>
               </div>
-              <QuadrantChart data={icQuadrantData} height={200} />
+              <QuadrantChart
+                data={icQuadrantData}
+                height={200}
+                focusEntityIds={icFocusIds}
+                scopeType="person"
+              />
             </div>
           </div>
         </section>

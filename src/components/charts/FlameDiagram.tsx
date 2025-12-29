@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import type {
+  TooltipComponentFormatterCallbackParams,
   CustomSeriesRenderItemAPI,
   CustomSeriesRenderItemParams,
 } from "echarts";
@@ -107,26 +108,30 @@ export function FlameDiagram({
 
   const mergedStyle: CSSProperties = { height, width, ...style };
 
+  const formatTooltip = (params: TooltipComponentFormatterCallbackParams) => {
+    const entry = Array.isArray(params) ? params[0] : params;
+    const values = Array.isArray(entry?.value) ? entry.value : [];
+    if (!values.length) {
+      return "";
+    }
+    const label = values[3];
+    const state = values[4];
+    const category = values[5];
+    const duration = formatDuration(String(values[0]), String(values[1]));
+    return [
+      `<strong>${label}</strong>`,
+      `State: ${state}`,
+      `Category: ${category}`,
+      `Duration: ${duration}`,
+    ].join("<br/>");
+  };
+
   return (
     <Chart
       option={{
         tooltip: {
           confine: true,
-          formatter: (params: { value?: Array<string | number> }) => {
-            if (!params?.value) {
-              return "";
-            }
-            const label = params.value[3];
-            const state = params.value[4];
-            const category = params.value[5];
-            const duration = formatDuration(String(params.value[0]), String(params.value[1]));
-            return [
-              `<strong>${label}</strong>`,
-              `State: ${state}`,
-              `Category: ${category}`,
-              `Duration: ${duration}`,
-            ].join("<br/>");
-          },
+          formatter: formatTooltip,
         },
         grid: { left: 24, right: 24, top: 16, bottom: 40, containLabel: true },
         xAxis: {
@@ -161,12 +166,13 @@ export function FlameDiagram({
               const endValue = api.value(1);
               const depth = api.value(2);
               const label = api.value(3);
-              const state = api.value(4);
-              const category = api.value(5);
+              const state = String(api.value(4));
+              const category = String(api.value(5));
 
               const startCoord = api.coord([startValue, depth]);
               const endCoord = api.coord([endValue, depth]);
-              const height = api.size([0, 1])[1] * 0.7;
+              const size = api.size ? (api.size([0, 1]) as number[]) : [0, 0];
+              const height = (size ? size[1] : 0) * 0.7;
               const y = startCoord[1] - height / 2;
               const width = endCoord[0] - startCoord[0];
 
@@ -179,8 +185,9 @@ export function FlameDiagram({
                   lineWidth: 1,
                 },
                 textContent: {
+                  type: "text",
                   style: {
-                    text: label,
+                    text: String(label),
                     fill: chartTheme.text,
                     fontSize: 11,
                     overflow: "truncate",

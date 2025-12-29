@@ -1,6 +1,11 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import type {
+  DefaultLabelFormatterCallbackParams,
+  MarkAreaComponentOption,
+  TooltipComponentFormatterCallbackParams,
+} from "echarts";
 
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
@@ -30,6 +35,8 @@ type QuadrantChartProps = {
   className?: string;
   style?: CSSProperties;
   onPointSelect?: (point: QuadrantPoint) => void;
+  focusEntityIds?: string[];
+  scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string;
 };
 
 export function QuadrantChart({
@@ -39,6 +46,8 @@ export function QuadrantChart({
   className,
   style,
   onPointSelect,
+  focusEntityIds,
+  scopeType,
 }: QuadrantChartProps) {
   const chartTheme = useChartTheme();
   const colors = useChartColors();
@@ -50,12 +59,30 @@ export function QuadrantChart({
     ? `${data.axes.y.label} (${data.axes.y.unit})`
     : data.axes.y.label;
 
-  const scatterData = data.points.map((point) => ({
+  const normalizedScopeType =
+    scopeType === "developer" ? "person" : scopeType ?? "org";
+  const focusIds = (focusEntityIds ?? []).filter(Boolean);
+  const focusSet = new Set(focusIds);
+  const focusPoints = focusIds.length
+    ? data.points.filter((point) => focusSet.has(point.entity_id))
+    : [];
+  const hasFocus = focusPoints.length > 0;
+  const backgroundPoints = hasFocus
+    ? data.points.filter((point) => !focusSet.has(point.entity_id))
+    : data.points;
+  const backgroundOpacity = normalizedScopeType === "person" ? 0.2 : 1;
+
+  const focusData = focusPoints.map((point) => ({
+    value: [point.x, point.y],
+    point,
+  }));
+  const backgroundData = backgroundPoints.map((point) => ({
     value: [point.x, point.y],
     point,
   }));
 
-  const trajectorySeries = data.points
+  const trajectorySource = hasFocus ? focusPoints : data.points;
+  const trajectorySeries = trajectorySource
     .filter((point) => (point.trajectory?.length ?? 0) > 1)
     .map((point, index) => ({
       type: "line" as const,
@@ -64,31 +91,66 @@ export function QuadrantChart({
       lineStyle: {
         color: colors[(index + 2) % colors.length] ?? colors[2],
         width: 2,
-        type: "solid",
+        type: "solid" as const,
       },
       symbol: "circle",
       symbolSize: 6,
       itemStyle: {
         color: colors[(index + 2) % colors.length] ?? colors[2],
       },
-      emphasis: { focus: "series" },
+      emphasis: { focus: "series" as const },
       z: 2,
     }));
 
-  const annotations = (data.annotations ?? []).map((annotation) => [
-    {
-      name: annotation.description,
-      xAxis: annotation.x_range[0],
-      yAxis: annotation.y_range[0],
-    },
-    {
-      xAxis: annotation.x_range[1],
-      yAxis: annotation.y_range[1],
-    },
-  ]);
+  const annotations: MarkAreaComponentOption["data"] = (data.annotations ?? []).map(
+    (annotation) => [
+      {
+        name: annotation.description,
+        xAxis: annotation.x_range[0],
+        yAxis: annotation.y_range[0],
+      },
+      {
+        xAxis: annotation.x_range[1],
+        yAxis: annotation.y_range[1],
+      },
+    ]
+  );
+  const markArea: MarkAreaComponentOption | undefined = annotations?.length
+    ? {
+        itemStyle: {
+          color: "rgba(148, 163, 184, 0.08)",
+        },
+        label: {
+          show: true,
+          color: chartTheme.muted,
+          fontSize: 10,
+          formatter: "{b}",
+        },
+        data: annotations,
+      }
+    : undefined;
 
-  const handleClick = (params: { data?: { point?: QuadrantPoint } }) => {
-    const point = params?.data?.point;
+  const toPoint = (data: unknown) => {
+    if (!data || typeof data !== "object") {
+      return null;
+    }
+    const candidate = data as { point?: QuadrantPoint };
+    return candidate.point ?? null;
+  };
+
+  const getParamsEntry = (
+    params: unknown
+  ): DefaultLabelFormatterCallbackParams | null => {
+    const entry = Array.isArray(params) ? params[0] : params;
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    return entry as DefaultLabelFormatterCallbackParams;
+  };
+
+  const handleClick = (params: unknown) => {
+    const entry = getParamsEntry(params);
+    const point = entry ? toPoint(entry.data) : null;
     if (point && onPointSelect) {
       onPointSelect(point);
     }
@@ -99,8 +161,9 @@ export function QuadrantChart({
       option={{
         tooltip: {
           confine: true,
-          formatter: (params: { data?: { point?: QuadrantPoint } }) => {
-            const point = params?.data?.point;
+          formatter: (params: TooltipComponentFormatterCallbackParams) => {
+            const entry = getParamsEntry(params);
+            const point = entry ? toPoint(entry.data) : null;
             if (!point) {
               return "";
             }
@@ -136,26 +199,42 @@ export function QuadrantChart({
         series: [
           {
             type: "scatter",
-            data: scatterData,
-            symbolSize: 12,
+            data: backgroundData,
+            symbolSize: normalizedScopeType === "person" ? 8 : 10,
             itemStyle: {
-              color: colors[0] ?? "#2563eb",
+              color: chartTheme.muted,
+              opacity: backgroundOpacity,
             },
-            markArea: annotations.length
-              ? {
+            markArea: backgroundData.length ? markArea : undefined,
+            emphasis: { scale: true },
+            z: 1,
+          },
+          ...(hasFocus
+            ? [
+                {
+                  type: "scatter" as const,
+                  data: focusData,
+                  symbolSize: 14,
                   itemStyle: {
-                    color: "rgba(148, 163, 184, 0.08)",
+                    color: colors[0] ?? "#2563eb",
                   },
                   label: {
                     show: true,
-                    color: chartTheme.muted,
-                    fontSize: 10,
-                    formatter: "{b}",
+                    formatter: (params: DefaultLabelFormatterCallbackParams) => {
+                      const point = toPoint(params.data);
+                      return point?.entity_label ?? "";
+                    },
+                    color: chartTheme.text,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    position: "top" as const,
                   },
-                  data: annotations,
-                }
-              : undefined,
-          },
+                  labelLayout: { hideOverlap: true },
+                  markArea: !backgroundData.length ? markArea : undefined,
+                  z: 3,
+                },
+              ]
+            : []),
           ...trajectorySeries,
         ],
       }}

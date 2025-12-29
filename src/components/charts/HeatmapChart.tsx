@@ -2,6 +2,8 @@
 
 import type { CSSProperties } from "react";
 
+import type { TooltipComponentFormatterCallbackParams } from "echarts";
+
 import type { HeatmapResponse } from "@/lib/types";
 
 import { Chart } from "./Chart";
@@ -49,16 +51,26 @@ export function HeatmapChart({
     cell.value,
   ]);
 
-  const handleClick = (params: { value?: Array<number | string> }) => {
-    if (!onCellSelect || !params?.value) {
+  const getValueArray = (params: unknown) => {
+    const entry = Array.isArray(params) ? params[0] : params;
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    const candidate = entry as { value?: unknown };
+    return Array.isArray(candidate.value) ? candidate.value : null;
+  };
+
+  const handleClick = (params: unknown) => {
+    if (!onCellSelect) {
       return;
     }
-    const rawValue =
-      typeof params.value[3] === "number"
-        ? (params.value[3] as number)
-        : (params.value[2] as number);
-    const xLabel = String(params.value[0]);
-    const yLabel = String(params.value[1]);
+    const values = getValueArray(params);
+    if (!values) {
+      return;
+    }
+    const rawValue = typeof values[3] === "number" ? values[3] : values[2];
+    const xLabel = String(values[0]);
+    const yLabel = String(values[1]);
     if (typeof rawValue === "number") {
       onCellSelect({ x: xLabel, y: yLabel, value: rawValue });
     }
@@ -69,13 +81,14 @@ export function HeatmapChart({
       option={{
         tooltip: {
           confine: true,
-          formatter: (params: { value?: Array<number | string> }) => {
-            if (!params?.value) {
+          formatter: (params: TooltipComponentFormatterCallbackParams) => {
+            const values = getValueArray(params);
+            if (!values) {
               return "";
             }
-            const raw = params.value[3] ?? params.value[2];
-            const xLabel = params.value[0];
-            const yLabel = params.value[1];
+            const raw = values[3] ?? values[2];
+            const xLabel = values[0];
+            const yLabel = values[1];
             const formatted = typeof raw === "number" ? raw.toFixed(2) : raw;
             return [
               `<strong>${yLabel}</strong> · ${xLabel}`,
