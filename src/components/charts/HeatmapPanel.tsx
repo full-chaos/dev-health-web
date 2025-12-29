@@ -15,6 +15,8 @@ type HeatmapRequest = {
   scope_type: string;
   scope_id?: string;
   range_days: number;
+  start_date?: string;
+  end_date?: string;
 };
 
 type HeatmapPanelProps = {

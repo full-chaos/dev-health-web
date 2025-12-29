@@ -184,6 +184,8 @@ export async function getHeatmap(params: {
   scope_type: string;
   scope_id?: string;
   range_days: number;
+  start_date?: string;
+  end_date?: string;
   x?: string;
   y?: string;
   limit?: number;
@@ -194,6 +196,8 @@ export async function getHeatmap(params: {
     scope_type: params.scope_type,
     scope_id: params.scope_id ?? "",
     range_days: params.range_days,
+    start_date: params.start_date ?? "",
+    end_date: params.end_date ?? "",
     x: params.x ?? "",
     y: params.y ?? "",
     limit: params.limit ?? 50,
@@ -222,6 +226,8 @@ export async function getQuadrant(params: {
   scope_id?: string;
   range_days: number;
   bucket: "week" | "month";
+  start_date?: string;
+  end_date?: string;
 }) {
   const primaryScopeType =
     params.scope_type === "team" && !params.scope_id ? "org" : params.scope_type;
@@ -239,6 +245,8 @@ export async function getQuadrant(params: {
       scope_type: scopeType,
       scope_id: params.scope_id ?? "",
       range_days: params.range_days,
+      start_date: params.start_date ?? "",
+      end_date: params.end_date ?? "",
       bucket: params.bucket,
     });
     const response = await fetch(url, { cache: "no-store" });

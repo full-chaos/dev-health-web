@@ -60,6 +60,8 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     scope_type: filters.scope.level,
     scope_id: scopeId,
     range_days: filters.time.range_days,
+    start_date: filters.time.start_date,
+    end_date: filters.time.end_date,
   }).catch(() => null);
   const churnThroughput = await getQuadrant({
     type: "churn_throughput",
@@ -67,6 +69,8 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     scope_id: scopeId,
     range_days: filters.time.range_days,
     bucket: "week",
+    start_date: filters.time.start_date,
+    end_date: filters.time.end_date,
   }).catch(() => null);
 
   return (
@@ -132,6 +136,8 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 scope_type: filters.scope.level,
                 scope_id: scopeId,
                 range_days: filters.time.range_days,
+                start_date: filters.time.start_date,
+                end_date: filters.time.end_date,
               }}
               initialData={hotspotHeatmap}
               emptyState="Hotspot risk heatmap unavailable."

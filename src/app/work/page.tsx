@@ -78,6 +78,8 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     scope_type: filters.scope.level,
     scope_id: scopeId,
     range_days: filters.time.range_days,
+    start_date: filters.time.start_date,
+    end_date: filters.time.end_date,
   }).catch(() => null);
   const cycleThroughput = await getQuadrant({
     type: "cycle_throughput",
@@ -85,6 +87,8 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     scope_id: scopeId,
     range_days: filters.time.range_days,
     bucket: "week",
+    start_date: filters.time.start_date,
+    end_date: filters.time.end_date,
   }).catch(() => null);
   const wipThroughput = await getQuadrant({
     type: "wip_throughput",
@@ -92,6 +96,8 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     scope_id: scopeId,
     range_days: filters.time.range_days,
     bucket: "week",
+    start_date: filters.time.start_date,
+    end_date: filters.time.end_date,
   }).catch(() => null);
   const reviewLoadLatency = await getQuadrant({
     type: "review_load_latency",
@@ -99,6 +105,8 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     scope_id: scopeId,
     range_days: filters.time.range_days,
     bucket: "week",
+    start_date: filters.time.start_date,
+    end_date: filters.time.end_date,
   }).catch(() => null);
 
   const planned = investment
@@ -185,6 +193,8 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
                 scope_type: filters.scope.level,
                 scope_id: scopeId,
                 range_days: filters.time.range_days,
+                start_date: filters.time.start_date,
+                end_date: filters.time.end_date,
               }}
               initialData={reviewHeatmap}
               emptyState="Review wait heatmap unavailable."

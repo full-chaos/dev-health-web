@@ -74,6 +74,8 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             scope_type: scopeType,
             scope_id: scopeId,
             range_days: filters.time.range_days,
+            start_date: filters.time.start_date,
+            end_date: filters.time.end_date,
             bucket,
           }).catch(() => null)
         )

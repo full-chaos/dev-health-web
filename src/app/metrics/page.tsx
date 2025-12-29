@@ -118,6 +118,8 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     scope_id: filters.scope.ids[0] ?? "",
     range_days: filters.time.range_days,
     bucket: "week",
+    start_date: filters.time.start_date,
+    end_date: filters.time.end_date,
   }).catch(() => null);
 
   const drivers = (highlight?.drivers ?? []).slice(0, 5);
