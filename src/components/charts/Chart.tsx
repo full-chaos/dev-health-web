@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import type { EChartsOption } from "echarts";
 
-import { chartColors, chartTextColor } from "./chartTheme";
+import { useChartColors, useChartTheme } from "./chartTheme";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -16,20 +16,24 @@ type ChartProps = {
   onEvents?: Record<string, (params: unknown) => void>;
 };
 
-const baseOption: EChartsOption = {
-  color: chartColors,
-  textStyle: {
-    color: chartTextColor,
-    fontFamily: "var(--font-geist-sans, system-ui, sans-serif)",
-  },
-  animationDuration: 600,
-};
-
 export function Chart({ option, className, style, onEvents }: ChartProps) {
   const [isReady, setIsReady] = useState(false);
+  const chartColors = useChartColors();
+  const chartTheme = useChartTheme();
+
+  const baseOption: EChartsOption = {
+    color: chartColors,
+    textStyle: {
+      color: chartTheme.text,
+      fontFamily: "var(--font-body, system-ui, sans-serif)",
+    },
+    animationDuration: 600,
+  };
+
   const mergedOption = {
     ...baseOption,
     ...option,
+    textStyle: { ...baseOption.textStyle, ...option.textStyle },
   } as EChartsOption;
 
   return (

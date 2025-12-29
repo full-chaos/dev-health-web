@@ -1,16 +1,132 @@
+import { useEffect, useState } from "react";
+
 export const chartColors = [
-  "#1f77b4",
-  "#ff7f0e",
-  "#2ca02c",
-  "#d62728",
-  "#9467bd",
-  "#8c564b",
-  "#e377c2",
-  "#7f7f7f",
-  "#bcbd22",
-  "#17becf",
+  "#1e88e5",
+  "#3949ab",
+  "#8e24aa",
+  "#00897b",
+  "#43a047",
+  "#7cb342",
+  "#f9a825",
+  "#fb8c00",
+  "#f4511e",
+  "#e53935",
 ];
 
-export const chartTextColor = "#111827";
-export const chartGridColor = "#e5e7eb";
-export const chartMutedText = "#6b7280";
+const fallbackTheme = {
+  text: "#1c1b1f",
+  grid: "#e7e0ec",
+  muted: "#49454f",
+};
+
+export type ChartTheme = typeof fallbackTheme;
+
+const readTheme = (): ChartTheme => {
+  if (typeof window === "undefined") {
+    return fallbackTheme;
+  }
+
+  const styles = getComputedStyle(document.documentElement);
+  const text = styles.getPropertyValue("--chart-text").trim() || fallbackTheme.text;
+  const grid = styles.getPropertyValue("--chart-grid").trim() || fallbackTheme.grid;
+  const muted =
+    styles.getPropertyValue("--chart-muted").trim() || fallbackTheme.muted;
+
+  return { text, grid, muted };
+};
+
+const readChartColors = (): string[] => {
+  if (typeof window === "undefined") {
+    return chartColors;
+  }
+
+  const styles = getComputedStyle(document.documentElement);
+  return chartColors.map((fallback, index) => {
+    const value = styles.getPropertyValue(`--chart-color-${index + 1}`).trim();
+    return value || fallback;
+  });
+};
+
+export function useChartTheme() {
+  const [theme, setTheme] = useState<ChartTheme>(fallbackTheme);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const updateTheme = () => {
+      setTheme(readTheme());
+    };
+
+    updateTheme();
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    if (media.addEventListener) {
+      media.addEventListener("change", updateTheme);
+      const observer = new MutationObserver(updateTheme);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme", "data-palette"],
+      });
+      return () => {
+        media.removeEventListener("change", updateTheme);
+        observer.disconnect();
+      };
+    }
+    media.addListener(updateTheme);
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme", "data-palette"],
+    });
+    return () => {
+      media.removeListener(updateTheme);
+      observer.disconnect();
+    };
+  }, []);
+
+  return theme;
+}
+
+export function useChartColors() {
+  const [colors, setColors] = useState<string[]>(chartColors);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const updateColors = () => {
+      setColors(readChartColors());
+    };
+
+    updateColors();
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    if (media.addEventListener) {
+      media.addEventListener("change", updateColors);
+      const observer = new MutationObserver(updateColors);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme", "data-palette"],
+      });
+      return () => {
+        media.removeEventListener("change", updateColors);
+        observer.disconnect();
+      };
+    }
+    media.addListener(updateColors);
+    const observer = new MutationObserver(updateColors);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme", "data-palette"],
+    });
+    return () => {
+      media.removeListener(updateColors);
+      observer.disconnect();
+    };
+  }, []);
+
+  return colors;
+}

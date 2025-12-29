@@ -1,29 +1,451 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --chart-grid: #e5e7eb;
-  --chart-text: #111827;
-  --chart-muted: #6b7280;
+  color-scheme: light;
+  --background: #fffbfe;
+  --foreground: #1c1b1f;
+  --ink-muted: #49454f;
+  --accent: #6750a4;
+  --accent-2: #625b71;
+  --accent-3: #7d5260;
+  --accent-negative: #b3261e;
+  --card: #ffffff;
+  --card-90: rgba(255, 255, 255, 0.9);
+  --card-80: rgba(255, 255, 255, 0.8);
+  --card-70: rgba(255, 255, 255, 0.7);
+  --card-60: rgba(255, 255, 255, 0.6);
+  --card-stroke: #e7e0ec;
+  --chart-grid: #e7e0ec;
+  --chart-text: #1c1b1f;
+  --chart-muted: #49454f;
+  --chart-color-1: #1e88e5;
+  --chart-color-2: #3949ab;
+  --chart-color-3: #8e24aa;
+  --chart-color-4: #00897b;
+  --chart-color-5: #43a047;
+  --chart-color-6: #7cb342;
+  --chart-color-7: #f9a825;
+  --chart-color-8: #fb8c00;
+  --chart-color-9: #f4511e;
+  --chart-color-10: #e53935;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #ffffff 0%,
+    #f2edf8 45%,
+    #eaddff 100%
+  );
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --background: #1c1b1f;
+    --foreground: #e6e1e5;
+    --ink-muted: #cac4d0;
+    --accent: #d0bcff;
+    --accent-2: #ccc2dc;
+    --accent-3: #efb8c8;
+    --accent-negative: #f2b8b5;
+    --card: #211f26;
+    --card-90: rgba(33, 31, 38, 0.9);
+    --card-80: rgba(33, 31, 38, 0.8);
+    --card-70: rgba(33, 31, 38, 0.7);
+    --card-60: rgba(33, 31, 38, 0.6);
+    --card-stroke: #49454f;
+    --chart-grid: #49454f;
+    --chart-text: #e6e1e5;
+    --chart-muted: #cac4d0;
+    --chart-color-1: #90caf9;
+    --chart-color-2: #9fa8da;
+    --chart-color-3: #ce93d8;
+    --chart-color-4: #80cbc4;
+    --chart-color-5: #a5d6a7;
+    --chart-color-6: #e6ee9c;
+    --chart-color-7: #ffe082;
+    --chart-color-8: #ffcc80;
+    --chart-color-9: #ffab91;
+    --chart-color-10: #ef9a9a;
+    --hero-gradient: radial-gradient(
+      circle_at_top,
+      #2a2831 0%,
+      #1c1b1f 45%,
+      #15131a 100%
+    );
   }
+}
+
+:root[data-palette="material"][data-theme="light"] {
+  color-scheme: light;
+  --background: #fffbfe;
+  --foreground: #1c1b1f;
+  --ink-muted: #49454f;
+  --accent: #6750a4;
+  --accent-2: #625b71;
+  --accent-3: #7d5260;
+  --accent-negative: #b3261e;
+  --card: #ffffff;
+  --card-90: rgba(255, 255, 255, 0.9);
+  --card-80: rgba(255, 255, 255, 0.8);
+  --card-70: rgba(255, 255, 255, 0.7);
+  --card-60: rgba(255, 255, 255, 0.6);
+  --card-stroke: #e7e0ec;
+  --chart-grid: #e7e0ec;
+  --chart-text: #1c1b1f;
+  --chart-muted: #49454f;
+  --chart-color-1: #1e88e5;
+  --chart-color-2: #3949ab;
+  --chart-color-3: #8e24aa;
+  --chart-color-4: #00897b;
+  --chart-color-5: #43a047;
+  --chart-color-6: #7cb342;
+  --chart-color-7: #f9a825;
+  --chart-color-8: #fb8c00;
+  --chart-color-9: #f4511e;
+  --chart-color-10: #e53935;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #ffffff 0%,
+    #f2edf8 45%,
+    #eaddff 100%
+  );
+}
+
+:root[data-palette="material"][data-theme="dark"] {
+  color-scheme: dark;
+  --background: #1c1b1f;
+  --foreground: #e6e1e5;
+  --ink-muted: #cac4d0;
+  --accent: #d0bcff;
+  --accent-2: #ccc2dc;
+  --accent-3: #efb8c8;
+  --accent-negative: #f2b8b5;
+  --card: #211f26;
+  --card-90: rgba(33, 31, 38, 0.9);
+  --card-80: rgba(33, 31, 38, 0.8);
+  --card-70: rgba(33, 31, 38, 0.7);
+  --card-60: rgba(33, 31, 38, 0.6);
+  --card-stroke: #49454f;
+  --chart-grid: #49454f;
+  --chart-text: #e6e1e5;
+  --chart-muted: #cac4d0;
+  --chart-color-1: #90caf9;
+  --chart-color-2: #9fa8da;
+  --chart-color-3: #ce93d8;
+  --chart-color-4: #80cbc4;
+  --chart-color-5: #a5d6a7;
+  --chart-color-6: #e6ee9c;
+  --chart-color-7: #ffe082;
+  --chart-color-8: #ffcc80;
+  --chart-color-9: #ffab91;
+  --chart-color-10: #ef9a9a;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #2a2831 0%,
+    #1c1b1f 45%,
+    #15131a 100%
+  );
+}
+
+:root[data-palette="echarts"][data-theme="light"] {
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --ink-muted: #475569;
+  --accent: #3b82f6;
+  --accent-2: #06b6d4;
+  --accent-3: #f59e0b;
+  --accent-negative: #ef4444;
+  --card: #ffffff;
+  --card-90: rgba(255, 255, 255, 0.9);
+  --card-80: rgba(255, 255, 255, 0.8);
+  --card-70: rgba(255, 255, 255, 0.7);
+  --card-60: rgba(255, 255, 255, 0.6);
+  --card-stroke: #e2e8f0;
+  --chart-grid: #e2e8f0;
+  --chart-text: #0f172a;
+  --chart-muted: #64748b;
+  --chart-color-1: #38bdf8;
+  --chart-color-2: #22d3ee;
+  --chart-color-3: #34d399;
+  --chart-color-4: #a3e635;
+  --chart-color-5: #facc15;
+  --chart-color-6: #f59e0b;
+  --chart-color-7: #fb7185;
+  --chart-color-8: #f472b6;
+  --chart-color-9: #a78bfa;
+  --chart-color-10: #60a5fa;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #ffffff 0%,
+    #f1f5f9 45%,
+    #e2e8f0 100%
+  );
+}
+
+:root[data-palette="echarts"][data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --ink-muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-2: #22d3ee;
+  --accent-3: #fbbf24;
+  --accent-negative: #f87171;
+  --card: #111827;
+  --card-90: rgba(17, 24, 39, 0.9);
+  --card-80: rgba(17, 24, 39, 0.8);
+  --card-70: rgba(17, 24, 39, 0.7);
+  --card-60: rgba(17, 24, 39, 0.6);
+  --card-stroke: #334155;
+  --chart-grid: #334155;
+  --chart-text: #e2e8f0;
+  --chart-muted: #94a3b8;
+  --chart-color-1: #38bdf8;
+  --chart-color-2: #22d3ee;
+  --chart-color-3: #34d399;
+  --chart-color-4: #a3e635;
+  --chart-color-5: #facc15;
+  --chart-color-6: #f59e0b;
+  --chart-color-7: #fb7185;
+  --chart-color-8: #f472b6;
+  --chart-color-9: #a78bfa;
+  --chart-color-10: #60a5fa;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #1e293b 0%,
+    #0f172a 45%,
+    #0b1120 100%
+  );
+}
+
+:root[data-palette="fullchaos"][data-theme="light"] {
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --ink-muted: #475569;
+  --accent: #3b82f6;
+  --accent-2: #06b6d4;
+  --accent-3: #f59e0b;
+  --accent-negative: #ef4444;
+  --card: #ffffff;
+  --card-90: rgba(255, 255, 255, 0.9);
+  --card-80: rgba(255, 255, 255, 0.8);
+  --card-70: rgba(255, 255, 255, 0.7);
+  --card-60: rgba(255, 255, 255, 0.6);
+  --card-stroke: #e2e8f0;
+  --chart-grid: #e5e7eb;
+  --chart-text: #111827;
+  --chart-muted: #6b7280;
+  --chart-color-1: #1f77b4;
+  --chart-color-2: #ff7f0e;
+  --chart-color-3: #2ca02c;
+  --chart-color-4: #d62728;
+  --chart-color-5: #9467bd;
+  --chart-color-6: #8c564b;
+  --chart-color-7: #e377c2;
+  --chart-color-8: #7f7f7f;
+  --chart-color-9: #bcbd22;
+  --chart-color-10: #17becf;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #ffffff 0%,
+    #f1f5f9 45%,
+    #e2e8f0 100%
+  );
+}
+
+:root[data-palette="fullchaos"][data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --ink-muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-2: #22d3ee;
+  --accent-3: #fbbf24;
+  --accent-negative: #f87171;
+  --card: #111827;
+  --card-90: rgba(17, 24, 39, 0.9);
+  --card-80: rgba(17, 24, 39, 0.8);
+  --card-70: rgba(17, 24, 39, 0.7);
+  --card-60: rgba(17, 24, 39, 0.6);
+  --card-stroke: #334155;
+  --chart-grid: #334155;
+  --chart-text: #e2e8f0;
+  --chart-muted: #94a3b8;
+  --chart-color-1: #1f77b4;
+  --chart-color-2: #ff7f0e;
+  --chart-color-3: #2ca02c;
+  --chart-color-4: #d62728;
+  --chart-color-5: #9467bd;
+  --chart-color-6: #8c564b;
+  --chart-color-7: #e377c2;
+  --chart-color-8: #7f7f7f;
+  --chart-color-9: #bcbd22;
+  --chart-color-10: #17becf;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #1e293b 0%,
+    #0f172a 45%,
+    #0b1120 100%
+  );
+}
+
+:root[data-palette="fullchaos-cosmic"][data-theme="light"] {
+  color-scheme: light;
+  --background: #fff6ee;
+  --foreground: #240b1e;
+  --ink-muted: #4b1828;
+  --accent: #db335b;
+  --accent-2: #e23d39;
+  --accent-3: #c5306c;
+  --accent-negative: #d93941;
+  --card: #fffaf3;
+  --card-90: rgba(255, 250, 243, 0.9);
+  --card-80: rgba(255, 250, 243, 0.8);
+  --card-70: rgba(255, 250, 243, 0.7);
+  --card-60: rgba(255, 250, 243, 0.6);
+  --card-stroke: #f0d6ca;
+  --chart-grid: #f0d6ca;
+  --chart-text: #240b1e;
+  --chart-muted: #4b1828;
+  --chart-color-1: #f9e252;
+  --chart-color-2: #f2cc49;
+  --chart-color-3: #eaa13e;
+  --chart-color-4: #dd6235;
+  --chart-color-5: #e23d39;
+  --chart-color-6: #d93941;
+  --chart-color-7: #db335b;
+  --chart-color-8: #c5306c;
+  --chart-color-9: #7526b3;
+  --chart-color-10: #6a2190;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #f9e252 0%,
+    #f2cc49 30%,
+    #db335b 55%,
+    #7526b3 78%,
+    #fff6ee 100%
+  );
+}
+
+:root[data-palette="fullchaos-cosmic"][data-theme="dark"] {
+  color-scheme: dark;
+  --background: #242424;
+  --foreground: #ffffffde;
+  --ink-muted: #edb041;
+  --accent: #db335b;
+  --accent-2: #e23d39;
+  --accent-3: #c5306c;
+  --accent-negative: #d93941;
+  --card: #2c111d;
+  --card-90: rgba(44, 17, 29, 0.9);
+  --card-80: rgba(44, 17, 29, 0.8);
+  --card-70: rgba(44, 17, 29, 0.7);
+  --card-60: rgba(44, 17, 29, 0.6);
+  --card-stroke: #4b1828;
+  --chart-grid: #4b1828;
+  --chart-text: #ffffffde;
+  --chart-muted: #edb041;
+  --chart-color-1: #f9e252;
+  --chart-color-2: #f2cc49;
+  --chart-color-3: #edb041;
+  --chart-color-4: #eaa13e;
+  --chart-color-5: #dd6235;
+  --chart-color-6: #e23d39;
+  --chart-color-7: #d93941;
+  --chart-color-8: #db335b;
+  --chart-color-9: #c5306c;
+  --chart-color-10: #7526b3;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #db335b 0%,
+    #7526b3 35%,
+    #39113d 60%,
+    #191919 100%
+  );
+}
+
+:root[data-palette="flat"][data-theme="light"] {
+  color-scheme: light;
+  --background: #ecf0f1;
+  --foreground: #2c3e50;
+  --ink-muted: #7f8c8d;
+  --accent: #1abc9c;
+  --accent-2: #3498db;
+  --accent-3: #f39c12;
+  --accent-negative: #e74c3c;
+  --card: #ffffff;
+  --card-90: rgba(255, 255, 255, 0.9);
+  --card-80: rgba(255, 255, 255, 0.8);
+  --card-70: rgba(255, 255, 255, 0.7);
+  --card-60: rgba(255, 255, 255, 0.6);
+  --card-stroke: #d5dadd;
+  --chart-grid: #d5dadd;
+  --chart-text: #2c3e50;
+  --chart-muted: #7f8c8d;
+  --chart-color-1: #1abc9c;
+  --chart-color-2: #2ecc71;
+  --chart-color-3: #3498db;
+  --chart-color-4: #9b59b6;
+  --chart-color-5: #f1c40f;
+  --chart-color-6: #e67e22;
+  --chart-color-7: #e74c3c;
+  --chart-color-8: #95a5a6;
+  --chart-color-9: #16a085;
+  --chart-color-10: #2980b9;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #ffffff 0%,
+    #e8edf0 45%,
+    #dde3e7 100%
+  );
+}
+
+:root[data-palette="flat"][data-theme="dark"] {
+  color-scheme: dark;
+  --background: #2c3e50;
+  --foreground: #ecf0f1;
+  --ink-muted: #bdc3c7;
+  --accent: #1abc9c;
+  --accent-2: #5dade2;
+  --accent-3: #f5c542;
+  --accent-negative: #f1948a;
+  --card: #34495e;
+  --card-90: rgba(52, 73, 94, 0.9);
+  --card-80: rgba(52, 73, 94, 0.8);
+  --card-70: rgba(52, 73, 94, 0.7);
+  --card-60: rgba(52, 73, 94, 0.6);
+  --card-stroke: #3d566e;
+  --chart-grid: #3d566e;
+  --chart-text: #ecf0f1;
+  --chart-muted: #bdc3c7;
+  --chart-color-1: #1abc9c;
+  --chart-color-2: #2ecc71;
+  --chart-color-3: #5dade2;
+  --chart-color-4: #9b59b6;
+  --chart-color-5: #f1c40f;
+  --chart-color-6: #e67e22;
+  --chart-color-7: #e74c3c;
+  --chart-color-8: #95a5a6;
+  --chart-color-9: #16a085;
+  --chart-color-10: #2980b9;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #3a5167 0%,
+    #2c3e50 45%,
+    #243240 100%
+  );
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), sans-serif;
 }

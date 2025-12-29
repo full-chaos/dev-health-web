@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 
 import { Chart } from "./Chart";
-import { chartMutedText } from "./chartTheme";
+import { useChartTheme } from "./chartTheme";
 
 type SankeyChartProps = {
   nodes: Array<{ name: string }>;
@@ -22,6 +22,7 @@ export function SankeyChart({
   className,
   style,
 }: SankeyChartProps) {
+  const chartTheme = useChartTheme();
   const mergedStyle: CSSProperties = {
     height,
     width,
@@ -39,7 +40,7 @@ export function SankeyChart({
             data: nodes,
             links,
             lineStyle: { color: "gradient", curveness: 0.5 },
-            label: { color: chartMutedText },
+            label: { color: chartTheme.muted },
             nodeGap: 14,
           },
         ],
