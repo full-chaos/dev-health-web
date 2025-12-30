@@ -137,7 +137,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   </h1>
                   <RoleFraming />
                   <p className="mt-3 max-w-xl text-sm text-(--ink-muted)">
-                    System status, risks, and recommended moves for {scopeDetail} over
+                    Overview, risks, and recommended moves for {scopeDetail} over
                     the last {filters.time.range_days} days.
                   </p>
                 </div>

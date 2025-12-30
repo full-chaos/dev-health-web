@@ -141,7 +141,16 @@ export function QuadrantPanel({
   const [showZoneOverlay, setShowZoneOverlay] = useState(true);
   const [hoveredOverlayKey, setHoveredOverlayKey] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const zoneOverlay = useMemo(() => getZoneOverlay(scopedData), [scopedData]);
+  const zoneOverlay = useMemo(() => {
+    if (!scopedData) {
+      return null;
+    }
+    const scopedOverlay = getZoneOverlay(scopedData);
+    if (!scopedOverlay && isPersonScope && data) {
+      return getZoneOverlay(data);
+    }
+    return scopedOverlay;
+  }, [data, isPersonScope, scopedData]);
   const quadrantDefinition = useMemo(
     () => (scopedData ? getQuadrantDefinition(scopedData.axes) : null),
     [scopedData]
@@ -195,11 +204,11 @@ export function QuadrantPanel({
     return items;
   }, [scopedData, showZoneOverlay, zoneOverlay]);
   const selectablePoints = useMemo(() => {
-    if (!scopedData?.points?.length || isPersonScope) {
+    if (!scopedData?.points?.length) {
       return [];
     }
     return scopedData.points.length <= 6 ? scopedData.points : [];
-  }, [scopedData, isPersonScope]);
+  }, [scopedData]);
   const activeHoveredOverlayKey = useMemo(() => {
     if (!showZoneOverlay || !hoveredOverlayKey) {
       return null;
@@ -540,19 +549,32 @@ export function QuadrantPanel({
 
           {!activeSelectedPoint && (
             <div className="text-xs text-(--ink-muted) bg-(--card-80) rounded-2xl p-4 border border-dashed border-(--card-stroke)">
-              <p>Select a dot in the chart above to investigate causes and patterns.</p>
-              {selectablePoints.length > 0 && !isPersonScope && (
+              <p>
+                {isPersonScope
+                  ? "Individual in view."
+                  : "Select a dot in the chart above to investigate causes and patterns."}
+              </p>
+              {selectablePoints.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {selectablePoints.map((point) => (
-                    <button
-                      key={point.entity_id}
-                      type="button"
-                      onClick={() => handlePointSelect(point)}
-                      className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
-                    >
-                      {point.entity_label}
-                    </button>
-                  ))}
+                  {selectablePoints.map((point) =>
+                    isPersonScope ? (
+                      <span
+                        key={point.entity_id}
+                        className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2)"
+                      >
+                        {point.entity_label}
+                      </span>
+                    ) : (
+                      <button
+                        key={point.entity_id}
+                        type="button"
+                        onClick={() => handlePointSelect(point)}
+                        className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
+                      >
+                        {point.entity_label}
+                      </button>
+                    )
+                  )}
                 </div>
               )}
             </div>
