@@ -19,6 +19,8 @@ const fallbackTheme = {
   muted: "#49454f",
   background: "#ffffff",
   stroke: "#e7e0ec",
+  accent1: "#3b82f6",
+  accent2: "#8b5cf6",
 };
 
 export type ChartTheme = typeof fallbackTheme;
@@ -36,8 +38,10 @@ const readTheme = (): ChartTheme => {
 
   const background = styles.getPropertyValue("--card").trim() || fallbackTheme.background;
   const stroke = styles.getPropertyValue("--card-stroke").trim() || fallbackTheme.stroke;
+  const accent1 = styles.getPropertyValue("--accent-1").trim() || fallbackTheme.accent1;
+  const accent2 = styles.getPropertyValue("--accent-2").trim() || fallbackTheme.accent2;
 
-  return { text, grid, muted, background, stroke };
+  return { text, grid, muted, background, stroke, accent1, accent2 };
 };
 
 const readChartColors = (): string[] => {

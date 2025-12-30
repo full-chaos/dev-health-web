@@ -8,7 +8,7 @@ import type {
   TooltipComponentFormatterCallbackParams,
 } from "echarts";
 
-import { findZoneMatches, type ZoneOverlay } from "@/lib/quadrantZones";
+import type { ZoneOverlay } from "@/lib/quadrantZones";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { Chart } from "./Chart";
@@ -40,23 +40,7 @@ const parseDateValue = (value: string) => {
   return date;
 };
 
-const windowDays = (start: string, end: string) => {
-  const startDate = parseDateValue(start);
-  const endDate = parseDateValue(end);
-  if (!startDate || !endDate) {
-    return null;
-  }
-  const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
-  const diffDays = Math.floor(diffMs / MS_PER_DAY) + 1;
-  return Math.max(1, diffDays);
-};
 
-const windowLabel = (start: string, end: string) => {
-  if (start && end) {
-    return start === end ? start : `${start} – ${end}`;
-  }
-  return start || end || "Selected window";
-};
 
 const normalizeScopeType = (
   scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string
@@ -241,8 +225,8 @@ export const buildQuadrantOption = ({
       ];
     })
     : [];
-  const zoneAreas: MarkAreaComponentOption["data"] = showInterpretation
-    ? (activeZoneOverlay?.zones ?? []).map((zone) => [
+  const zoneAreas = showInterpretation
+    ? (activeZoneOverlay?.zones ?? []).map((zone: import("@/lib/quadrantZones").ZoneRegion) => [
       {
         name: zone.label,
         xAxis: zone.xRange[0],
@@ -250,14 +234,14 @@ export const buildQuadrantOption = ({
         itemStyle: buildZoneSurfaceStyle(zone.color, {
           active: highlightOverlayKey === `zone:${zone.id}`,
         }),
-      },
+      } as any,
       {
         xAxis: zone.xRange[1],
         yAxis: zone.yRange[1],
-      },
+      } as any,
     ])
     : [];
-  const markAreaData = [...annotationAreas, ...zoneAreas];
+  const markAreaData: any = [...annotationAreas, ...zoneAreas];
   const markArea: MarkAreaComponentOption | undefined = markAreaData.length
     ? {
       silent: true,

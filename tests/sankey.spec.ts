@@ -13,13 +13,13 @@ test("sankey investigation opens from quadrant panel", async ({ page }) => {
   const quadrantPanel = page.getByTestId("quadrant-investigation");
 
   await quadrantPanel.getByRole("button", { name: "Core" }).click();
-  const sankeyButton = quadrantPanel.getByRole("button", {
-    name: "View investment flow",
+  const flowLink = quadrantPanel.getByRole("link", {
+    name: /view flow/i,
   });
-  await expect(sankeyButton).toBeVisible();
-  await sankeyButton.click();
+  await expect(flowLink).toBeVisible();
+  await expect(flowLink).toHaveAttribute("href", /tab=flow/);
+  await flowLink.click();
 
-  const sankeyPanel = page.getByTestId("sankey-investigation-panel");
-  await expect(sankeyPanel.locator("canvas").first()).toBeVisible();
-  await expect(sankeyPanel.locator("[data-chart-ready='true']")).toBeVisible();
+  await expect(page).toHaveURL(/tab=flow/);
+  await expect(page.getByTestId("chart-sankey").locator("canvas").first()).toBeVisible();
 });

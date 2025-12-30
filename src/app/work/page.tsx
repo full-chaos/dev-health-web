@@ -15,12 +15,19 @@ import {
   getInvestment,
   getQuadrant,
 } from "@/lib/api";
+import type { MetricDelta } from "@/lib/types";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatNumber, formatPercent } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { mapInvestmentToNestedPie } from "@/lib/mappers";
-import type { MetricDelta } from "@/lib/types";
+import { LandscapeView } from "@/components/work/LandscapeView";
+import { HeatmapView } from "@/components/work/HeatmapView";
+import { FlowView } from "@/components/work/FlowView";
+import { FlameView } from "@/components/work/FlameView";
+import { EvidenceView } from "@/components/work/EvidenceView";
+import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { WorkTabNav, type WorkTab } from "@/components/navigation/WorkTabNav";
 
 type WorkPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -49,7 +56,14 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+  const activeOrigin = typeof originParam === "string" ? originParam : undefined;
+
+  const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+  const activeTab: WorkTab = (typeof tabParam === "string" && ["landscape", "heatmap", "flow", "flame", "evidence"].includes(tabParam))
+    ? (tabParam as WorkTab)
+    : "landscape";
 
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
@@ -140,260 +154,73 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
                 Work
               </p>
               <h1 className="mt-2 font-[var(--font-display)] text-3xl">
-                Investment and Flow
+                Work Investment and Flow
               </h1>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                Planned vs unplanned, WIP pressure, and blocked effort.
+                Analyze work allocation, WIP pressure, and blocked effort.
               </p>
             </div>
             <Link
               href={withFilterParam("/", filters, activeRole)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
-              Back to cockpit
+              Re-orient in cockpit
             </Link>
           </header>
 
           <FilterBar view="work" />
 
-          <section className="grid gap-4 lg:grid-cols-3">
-            <MetricCard
-              label={wipMetric?.label ?? "WIP"}
-              href={buildExploreUrl({ metric: "wip_saturation", filters, role: activeRole })}
-              value={placeholderDeltas ? undefined : wipMetric?.value}
-              unit={wipMetric?.unit}
-              delta={placeholderDeltas ? undefined : wipMetric?.delta_pct}
-              spark={wipMetric?.spark}
-              caption="WIP saturation"
-            />
-            <MetricCard
-              label={blockedMetric?.label ?? "Blocked"}
-              href={buildExploreUrl({ metric: "blocked_work", filters, role: activeRole })}
-              value={placeholderDeltas ? undefined : blockedMetric?.value}
-              unit={blockedMetric?.unit}
-              delta={placeholderDeltas ? undefined : blockedMetric?.delta_pct}
-              spark={blockedMetric?.spark}
-              caption="Blocked work"
-            />
-            <MetricCard
-              label={throughputMetric?.label ?? "Throughput"}
-              href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}
-              value={placeholderDeltas ? undefined : throughputMetric?.value}
-              unit={throughputMetric?.unit}
-              delta={placeholderDeltas ? undefined : throughputMetric?.delta_pct}
-              spark={throughputMetric?.spark}
-              caption="Delivery volume"
-            />
-          </section>
+          <WorkTabNav activeTab={activeTab} filters={filters} role={activeRole} />
 
-          <section>
-            <HeatmapPanel
-              title="Review wait density"
-              description="Find the hours and weekdays where PRs accumulate review wait time."
-              request={{
-                type: "temporal_load",
-                metric: "review_wait_density",
-                scope_type: filters.scope.level,
-                scope_id: scopeId,
-                range_days: filters.time.range_days,
-                start_date: filters.time.start_date,
-                end_date: filters.time.end_date,
-              }}
-              initialData={reviewHeatmap}
-              emptyState="Review wait heatmap unavailable."
-              evidenceTitle="PR evidence"
-            />
-          </section>
+          <ContextStrip filters={filters} origin={activeOrigin} />
 
-          <section className="flex flex-col gap-6">
-            <QuadrantPanel
-              title="Cycle Time × Throughput"
-              description="Highlight delivery momentum under cycle time pressure."
-              data={cycleThroughput}
+          {activeTab === "landscape" && (
+            <LandscapeView
               filters={filters}
-              relatedLinks={[
-                {
-                  label: "Open landscapes",
-                  href: withFilterParam("/explore/landscape", filters, activeRole),
-                },
-              ]}
-              emptyState="Quadrant data unavailable for this scope."
+              activeRole={activeRole}
+              deltas={deltas}
+              placeholderDeltas={placeholderDeltas}
+              investment={investment}
+              nested={nested}
+              cycleThroughput={cycleThroughput}
+              wipThroughput={wipThroughput}
+              reviewLoadLatency={reviewLoadLatency}
+              planned={planned}
+              unplanned={unplanned}
+              plannedPct={plannedPct}
+              unplannedPct={unplannedPct}
             />
-            <QuadrantPanel
-              title="WIP × Throughput"
-              description="Read product direction and role clarity under load."
-              data={wipThroughput}
+          )}
+
+          {activeTab === "heatmap" && (
+            <HeatmapView
               filters={filters}
-              relatedLinks={[
-                {
-                  label: "Open landscapes",
-                  href: withFilterParam("/explore/landscape", filters, activeRole),
-                },
-              ]}
-              emptyState="Quadrant data unavailable for this scope."
+              scopeId={scopeId}
+              reviewHeatmap={reviewHeatmap}
             />
-            <QuadrantPanel
-              title="Review Load × Review Latency"
-              description="Highlight collaboration health and ownership distribution under review pressure."
-              data={reviewLoadLatency}
+          )}
+
+          {activeTab === "flow" && (
+            <FlowView
               filters={filters}
-              relatedLinks={[
-                {
-                  label: "Open landscapes",
-                  href: withFilterParam("/explore/landscape", filters, activeRole),
-                },
-              ]}
-              emptyState="Quadrant data unavailable for this scope."
+              activeRole={activeRole}
             />
-          </section>
+          )}
 
-          <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-[var(--font-display)] text-xl">Investment Mix</h2>
-                <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
-                  <Link href={withFilterParam("/investment", filters, activeRole)}>
-                    View investment
-                  </Link>
-                  <Link href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}>
-                    Open in Explore
-                  </Link>
-                </div>
-              </div>
-              <div className="mt-4">
-                {nested.categories.length ? (
-                  <InvestmentChart categories={nested.categories} subtypes={nested.subtypes} />
-                ) : (
-                  <div className="flex h-[280px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] text-sm text-[var(--ink-muted)]">
-                    Investment data unavailable.
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 grid gap-2 text-sm">
-                {nested.categories.slice(0, 6).map((category) => (
-                  <Link
-                    key={category.key}
-                    href={withFilterParam(`/explore?metric=throughput&category=${category.key}`, filters, activeRole)}
-                    className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
-                  >
-                    <span>{category.name}</span>
-                    <span className="text-xs text-[var(--ink-muted)]">
-                      {formatNumber(category.value)} units
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+          {activeTab === "flame" && (
+            <FlameView
+              filters={filters}
+            />
+          )}
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
-              <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Planned vs Unplanned</h2>
-                <Link
-                  href={withFilterParam("/investment", filters, activeRole)}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
-                >
-                  Details
-                </Link>
-              </div>
-              {planned && unplanned ? (
-                <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-                      Planned
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold">
-                      {formatPercent((plannedPct ?? 0) * 100)}
-                    </p>
-                    <p className="mt-2 text-xs text-[var(--ink-muted)]">
-                      {formatNumber(planned.value)} units
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-                      Unplanned
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold">
-                      {formatPercent((unplannedPct ?? 0) * 100)}
-                    </p>
-                    <p className="mt-2 text-xs text-[var(--ink-muted)]">
-                      {formatNumber(unplanned.value)} units
-                    </p>
-                  </div>
-                  <p className="text-xs text-[var(--ink-muted)]">
-                    Derived from investment tags in the current window.
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-4 text-sm text-[var(--ink-muted)]">
-                  Planned vs unplanned requires tagged work categories.
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
-              <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">WIP Drivers</h2>
-                <Link
-                  href={buildExploreUrl({ metric: "wip_saturation", filters, role: activeRole })}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
-                >
-                  Evidence
-                </Link>
-              </div>
-              <div className="mt-4 space-y-2 text-sm">
-                {(wipExplain?.drivers ?? []).slice(0, 5).map((driver) => (
-                  <Link
-                    key={driver.id}
-                    href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
-                    className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
-                  >
-                    <span>{driver.label}</span>
-                    <span className="text-xs text-[var(--ink-muted)]">
-                      {formatDelta(driver.delta_pct)}
-                    </span>
-                  </Link>
-                ))}
-                {!wipExplain?.drivers?.length && (
-                  <p className="text-sm text-[var(--ink-muted)]">
-                    WIP driver detail will appear once data is ingested.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
-              <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Blocked Drivers</h2>
-                <Link
-                  href={buildExploreUrl({ metric: "blocked_work", filters, role: activeRole })}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
-                >
-                  Evidence
-                </Link>
-              </div>
-              <div className="mt-4 space-y-2 text-sm">
-                {(blockedExplain?.drivers ?? []).slice(0, 5).map((driver) => (
-                  <Link
-                    key={driver.id}
-                    href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
-                    className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
-                  >
-                    <span>{driver.label}</span>
-                    <span className="text-xs text-[var(--ink-muted)]">
-                      {formatDelta(driver.delta_pct)}
-                    </span>
-                  </Link>
-                ))}
-                {!blockedExplain?.drivers?.length && (
-                  <p className="text-sm text-[var(--ink-muted)]">
-                    Blocked driver detail will appear once data is ingested.
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
+          {activeTab === "evidence" && (
+            <EvidenceView
+              filters={filters}
+              activeRole={activeRole}
+              wipExplain={wipExplain}
+              blockedExplain={blockedExplain}
+            />
+          )}
         </main>
       </div>
     </div>

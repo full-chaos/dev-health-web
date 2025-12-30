@@ -1,0 +1,269 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getSankey } from "@/lib/api";
+import { withFilterParam } from "@/lib/filters/url";
+import type { MetricFilter, SankeyMode } from "@/lib/types";
+import {
+    SANKEY_MODES,
+    buildSankeyDataset,
+    buildSankeyEvidenceUrl,
+    getSankeyDefinition,
+    type SankeyDataset,
+} from "@/lib/sankey";
+import { SankeyChart } from "@/components/charts/SankeyChart";
+import { formatNumber } from "@/lib/formatters";
+import Link from "next/link";
+
+type FlowViewProps = {
+    filters: MetricFilter;
+    activeRole?: string;
+};
+
+export function FlowView({ filters, activeRole }: FlowViewProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const useSampleData = process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+
+    // State from URL or defaults
+    const modeParam = searchParams.get("mode") as SankeyMode | null;
+    const initialMode: SankeyMode = (modeParam && ["investment", "expense", "state", "hotspot"].includes(modeParam))
+        ? modeParam
+        : "investment";
+
+    const [mode, setMode] = useState<SankeyMode>(initialMode);
+    const [dataset, setDataset] = useState<SankeyDataset | null>(null);
+    const [resolvedKey, setResolvedKey] = useState<string | null>(null);
+    const [selectedItem, setSelectedItem] = useState<{
+        type: "node" | "link";
+        name?: string;
+        source?: string;
+        target?: string;
+        value?: number;
+    } | null>(null);
+
+    // Context from URL (e.g. from dot investigation panel)
+    const contextEntityId = searchParams.get("context_entity_id");
+    const contextEntityLabel = searchParams.get("context_entity_label");
+    const contextZone = searchParams.get("context_zone");
+
+    const requestPayload = useMemo(
+        () => ({
+            mode,
+            filters,
+            context: contextEntityId ? {
+                entity_id: contextEntityId,
+                entity_label: contextEntityLabel || undefined,
+                zone: contextZone || undefined,
+            } : undefined,
+        }),
+        [filters, mode, contextEntityId, contextEntityLabel, contextZone]
+    );
+
+    const requestKey = useMemo(() => JSON.stringify(requestPayload), [requestPayload]);
+    const definition = useMemo(() => getSankeyDefinition(mode), [mode]);
+
+    useEffect(() => {
+        let active = true;
+
+        const fetchData = async () => {
+            if (useSampleData) {
+                setDataset(buildSankeyDataset(mode));
+                setResolvedKey(requestKey);
+                return;
+            }
+
+            try {
+                const response = await getSankey(requestPayload);
+                if (!active) return;
+                if (!response?.nodes?.length || !response.links?.length) {
+                    setDataset(null);
+                } else {
+                    setDataset({
+                        mode,
+                        label: response.label ?? definition.label,
+                        description: response.description ?? definition.description,
+                        unit: response.unit ?? definition.unit,
+                        nodes: response.nodes,
+                        links: response.links,
+                    });
+                }
+            } catch {
+                if (active) setDataset(null);
+            } finally {
+                if (active) setResolvedKey(requestKey);
+            }
+        };
+
+        fetchData();
+        return () => { active = false; };
+    }, [mode, requestKey, requestPayload, useSampleData, definition]);
+
+    const handleModeChange = (nextMode: SankeyMode) => {
+        if (nextMode === mode) return;
+        setMode(nextMode);
+        setSelectedItem(null);
+        // Update URL
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("mode", nextMode);
+        router.replace(`/work?${params.toString()}`);
+    };
+
+    const handleItemClick = (item: {
+        type: "node" | "link";
+        name?: string;
+        source?: string;
+        target?: string;
+        value?: number;
+    }) => {
+        setSelectedItem(item);
+    };
+
+    const isLoading = resolvedKey !== requestKey;
+    const hasData = dataset && dataset.nodes.length > 0;
+
+    const flameMode = useMemo(() => {
+        if (mode === "investment" || mode === "expense") return "throughput";
+        if (mode === "state") return "cycle_breakdown";
+        if (mode === "hotspot") return "code_hotspots";
+        return "cycle_breakdown";
+    }, [mode]);
+
+    const evidenceUrl = useMemo(() => {
+        if (!selectedItem) return null;
+        const label = selectedItem.name ?? selectedItem.target ?? selectedItem.source ?? null;
+        const linkLabel = selectedItem.source && selectedItem.target ? `${selectedItem.source} -> ${selectedItem.target}` : null;
+        return buildSankeyEvidenceUrl({
+            mode,
+            filters,
+            label,
+            linkLabel,
+        });
+    }, [mode, filters, selectedItem]);
+
+    const flameUrl = useMemo(() => {
+        if (!selectedItem) return null;
+        const nodeName = selectedItem.name || selectedItem.target || selectedItem.source;
+        return withFilterParam(`/work?tab=flame&mode=${flameMode}&context_node=${nodeName}`, filters, activeRole);
+    }, [flameMode, filters, activeRole, selectedItem]);
+
+    return (
+        <div className="flex flex-col gap-6">
+            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+                {/* Main Sankey Area */}
+                <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h2 className="text-xl font-[var(--font-display)]">{dataset?.label || definition.label}</h2>
+                            <p className="mt-1 text-sm text-[var(--ink-muted)]">{dataset?.description || definition.description}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {SANKEY_MODES.map((m) => (
+                                <button
+                                    key={m.id}
+                                    onClick={() => handleModeChange(m.id)}
+                                    className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${mode === m.id
+                                        ? "border-[var(--accent-2)] bg-[var(--accent-2)] text-white"
+                                        : "border-[var(--card-stroke)] text-[var(--ink-muted)] hover:border-[var(--card-stroke)]/60"
+                                        }`}
+                                >
+                                    {m.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="relative min-h-[400px]">
+                        {isLoading && (
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--card)]/50 backdrop-blur-sm rounded-2xl">
+                                <p className="text-sm text-[var(--ink-muted)] animate-pulse">Loading flow data...</p>
+                            </div>
+                        )}
+                        {hasData ? (
+                            <SankeyChart
+                                nodes={dataset!.nodes}
+                                links={dataset!.links}
+                                unit={dataset!.unit}
+                                height={500}
+                                onItemClick={handleItemClick}
+                            />
+                        ) : !isLoading && (
+                            <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] text-sm text-[var(--ink-muted)]">
+                                No flow data available for this scope and window.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Inspect Panel */}
+                <div className="flex flex-col gap-4">
+                    <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5 h-full min-h-[400px]">
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">Inspect Flow</p>
+                        {!selectedItem ? (
+                            <div className="mt-20 text-center">
+                                <p className="text-sm text-[var(--ink-muted)]">Select a node or path to inspect details.</p>
+                            </div>
+                        ) : (
+                            <div className="mt-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">Selection</p>
+                                    <h3 className="mt-1 text-lg font-semibold text-[var(--foreground)]">
+                                        {selectedItem.type === "link"
+                                            ? `${selectedItem.source} → ${selectedItem.target}`
+                                            : selectedItem.name}
+                                    </h3>
+                                </div>
+
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">Flow Value</p>
+                                    <p className="mt-1 text-2xl font-mono text-[var(--foreground)]">
+                                        {formatNumber(selectedItem.value || 0)} <span className="text-xs uppercase tracking-wider text-[var(--ink-muted)]">{dataset?.unit || "units"}</span>
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-3 pt-4 border-t border-[var(--card-stroke)]">
+                                    <Link
+                                        href={evidenceUrl || "#"}
+                                        className="flex items-center justify-between rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-xs uppercase tracking-[0.1em] text-[var(--foreground)] hover:border-[var(--accent-2)]/40 hover:bg-[var(--accent-2)]/5 group"
+                                    >
+                                        <span>Inspect Evidence</span>
+                                        <span className="text-[var(--accent-2)] group-hover:translate-x-0.5 transition-transform">↗</span>
+                                    </Link>
+                                    <Link
+                                        href={flameUrl || "#"}
+                                        className="flex items-center justify-between rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-xs uppercase tracking-[0.1em] text-[var(--foreground)] hover:border-[var(--accent-2)]/40 hover:bg-[var(--accent-2)]/5 group"
+                                    >
+                                        <span>Open Representative Flame</span>
+                                        <span className="text-[var(--accent-2)] group-hover:translate-x-0.5 transition-transform">↗</span>
+                                    </Link>
+                                </div>
+
+                                {(contextEntityLabel || contextZone) && (
+                                    <div className="pt-4 mt-6 border-t border-[var(--card-stroke)]">
+                                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">Analysis Context</p>
+                                        <p className="mt-1 text-xs text-[var(--ink-muted)] italic">
+                                            Filtering flow by {contextEntityLabel || "selected scope"} {contextZone ? `(Zone: ${contextZone})` : ""}
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                const params = new URLSearchParams(searchParams.toString());
+                                                params.delete("context_entity_id");
+                                                params.delete("context_entity_label");
+                                                params.delete("context_zone");
+                                                router.replace(`/work?${params.toString()}`);
+                                            }}
+                                            className="mt-2 text-[9px] uppercase tracking-[0.2em] text-[var(--accent-2)] hover:underline"
+                                        >
+                                            Clear context
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

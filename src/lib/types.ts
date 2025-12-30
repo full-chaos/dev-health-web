@@ -96,6 +96,7 @@ export type HealthResponse = {
 export type InvestmentResponse = {
   categories: Array<{ key: string; name: string; value: number }>;
   subtypes: Array<{ name: string; value: number; parentKey: string }>;
+  unit?: string;
   edges?: Array<Record<string, unknown>>;
 };
 

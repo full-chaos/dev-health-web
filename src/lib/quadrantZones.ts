@@ -54,7 +54,7 @@ type ZoneTemplate = {
 };
 
 const SHARED_NOTES = [
-  "Overlap across quadrants is expected; a team can look constrained in one lens and stable in another without contradiction.",
+  "Coordination across lenses is expected; views are complementary, not contradictory.",
   "This lens highlights a dominant pressure, not the whole system.",
 ];
 
@@ -99,7 +99,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "expansion-pressure",
         label: "Expansion Pressure Zone",
-        description: "System evolves while shipping as both change and delivery remain high.",
+        description: "Expansion and steady delivery coexist as change and delivery remain high.",
         levels: { churn: "high", throughput: "high" },
         signals: ["Rising churn", "Strong throughput", "Parallel refactors"],
         investigations: [
@@ -111,7 +111,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "coordination-pressure",
         label: "Saturation / Coordination Pressure Zone",
-        description: "High change with lagging throughput indicates potential coordination pressure.",
+        description: "High change with lagging delivery suggests coordination pressure.",
         levels: { churn: "high", throughput: "low" },
         signals: ["High churn", "Flat throughput", "Handoff delays"],
         investigations: [
@@ -162,7 +162,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "rapid-flow",
         label: "Rapid Flow Zone",
-        description: "Steady output with short cycles indicates dominant momentum.",
+        description: "Steady output with short cycles indicates high momentum.",
         levels: { cycle_time: "low", throughput: "high" },
         signals: ["Low cycle time", "Small batches", "Minimal waiting"],
         investigations: [
@@ -186,7 +186,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "friction-dominant",
         label: "Friction-Dominant Zone",
-        description: "Limited output with long cycles indicates dominant pipeline friction.",
+        description: "Limited output with long cycles indicates delivery friction.",
         levels: { cycle_time: "high", throughput: "low" },
         signals: ["High latency", "Queueing handoffs", "Frequent rework"],
         investigations: [
@@ -237,7 +237,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "focused-delivery",
         label: "Focused Delivery Zone",
-        description: "Steady output with lean work in flight indicates focused direction.",
+        description: "Steady output with lean work in flight suggests focused direction.",
         levels: { wip: "low", throughput: "high" },
         signals: ["Low WIP", "Lean intake", "Directional focus"],
         investigations: [
@@ -315,7 +315,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "responsive-review",
         label: "Responsive Review Zone",
-        description: "Smooth collaboration flow with light review demand and quick turnaround.",
+        description: "Light review demand and quick turnaround indicate healthy collaboration.",
         levels: { review_load: "low", review_latency: "low" },
         signals: ["Fast turnaround", "Small changes", "High availability"],
         investigations: [

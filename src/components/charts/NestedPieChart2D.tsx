@@ -23,6 +23,7 @@ const adjustHex = (hex: string, amount: number) => {
 type NestedPieChart2DProps = {
   categories: Array<{ key: string; name: string; value: number }>;
   subtypes: Array<{ name: string; value: number; parentKey: string }>;
+  unit?: string;
   height?: number | string;
   width?: number | string;
   className?: string;
@@ -32,6 +33,7 @@ type NestedPieChart2DProps = {
 export function NestedPieChart2D({
   categories,
   subtypes,
+  unit = "units",
   height = 360,
   width = "100%",
   className,
@@ -74,7 +76,25 @@ export function NestedPieChart2D({
   return (
     <Chart
       option={{
-        tooltip: { trigger: "item", confine: true },
+        tooltip: {
+          trigger: "item",
+          confine: true,
+          formatter: (params: {
+            seriesName: string;
+            name: string;
+            value: number | string;
+            percent: number;
+          }) => {
+            const value = typeof params.value === "number" ? params.value.toFixed(0) : params.value;
+            return `
+              <div style="font-weight: 600; margin-bottom: 4px;">${params.seriesName}</div>
+              <div style="font-[var(--font-mono)]">
+                ${params.name}: <strong>${value}</strong> ${unit}
+                <span style="color: ${chartTheme.muted}; margin-left: 8px;">(${params.percent}%)</span>
+              </div>
+            `;
+          },
+        },
         legend: {
           data: categories.map((category) => category.name),
           type: "scroll",

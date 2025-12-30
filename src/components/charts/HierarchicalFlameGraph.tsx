@@ -113,8 +113,7 @@ export function HierarchicalFlameGraph({
         node: AggregatedFlameNode,
         depth: number,
         index: number,
-        parentValue: number,
-        startPercent: number
+        parentValue: number
     ): React.ReactNode => {
         const widthPercent = parentValue > 0 ? (node.value / parentValue) * 100 : 0;
         if (widthPercent < 0.5) return null;
@@ -155,13 +154,9 @@ export function HierarchicalFlameGraph({
                 </button>
                 {hasChildren && (
                     <div className="flex">
-                        {(node.children ?? []).map((child, childIndex) => {
-                            const childStart =
-                                (node.children ?? [])
-                                    .slice(0, childIndex)
-                                    .reduce((acc, c) => acc + c.value, 0) / node.value;
-                            return renderNode(child, depth + 1, childIndex, node.value, childStart * 100);
-                        })}
+                        {(node.children ?? []).map((child, childIndex) =>
+                            renderNode(child, depth + 1, childIndex, node.value)
+                        )}
                     </div>
                 )}
             </div>
@@ -241,16 +236,16 @@ export function HierarchicalFlameGraph({
             >
                 {filteredChildren.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-sm text-[var(--ink-muted)]">
-                        {searchQuery ? "No matching nodes found." : "No data to display."}
+                        {searchQuery ? (
+                            <span>No matches found for &quot;{searchQuery}&quot;</span>
+                        ) : (
+                            "No data to display."
+                        )}
                     </div>
                 ) : (
                     <div className="flex">
                         {filteredChildren.map((child, index) => {
-                            const startPercent =
-                                filteredChildren
-                                    .slice(0, index)
-                                    .reduce((acc, c) => acc + c.value, 0) / currentRoot.value;
-                            return renderNode(child, 0, index, currentRoot.value, startPercent * 100);
+                            return renderNode(child, 0, index, currentRoot.value);
                         })}
                     </div>
                 )}
@@ -267,12 +262,17 @@ export function HierarchicalFlameGraph({
                     }}
                 >
                     <p className="font-semibold text-[var(--foreground)] truncate">{hoveredNode.name}</p>
-                    <p className="text-[var(--ink-muted)] mt-1">
-                        {formatValue(hoveredNode.value, unit)} {unit}
-                    </p>
-                    <p className="text-[var(--ink-muted)]">
-                        {formatPercent(hoveredNode.value, totalValue)} of total
-                    </p>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[11px]">
+                        <span className="text-[var(--ink-muted)]">Elapsed:</span>
+                        <span className="text-[var(--foreground)] font-mono">{formatValue(hoveredNode.value, unit)} {unit}</span>
+
+                        <span className="text-[var(--ink-muted)]">Percent:</span>
+                        <span className="text-[var(--foreground)] font-mono">{formatPercent(hoveredNode.value, totalValue)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-[var(--card-stroke)] pb-1">
+                        <span className="text-[var(--ink-muted)]">Total Elapsed</span>
+                        <span className="text-[var(--foreground)] font-mono">{formatValue(totalValue, unit)} {unit}</span>
+                    </div>
                     {(hoveredNode.children?.length ?? 0) > 0 && (
                         <p className="text-[var(--accent-2)] mt-1 text-[10px]">Click to zoom in</p>
                     )}

@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { useActiveRole } from "@/components/RoleSelector";
 import { getRoleConfig } from "@/lib/roleContext";
-import { findZoneMatches, getZoneOverlay } from "@/lib/quadrantZones";
+import { getZoneOverlay } from "@/lib/quadrantZones";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { QuadrantPoint, QuadrantResponse, MetricFilter } from "@/lib/types";
-import { useMemo, useState } from "react";
-import { SankeyInvestigationPanel } from "./SankeyInvestigationPanel";
+import { useMemo } from "react";
 
 type InvestigationPanelProps = {
     point: QuadrantPoint;
     data: QuadrantResponse;
     filters: MetricFilter;
     onClose: () => void;
+    title?: string;
 };
 
 export function InvestigationPanel({
@@ -21,46 +21,38 @@ export function InvestigationPanel({
     data,
     filters,
     onClose,
+    title,
 }: InvestigationPanelProps) {
-    const [showSankey, setShowSankey] = useState(false);
     const { activeRole } = useActiveRole();
     const roleConfig = getRoleConfig(activeRole);
 
     const zoneOverlay = useMemo(() => getZoneOverlay(data), [data]);
-    const zoneMatches = useMemo(() =>
-        zoneOverlay ? findZoneMatches(zoneOverlay, point) : [],
-        [zoneOverlay, point]
-    );
 
-    // Link construction logic moved from QuadrantPanel
     const metricExplainHref = point.evidence_link
         ? buildExploreUrl({ api: point.evidence_link, filters })
         : buildExploreUrl({ metric: data.axes.y.metric, filters });
 
-    const cycleBreakdownFlameHref = withFilterParam("/flame?mode=cycle_breakdown", filters);
-    const throughputFlameHref = withFilterParam("/flame?mode=throughput", filters);
-    const hotspotsFlameHref = withFilterParam("/flame?mode=code_hotspots", filters);
+    const origin = title ? `From: ${title}` : `From: ${data.axes.x.label} × ${data.axes.y.label}`;
 
-    const heatmapPath = useMemo(() => {
-        const metrics = new Set([data.axes.x.metric, data.axes.y.metric]);
-        if (metrics.has("churn")) return "/code";
-        return "/work";
-    }, [data.axes]);
-    const heatmapHref = withFilterParam(heatmapPath, filters);
+    const cycleBreakdownFlameHref = withFilterParam("/work?tab=flame&mode=cycle_breakdown", filters, undefined, origin);
+    const throughputFlameHref = withFilterParam("/work?tab=flame&mode=throughput", filters, undefined, origin);
+    const hotspotsFlameHref = withFilterParam("/work?tab=flame&mode=code_hotspots", filters, undefined, origin);
 
-    const investmentHref = withFilterParam("/investment", filters);
+    const heatmapPath = "/work?tab=heatmap";
+    const heatmapHref = withFilterParam(heatmapPath, filters, undefined, origin);
+
+    const investmentHref = withFilterParam(`/work?tab=flow&mode=investment&context_entity_id=${point.entity_id}&context_entity_label=${point.entity_label}`, filters, undefined, origin);
 
     const investigationPaths = useMemo(() => {
         const paths = [
-            { id: "explain", label: "Open metric explain", href: metricExplainHref, type: "review" },
-            { id: "heatmaps", label: "View related heatmaps", href: heatmapHref, type: "wip" },
-            { id: "cycle", label: "Cycle Breakdown Flame", href: cycleBreakdownFlameHref, type: "cycle" },
-            { id: "throughput", label: "Throughput Flame", href: throughputFlameHref, type: "delivery" },
-            { id: "hotspots", label: "Code Hotspots Flame", href: hotspotsFlameHref, type: "churn" },
-            { id: "investment", label: "View investment flow", href: investmentHref, type: "investment" },
+            { id: "explain", label: "Explain this state", href: metricExplainHref, type: "review" },
+            { id: "heatmaps", label: "View related patterns", href: heatmapHref, type: "wip" },
+            { id: "cycle", label: "View time breakdown", href: cycleBreakdownFlameHref, type: "cycle" },
+            { id: "throughput", label: "Inspect causes", href: throughputFlameHref, type: "delivery" },
+            { id: "hotspots", label: "Inspect causes", href: hotspotsFlameHref, type: "churn" },
+            { id: "investment", label: "View flow", href: investmentHref, type: "investment" },
         ];
 
-        // Reorder based on roleConfig.investigationOrder
         const sorted = [...paths].sort((a, b) => {
             const indexA = roleConfig.investigationOrder.indexOf(a.type);
             const indexB = roleConfig.investigationOrder.indexOf(b.type);
@@ -97,94 +89,62 @@ export function InvestigationPanel({
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {showSankey ? (
-                    <section className="space-y-4">
-                        <button
-                            onClick={() => setShowSankey(false)}
-                            className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--accent-2)] hover:text-[var(--foreground)]"
-                        >
-                            ← Back to summary
-                        </button>
-                        <SankeyInvestigationPanel
-                            point={point}
-                            filters={filters}
-                        />
-                    </section>
-                ) : (
-                    <>
-                        {/* Summary Section */}
-                        <section>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)] mb-2">
-                                Summary
-                            </p>
-                            <p className="text-[13px] leading-relaxed text-[var(--foreground)]">
-                                <span className="font-semibold text-[var(--accent-2)]">{roleConfig.framing}.</span> Observed operating mode for <span className="font-semibold">{point.entity_label}</span> during
-                                the window of {point.window_start} to {point.window_end}.
-                            </p>
-                        </section>
+                <section>
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                            Summary
+                        </p>
+                        <div className="flex gap-1">
+                            <span className="px-1.5 py-0.5 rounded bg-[var(--accent-2)]/10 text-[9px] text-[var(--accent-2)] border border-[var(--accent-2)]/20 uppercase tracking-tighter">
+                                High WIP
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-[var(--accent-2)]/10 text-[9px] text-[var(--accent-2)] border border-[var(--accent-2)]/20 uppercase tracking-tighter">
+                                Flow bottleneck
+                            </span>
+                        </div>
+                    </div>
+                    <p className="text-[13px] leading-relaxed text-[var(--foreground)]">
+                        <span className="font-semibold text-[var(--accent-2)]">{roleConfig.framing}.</span> Observed operating mode for <span className="font-semibold">{point.entity_label}</span> during
+                        the window of {point.window_start} to {point.window_end}.
+                    </p>
+                </section>
 
-                        {/* ... (Pattern Identification Section) */}
+                <section>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)] mb-3">
+                        Investigation Paths
+                    </p>
+                    <div className="grid gap-2">
+                        {investigationPaths.map((path) => {
+                            const isSuggested = path.type === primaryType;
+                            const isFlowLink = path.id === "investment";
 
-                        {/* Investigation Paths Section */}
-                        <section>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)] mb-3">
-                                Investigation Paths
-                            </p>
-                            <div className="grid gap-2">
-                                {investigationPaths.map((path) => {
-                                    const isSuggested = path.type === primaryType;
-                                    const isSankeyToggle = path.id === "investment";
-
-                                    const content = (
-                                        <div className="flex flex-col gap-0.5 text-left">
-                                            {isSuggested && (
-                                                <span className="text-[9px] uppercase tracking-wider text-[var(--accent-2)] font-bold">
-                                                    Suggested for {roleConfig.shortLabel}
-                                                </span>
-                                            )}
-                                            <span className="text-[12px] font-medium text-[var(--foreground)] group-hover:text-[var(--accent-2)]">
-                                                {path.label}
-                                            </span>
-                                        </div>
-                                    );
-
-                                    const className = `group flex items-center justify-between rounded-xl border px-4 py-3 transition ${isSuggested
+                            return (
+                                <Link
+                                    key={path.id}
+                                    href={path.href}
+                                    className={`group flex items-center justify-between rounded-xl border px-4 py-3 transition ${isSuggested
                                         ? "border-[var(--accent-2)] bg-[var(--accent-2)]/5"
                                         : "border-[var(--card-stroke)] bg-[var(--card)] hover:border-[var(--accent-2)]/40 hover:bg-[var(--accent-2)]/5"
-                                        }`;
-
-                                    if (isSankeyToggle) {
-                                        return (
-                                            <button
-                                                key={path.id}
-                                                onClick={() => setShowSankey(true)}
-                                                className={className}
-                                            >
-                                                {content}
-                                                <span className="text-[10px] text-[var(--accent-2)] opacity-0 transition-opacity group-hover:opacity-100 uppercase tracking-widest">
-                                                    View Flow ↘
-                                                </span>
-                                            </button>
-                                        );
-                                    }
-
-                                    return (
-                                        <Link
-                                            key={path.id}
-                                            href={path.href}
-                                            className={className}
-                                        >
-                                            {content}
-                                            <span className="text-[10px] text-[var(--accent-2)] opacity-0 transition-opacity group-hover:opacity-100 uppercase tracking-widest">
-                                                Open ↗
+                                        }`}
+                                >
+                                    <div className="flex flex-col gap-0.5 text-left">
+                                        {isSuggested && (
+                                            <span className="text-[9px] uppercase tracking-wider text-[var(--accent-2)] font-bold">
+                                                Suggested for {roleConfig.shortLabel}
                                             </span>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    </>
-                )}
+                                        )}
+                                        <span className="text-[12px] font-medium text-[var(--foreground)] group-hover:text-[var(--accent-2)]">
+                                            {path.label}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] text-[var(--accent-2)] opacity-0 transition-opacity group-hover:opacity-100 uppercase tracking-widest">
+                                        {isFlowLink ? "Open Flow Tab ↘" : "Open ↗"}
+                                    </span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </section>
             </div>
 
             <footer className="border-t border-[var(--card-stroke)] p-4 bg-[var(--card-90)]">

@@ -20,18 +20,17 @@ import { trackTelemetryEvent } from "@/lib/telemetry";
 import type { QuadrantAxis, QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantChart } from "./QuadrantChart";
-import { SankeyInvestigationPanel } from "./SankeyInvestigationPanel";
 import { InvestigationPanel } from "./InvestigationPanel";
 
 const AXIS_DESCRIPTIONS: Record<string, string> = {
-  churn: "Rate of code change, rework, and revision.",
+  churn: "System change and technical revision volume.",
   throughput: "Completed delivery units in the window.",
   cycle_time: "Elapsed time from start to delivery.",
   lead_time: "Elapsed time from request to delivery.",
-  wip: "Average concurrent work in progress.",
-  wip_saturation: "Average concurrent work in progress.",
-  review_load: "Incoming review requests per reviewer.",
-  review_latency: "Elapsed time before reviews complete.",
+  wip: "Average concurrent work in flight.",
+  wip_saturation: "Average concurrent work in flight.",
+  review_load: "Review requests per reviewer.",
+  review_latency: "Elapsed time for review completion.",
 };
 
 const describeAxis = (axis: QuadrantAxis) =>
@@ -146,7 +145,6 @@ export function QuadrantPanel({
   const [selectedPoint, setSelectedPoint] = useState<QuadrantPoint | null>(null);
   const [selectedPointKey, setSelectedPointKey] = useState<string | null>(null);
   const [showZoneOverlay, setShowZoneOverlay] = useState(true);
-  const [showSankey, setShowSankey] = useState(false);
   const [zoneQuestionsKey, setZoneQuestionsKey] = useState<string | null>(null);
   const [hoveredOverlayKey, setHoveredOverlayKey] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -228,7 +226,6 @@ export function QuadrantPanel({
     setSelectedPoint(point);
     setSelectedPointKey(dataKey);
     setZoneQuestionsKey(null);
-    setShowSankey(false);
   };
 
   useEffect(() => {
@@ -279,8 +276,6 @@ export function QuadrantPanel({
   const quadrantMeaning = "Quadrants do not imply good or bad.";
   const noRankingMeaning =
     "Avoid ranking, percentile, or score language for this view.";
-  const snapshotMeaning =
-    "Compare snapshots by changing the time window; do not infer direction from a single view.";
   const influenceNarrative = quadrantDefinition?.influence;
   const influenceLens = influenceNarrative?.lens ?? "Operating mode";
   const influenceFraming =
@@ -292,15 +287,6 @@ export function QuadrantPanel({
   const influenceNext =
     influenceNarrative?.next ??
     "Use heatmaps, flame diagrams, and metric explain views to investigate causes.";
-  const cohortMeaning = isPersonScope
-    ? "Individual scope shows a single dot; no peer comparison is displayed."
-    : scopeType === "team"
-      ? focusEntityIds.length
-        ? "Team dots are labeled for orientation; the focus team is highlighted."
-        : "Team dots are labeled for orientation; labels do not imply ranking."
-      : focusEntityIds.length
-        ? "Unlabeled dots show the filtered cohort background; labels appear only for focus entities."
-        : "Dots represent the filtered cohort; labels appear when a focus entity is selected.";
   const zoneMeaning = hasInterpretationOverlay
     ? "Zones are interpretive overlays that suggest common system modes under this lens; turn off anytime."
     : null;
@@ -313,35 +299,15 @@ export function QuadrantPanel({
   const metricExplainHref = activeSelectedPoint?.evidence_link
     ? buildExploreUrl({ api: activeSelectedPoint.evidence_link, filters })
     : buildExploreUrl({ metric: data.axes.y.metric, filters });
-  const flameHref = metricExplainHref ? `${metricExplainHref}#evidence` : null;
-  const aggregatedFlameMode = data.axes.x.metric.includes("churn")
-    ? "code_hotspots"
-    : "cycle_breakdown";
-  const aggregatedFlameHref = withFilterParam(`/flame?mode=${aggregatedFlameMode}`, filters);
-  const cycleBreakdownFlameHref = withFilterParam("/flame?mode=cycle_breakdown", filters);
-  const throughputFlameHref = withFilterParam("/flame?mode=throughput", filters);
-  const hotspotsFlameHref = withFilterParam("/flame?mode=code_hotspots", filters);
   const heatmapLink = (relatedLinks ?? []).find((link) =>
     link.label.toLowerCase().includes("heatmap")
   );
-  const heatmapHref =
-    heatmapLink?.href ??
-    withFilterParam(defaultHeatmapPath(data.axes), filters);
   const supplementalLinks = (relatedLinks ?? []).filter(
     (link) => !link.label.toLowerCase().includes("heatmap")
   );
 
-  const selectedLabel = activeSelectedPoint
-    ? isPersonScope
-      ? "Selected dot: You"
-      : `Selected dot: ${activeSelectedPoint.entity_label}`
-    : null;
   const showZoneMenu = zoneMatches.length > 0;
-  const showZoneQuestions =
-    zoneQuestionsKey !== null &&
-    zoneQuestionsKey === dataKey &&
-    showZoneOverlay &&
-    showZoneMenu;
+  const showZoneQuestions = false; // Temporary or remove if fully unused
   const showZoneLegend = showZoneOverlay && zoneLegendItems.length > 0;
   const handleZoneToggle = (next: boolean) => {
     setShowZoneOverlay(next);
@@ -576,12 +542,14 @@ export function QuadrantPanel({
                           style={buildLegendSwatchStyle(item.color)}
                         />
                         <div className="min-w-0">
-                          <p className="break-words text-xs font-semibold text-[var(--foreground)]">
+                          <p className={`break-words font-semibold text-[var(--foreground)] ${isActive ? "text-xs" : "text-[11px]"}`}>
                             {item.label}
                           </p>
-                          <p className="break-words text-[11px] leading-snug text-[var(--ink-muted)] line-clamp-2">
-                            {item.description}
-                          </p>
+                          {isActive && (
+                            <p className="mt-1 break-words text-[11px] leading-snug text-[var(--ink-muted)] animate-in fade-in slide-in-from-top-1 duration-200">
+                              {item.description}
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
@@ -632,6 +600,7 @@ export function QuadrantPanel({
               point={activeSelectedPoint}
               data={data}
               filters={filters}
+              title={title}
               onClose={() => {
                 setSelectedPoint(null);
                 setSelectedPointKey(null);
@@ -641,15 +610,6 @@ export function QuadrantPanel({
         )}
       </div>
 
-      {showSankey && activeSelectedPoint && (
-        <div className="mt-8 border-t border-[var(--card-stroke)] pt-8">
-          <SankeyInvestigationPanel
-            key={`${activeSelectedPoint.entity_id}-${dataKey ?? "sankey"}`}
-            point={activeSelectedPoint}
-            filters={filters}
-          />
-        </div>
-      )}
     </div>
   );
 }
