@@ -123,24 +123,42 @@ export function SankeyChart({
                 data.source && outgoingTotals.has(data.source)
                   ? outgoingTotals.get(data.source) ?? 0
                   : 0;
+              const unitLabel = unit === "hours" ? "Elapsed" : "Value";
               const shareLine =
                 totalFromSource > 0 && typeof data.value === "number"
-                  ? `<br/>${formatPercent(data.value, totalFromSource)} of source`
+                  ? `<br/><span style="color: ${chartTheme.accent2}">${formatPercent(data.value, totalFromSource)}</span> of source flow`
                   : "";
-              return `${data.source ?? ""} -> ${data.target ?? ""}<br/>${formatValue(
-                data.value
-              )}${shareLine}`;
+
+              return `
+                <div style="font-weight: 600; margin-bottom: 4px;">Flow</div>
+                <div style="font-size: 11px; color: ${chartTheme.muted}">${data.source ?? ""} &rarr; ${data.target ?? ""}</div>
+                <div style="margin-top: 4px;">
+                  <span style="color: ${chartTheme.muted}">${unitLabel}:</span> 
+                  <span style="font-weight: 600; font-family: monospace;">${formatValue(data.value)}</span>
+                  ${shareLine}
+                </div>
+              `;
             }
+
             const nodeName = data.name ?? entry.name ?? "";
             const nodeValue =
               typeof data.value === "number"
                 ? data.value
                 : nodeValueByName.get(nodeName) ?? 0;
+            const unitLabel = unit === "hours" ? "Total Elapsed" : "Total Value";
             const shareLine =
               totalFlow > 0
-                ? `<br/>${formatPercent(nodeValue, totalFlow)} of total`
+                ? `<br/><span style="color: ${chartTheme.accent2}">${formatPercent(nodeValue, totalFlow)}</span> of total`
                 : "";
-            return `${nodeName}<br/>${formatValue(nodeValue)}${shareLine}`;
+
+            return `
+              <div style="font-weight: 600; margin-bottom: 4px;">${nodeName}</div>
+              <div>
+                <span style="color: ${chartTheme.muted}">${unitLabel}:</span> 
+                <span style="font-weight: 600; font-family: monospace;">${formatValue(nodeValue)}</span>
+                ${shareLine}
+              </div>
+            `;
           },
         },
         series: [

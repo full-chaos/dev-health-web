@@ -44,7 +44,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
 
   if (!data) {
     return (
-      <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] text-sm text-[var(--ink-muted)]">
+      <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
         Loading investment mix…
       </div>
     );
@@ -53,7 +53,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
   const nested = mapInvestmentToNestedPie(data);
 
   return (
-    <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4">
+    <div className="rounded-3xl border border-(--card-stroke) bg-card p-4">
       <NestedPieChart2D
         categories={nested.categories}
         subtypes={nested.subtypes}

@@ -92,6 +92,9 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+
   const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
   const activeTab =
     METRIC_TABS.find((tab) => tab.id === tabParam) ?? METRIC_TABS[0];
@@ -126,25 +129,25 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
   const contributors = (highlight?.contributors ?? []).slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="metrics" />
+        <PrimaryNav filters={filters} active="metrics" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Metrics
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 Monitoring view
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Track trends over time. Use Explore only for evidence.
               </p>
             </div>
             <Link
-              href={withFilterParam("/", filters)}
-              className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+              href={withFilterParam("/", filters, activeRole)}
+              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
               Back to cockpit
             </Link>
@@ -158,12 +161,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               return (
                 <Link
                   key={tab.id}
-                  href={withFilterParam(`/metrics?tab=${tab.id}`, filters)}
-                  className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition ${
-                    isActive
-                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                      : "border-[var(--card-stroke)] text-[var(--ink-muted)] hover:text-[var(--foreground)]"
-                  }`}
+                  href={withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole)}
+                  className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition ${isActive
+                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                    : "border-(--card-stroke) text-(--ink-muted) hover:text-foreground"
+                    }`}
                 >
                   {tab.label}
                 </Link>
@@ -171,19 +173,19 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             })}
           </nav>
 
-          <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                   {activeTab.label} monitoring
                 </p>
-                <p className="mt-1 text-sm text-[var(--ink-muted)]">
+                <p className="mt-1 text-sm text-(--ink-muted)">
                   {activeTab.description}
                 </p>
               </div>
               <Link
-                href={buildExploreUrl({ metric: activeTab.highlight, filters })}
-                className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
+                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 title={`Open evidence for ${highlightLabel}`}
               >
                 Open evidence
@@ -195,8 +197,8 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 return (
                   <Link
                     key={`chip-${metric}`}
-                    href={buildExploreUrl({ metric, filters })}
-                    className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-muted)] transition hover:text-[var(--foreground)]"
+                    href={buildExploreUrl({ metric, filters, role: activeRole })}
+                    className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-(--ink-muted) transition hover:text-foreground"
                   >
                     {data?.label ?? metric}
                   </Link>
@@ -212,7 +214,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 <MetricCard
                   key={metric}
                   label={data?.label ?? metric}
-                  href={buildExploreUrl({ metric, filters })}
+                  href={buildExploreUrl({ metric, filters, role: activeRole })}
                   value={placeholderDeltas ? undefined : data?.value}
                   unit={data?.unit}
                   delta={placeholderDeltas ? undefined : data?.delta_pct}
@@ -229,24 +231,24 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               data={quadrant}
               filters={filters}
               relatedLinks={[
-                { label: "Open landscapes", href: withFilterParam("/explore/landscape", filters) },
+                { label: "Open landscapes", href: withFilterParam("/explore/landscape", filters, activeRole) },
               ]}
               emptyState="Quadrant data unavailable for this scope."
             />
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Likely drivers</h2>
+                <h2 className="font-(--font-display) text-xl">Likely drivers</h2>
                 <Link
-                  href={buildExploreUrl({ metric: activeTab.highlight, filters })}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                  href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
+                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Open evidence
                 </Link>
               </div>
-              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+              <p className="mt-2 text-xs text-(--ink-muted)">
                 Preview of the active window. Select a driver for drill-down.
               </p>
               {drivers.length ? (
@@ -259,11 +261,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     {drivers.map((driver) => (
                       <Link
                         key={driver.id}
-                        href={buildExploreUrl({ api: driver.evidence_link, filters })}
-                        className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
+                        href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
+                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                       >
                         <span>{driver.label}</span>
-                        <span className="text-xs text-[var(--ink-muted)]">
+                        <span className="text-xs text-(--ink-muted)">
                           {formatDelta(driver.delta_pct)}
                         </span>
                       </Link>
@@ -271,23 +273,23 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                   </div>
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-[var(--ink-muted)]">
+                <p className="mt-4 text-sm text-(--ink-muted)">
                   Driver analysis will appear once data is ingested.
                 </p>
               )}
             </div>
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Primary contributors</h2>
+                <h2 className="font-(--font-display) text-xl">Primary contributors</h2>
                 <Link
-                  href={buildExploreUrl({ metric: activeTab.highlight, filters })}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                  href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
+                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Open evidence
                 </Link>
               </div>
-              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+              <p className="mt-2 text-xs text-(--ink-muted)">
                 Where the impact concentrates in this window.
               </p>
               {contributors.length ? (
@@ -300,11 +302,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     {contributors.map((contributor) => (
                       <Link
                         key={contributor.id}
-                        href={buildExploreUrl({ api: contributor.evidence_link, filters })}
-                        className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
+                        href={buildExploreUrl({ api: contributor.evidence_link, filters, role: activeRole })}
+                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                       >
                         <span>{contributor.label}</span>
-                        <span className="text-xs text-[var(--ink-muted)]">
+                        <span className="text-xs text-(--ink-muted)">
                           {highlight
                             ? formatMetricValue(contributor.value, highlight.unit)
                             : "--"}
@@ -314,59 +316,59 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                   </div>
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-[var(--ink-muted)]">
+                <p className="mt-4 text-sm text-(--ink-muted)">
                   Contributor detail will appear once data is ingested.
                 </p>
               )}
             </div>
           </section>
 
-          <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
             <div className="flex items-center justify-between">
-              <h2 className="font-[var(--font-display)] text-xl">Summary</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <h2 className="font-(--font-display) text-xl">Summary</h2>
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 Active window
               </span>
             </div>
             <div className="mt-4 overflow-auto">
               <table className="min-w-full border-collapse text-sm">
-                <thead className="text-left text-[var(--ink-muted)]">
+                <thead className="text-left text-(--ink-muted)">
                   <tr>
-                    <th className="border-b border-[var(--card-stroke)] pb-2">Metric</th>
-                    <th className="border-b border-[var(--card-stroke)] pb-2">Current</th>
-                    <th className="border-b border-[var(--card-stroke)] pb-2">Delta</th>
-                    <th className="border-b border-[var(--card-stroke)] pb-2">Explore</th>
+                    <th className="border-b border-(--card-stroke) pb-2">Metric</th>
+                    <th className="border-b border-(--card-stroke) pb-2">Current</th>
+                    <th className="border-b border-(--card-stroke) pb-2">Delta</th>
+                    <th className="border-b border-(--card-stroke) pb-2">Explore</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activeTab.metrics.map((metric) => {
                     const data = getMetric(deltas, metric);
-                    const href = buildExploreUrl({ metric, filters });
+                    const href = buildExploreUrl({ metric, filters, role: activeRole });
                     return (
                       <tr
                         key={metric}
-                        className="border-b border-[var(--card-stroke)]"
+                        className="border-b border-(--card-stroke)"
                       >
                         <td className="py-3 pr-4 font-medium">
                           <Link href={href} className="block">
                             {data?.label ?? metric}
                           </Link>
                         </td>
-                        <td className="py-3 pr-4 text-[var(--ink-muted)]">
+                        <td className="py-3 pr-4 text-(--ink-muted)">
                           <Link href={href} className="block">
                             {placeholderDeltas || !data
                               ? "--"
                               : formatMetricValue(data.value, data.unit)}
                           </Link>
                         </td>
-                        <td className="py-3 pr-4 text-[var(--ink-muted)]">
+                        <td className="py-3 pr-4 text-(--ink-muted)">
                           <Link href={href} className="block">
                             {placeholderDeltas || !data
                               ? "--"
                               : formatDelta(data.delta_pct)}
                           </Link>
                         </td>
-                        <td className="py-3 text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
+                        <td className="py-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
                           <Link href={href} className="block">
                             Open
                           </Link>
@@ -379,7 +381,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             </div>
           </section>
         </main>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

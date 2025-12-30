@@ -113,8 +113,7 @@ export function HierarchicalFlameGraph({
         node: AggregatedFlameNode,
         depth: number,
         index: number,
-        parentValue: number,
-        startPercent: number
+        parentValue: number
     ): React.ReactNode => {
         const widthPercent = parentValue > 0 ? (node.value / parentValue) * 100 : 0;
         if (widthPercent < 0.5) return null;
@@ -139,10 +138,10 @@ export function HierarchicalFlameGraph({
                     disabled={!hasChildren}
                     className={`
             block w-full text-left px-1.5 py-1 text-[10px] truncate
-            border border-[var(--card-stroke)] rounded-sm mb-0.5
+            border border-(--card-stroke) rounded-sm mb-0.5
             transition-all duration-150
             ${hasChildren ? "cursor-pointer hover:brightness-110" : "cursor-default"}
-            ${isSearchMatch ? "ring-2 ring-[var(--accent-2)]" : ""}
+            ${isSearchMatch ? "ring-2 ring-(--accent-2)" : ""}
           `}
                     style={{
                         backgroundColor: getColor(depth, index),
@@ -155,13 +154,9 @@ export function HierarchicalFlameGraph({
                 </button>
                 {hasChildren && (
                     <div className="flex">
-                        {(node.children ?? []).map((child, childIndex) => {
-                            const childStart =
-                                (node.children ?? [])
-                                    .slice(0, childIndex)
-                                    .reduce((acc, c) => acc + c.value, 0) / node.value;
-                            return renderNode(child, depth + 1, childIndex, node.value, childStart * 100);
-                        })}
+                        {(node.children ?? []).map((child, childIndex) =>
+                            renderNode(child, depth + 1, childIndex, node.value)
+                        )}
                     </div>
                 )}
             </div>
@@ -184,15 +179,15 @@ export function HierarchicalFlameGraph({
                     <div className="flex items-center gap-1 text-xs">
                         {breadcrumbs.map((crumb, idx) => (
                             <span key={`crumb-${idx}`} className="flex items-center gap-1">
-                                {idx > 0 && <span className="text-[var(--ink-muted)]">/</span>}
+                                {idx > 0 && <span className="text-(--ink-muted)">/</span>}
                                 <button
                                     type="button"
                                     onClick={() => handleZoomOut(crumb.index + 1)}
                                     className={`
                     px-2 py-0.5 rounded-full
                     ${idx === breadcrumbs.length - 1
-                                            ? "bg-[var(--card-stroke)] text-[var(--foreground)]"
-                                            : "text-[var(--accent-2)] hover:underline"
+                                            ? "bg-(--card-stroke) text-foreground"
+                                            : "text-(--accent-2) hover:underline"
                                         }
                   `}
                                 >
@@ -209,14 +204,14 @@ export function HierarchicalFlameGraph({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search..."
-                        className="px-3 py-1 text-xs rounded-full border border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] placeholder:text-[var(--ink-muted)] w-36"
+                        className="px-3 py-1 text-xs rounded-full border border-(--card-stroke) bg-card text-foreground placeholder:text-(--ink-muted) w-36"
                     />
                     {/* Reset */}
                     {(zoomStack.length > 0 || searchQuery) && (
                         <button
                             type="button"
                             onClick={handleReset}
-                            className="px-3 py-1 text-xs rounded-full border border-[var(--card-stroke)] bg-[var(--card)] text-[var(--accent-2)]"
+                            className="px-3 py-1 text-xs rounded-full border border-(--card-stroke) bg-card text-(--accent-2)"
                         >
                             Reset
                         </button>
@@ -225,9 +220,9 @@ export function HierarchicalFlameGraph({
             </div>
 
             {/* Summary */}
-            <div className="flex items-center gap-4 mb-3 text-xs text-[var(--ink-muted)]">
+            <div className="flex items-center gap-4 mb-3 text-xs text-(--ink-muted)">
                 <span>
-                    Total: <strong className="text-[var(--foreground)]">{formatValue(currentRoot.value, unit)}</strong> {unit}
+                    Total: <strong className="text-foreground">{formatValue(currentRoot.value, unit)}</strong> {unit}
                 </span>
                 <span>
                     {(currentRoot.children ?? []).length} children
@@ -236,21 +231,21 @@ export function HierarchicalFlameGraph({
 
             {/* Flame Graph */}
             <div
-                className="overflow-auto rounded-lg border border-[var(--card-stroke)] bg-[var(--card-80)] p-2"
+                className="overflow-auto rounded-lg border border-(--card-stroke) bg-(--card-80) p-2"
                 style={{ maxHeight: typeof height === "number" ? height - 100 : "300px" }}
             >
                 {filteredChildren.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-sm text-[var(--ink-muted)]">
-                        {searchQuery ? "No matching nodes found." : "No data to display."}
+                    <div className="flex items-center justify-center h-32 text-sm text-(--ink-muted)">
+                        {searchQuery ? (
+                            <span>No matches found for &quot;{searchQuery}&quot;</span>
+                        ) : (
+                            "No data to display."
+                        )}
                     </div>
                 ) : (
                     <div className="flex">
                         {filteredChildren.map((child, index) => {
-                            const startPercent =
-                                filteredChildren
-                                    .slice(0, index)
-                                    .reduce((acc, c) => acc + c.value, 0) / currentRoot.value;
-                            return renderNode(child, 0, index, currentRoot.value, startPercent * 100);
+                            return renderNode(child, 0, index, currentRoot.value);
                         })}
                     </div>
                 )}
@@ -259,22 +254,27 @@ export function HierarchicalFlameGraph({
             {/* Tooltip */}
             {hoveredNode && (
                 <div
-                    className="fixed z-50 px-3 py-2 text-xs rounded-lg border border-[var(--card-stroke)] bg-[var(--card)] shadow-lg pointer-events-none"
+                    className="fixed z-50 px-3 py-2 text-xs rounded-lg border border-(--card-stroke) bg-card shadow-lg pointer-events-none"
                     style={{
                         left: tooltipPos.x + 12,
                         top: tooltipPos.y + 12,
                         maxWidth: 280,
                     }}
                 >
-                    <p className="font-semibold text-[var(--foreground)] truncate">{hoveredNode.name}</p>
-                    <p className="text-[var(--ink-muted)] mt-1">
-                        {formatValue(hoveredNode.value, unit)} {unit}
-                    </p>
-                    <p className="text-[var(--ink-muted)]">
-                        {formatPercent(hoveredNode.value, totalValue)} of total
-                    </p>
+                    <p className="font-semibold text-foreground truncate">{hoveredNode.name}</p>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[11px]">
+                        <span className="text-(--ink-muted)">Elapsed:</span>
+                        <span className="text-foreground font-mono">{formatValue(hoveredNode.value, unit)} {unit}</span>
+
+                        <span className="text-(--ink-muted)">Percent:</span>
+                        <span className="text-foreground font-mono">{formatPercent(hoveredNode.value, totalValue)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-(--card-stroke) pb-1">
+                        <span className="text-(--ink-muted)">Total Elapsed</span>
+                        <span className="text-foreground font-mono">{formatValue(totalValue, unit)} {unit}</span>
+                    </div>
                     {(hoveredNode.children?.length ?? 0) > 0 && (
-                        <p className="text-[var(--accent-2)] mt-1 text-[10px]">Click to zoom in</p>
+                        <p className="text-(--accent-2) mt-1 text-[10px]">Click to zoom in</p>
                     )}
                 </div>
             )}

@@ -28,6 +28,9 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
@@ -42,25 +45,25 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
   const contributors = (explain?.contributors ?? []).slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="quality" />
+        <PrimaryNav filters={filters} active="quality" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Quality
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 Reliability Signals
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Change failure, CI stability, and rework visibility.
               </p>
             </div>
             <Link
-              href={withFilterParam("/", filters)}
-              className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+              href={withFilterParam("/", filters, activeRole)}
+              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
               Back to cockpit
             </Link>
@@ -71,50 +74,50 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
           <section className="grid gap-4 lg:grid-cols-3">
             <MetricCard
               label={changeFailureMetric?.label ?? "Change Failure Rate"}
-              href={buildExploreUrl({ metric: "change_failure_rate", filters })}
+              href={buildExploreUrl({ metric: "change_failure_rate", filters, role: activeRole })}
               value={placeholderDeltas ? undefined : changeFailureMetric?.value}
               unit={changeFailureMetric?.unit}
               delta={placeholderDeltas ? undefined : changeFailureMetric?.delta_pct}
               spark={changeFailureMetric?.spark}
               caption="Change failure rate"
             />
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">CI Failures</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">CI Failures</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Pending
                 </span>
               </div>
-              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+              <p className="mt-3 text-sm text-(--ink-muted)">
                 Connect CI events to surface flaky pipelines and failed runs.
               </p>
-              <div className="mt-4 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+              <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                 CI telemetry not yet configured.
               </div>
             </div>
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Rework</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">Rework</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Pending
                 </span>
               </div>
-              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+              <p className="mt-3 text-sm text-(--ink-muted)">
                 Tag rework or rollback items to quantify repeated work.
               </p>
-              <div className="mt-4 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+              <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                 Rework signals not yet tagged.
               </div>
             </div>
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Change Failure Drivers</h2>
+                <h2 className="font-(--font-display) text-xl">Change Failure Drivers</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "change_failure_rate", filters })}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                  href={buildExploreUrl({ metric: "change_failure_rate", filters, role: activeRole })}
+                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Evidence
                 </Link>
@@ -129,11 +132,11 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                     {drivers.map((driver) => (
                       <Link
                         key={driver.id}
-                        href={buildExploreUrl({ api: driver.evidence_link, filters })}
-                        className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
+                        href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
+                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                       >
                         <span>{driver.label}</span>
-                        <span className="text-xs text-[var(--ink-muted)]">
+                        <span className="text-xs text-(--ink-muted)">
                           {formatDelta(driver.delta_pct)}
                         </span>
                       </Link>
@@ -141,18 +144,18 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                   </div>
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-[var(--ink-muted)]">
+                <p className="mt-4 text-sm text-(--ink-muted)">
                   Driver analysis will appear once data is ingested.
                 </p>
               )}
             </div>
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Contributors</h2>
+                <h2 className="font-(--font-display) text-xl">Contributors</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "change_failure_rate", filters })}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                  href={buildExploreUrl({ metric: "change_failure_rate", filters, role: activeRole })}
+                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Evidence
                 </Link>
@@ -162,11 +165,11 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                   {contributors.map((contributor) => (
                     <Link
                       key={contributor.id}
-                      href={buildExploreUrl({ api: contributor.evidence_link, filters })}
-                      className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
+                      href={buildExploreUrl({ api: contributor.evidence_link, filters, role: activeRole })}
+                      className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                     >
                       <span>{contributor.label}</span>
-                      <span className="text-xs text-[var(--ink-muted)]">
+                      <span className="text-xs text-(--ink-muted)">
                         {explain
                           ? formatMetricValue(contributor.value, explain.unit)
                           : "--"}
@@ -175,7 +178,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                   ))}
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-[var(--ink-muted)]">
+                <p className="mt-4 text-sm text-(--ink-muted)">
                   Contributor detail will appear once data is ingested.
                 </p>
               )}

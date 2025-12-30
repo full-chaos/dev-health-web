@@ -10,9 +10,7 @@ import {
 import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
-import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import {
-  findZoneMatches,
   getQuadrantDefinition,
   getZoneOverlay,
 } from "@/lib/quadrantZones";
@@ -20,40 +18,23 @@ import { trackTelemetryEvent } from "@/lib/telemetry";
 import type { QuadrantAxis, QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantChart } from "./QuadrantChart";
-import { SankeyInvestigationPanel } from "./SankeyInvestigationPanel";
+import { InvestigationPanel } from "./InvestigationPanel";
 
 const AXIS_DESCRIPTIONS: Record<string, string> = {
-  churn: "Rate of code change, rework, and revision.",
+  churn: "System change and technical revision volume.",
   throughput: "Completed delivery units in the window.",
   cycle_time: "Elapsed time from start to delivery.",
   lead_time: "Elapsed time from request to delivery.",
-  wip: "Average concurrent work in progress.",
-  wip_saturation: "Average concurrent work in progress.",
-  review_load: "Incoming review requests per reviewer.",
-  review_latency: "Elapsed time before reviews complete.",
+  wip: "Average concurrent work in flight.",
+  wip_saturation: "Average concurrent work in flight.",
+  review_load: "Review requests per reviewer.",
+  review_latency: "Elapsed time for review completion.",
 };
 
 const describeAxis = (axis: QuadrantAxis) =>
   AXIS_DESCRIPTIONS[axis.metric] ??
   `Observed ${axis.label.toLowerCase()} over the selected window.`;
 
-const defaultHeatmapPath = (axes: QuadrantResponse["axes"]) => {
-  const metrics = new Set([axes.x.metric, axes.y.metric]);
-  if (metrics.has("churn")) {
-    return "/code";
-  }
-  if (
-    metrics.has("review_load") ||
-    metrics.has("review_latency") ||
-    metrics.has("cycle_time") ||
-    metrics.has("lead_time") ||
-    metrics.has("wip") ||
-    metrics.has("wip_saturation")
-  ) {
-    return "/work";
-  }
-  return "/work";
-};
 
 const ANNOTATION_COLOR = "rgba(148, 163, 184, 0.2)";
 const overlayKeyFor = (type: "zone" | "annotation", id: string | number) =>
@@ -145,8 +126,6 @@ export function QuadrantPanel({
   const [selectedPoint, setSelectedPoint] = useState<QuadrantPoint | null>(null);
   const [selectedPointKey, setSelectedPointKey] = useState<string | null>(null);
   const [showZoneOverlay, setShowZoneOverlay] = useState(true);
-  const [showSankey, setShowSankey] = useState(false);
-  const [zoneQuestionsKey, setZoneQuestionsKey] = useState<string | null>(null);
   const [hoveredOverlayKey, setHoveredOverlayKey] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const zoneOverlay = useMemo(() => getZoneOverlay(data), [data]);
@@ -171,10 +150,6 @@ export function QuadrantPanel({
   }, [data]);
   const activeSelectedPoint =
     dataKey && selectedPointKey === dataKey ? selectedPoint : null;
-  const zoneMatches =
-    activeSelectedPoint && showZoneOverlay && zoneOverlay
-      ? findZoneMatches(zoneOverlay, activeSelectedPoint)
-      : [];
   const zoneLegendItems = useMemo(() => {
     if (!showZoneOverlay || !data) {
       return [];
@@ -226,8 +201,6 @@ export function QuadrantPanel({
   const handlePointSelect = (point: QuadrantPoint) => {
     setSelectedPoint(point);
     setSelectedPointKey(dataKey);
-    setZoneQuestionsKey(null);
-    setShowSankey(false);
   };
 
   useEffect(() => {
@@ -264,7 +237,7 @@ export function QuadrantPanel({
 
   if (!data || !data.points?.length) {
     return (
-      <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-5 text-sm text-[var(--ink-muted)]">
+      <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
         {emptyState}
       </div>
     );
@@ -278,8 +251,6 @@ export function QuadrantPanel({
   const quadrantMeaning = "Quadrants do not imply good or bad.";
   const noRankingMeaning =
     "Avoid ranking, percentile, or score language for this view.";
-  const snapshotMeaning =
-    "Compare snapshots by changing the time window; do not infer direction from a single view.";
   const influenceNarrative = quadrantDefinition?.influence;
   const influenceLens = influenceNarrative?.lens ?? "Operating mode";
   const influenceFraming =
@@ -291,15 +262,6 @@ export function QuadrantPanel({
   const influenceNext =
     influenceNarrative?.next ??
     "Use heatmaps, flame diagrams, and metric explain views to investigate causes.";
-  const cohortMeaning = isPersonScope
-    ? "Individual scope shows a single dot; no peer comparison is displayed."
-    : scopeType === "team"
-      ? focusEntityIds.length
-        ? "Team dots are labeled for orientation; the focus team is highlighted."
-        : "Team dots are labeled for orientation; labels do not imply ranking."
-      : focusEntityIds.length
-        ? "Unlabeled dots show the filtered cohort background; labels appear only for focus entities."
-        : "Dots represent the filtered cohort; labels appear when a focus entity is selected.";
   const zoneMeaning = hasInterpretationOverlay
     ? "Zones are interpretive overlays that suggest common system modes under this lens; turn off anytime."
     : null;
@@ -309,42 +271,13 @@ export function QuadrantPanel({
     : "Leaderboards, rankings, percentiles, or quality judgments.";
   const legendLensLabel = influenceNarrative?.lens ?? null;
 
-  const metricExplainHref = activeSelectedPoint?.evidence_link
-    ? buildExploreUrl({ api: activeSelectedPoint.evidence_link, filters })
-    : buildExploreUrl({ metric: data.axes.y.metric, filters });
-  const flameHref = metricExplainHref ? `${metricExplainHref}#evidence` : null;
-  const aggregatedFlameMode = data.axes.x.metric.includes("churn")
-    ? "code_hotspots"
-    : "cycle_breakdown";
-  const aggregatedFlameHref = withFilterParam(`/flame?mode=${aggregatedFlameMode}`, filters);
-  const cycleBreakdownFlameHref = withFilterParam("/flame?mode=cycle_breakdown", filters);
-  const throughputFlameHref = withFilterParam("/flame?mode=throughput", filters);
-  const hotspotsFlameHref = withFilterParam("/flame?mode=code_hotspots", filters);
-  const heatmapLink = (relatedLinks ?? []).find((link) =>
-    link.label.toLowerCase().includes("heatmap")
-  );
-  const heatmapHref =
-    heatmapLink?.href ??
-    withFilterParam(defaultHeatmapPath(data.axes), filters);
   const supplementalLinks = (relatedLinks ?? []).filter(
     (link) => !link.label.toLowerCase().includes("heatmap")
   );
 
-  const selectedLabel = activeSelectedPoint
-    ? isPersonScope
-      ? "Selected dot: You"
-      : `Selected dot: ${activeSelectedPoint.entity_label}`
-    : null;
-  const showZoneMenu = zoneMatches.length > 0;
-  const showZoneQuestions =
-    zoneQuestionsKey !== null &&
-    zoneQuestionsKey === dataKey &&
-    showZoneOverlay &&
-    showZoneMenu;
   const showZoneLegend = showZoneOverlay && zoneLegendItems.length > 0;
   const handleZoneToggle = (next: boolean) => {
     setShowZoneOverlay(next);
-    setZoneQuestionsKey(null);
     setHoveredOverlayKey(null);
     if (zoneOverlay && axesKey) {
       trackTelemetryEvent("quadrant_zone_overlay_toggled", {
@@ -356,24 +289,21 @@ export function QuadrantPanel({
   };
 
   return (
-    <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+    <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-[var(--font-display)] text-xl">{title}</h2>
-          <p className="mt-1 text-xs text-[var(--ink-muted)]">
-            Operating modes under competing pressures
-          </p>
-          <p className="mt-2 text-sm text-[var(--ink-muted)]">{description}</p>
+          <h2 className="font-(--font-display) text-xl">{title}</h2>
+          <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
         </div>
-        <div className="flex flex-col items-end gap-2 text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+        <div className="flex flex-col items-end gap-2 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
           <span>Select a dot to investigate</span>
           {showViewGuide ? (
             <button
               type="button"
               onClick={() => setIsGuideOpen(true)}
-              className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-[var(--ink-muted)]"
+              className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)"
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--card-stroke)] bg-[var(--card)] text-[11px] text-[var(--foreground)]">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-(--card-stroke) bg-card text-[11px] text-foreground">
                 ⓘ
               </span>
               View guide
@@ -387,83 +317,53 @@ export function QuadrantPanel({
           onClick={() => setIsGuideOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5 text-[11px] text-[var(--ink-muted)] shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
+            className="w-full max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-5 text-[11px] text-(--ink-muted) shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
                   {infoTitle}
                 </p>
-                <p className="mt-2 text-sm text-[var(--foreground)]">
+                <p className="mt-2 text-sm text-foreground">
                   How to read this view
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsGuideOpen(false)}
-                className="rounded-full border border-[var(--card-stroke)] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]"
+                className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
               >
                 Close
               </button>
             </div>
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 space-y-3">
               <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Influence lens:
+                <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+                  1. Lenses:
                 </span>{" "}
                 {influenceLens}. {influenceFraming}
               </p>
               <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  X-axis:
+                <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+                  2. Coordinates:
                 </span>{" "}
-                {data.axes.x.label} - {axisXDescription}
+                {data.axes.x.label} ({axisXDescription}) vs {data.axes.y.label} ({axisYDescription}).
               </p>
               <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Y-axis:
+                <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
+                  3. System Patterns:
                 </span>{" "}
-                {data.axes.y.label} - {axisYDescription}
-              </p>
-              <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Dot:
-                </span>{" "}
-                {pointMeaning}
-              </p>
-              <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Position:
-                </span>{" "}
-                {positionMeaning}
-              </p>
-              <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Quadrants:
-                </span>{" "}
-                {quadrantMeaning}
-              </p>
-              <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Cohort:
-                </span>{" "}
-                {cohortMeaning}
-              </p>
-              <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Time window:
-                </span>{" "}
-                {snapshotMeaning}
+                {pointMeaning} {positionMeaning} {quadrantMeaning}
               </p>
             </div>
             {influenceNotes.length ? (
               <>
-                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
                   Field notes
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-4">
-                  {influenceNotes.map((note) => (
+                  {influenceNotes.slice(0, 3).map((note) => (
                     <li key={note}>{note}</li>
                   ))}
                 </ul>
@@ -471,11 +371,11 @@ export function QuadrantPanel({
             ) : null}
             {influenceHabits.length ? (
               <>
-                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
                   Habits that shape this view
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-4">
-                  {influenceHabits.map((item) => (
+                  {influenceHabits.slice(0, 3).map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
@@ -483,28 +383,28 @@ export function QuadrantPanel({
             ) : null}
             {influenceQuestions.length ? (
               <>
-                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
                   Questions to investigate
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-4">
-                  {influenceQuestions.map((item) => (
+                  {influenceQuestions.slice(0, 3).map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
               </>
             ) : null}
-            <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+            <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
               Where to look next
             </p>
             <p className="mt-2">{influenceNext}</p>
             {zoneMeaning ? (
               <>
-                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
                   What zones mean
                 </p>
                 <div className="mt-2 space-y-2">
                   <p>
-                    <span className="font-semibold text-[var(--foreground)]">
+                    <span className="font-semibold text-foreground">
                       Zones:
                     </span>{" "}
                     {zoneMeaning}
@@ -512,18 +412,18 @@ export function QuadrantPanel({
                 </div>
               </>
             ) : null}
-            <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+            <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
               What this view is not for
             </p>
             <div className="mt-2 space-y-2">
               <p>
-                <span className="font-semibold text-[var(--foreground)]">
+                <span className="font-semibold text-foreground">
                   Not for:
                 </span>{" "}
                 {notForMeaning}
               </p>
               <p>
-                <span className="font-semibold text-[var(--foreground)]">
+                <span className="font-semibold text-foreground">
                   No ranking:
                 </span>{" "}
                 {noRankingMeaning}
@@ -532,257 +432,150 @@ export function QuadrantPanel({
           </div>
         </div>
       ) : null}
-      <div className="mt-3 flex flex-wrap items-start gap-3 text-xs text-[var(--ink-muted)]">
+      <div className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)">
         {hasInterpretationOverlay ? (
           <div className="space-y-1">
-            <label className="inline-flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[11px]">
+            <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-[11px]">
               <input
                 type="checkbox"
                 checked={showZoneOverlay}
                 onChange={(event) => handleZoneToggle(event.target.checked)}
-                className="h-3.5 w-3.5 accent-[var(--accent-2)]"
+                className="h-3.5 w-3.5 accent-(--accent-2)"
               />
               <span>Show exploratory interpretation</span>
             </label>
-            <p className="text-[11px] text-[var(--ink-muted)]">
+            <p className="text-[11px] text-(--ink-muted)">
               Highlights common system modes observed in similar systems.
             </p>
           </div>
         ) : null}
       </div>
-      <div
-        className={`mt-4 grid w-full gap-4 lg:items-start ${showZoneLegend
-          ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)]"
-          : "grid-cols-1"
-          }`}
-      >
-        <div className="min-w-0">
-          <QuadrantChart
-            data={data}
-            height={chartHeight}
-            className="w-full"
-            style={{ minWidth: 0 }}
-            onPointSelect={handlePointSelect}
-            focusEntityIds={focusEntityIds}
-            scopeType={scopeType}
-            zoneOverlay={zoneOverlay}
-            showZoneOverlay={showZoneOverlay}
-            highlightOverlayKey={activeHoveredOverlayKey}
-          />
-        </div>
-        {showZoneLegend ? (
-          <div className="min-w-0 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4 text-xs text-[var(--ink-muted)]">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                Zone legend
-              </p>
-              <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                Interpretive
-              </span>
+      <div className="flex flex-col lg:flex-row gap-6 mt-6">
+        <div className="flex-1 min-w-0 flex flex-col gap-6">
+          <div
+            className={`grid w-full gap-4 lg:items-start ${showZoneLegend
+              ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]"
+              : "grid-cols-1"
+              }`}
+          >
+            <div className="min-w-0">
+              <QuadrantChart
+                data={data}
+                height={chartHeight}
+                className="w-full"
+                style={{ minWidth: 0 }}
+                onPointSelect={handlePointSelect}
+                focusEntityIds={focusEntityIds}
+                scopeType={scopeType}
+                zoneOverlay={zoneOverlay}
+                showZoneOverlay={showZoneOverlay}
+                highlightOverlayKey={activeHoveredOverlayKey}
+              />
             </div>
-            {legendLensLabel ? (
-              <p className="mt-1 text-[11px] text-[var(--ink-muted)]">
-                Lens: {legendLensLabel}
-              </p>
-            ) : null}
-            <div className="mt-3 space-y-3">
-              {zoneLegendItems.map((item) => {
-                const isActive = activeHoveredOverlayKey === item.overlayKey;
-                return (
-                  <div
-                    key={item.key}
-                    onMouseEnter={() => setHoveredOverlayKey(item.overlayKey)}
-                    onMouseLeave={() => setHoveredOverlayKey(null)}
-                    onFocus={() => setHoveredOverlayKey(item.overlayKey)}
-                    onBlur={() => setHoveredOverlayKey(null)}
-                    tabIndex={0}
-                    className={`flex gap-3 rounded-xl border px-2 py-2 transition ${isActive
-                      ? "border-[var(--card-stroke)] bg-[var(--card-70)]"
-                      : "border-transparent"
-                      }`}
-                  >
-                    <span
-                      className="mt-1 h-3 w-3 shrink-0 rounded-full border"
-                      style={buildLegendSwatchStyle(item.color)}
-                    />
-                    <div className="min-w-0">
-                      <p className="break-words text-xs font-semibold text-[var(--foreground)]">
-                        {item.label}
-                      </p>
-                      <p className="break-words text-[11px] leading-snug text-[var(--ink-muted)]">
-                        {item.description}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-      </div>
-      {activeSelectedPoint ? (
-        <div className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4 text-xs">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                {showZoneMenu ? "Interpretive context" : "Next steps"}
-              </p>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                {selectedLabel}
-              </p>
-            </div>
-            <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-              {activeSelectedPoint.window_start} – {activeSelectedPoint.window_end}
-            </span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
-            {showZoneMenu ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setZoneQuestionsKey((prev) =>
-                    dataKey && prev !== dataKey ? dataKey : null
-                  )
-                }
-                className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
-              >
-                Investigate common constraints
-              </button>
-            ) : null}
-            {metricExplainHref ? (
-              <Link
-                href={metricExplainHref}
-                className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
-              >
-                Open metric explain view
-              </Link>
-            ) : null}
-            {heatmapHref ? (
-              <Link
-                href={heatmapHref}
-                className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
-              >
-                {showZoneMenu ? "View related heatmaps" : "View related heatmap"}
-              </Link>
-            ) : null}
-            {/* {flameHref ? (
-              <Link
-                href={flameHref}
-                className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
-              >
-                {showZoneMenu
-                  ? "Open representative flame diagram"
-                  : "Open flame diagram"}
-              </Link>
-            ) : null} */}
-            {/* Aggregated Flame Links */}
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={cycleBreakdownFlameHref}
-                className="inline-flex h-8 items-center rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-3 text-[10px] uppercase tracking-wider text-[var(--accent-2)] hover:bg-[var(--accent-2)]/20"
-              >
-                Cycle Breakdown Flame
-              </Link>
-              <Link
-                href={throughputFlameHref}
-                className="inline-flex h-8 items-center rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-3 text-[10px] uppercase tracking-wider text-[var(--accent-2)] hover:bg-[var(--accent-2)]/20"
-              >
-                Throughput Flame
-              </Link>
-              <Link
-                href={hotspotsFlameHref}
-                className="inline-flex h-8 items-center rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-3 text-[10px] uppercase tracking-wider text-[var(--accent-2)] hover:bg-[var(--accent-2)]/20"
-              >
-                Code Hotspots Flame
-              </Link>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSankey((prev) => !prev)}
-              className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
-            >
-              {showSankey ? "Hide Sankey" : "View investment flow"}
-            </button>
-          </div>
-          {showZoneMenu && showZoneQuestions ? (
-            <div className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-3 text-[11px] text-[var(--ink-muted)]">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                  Exploratory zone map
-                </p>
-                <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                  Heuristic
-                </span>
+            {showZoneLegend ? (
+              <div className="min-w-0 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 text-xs text-(--ink-muted)">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
+                    Zone legend
+                  </p>
+                  <span className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
+                    Interpretive
+                  </span>
+                </div>
+                {legendLensLabel ? (
+                  <p className="mt-1 text-[11px] text-(--ink-muted)">
+                    {legendLensLabel}
+                  </p>
+                ) : null}
+                <div className="mt-3 space-y-3">
+                  {zoneLegendItems.map((item) => {
+                    const isActive = activeHoveredOverlayKey === item.overlayKey;
+                    return (
+                      <div
+                        key={item.key}
+                        onMouseEnter={() => setHoveredOverlayKey(item.overlayKey)}
+                        onMouseLeave={() => setHoveredOverlayKey(null)}
+                        onFocus={() => setHoveredOverlayKey(item.overlayKey)}
+                        onBlur={() => setHoveredOverlayKey(null)}
+                        tabIndex={0}
+                        className={`flex gap-3 rounded-xl border px-2 py-2 transition ${isActive
+                          ? "border-(--card-stroke) bg-(--card-70)"
+                          : "border-transparent"
+                          }`}
+                      >
+                        <span
+                          className="mt-1 h-3 w-3 shrink-0 rounded-full border"
+                          style={buildLegendSwatchStyle(item.color)}
+                        />
+                        <div className="min-w-0">
+                          <p className={`break-words font-semibold text-foreground ${isActive ? "text-xs" : "text-[11px]"}`}>
+                            {item.label}
+                          </p>
+                          {isActive && (
+                            <p className="mt-1 break-words text-[11px] leading-snug text-(--ink-muted) animate-in fade-in slide-in-from-top-1 duration-200">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="mt-3 space-y-4">
-                {zoneMatches.map((zone) => (
-                  <div key={zone.id} className="space-y-2">
-                    <p className="text-sm font-semibold text-[var(--foreground)]">
-                      {zone.label}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-[var(--foreground)]">
-                        Typical signals:
-                      </span>{" "}
-                      {zone.signals.join(", ")}.
-                    </p>
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                      Questions to ask
-                    </p>
-                    <ul className="list-disc pl-4">
-                      {zone.investigations.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-[11px] text-[var(--ink-muted)]">
-                This is a common pattern, not a conclusion. Always validate with
-                drill-down evidence.
-              </p>
+            ) : null}
+          </div>
+
+          {!activeSelectedPoint && (
+            <div className="text-xs text-(--ink-muted) bg-(--card-80) rounded-2xl p-4 border border-dashed border-(--card-stroke)">
+              <p>Select a dot in the chart above to investigate causes and patterns.</p>
+              {selectablePoints.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectablePoints.map((point) => (
+                    <button
+                      key={point.entity_id}
+                      type="button"
+                      onClick={() => handlePointSelect(point)}
+                      className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
+                    >
+                      {point.entity_label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : null}
-          {showSankey ? (
-            <SankeyInvestigationPanel
-              key={`${activeSelectedPoint.entity_id}-${dataKey ?? "sankey"}`}
-              point={activeSelectedPoint}
-              filters={filters}
-            />
-          ) : null}
-        </div>
-      ) : (
-        <div className="mt-3 text-xs text-[var(--ink-muted)]">
-          <p>Select a dot to open investigation steps.</p>
-          {selectablePoints.length ? (
-            <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
-              {selectablePoints.map((point) => (
-                <button
-                  key={point.entity_id}
-                  type="button"
-                  onClick={() => handlePointSelect(point)}
-                  className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-1 text-[var(--accent-2)]"
+          )}
+
+          {supplementalLinks.length > 0 && (
+            <div className="flex flex-wrap gap-3 text-xs">
+              {supplementalLinks.map((link) => (
+                <Link
+                  key={`${link.href}-${link.label}`}
+                  href={link.href}
+                  className="rounded-full border border-(--card-stroke) bg-(--card-80) px-4 py-2 uppercase tracking-[0.2em] text-(--accent-2) hover:bg-(--accent-2)/5 transition"
                 >
-                  {point.entity_label}
-                </button>
+                  {link.label}
+                </Link>
               ))}
             </div>
-          ) : null}
+          )}
         </div>
-      )}
-      {supplementalLinks.length ? (
-        <div className="mt-4 flex flex-wrap gap-3 text-xs">
-          {supplementalLinks.map((link) => (
-            <Link
-              key={`${link.href}-${link.label}`}
-              href={link.href}
-              className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-1 uppercase tracking-[0.2em] text-[var(--accent-2)]"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </div>
-      ) : null}
+
+        {activeSelectedPoint && (
+          <aside className="lg:w-[380px] shrink-0 border border-(--card-stroke) rounded-[32px] overflow-hidden shadow-2xl">
+            <InvestigationPanel
+              point={activeSelectedPoint}
+              data={data}
+              filters={filters}
+              title={title}
+              onClose={() => {
+                setSelectedPoint(null);
+                setSelectedPointKey(null);
+              }}
+            />
+          </aside>
+        )}
+      </div>
+
     </div>
   );
 }

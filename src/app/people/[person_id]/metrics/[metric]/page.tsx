@@ -134,20 +134,20 @@ export default async function PersonMetricPage({
   ]);
   const definitionEntries = definition
     ? Object.entries(definition).filter(([, value]) =>
-        typeof value === "string" || typeof value === "number" || Array.isArray(value)
-      )
+      typeof value === "string" || typeof value === "number" || Array.isArray(value)
+    )
     : [];
 
   const drilldown = evidenceType
     ? await getPersonDrilldown({
-        personId,
-        type: evidenceType,
-        limit,
-        cursor: cursorParam ?? undefined,
-        metric,
-        range_days,
-        compare_days,
-      }).catch(() => null)
+      personId,
+      type: evidenceType,
+      limit,
+      cursor: cursorParam ?? undefined,
+      metric,
+      range_days,
+      compare_days,
+    }).catch(() => null)
     : null;
 
   const breakdowns = metricData?.breakdowns ?? {};
@@ -190,26 +190,26 @@ export default async function PersonMetricPage({
     );
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="people" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Individual metric
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 {label}
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 {person?.display_name ?? "Individual"} • {range_days}d window
               </p>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--ink-muted)]">
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
                 {(person?.identities ?? []).map((identity) => (
                   <span
                     key={`${personId}-${identity.provider}-${identity.handle}`}
-                    className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1"
+                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
                   >
                     {identity.provider}: {identity.handle}
                   </span>
@@ -219,7 +219,7 @@ export default async function PersonMetricPage({
             <div className="flex flex-wrap gap-2">
               <Link
                 href={withRangeParams(`/people/${personId}`, range_days, compare_days)}
-                className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to individual
               </Link>
@@ -235,28 +235,28 @@ export default async function PersonMetricPage({
           <PersonRangeBar rangeDays={range_days} compareDays={compare_days} />
 
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
-              <h2 className="font-[var(--font-display)] text-xl">Definition</h2>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+              <h2 className="font-(--font-display) text-xl">Definition</h2>
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 {definitionSummary ??
                   "Definition will appear once the signal library is connected."}
               </p>
               {interpretation && (
-                <p className="mt-3 text-sm text-[var(--ink-muted)]">
+                <p className="mt-3 text-sm text-(--ink-muted)">
                   How to interpret: {interpretation}
                 </p>
               )}
               {definitionEntries.length > 0 && (
-                <div className="mt-4 grid gap-2 text-xs text-[var(--ink-muted)]">
+                <div className="mt-4 grid gap-2 text-xs text-(--ink-muted)">
                   {definitionEntries.map(([key, value]) => (
                     <div
                       key={key}
-                      className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                      className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
                     >
                       <span className="uppercase tracking-[0.2em]">
                         {key.replace(/[_-]+/g, " ")}
                       </span>
-                      <span className="font-semibold text-[var(--foreground)]">
+                      <span className="font-semibold text-foreground">
                         {Array.isArray(value) ? value.join(", ") : String(value)}
                       </span>
                     </div>
@@ -265,10 +265,10 @@ export default async function PersonMetricPage({
               )}
             </div>
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-6">
+            <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Timeseries</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">Timeseries</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Daily
                 </span>
               </div>
@@ -276,7 +276,7 @@ export default async function PersonMetricPage({
                 {timeseries.length ? (
                   <TimeseriesChart data={timeseries} height={240} />
                 ) : (
-                  <div className="flex h-[240px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] text-sm text-[var(--ink-muted)]">
+                  <div className="flex h-[240px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                     Timeseries data unavailable.
                   </div>
                 )}
@@ -305,13 +305,13 @@ export default async function PersonMetricPage({
             {breakdownGroups.map((group) => (
               <div
                 key={group.id}
-                className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5"
+                className="rounded-3xl border border-(--card-stroke) bg-card p-5"
               >
                 <div className="flex items-center justify-between">
-                  <h2 className="font-[var(--font-display)] text-xl">
+                  <h2 className="font-(--font-display) text-xl">
                     {group.label}
                   </h2>
-                  <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                  <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                     Breakdown
                   </span>
                 </div>
@@ -322,7 +322,7 @@ export default async function PersonMetricPage({
                       values={group.items.map((item) => item.value)}
                     />
                   ) : (
-                    <div className="flex h-[220px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] text-sm text-[var(--ink-muted)]">
+                    <div className="flex h-[220px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                       No breakdown data.
                     </div>
                   )}
@@ -331,10 +331,10 @@ export default async function PersonMetricPage({
                   {group.items.map((item) => (
                     <div
                       key={`${group.id}-${item.label}`}
-                      className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                      className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                     >
                       <span>{item.label}</span>
-                      <span className="text-xs text-[var(--ink-muted)]">
+                      <span className="text-xs text-(--ink-muted)">
                         {formatNumber(item.value)}
                       </span>
                     </div>
@@ -345,10 +345,10 @@ export default async function PersonMetricPage({
           </section>
 
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Drivers</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">Drivers</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Evidence linked
                 </span>
               </div>
@@ -360,15 +360,15 @@ export default async function PersonMetricPage({
                     return (
                       <div
                         key={`${driver.text}-${idx}`}
-                        className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3"
+                        className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                       >
-                        <p className="text-sm text-[var(--foreground)]">
+                        <p className="text-sm text-foreground">
                           {driver.text}
                         </p>
                         {href && (
                           <Link
                             href={href}
-                            className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                            className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                           >
                             Open evidence
                           </Link>
@@ -377,38 +377,36 @@ export default async function PersonMetricPage({
                     );
                   })
                 ) : (
-                  <p className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+                  <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
                     Driver statements will appear once data is ingested.
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Evidence</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">Evidence</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Drilldown
                 </span>
               </div>
               <div className="mt-4 flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
                 <Link
                   href={evidenceHref("prs")}
-                  className={`rounded-full border px-3 py-2 ${
-                    evidenceType === "prs"
-                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                      : "border-[var(--card-stroke)] text-[var(--ink-muted)]"
-                  }`}
+                  className={`rounded-full border px-3 py-2 ${evidenceType === "prs"
+                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                    : "border-(--card-stroke) text-(--ink-muted)"
+                    }`}
                 >
                   PRs
                 </Link>
                 <Link
                   href={evidenceHref("issues")}
-                  className={`rounded-full border px-3 py-2 ${
-                    evidenceType === "issues"
-                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                      : "border-[var(--card-stroke)] text-[var(--ink-muted)]"
-                  }`}
+                  className={`rounded-full border px-3 py-2 ${evidenceType === "issues"
+                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                    : "border-(--card-stroke) text-(--ink-muted)"
+                    }`}
                 >
                   Issues
                 </Link>
@@ -416,12 +414,12 @@ export default async function PersonMetricPage({
               {evidenceType && (
                 <div className="mt-4 overflow-auto text-xs">
                   <table className="min-w-full border-collapse">
-                    <thead className="text-left text-[var(--ink-muted)]">
+                    <thead className="text-left text-(--ink-muted)">
                       <tr>
-                        <th className="border-b border-[var(--card-stroke)] pb-2">
+                        <th className="border-b border-(--card-stroke) pb-2">
                           Item
                         </th>
-                        <th className="border-b border-[var(--card-stroke)] pb-2">
+                        <th className="border-b border-(--card-stroke) pb-2">
                           Details
                         </th>
                       </tr>
@@ -433,14 +431,14 @@ export default async function PersonMetricPage({
                         return (
                           <tr
                             key={`item-${idx}`}
-                            className="border-b border-[var(--card-stroke)]"
+                            className="border-b border-(--card-stroke)"
                           >
                             <td className="py-2 pr-4 font-medium">
-                              <a href={href} className="block text-[var(--foreground)]">
+                              <a href={href} className="block text-foreground">
                                 {getItemTitle(item, idx)}
                               </a>
                             </td>
-                            <td className="py-2 text-[var(--ink-muted)]">
+                            <td className="py-2 text-(--ink-muted)">
                               <a href={href} className="block">
                                 {JSON.stringify(item)}
                               </a>
@@ -451,14 +449,14 @@ export default async function PersonMetricPage({
                     </tbody>
                   </table>
                   {!drilldown?.items?.length && (
-                    <p className="mt-3 text-sm text-[var(--ink-muted)]">
+                    <p className="mt-3 text-sm text-(--ink-muted)">
                       Evidence rows will appear once data is ingested.
                     </p>
                   )}
                 </div>
               )}
               {!evidenceType && (
-                <div className="mt-4 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+                <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
                   Choose PRs or Issues to review evidence.
                 </div>
               )}

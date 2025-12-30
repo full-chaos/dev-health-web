@@ -9,28 +9,28 @@ test("flame diagram renders and shows tooltip", async ({ page }) => {
 });
 
 test("flame page loads with mode selector", async ({ page }) => {
-  await page.goto("/flame?mode=cycle_breakdown");
+  await page.goto("/work?tab=flame&mode=cycle_breakdown");
 
-  // Check page title is visible
-  await expect(page.getByRole("heading", { name: "Flame Diagram" })).toBeVisible();
+  // Check page title is visible (in the header of the view)
+  await expect(page.getByRole("heading", { name: "Elapsed Time Breakdown" })).toBeVisible();
 
   // Check mode selector buttons are visible
-  await expect(page.getByRole("link", { name: /cycle-time breakdown/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /throughput breakdown/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /code hotspots/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /elapsed time breakdown/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /throughput breakdown/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /code hotspots/i })).toBeVisible();
 });
 
 test("flame page loads throughput mode", async ({ page }) => {
-  await page.goto("/flame?mode=throughput");
+  await page.goto("/work?tab=flame&mode=throughput");
   await expect(page.getByText(/throughput breakdown/i).first()).toBeVisible();
-  await expect(page.getByText(/shows work delivered decomposition/i)).toBeVisible();
+  await expect(page.getByText(/analyze decomposition and bottlenecks/i)).toBeVisible();
 });
 
 test("flame page mode selector switches modes", async ({ page }) => {
-  await page.goto("/flame?mode=cycle_breakdown");
+  await page.goto("/work?tab=flame&mode=cycle_breakdown");
 
   // Click code hotspots mode
-  await page.getByRole("link", { name: /code hotspots/i }).click();
+  await page.getByRole("button", { name: /code hotspots/i }).click();
 
   // Should update URL
   await expect(page).toHaveURL(/mode=code_hotspots/);

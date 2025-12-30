@@ -204,13 +204,13 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
   }, [fetchPlans, shouldFetch]);
 
   return (
-    <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
+    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+          <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
             People search
           </p>
-          <p className="mt-2 text-sm text-[var(--ink-muted)]">
+          <p className="mt-2 text-sm text-(--ink-muted)">
             Find an individual to view their personal metrics and evidence.
           </p>
         </div>
@@ -218,27 +218,27 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
 
       <div className="mt-4 space-y-3">
         {shouldFetch && isLoading && (
-          <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+          <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             Searching people...
           </div>
         )}
         {shouldFetch && error && (
-          <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+          <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             {error}
           </div>
         )}
         {showQueryEmpty && (
-          <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+          <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             No matches yet. Try another spelling or handle.
           </div>
         )}
         {showTeamEmpty && (
-          <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+          <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             No matches for the selected team filter.
           </div>
         )}
         {showFocusEmpty && (
-          <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+          <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             No matches for the selected people filter.
           </div>
         )}
@@ -248,12 +248,12 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
           visibleResults.length > 0 &&
           focusActive &&
           !hasFocusMatches && (
-            <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
               No matches for the selected people filter.
             </div>
           )}
         {!shouldFetch && !focusActive && (
-          <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+          <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             {emptyPrompt}
           </div>
         )}
@@ -266,27 +266,25 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
             <Link
               key={person.person_id}
               href={href}
-              className={`block rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1 ${
-                focusActive && !isFocus ? "opacity-50" : "opacity-100"
-              }`}
+              className={`block rounded-2xl border border-(--card-stroke) bg-card px-4 py-3 transition hover:-translate-y-1 ${focusActive && !isFocus ? "opacity-50" : "opacity-100"
+                }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p
-                    className={`text-sm font-semibold ${
-                      focusActive && !isFocus
-                        ? "text-[var(--ink-muted)]"
-                        : "text-[var(--foreground)]"
-                    }`}
+                    className={`text-sm font-semibold ${focusActive && !isFocus
+                        ? "text-(--ink-muted)"
+                        : "text-foreground"
+                      }`}
                   >
                     {person.display_name}
                   </p>
                   {isFocus && (
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--ink-muted)]">
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
                       {(person.identities ?? []).map((identity) => (
                         <span
                           key={`${person.person_id}-${identity.provider}-${identity.handle}`}
-                          className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1"
+                          className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
                         >
                           {identity.provider}: {identity.handle}
                         </span>
@@ -294,7 +292,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
                     </div>
                   )}
                 </div>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
+                <span className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
                   Open
                 </span>
               </div>

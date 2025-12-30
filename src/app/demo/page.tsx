@@ -257,16 +257,16 @@ export default function Home() {
   const icFocusIds = ["ic-1"];
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
         <header className="flex flex-col gap-3">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-(--ink-muted)">
             Dev Health Ops
           </p>
           <h1 className="text-4xl font-semibold leading-tight tracking-tight">
             Chart prototypes powered by ECharts
           </h1>
-          <p className="max-w-2xl text-base text-[var(--ink-muted)]">
+          <p className="max-w-2xl text-base text-(--ink-muted)">
             Interactive chart types inspired by the Grafana dashboards, built in
             React + Next.js. Each chart has a Playwright test running in a
             headless browser.
@@ -275,12 +275,12 @@ export default function Home() {
 
         <section className="grid gap-6 md:grid-cols-2">
           <div
-            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
             data-testid="chart-sparkline"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Sparklines</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 Trend
               </span>
             </div>
@@ -288,12 +288,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
             data-testid="chart-vertical-bar"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Vertical Bars</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 Throughput
               </span>
             </div>
@@ -307,12 +307,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
             data-testid="chart-horizontal-bar"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Horizontal Bars</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 Distribution
               </span>
             </div>
@@ -323,12 +323,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
             data-testid="chart-donut"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Donut (Sliced)</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 Investment
               </span>
             </div>
@@ -336,12 +336,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
             data-testid="chart-nested-pie-2d"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Nested Pie (2D)</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 Work Mix
               </span>
             </div>
@@ -352,12 +352,12 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
             data-testid="chart-nested-pie-3d"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Nested Pie (3D)</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 Work Depth
               </span>
             </div>
@@ -369,12 +369,12 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
           data-testid="chart-heatmap"
         >
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Review Wait Heatmap</h2>
-            <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
               Hour x Weekday
             </span>
           </div>
@@ -382,12 +382,12 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
           data-testid="chart-flame"
         >
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Flame Diagram</h2>
-            <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
               PR lifecycle
             </span>
           </div>
@@ -395,12 +395,12 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
           data-testid="chart-quadrant"
         >
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Quadrant Landscape</h2>
-            <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
               Churn × Throughput
             </span>
           </div>
@@ -422,55 +422,55 @@ export default function Home() {
           />
         </section>
 
-        <section className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm">
+        <section className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Individual coaching examples
               </p>
               <h2 className="mt-2 text-lg font-semibold">
                 IC views with peer filters applied
               </h2>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Only the named individual is shown. No peer comparison appears
                 in this view.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-              <span className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1">
+            <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+              <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1">
                 Developer: L. Morales
               </span>
-              <span className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1">
+              <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1">
                 Peer comparison: off
               </span>
-              <span className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1">
+              <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1">
                 Range: 30d
               </span>
             </div>
           </div>
           <div className="mt-6 grid gap-6 md:grid-cols-3">
-            <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4">
+            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Individual heatmap</h3>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                   Active hours
                 </span>
               </div>
               <HeatmapChart data={icHeatmapData} height={200} />
             </div>
-            <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4">
+            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Individual flame</h3>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                   Issue focus
                 </span>
               </div>
               <FlameDiagram frames={icFlameFrames} start={flameStart} end={flameEnd} height={200} />
             </div>
-            <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4">
+            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Individual quadrant</h3>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                   Trajectory
                 </span>
               </div>
@@ -485,14 +485,14 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
           data-testid="chart-sankey"
         >
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">
               Sankey
             </h2>
-            <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
               Investment / Flow Breakdown
             </span>
           </div>

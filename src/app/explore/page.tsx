@@ -52,6 +52,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
@@ -133,44 +136,44 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
   const breakdownNote = breakdownParam ? `Breakdown: ${breakdownParam}.` : null;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} />
+        <PrimaryNav filters={filters} role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Explore
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 {metricLabel}
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Drill-down inspector. Monitor in Metrics, return here for evidence.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={withFilterParam("/flame?mode=cycle_breakdown", filters)}
-                className="rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                href={withFilterParam("/flame?mode=cycle_breakdown", filters, activeRole)}
+                className="rounded-full border border-(--accent-2) bg-(--accent-2)/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-(--accent-2)"
               >
                 Flame Diagram
               </Link>
               <Link
-                href={withFilterParam("/explore/landscape", filters)}
-                className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                href={withFilterParam("/explore/landscape", filters, activeRole)}
+                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Landscape
               </Link>
               <Link
-                href={withFilterParam("/metrics", filters)}
-                className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                href={withFilterParam("/metrics", filters, activeRole)}
+                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to Metrics view
               </Link>
               <Link
-                href={withFilterParam("/", filters)}
-                className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                href={withFilterParam("/", filters, activeRole)}
+                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to cockpit
               </Link>
@@ -179,39 +182,39 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
           <FilterBar condensed view="explore" />
 
-          <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5 text-sm">
+          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                   Context
                 </p>
                 <p className="mt-1 text-sm font-semibold">{metricLabel}</p>
               </div>
-              <span className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <span className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 {view.toUpperCase()}
               </span>
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
               <div>
-                <p className="text-sm text-[var(--ink-muted)]">{explanation}</p>
-                <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                <p className="text-sm text-(--ink-muted)">{explanation}</p>
+                <p className="mt-2 text-xs text-(--ink-muted)">
                   Source: {sourceLabel}
                 </p>
                 {breakdownNote ? (
-                  <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                  <p className="mt-2 text-xs text-(--ink-muted)">
                     {breakdownNote}
                   </p>
                 ) : null}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                   Active filters
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
                   {chips.map((chip) => (
                     <span
                       key={chip}
-                      className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1"
+                      className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
                     >
                       {chip}
                     </span>
@@ -221,12 +224,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
             <details>
-              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Debug filters
               </summary>
-              <pre className="mt-3 max-h-64 overflow-auto rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-xs text-[var(--ink-muted)]">
+              <pre className="mt-3 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 text-xs text-(--ink-muted)">
                 {JSON.stringify(filters, null, 2)}
               </pre>
             </details>
@@ -234,29 +237,29 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
           {view === "explain" && (
             <section id="evidence" className="grid gap-6 lg:grid-cols-3">
-              <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
-                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                   Signal snapshot
                 </p>
                 <div className="mt-3 flex flex-wrap items-baseline gap-3">
                   <span className="text-3xl font-semibold">
                     {data ? formatMetricValue(data.value, data.unit) : "--"}
                   </span>
-                  <span className="text-sm text-[var(--ink-muted)]">
+                  <span className="text-sm text-(--ink-muted)">
                     {data ? formatDelta(data.delta_pct) : "--"} vs previous window
                   </span>
                 </div>
-                <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                <p className="mt-3 text-xs text-(--ink-muted)">
                   Evidence links below stay in this scope.
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-[var(--font-display)] text-xl">Top Drivers</h2>
+                  <h2 className="font-(--font-display) text-xl">Top Drivers</h2>
                   <Link
-                    href={buildExploreUrl({ metric: metricFromApi, filters })}
-                    className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                    href={buildExploreUrl({ metric: metricFromApi, filters, role: activeRole })}
+                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                   >
                     Open evidence
                   </Link>
@@ -271,11 +274,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       {drivers.map((driver) => (
                         <Link
                           key={driver.id}
-                          href={buildExploreUrl({ api: driver.evidence_link, filters })}
-                          className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                          href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
+                          className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                         >
                           <span>{driver.label}</span>
-                          <span className="text-xs text-[var(--ink-muted)]">
+                          <span className="text-xs text-(--ink-muted)">
                             {formatDelta(driver.delta_pct)}
                           </span>
                         </Link>
@@ -283,18 +286,18 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm text-[var(--ink-muted)]">
+                  <p className="mt-4 text-sm text-(--ink-muted)">
                     Driver analysis will appear once data is ingested.
                   </p>
                 )}
               </div>
 
-              <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-[var(--font-display)] text-xl">Contributors</h2>
+                  <h2 className="font-(--font-display) text-xl">Contributors</h2>
                   <Link
-                    href={buildExploreUrl({ metric: metricFromApi, filters })}
-                    className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                    href={buildExploreUrl({ metric: metricFromApi, filters, role: activeRole })}
+                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                   >
                     Open evidence
                   </Link>
@@ -309,11 +312,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       {contributors.map((contributor) => (
                         <Link
                           key={contributor.id}
-                          href={buildExploreUrl({ api: contributor.evidence_link, filters })}
-                          className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                          href={buildExploreUrl({ api: contributor.evidence_link, filters, role: activeRole })}
+                          className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                         >
                           <span>{contributor.label}</span>
-                          <span className="text-xs text-[var(--ink-muted)]">
+                          <span className="text-xs text-(--ink-muted)">
                             {data
                               ? formatMetricValue(contributor.value, data.unit)
                               : "--"}
@@ -323,7 +326,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm text-[var(--ink-muted)]">
+                  <p className="mt-4 text-sm text-(--ink-muted)">
                     Contributor detail will appear once data is ingested.
                   </p>
                 )}
@@ -332,22 +335,22 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
           )}
 
           {view === "drilldown" && (
-            <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Evidence Table</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">Evidence Table</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   {drilldown?.items?.length ?? 0} items
                 </span>
               </div>
-              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+              <p className="mt-2 text-xs text-(--ink-muted)">
                 Rows link to source artifacts when available.
               </p>
               <div className="mt-4 overflow-auto text-xs">
                 <table className="min-w-full border-collapse">
-                  <thead className="text-left text-[var(--ink-muted)]">
+                  <thead className="text-left text-(--ink-muted)">
                     <tr>
-                      <th className="border-b border-[var(--card-stroke)] pb-2">Item</th>
-                      <th className="border-b border-[var(--card-stroke)] pb-2">Details</th>
+                      <th className="border-b border-(--card-stroke) pb-2">Item</th>
+                      <th className="border-b border-(--card-stroke) pb-2">Details</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -355,6 +358,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       const fallbackHref = buildExploreUrl({
                         metric: metricFromApi,
                         filters,
+                        role: activeRole,
                       });
                       const href = getItemHref(item, fallbackHref);
                       const prFlameHref =
@@ -370,17 +374,17 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       return (
                         <tr
                           key={`item-${idx}`}
-                          className="border-b border-[var(--card-stroke)]"
+                          className="border-b border-(--card-stroke)"
                         >
                           <td className="py-2 pr-4 font-medium">
                             <a
                               href={href}
-                              className="block text-[var(--foreground)]"
+                              className="block text-foreground"
                             >
                               {getItemTitle(item, idx)}
                             </a>
                           </td>
-                          <td className="py-2 text-[var(--ink-muted)]">
+                          <td className="py-2 text-(--ink-muted)">
                             <div className="space-y-2">
                               <a href={href} className="block">
                                 {JSON.stringify(item)}
@@ -388,7 +392,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                               {flameHref ? (
                                 <Link
                                   href={flameHref}
-                                  className="inline-flex items-center rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                                  className="inline-flex items-center rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--accent-2)"
                                 >
                                   Open flame
                                 </Link>
@@ -405,38 +409,38 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
           )}
 
           {view === "home" && (
-            <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
-              <h2 className="font-[var(--font-display)] text-xl">Home Snapshot</h2>
-              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+              <h2 className="font-(--font-display) text-xl">Home Snapshot</h2>
+              <p className="mt-3 text-sm text-(--ink-muted)">
                 This endpoint powers the cockpit. Open Home for the curated summary.
               </p>
-              <pre className="mt-4 max-h-64 overflow-auto rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-xs text-[var(--ink-muted)]">
+              <pre className="mt-4 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 text-xs text-(--ink-muted)">
                 {JSON.stringify(home ?? {}, null, 2)}
               </pre>
             </section>
           )}
 
           {view === "unknown" && (
-            <section className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-5 text-sm text-[var(--ink-muted)]">
+            <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
               Unsupported endpoint. Provide a metric or a supported drilldown API.
             </section>
           )}
 
           {view === "explain" && (
-            <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
-              <h2 className="font-[var(--font-display)] text-xl">Evidence shortcuts</h2>
+            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+              <h2 className="font-(--font-display) text-xl">Evidence shortcuts</h2>
               <div className="mt-3 flex flex-wrap gap-3 text-sm">
                 {Object.entries(data?.drilldown_links ?? {}).map(([label, link]) => (
                   <Link
                     key={label}
-                    href={buildExploreUrl({ api: link, filters })}
-                    className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2"
+                    href={buildExploreUrl({ api: link, filters, role: activeRole })}
+                    className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2"
                   >
                     {label}
                   </Link>
                 ))}
                 {!Object.keys(data?.drilldown_links ?? {}).length && (
-                  <p className="text-sm text-[var(--ink-muted)]">
+                  <p className="text-sm text-(--ink-muted)">
                     Evidence links will appear once data is ingested.
                   </p>
                 )}

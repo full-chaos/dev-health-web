@@ -8,6 +8,10 @@ const chartTheme: ChartTheme = {
   text: "#111111",
   grid: "#222222",
   muted: "#333333",
+  background: "#ffffff",
+  stroke: "#e7e0ec",
+  accent1: "#3b82f6",
+  accent2: "#8b5cf6",
 };
 
 const chartColors = ["#1e88e5", "#3949ab", "#8e24aa"];
@@ -52,7 +56,7 @@ const getSeriesPoints = (option: ReturnType<typeof buildQuadrantOption>) => {
     const data = Array.isArray(series.data) ? series.data : [];
     return data
       .map((item) => (item as { point?: QuadrantPoint }).point)
-      .filter(Boolean);
+      .filter((p): p is QuadrantPoint => !!p);
   });
 };
 

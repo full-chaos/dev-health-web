@@ -6,13 +6,13 @@ import type { SparkPoint } from "@/lib/types";
 
 const deltaTone = (value?: number) => {
   if (value === undefined || value === null) {
-    return "text-[var(--ink-muted)]";
+    return "text-(--ink-muted)";
   }
   return value > 0
-    ? "text-[var(--accent-3)]"
+    ? "text-(--accent-3)"
     : value < 0
-      ? "text-[var(--accent-negative)]"
-      : "text-[var(--ink-muted)]";
+      ? "text-(--accent-negative)"
+      : "text-(--ink-muted)";
 };
 
 type MetricCardProps = {
@@ -40,9 +40,9 @@ export function MetricCard({
   return (
     <Link
       href={href}
-      className="group rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 transition hover:-translate-y-1 hover:shadow-lg"
+      className="group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg"
     >
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+      <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
         <span>{label}</span>
         <span className={deltaTone(delta)}>
           {delta === undefined || delta === null ? "--" : formatDelta(delta)}
@@ -55,7 +55,7 @@ export function MetricCard({
               ? "--"
               : formatMetricValue(value, unit ?? "")}
           </p>
-          <p className="mt-2 text-xs text-[var(--ink-muted)]">
+          <p className="mt-2 text-xs text-(--ink-muted)">
             {caption ?? "Open in Explore"}
           </p>
         </div>
@@ -67,7 +67,7 @@ export function MetricCard({
               height={64}
             />
           ) : (
-            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
               Trend
             </div>
           )}

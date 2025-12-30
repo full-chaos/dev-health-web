@@ -126,13 +126,13 @@ export function ThemeToggle() {
   };
 
   return (
-    <div className="group inline-flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--ink-muted)] shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)]">
-      <span className="h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_12px_rgba(0,0,0,0.25)]" />
+    <div className="group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)]">
+      <span className="h-2 w-2 rounded-full bg-(--accent) shadow-[0_0_12px_rgba(0,0,0,0.25)]" />
       <select
         aria-label="Theme palette"
         value={palette}
         onChange={handlePaletteChange}
-        className="bg-transparent text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--ink-muted)] focus:text-[var(--foreground)] focus:outline-none"
+        className="bg-transparent text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) focus:text-foreground focus:outline-none"
       >
         <option value="material">Material</option>
         <option value="echarts">ECharts</option>
@@ -144,7 +144,7 @@ export function ThemeToggle() {
         type="button"
         onClick={handleToggle}
         aria-label="Toggle light/dark"
-        className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] transition hover:-translate-y-0.5"
+        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:-translate-y-0.5"
       >
         {theme === "dark" ? "Dark" : "Light"}
       </button>

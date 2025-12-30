@@ -1,5 +1,4 @@
 import Link from "next/link";
-
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -7,6 +6,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getQuadrant } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
+import { getRoleConfig } from "@/lib/roleContext";
 
 const QUADRANT_CARDS = [
   {
@@ -35,7 +35,6 @@ const QUADRANT_CARDS = [
   },
 ];
 
-const PRIMARY_QUADRANT_TYPE = "churn_throughput";
 
 type LandscapePageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -61,6 +60,11 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const roleConfig = getRoleConfig(roleParam);
+  const primaryType = roleConfig.primaryQuadrant;
+  const secondaryType = roleConfig.secondaryQuadrant;
+
   const bucketParam = Array.isArray(params.bucket) ? params.bucket[0] : params.bucket;
   const bucket = bucketParam === "month" ? "month" : "week";
 
@@ -70,58 +74,64 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
   const canQuery = scopeType !== "person" || Boolean(scopeId);
   const quadrantData = canQuery
     ? await Promise.all(
-        QUADRANT_CARDS.map((card) =>
-          getQuadrant({
-            type: card.type,
-            scope_type: scopeType,
-            scope_id: scopeId,
-            range_days: filters.time.range_days,
-            start_date: filters.time.start_date,
-            end_date: filters.time.end_date,
-            bucket,
-          }).catch(() => null)
-        )
+      QUADRANT_CARDS.map((card) =>
+        getQuadrant({
+          type: card.type,
+          scope_type: scopeType,
+          scope_id: scopeId,
+          range_days: filters.time.range_days,
+          start_date: filters.time.start_date,
+          end_date: filters.time.end_date,
+          bucket,
+        }).catch(() => null)
       )
+    )
     : QUADRANT_CARDS.map(() => null);
 
   const primaryCardIndex = QUADRANT_CARDS.findIndex(
-    (card) => card.type === PRIMARY_QUADRANT_TYPE
+    (card) => card.type === primaryType
   );
   const primaryCard =
     primaryCardIndex >= 0 ? QUADRANT_CARDS[primaryCardIndex] : QUADRANT_CARDS[0];
   const primaryData =
     quadrantData[primaryCardIndex >= 0 ? primaryCardIndex : 0];
-  const secondaryCards = QUADRANT_CARDS.filter(
+
+  // Order remaining cards: secondary first, then others
+  const otherCards = QUADRANT_CARDS.filter(
     (card) => card.type !== primaryCard.type
-  );
+  ).sort((a, b) => {
+    if (a.type === secondaryType) return -1;
+    if (b.type === secondaryType) return 1;
+    return 0;
+  });
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="landscape" />
+        <PrimaryNav filters={filters} active="landscape" role={roleParam as string} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Explore
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 Landscape Quadrants
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Classify system modes under competing pressures without ranking teams or people.
               </p>
-              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+              <p className="mt-3 text-sm text-(--ink-muted)">
                 Explore system operating modes across multiple pressure pairs.
               </p>
-              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+              <p className="mt-2 text-xs text-(--ink-muted)">
                 Each view highlights a different pressure pair. Investigation steps are shared.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={withFilterParam("/explore", filters)}
-                className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                href={withFilterParam("/explore", filters, roleParam as string)}
+                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to Explore
               </Link>
@@ -131,72 +141,90 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
           <FilterBar condensed view="explore" />
 
           {!canQuery && (
-            <section className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-5 text-sm text-[var(--ink-muted)]">
+            <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
               Individual landscapes are available from the individual view.
             </section>
           )}
 
-          <section className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+          <section className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
             <span>Bucket</span>
             <Link
-              href={withFilterParam(`/explore/landscape?bucket=week`, filters)}
-              className={`rounded-full border px-3 py-1 ${
-                bucket === "week"
-                  ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                  : "border-[var(--card-stroke)]"
-              }`}
+              href={withFilterParam(`/explore/landscape?bucket=week`, filters, roleParam as string)}
+              className={`rounded-full border px-3 py-1 ${bucket === "week"
+                ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                : "border-(--card-stroke)"
+                }`}
             >
               Week
             </Link>
             <Link
-              href={withFilterParam(`/explore/landscape?bucket=month`, filters)}
-              className={`rounded-full border px-3 py-1 ${
-                bucket === "month"
-                  ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                  : "border-[var(--card-stroke)]"
-              }`}
+              href={withFilterParam(`/explore/landscape?bucket=month`, filters, roleParam as string)}
+              className={`rounded-full border px-3 py-1 ${bucket === "month"
+                ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                : "border-(--card-stroke)"
+                }`}
             >
               Month
             </Link>
           </section>
 
           <section className="flex flex-col gap-10">
-            <QuadrantPanel
-              key={primaryCard.type}
-              title={primaryCard.title}
-              description={primaryCard.description}
-              data={primaryData}
-              filters={filters}
-              chartHeight={380}
-              relatedLinks={[
-                {
-                  label: "Open heatmaps",
-                  href: withFilterParam(primaryCard.heatmapHref, filters),
-                },
-              ]}
-              emptyState="Quadrant data unavailable for this scope."
-            />
+            <div className="rounded-[40px] border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
+              <div className="mb-6 flex items-center justify-between">
+                <span className="rounded-full bg-(--accent-2)/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-(--accent-2)">
+                  Primary Lens: {roleConfig.label}
+                </span>
+              </div>
+              <QuadrantPanel
+                key={primaryCard.type}
+                title={primaryCard.title}
+                description={primaryCard.description}
+                data={primaryData}
+                filters={filters}
+                chartHeight={420}
+                relatedLinks={[
+                  {
+                    label: "Open heatmaps",
+                    href: withFilterParam(primaryCard.heatmapHref, filters, roleParam as string),
+                  },
+                ]}
+                emptyState="Quadrant data unavailable for this scope."
+              />
+            </div>
+
             <div className="flex flex-col gap-8">
-              {secondaryCards.map((card) => {
+              {otherCards.map((card) => {
                 const cardIndex = QUADRANT_CARDS.findIndex(
                   (item) => item.type === card.type
                 );
+                const isSecondary = card.type === secondaryType;
                 return (
-                  <QuadrantPanel
+                  <div
                     key={card.type}
-                    title={card.title}
-                    description={card.description}
-                    data={quadrantData[cardIndex]}
-                    filters={filters}
-                    chartHeight={300}
-                    relatedLinks={[
-                      {
-                        label: "Open heatmaps",
-                        href: withFilterParam(card.heatmapHref, filters),
-                      },
-                    ]}
-                    emptyState="Quadrant data unavailable for this scope."
-                  />
+                    className={isSecondary ? "rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-4" : ""}
+                  >
+                    {isSecondary && (
+                      <div className="mb-4 px-2">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--ink-muted)">
+                          Secondary Context
+                        </span>
+                      </div>
+                    )}
+                    <QuadrantPanel
+                      title={card.title}
+                      description={card.description}
+                      data={quadrantData[cardIndex]}
+                      filters={filters}
+                      chartHeight={320}
+                      relatedLinks={[
+                        {
+                          label: "Open heatmaps",
+                          href: withFilterParam(card.heatmapHref, filters, roleParam as string),
+                        },
+                      ]}
+                      emptyState="Quadrant data unavailable for this scope."
+                    />
+                  </div>
                 );
               })}
             </div>
