@@ -181,4 +181,48 @@ describe("buildQuadrantOption", () => {
       });
     });
   });
+
+  it("isolates person scope to a single identity", () => {
+    const points: QuadrantPoint[] = [
+      {
+        entity_id: "alpha",
+        entity_label: "Alpha",
+        x: 1,
+        y: 2,
+        window_start: "2024-01-01",
+        window_end: "2024-01-14",
+        evidence_link: "/api/v1/explain?metric=throughput",
+      },
+      {
+        entity_id: "bravo",
+        entity_label: "Bravo",
+        x: 2,
+        y: 3,
+        window_start: "2024-01-01",
+        window_end: "2024-01-14",
+        evidence_link: "/api/v1/explain?metric=throughput",
+      },
+      {
+        entity_id: "charlie",
+        entity_label: "Charlie",
+        x: 3,
+        y: 4,
+        window_start: "2024-01-01",
+        window_end: "2024-01-14",
+        evidence_link: "/api/v1/explain?metric=throughput",
+      },
+    ];
+    const option = buildQuadrantOption({
+      data: buildData(points),
+      chartTheme,
+      colors: chartColors,
+      focusEntityIds: ["bravo"],
+      scopeType: "person",
+    });
+    const seriesPoints = getSeriesPoints(option);
+    const ids = seriesPoints.map((point) => point.entity_id);
+    expect(ids).toEqual(["bravo"]);
+    const serialized = JSON.stringify(option);
+    expect(serialized).not.toMatch(/Alpha|Charlie/);
+  });
 });
