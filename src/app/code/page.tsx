@@ -148,7 +148,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
           <section>
             <QuadrantPanel
               title="Churn × Throughput landscape"
-              description="Detect thrashing vs stable progress without ranking teams or repos."
+              description="Differentiate refactor-heavy and delivery-heavy operating modes without ranking teams or repos."
               data={churnThroughput}
               filters={filters}
               relatedLinks={[

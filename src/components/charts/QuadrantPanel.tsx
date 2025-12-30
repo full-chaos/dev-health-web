@@ -11,7 +11,11 @@ import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { findZoneMatches, getZoneOverlay } from "@/lib/quadrantZones";
+import {
+  findZoneMatches,
+  getQuadrantDefinition,
+  getZoneOverlay,
+} from "@/lib/quadrantZones";
 import { trackTelemetryEvent } from "@/lib/telemetry";
 import type { QuadrantAxis, QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
@@ -90,8 +94,6 @@ const withAlpha = (color: string, alpha: number) => {
   return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
 };
 
-const formatLegendSignals = (signals: string[]) => signals.join(" + ");
-
 const formatAnnotationType = (label: string) =>
   label.replace(/_/g, " ").trim();
 
@@ -146,6 +148,10 @@ export function QuadrantPanel({
   const [hoveredOverlayKey, setHoveredOverlayKey] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const zoneOverlay = useMemo(() => getZoneOverlay(data), [data]);
+  const quadrantDefinition = useMemo(
+    () => (data ? getQuadrantDefinition(data.axes) : null),
+    [data]
+  );
   const hasInterpretationOverlay = Boolean(
     zoneOverlay || data?.annotations?.length
   );
@@ -173,13 +179,11 @@ export function QuadrantPanel({
     }
     const items: ZoneLegendItem[] = [];
     if (zoneOverlay?.zones?.length) {
-      items.push(
+          items.push(
         ...zoneOverlay.zones.map((zone) => ({
           key: `zone-${zone.id}`,
           label: zone.label,
-          description: zone.signals.length
-            ? formatLegendSignals(zone.signals)
-            : "Common operating mode.",
+          description: zone.description || "Common operating mode.",
           color: zone.color,
           overlayKey: overlayKeyFor("zone", zone.id),
         }))
@@ -235,6 +239,19 @@ export function QuadrantPanel({
     zoneIgnoredLogged.current = true;
   }, [activeSelectedPoint, axesKey, scopeType, showZoneOverlay, zoneOverlay]);
 
+  useEffect(() => {
+    if (!isGuideOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsGuideOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isGuideOpen]);
+
   if (!data || !data.points?.length) {
     return (
       <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-5 text-sm text-[var(--ink-muted)]">
@@ -253,6 +270,17 @@ export function QuadrantPanel({
     "Avoid ranking, percentile, or score language for this view.";
   const snapshotMeaning =
     "Compare snapshots by changing the time window; do not infer direction from a single view.";
+  const influenceNarrative = quadrantDefinition?.influence;
+  const influenceLens = influenceNarrative?.lens ?? "Operating mode";
+  const influenceFraming =
+    influenceNarrative?.framing ??
+    "This view highlights competing pressures without ranking.";
+  const influenceHabits = influenceNarrative?.habits ?? [];
+  const influenceQuestions = influenceNarrative?.questions ?? [];
+  const influenceNotes = influenceNarrative?.notes ?? [];
+  const influenceNext =
+    influenceNarrative?.next ??
+    "Use heatmaps, flame diagrams, and metric explain views to investigate causes.";
   const cohortMeaning = isPersonScope
     ? "Individual scope shows a single dot; no peer comparison is displayed."
     : scopeType === "team"
@@ -263,17 +291,13 @@ export function QuadrantPanel({
         ? "Unlabeled dots show the filtered cohort background; labels appear only for focus entities."
         : "Dots represent the filtered cohort; labels appear when a focus entity is selected.";
   const zoneMeaning = hasInterpretationOverlay
-    ? "Zones are interpretive overlays that suggest common system modes; turn off anytime."
+    ? "Zones are interpretive overlays that suggest common system modes under this lens; turn off anytime."
     : null;
   const infoTitle = isPersonScope ? "How to read your view" : "How to read this view";
-  const forMeaning = isPersonScope
-    ? "See your current operating mode under competing pressures."
-    : "Identify operating modes and clusters under competing pressures.";
   const notForMeaning = isPersonScope
     ? "Performance review, scoring, percentiles, or peer comparison."
     : "Leaderboards, rankings, percentiles, or quality judgments.";
-  const nextMeaning =
-    "Change the time window to compare snapshots, then use the heatmap, flame diagram, or metric explain view for causes.";
+  const legendLensLabel = influenceNarrative?.lens ?? null;
 
   const metricExplainHref = activeSelectedPoint?.evidence_link
     ? buildExploreUrl({ api: activeSelectedPoint.evidence_link, filters })
@@ -314,19 +338,6 @@ export function QuadrantPanel({
       });
     }
   };
-
-  useEffect(() => {
-    if (!isGuideOpen) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsGuideOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isGuideOpen]);
 
   return (
     <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
@@ -383,15 +394,21 @@ export function QuadrantPanel({
             <div className="mt-4 space-y-2">
               <p>
                 <span className="font-semibold text-[var(--foreground)]">
+                  Influence lens:
+                </span>{" "}
+                {influenceLens}. {influenceFraming}
+              </p>
+              <p>
+                <span className="font-semibold text-[var(--foreground)]">
                   X-axis:
                 </span>{" "}
-                {data.axes.x.label} — {axisXDescription}
+                {data.axes.x.label} - {axisXDescription}
               </p>
               <p>
                 <span className="font-semibold text-[var(--foreground)]">
                   Y-axis:
                 </span>{" "}
-                {data.axes.y.label} — {axisYDescription}
+                {data.axes.y.label} - {axisYDescription}
               </p>
               <p>
                 <span className="font-semibold text-[var(--foreground)]">
@@ -423,19 +440,47 @@ export function QuadrantPanel({
                 </span>{" "}
                 {snapshotMeaning}
               </p>
-              <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  For:
-                </span>{" "}
-                {forMeaning}
-              </p>
-              <p>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Next:
-                </span>{" "}
-                {nextMeaning}
-              </p>
             </div>
+            {influenceNotes.length ? (
+              <>
+                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Field notes
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-4">
+                  {influenceNotes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {influenceHabits.length ? (
+              <>
+                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Habits that shape this view
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-4">
+                  {influenceHabits.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {influenceQuestions.length ? (
+              <>
+                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Questions to investigate
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-4">
+                  {influenceQuestions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              Where to look next
+            </p>
+            <p className="mt-2">{influenceNext}</p>
             {zoneMeaning ? (
               <>
                 <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
@@ -492,11 +537,11 @@ export function QuadrantPanel({
       <div
         className={
           showZoneLegend
-            ? "mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]"
+            ? "mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]"
             : "mt-4"
         }
       >
-        <div>
+        <div className="min-w-0">
           <QuadrantChart
             data={data}
             height={chartHeight}
@@ -509,7 +554,7 @@ export function QuadrantPanel({
           />
         </div>
         {showZoneLegend ? (
-          <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4 text-xs text-[var(--ink-muted)]">
+          <div className="min-w-0 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4 text-xs text-[var(--ink-muted)]">
             <div className="flex items-center justify-between">
               <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
                 Zone legend
@@ -518,6 +563,11 @@ export function QuadrantPanel({
                 Interpretive
               </span>
             </div>
+            {legendLensLabel ? (
+              <p className="mt-1 text-[11px] text-[var(--ink-muted)]">
+                Lens: {legendLensLabel}
+              </p>
+            ) : null}
             <div className="mt-3 space-y-3">
               {zoneLegendItems.map((item) => {
                 const isActive = activeHoveredOverlayKey === item.overlayKey;
@@ -613,7 +663,7 @@ export function QuadrantPanel({
                 href={flowBreakdownHref}
                 className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
               >
-                Follow-up: Investment / Flow Breakdown
+                Sankey: Investment Flow
               </Link>
             ) : null}
           </div>

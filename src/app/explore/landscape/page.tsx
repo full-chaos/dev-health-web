@@ -12,25 +12,25 @@ const QUADRANT_CARDS = [
   {
     type: "churn_throughput" as const,
     title: "Churn × Throughput",
-    description: "Differentiate refactor-heavy vs delivery-heavy system modes.",
+    description: "Differentiate refactor-heavy and delivery-heavy operating modes.",
     heatmapHref: "/code",
   },
   {
     type: "cycle_throughput" as const,
     title: "Cycle Time × Throughput",
-    description: "Spot coordination debt before throughput drops.",
+    description: "Highlight delivery momentum under cycle time pressure.",
     heatmapHref: "/work",
   },
   {
     type: "wip_throughput" as const,
     title: "WIP × Throughput",
-    description: "Detect saturation points and flow bottlenecks.",
+    description: "Read product direction and role clarity under load.",
     heatmapHref: "/work",
   },
   {
     type: "review_load_latency" as const,
     title: "Review Load × Review Latency",
-    description: "Reveal review bottlenecks and concentration risk.",
+    description: "Highlight collaboration health and ownership distribution under review pressure.",
     heatmapHref: "/work",
   },
 ];
