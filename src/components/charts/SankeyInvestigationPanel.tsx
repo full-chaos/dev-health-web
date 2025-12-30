@@ -198,11 +198,10 @@ export function SankeyInvestigationPanel({
             key={entry.id}
             type="button"
             onClick={() => handleModeChange(entry.id)}
-            className={`rounded-full border px-3 py-1 transition ${
-              mode === entry.id
-                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                : "border-[var(--card-stroke)] text-[var(--ink-muted)]"
-            }`}
+            className={`rounded-full border px-3 py-1 transition ${mode === entry.id
+              ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
+              : "border-[var(--card-stroke)] text-[var(--ink-muted)]"
+              }`}
           >
             {entry.label}
           </button>
@@ -227,9 +226,11 @@ export function SankeyInvestigationPanel({
         )}
       </div>
       {hasDataset ? (
-        <p className="mt-2 text-[11px] text-[var(--ink-muted)]">
-          Click a node or link to open evidence lists for this scope and window.
-        </p>
+        <div className="mt-4">
+          <p className="text-[11px] text-[var(--ink-muted)]">
+            Click a node or link to open evidence lists for this scope and window.
+          </p>
+        </div>
       ) : null}
     </div>
   );

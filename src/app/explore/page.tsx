@@ -151,6 +151,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
+                href={withFilterParam("/flame?mode=cycle_breakdown", filters)}
+                className="rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+              >
+                Flame Diagram
+              </Link>
+              <Link
                 href={withFilterParam("/explore/landscape", filters)}
                 className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
@@ -353,7 +359,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       const href = getItemHref(item, fallbackHref);
                       const prFlameHref =
                         typeof item.repo_id === "string" &&
-                        typeof item.number === "number"
+                          typeof item.number === "number"
                           ? `/prs/${item.repo_id}:${item.number}`
                           : null;
                       const issueFlameHref =

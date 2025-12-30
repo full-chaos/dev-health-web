@@ -39,6 +39,13 @@ This document is the authoritative guide for any automated coding agent (Copilot
 - Do not commit secrets or environment tokens. Use env vars for examples.
 - When adding new files, include a brief unit test where practical and update relevant docs.
 
+## Recent updates & gotchas
+
+- Playwright dev server sets `DEV_HEALTH_TEST_MODE` and `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` in `playwright.config.ts` so components should support sample data without hitting APIs during tests.
+- Sankey tests expect `data-testid="chart-sankey"` with a visible `<canvas>` and `[data-chart-ready="true"]` in `tests/sankey.spec.ts`.
+- ESLint includes `react-hooks/set-state-in-effect` and `react-hooks/exhaustive-deps`; avoid synchronous `setState` in effects (derive sample data via memo + computed loading instead).
+- `demoFilters` in `src/app/demo/page.tsx` must be typed as `MetricFilter` so `scope.level` stays within the union (`"repo" | "org" | "team" | "service" | "developer"`).
+
 ## PR & review behavior
 
 - Use descriptive PR titles and reference related tests. Keep changes scoped to one feature or bugfix.

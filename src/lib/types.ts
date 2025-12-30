@@ -292,3 +292,32 @@ export type QuadrantResponse = {
   points: QuadrantPoint[];
   annotations: QuadrantAnnotation[];
 };
+
+// Aggregated flame graph types (hierarchical tree format)
+
+export type AggregatedFlameNode = {
+  name: string;
+  value: number;
+  children?: AggregatedFlameNode[];
+};
+
+export type AggregatedFlameMeta = {
+  window_start: string;
+  window_end: string;
+  filters: Record<string, unknown>;
+  notes: string[];
+  approximation?: {
+    used: boolean;
+    method?: string;
+  };
+};
+
+export type AggregatedFlameMode = "cycle_breakdown" | "code_hotspots" | "throughput";
+
+export type AggregatedFlameResponse = {
+  mode: AggregatedFlameMode;
+  unit: string;
+  root: AggregatedFlameNode;
+  meta: AggregatedFlameMeta;
+};
+
