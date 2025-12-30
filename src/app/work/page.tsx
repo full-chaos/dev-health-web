@@ -202,10 +202,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
             />
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-2">
+          <section className="flex flex-col gap-6">
             <QuadrantPanel
               title="Cycle Time × Throughput"
-              description="Spot coordination debt before throughput drops."
+              description="Highlight delivery momentum under cycle time pressure."
               data={cycleThroughput}
               filters={filters}
               relatedLinks={[
@@ -218,7 +218,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
             />
             <QuadrantPanel
               title="WIP × Throughput"
-              description="Detect saturation points and flow bottlenecks."
+              description="Read product direction and role clarity under load."
               data={wipThroughput}
               filters={filters}
               relatedLinks={[
@@ -229,12 +229,9 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               ]}
               emptyState="Quadrant data unavailable for this scope."
             />
-          </section>
-
-          <section>
             <QuadrantPanel
               title="Review Load × Review Latency"
-              description="Expose structural review bottlenecks and concentration risk."
+              description="Highlight collaboration health and ownership distribution under review pressure."
               data={reviewLoadLatency}
               filters={filters}
               relatedLinks={[

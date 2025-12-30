@@ -202,8 +202,8 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
 
           <section>
             <QuadrantPanel
-              title="Churn × Throughput trajectory"
-              description="Follow your movement across recent windows without comparing to peers."
+              title="Churn × Throughput landscape"
+              description="View your current operating mode for the selected window without peer comparison."
               data={quadrant}
               filters={quadrantFilters}
               relatedLinks={[
@@ -217,7 +217,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                   ),
                 },
               ]}
-              emptyState="Quadrant trajectory unavailable."
+              emptyState="Quadrant landscape unavailable."
             />
           </section>
 

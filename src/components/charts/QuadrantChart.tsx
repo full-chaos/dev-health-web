@@ -3,15 +3,16 @@
 import type { CSSProperties } from "react";
 import type {
   DefaultLabelFormatterCallbackParams,
+  EChartsOption,
   MarkAreaComponentOption,
   TooltipComponentFormatterCallbackParams,
 } from "echarts";
 
-import type { ZoneOverlay } from "@/lib/quadrantZones";
+import { findZoneMatches, type ZoneOverlay } from "@/lib/quadrantZones";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { Chart } from "./Chart";
-import { useChartColors, useChartTheme } from "./chartTheme";
+import { type ChartTheme, useChartColors, useChartTheme } from "./chartTheme";
 
 const formatValue = (value: number, unit: string) => {
   if (!Number.isFinite(value)) {
@@ -57,34 +58,126 @@ const windowLabel = (start: string, end: string) => {
   return start || end || "Selected window";
 };
 
-type QuadrantChartProps = {
+const normalizeScopeType = (
+  scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string
+) => (scopeType === "developer" ? "person" : scopeType ?? "org");
+
+const rgbaPattern =
+  /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
+const hexPattern = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+const clampAlpha = (alpha: number) => Math.min(1, Math.max(0, alpha));
+
+const withAlpha = (color: string, alpha: number) => {
+  const nextAlpha = clampAlpha(alpha);
+  const trimmed = color.trim();
+  const match = trimmed.match(rgbaPattern);
+  if (match) {
+    const red = Number(match[1]);
+    const green = Number(match[2]);
+    const blue = Number(match[3]);
+    if ([red, green, blue].some((value) => Number.isNaN(value))) {
+      return color;
+    }
+    return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
+  }
+  const hexMatch = trimmed.match(hexPattern);
+  if (!hexMatch) {
+    return color;
+  }
+  const hex = hexMatch[1];
+  const normalized =
+    hex.length === 3 ? hex.split("").map((item) => item + item).join("") : hex;
+  const value = Number.parseInt(normalized, 16);
+  if (Number.isNaN(value)) {
+    return color;
+  }
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
+};
+
+const buildZoneGradient = (color: string) => ({
+  type: "radial" as const,
+  x: 0.45,
+  y: 0.4,
+  r: 0.95,
+  colorStops: [
+    { offset: 0, color: withAlpha(color, 0.2) },
+    { offset: 0.6, color: withAlpha(color, 0.12) },
+    { offset: 1, color: withAlpha(color, 0) },
+  ],
+});
+
+const buildZoneSurfaceStyle = (
+  color: string,
+  options?: {
+    outlineAlpha?: number;
+    glowAlpha?: number;
+    radius?: number;
+    active?: boolean;
+  }
+) => {
+  const outlineAlpha = options?.outlineAlpha ?? 0.32;
+  const glowAlpha = options?.glowAlpha ?? 0.22;
+  const radius = options?.radius ?? 32;
+  const isActive = options?.active ?? false;
+  return {
+    color: buildZoneGradient(color),
+    opacity: isActive ? 1 : 0.92,
+    borderWidth: isActive ? 2 : 1,
+    borderColor: withAlpha(color, isActive ? outlineAlpha + 0.14 : outlineAlpha),
+    borderType: "dashed" as const,
+    borderRadius: radius,
+    shadowBlur: isActive ? 24 : 20,
+    shadowColor: withAlpha(color, isActive ? glowAlpha + 0.12 : glowAlpha),
+  };
+};
+
+const toPoint = (data: unknown) => {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+  const candidate = data as { point?: QuadrantPoint };
+  return candidate.point ?? null;
+};
+
+type TooltipEntry = TooltipComponentFormatterCallbackParams & {
+  componentType?: string;
+  data?: unknown;
+  name?: string;
+};
+
+const getParamsEntry = (params: unknown): TooltipEntry | null => {
+  const entry = Array.isArray(params) ? params[0] : params;
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  return entry as TooltipEntry;
+};
+
+type QuadrantChartOptionParams = {
   data: QuadrantResponse;
-  height?: number | string;
-  width?: number | string;
-  className?: string;
-  style?: CSSProperties;
-  onPointSelect?: (point: QuadrantPoint) => void;
+  chartTheme: ChartTheme;
+  colors: string[];
   focusEntityIds?: string[];
   scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string;
   zoneOverlay?: ZoneOverlay | null;
   showZoneOverlay?: boolean;
+  highlightOverlayKey?: string | null;
 };
 
-export function QuadrantChart({
+export const buildQuadrantOption = ({
   data,
-  height = 360,
-  width = "100%",
-  className,
-  style,
-  onPointSelect,
+  chartTheme,
+  colors,
   focusEntityIds,
   scopeType,
   zoneOverlay,
   showZoneOverlay = false,
-}: QuadrantChartProps) {
-  const chartTheme = useChartTheme();
-  const colors = useChartColors();
-  const mergedStyle: CSSProperties = { height, width, ...style };
+  highlightOverlayKey,
+}: QuadrantChartOptionParams): EChartsOption => {
   const xAxisLabel = data.axes.x.unit
     ? `${data.axes.x.label} (${data.axes.x.unit})`
     : data.axes.x.label;
@@ -92,8 +185,7 @@ export function QuadrantChart({
     ? `${data.axes.y.label} (${data.axes.y.unit})`
     : data.axes.y.label;
 
-  const normalizedScopeType =
-    scopeType === "developer" ? "person" : scopeType ?? "org";
+  const normalizedScopeType = normalizeScopeType(scopeType);
   const isPersonScope = normalizedScopeType === "person";
   const showTeamLabels = normalizedScopeType === "team";
   const focusIds = (focusEntityIds ?? []).filter(Boolean);
@@ -115,112 +207,230 @@ export function QuadrantChart({
   const backgroundOpacity = 1;
 
   const focusData = focusPoints.map((point) => ({
-    value: [point.x, point.y],
+    value: [point.x, point.y] as [number, number],
     point,
   }));
   const backgroundData = backgroundPoints.map((point) => ({
-    value: [point.x, point.y],
+    value: [point.x, point.y] as [number, number],
     point,
   }));
 
-  const trajectorySource = hasFocus ? focusPoints : data.points;
-  const trajectorySeries = trajectorySource
-    .filter((point) => (point.trajectory?.length ?? 0) > 1)
-    .map((point, index) => ({
-      type: "line" as const,
-      name: point.entity_label,
-      data: (point.trajectory ?? []).map((step) => ({
-        value: [step.x, step.y],
-        point: {
-          entity_id: point.entity_id,
-          entity_label: point.entity_label,
-          x: step.x,
-          y: step.y,
-          window_start: step.window,
-          window_end: step.window,
-          evidence_link: point.evidence_link,
+  const showInterpretation = Boolean(showZoneOverlay);
+  const activeZoneOverlay = showInterpretation ? zoneOverlay : null;
+  const annotationColor = "rgba(148, 163, 184, 0.2)";
+  const annotationAreas: MarkAreaComponentOption["data"] = showInterpretation
+    ? (data.annotations ?? []).map((annotation, index) => {
+        const isActive =
+          highlightOverlayKey === `annotation:${index}`;
+        return [
+          {
+            name: `Condition: ${annotation.description}`,
+            xAxis: annotation.x_range[0],
+            yAxis: annotation.y_range[0],
+            itemStyle: buildZoneSurfaceStyle(annotationColor, {
+              outlineAlpha: 0.24,
+              glowAlpha: 0.18,
+              radius: 28,
+              active: isActive,
+            }),
+          },
+          {
+            xAxis: annotation.x_range[1],
+            yAxis: annotation.y_range[1],
+          },
+        ];
+      })
+    : [];
+  const zoneAreas: MarkAreaComponentOption["data"] = showInterpretation
+    ? (activeZoneOverlay?.zones ?? []).map((zone) => [
+        {
+          name: zone.label,
+          xAxis: zone.xRange[0],
+          yAxis: zone.yRange[0],
+          itemStyle: buildZoneSurfaceStyle(zone.color, {
+            active: highlightOverlayKey === `zone:${zone.id}`,
+          }),
         },
-      })),
-      lineStyle: {
-        color: colors[(index + 2) % colors.length] ?? colors[2],
-        width: 2,
-        type: "solid" as const,
-      },
-      symbol: "circle",
-      symbolSize: 6,
-      itemStyle: {
-        color: colors[(index + 2) % colors.length] ?? colors[2],
-      },
-      emphasis: { focus: "series" as const },
-      z: 2,
-    }));
-
-  const activeZoneOverlay = showZoneOverlay ? zoneOverlay : null;
-  const annotationAreas: MarkAreaComponentOption["data"] = (
-    data.annotations ?? []
-  ).map((annotation) => [
-    {
-      name: `Condition: ${annotation.description}`,
-      xAxis: annotation.x_range[0],
-      yAxis: annotation.y_range[0],
-      itemStyle: {
-        color: "rgba(148, 163, 184, 0.08)",
-      },
-    },
-    {
-      xAxis: annotation.x_range[1],
-      yAxis: annotation.y_range[1],
-    },
-  ]);
-  const zoneAreas: MarkAreaComponentOption["data"] = (
-    activeZoneOverlay?.zones ?? []
-  ).map((zone) => [
-    {
-      name: zone.label,
-      xAxis: zone.xRange[0],
-      yAxis: zone.yRange[0],
-      itemStyle: {
-        color: zone.color,
-      },
-    },
-    {
-      xAxis: zone.xRange[1],
-      yAxis: zone.yRange[1],
-    },
-  ]);
+        {
+          xAxis: zone.xRange[1],
+          yAxis: zone.yRange[1],
+        },
+      ])
+    : [];
   const markAreaData = [...annotationAreas, ...zoneAreas];
   const markArea: MarkAreaComponentOption | undefined = markAreaData.length
     ? {
-        label: {
-          show: true,
-          color: chartTheme.muted,
-          fontSize: 10,
-          formatter: "{b}",
-        },
+        silent: true,
+        z: 1,
+        label: { show: false },
+        tooltip: { show: false },
         data: markAreaData,
       }
     : undefined;
+  const gridLineStyle = { color: chartTheme.grid, opacity: 0.16 };
+  const axisLineStyle = { color: chartTheme.grid, opacity: 0.28 };
+  const axisLabelColor = withAlpha(chartTheme.muted, 0.75);
 
-  const toPoint = (data: unknown) => {
-    if (!data || typeof data !== "object") {
-      return null;
-    }
-    const candidate = data as { point?: QuadrantPoint };
-    return candidate.point ?? null;
+  return {
+    tooltip: {
+      confine: true,
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const entry = getParamsEntry(params);
+        const isMarkArea =
+          entry?.componentType === "markArea" || Array.isArray(entry?.data);
+        if (isMarkArea) {
+          return "";
+        }
+        const point = entry ? toPoint(entry.data) : null;
+        if (!point) {
+          return "";
+        }
+        const xLabel = data.axes.x.label;
+        const yLabel = data.axes.y.label;
+        const xValue = formatValue(point.x, data.axes.x.unit);
+        const yValue = formatValue(point.y, data.axes.y.unit);
+        const days = windowDays(point.window_start, point.window_end);
+        const dayLabel = days
+          ? `${days} day${days === 1 ? "" : "s"}`
+          : "the selected window";
+        const subject = isPersonScope ? "Your position" : "This position";
+        const entityLabel = isPersonScope ? "You" : point.entity_label;
+        const zoneContext =
+          showZoneOverlay && zoneOverlay
+            ? findZoneMatches(zoneOverlay, point)
+            : [];
+        const zoneLine = zoneContext.length
+          ? `Falls within: ${zoneContext.map((zone) => zone.label).join(", ")}.`
+          : null;
+        const lines = [
+          `<strong>${entityLabel}</strong>`,
+          `${xLabel}: ${xValue}`,
+          `${yLabel}: ${yValue}`,
+          `Window: ${windowLabel(point.window_start, point.window_end)}`,
+          `${subject} reflects ${xLabel} at ${xValue} and ${yLabel} at ${yValue} over ${dayLabel}.`,
+        ];
+        if (zoneLine) {
+          lines.push(zoneLine);
+        }
+        return lines.join("<br/>");
+      },
+    },
+    grid: { left: 48, right: 24, top: 24, bottom: 48, containLabel: true },
+    xAxis: {
+      name: xAxisLabel,
+      nameLocation: "middle",
+      nameGap: 30,
+      type: "value",
+      splitNumber: 4,
+      axisLine: { lineStyle: axisLineStyle },
+      axisLabel: { color: axisLabelColor },
+      splitLine: { lineStyle: gridLineStyle },
+    },
+    yAxis: {
+      name: yAxisLabel,
+      nameLocation: "middle",
+      nameGap: 40,
+      type: "value",
+      splitNumber: 4,
+      axisLine: { lineStyle: axisLineStyle },
+      axisLabel: { color: axisLabelColor },
+      splitLine: { lineStyle: gridLineStyle },
+    },
+    series: [
+      {
+        type: "scatter",
+        data: backgroundData,
+        symbol: "circle",
+        symbolSize: normalizedScopeType === "person" ? 8 : 10,
+        itemStyle: {
+          color: chartTheme.muted,
+          opacity: backgroundOpacity,
+        },
+        label: showTeamLabels
+          ? {
+              show: true,
+              formatter: (params: DefaultLabelFormatterCallbackParams) => {
+                const point = toPoint(params.data);
+                return point?.entity_label ?? "";
+              },
+              color: chartTheme.muted,
+              fontSize: 10,
+              position: "top",
+            }
+          : undefined,
+        labelLayout: showTeamLabels ? { hideOverlap: true } : undefined,
+        markArea: backgroundData.length ? markArea : undefined,
+        emphasis: {
+          scale: true,
+          itemStyle: { borderColor: chartTheme.text, borderWidth: 2 },
+        },
+        z: 5,
+      },
+      ...(hasFocus
+        ? [
+            {
+              type: "scatter" as const,
+              data: focusData,
+              symbol: "circle",
+              symbolSize: 14,
+              itemStyle: {
+                color: colors[0] ?? "#2563eb",
+              },
+              label: {
+                show: true,
+                formatter: (params: DefaultLabelFormatterCallbackParams) => {
+                  const point = toPoint(params.data);
+                  return point?.entity_label ?? "";
+                },
+                color: chartTheme.text,
+                fontSize: 11,
+                fontWeight: 600,
+                position: "top" as const,
+              },
+              labelLayout: { hideOverlap: true },
+              markArea: !backgroundData.length ? markArea : undefined,
+              emphasis: {
+                scale: true,
+                itemStyle: { borderColor: chartTheme.text, borderWidth: 2 },
+              },
+              z: 6,
+            },
+          ]
+        : []),
+    ],
   };
+};
 
-  type TooltipEntry = TooltipComponentFormatterCallbackParams & {
-    componentType?: string;
-    data?: unknown;
-    name?: string;
-  };
-  const getParamsEntry = (params: unknown): TooltipEntry | null => {
-    const entry = Array.isArray(params) ? params[0] : params;
-    if (!entry || typeof entry !== "object") {
-      return null;
-    }
-    return entry as TooltipEntry;
-  };
+type QuadrantChartProps = {
+  data: QuadrantResponse;
+  height?: number | string;
+  width?: number | string;
+  className?: string;
+  style?: CSSProperties;
+  onPointSelect?: (point: QuadrantPoint) => void;
+  focusEntityIds?: string[];
+  scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string;
+  zoneOverlay?: ZoneOverlay | null;
+  showZoneOverlay?: boolean;
+  highlightOverlayKey?: string | null;
+};
+
+export function QuadrantChart({
+  data,
+  height = 360,
+  width = "100%",
+  className,
+  style,
+  onPointSelect,
+  focusEntityIds,
+  scopeType,
+  zoneOverlay,
+  showZoneOverlay = false,
+  highlightOverlayKey,
+}: QuadrantChartProps) {
+  const chartTheme = useChartTheme();
+  const colors = useChartColors();
+  const mergedStyle: CSSProperties = { height, width, ...style };
 
   const handleClick = (params: unknown) => {
     const entry = getParamsEntry(params);
@@ -230,165 +440,18 @@ export function QuadrantChart({
     }
   };
 
-  const zoneLabelLookup = new Map(
-    (activeZoneOverlay?.zones ?? []).map((zone) => [zone.label, zone])
-  );
-  const extractZone = (entry: TooltipEntry | null) => {
-    if (!entry) {
-      return null;
-    }
-    if (entry.name && zoneLabelLookup.has(entry.name)) {
-      return zoneLabelLookup.get(entry.name) ?? null;
-    }
-    const data = entry.data;
-    if (Array.isArray(data)) {
-      const first = data[0];
-      if (first && typeof first === "object" && "name" in first) {
-        const name = (first as { name?: string }).name;
-        if (name && zoneLabelLookup.has(name)) {
-          return zoneLabelLookup.get(name) ?? null;
-        }
-      }
-    }
-    if (data && typeof data === "object" && "name" in data) {
-      const name = (data as { name?: string }).name;
-      if (name && zoneLabelLookup.has(name)) {
-        return zoneLabelLookup.get(name) ?? null;
-      }
-    }
-    return null;
-  };
-  const formatZoneTooltip = (
-    zone: ZoneOverlay["zones"][number]
-  ): string => {
-    const signals = zone.signals.map((signal) => `- ${signal}`).join("<br/>");
-    const investigations = zone.investigations
-      .map((item) => `- ${item}`)
-      .join("<br/>");
-    return [
-      `<strong>${zone.label}</strong>`,
-      "Typical signals:",
-      signals,
-      "Questions to ask:",
-      investigations,
-      "This is a common pattern, not a conclusion.",
-      "Always validate with drill-down evidence.",
-    ].join("<br/>");
-  };
-
   return (
     <Chart
-      option={{
-        tooltip: {
-          confine: true,
-          formatter: (params: TooltipComponentFormatterCallbackParams) => {
-            const entry = getParamsEntry(params);
-            const isMarkArea =
-              entry?.componentType === "markArea" || Array.isArray(entry?.data);
-            if (isMarkArea) {
-              const zone = extractZone(entry);
-              if (zone) {
-                return formatZoneTooltip(zone);
-              }
-              return entry?.name ?? "";
-            }
-            const point = entry ? toPoint(entry.data) : null;
-            if (!point) {
-              return "";
-            }
-            const xLabel = data.axes.x.label;
-            const yLabel = data.axes.y.label;
-            const xValue = formatValue(point.x, data.axes.x.unit);
-            const yValue = formatValue(point.y, data.axes.y.unit);
-            const days = windowDays(point.window_start, point.window_end);
-            const dayLabel = days
-              ? `${days} day${days === 1 ? "" : "s"}`
-              : "the selected window";
-            const subject = isPersonScope ? "Your position" : "This position";
-            const entityLabel = isPersonScope ? "You" : point.entity_label;
-            return [
-              `<strong>${entityLabel}</strong>`,
-              `${xLabel}: ${xValue}`,
-              `${yLabel}: ${yValue}`,
-              `Window: ${windowLabel(point.window_start, point.window_end)}`,
-              `${subject} reflects ${xLabel} at ${xValue} and ${yLabel} at ${yValue} over ${dayLabel}.`,
-            ].join("<br/>");
-          },
-        },
-        grid: { left: 48, right: 24, top: 24, bottom: 48, containLabel: true },
-        xAxis: {
-          name: xAxisLabel,
-          nameLocation: "middle",
-          nameGap: 30,
-          type: "value",
-          axisLine: { lineStyle: { color: chartTheme.grid } },
-          axisLabel: { color: chartTheme.muted },
-          splitLine: { lineStyle: { color: chartTheme.grid } },
-        },
-        yAxis: {
-          name: yAxisLabel,
-          nameLocation: "middle",
-          nameGap: 40,
-          type: "value",
-          axisLine: { lineStyle: { color: chartTheme.grid } },
-          axisLabel: { color: chartTheme.muted },
-          splitLine: { lineStyle: { color: chartTheme.grid } },
-        },
-        series: [
-          {
-            type: "scatter",
-            data: backgroundData,
-            symbolSize: normalizedScopeType === "person" ? 8 : 10,
-            itemStyle: {
-              color: chartTheme.muted,
-              opacity: backgroundOpacity,
-            },
-            label: showTeamLabels
-              ? {
-                  show: true,
-                  formatter: (params: DefaultLabelFormatterCallbackParams) => {
-                    const point = toPoint(params.data);
-                    return point?.entity_label ?? "";
-                  },
-                  color: chartTheme.muted,
-                  fontSize: 10,
-                  position: "top",
-                }
-              : undefined,
-            labelLayout: showTeamLabels ? { hideOverlap: true } : undefined,
-            markArea: backgroundData.length ? markArea : undefined,
-            emphasis: { scale: true },
-            z: 1,
-          },
-          ...(hasFocus
-            ? [
-                {
-                  type: "scatter" as const,
-                  data: focusData,
-                  symbolSize: 14,
-                  itemStyle: {
-                    color: colors[0] ?? "#2563eb",
-                  },
-                  label: {
-                    show: true,
-                    formatter: (params: DefaultLabelFormatterCallbackParams) => {
-                      const point = toPoint(params.data);
-                      return point?.entity_label ?? "";
-                    },
-                    color: chartTheme.text,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    position: "top" as const,
-                  },
-                  labelLayout: { hideOverlap: true },
-                  markArea: !backgroundData.length ? markArea : undefined,
-                  z: 3,
-                },
-              ]
-            : []),
-          ...trajectorySeries,
-        ],
-      }}
+      option={buildQuadrantOption({
+        data,
+        chartTheme,
+        colors,
+        focusEntityIds,
+        scopeType,
+        zoneOverlay,
+        showZoneOverlay,
+        highlightOverlayKey,
+      })}
       className={className}
       style={mergedStyle}
       onEvents={{ click: handleClick }}
