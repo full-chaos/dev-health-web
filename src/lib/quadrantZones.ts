@@ -87,72 +87,48 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "stability-dominant",
         label: "Stability-Dominant Zone",
-        description:
-          "Delivery is steady while change volume stays low; stability dominates.",
+        description: "Stability dominates while delivery remains steady.",
         levels: { churn: "low", throughput: "high" },
-        signals: [
-          "Low churn with steady throughput",
-          "Incremental change with stable delivery",
-          "Few rework cycles",
-        ],
+        signals: ["Low churn", "Steady throughput", "Few rework loops"],
         investigations: [
           "Is stability intentional or a pause in change?",
-          "Are hidden risks building without visible churn?",
-          "Is architectural evolution deferred?",
+          "Are architectural risks building silently?",
         ],
         color: "rgba(34, 197, 94, 0.12)",
       },
       {
         id: "expansion-pressure",
         label: "Expansion Pressure Zone",
-        description:
-          "Change volume and delivery are both high; the system is evolving while shipping.",
+        description: "System evolves while shipping as both change and delivery remain high.",
         levels: { churn: "high", throughput: "high" },
-        signals: [
-          "Rising churn with strong throughput",
-          "Parallel refactors and delivery",
-          "Frequent dependency changes",
-        ],
+        signals: ["Rising churn", "Strong throughput", "Parallel refactors"],
         investigations: [
-          "Is churn planned or reactive?",
-          "Are dependencies discovered late?",
-          "Is review capacity keeping pace with change?",
+          "Is churn planned or reactive rework?",
+          "Are dependencies discovered late in cycles?",
         ],
         color: "rgba(59, 130, 246, 0.12)",
       },
       {
         id: "coordination-pressure",
         label: "Saturation / Coordination Pressure Zone",
-        description:
-          "Change volume is high but throughput lags; coordination pressure may dominate.",
+        description: "High change with lagging throughput indicates potential coordination pressure.",
         levels: { churn: "high", throughput: "low" },
-        signals: [
-          "High churn with flat throughput",
-          "Rework loops or handoffs increasing",
-          "Dependencies queueing",
-        ],
+        signals: ["High churn", "Flat throughput", "Handoff delays"],
         investigations: [
+          "Are reviews slowing down conversion?",
           "Is rework discovered late in the window?",
-          "Are handoffs or reviews slowing conversion?",
-          "Does change convert into durable progress?",
         ],
         color: "rgba(244, 63, 94, 0.12)",
       },
       {
         id: "constrained-underutilized",
         label: "Constrained / Underutilized Zone",
-        description:
-          "Low change and low delivery; constraints or intentional pauses may limit flow.",
+        description: "Flow is limited by potential constraints or intentional pauses.",
         levels: { churn: "low", throughput: "low" },
-        signals: [
-          "Low churn with low throughput",
-          "Intake throttled or blocked",
-          "External dependencies dominate",
-        ],
+        signals: ["Low churn", "Low throughput", "Blocked intake"],
         investigations: [
           "Are external constraints limiting delivery?",
-          "Is demand muted or unclear?",
-          "Are dependencies gating change?",
+          "Is demand muted or scope unclear?",
         ],
         color: "rgba(249, 115, 22, 0.12)",
       },
@@ -186,71 +162,47 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "rapid-flow",
         label: "Rapid Flow Zone",
-        description:
-          "Short cycles with steady output; momentum is dominant.",
+        description: "Steady output with short cycles indicates dominant momentum.",
         levels: { cycle_time: "low", throughput: "high" },
-        signals: [
-          "Low cycle time with steady throughput",
-          "Small batch sizes",
-          "Minimal waiting between stages",
-        ],
+        signals: ["Low cycle time", "Small batches", "Minimal waiting"],
         investigations: [
           "Is flow stable across the window?",
-          "Are releases gated by tooling or policies?",
-          "Are any steps consistently waiting?",
+          "Are releases gated by manual policy?",
         ],
         color: "rgba(34, 197, 94, 0.12)",
       },
       {
         id: "batch-delivery",
         label: "Batch Delivery Zone",
-        description:
-          "Output remains high but cycles are long; batching or waiting may dominate.",
+        description: "High output with long cycles suggests batching or waiting.",
         levels: { cycle_time: "high", throughput: "high" },
-        signals: [
-          "High throughput with long cycles",
-          "Batching work for release",
-          "Waiting accumulates between stages",
-        ],
+        signals: ["High throughput", "Batching releases", "Accumulated waiting"],
         investigations: [
-          "Is work spending more time waiting than executing?",
-          "Are long cycles driven by release gates?",
-          "Are dependencies extending cycle times?",
+          "Is work waiting more than executing?",
+          "Are release gates driving long cycles?",
         ],
         color: "rgba(59, 130, 246, 0.12)",
       },
       {
         id: "friction-dominant",
         label: "Friction-Dominant Zone",
-        description:
-          "Work stays in flight for long periods with limited output; pipeline friction dominates.",
+        description: "Limited output with long cycles indicates dominant pipeline friction.",
         levels: { cycle_time: "high", throughput: "low" },
-        signals: [
-          "Long cycles with low throughput",
-          "Queueing at handoffs",
-          "Frequent rework",
-        ],
+        signals: ["High latency", "Queueing handoffs", "Frequent rework"],
         investigations: [
-          "Are defects or unclear requirements elongating cycles?",
-          "Is delivery speed constrained by tooling or process?",
-          "Where is time spent waiting?",
+          "Are requirements elongating cycles?",
+          "Where is work consistently stalling?",
         ],
         color: "rgba(244, 63, 94, 0.12)",
       },
       {
         id: "quick-low-output",
         label: "Quick Cycles, Low Output Zone",
-        description:
-          "Cycles are short but output is limited; demand or intake may be light.",
+        description: "Short cycles with limited output suggest light demand or intake.",
         levels: { cycle_time: "low", throughput: "low" },
-        signals: [
-          "Short cycles with low throughput",
-          "Small work items",
-          "Low intake volume",
-        ],
+        signals: ["Short cycles", "Small items", "Low intake volume"],
         investigations: [
           "Is demand or intake limiting output?",
-          "Are work items too small to move throughput?",
           "Is capacity reserved for other work?",
         ],
         color: "rgba(249, 115, 22, 0.12)",
@@ -285,72 +237,48 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "focused-delivery",
         label: "Focused Delivery Zone",
-        description:
-          "Lean work in flight with steady output; direction appears focused.",
+        description: "Steady output with lean work in flight indicates focused direction.",
         levels: { wip: "low", throughput: "high" },
-        signals: [
-          "Low WIP with steady throughput",
-          "Limited context switching",
-          "Clear intake boundaries",
-        ],
+        signals: ["Low WIP", "Lean intake", "Directional focus"],
         investigations: [
           "Is focus sustained across the window?",
-          "Is intake intentionally constrained?",
-          "Are role boundaries stable?",
+          "Are role boundaries stable under load?",
         ],
         color: "rgba(34, 197, 94, 0.12)",
       },
       {
         id: "high-load-converting",
         label: "High Load, Converting Zone",
-        description:
-          "Many items in flight while output holds; coordination pressure may be rising.",
+        description: "Steady output with high work in flight suggests rising coordination pressure.",
         levels: { wip: "high", throughput: "high" },
-        signals: [
-          "High WIP with steady throughput",
-          "Parallel workstreams active",
-          "Frequent handoffs",
-        ],
+        signals: ["High WIP", "Strong output", "Rising handoffs"],
         investigations: [
           "Is work starting faster than it finishes?",
-          "Are owners clear as load rises?",
-          "Is prototyping bleeding into execution?",
+          "Is prototyping bleeding into delivery?",
         ],
         color: "rgba(59, 130, 246, 0.12)",
       },
       {
         id: "diffuse-effort",
         label: "Diffuse Effort Zone",
-        description:
-          "High in-flight work without output conversion; scope or ownership may be blurred.",
+        description: "High work in flight without conversion suggests blurred scope or ownership.",
         levels: { wip: "high", throughput: "low" },
-        signals: [
-          "High WIP with low throughput",
-          "Context switching across initiatives",
-          "Prototype churn",
-        ],
+        signals: ["Context switching", "Prototype churn", "Blurred scope"],
         investigations: [
-          "Are people context-switching due to unclear scope?",
-          "Is work starting faster than it finishes?",
-          "Is prototyping bleeding into execution?",
+          "Are owners clear as load rises?",
+          "Is intake intentionally prioritized?",
         ],
         color: "rgba(244, 63, 94, 0.12)",
       },
       {
         id: "limited-intake",
         label: "Limited Intake Zone",
-        description:
-          "Few items in flight and low output; demand or constraints may limit flow.",
+        description: "Low work in flight and output suggests limited demand or flow constraints.",
         levels: { wip: "low", throughput: "low" },
-        signals: [
-          "Low WIP with low throughput",
-          "Intake throttled or paused",
-          "External dependencies gating",
-        ],
+        signals: ["Low WIP", "Blocked intake", "Light demand"],
         investigations: [
-          "Is demand muted or unclear?",
-          "Are external constraints limiting intake?",
-          "Is scope awaiting definition?",
+          "Is demand muted or undefined?",
+          "Are external dependencies gating flow?",
         ],
         color: "rgba(249, 115, 22, 0.12)",
       },
@@ -387,72 +315,48 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "responsive-review",
         label: "Responsive Review Zone",
-        description:
-          "Review demand is light and turnaround is quick; collaboration flow is smooth.",
+        description: "Smooth collaboration flow with light review demand and quick turnaround.",
         levels: { review_load: "low", review_latency: "low" },
-        signals: [
-          "Low review load with fast completion",
-          "Small change size",
-          "Many reviewers available",
-        ],
+        signals: ["Fast turnaround", "Small changes", "High availability"],
         investigations: [
-          "Are review practices consistent across areas?",
-          "Are changes sized for effective review?",
-          "Is ownership distributed?",
+          "Are review practices consistent?",
+          "Is ownership effectively distributed?",
         ],
         color: "rgba(34, 197, 94, 0.12)",
       },
       {
         id: "distributed-review",
         label: "Distributed Review Zone",
-        description:
-          "Review demand is high with quick turnaround; ownership appears spread.",
+        description: "High review demand with quick turnaround suggests spread ownership.",
         levels: { review_load: "high", review_latency: "low" },
-        signals: [
-          "High load with low latency",
-          "Parallel review pipelines",
-          "Shared review responsibility",
-        ],
+        signals: ["Shared load", "Low latency", "High throughput"],
         investigations: [
-          "Is review load evenly distributed?",
-          "Are changes scoped for fast review?",
-          "Are SMEs scaling review support?",
+          "Is review load fairly distributed?",
+          "Are SMEs scaling support?",
         ],
         color: "rgba(59, 130, 246, 0.12)",
       },
       {
         id: "bottlenecked-review",
         label: "Bottlenecked Review Zone",
-        description:
-          "Review demand is high and turnaround is slow; ownership may be concentrated.",
+        description: "High review demand with slow turnaround suggests concentrated ownership.",
         levels: { review_load: "high", review_latency: "high" },
-        signals: [
-          "High load with slow completion",
-          "Queueing for key reviewers",
-          "Large or complex changes",
-        ],
+        signals: ["Queueing", "Concentrated load", "Large cycles"],
         investigations: [
-          "Is review load concentrated on a few people?",
+          "Is redistribution or up-leveling needed?",
           "Are changes sized for effective review?",
-          "Is up-leveling or redistribution needed?",
         ],
         color: "rgba(244, 63, 94, 0.12)",
       },
       {
         id: "deferred-review",
         label: "Deferred Review Zone",
-        description:
-          "Review demand is light but turnaround is slow; attention may be split elsewhere.",
+        description: "Slow turnaround with light review demand suggests split attention.",
         levels: { review_load: "low", review_latency: "high" },
-        signals: [
-          "Low load with slow completion",
-          "Reviews waiting on schedules",
-          "Context switching across priorities",
-        ],
+        signals: ["Slow turnaround", "Light load", "Split attention"],
         investigations: [
-          "Are reviews blocked by other commitments?",
-          "Are review expectations explicit?",
-          "Is review time treated as shared work?",
+          "Are reviews blocked bycommitments?",
+          "Are expectations explicit?",
         ],
         color: "rgba(249, 115, 22, 0.12)",
       },
@@ -545,16 +449,16 @@ export const getZoneOverlay = (
 
   const { definition, xMetric, yMetric } = resolved;
   const rangesByMetric: Record<string, { low: [number, number]; high: [number, number] }> =
-    {
-      [xMetric]: {
-        low: [xBands.min, xBands.lowMax],
-        high: [xBands.highMin, xBands.max],
-      },
-      [yMetric]: {
-        low: [yBands.min, yBands.lowMax],
-        high: [yBands.highMin, yBands.max],
-      },
-    };
+  {
+    [xMetric]: {
+      low: [xBands.min, xBands.lowMax],
+      high: [xBands.highMin, xBands.max],
+    },
+    [yMetric]: {
+      low: [yBands.min, yBands.lowMax],
+      high: [yBands.highMin, yBands.max],
+    },
+  };
 
   const zones = definition.zones
     .map((zone) => {

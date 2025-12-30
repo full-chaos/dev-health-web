@@ -1,5 +1,4 @@
 import Link from "next/link";
-
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -7,6 +6,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getQuadrant } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
+import { getRoleConfig } from "@/lib/roleContext";
 
 const QUADRANT_CARDS = [
   {
@@ -61,6 +61,11 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const roleConfig = getRoleConfig(roleParam);
+  const primaryType = roleConfig.primaryQuadrant;
+  const secondaryType = roleConfig.secondaryQuadrant;
+
   const bucketParam = Array.isArray(params.bucket) ? params.bucket[0] : params.bucket;
   const bucket = bucketParam === "month" ? "month" : "week";
 
@@ -70,30 +75,36 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
   const canQuery = scopeType !== "person" || Boolean(scopeId);
   const quadrantData = canQuery
     ? await Promise.all(
-        QUADRANT_CARDS.map((card) =>
-          getQuadrant({
-            type: card.type,
-            scope_type: scopeType,
-            scope_id: scopeId,
-            range_days: filters.time.range_days,
-            start_date: filters.time.start_date,
-            end_date: filters.time.end_date,
-            bucket,
-          }).catch(() => null)
-        )
+      QUADRANT_CARDS.map((card) =>
+        getQuadrant({
+          type: card.type,
+          scope_type: scopeType,
+          scope_id: scopeId,
+          range_days: filters.time.range_days,
+          start_date: filters.time.start_date,
+          end_date: filters.time.end_date,
+          bucket,
+        }).catch(() => null)
       )
+    )
     : QUADRANT_CARDS.map(() => null);
 
   const primaryCardIndex = QUADRANT_CARDS.findIndex(
-    (card) => card.type === PRIMARY_QUADRANT_TYPE
+    (card) => card.type === primaryType
   );
   const primaryCard =
     primaryCardIndex >= 0 ? QUADRANT_CARDS[primaryCardIndex] : QUADRANT_CARDS[0];
   const primaryData =
     quadrantData[primaryCardIndex >= 0 ? primaryCardIndex : 0];
-  const secondaryCards = QUADRANT_CARDS.filter(
+
+  // Order remaining cards: secondary first, then others
+  const otherCards = QUADRANT_CARDS.filter(
     (card) => card.type !== primaryCard.type
-  );
+  ).sort((a, b) => {
+    if (a.type === secondaryType) return -1;
+    if (b.type === secondaryType) return 1;
+    return 0;
+  });
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -140,63 +151,81 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             <span>Bucket</span>
             <Link
               href={withFilterParam(`/explore/landscape?bucket=week`, filters)}
-              className={`rounded-full border px-3 py-1 ${
-                bucket === "week"
-                  ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                  : "border-[var(--card-stroke)]"
-              }`}
+              className={`rounded-full border px-3 py-1 ${bucket === "week"
+                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
+                : "border-[var(--card-stroke)]"
+                }`}
             >
               Week
             </Link>
             <Link
               href={withFilterParam(`/explore/landscape?bucket=month`, filters)}
-              className={`rounded-full border px-3 py-1 ${
-                bucket === "month"
-                  ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                  : "border-[var(--card-stroke)]"
-              }`}
+              className={`rounded-full border px-3 py-1 ${bucket === "month"
+                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
+                : "border-[var(--card-stroke)]"
+                }`}
             >
               Month
             </Link>
           </section>
 
           <section className="flex flex-col gap-10">
-            <QuadrantPanel
-              key={primaryCard.type}
-              title={primaryCard.title}
-              description={primaryCard.description}
-              data={primaryData}
-              filters={filters}
-              chartHeight={380}
-              relatedLinks={[
-                {
-                  label: "Open heatmaps",
-                  href: withFilterParam(primaryCard.heatmapHref, filters),
-                },
-              ]}
-              emptyState="Quadrant data unavailable for this scope."
-            />
+            <div className="rounded-[40px] border border-[var(--accent-2)]/30 bg-[var(--accent-2)]/5 p-6 sm:p-8">
+              <div className="mb-6 flex items-center justify-between">
+                <span className="rounded-full bg-[var(--accent-2)]/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-[var(--accent-2)]">
+                  Primary Lens: {roleConfig.label}
+                </span>
+              </div>
+              <QuadrantPanel
+                key={primaryCard.type}
+                title={primaryCard.title}
+                description={primaryCard.description}
+                data={primaryData}
+                filters={filters}
+                chartHeight={420}
+                relatedLinks={[
+                  {
+                    label: "Open heatmaps",
+                    href: withFilterParam(primaryCard.heatmapHref, filters),
+                  },
+                ]}
+                emptyState="Quadrant data unavailable for this scope."
+              />
+            </div>
+
             <div className="flex flex-col gap-8">
-              {secondaryCards.map((card) => {
+              {otherCards.map((card) => {
                 const cardIndex = QUADRANT_CARDS.findIndex(
                   (item) => item.type === card.type
                 );
+                const isSecondary = card.type === secondaryType;
                 return (
-                  <QuadrantPanel
+                  <div
                     key={card.type}
-                    title={card.title}
-                    description={card.description}
-                    data={quadrantData[cardIndex]}
-                    filters={filters}
-                    chartHeight={300}
-                    relatedLinks={[
-                      {
-                        label: "Open heatmaps",
-                        href: withFilterParam(card.heatmapHref, filters),
-                      },
-                    ]}
-                    emptyState="Quadrant data unavailable for this scope."
-                  />
+                    className={isSecondary ? "rounded-[32px] border border-[var(--card-stroke)] bg-[var(--card-80)] p-4" : ""}
+                  >
+                    {isSecondary && (
+                      <div className="mb-4 px-2">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                          Secondary Context
+                        </span>
+                      </div>
+                    )}
+                    <QuadrantPanel
+                      title={card.title}
+                      description={card.description}
+                      data={quadrantData[cardIndex]}
+                      filters={filters}
+                      chartHeight={320}
+                      relatedLinks={[
+                        {
+                          label: "Open heatmaps",
+                          href: withFilterParam(card.heatmapHref, filters),
+                        },
+                      ]}
+                      emptyState="Quadrant data unavailable for this scope."
+                    />
+                  </div>
                 );
               })}
             </div>

@@ -43,7 +43,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                 Work Allocation
               </h1>
               <p className="mt-2 text-sm text-[var(--ink-muted)]">
-                Category and stream breakdown for the current window.
+                Investment reflects effort and attention, not financial spend.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">

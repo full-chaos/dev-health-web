@@ -17,6 +17,8 @@ const fallbackTheme = {
   text: "#1c1b1f",
   grid: "#e7e0ec",
   muted: "#49454f",
+  background: "#ffffff",
+  stroke: "#e7e0ec",
 };
 
 export type ChartTheme = typeof fallbackTheme;
@@ -32,7 +34,10 @@ const readTheme = (): ChartTheme => {
   const muted =
     styles.getPropertyValue("--chart-muted").trim() || fallbackTheme.muted;
 
-  return { text, grid, muted };
+  const background = styles.getPropertyValue("--card").trim() || fallbackTheme.background;
+  const stroke = styles.getPropertyValue("--card-stroke").trim() || fallbackTheme.stroke;
+
+  return { text, grid, muted, background, stroke };
 };
 
 const readChartColors = (): string[] => {

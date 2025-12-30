@@ -5,6 +5,7 @@ import { DataStatusBanner } from "@/components/home/DataStatusBanner";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { RoleSelectorWithSuspense, RoleFraming } from "@/components/RoleSelectorWrapper";
 import { checkApiHealth, getHomeData } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -96,9 +97,13 @@ export default async function Home({ searchParams }: HomePageProps) {
                   <p className="text-xs uppercase tracking-[0.4em] text-[var(--ink-muted)]">
                     Good morning
                   </p>
-                  <h1 className="mt-3 font-[var(--font-display)] text-3xl leading-tight sm:text-4xl">
+                  <div className="mt-4">
+                    <RoleSelectorWithSuspense />
+                  </div>
+                  <h1 className="mt-6 font-[var(--font-display)] text-3xl leading-tight sm:text-4xl">
                     Developer Health Ops Cockpit
                   </h1>
+                  <RoleFraming />
                   <p className="mt-3 max-w-xl text-sm text-[var(--ink-muted)]">
                     System status, risks, and recommended moves for {scopeDetail} over
                     the last {filters.time.range_days} days.
@@ -287,22 +292,22 @@ export default async function Home({ searchParams }: HomePageProps) {
               <div className="mt-4 grid gap-3">
                 {home?.tiles
                   ? Object.entries(home.tiles).map(([key, tile]) => (
-                      <Link
-                        key={key}
-                        href={withFilterParam(tile.link, filters)}
-                        className="group rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1"
-                      >
-                        <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                          {tile.title}
-                        </p>
-                        <p className="mt-2 text-base font-semibold text-[var(--foreground)]">
-                          {tile.subtitle}
-                        </p>
-                        <p className="mt-3 text-xs text-[var(--ink-muted)]">
-                          Evidence
-                        </p>
-                      </Link>
-                    ))
+                    <Link
+                      key={key}
+                      href={withFilterParam(tile.link, filters)}
+                      className="group rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1"
+                    >
+                      <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                        {tile.title}
+                      </p>
+                      <p className="mt-2 text-base font-semibold text-[var(--foreground)]">
+                        {tile.subtitle}
+                      </p>
+                      <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                        Evidence
+                      </p>
+                    </Link>
+                  ))
                   : null}
                 <Link
                   href={withFilterParam("/opportunities", filters)}

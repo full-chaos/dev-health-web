@@ -8,6 +8,8 @@ const chartTheme: ChartTheme = {
   text: "#111111",
   grid: "#222222",
   muted: "#333333",
+  background: "#ffffff",
+  stroke: "#e7e0ec",
 };
 
 const chartColors = ["#1e88e5", "#3949ab", "#8e24aa"];
