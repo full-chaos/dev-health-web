@@ -92,6 +92,9 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+
   const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
   const activeTab =
     METRIC_TABS.find((tab) => tab.id === tabParam) ?? METRIC_TABS[0];
@@ -128,7 +131,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="metrics" />
+        <PrimaryNav filters={filters} active="metrics" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -143,7 +146,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               </p>
             </div>
             <Link
-              href={withFilterParam("/", filters)}
+              href={withFilterParam("/", filters, activeRole)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
               Back to cockpit
@@ -158,12 +161,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               return (
                 <Link
                   key={tab.id}
-                  href={withFilterParam(`/metrics?tab=${tab.id}`, filters)}
-                  className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition ${
-                    isActive
-                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                      : "border-[var(--card-stroke)] text-[var(--ink-muted)] hover:text-[var(--foreground)]"
-                  }`}
+                  href={withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole)}
+                  className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition ${isActive
+                    ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
+                    : "border-[var(--card-stroke)] text-[var(--ink-muted)] hover:text-[var(--foreground)]"
+                    }`}
                 >
                   {tab.label}
                 </Link>
@@ -182,7 +184,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 </p>
               </div>
               <Link
-                href={buildExploreUrl({ metric: activeTab.highlight, filters })}
+                href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
                 className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 title={`Open evidence for ${highlightLabel}`}
               >
@@ -195,7 +197,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 return (
                   <Link
                     key={`chip-${metric}`}
-                    href={buildExploreUrl({ metric, filters })}
+                    href={buildExploreUrl({ metric, filters, role: activeRole })}
                     className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-muted)] transition hover:text-[var(--foreground)]"
                   >
                     {data?.label ?? metric}
@@ -212,7 +214,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 <MetricCard
                   key={metric}
                   label={data?.label ?? metric}
-                  href={buildExploreUrl({ metric, filters })}
+                  href={buildExploreUrl({ metric, filters, role: activeRole })}
                   value={placeholderDeltas ? undefined : data?.value}
                   unit={data?.unit}
                   delta={placeholderDeltas ? undefined : data?.delta_pct}
@@ -229,7 +231,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               data={quadrant}
               filters={filters}
               relatedLinks={[
-                { label: "Open landscapes", href: withFilterParam("/explore/landscape", filters) },
+                { label: "Open landscapes", href: withFilterParam("/explore/landscape", filters, activeRole) },
               ]}
               emptyState="Quadrant data unavailable for this scope."
             />
@@ -240,7 +242,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-[var(--font-display)] text-xl">Likely drivers</h2>
                 <Link
-                  href={buildExploreUrl({ metric: activeTab.highlight, filters })}
+                  href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Open evidence
@@ -259,7 +261,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     {drivers.map((driver) => (
                       <Link
                         key={driver.id}
-                        href={buildExploreUrl({ api: driver.evidence_link, filters })}
+                        href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
                         className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
                       >
                         <span>{driver.label}</span>
@@ -281,7 +283,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-[var(--font-display)] text-xl">Primary contributors</h2>
                 <Link
-                  href={buildExploreUrl({ metric: activeTab.highlight, filters })}
+                  href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Open evidence
@@ -300,7 +302,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     {contributors.map((contributor) => (
                       <Link
                         key={contributor.id}
-                        href={buildExploreUrl({ api: contributor.evidence_link, filters })}
+                        href={buildExploreUrl({ api: contributor.evidence_link, filters, role: activeRole })}
                         className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
                       >
                         <span>{contributor.label}</span>
@@ -341,7 +343,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 <tbody>
                   {activeTab.metrics.map((metric) => {
                     const data = getMetric(deltas, metric);
-                    const href = buildExploreUrl({ metric, filters });
+                    const href = buildExploreUrl({ metric, filters, role: activeRole });
                     return (
                       <tr
                         key={metric}

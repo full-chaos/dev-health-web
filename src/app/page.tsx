@@ -11,7 +11,8 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue, formatPercent, formatTimestamp } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
-import type { HomeResponse } from "@/lib/types";
+import { getRoleConfig, isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
+import type { HomeResponse, MetricDelta } from "@/lib/types";
 
 const deltaAccent = (value: number) =>
   value > 0
@@ -75,20 +76,54 @@ export default async function Home({ searchParams }: HomePageProps) {
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = isValidRole(roleParam) ? roleParam : DEFAULT_ROLE;
+  const roleConfig = getRoleConfig(activeRole);
+
   const home = await loadHome(filters);
   const coverage = home?.freshness.coverage;
   const coverageLow = coverage ? coverage.repos_covered_pct < 70 : false;
   const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
-  const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
+  const rawDeltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
   const scopeDetail = filters.scope.ids.length
     ? filters.scope.ids.join(", ")
     : `all ${filters.scope.level}s`;
 
+  // Reorder Monitoring Views based on role
+  const viewPriority: Record<string, string[]> = {
+    ic: ["flow", "quality", "throughput", "dora"],
+    em: ["flow", "throughput", "dora", "quality"],
+    pm: ["quality", "flow", "throughput", "dora"],
+    leadership: ["quality", "throughput", "dora", "flow"],
+  };
+  const prioritizedViews = [...MONITORING_VIEWS].sort((a, b) => {
+    const priority = viewPriority[activeRole] || viewPriority.ic;
+    return priority.indexOf(a.id) - priority.indexOf(b.id);
+  });
+
+  // Reorder Key Signals (deltas) based on role investigationOrder
+  const metricTypeMap: Record<string, string> = {
+    review: "review_latency",
+    cycle: "cycle_time",
+    wip: "wip",
+    churn: "churn",
+    investment: "throughput",
+  };
+  const prioritizedDeltas = [...rawDeltas].sort((a, b) => {
+    const order = roleConfig.investigationOrder.map(t => metricTypeMap[t] || t);
+    const indexA = order.indexOf(a.metric);
+    const indexB = order.indexOf(b.metric);
+    if (indexA === -1 && indexB === -1) return 0;
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
   return (
     <div className="min-h-screen bg-[image:var(--hero-gradient)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-20 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="home" />
+        <PrimaryNav filters={filters} active="home" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-10">
           <header className="rounded-[32px] border border-[var(--card-stroke)] bg-[var(--card-80)] p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
             <div className="flex flex-col gap-6">
@@ -185,17 +220,17 @@ export default async function Home({ searchParams }: HomePageProps) {
                 </p>
               </div>
               <Link
-                href={withFilterParam("/metrics?tab=dora", filters)}
+                href={withFilterParam("/metrics?tab=dora", filters, activeRole)}
                 className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
               >
                 Open metrics
               </Link>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {MONITORING_VIEWS.map((view) => (
+              {prioritizedViews.map((view) => (
                 <Link
                   key={view.id}
-                  href={withFilterParam(view.href, filters)}
+                  href={withFilterParam(view.href, filters, activeRole)}
                   className="group rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1"
                 >
                   <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
@@ -224,17 +259,17 @@ export default async function Home({ searchParams }: HomePageProps) {
                 </p>
               </div>
               <Link
-                href={withFilterParam("/metrics?tab=flow", filters)}
+                href={withFilterParam("/metrics?tab=flow", filters, activeRole)}
                 className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
               >
                 View metrics
               </Link>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-4">
-              {deltas.map((delta) => (
+              {prioritizedDeltas.map((delta) => (
                 <Link
                   key={delta.metric}
-                  href={buildExploreUrl({ metric: delta.metric, filters })}
+                  href={buildExploreUrl({ metric: delta.metric, filters, role: activeRole })}
                   data-testid="delta-tile"
                   className="group rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 transition hover:-translate-y-1 hover:shadow-lg"
                 >
@@ -265,7 +300,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 {(home?.summary ?? []).map((sentence) => (
                   <Link
                     key={sentence.id}
-                    href={buildExploreUrl({ api: sentence.evidence_link, filters })}
+                    href={buildExploreUrl({ api: sentence.evidence_link, filters, role: activeRole })}
                     className="block rounded-2xl border border-transparent bg-[var(--card-60)] px-4 py-3 transition hover:border-[var(--card-stroke)]"
                   >
                     {sentence.text}
@@ -294,7 +329,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   ? Object.entries(home.tiles).map(([key, tile]) => (
                     <Link
                       key={key}
-                      href={withFilterParam(tile.link, filters)}
+                      href={withFilterParam(tile.link, filters, activeRole)}
                       className="group rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1"
                     >
                       <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
@@ -310,7 +345,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   ))
                   : null}
                 <Link
-                  href={withFilterParam("/opportunities", filters)}
+                  href={withFilterParam("/opportunities", filters, activeRole)}
                   className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--accent)]/15 px-4 py-3"
                 >
                   <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
@@ -332,7 +367,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               <div className="flex items-center justify-between">
                 <h3 className="font-[var(--font-display)] text-xl">Focus constraint</h3>
                 <Link
-                  href={buildExploreUrl({ metric: "review_latency", filters })}
+                  href={buildExploreUrl({ metric: "review_latency", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Open evidence
@@ -345,7 +380,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 {(home?.constraint.evidence ?? []).map((item, idx) => (
                   <Link
                     key={`${item.label}-${idx}`}
-                    href={buildExploreUrl({ api: item.link, filters })}
+                    href={buildExploreUrl({ api: item.link, filters, role: activeRole })}
                     className="block rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3"
                   >
                     {item.label}
@@ -368,7 +403,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               <div className="flex items-center justify-between">
                 <h3 className="font-[var(--font-display)] text-xl">Recent events</h3>
                 <Link
-                  href={buildExploreUrl({ filters })}
+                  href={buildExploreUrl({ filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Open in Explore
@@ -378,7 +413,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 {(home?.events ?? []).map((event, idx) => (
                   <Link
                     key={`${event.type}-${idx}`}
-                    href={buildExploreUrl({ api: event.link, filters })}
+                    href={buildExploreUrl({ api: event.link, filters, role: activeRole })}
                     className="block rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3"
                   >
                     <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
@@ -407,13 +442,13 @@ export default async function Home({ searchParams }: HomePageProps) {
               </p>
               <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
                 <Link
-                  href={withFilterParam("/work", filters)}
+                  href={withFilterParam("/work", filters, activeRole)}
                   className="text-[var(--accent-2)]"
                 >
                   Open Work view
                 </Link>
                 <Link
-                  href={buildExploreUrl({ metric: "throughput", filters })}
+                  href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}
                   className="text-[var(--accent-2)]"
                 >
                   Open in Explore

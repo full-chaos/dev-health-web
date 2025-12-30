@@ -6,7 +6,8 @@ import { getRoleConfig } from "@/lib/roleContext";
 import { findZoneMatches, getZoneOverlay } from "@/lib/quadrantZones";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { QuadrantPoint, QuadrantResponse, MetricFilter } from "@/lib/types";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { SankeyInvestigationPanel } from "./SankeyInvestigationPanel";
 
 type InvestigationPanelProps = {
     point: QuadrantPoint;
@@ -21,6 +22,7 @@ export function InvestigationPanel({
     filters,
     onClose,
 }: InvestigationPanelProps) {
+    const [showSankey, setShowSankey] = useState(false);
     const { activeRole } = useActiveRole();
     const roleConfig = getRoleConfig(activeRole);
 
@@ -95,55 +97,94 @@ export function InvestigationPanel({
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* Summary Section */}
-                <section>
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)] mb-2">
-                        Summary
-                    </p>
-                    <p className="text-[13px] leading-relaxed text-[var(--foreground)]">
-                        <span className="font-semibold text-[var(--accent-2)]">{roleConfig.framing}.</span> Observed operating mode for <span className="font-semibold">{point.entity_label}</span> during
-                        the window of {point.window_start} to {point.window_end}.
-                    </p>
-                </section>
+                {showSankey ? (
+                    <section className="space-y-4">
+                        <button
+                            onClick={() => setShowSankey(false)}
+                            className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--accent-2)] hover:text-[var(--foreground)]"
+                        >
+                            ← Back to summary
+                        </button>
+                        <SankeyInvestigationPanel
+                            point={point}
+                            filters={filters}
+                        />
+                    </section>
+                ) : (
+                    <>
+                        {/* Summary Section */}
+                        <section>
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)] mb-2">
+                                Summary
+                            </p>
+                            <p className="text-[13px] leading-relaxed text-[var(--foreground)]">
+                                <span className="font-semibold text-[var(--accent-2)]">{roleConfig.framing}.</span> Observed operating mode for <span className="font-semibold">{point.entity_label}</span> during
+                                the window of {point.window_start} to {point.window_end}.
+                            </p>
+                        </section>
 
-                {/* Pattern Identification Section ("What this usually indicates") */}
-                {/* ... (keep as is) */}
+                        {/* ... (Pattern Identification Section) */}
 
-                {/* Investigation Paths Section */}
-                <section>
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)] mb-3">
-                        Investigation Paths
-                    </p>
-                    <div className="grid gap-2">
-                        {investigationPaths.map((path) => {
-                            const isSuggested = path.type === primaryType;
-                            return (
-                                <Link
-                                    key={path.id}
-                                    href={path.href}
-                                    className={`group flex items-center justify-between rounded-xl border px-4 py-3 transition ${isSuggested
-                                            ? "border-[var(--accent-2)] bg-[var(--accent-2)]/5"
-                                            : "border-[var(--card-stroke)] bg-[var(--card)] hover:border-[var(--accent-2)]/40 hover:bg-[var(--accent-2)]/5"
-                                        }`}
-                                >
-                                    <div className="flex flex-col gap-0.5">
-                                        {isSuggested && (
-                                            <span className="text-[9px] uppercase tracking-wider text-[var(--accent-2)] font-bold">
-                                                Suggested for {roleConfig.shortLabel}
+                        {/* Investigation Paths Section */}
+                        <section>
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)] mb-3">
+                                Investigation Paths
+                            </p>
+                            <div className="grid gap-2">
+                                {investigationPaths.map((path) => {
+                                    const isSuggested = path.type === primaryType;
+                                    const isSankeyToggle = path.id === "investment";
+
+                                    const content = (
+                                        <div className="flex flex-col gap-0.5 text-left">
+                                            {isSuggested && (
+                                                <span className="text-[9px] uppercase tracking-wider text-[var(--accent-2)] font-bold">
+                                                    Suggested for {roleConfig.shortLabel}
+                                                </span>
+                                            )}
+                                            <span className="text-[12px] font-medium text-[var(--foreground)] group-hover:text-[var(--accent-2)]">
+                                                {path.label}
                                             </span>
-                                        )}
-                                        <span className="text-[12px] font-medium text-[var(--foreground)] group-hover:text-[var(--accent-2)]">
-                                            {path.label}
-                                        </span>
-                                    </div>
-                                    <span className="text-[10px] text-[var(--accent-2)] opacity-0 transition-opacity group-hover:opacity-100 uppercase tracking-widest">
-                                        Open ↗
-                                    </span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </section>
+                                        </div>
+                                    );
+
+                                    const className = `group flex items-center justify-between rounded-xl border px-4 py-3 transition ${isSuggested
+                                        ? "border-[var(--accent-2)] bg-[var(--accent-2)]/5"
+                                        : "border-[var(--card-stroke)] bg-[var(--card)] hover:border-[var(--accent-2)]/40 hover:bg-[var(--accent-2)]/5"
+                                        }`;
+
+                                    if (isSankeyToggle) {
+                                        return (
+                                            <button
+                                                key={path.id}
+                                                onClick={() => setShowSankey(true)}
+                                                className={className}
+                                            >
+                                                {content}
+                                                <span className="text-[10px] text-[var(--accent-2)] opacity-0 transition-opacity group-hover:opacity-100 uppercase tracking-widest">
+                                                    View Flow ↘
+                                                </span>
+                                            </button>
+                                        );
+                                    }
+
+                                    return (
+                                        <Link
+                                            key={path.id}
+                                            href={path.href}
+                                            className={className}
+                                        >
+                                            {content}
+                                            <span className="text-[10px] text-[var(--accent-2)] opacity-0 transition-opacity group-hover:opacity-100 uppercase tracking-widest">
+                                                Open ↗
+                                            </span>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    </>
+                )}
             </div>
 
             <footer className="border-t border-[var(--card-stroke)] p-4 bg-[var(--card-90)]">

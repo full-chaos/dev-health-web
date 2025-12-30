@@ -24,9 +24,10 @@ const navItems: NavItem[] = [
 type PrimaryNavProps = {
   filters: MetricFilter;
   active?: string;
+  role?: string;
 };
 
-export function PrimaryNav({ filters, active }: PrimaryNavProps) {
+export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
   return (
     <aside className="w-full md:max-w-[220px] md:shrink-0">
       <div className="md:sticky md:top-6">
@@ -48,7 +49,7 @@ export function PrimaryNav({ filters, active }: PrimaryNavProps) {
               return (
                 <Link
                   key={item.id}
-                  href={withFilterParam(item.href, filters)}
+                  href={withFilterParam(item.href, filters, role)}
                   aria-current={isActive ? "page" : undefined}
                   className={`group flex items-center justify-between rounded-2xl border px-3 py-2 transition ${isActive
                     ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"

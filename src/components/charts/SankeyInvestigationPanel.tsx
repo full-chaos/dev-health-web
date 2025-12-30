@@ -213,8 +213,8 @@ export function SankeyInvestigationPanel({
             nodes={normalizedDataset.nodes}
             links={normalizedDataset.links}
             unit={normalizedDataset.unit}
-            height={260}
-            style={{ minWidth: 560 }}
+            height={220}
+            style={{ minWidth: 500 }}
             onItemClick={handleItemClick}
           />
         ) : (

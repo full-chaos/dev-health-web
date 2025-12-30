@@ -109,7 +109,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="landscape" />
+        <PrimaryNav filters={filters} active="landscape" role={roleParam as string} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -131,7 +131,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={withFilterParam("/explore", filters)}
+                href={withFilterParam("/explore", filters, roleParam as string)}
                 className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to Explore
@@ -150,7 +150,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
           <section className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
             <span>Bucket</span>
             <Link
-              href={withFilterParam(`/explore/landscape?bucket=week`, filters)}
+              href={withFilterParam(`/explore/landscape?bucket=week`, filters, roleParam as string)}
               className={`rounded-full border px-3 py-1 ${bucket === "week"
                 ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
                 : "border-[var(--card-stroke)]"
@@ -159,7 +159,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
               Week
             </Link>
             <Link
-              href={withFilterParam(`/explore/landscape?bucket=month`, filters)}
+              href={withFilterParam(`/explore/landscape?bucket=month`, filters, roleParam as string)}
               className={`rounded-full border px-3 py-1 ${bucket === "month"
                 ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
                 : "border-[var(--card-stroke)]"
@@ -186,7 +186,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                 relatedLinks={[
                   {
                     label: "Open heatmaps",
-                    href: withFilterParam(primaryCard.heatmapHref, filters),
+                    href: withFilterParam(primaryCard.heatmapHref, filters, roleParam as string),
                   },
                 ]}
                 emptyState="Quadrant data unavailable for this scope."
@@ -220,7 +220,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                       relatedLinks={[
                         {
                           label: "Open heatmaps",
-                          href: withFilterParam(card.heatmapHref, filters),
+                          href: withFilterParam(card.heatmapHref, filters, roleParam as string),
                         },
                       ]}
                       emptyState="Quadrant data unavailable for this scope."

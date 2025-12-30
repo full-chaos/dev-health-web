@@ -52,6 +52,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
@@ -135,7 +138,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} />
+        <PrimaryNav filters={filters} role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -151,25 +154,25 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={withFilterParam("/flame?mode=cycle_breakdown", filters)}
+                href={withFilterParam("/flame?mode=cycle_breakdown", filters, activeRole)}
                 className="rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
               >
                 Flame Diagram
               </Link>
               <Link
-                href={withFilterParam("/explore/landscape", filters)}
+                href={withFilterParam("/explore/landscape", filters, activeRole)}
                 className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Landscape
               </Link>
               <Link
-                href={withFilterParam("/metrics", filters)}
+                href={withFilterParam("/metrics", filters, activeRole)}
                 className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to Metrics view
               </Link>
               <Link
-                href={withFilterParam("/", filters)}
+                href={withFilterParam("/", filters, activeRole)}
                 className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to cockpit
@@ -255,7 +258,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 <div className="flex items-center justify-between">
                   <h2 className="font-[var(--font-display)] text-xl">Top Drivers</h2>
                   <Link
-                    href={buildExploreUrl({ metric: metricFromApi, filters })}
+                    href={buildExploreUrl({ metric: metricFromApi, filters, role: activeRole })}
                     className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                   >
                     Open evidence
@@ -271,7 +274,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       {drivers.map((driver) => (
                         <Link
                           key={driver.id}
-                          href={buildExploreUrl({ api: driver.evidence_link, filters })}
+                          href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
                           className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
                         >
                           <span>{driver.label}</span>
@@ -293,7 +296,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 <div className="flex items-center justify-between">
                   <h2 className="font-[var(--font-display)] text-xl">Contributors</h2>
                   <Link
-                    href={buildExploreUrl({ metric: metricFromApi, filters })}
+                    href={buildExploreUrl({ metric: metricFromApi, filters, role: activeRole })}
                     className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                   >
                     Open evidence
@@ -309,7 +312,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       {contributors.map((contributor) => (
                         <Link
                           key={contributor.id}
-                          href={buildExploreUrl({ api: contributor.evidence_link, filters })}
+                          href={buildExploreUrl({ api: contributor.evidence_link, filters, role: activeRole })}
                           className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
                         >
                           <span>{contributor.label}</span>
@@ -355,6 +358,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       const fallbackHref = buildExploreUrl({
                         metric: metricFromApi,
                         filters,
+                        role: activeRole,
                       });
                       const href = getItemHref(item, fallbackHref);
                       const prFlameHref =
@@ -429,7 +433,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 {Object.entries(data?.drilldown_links ?? {}).map(([label, link]) => (
                   <Link
                     key={label}
-                    href={buildExploreUrl({ api: link, filters })}
+                    href={buildExploreUrl({ api: link, filters, role: activeRole })}
                     className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2"
                   >
                     {label}

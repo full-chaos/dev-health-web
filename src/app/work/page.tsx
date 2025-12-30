@@ -48,6 +48,9 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
@@ -114,13 +117,13 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     : null;
   const unplanned = investment
     ? findCategory(investment.categories, [
-        "unplanned",
-        "interrupt",
-        "incident",
-        "support",
-        "ops",
-        "run",
-      ])
+      "unplanned",
+      "interrupt",
+      "incident",
+      "support",
+      "ops",
+      "run",
+    ])
     : null;
   const plannedTotal = planned && unplanned ? planned.value + unplanned.value : 0;
   const plannedPct = plannedTotal ? (planned?.value ?? 0) / plannedTotal : null;
@@ -129,7 +132,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="work" />
+        <PrimaryNav filters={filters} active="work" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -144,7 +147,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               </p>
             </div>
             <Link
-              href={withFilterParam("/", filters)}
+              href={withFilterParam("/", filters, activeRole)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
               Back to cockpit
@@ -156,7 +159,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
           <section className="grid gap-4 lg:grid-cols-3">
             <MetricCard
               label={wipMetric?.label ?? "WIP"}
-              href={buildExploreUrl({ metric: "wip_saturation", filters })}
+              href={buildExploreUrl({ metric: "wip_saturation", filters, role: activeRole })}
               value={placeholderDeltas ? undefined : wipMetric?.value}
               unit={wipMetric?.unit}
               delta={placeholderDeltas ? undefined : wipMetric?.delta_pct}
@@ -165,7 +168,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
             />
             <MetricCard
               label={blockedMetric?.label ?? "Blocked"}
-              href={buildExploreUrl({ metric: "blocked_work", filters })}
+              href={buildExploreUrl({ metric: "blocked_work", filters, role: activeRole })}
               value={placeholderDeltas ? undefined : blockedMetric?.value}
               unit={blockedMetric?.unit}
               delta={placeholderDeltas ? undefined : blockedMetric?.delta_pct}
@@ -174,7 +177,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
             />
             <MetricCard
               label={throughputMetric?.label ?? "Throughput"}
-              href={buildExploreUrl({ metric: "throughput", filters })}
+              href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}
               value={placeholderDeltas ? undefined : throughputMetric?.value}
               unit={throughputMetric?.unit}
               delta={placeholderDeltas ? undefined : throughputMetric?.delta_pct}
@@ -211,7 +214,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               relatedLinks={[
                 {
                   label: "Open landscapes",
-                  href: withFilterParam("/explore/landscape", filters),
+                  href: withFilterParam("/explore/landscape", filters, activeRole),
                 },
               ]}
               emptyState="Quadrant data unavailable for this scope."
@@ -224,7 +227,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               relatedLinks={[
                 {
                   label: "Open landscapes",
-                  href: withFilterParam("/explore/landscape", filters),
+                  href: withFilterParam("/explore/landscape", filters, activeRole),
                 },
               ]}
               emptyState="Quadrant data unavailable for this scope."
@@ -237,7 +240,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               relatedLinks={[
                 {
                   label: "Open landscapes",
-                  href: withFilterParam("/explore/landscape", filters),
+                  href: withFilterParam("/explore/landscape", filters, activeRole),
                 },
               ]}
               emptyState="Quadrant data unavailable for this scope."
@@ -249,10 +252,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-[var(--font-display)] text-xl">Investment Mix</h2>
                 <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
-                  <Link href={withFilterParam("/investment", filters)}>
+                  <Link href={withFilterParam("/investment", filters, activeRole)}>
                     View investment
                   </Link>
-                  <Link href={buildExploreUrl({ metric: "throughput", filters })}>
+                  <Link href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}>
                     Open in Explore
                   </Link>
                 </div>
@@ -270,7 +273,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
                 {nested.categories.slice(0, 6).map((category) => (
                   <Link
                     key={category.key}
-                    href={withFilterParam(`/explore?metric=throughput&category=${category.key}`, filters)}
+                    href={withFilterParam(`/explore?metric=throughput&category=${category.key}`, filters, activeRole)}
                     className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
                   >
                     <span>{category.name}</span>
@@ -286,7 +289,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-[var(--font-display)] text-xl">Planned vs Unplanned</h2>
                 <Link
-                  href={withFilterParam("/investment", filters)}
+                  href={withFilterParam("/investment", filters, activeRole)}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Details
@@ -333,7 +336,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-[var(--font-display)] text-xl">WIP Drivers</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "wip_saturation", filters })}
+                  href={buildExploreUrl({ metric: "wip_saturation", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Evidence
@@ -343,7 +346,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
                 {(wipExplain?.drivers ?? []).slice(0, 5).map((driver) => (
                   <Link
                     key={driver.id}
-                    href={buildExploreUrl({ api: driver.evidence_link, filters })}
+                    href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
                     className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
                   >
                     <span>{driver.label}</span>
@@ -364,7 +367,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-[var(--font-display)] text-xl">Blocked Drivers</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "blocked_work", filters })}
+                  href={buildExploreUrl({ metric: "blocked_work", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Evidence
@@ -374,7 +377,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
                 {(blockedExplain?.drivers ?? []).slice(0, 5).map((driver) => (
                   <Link
                     key={driver.id}
-                    href={buildExploreUrl({ api: driver.evidence_link, filters })}
+                    href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
                     className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
                   >
                     <span>{driver.label}</span>

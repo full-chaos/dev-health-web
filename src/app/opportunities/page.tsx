@@ -19,6 +19,9 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
@@ -28,7 +31,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="opportunities" />
+        <PrimaryNav filters={filters} active="opportunities" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -43,7 +46,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
               </p>
             </div>
             <Link
-              href={withFilterParam("/", filters)}
+              href={withFilterParam("/", filters, activeRole)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
               Back to cockpit
@@ -66,7 +69,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                   {card.evidence_links.map((link) => (
                     <Link
                       key={link}
-                      href={buildExploreUrl({ api: link, filters })}
+                      href={buildExploreUrl({ api: link, filters, role: activeRole })}
                       className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1"
                     >
                       Evidence

@@ -36,6 +36,9 @@ export default async function CodePage({ searchParams }: CodePageProps) {
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
@@ -76,7 +79,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="code" />
+        <PrimaryNav filters={filters} active="code" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -91,7 +94,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               </p>
             </div>
             <Link
-              href={withFilterParam("/", filters)}
+              href={withFilterParam("/", filters, activeRole)}
               className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
               Back to cockpit
@@ -103,7 +106,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
           <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <MetricCard
               label={churnMetric?.label ?? "Code Churn"}
-              href={buildExploreUrl({ metric: "churn", filters })}
+              href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
               value={placeholderDeltas ? undefined : churnMetric?.value}
               unit={churnMetric?.unit}
               delta={placeholderDeltas ? undefined : churnMetric?.delta_pct}
@@ -154,7 +157,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               relatedLinks={[
                 {
                   label: "Open landscapes",
-                  href: withFilterParam("/explore/landscape", filters),
+                  href: withFilterParam("/explore/landscape", filters, activeRole),
                 },
               ]}
               emptyState="Quadrant data unavailable for this scope."
@@ -166,7 +169,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-[var(--font-display)] text-xl">Hotspots</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "churn", filters })}
+                  href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Evidence
@@ -182,7 +185,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                     {hotspots.map((item) => (
                       <Link
                         key={item.id}
-                        href={buildExploreUrl({ api: item.evidence_link, filters })}
+                        href={buildExploreUrl({ api: item.evidence_link, filters, role: activeRole })}
                         className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2"
                       >
                         <span>{item.label}</span>
@@ -206,7 +209,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-[var(--font-display)] text-xl">Bus Factor</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "churn", filters })}
+                  href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
                 >
                   Explore
