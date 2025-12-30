@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { decodeFilter } from "../src/lib/filters/encode";
 
 test.describe("Work Tabbed Navigation", () => {
     test.beforeEach(async ({ page }) => {
@@ -20,13 +21,13 @@ test.describe("Work Tabbed Navigation", () => {
         // Switch to Flow
         await page.getByRole("link", { name: "FLOW" }).click();
         await expect(page).toHaveURL(/tab=flow/);
-        await expect(page.getByText("Investment flow")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Investment flow" })).toBeVisible();
         await expect(page.getByTestId("chart-sankey")).toBeVisible();
 
         // Switch to Flame
         await page.getByRole("link", { name: "FLAME" }).click();
         await expect(page).toHaveURL(/tab=flame/);
-        await expect(page.getByText("Elapsed Time Breakdown")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Elapsed Time Breakdown" })).toBeVisible();
         await expect(page.getByTestId("chart-flame")).toBeVisible();
     });
 
@@ -39,7 +40,11 @@ test.describe("Work Tabbed Navigation", () => {
 
         // URL should contain both the new tab and the preserved filter
         await expect(page).toHaveURL(/tab=heatmap/);
-        await expect(page).toHaveURL(/range_days=30/);
+        const url = new URL(page.url());
+        const encodedFilter = url.searchParams.get("f");
+        expect(encodedFilter).toBeTruthy();
+        const filters = decodeFilter(encodedFilter);
+        expect(filters.time.range_days).toBe(30);
     });
 
     test("investigation panel launcher navigates to flow tab with context", async ({ page }) => {
@@ -54,8 +59,8 @@ test.describe("Work Tabbed Navigation", () => {
         // Let's check for the presence of the link in the panel
         // We'll use the demo page if it has the quadrant chart
         await page.goto("/demo");
-        const quadrantChart = page.getByTestId("quadrant-investigation");
-        await quadrantChart.getByRole("button").first().click(); // Click a dot
+        const quadrantPanel = page.getByTestId("quadrant-investigation");
+        await quadrantPanel.getByRole("button", { name: "Core" }).click();
 
         const flowLink = page.getByRole("link", { name: /view flow/i });
         await expect(flowLink).toBeVisible();

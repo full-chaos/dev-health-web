@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getAggregatedFlame } from "@/lib/api";
 import type { AggregatedFlameMode, MetricFilter, AggregatedFlameResponse } from "@/lib/types";
 import { HierarchicalFlameGraph } from "@/components/charts/HierarchicalFlameGraph";
@@ -11,6 +11,7 @@ type FlameViewProps = {
 };
 
 export function FlameView({ filters }: FlameViewProps) {
+    const router = useRouter();
     const searchParams = useSearchParams();
 
     // State from URL or defaults
@@ -24,6 +25,13 @@ export function FlameView({ filters }: FlameViewProps) {
     const [loading, setLoading] = useState(true);
 
     const contextNode = searchParams.get("context_node");
+    const handleModeChange = (nextMode: AggregatedFlameMode) => {
+        if (nextMode === mode) return;
+        setMode(nextMode);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("mode", nextMode);
+        router.replace(`/work?${params.toString()}`);
+    };
 
     useEffect(() => {
         let active = true;
@@ -77,7 +85,7 @@ export function FlameView({ filters }: FlameViewProps) {
                         {(["cycle_breakdown", "throughput", "code_hotspots"] as AggregatedFlameMode[]).map((m) => (
                             <button
                                 key={m}
-                                onClick={() => setMode(m)}
+                                onClick={() => handleModeChange(m)}
                                 className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${mode === m
                                     ? "border-(--accent-2) bg-(--accent-2) text-white"
                                     : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
@@ -89,7 +97,7 @@ export function FlameView({ filters }: FlameViewProps) {
                     </div>
                 </div>
 
-                <div className="relative min-h-[400px]">
+                <div className="relative min-h-[400px]" data-testid="chart-flame">
                     {loading && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
                             <p className="text-sm text-(--ink-muted) animate-pulse">Loading flame data...</p>
@@ -108,9 +116,9 @@ export function FlameView({ filters }: FlameViewProps) {
                     )}
                 </div>
 
-                {contextNode && hasData && (
+                {contextNode && (
                     <div className="mt-4 p-3 rounded-xl bg-(--accent-2)/10 border border-(--accent-2)/20 text-[11px] text-(--ink-muted)">
-                        <span className="font-semibold text-(--accent-2) uppercase tracking-wider mr-2">Context:</span>
+                        <span className="font-semibold text-(--accent-2) uppercase tracking-wider mr-2">Context:</span>{" "}
                         Analyzing decomposition starting from node <span className="text-foreground font-mono">{contextNode}</span>
                     </div>
                 )}

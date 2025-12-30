@@ -174,7 +174,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                         </div>
                     </div>
 
-                    <div className="relative min-h-[400px]">
+                    <div className="relative min-h-[400px]" data-testid="chart-sankey">
                         {isLoading && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
                                 <p className="text-sm text-(--ink-muted) animate-pulse">Loading flow data...</p>
@@ -238,27 +238,26 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                         <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">↗</span>
                                     </Link>
                                 </div>
-
-                                {(contextEntityLabel || contextZone) && (
-                                    <div className="pt-4 mt-6 border-t border-(--card-stroke)">
-                                        <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Analysis Context</p>
-                                        <p className="mt-1 text-xs text-(--ink-muted) italic">
-                                            Filtering flow by {contextEntityLabel || "selected scope"} {contextZone ? `(Zone: ${contextZone})` : ""}
-                                        </p>
-                                        <button
-                                            onClick={() => {
-                                                const params = new URLSearchParams(searchParams.toString());
-                                                params.delete("context_entity_id");
-                                                params.delete("context_entity_label");
-                                                params.delete("context_zone");
-                                                router.replace(`/work?${params.toString()}`);
-                                            }}
-                                            className="mt-2 text-[9px] uppercase tracking-[0.2em] text-(--accent-2) hover:underline"
-                                        >
-                                            Clear context
-                                        </button>
-                                    </div>
-                                )}
+                            </div>
+                        )}
+                        {(contextEntityLabel || contextZone) && (
+                            <div className="pt-4 mt-6 border-t border-(--card-stroke)">
+                                <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Analysis Context</p>
+                                <p className="mt-1 text-xs text-(--ink-muted) italic">
+                                    Filtering flow by {contextEntityLabel || "selected scope"} {contextZone ? `(Zone: ${contextZone})` : ""}
+                                </p>
+                                <button
+                                    onClick={() => {
+                                        const params = new URLSearchParams(searchParams.toString());
+                                        params.delete("context_entity_id");
+                                        params.delete("context_entity_label");
+                                        params.delete("context_zone");
+                                        router.replace(`/work?${params.toString()}`);
+                                    }}
+                                    className="mt-2 text-[9px] uppercase tracking-[0.2em] text-(--accent-2) hover:underline"
+                                >
+                                    Clear context
+                                </button>
                             </div>
                         )}
                     </div>
