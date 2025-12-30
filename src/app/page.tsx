@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { InvestmentPreview } from "@/components/home/InvestmentPreview";
-import { DataStatusBanner } from "@/components/home/DataStatusBanner";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -81,8 +80,6 @@ export default async function Home({ searchParams }: HomePageProps) {
   const roleConfig = getRoleConfig(activeRole);
 
   const home = await loadHome(filters);
-  const coverage = home?.freshness.coverage;
-  const coverageLow = coverage ? coverage.repos_covered_pct < 70 : false;
   const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
   const rawDeltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
@@ -154,60 +151,18 @@ export default async function Home({ searchParams }: HomePageProps) {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-[1.4fr_0.6fr]">
-                <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-4 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-(--ink-muted)">
-                      Latest ingest: {formatTimestamp(lastIngestedAt)}
-                    </span>
-                    <span className="rounded-full bg-(--accent-3)/40 px-3 py-1 text-xs font-semibold">
-                      System status
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-(--ink-muted)">
-                    {home?.freshness.sources ? (
-                      Object.entries(home.freshness.sources).map(([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between rounded-2xl bg-(--card-70) px-3 py-2"
-                        >
-                          <span className="uppercase tracking-[0.2em]">{key}</span>
-                          <span className="font-semibold text-foreground">
-                            {value}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-2 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-3 py-2">
-                        Source signals pending.
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--accent-2)/10 p-4 text-xs text-(--ink-muted)">
-                  <p className="text-(--accent-2)/90">Setup coverage</p>
-                  <p className="mt-2 text-2xl font-semibold text-foreground">
-                    {coverage ? formatPercent(coverage.repos_covered_pct) : "--"}
-                  </p>
-                  <p className="mt-2">
-                    PR to issue links: {coverage ? formatPercent(coverage.prs_linked_to_issues_pct) : "--"}
-                  </p>
-                  <p>
-                    Cycle states: {coverage ? formatPercent(coverage.issues_with_cycle_states_pct) : "--"}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between">
+                <div />
+                <p className="text-sm text-(--ink-muted)">
+                  Last updated: {formatTimestamp(lastIngestedAt)}
+                </p>
               </div>
             </div>
           </header>
 
           <FilterBar view="home" />
 
-          <DataStatusBanner
-            isUnavailable={!home}
-            lastIngestedAt={lastIngestedAt}
-            coverageLow={coverageLow}
-            filters={filters}
-          />
+          {/* Minimal freshness indicator only — no setup or integration status UI */}
 
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
