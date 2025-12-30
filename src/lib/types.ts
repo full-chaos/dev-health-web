@@ -306,9 +306,13 @@ export type AggregatedFlameMeta = {
   window_end: string;
   filters: Record<string, unknown>;
   notes: string[];
+  approximation?: {
+    used: boolean;
+    method?: string;
+  };
 };
 
-export type AggregatedFlameMode = "cycle_breakdown" | "code_hotspots";
+export type AggregatedFlameMode = "cycle_breakdown" | "code_hotspots" | "throughput";
 
 export type AggregatedFlameResponse = {
   mode: AggregatedFlameMode;

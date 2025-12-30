@@ -317,6 +317,9 @@ export function QuadrantPanel({
     ? "code_hotspots"
     : "cycle_breakdown";
   const aggregatedFlameHref = withFilterParam(`/flame?mode=${aggregatedFlameMode}`, filters);
+  const cycleBreakdownFlameHref = withFilterParam("/flame?mode=cycle_breakdown", filters);
+  const throughputFlameHref = withFilterParam("/flame?mode=throughput", filters);
+  const hotspotsFlameHref = withFilterParam("/flame?mode=code_hotspots", filters);
   const heatmapLink = (relatedLinks ?? []).find((link) =>
     link.label.toLowerCase().includes("heatmap")
   );
@@ -672,12 +675,27 @@ export function QuadrantPanel({
                   : "Open flame diagram"}
               </Link>
             ) : null}
-            <Link
-              href={aggregatedFlameHref}
-              className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
-            >
-              View aggregated flame
-            </Link>
+            {/* Aggregated Flame Links */}
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={cycleBreakdownFlameHref}
+                className="inline-flex h-8 items-center rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-3 text-[10px] uppercase tracking-wider text-[var(--accent-2)] hover:bg-[var(--accent-2)]/20"
+              >
+                Cycle Breakdown Flame
+              </Link>
+              <Link
+                href={throughputFlameHref}
+                className="inline-flex h-8 items-center rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-3 text-[10px] uppercase tracking-wider text-[var(--accent-2)] hover:bg-[var(--accent-2)]/20"
+              >
+                Throughput Flame
+              </Link>
+              <Link
+                href={hotspotsFlameHref}
+                className="inline-flex h-8 items-center rounded-full border border-[var(--accent-2)] bg-[var(--accent-2)]/10 px-3 text-[10px] uppercase tracking-wider text-[var(--accent-2)] hover:bg-[var(--accent-2)]/20"
+              >
+                Code Hotspots Flame
+              </Link>
+            </div>
             <button
               type="button"
               onClick={() => setShowSankey((prev) => !prev)}

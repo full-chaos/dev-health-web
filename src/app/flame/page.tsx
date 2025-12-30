@@ -26,7 +26,8 @@ export default async function FlamePage({ searchParams }: FlamePageProps) {
 
     const modeParam = (Array.isArray(params.mode) ? params.mode[0] : params.mode) ?? "cycle_breakdown";
     const mode: AggregatedFlameMode =
-        modeParam === "code_hotspots" ? "code_hotspots" : "cycle_breakdown";
+        modeParam === "throughput" ? "throughput" :
+            modeParam === "code_hotspots" ? "code_hotspots" : "cycle_breakdown";
 
     const teamId = filters.scope.level === "team" && filters.scope.ids.length
         ? filters.scope.ids[0]
@@ -47,11 +48,13 @@ export default async function FlamePage({ searchParams }: FlamePageProps) {
     const modeLabels: Record<AggregatedFlameMode, string> = {
         cycle_breakdown: "Cycle-Time Breakdown",
         code_hotspots: "Code Hotspots",
+        throughput: "Throughput Breakdown",
     };
 
     const modeDescriptions: Record<AggregatedFlameMode, string> = {
         cycle_breakdown: "Shows where time is spent across work states. Drill into categories to see individual status durations.",
         code_hotspots: "Shows where code churn concentrates by file path. Drill into repos and directories to identify hotspots.",
+        throughput: "Shows work delivered decomposition by work type and team/repo. Understand the composition of your throughput.",
     };
 
     const hasData = flameData && flameData.root.value > 0;
@@ -86,7 +89,7 @@ export default async function FlamePage({ searchParams }: FlamePageProps) {
 
                     {/* Mode Selector */}
                     <section className="flex flex-wrap gap-3">
-                        {(["cycle_breakdown", "code_hotspots"] as AggregatedFlameMode[]).map((m) => (
+                        {(["cycle_breakdown", "throughput", "code_hotspots"] as AggregatedFlameMode[]).map((m) => (
                             <Link
                                 key={m}
                                 href={withFilterParam(`/flame?mode=${m}`, filters)}
@@ -127,8 +130,14 @@ export default async function FlamePage({ searchParams }: FlamePageProps) {
                     </section>
 
                     {/* Notes/Empty State */}
-                    {notes.length > 0 && (
+                    {(notes.length > 0 || flameData?.meta.approximation?.used) && (
                         <section className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-4 text-sm text-[var(--ink-muted)]">
+                            {flameData?.meta.approximation?.used && (
+                                <div className="mb-2 flex items-center gap-2 text-[var(--accent-2)]">
+                                    <span className="text-xs uppercase tracking-wider font-semibold">Approximation:</span>
+                                    <span>{flameData.meta.approximation.method} derivation used</span>
+                                </div>
+                            )}
                             {notes.map((note, idx) => (
                                 <p key={idx}>{note}</p>
                             ))}

@@ -16,7 +16,14 @@ test("flame page loads with mode selector", async ({ page }) => {
 
   // Check mode selector buttons are visible
   await expect(page.getByRole("link", { name: /cycle-time breakdown/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /throughput breakdown/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /code hotspots/i })).toBeVisible();
+});
+
+test("flame page loads throughput mode", async ({ page }) => {
+  await page.goto("/flame?mode=throughput");
+  await expect(page.getByText(/throughput breakdown/i).first()).toBeVisible();
+  await expect(page.getByText(/shows work delivered decomposition/i)).toBeVisible();
 });
 
 test("flame page mode selector switches modes", async ({ page }) => {
