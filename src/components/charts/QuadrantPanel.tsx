@@ -665,7 +665,7 @@ export function QuadrantPanel({
                 {showZoneMenu ? "View related heatmaps" : "View related heatmap"}
               </Link>
             ) : null}
-            {flameHref ? (
+            {/* {flameHref ? (
               <Link
                 href={flameHref}
                 className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
@@ -674,7 +674,7 @@ export function QuadrantPanel({
                   ? "Open representative flame diagram"
                   : "Open flame diagram"}
               </Link>
-            ) : null}
+            ) : null} */}
             {/* Aggregated Flame Links */}
             <div className="flex flex-wrap gap-2">
               <Link
