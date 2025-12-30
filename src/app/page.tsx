@@ -8,7 +8,7 @@ import { RoleSelectorWithSuspense, RoleFraming } from "@/components/RoleSelector
 import { checkApiHealth, getHomeData } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue, formatPercent, formatTimestamp } from "@/lib/formatters";
+import { formatDelta, formatMetricValue, formatTimestamp } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { getRoleConfig, isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
 import type { HomeResponse } from "@/lib/types";

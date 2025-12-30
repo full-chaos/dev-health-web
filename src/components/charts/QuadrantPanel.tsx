@@ -120,9 +120,10 @@ export function QuadrantPanel({
   const scopeType =
     filters.scope.level === "developer" ? "person" : filters.scope.level;
   const isPersonScope = scopeType === "person";
-  const focusEntityIds = isPersonScope
-    ? (filters.scope.ids ?? []).slice(0, 1)
-    : (filters.scope.ids ?? []);
+  const focusEntityIds = useMemo(() => {
+    const ids = filters.scope.ids ?? [];
+    return isPersonScope ? ids.slice(0, 1) : ids;
+  }, [isPersonScope, JSON.stringify(filters.scope.ids ?? [])]);
   const scopedData = useMemo(() => {
     if (!data || !isPersonScope) {
       return data;
