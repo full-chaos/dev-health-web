@@ -340,12 +340,12 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
   const allowAdvanced = view !== "people";
   const scopeLock: MetricFilter["scope"]["level"] | null =
     view === "metrics" ||
-    view === "quality" ||
-    view === "work" ||
-    view === "investment" ||
-    view === "opportunities" ||
-    view === "home" ||
-    view === "people"
+      view === "quality" ||
+      view === "work" ||
+      view === "investment" ||
+      view === "opportunities" ||
+      view === "home" ||
+      view === "people"
       ? "team"
       : null;
   const scopeLevel = scopeLock ?? filters.scope.level;
@@ -438,7 +438,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
           </label>
         ))
       ) : (
-        <p className="text-[11px] text-[var(--ink-muted)]">
+        <p className="text-[11px] text-(--ink-muted)">
           No options yet. Use Advanced filters to type values.
         </p>
       )}
@@ -448,22 +448,21 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
   return (
     <section
       ref={barRef}
-      className={`rounded-[28px] border border-[var(--card-stroke)] p-4 shadow-sm ${
-        condensed ? "bg-[var(--card-80)]" : "bg-[var(--card-90)]"
-      } ${condensed ? "" : "sticky top-4"}`}
+      className={`rounded-[28px] border border-(--card-stroke) p-4 shadow-sm ${condensed ? "bg-(--card-80)" : "bg-(--card-90)"
+        } ${condensed ? "" : "sticky top-4"}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {view === "people" && (
             <label className="flex items-center gap-2 text-xs">
-              <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                 Search:
               </span>
               <input
                 value={peopleQuery}
                 onChange={(event) => updatePeopleQuery(event.target.value)}
                 placeholder="Name or handle"
-                className="w-56 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2 text-xs"
+                className="w-56 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
               />
             </label>
           )}
@@ -472,24 +471,24 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
               <button
                 type="button"
                 onClick={() => setOpenMenu(openMenu === "scope" ? null : "scope")}
-                className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2 text-xs"
+                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
                 aria-expanded={openMenu === "scope"}
               >
-                <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                   {scopeLabel}:
                 </span>
-                <span className="text-[var(--foreground)]">{scopeValue}</span>
-                <span className="text-[var(--ink-muted)]">▾</span>
+                <span className="text-foreground">{scopeValue}</span>
+                <span className="text-(--ink-muted)">▾</span>
               </button>
               {openMenu === "scope" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 shadow-lg">
+                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                   {!scopeLock && (
                     <label className="flex flex-col gap-2 text-xs">
-                      <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                         Scope level
                       </span>
                       <select
-                        className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-sm"
+                        className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
                         value={scopeLevel}
                         onChange={(event) =>
                           updateFilters({
@@ -528,17 +527,17 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
               <button
                 type="button"
                 onClick={() => setOpenMenu(openMenu === "repo" ? null : "repo")}
-                className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2 text-xs"
+                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
                 aria-expanded={openMenu === "repo"}
               >
-                <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                   Repo:
                 </span>
-                <span className="text-[var(--foreground)]">{repoValue}</span>
-                <span className="text-[var(--ink-muted)]">▾</span>
+                <span className="text-foreground">{repoValue}</span>
+                <span className="text-(--ink-muted)">▾</span>
               </button>
               {openMenu === "repo" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 shadow-lg">
+                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                   <div className="max-h-56 overflow-auto">
                     {renderOptionList(options.repos, repos, "All", (next) =>
                       updateFilters({
@@ -559,17 +558,17 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                 onClick={() =>
                   setOpenMenu(openMenu === "developer" ? null : "developer")
                 }
-                className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2 text-xs"
+                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
                 aria-expanded={openMenu === "developer"}
               >
-                <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                   Developer:
                 </span>
-                <span className="text-[var(--foreground)]">{developerValue}</span>
-                <span className="text-[var(--ink-muted)]">▾</span>
+                <span className="text-foreground">{developerValue}</span>
+                <span className="text-(--ink-muted)">▾</span>
               </button>
               {openMenu === "developer" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 shadow-lg">
+                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                   <div className="max-h-56 overflow-auto">
                     {renderOptionList(options.developers, developers, "All", (next) =>
                       updateFilters({
@@ -588,17 +587,17 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
               <button
                 type="button"
                 onClick={() => setOpenMenu(openMenu === "work" ? null : "work")}
-                className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2 text-xs"
+                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
                 aria-expanded={openMenu === "work"}
               >
-                <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                   Work:
                 </span>
-                <span className="text-[var(--foreground)]">{workValue}</span>
-                <span className="text-[var(--ink-muted)]">▾</span>
+                <span className="text-foreground">{workValue}</span>
+                <span className="text-(--ink-muted)">▾</span>
               </button>
               {openMenu === "work" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 shadow-lg">
+                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                   <div className="max-h-56 overflow-auto">
                     {renderOptionList(options.work_category, workCategory, "All", (next) =>
                       updateFilters({
@@ -617,17 +616,17 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
               <button
                 type="button"
                 onClick={() => setOpenMenu(openMenu === "flow" ? null : "flow")}
-                className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2 text-xs"
+                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
                 aria-expanded={openMenu === "flow"}
               >
-                <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                   Flow:
                 </span>
-                <span className="text-[var(--foreground)]">{flowValue}</span>
-                <span className="text-[var(--ink-muted)]">▾</span>
+                <span className="text-foreground">{flowValue}</span>
+                <span className="text-(--ink-muted)">▾</span>
               </button>
               {openMenu === "flow" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 shadow-lg">
+                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                   <div className="max-h-56 overflow-auto">
                     {renderOptionList(options.flow_stage, flowStage, "All", (next) =>
                       updateFilters({
@@ -646,24 +645,24 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
               <button
                 type="button"
                 onClick={() => setOpenMenu(openMenu === "date" ? null : "date")}
-                className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-2 text-xs"
+                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
                 aria-expanded={openMenu === "date"}
               >
-                <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                   Date:
                 </span>
-                <span className="text-[var(--foreground)]">{dateValue}</span>
-                <span className="text-[var(--ink-muted)]">▾</span>
+                <span className="text-foreground">{dateValue}</span>
+                <span className="text-(--ink-muted)">▾</span>
               </button>
               {openMenu === "date" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 shadow-lg">
+                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                   <div className="grid gap-3 text-xs">
                     <label className="flex flex-col gap-2">
-                      <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                         Start date
                       </span>
                       <input
-                        className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-sm"
+                        className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
                         type="date"
                         value={formatDateInput(startDate)}
                         onChange={(event) => {
@@ -691,11 +690,11 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                       />
                     </label>
                     <label className="flex flex-col gap-2">
-                      <span className="uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                         End date
                       </span>
                       <input
-                        className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-2 text-sm"
+                        className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
                         type="date"
                         value={formatDateInput(endDate)}
                         onChange={(event) => {
@@ -734,7 +733,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
             <button
               type="button"
               onClick={() => setShowAdvanced((prev) => !prev)}
-              className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 uppercase tracking-[0.2em]"
+              className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
               aria-expanded={showAdvanced}
             >
               {showAdvanced ? "Hide advanced" : "Advanced filters"}
@@ -743,14 +742,14 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
           <button
             type="button"
             onClick={resetFilters}
-            className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 uppercase tracking-[0.2em]"
+            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
           >
             Reset
           </button>
           <button
             type="button"
             onClick={copyFilters}
-            className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 uppercase tracking-[0.2em]"
+            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
           >
             Copy
           </button>
@@ -759,15 +758,15 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
 
       {allowAdvanced && showAdvanced && (
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <details className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
-            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+          <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
               Who
             </summary>
             <div className="mt-3 space-y-3 text-sm">
               <label className="flex flex-col gap-2">
-                <span className="text-xs text-[var(--ink-muted)]">Developers</span>
+                <span className="text-xs text-(--ink-muted)">Developers</span>
                 <input
-                  className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
                   placeholder="alice, bob"
                   value={toValue(developers)}
                   onChange={(event) =>
@@ -779,9 +778,9 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                 />
               </label>
               <label className="flex flex-col gap-2">
-                <span className="text-xs text-[var(--ink-muted)]">Roles</span>
+                <span className="text-xs text-(--ink-muted)">Roles</span>
                 <input
-                  className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
                   placeholder="maintainer, reviewer"
                   value={toValue(roles)}
                   onChange={(event) =>
@@ -795,15 +794,15 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
             </div>
           </details>
 
-          <details className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
-            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+          <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
               What
             </summary>
             <div className="mt-3 space-y-3 text-sm">
               <label className="flex flex-col gap-2">
-                <span className="text-xs text-[var(--ink-muted)]">Repos</span>
+                <span className="text-xs text-(--ink-muted)">Repos</span>
                 <input
-                  className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
                   placeholder="org/api, org/ui"
                   value={toValue(repos)}
                   onChange={(event) =>
@@ -815,9 +814,9 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                 />
               </label>
               <label className="flex flex-col gap-2">
-                <span className="text-xs text-[var(--ink-muted)]">Artifacts</span>
+                <span className="text-xs text-(--ink-muted)">Artifacts</span>
                 <input
-                  className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
                   placeholder="pr, issue"
                   value={toValue(artifacts)}
                   onChange={(event) =>
@@ -834,15 +833,15 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
             </div>
           </details>
 
-          <details className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
-            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+          <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
               Why
             </summary>
             <div className="mt-3 space-y-3 text-sm">
               <label className="flex flex-col gap-2">
-                <span className="text-xs text-[var(--ink-muted)]">Work category</span>
+                <span className="text-xs text-(--ink-muted)">Work category</span>
                 <input
-                  className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
                   placeholder="feature, maintenance"
                   value={toValue(workCategory)}
                   onChange={(event) =>
@@ -854,9 +853,9 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                 />
               </label>
               <label className="flex flex-col gap-2">
-                <span className="text-xs text-[var(--ink-muted)]">Issue type</span>
+                <span className="text-xs text-(--ink-muted)">Issue type</span>
                 <input
-                  className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
                   placeholder="bug, story"
                   value={toValue(issueType)}
                   onChange={(event) =>
@@ -870,15 +869,15 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
             </div>
           </details>
 
-          <details className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4">
-            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+          <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
               How
             </summary>
             <div className="mt-3 space-y-3 text-sm">
               <label className="flex flex-col gap-2">
-                <span className="text-xs text-[var(--ink-muted)]">Flow stage</span>
+                <span className="text-xs text-(--ink-muted)">Flow stage</span>
                 <input
-                  className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
                   placeholder="review, build"
                   value={toValue(flowStage)}
                   onChange={(event) =>
@@ -889,7 +888,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                   }
                 />
               </label>
-              <label className="flex items-center gap-2 text-xs text-[var(--ink-muted)]">
+              <label className="flex items-center gap-2 text-xs text-(--ink-muted)">
                 <input
                   type="checkbox"
                   checked={filters.how.blocked ?? false}

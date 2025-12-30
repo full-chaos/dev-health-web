@@ -152,11 +152,11 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         <div className="flex flex-col gap-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                 {/* Main Sankey Area */}
-                <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-6">
+                <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
                     <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                         <div>
-                            <h2 className="text-xl font-[var(--font-display)]">{dataset?.label || definition.label}</h2>
-                            <p className="mt-1 text-sm text-[var(--ink-muted)]">{dataset?.description || definition.description}</p>
+                            <h2 className="text-xl font-(--font-display)">{dataset?.label || definition.label}</h2>
+                            <p className="mt-1 text-sm text-(--ink-muted)">{dataset?.description || definition.description}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {SANKEY_MODES.map((m) => (
@@ -164,8 +164,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                     key={m.id}
                                     onClick={() => handleModeChange(m.id)}
                                     className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${mode === m.id
-                                        ? "border-[var(--accent-2)] bg-[var(--accent-2)] text-white"
-                                        : "border-[var(--card-stroke)] text-[var(--ink-muted)] hover:border-[var(--card-stroke)]/60"
+                                        ? "border-(--accent-2) bg-(--accent-2) text-white"
+                                        : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
                                         }`}
                                 >
                                     {m.label}
@@ -176,8 +176,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
                     <div className="relative min-h-[400px]">
                         {isLoading && (
-                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--card)]/50 backdrop-blur-sm rounded-2xl">
-                                <p className="text-sm text-[var(--ink-muted)] animate-pulse">Loading flow data...</p>
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
+                                <p className="text-sm text-(--ink-muted) animate-pulse">Loading flow data...</p>
                             </div>
                         )}
                         {hasData ? (
@@ -189,7 +189,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                 onItemClick={handleItemClick}
                             />
                         ) : !isLoading && (
-                            <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] text-sm text-[var(--ink-muted)]">
+                            <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
                                 No flow data available for this scope and window.
                             </div>
                         )}
@@ -198,17 +198,17 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
                 {/* Inspect Panel */}
                 <div className="flex flex-col gap-4">
-                    <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5 h-full min-h-[400px]">
-                        <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">Inspect Flow</p>
+                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 h-full min-h-[400px]">
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">Inspect Flow</p>
                         {!selectedItem ? (
                             <div className="mt-20 text-center">
-                                <p className="text-sm text-[var(--ink-muted)]">Select a node or path to inspect details.</p>
+                                <p className="text-sm text-(--ink-muted)">Select a node or path to inspect details.</p>
                             </div>
                         ) : (
                             <div className="mt-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">Selection</p>
-                                    <h3 className="mt-1 text-lg font-semibold text-[var(--foreground)]">
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Selection</p>
+                                    <h3 className="mt-1 text-lg font-semibold text-foreground">
                                         {selectedItem.type === "link"
                                             ? `${selectedItem.source} → ${selectedItem.target}`
                                             : selectedItem.name}
@@ -216,33 +216,33 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                 </div>
 
                                 <div>
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">Flow Value</p>
-                                    <p className="mt-1 text-2xl font-mono text-[var(--foreground)]">
-                                        {formatNumber(selectedItem.value || 0)} <span className="text-xs uppercase tracking-wider text-[var(--ink-muted)]">{dataset?.unit || "units"}</span>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Flow Value</p>
+                                    <p className="mt-1 text-2xl font-mono text-foreground">
+                                        {formatNumber(selectedItem.value || 0)} <span className="text-xs uppercase tracking-wider text-(--ink-muted)">{dataset?.unit || "units"}</span>
                                     </p>
                                 </div>
 
-                                <div className="grid gap-3 pt-4 border-t border-[var(--card-stroke)]">
+                                <div className="grid gap-3 pt-4 border-t border-(--card-stroke)">
                                     <Link
                                         href={evidenceUrl || "#"}
-                                        className="flex items-center justify-between rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-xs uppercase tracking-[0.1em] text-[var(--foreground)] hover:border-[var(--accent-2)]/40 hover:bg-[var(--accent-2)]/5 group"
+                                        className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
                                     >
                                         <span>Inspect Evidence</span>
-                                        <span className="text-[var(--accent-2)] group-hover:translate-x-0.5 transition-transform">↗</span>
+                                        <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">↗</span>
                                     </Link>
                                     <Link
                                         href={flameUrl || "#"}
-                                        className="flex items-center justify-between rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-xs uppercase tracking-[0.1em] text-[var(--foreground)] hover:border-[var(--accent-2)]/40 hover:bg-[var(--accent-2)]/5 group"
+                                        className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
                                     >
                                         <span>Open Representative Flame</span>
-                                        <span className="text-[var(--accent-2)] group-hover:translate-x-0.5 transition-transform">↗</span>
+                                        <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">↗</span>
                                     </Link>
                                 </div>
 
                                 {(contextEntityLabel || contextZone) && (
-                                    <div className="pt-4 mt-6 border-t border-[var(--card-stroke)]">
-                                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">Analysis Context</p>
-                                        <p className="mt-1 text-xs text-[var(--ink-muted)] italic">
+                                    <div className="pt-4 mt-6 border-t border-(--card-stroke)">
+                                        <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Analysis Context</p>
+                                        <p className="mt-1 text-xs text-(--ink-muted) italic">
                                             Filtering flow by {contextEntityLabel || "selected scope"} {contextZone ? `(Zone: ${contextZone})` : ""}
                                         </p>
                                         <button
@@ -253,7 +253,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                                 params.delete("context_zone");
                                                 router.replace(`/work?${params.toString()}`);
                                             }}
-                                            className="mt-2 text-[9px] uppercase tracking-[0.2em] text-[var(--accent-2)] hover:underline"
+                                            className="mt-2 text-[9px] uppercase tracking-[0.2em] text-(--accent-2) hover:underline"
                                         >
                                             Clear context
                                         </button>

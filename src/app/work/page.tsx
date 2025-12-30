@@ -1,12 +1,8 @@
 import Link from "next/link";
 
-import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
-import { InvestmentChart } from "@/components/investment/InvestmentChart";
-import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import {
   checkApiHealth,
   getExplainData,
@@ -15,10 +11,8 @@ import {
   getInvestment,
   getQuadrant,
 } from "@/lib/api";
-import type { MetricDelta } from "@/lib/types";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatNumber, formatPercent } from "@/lib/formatters";
+import { withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { mapInvestmentToNestedPie } from "@/lib/mappers";
 import { LandscapeView } from "@/components/work/LandscapeView";
@@ -33,9 +27,6 @@ type WorkPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const getMetric = (deltas: MetricDelta[], metric: string) =>
-  deltas.find((item) => item.metric === metric) ??
-  FALLBACK_DELTAS.find((item) => item.metric === metric);
 
 const findCategory = (
   categories: Array<{ key: string; name: string; value: number }>,
@@ -83,9 +74,6 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const investment = await getInvestment(filters).catch(() => null);
   const nested = investment ? mapInvestmentToNestedPie(investment) : { categories: [], subtypes: [] };
 
-  const wipMetric = getMetric(deltas, "wip_saturation");
-  const blockedMetric = getMetric(deltas, "blocked_work");
-  const throughputMetric = getMetric(deltas, "throughput");
 
   const wipExplain = await getExplainData({ metric: "wip_saturation", filters }).catch(() => null);
   const blockedExplain = await getExplainData({ metric: "blocked_work", filters }).catch(() => null);
@@ -127,42 +115,42 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   }).catch(() => null);
 
   const planned = investment
-    ? findCategory(investment.categories, ["planned", "roadmap", "feature"])
+    ? (findCategory(investment.categories, ["planned", "roadmap", "feature"]) ?? null)
     : null;
   const unplanned = investment
-    ? findCategory(investment.categories, [
+    ? (findCategory(investment.categories, [
       "unplanned",
       "interrupt",
       "incident",
       "support",
       "ops",
       "run",
-    ])
+    ]) ?? null)
     : null;
   const plannedTotal = planned && unplanned ? planned.value + unplanned.value : 0;
   const plannedPct = plannedTotal ? (planned?.value ?? 0) / plannedTotal : null;
   const unplannedPct = plannedTotal ? (unplanned?.value ?? 0) / plannedTotal : null;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="work" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Work
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 Work Investment and Flow
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Analyze work allocation, WIP pressure, and blocked effort.
               </p>
             </div>
             <Link
               href={withFilterParam("/", filters, activeRole)}
-              className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
               Re-orient in cockpit
             </Link>

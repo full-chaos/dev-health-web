@@ -35,7 +35,6 @@ const QUADRANT_CARDS = [
   },
 ];
 
-const PRIMARY_QUADRANT_TYPE = "churn_throughput";
 
 type LandscapePageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -107,32 +106,32 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
   });
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="landscape" role={roleParam as string} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Explore
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 Landscape Quadrants
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Classify system modes under competing pressures without ranking teams or people.
               </p>
-              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+              <p className="mt-3 text-sm text-(--ink-muted)">
                 Explore system operating modes across multiple pressure pairs.
               </p>
-              <p className="mt-2 text-xs text-[var(--ink-muted)]">
+              <p className="mt-2 text-xs text-(--ink-muted)">
                 Each view highlights a different pressure pair. Investigation steps are shared.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
                 href={withFilterParam("/explore", filters, roleParam as string)}
-                className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to Explore
               </Link>
@@ -142,18 +141,18 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
           <FilterBar condensed view="explore" />
 
           {!canQuery && (
-            <section className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-5 text-sm text-[var(--ink-muted)]">
+            <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
               Individual landscapes are available from the individual view.
             </section>
           )}
 
-          <section className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+          <section className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
             <span>Bucket</span>
             <Link
               href={withFilterParam(`/explore/landscape?bucket=week`, filters, roleParam as string)}
               className={`rounded-full border px-3 py-1 ${bucket === "week"
-                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                : "border-[var(--card-stroke)]"
+                ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                : "border-(--card-stroke)"
                 }`}
             >
               Week
@@ -161,8 +160,8 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             <Link
               href={withFilterParam(`/explore/landscape?bucket=month`, filters, roleParam as string)}
               className={`rounded-full border px-3 py-1 ${bucket === "month"
-                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                : "border-[var(--card-stroke)]"
+                ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                : "border-(--card-stroke)"
                 }`}
             >
               Month
@@ -170,9 +169,9 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
           </section>
 
           <section className="flex flex-col gap-10">
-            <div className="rounded-[40px] border border-[var(--accent-2)]/30 bg-[var(--accent-2)]/5 p-6 sm:p-8">
+            <div className="rounded-[40px] border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
               <div className="mb-6 flex items-center justify-between">
-                <span className="rounded-full bg-[var(--accent-2)]/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-[var(--accent-2)]">
+                <span className="rounded-full bg-(--accent-2)/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-(--accent-2)">
                   Primary Lens: {roleConfig.label}
                 </span>
               </div>
@@ -202,11 +201,11 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                 return (
                   <div
                     key={card.type}
-                    className={isSecondary ? "rounded-[32px] border border-[var(--card-stroke)] bg-[var(--card-80)] p-4" : ""}
+                    className={isSecondary ? "rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-4" : ""}
                   >
                     {isSecondary && (
                       <div className="mb-4 px-2">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--ink-muted)">
                           Secondary Context
                         </span>
                       </div>

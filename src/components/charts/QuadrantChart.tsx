@@ -30,15 +30,6 @@ const formatValue = (value: number, unit: string) => {
   return `${value.toFixed(1)} ${unit}`.trim();
 };
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-const parseDateValue = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  return date;
-};
 
 
 
@@ -234,13 +225,16 @@ export const buildQuadrantOption = ({
         itemStyle: buildZoneSurfaceStyle(zone.color, {
           active: highlightOverlayKey === `zone:${zone.id}`,
         }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
       {
         xAxis: zone.xRange[1],
         yAxis: zone.yRange[1],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
     ])
     : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markAreaData: any = [...annotationAreas, ...zoneAreas];
   const markArea: MarkAreaComponentOption | undefined = markAreaData.length
     ? {

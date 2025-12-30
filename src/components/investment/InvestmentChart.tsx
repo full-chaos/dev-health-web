@@ -10,7 +10,7 @@ type InvestmentChartProps = {
 
 export function InvestmentChart({ categories, subtypes, unit }: InvestmentChartProps) {
   return (
-    <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+    <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
       <NestedPieChart2D categories={categories} subtypes={subtypes} unit={unit} height={360} />
     </div>
   );

@@ -29,25 +29,25 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
   const data = await getOpportunities(filters).catch(() => null);
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="opportunities" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Opportunities
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 Focus Cards
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Evidence-backed bets with suggested experiments.
               </p>
             </div>
             <Link
               href={withFilterParam("/", filters, activeRole)}
-              className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
               Back to cockpit
             </Link>
@@ -59,10 +59,10 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
             {(data?.items ?? []).map((card) => (
               <div
                 key={card.id}
-                className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6"
+                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
               >
-                <h2 className="font-[var(--font-display)] text-xl">{card.title}</h2>
-                <p className="mt-2 text-sm text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">{card.title}</h2>
+                <p className="mt-2 text-sm text-(--ink-muted)">
                   {card.rationale}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs">
@@ -70,17 +70,17 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                     <Link
                       key={link}
                       href={buildExploreUrl({ api: link, filters, role: activeRole })}
-                      className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1"
+                      className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1"
                     >
                       Evidence
                     </Link>
                   ))}
                 </div>
-                <div className="mt-4 space-y-2 text-xs text-[var(--ink-muted)]">
+                <div className="mt-4 space-y-2 text-xs text-(--ink-muted)">
                   {card.suggested_experiments.map((experiment) => (
                     <div
                       key={experiment}
-                      className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                      className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-2"
                     >
                       {experiment}
                     </div>
@@ -89,7 +89,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
               </div>
             ))}
             {!data?.items?.length && (
-              <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-6 text-sm text-[var(--ink-muted)]">
+              <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
                 Opportunity data unavailable.
               </div>
             )}

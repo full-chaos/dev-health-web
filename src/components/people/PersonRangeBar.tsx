@@ -25,22 +25,22 @@ export function PersonRangeBar({ rangeDays, compareDays }: PersonRangeBarProps) 
   };
 
   return (
-    <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-90)] p-5 shadow-sm">
+    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-90) p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+          <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
             Time range
           </p>
-          <p className="mt-1 text-sm text-[var(--ink-muted)]">
+          <p className="mt-1 text-sm text-(--ink-muted)">
             Applies to this individual only.
           </p>
         </div>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm">
-          <span className="text-xs text-[var(--ink-muted)]">Range days</span>
+          <span className="text-xs text-(--ink-muted)">Range days</span>
           <input
-            className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
             type="number"
             min={1}
             value={range}
@@ -51,11 +51,11 @@ export function PersonRangeBar({ rangeDays, compareDays }: PersonRangeBarProps) 
           />
         </label>
         <label className="flex flex-col gap-2 text-sm">
-          <span className="text-xs text-[var(--ink-muted)]">
+          <span className="text-xs text-(--ink-muted)">
             Compare days (previous window)
           </span>
           <input
-            className="rounded-xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
             type="number"
             min={1}
             value={compare}

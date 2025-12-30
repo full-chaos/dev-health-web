@@ -110,45 +110,45 @@ export function HeatmapPanel({
 
   if (!data || !data.axes?.x?.length || !data.axes?.y?.length) {
     return (
-      <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-5 text-sm text-[var(--ink-muted)]">
+      <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
         {emptyState}
       </div>
     );
   }
 
   return (
-    <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+    <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-[var(--font-display)] text-xl">{title}</h2>
-          <p className="mt-2 text-sm text-[var(--ink-muted)]">{description}</p>
+          <h2 className="font-(--font-display) text-xl">{title}</h2>
+          <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
         </div>
-        <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
+        <div className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
           {data.legend.unit}
         </div>
       </div>
       <div className="mt-4">
         <HeatmapChart data={data} height={320} onCellSelect={handleCellSelect} />
       </div>
-      <div className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-4">
+      <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
             {evidenceTitle}
           </p>
           {selectionLabel ? (
-            <span className="text-xs text-[var(--ink-muted)]">{selectionLabel}</span>
+            <span className="text-xs text-(--ink-muted)">{selectionLabel}</span>
           ) : null}
         </div>
         {loading ? (
-          <p className="mt-3 text-sm text-[var(--ink-muted)]">Loading evidence...</p>
+          <p className="mt-3 text-sm text-(--ink-muted)">Loading evidence...</p>
         ) : null}
         {!loading && selected && evidence.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--ink-muted)]">
+          <p className="mt-3 text-sm text-(--ink-muted)">
             No evidence returned for this cell.
           </p>
         ) : null}
         {!selected && !loading ? (
-          <p className="mt-3 text-sm text-[var(--ink-muted)]">
+          <p className="mt-3 text-sm text-(--ink-muted)">
             Select a cell to inspect the underlying evidence.
           </p>
         ) : null}
@@ -162,25 +162,25 @@ export function HeatmapPanel({
                 <Link
                   key={`${label}-${index}`}
                   href={link}
-                  className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
                 >
                   <span>{label}</span>
-                  <span className="text-xs text-[var(--ink-muted)]">Open flame</span>
+                  <span className="text-xs text-(--ink-muted)">Open flame</span>
                 </Link>
               ) : (
                 <div
                   key={`${label}-${index}`}
-                  className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-2"
+                  className="rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
                 >
                   <div className="flex items-center justify-between">
                     <span>{label}</span>
                     {typeof item.value === "number" ? (
-                      <span className="text-xs text-[var(--ink-muted)]">
+                      <span className="text-xs text-(--ink-muted)">
                         {formatNumber(item.value)}
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-xs text-[var(--ink-muted)]">{detail}</p>
+                  <p className="mt-2 text-xs text-(--ink-muted)">{detail}</p>
                 </div>
               );
             })}

@@ -22,7 +22,7 @@ const tabs = [
 
 export function WorkTabNav({ activeTab, filters, role }: WorkTabNavProps) {
     return (
-        <div className="flex flex-wrap items-center gap-1 border-b border-[var(--card-stroke)] overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <div className="flex flex-wrap items-center gap-1 border-b border-(--card-stroke) overflow-x-auto whitespace-nowrap scrollbar-hide">
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const href = withFilterParam(`/work?tab=${tab.id}`, filters, role);
@@ -33,8 +33,8 @@ export function WorkTabNav({ activeTab, filters, role }: WorkTabNavProps) {
                         href={href}
                         aria-current={isActive ? "page" : undefined}
                         className={`px-4 py-3 text-[10px] uppercase tracking-[0.2em] transition-all border-b-2 -mb-px ${isActive
-                                ? "border-[var(--accent-2)] text-[var(--foreground)] font-semibold"
-                                : "border-transparent text-[var(--ink-muted)] hover:text-[var(--foreground)] hover:border-[var(--card-stroke)]/40"
+                            ? "border-(--accent-2) text-foreground font-semibold"
+                            : "border-transparent text-(--ink-muted) hover:text-foreground hover:border-(--card-stroke)/40"
                             }`}
                     >
                         {tab.label}

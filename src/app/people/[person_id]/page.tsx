@@ -132,32 +132,32 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
     typeof identityCoverage === "number" ? identityCoverage < 70 : false;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="people" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 Individual view
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 {person?.display_name ?? "Individual metrics"}
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 This view is scoped to one person and never compares across peers.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--ink-muted)]">
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
                 {(person?.identities ?? []).map((identity) => (
                   <span
                     key={`${personId}-${identity.provider}-${identity.handle}`}
-                    className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1"
+                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
                   >
                     {identity.provider}: {identity.handle}
                   </span>
                 ))}
                 {person?.active === false && (
-                  <span className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1">
+                  <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1">
                     Inactive
                   </span>
                 )}
@@ -166,7 +166,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/people"
-                className="rounded-full border border-[var(--card-stroke)] px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
                 Back to People
               </Link>
@@ -222,14 +222,14 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
           </section>
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-2xl">Narrative</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-2xl">Narrative</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Evidence-linked
                 </span>
               </div>
-              <div className="mt-4 space-y-3 text-sm text-[var(--ink-muted)]">
+              <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
                 {narrative.length ? (
                   narrative.map((item) => {
                     const metric =
@@ -243,14 +243,14 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                       <Link
                         key={item.id}
                         href={href}
-                        className="block rounded-2xl border border-transparent bg-[var(--card-60)] px-4 py-3 transition hover:border-[var(--card-stroke)]"
+                        className="block rounded-2xl border border-transparent bg-(--card-60) px-4 py-3 transition hover:border-(--card-stroke)"
                       >
                         {item.text}
                       </Link>
                     );
                   })
                 ) : (
-                  <p className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-4 py-3">
+                  <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3">
                     Narrative insights will appear once data is ingested.
                   </p>
                 )}
@@ -259,11 +259,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
 
             <div className="grid gap-4">
               <div
-                className={`rounded-3xl border border-[var(--card-stroke)] p-5 text-sm ${
-                  coverageLow
+                className={`rounded-3xl border border-(--card-stroke) p-5 text-sm ${coverageLow
                     ? "bg-amber-50/80 text-amber-900"
-                    : "bg-[var(--card-80)] text-[var(--ink-muted)]"
-                }`}
+                    : "bg-(--card-80) text-(--ink-muted)"
+                  }`}
               >
                 <p className="text-xs uppercase tracking-[0.3em]">
                   Identity coverage
@@ -277,7 +276,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                   Link accounts to improve attribution accuracy.
                 </p>
               </div>
-              <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5 text-sm text-[var(--ink-muted)]">
+              <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
                 <div className="flex items-center justify-between">
                   <p className="text-xs uppercase tracking-[0.3em]">Freshness</p>
                   <span className="text-xs uppercase tracking-[0.2em]">
@@ -289,16 +288,16 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                     Object.entries(summary.freshness.sources).map(([key, value]) => (
                       <div
                         key={key}
-                        className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                       >
                         <span className="uppercase tracking-[0.2em]">{key}</span>
-                        <span className="font-semibold text-[var(--foreground)]">
+                        <span className="font-semibold text-foreground">
                           {value}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-2">
+                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-3 py-2">
                       Freshness details pending.
                     </div>
                   )}
@@ -308,10 +307,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
           </section>
 
           <section className="grid gap-6 lg:grid-cols-3">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Work mix</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">Work mix</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Categories
                 </span>
               </div>
@@ -319,7 +318,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                 {workMixData.length ? (
                   <DonutChart data={workMixData} height={260} />
                 ) : (
-                  <div className="flex h-[260px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] text-sm text-[var(--ink-muted)]">
+                  <div className="flex h-[260px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                     Work mix data unavailable.
                   </div>
                 )}
@@ -328,10 +327,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                 {(workMix?.categories ?? []).map((category) => (
                   <div
                     key={category.key}
-                    className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                    className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                   >
                     <span>{category.name}</span>
-                    <span className="text-xs text-[var(--ink-muted)]">
+                    <span className="text-xs text-(--ink-muted)">
                       {formatNumber(category.value)}
                     </span>
                   </div>
@@ -339,10 +338,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Flow breakdown</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">Flow breakdown</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Stages
                 </span>
               </div>
@@ -353,7 +352,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                     values={flowStages.map((stage) => stage.value)}
                   />
                 ) : (
-                  <div className="flex h-[240px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] text-sm text-[var(--ink-muted)]">
+                  <div className="flex h-[240px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                     Flow stage detail unavailable.
                   </div>
                 )}
@@ -362,10 +361,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                 {flowStages.map((stage) => (
                   <div
                     key={stage.stage}
-                    className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                    className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                   >
                     <span>{stage.stage}</span>
-                    <span className="text-xs text-[var(--ink-muted)]">
+                    <span className="text-xs text-(--ink-muted)">
                       {stage.unit
                         ? formatMetricValue(stage.value, stage.unit)
                         : formatNumber(stage.value)}
@@ -375,10 +374,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-[var(--font-display)] text-xl">Collaboration</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                <h2 className="font-(--font-display) text-xl">Collaboration</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Counts only
                 </span>
               </div>
@@ -387,16 +386,16 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                   collaborationStats.map((stat) => (
                     <div
                       key={`${stat.label}-${stat.value}`}
-                      className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
+                      className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                     >
                       <span>{stat.label}</span>
-                      <span className="text-xs text-[var(--ink-muted)]">
+                      <span className="text-xs text-(--ink-muted)">
                         {formatNumber(stat.value)}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-3 text-sm text-[var(--ink-muted)]">
+                  <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-3 py-3 text-sm text-(--ink-muted)">
                     Collaboration counts pending.
                   </div>
                 )}
@@ -404,10 +403,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
             </div>
           </section>
 
-          <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
+          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
             <div className="flex items-center justify-between">
-              <h2 className="font-[var(--font-display)] text-xl">View metric</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+              <h2 className="font-(--font-display) text-xl">View metric</h2>
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 Individual detail
               </span>
             </div>
@@ -420,10 +419,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                     range_days,
                     compare_days
                   )}
-                  className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-sm"
+                  className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-4 py-3 text-sm"
                 >
                   <span>{getMetricLabel(metric)}</span>
-                  <span className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
+                  <span className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
                     Open
                   </span>
                 </Link>

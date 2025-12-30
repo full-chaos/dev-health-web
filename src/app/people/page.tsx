@@ -20,19 +20,19 @@ export default async function PeoplePage({ searchParams }: PeoplePageProps) {
   const query = Array.isArray(params.q) ? params.q[0] : params.q;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="people" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                 People
               </p>
-              <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+              <h1 className="mt-2 font-(--font-display) text-3xl">
                 Individual metrics
               </h1>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Self-serve insights for coaching conversations. No peer
                 comparisons.
               </p>

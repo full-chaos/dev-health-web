@@ -14,14 +14,14 @@ export function RoleSelectorWithSuspense({ className }: { className?: string }) 
         <Suspense
             fallback={
                 <div className={`flex items-center gap-2 ${className ?? ""}`}>
-                    <span className="text-[10px] uppercase tracking-[0.25em] text-[var(--ink-muted)]">
+                    <span className="text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)">
                         Start from
                     </span>
                     <div className="flex gap-1">
                         {["IC", "EM", "PM", "Leadership"].map((label) => (
                             <span
                                 key={label}
-                                className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-[var(--ink-muted)]"
+                                className="rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-(--ink-muted)"
                             >
                                 {label}
                             </span>
@@ -43,7 +43,7 @@ function RoleFramingInner() {
 
     return (
         <p
-            className="mt-1 text-xs text-[var(--accent-2)]/80"
+            className="mt-1 text-xs text-(--accent-2)/80"
             data-testid="role-framing"
         >
             {config.framing}
@@ -53,7 +53,7 @@ function RoleFramingInner() {
 
 export function RoleFraming() {
     return (
-        <Suspense fallback={<p className="mt-1 text-xs text-[var(--accent-2)]/80">How work is scoped, reviewed, and flows</p>}>
+        <Suspense fallback={<p className="mt-1 text-xs text-(--accent-2)/80">How work is scoped, reviewed, and flows</p>}>
             <RoleFramingInner />
         </Suspense>
     );

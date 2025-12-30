@@ -56,7 +56,7 @@ const getSeriesPoints = (option: ReturnType<typeof buildQuadrantOption>) => {
     const data = Array.isArray(series.data) ? series.data : [];
     return data
       .map((item) => (item as { point?: QuadrantPoint }).point)
-      .filter(Boolean);
+      .filter((p): p is QuadrantPoint => !!p);
   });
 };
 

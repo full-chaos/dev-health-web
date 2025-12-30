@@ -12,14 +12,14 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue, formatPercent, formatTimestamp } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { getRoleConfig, isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
-import type { HomeResponse, MetricDelta } from "@/lib/types";
+import type { HomeResponse } from "@/lib/types";
 
 const deltaAccent = (value: number) =>
   value > 0
-    ? "text-[var(--accent-3)]"
+    ? "text-(--accent-3)"
     : value < 0
-      ? "text-[var(--accent-negative)]"
-      : "text-[var(--ink-muted)]";
+      ? "text-(--accent-negative)"
+      : "text-(--ink-muted)";
 
 const MONITORING_VIEWS = [
   {
@@ -121,72 +121,72 @@ export default async function Home({ searchParams }: HomePageProps) {
   });
 
   return (
-    <div className="min-h-screen bg-[image:var(--hero-gradient)] text-[var(--foreground)]">
+    <div className="min-h-screen bg-(image:--hero-gradient) text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-20 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="home" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-10">
-          <header className="rounded-[32px] border border-[var(--card-stroke)] bg-[var(--card-80)] p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
+          <header className="rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.4em] text-[var(--ink-muted)]">
+                  <p className="text-xs uppercase tracking-[0.4em] text-(--ink-muted)">
                     Good morning
                   </p>
                   <div className="mt-4">
                     <RoleSelectorWithSuspense />
                   </div>
-                  <h1 className="mt-6 font-[var(--font-display)] text-3xl leading-tight sm:text-4xl">
+                  <h1 className="mt-6 font-(--font-display) text-3xl leading-tight sm:text-4xl">
                     Developer Health Ops Cockpit
                   </h1>
                   <RoleFraming />
-                  <p className="mt-3 max-w-xl text-sm text-[var(--ink-muted)]">
+                  <p className="mt-3 max-w-xl text-sm text-(--ink-muted)">
                     System status, risks, and recommended moves for {scopeDetail} over
                     the last {filters.time.range_days} days.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
+                  <div className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
                     {filters.scope.level} scope
                   </div>
-                  <div className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
+                  <div className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
                     {filters.time.range_days}d view
                   </div>
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-[1.4fr_0.6fr]">
-                <div className="rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] p-4 text-sm">
+                <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-4 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-[var(--ink-muted)]">
+                    <span className="text-(--ink-muted)">
                       Latest ingest: {formatTimestamp(lastIngestedAt)}
                     </span>
-                    <span className="rounded-full bg-[var(--accent-3)]/40 px-3 py-1 text-xs font-semibold">
+                    <span className="rounded-full bg-(--accent-3)/40 px-3 py-1 text-xs font-semibold">
                       System status
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[var(--ink-muted)]">
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-(--ink-muted)">
                     {home?.freshness.sources ? (
                       Object.entries(home.freshness.sources).map(([key, value]) => (
                         <div
                           key={key}
-                          className="flex items-center justify-between rounded-2xl bg-[var(--card-70)] px-3 py-2"
+                          className="flex items-center justify-between rounded-2xl bg-(--card-70) px-3 py-2"
                         >
                           <span className="uppercase tracking-[0.2em]">{key}</span>
-                          <span className="font-semibold text-[var(--foreground)]">
+                          <span className="font-semibold text-foreground">
                             {value}
                           </span>
                         </div>
                       ))
                     ) : (
-                      <div className="col-span-2 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-2">
+                      <div className="col-span-2 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-3 py-2">
                         Source signals pending.
                       </div>
                     )}
                   </div>
                 </div>
-                <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--accent-2)]/10 p-4 text-xs text-[var(--ink-muted)]">
-                  <p className="text-[var(--accent-2)]/90">Setup coverage</p>
-                  <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--accent-2)/10 p-4 text-xs text-(--ink-muted)">
+                  <p className="text-(--accent-2)/90">Setup coverage</p>
+                  <p className="mt-2 text-2xl font-semibold text-foreground">
                     {coverage ? formatPercent(coverage.repos_covered_pct) : "--"}
                   </p>
                   <p className="mt-2">
@@ -209,19 +209,19 @@ export default async function Home({ searchParams }: HomePageProps) {
             filters={filters}
           />
 
-          <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
+          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                   Monitoring views
                 </p>
-                <p className="mt-1 text-sm text-[var(--ink-muted)]">
+                <p className="mt-1 text-sm text-(--ink-muted)">
                   Opinionated tabs for steady trend monitoring.
                 </p>
               </div>
               <Link
                 href={withFilterParam("/metrics?tab=dora", filters, activeRole)}
-                className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
               >
                 Open metrics
               </Link>
@@ -231,16 +231,16 @@ export default async function Home({ searchParams }: HomePageProps) {
                 <Link
                   key={view.id}
                   href={withFilterParam(view.href, filters, activeRole)}
-                  className="group rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1"
+                  className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
                 >
-                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                     <span>{view.label}</span>
-                    <span className="text-[var(--accent-2)]">Open</span>
+                    <span className="text-(--accent-2)">Open</span>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+                  <p className="mt-2 text-sm font-semibold text-foreground">
                     {view.description}
                   </p>
-                  <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                  <p className="mt-2 text-xs text-(--ink-muted)">
                     {view.focus}
                   </p>
                 </Link>
@@ -251,16 +251,16 @@ export default async function Home({ searchParams }: HomePageProps) {
           <section>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                   Key signals
                 </p>
-                <p className="mt-1 text-sm text-[var(--ink-muted)]">
+                <p className="mt-1 text-sm text-(--ink-muted)">
                   Small shifts worth inspecting.
                 </p>
               </div>
               <Link
                 href={withFilterParam("/metrics?tab=flow", filters, activeRole)}
-                className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
               >
                 View metrics
               </Link>
@@ -271,9 +271,9 @@ export default async function Home({ searchParams }: HomePageProps) {
                   key={delta.metric}
                   href={buildExploreUrl({ metric: delta.metric, filters, role: activeRole })}
                   data-testid="delta-tile"
-                  className="group rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-4 transition hover:-translate-y-1 hover:shadow-lg"
+                  className="group rounded-3xl border border-(--card-stroke) bg-(--card) p-4 transition hover:-translate-y-1 hover:shadow-lg"
                 >
-                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                     <span>{delta.label}</span>
                     <span className={deltaAccent(delta.delta_pct)}>
                       {formatDelta(delta.delta_pct)}
@@ -282,7 +282,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   <p className="mt-4 text-2xl font-semibold">
                     {placeholderDeltas ? "--" : formatMetricValue(delta.value, delta.unit)}
                   </p>
-                  <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                  <p className="mt-3 text-xs text-(--ink-muted)">
                     Open evidence
                   </p>
                 </Link>
@@ -291,35 +291,35 @@ export default async function Home({ searchParams }: HomePageProps) {
           </section>
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
-              <h2 className="font-[var(--font-display)] text-2xl">Alerts and risks</h2>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+              <h2 className="font-(--font-display) text-2xl">Alerts and risks</h2>
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Short signals that deserve a quick drill-down.
               </p>
-              <div className="mt-4 space-y-3 text-sm text-[var(--ink-muted)]">
+              <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
                 {(home?.summary ?? []).map((sentence) => (
                   <Link
                     key={sentence.id}
                     href={buildExploreUrl({ api: sentence.evidence_link, filters, role: activeRole })}
-                    className="block rounded-2xl border border-transparent bg-[var(--card-60)] px-4 py-3 transition hover:border-[var(--card-stroke)]"
+                    className="block rounded-2xl border border-transparent bg-(--card-60) px-4 py-3 transition hover:border-(--card-stroke)"
                   >
                     {sentence.text}
                   </Link>
                 ))}
                 {!home?.summary?.length && (
-                  <p className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-4 py-3">
+                  <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3">
                     Summary will appear once data is ingested.
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <div className="flex items-center justify-between">
-                <h3 className="font-[var(--font-display)] text-xl">Recommended actions</h3>
+                <h3 className="font-(--font-display) text-xl">Recommended actions</h3>
                 <Link
                   href={withFilterParam("/opportunities", filters)}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   View all
                 </Link>
@@ -330,15 +330,15 @@ export default async function Home({ searchParams }: HomePageProps) {
                     <Link
                       key={key}
                       href={withFilterParam(tile.link, filters, activeRole)}
-                      className="group rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 transition hover:-translate-y-1"
+                      className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
                     >
-                      <p className="text-xs uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                      <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
                         {tile.title}
                       </p>
-                      <p className="mt-2 text-base font-semibold text-[var(--foreground)]">
+                      <p className="mt-2 text-base font-semibold text-foreground">
                         {tile.subtitle}
                       </p>
-                      <p className="mt-3 text-xs text-[var(--ink-muted)]">
+                      <p className="mt-3 text-xs text-(--ink-muted)">
                         Evidence
                       </p>
                     </Link>
@@ -346,15 +346,15 @@ export default async function Home({ searchParams }: HomePageProps) {
                   : null}
                 <Link
                   href={withFilterParam("/opportunities", filters, activeRole)}
-                  className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--accent)]/15 px-4 py-3"
+                  className="rounded-2xl border border-(--card-stroke) bg-(--accent)/15 px-4 py-3"
                 >
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                  <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                     Execute focus
                   </p>
                   <p className="mt-2 text-base font-semibold">
                     {home?.constraint.title ?? "Constraint pending"}
                   </p>
-                  <p className="mt-2 text-sm text-[var(--ink-muted)]">
+                  <p className="mt-2 text-sm text-(--ink-muted)">
                     {home?.constraint.claim ?? "Capture the limiting factor."}
                   </p>
                 </Link>
@@ -363,17 +363,17 @@ export default async function Home({ searchParams }: HomePageProps) {
           </section>
 
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-6">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-[var(--font-display)] text-xl">Focus constraint</h3>
+                <h3 className="font-(--font-display) text-xl">Focus constraint</h3>
                 <Link
                   href={buildExploreUrl({ metric: "review_latency", filters, role: activeRole })}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Open evidence
                 </Link>
               </div>
-              <p className="mt-3 text-sm text-[var(--ink-muted)]">
+              <p className="mt-3 text-sm text-(--ink-muted)">
                 {home?.constraint.claim ?? "Evidence will appear once data is ingested."}
               </p>
               <div className="mt-4 space-y-3 text-sm">
@@ -381,17 +381,17 @@ export default async function Home({ searchParams }: HomePageProps) {
                   <Link
                     key={`${item.label}-${idx}`}
                     href={buildExploreUrl({ api: item.link, filters, role: activeRole })}
-                    className="block rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-3"
+                    className="block rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                   >
                     {item.label}
                   </Link>
                 ))}
               </div>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--ink-muted)]">
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
                 {(home?.constraint.experiments ?? []).map((experiment) => (
                   <span
                     key={experiment}
-                    className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-1"
+                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
                   >
                     {experiment}
                   </span>
@@ -399,12 +399,12 @@ export default async function Home({ searchParams }: HomePageProps) {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-6">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-[var(--font-display)] text-xl">Recent events</h3>
+                <h3 className="font-(--font-display) text-xl">Recent events</h3>
                 <Link
                   href={buildExploreUrl({ filters, role: activeRole })}
-                  className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Open in Explore
                 </Link>
@@ -414,19 +414,19 @@ export default async function Home({ searchParams }: HomePageProps) {
                   <Link
                     key={`${event.type}-${idx}`}
                     href={buildExploreUrl({ api: event.link, filters, role: activeRole })}
-                    className="block rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3"
+                    className="block rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3"
                   >
-                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                       <span>{event.type}</span>
                       <span>{formatTimestamp(event.ts)}</span>
                     </div>
-                    <p className="mt-2 text-sm text-[var(--foreground)]">
+                    <p className="mt-2 text-sm text-foreground">
                       {event.text}
                     </p>
                   </Link>
                 ))}
                 {!home?.events?.length && (
-                  <p className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-[var(--ink-muted)]">
+                  <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card) px-4 py-3 text-(--ink-muted)">
                     No major shifts detected in the current window.
                   </p>
                 )}
@@ -436,20 +436,20 @@ export default async function Home({ searchParams }: HomePageProps) {
 
           <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
-              <h3 className="font-[var(--font-display)] text-xl">Investment mix</h3>
-              <p className="mt-2 text-sm text-[var(--ink-muted)]">
+              <h3 className="font-(--font-display) text-xl">Investment mix</h3>
+              <p className="mt-2 text-sm text-(--ink-muted)">
                 Live work allocation preview for the current scope.
               </p>
               <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
                 <Link
                   href={withFilterParam("/work", filters, activeRole)}
-                  className="text-[var(--accent-2)]"
+                  className="text-(--accent-2)"
                 >
                   Open Work view
                 </Link>
                 <Link
                   href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}
-                  className="text-[var(--accent-2)]"
+                  className="text-(--accent-2)"
                 >
                   Open in Explore
                 </Link>

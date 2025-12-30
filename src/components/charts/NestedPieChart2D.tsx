@@ -79,18 +79,19 @@ export function NestedPieChart2D({
         tooltip: {
           trigger: "item",
           confine: true,
-          formatter: (params: {
-            seriesName: string;
-            name: string;
-            value: number | string;
-            percent: number;
-          }) => {
-            const value = typeof params.value === "number" ? params.value.toFixed(0) : params.value;
+          formatter: (params: unknown) => {
+            const p = params as {
+              seriesName: string;
+              name: string;
+              percent: number;
+              value: number | string;
+            };
+            const value = typeof p.value === "number" ? p.value.toFixed(0) : p.value;
             return `
-              <div style="font-weight: 600; margin-bottom: 4px;">${params.seriesName}</div>
-              <div style="font-[var(--font-mono)]">
-                ${params.name}: <strong>${value}</strong> ${unit}
-                <span style="color: ${chartTheme.muted}; margin-left: 8px;">(${params.percent}%)</span>
+              <div style="font-weight: 600; margin-bottom: 4px;">${p.seriesName}</div>
+              <div style="font-(--font-mono)">
+                ${p.name}: <strong>${value}</strong> ${unit}
+                <span style="color: ${chartTheme.muted}; margin-left: 8px;">(${p.percent}%)</span>
               </div>
             `;
           },

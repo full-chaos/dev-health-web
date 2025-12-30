@@ -43,7 +43,7 @@ export function RoleSelector({ className }: RoleSelectorProps) {
             className={`flex flex-wrap items-center gap-2 ${className ?? ""}`}
             data-testid="role-selector"
         >
-            <span className="text-[10px] uppercase tracking-[0.25em] text-[var(--ink-muted)]">
+            <span className="text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)">
                 Start from
             </span>
             <div className="flex flex-wrap gap-1">
@@ -56,8 +56,8 @@ export function RoleSelector({ className }: RoleSelectorProps) {
                             type="button"
                             onClick={() => handleRoleChange(role)}
                             className={`rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] transition ${isActive
-                                    ? "border-[var(--accent-2)] bg-[var(--accent-2)]/15 text-[var(--accent-2)]"
-                                    : "border-[var(--card-stroke)] bg-[var(--card-80)] text-[var(--ink-muted)] hover:border-[var(--accent-2)]/40 hover:text-[var(--foreground)]"
+                                ? "border-(--accent-2) bg-(--accent-2)/15 text-(--accent-2)"
+                                : "border-(--card-stroke) bg-(--card-80) text-(--ink-muted) hover:border-(--accent-2)/40 hover:text-foreground"
                                 }`}
                             aria-pressed={isActive}
                             title={config.framing}

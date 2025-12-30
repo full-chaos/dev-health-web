@@ -28,38 +28,38 @@ export function ContextStrip({ filters, origin }: ContextStripProps) {
     if (!isVisible) return null;
 
     return (
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--accent-2)]/20 bg-[var(--accent-2)]/5 px-4 py-2.5 text-[11px] animate-in fade-in slide-in-from-top-2 duration-500">
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-(--accent-2)/20 bg-(--accent-2)/5 px-4 py-2.5 text-[11px] animate-in fade-in slide-in-from-top-2 duration-500">
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
                 {origin && (
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-wider text-[var(--accent-2)] font-bold">
+                        <span className="text-[10px] uppercase tracking-wider text-(--accent-2) font-bold">
                             Investigation Origin
                         </span>
-                        <span className="text-[var(--foreground)] font-medium">
+                        <span className="text-foreground font-medium">
                             {origin}
                         </span>
                     </div>
                 )}
-                <div className="flex items-center gap-2 border-l border-[var(--card-stroke)] pl-6 first:border-0 first:pl-0">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--ink-muted)] font-semibold">
+                <div className="flex items-center gap-2 border-l border-(--card-stroke) pl-6 first:border-0 first:pl-0">
+                    <span className="text-[10px] uppercase tracking-wider text-(--ink-muted) font-semibold">
                         Scope
                     </span>
-                    <span className="text-[var(--foreground)] capitalize">
+                    <span className="text-foreground capitalize">
                         {scopeLabel}
                     </span>
                 </div>
-                <div className="flex items-center gap-2 border-l border-[var(--card-stroke)] pl-6">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--ink-muted)] font-semibold">
+                <div className="flex items-center gap-2 border-l border-(--card-stroke) pl-6">
+                    <span className="text-[10px] uppercase tracking-wider text-(--ink-muted) font-semibold">
                         Time
                     </span>
-                    <span className="text-[var(--foreground)]">
+                    <span className="text-foreground">
                         {timeLabel}
                     </span>
                 </div>
             </div>
             <button
                 onClick={() => setIsVisible(false)}
-                className="text-[var(--ink-muted)] hover:text-[var(--foreground)] transition-colors p-1"
+                className="text-(--ink-muted) hover:text-foreground transition-colors p-1"
                 title="Dismiss context"
             >
                 ✕

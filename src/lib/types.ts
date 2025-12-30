@@ -322,3 +322,5 @@ export type AggregatedFlameResponse = {
   meta: AggregatedFlameMeta;
 };
 
+export * from "./filters/types";
+

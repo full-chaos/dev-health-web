@@ -6,7 +6,8 @@ import { InvestmentChart } from "@/components/investment/InvestmentChart";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatNumber, formatPercent } from "@/lib/formatters";
-import type { MetricDelta, MetricFilter, QuadrantResponse, InvestmentResponse } from "@/lib/types";
+import type { MetricDelta, QuadrantResponse, InvestmentResponse } from "@/lib/types";
+import type { MetricFilter } from "@/lib/filters/types";
 
 type LandscapeViewProps = {
     filters: MetricFilter;
@@ -121,10 +122,10 @@ export function LandscapeView({
             </section>
 
             <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-5">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h2 className="font-[var(--font-display)] text-xl">Investment Mix</h2>
-                        <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]">
+                        <h2 className="font-(--font-display) text-xl">Investment Mix</h2>
+                        <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
                             <Link href={withFilterParam("/work?tab=flow", filters, activeRole)}>
                                 View flow
                             </Link>
@@ -137,50 +138,50 @@ export function LandscapeView({
                         {nested.categories.length ? (
                             <InvestmentChart categories={nested.categories} subtypes={nested.subtypes} />
                         ) : (
-                            <div className="flex h-[280px] items-center justify-center rounded-3xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] text-sm text-[var(--ink-muted)]">
+                            <div className="flex h-[280px] items-center justify-center rounded-3xl border border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                                 Investment data unavailable.
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card-80)] p-5">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <div className="flex items-center justify-between">
-                        <h2 className="font-[var(--font-display)] text-xl">Planned vs Unplanned</h2>
+                        <h2 className="font-(--font-display) text-xl">Planned vs Unplanned</h2>
                         <Link
                             href={withFilterParam("/work?tab=flow", filters, activeRole)}
-                            className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
                             View flow
                         </Link>
                     </div>
                     {planned && unplanned ? (
                         <div className="mt-4 space-y-4">
-                            <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3">
-                                <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                            <div className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3">
+                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Planned
                                 </p>
                                 <p className="mt-2 text-2xl font-semibold">
                                     {formatPercent((plannedPct ?? 0) * 100)}
                                 </p>
-                                <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                                <p className="mt-2 text-xs text-(--ink-muted)">
                                     {formatNumber(planned.value)} units
                                 </p>
                             </div>
-                            <div className="rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3">
-                                <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+                            <div className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3">
+                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Unplanned
                                 </p>
                                 <p className="mt-2 text-2xl font-semibold">
                                     {formatPercent((unplannedPct ?? 0) * 100)}
                                 </p>
-                                <p className="mt-2 text-xs text-[var(--ink-muted)]">
+                                <p className="mt-2 text-xs text-(--ink-muted)">
                                     {formatNumber(unplanned.value)} units
                                 </p>
                             </div>
                         </div>
                     ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] px-4 py-4 text-sm text-[var(--ink-muted)]">
+                        <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4 text-sm text-(--ink-muted)">
                             Planned vs unplanned requires tagged work categories.
                         </div>
                     )}

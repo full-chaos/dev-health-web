@@ -12,7 +12,6 @@ type FlameViewProps = {
 
 export function FlameView({ filters }: FlameViewProps) {
     const searchParams = useSearchParams();
-    const useSampleData = process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
     // State from URL or defaults
     const modeParam = searchParams.get("mode") as AggregatedFlameMode | null;
@@ -66,11 +65,11 @@ export function FlameView({ filters }: FlameViewProps) {
 
     return (
         <div className="flex flex-col gap-6">
-            <section className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--card)] p-6">
+            <section className="rounded-3xl border border-(--card-stroke) bg-card p-6">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                     <div>
-                        <h2 className="text-xl font-[var(--font-display)]">{modeLabels[mode]}</h2>
-                        <p className="mt-1 text-sm text-[var(--ink-muted)]">
+                        <h2 className="text-xl font-(--font-display)">{modeLabels[mode]}</h2>
+                        <p className="mt-1 text-sm text-(--ink-muted)">
                             Analyze decomposition and bottlenecks in this surface.
                         </p>
                     </div>
@@ -80,8 +79,8 @@ export function FlameView({ filters }: FlameViewProps) {
                                 key={m}
                                 onClick={() => setMode(m)}
                                 className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${mode === m
-                                    ? "border-[var(--accent-2)] bg-[var(--accent-2)] text-white"
-                                    : "border-[var(--card-stroke)] text-[var(--ink-muted)] hover:border-[var(--card-stroke)]/60"
+                                    ? "border-(--accent-2) bg-(--accent-2) text-white"
+                                    : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
                                     }`}
                             >
                                 {modeLabels[m]}
@@ -92,8 +91,8 @@ export function FlameView({ filters }: FlameViewProps) {
 
                 <div className="relative min-h-[400px]">
                     {loading && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--card)]/50 backdrop-blur-sm rounded-2xl">
-                            <p className="text-sm text-[var(--ink-muted)] animate-pulse">Loading flame data...</p>
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
+                            <p className="text-sm text-(--ink-muted) animate-pulse">Loading flame data...</p>
                         </div>
                     )}
                     {hasData ? (
@@ -103,16 +102,16 @@ export function FlameView({ filters }: FlameViewProps) {
                             height={500}
                         />
                     ) : !loading && (
-                        <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-70)] text-sm text-[var(--ink-muted)]">
+                        <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
                             No flame data available for this scope and window.
                         </div>
                     )}
                 </div>
 
                 {contextNode && hasData && (
-                    <div className="mt-4 p-3 rounded-xl bg-[var(--accent-2)]/10 border border-[var(--accent-2)]/20 text-[11px] text-[var(--ink-muted)]">
-                        <span className="font-semibold text-[var(--accent-2)] uppercase tracking-wider mr-2">Context:</span>
-                        Analyzing decomposition starting from node <span className="text-[var(--foreground)] font-mono">{contextNode}</span>
+                    <div className="mt-4 p-3 rounded-xl bg-(--accent-2)/10 border border-(--accent-2)/20 text-[11px] text-(--ink-muted)">
+                        <span className="font-semibold text-(--accent-2) uppercase tracking-wider mr-2">Context:</span>
+                        Analyzing decomposition starting from node <span className="text-foreground font-mono">{contextNode}</span>
                     </div>
                 )}
             </section>
