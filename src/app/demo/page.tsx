@@ -25,6 +25,7 @@ import {
   toWorkItemTypeDonutData,
 } from "@/lib/chartTransforms";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import type { MetricFilter } from "@/lib/filters/types";
 import type { FlameFrame, HeatmapResponse, QuadrantResponse } from "@/lib/types";
 
 export default function Home() {
@@ -240,7 +241,7 @@ export default function Home() {
     ],
     annotations: [],
   };
-  const demoFilters = {
+  const demoFilters: MetricFilter = {
     ...defaultMetricFilter,
     time: {
       range_days: 7,

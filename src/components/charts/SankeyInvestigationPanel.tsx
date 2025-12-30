@@ -33,16 +33,43 @@ export function SankeyInvestigationPanel({
   point,
 }: SankeyInvestigationPanelProps) {
   const router = useRouter();
-  const [mode, setMode] = useState<SankeyMode>("investment");
-  const [dataset, setDataset] = useState<SankeyDataset | null>(null);
-  const [loading, setLoading] = useState(true);
   const useSampleData =
     process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+  const [mode, setMode] = useState<SankeyMode>("investment");
+  const [dataset, setDataset] = useState<SankeyDataset | null>(null);
+  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
+
+  const requestPayload = useMemo(
+    () => ({
+      mode,
+      filters,
+      context: {
+        entity_id: point.entity_id,
+        entity_label: point.entity_label,
+      },
+      window_start: point.window_start,
+      window_end: point.window_end,
+    }),
+    [
+      filters,
+      mode,
+      point.entity_id,
+      point.entity_label,
+      point.window_end,
+      point.window_start,
+    ],
+  );
+  const requestKey = useMemo(
+    () => JSON.stringify(requestPayload),
+    [requestPayload],
+  );
 
   const definition = useMemo(() => getSankeyDefinition(mode), [mode]);
+  const sampleDataset = useMemo(
+    () => (useSampleData ? buildSankeyDataset(mode) : null),
+    [mode, useSampleData],
+  );
   const selectionLabel = point.entity_label ? point.entity_label : "Selected dot";
-  const panelLabel = dataset?.label ?? definition.label;
-  const panelDescription = dataset?.description ?? definition.description;
   const scopeSummary = useMemo(() => {
     const level = filters.scope.level;
     if (filters.scope.ids.length) {
@@ -54,25 +81,11 @@ export function SankeyInvestigationPanel({
   useEffect(() => {
     let active = true;
     if (useSampleData) {
-      const sample = buildSankeyDataset(mode);
-      if (active) {
-        setDataset(sample);
-        setLoading(false);
-      }
       return () => {
         active = false;
       };
     }
-    getSankey({
-      mode,
-      filters,
-      context: {
-        entity_id: point.entity_id,
-        entity_label: point.entity_label,
-      },
-      window_start: point.window_start,
-      window_end: point.window_end,
-    })
+    getSankey(requestPayload)
       .then((response) => {
         if (!active) {
           return;
@@ -97,7 +110,7 @@ export function SankeyInvestigationPanel({
       })
       .finally(() => {
         if (active) {
-          setLoading(false);
+          setResolvedKey(requestKey);
         }
       });
     return () => {
@@ -107,12 +120,9 @@ export function SankeyInvestigationPanel({
     definition.description,
     definition.label,
     definition.unit,
-    filters,
     mode,
-    point.entity_id,
-    point.entity_label,
-    point.window_end,
-    point.window_start,
+    requestKey,
+    requestPayload,
     useSampleData,
   ]);
 
@@ -121,8 +131,6 @@ export function SankeyInvestigationPanel({
       return;
     }
     setMode(nextMode);
-    setDataset(null);
-    setLoading(true);
   };
 
   const handleItemClick = (item: {
@@ -145,9 +153,20 @@ export function SankeyInvestigationPanel({
     router.push(href);
   };
 
-  const resolvedDataset =
-    dataset && dataset.nodes.length && dataset.links.length ? dataset : null;
-  const hasDataset = Boolean(resolvedDataset);
+  const resolvedDataset = useSampleData
+    ? sampleDataset
+    : resolvedKey === requestKey
+      ? dataset
+      : null;
+  const panelLabel = resolvedDataset?.label ?? definition.label;
+  const panelDescription =
+    resolvedDataset?.description ?? definition.description;
+  const isLoading = useSampleData ? false : resolvedKey !== requestKey;
+  const normalizedDataset =
+    resolvedDataset && resolvedDataset.nodes.length && resolvedDataset.links.length
+      ? resolvedDataset
+      : null;
+  const hasDataset = Boolean(normalizedDataset);
 
   return (
     <div
@@ -190,18 +209,18 @@ export function SankeyInvestigationPanel({
         ))}
       </div>
       <div className="mt-3 overflow-x-auto">
-        {resolvedDataset ? (
+        {normalizedDataset ? (
           <SankeyChart
-            nodes={resolvedDataset.nodes}
-            links={resolvedDataset.links}
-            unit={resolvedDataset.unit}
+            nodes={normalizedDataset.nodes}
+            links={normalizedDataset.links}
+            unit={normalizedDataset.unit}
             height={260}
             style={{ minWidth: 560 }}
             onItemClick={handleItemClick}
           />
         ) : (
           <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card)] p-4 text-[11px] text-[var(--ink-muted)]">
-            {loading
+            {isLoading
               ? "Loading Sankey data..."
               : "Not enough data in the current scope and time window."}
           </div>
