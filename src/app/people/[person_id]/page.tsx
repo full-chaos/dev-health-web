@@ -111,12 +111,12 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
     | undefined;
   const normalizeSources = (input: typeof rawSources) => {
     if (!input) {
-      return { list: [], hasData: false };
+      return [];
     }
     if (Array.isArray(input)) {
-      return { list: input, hasData: true };
+      return input;
     }
-    const list = Object.entries(input).map(([key, status]) => ({
+    return Object.entries(input).map(([key, status]) => ({
       key,
       label: key
         .replace(/[_-]+/g, " ")
@@ -127,9 +127,8 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
       last_seen_at: null,
       status,
     }));
-    return { list, hasData: true };
   };
-  const { list: sources, hasData: hasSources } = normalizeSources(rawSources);
+  const sources = normalizeSources(rawSources);
   const narrative = summary?.narrative ?? [];
   const workMix = summary?.sections?.work_mix;
   const flowBreakdown = summary?.sections?.flow_breakdown;

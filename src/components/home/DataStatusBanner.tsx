@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/formatters";
 import { buildExploreUrl } from "@/lib/filters/url";
@@ -21,10 +21,12 @@ export function DataStatusBanner({
   coverageLow,
   filters,
 }: DataStatusBannerProps) {
-  const cachedAt =
-    typeof window === "undefined" ? null : localStorage.getItem(STORAGE_KEY);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   useEffect(() => {
+    const stored =
+      typeof window === "undefined" ? null : localStorage.getItem(STORAGE_KEY);
+    setCachedAt(stored);
     if (lastIngestedAt) {
       localStorage.setItem(STORAGE_KEY, lastIngestedAt);
     }

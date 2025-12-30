@@ -83,12 +83,12 @@ export default async function Home({ searchParams }: HomePageProps) {
     | undefined;
   const normalizeSources = (input: typeof rawSources) => {
     if (!input) {
-      return { list: [], hasData: false };
+      return [];
     }
     if (Array.isArray(input)) {
-      return { list: input, hasData: true };
+      return input;
     }
-    const list = Object.entries(input).map(([key, status]) => ({
+    return Object.entries(input).map(([key, status]) => ({
       key,
       label: key
         .replace(/[_-]+/g, " ")
@@ -99,9 +99,9 @@ export default async function Home({ searchParams }: HomePageProps) {
       last_seen_at: null,
       status,
     }));
-    return { list, hasData: true };
   };
-  const { list: sourceList, hasData: hasSources } = normalizeSources(rawSources);
+  const sourceList = normalizeSources(rawSources);
+  const hasSourceData = sourceList.length > 0;
   const hasRepoSources = sourceList.some(
     (source) => source.key === "github" || source.key === "gitlab"
   );
@@ -161,34 +161,20 @@ export default async function Home({ searchParams }: HomePageProps) {
                     className="mt-3 grid grid-cols-2 gap-3 text-xs text-[var(--ink-muted)]"
                     data-testid="system-status-sources"
                   >
-                    {hasSources ? (
-                      sourceList.length ? (
-                        sourceList.map((source) => (
-                          <div
-                            key={source.key}
-                            className="flex items-center justify-between rounded-2xl bg-[var(--card-70)] px-3 py-2"
-                          >
-                            <span className="uppercase tracking-[0.2em]">
-                              {source.label}
-                            </span>
-                            <span className="font-semibold text-[var(--foreground)]">
-                              {source.status}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="col-span-2 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-2">
-                          <p>No integrations have ingested data yet.</p>
-                          {setupHref ? (
-                            <Link
-                              href={setupHref}
-                              className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
-                            >
-                              Go to setup
-                            </Link>
-                          ) : null}
+                    {hasSourceData ? (
+                      sourceList.map((source) => (
+                        <div
+                          key={source.key}
+                          className="flex items-center justify-between rounded-2xl bg-[var(--card-70)] px-3 py-2"
+                        >
+                          <span className="uppercase tracking-[0.2em]">
+                            {source.label}
+                          </span>
+                          <span className="font-semibold text-[var(--foreground)]">
+                            {source.status}
+                          </span>
                         </div>
-                      )
+                      ))
                     ) : (
                       <div
                         className="col-span-2 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-2"
@@ -214,7 +200,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                         {formatPercent(coverage.issues_with_cycle_states_pct)}
                       </p>
                     </>
-                  ) : hasSources ? (
+                  ) : hasSourceData ? (
                     <p className="mt-3 text-sm text-[var(--ink-muted)]">
                       Insufficient data to calculate coverage.
                       {setupHref ? (
