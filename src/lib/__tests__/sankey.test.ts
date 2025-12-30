@@ -12,4 +12,12 @@ describe("buildSankeyDataset", () => {
       expect(new Set(names).size).toBe(names.length);
     });
   });
+
+  it("builds state flow with issue, PR, and deployment nodes", () => {
+    const dataset = buildSankeyDataset("state");
+    const names = dataset.nodes.map((node) => node.name);
+    expect(names).toContain("Issue Backlog");
+    expect(names).toContain("PR Draft");
+    expect(names).toContain("Deployment Build");
+  });
 });

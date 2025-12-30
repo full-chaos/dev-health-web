@@ -13,6 +13,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       DEV_HEALTH_TEST_MODE: "true",
+      NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
     },
   },
 });

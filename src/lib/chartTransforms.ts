@@ -1,7 +1,7 @@
 import type {
+  FlowTransitionSummary,
   WorkItemFlowEfficiencyDaily,
   WorkItemMetricsDaily,
-  WorkItemStatusTransitionSummary,
   WorkItemTypeByScope,
   WorkItemTypeSummary,
 } from "@/data/devHealthOpsTypes";
@@ -228,7 +228,7 @@ export const toNestedPieData = (data: WorkItemTypeByScope[]) => {
   return { categories, subtypes };
 };
 
-export const toSankeyData = (data: WorkItemStatusTransitionSummary[]) => {
+export const toSankeyData = (data: FlowTransitionSummary[]) => {
   const linkTotals = new Map<string, number>();
   data.forEach((entry) => {
     const source = titleCase(entry.fromStatus);

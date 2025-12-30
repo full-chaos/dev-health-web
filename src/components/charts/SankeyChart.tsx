@@ -39,12 +39,47 @@ export function SankeyChart({
     width,
     ...style,
   };
+  const incomingTotals = new Map<string, number>();
+  const outgoingTotals = new Map<string, number>();
+  const nodeValueByName = new Map<string, number>();
+  links.forEach((link) => {
+    outgoingTotals.set(
+      link.source,
+      (outgoingTotals.get(link.source) ?? 0) + link.value
+    );
+    incomingTotals.set(
+      link.target,
+      (incomingTotals.get(link.target) ?? 0) + link.value
+    );
+  });
+  nodes.forEach((node) => {
+    const incoming = incomingTotals.get(node.name) ?? 0;
+    const outgoing = outgoingTotals.get(node.name) ?? 0;
+    nodeValueByName.set(node.name, Math.max(incoming, outgoing));
+  });
+  const rootTotal = nodes.reduce((total, node) => {
+    const incoming = incomingTotals.get(node.name) ?? 0;
+    if (incoming === 0) {
+      return total + (outgoingTotals.get(node.name) ?? 0);
+    }
+    return total;
+  }, 0);
+  const totalFlow =
+    rootTotal > 0
+      ? rootTotal
+      : links.reduce((total, link) => total + link.value, 0);
 
   const formatValue = (value?: number) => {
     if (typeof value !== "number" || Number.isNaN(value)) {
       return "--";
     }
     return `${value.toFixed(0)} ${unit}`;
+  };
+  const formatPercent = (value: number, total: number) => {
+    if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
+      return "--";
+    }
+    return `${((value / total) * 100).toFixed(1)}%`;
   };
 
   const handleClick = (params: unknown) => {
@@ -84,13 +119,28 @@ export function SankeyChart({
             };
             const data = entry.data ?? {};
             if (entry.dataType === "edge") {
+              const totalFromSource =
+                data.source && outgoingTotals.has(data.source)
+                  ? outgoingTotals.get(data.source) ?? 0
+                  : 0;
+              const shareLine =
+                totalFromSource > 0 && typeof data.value === "number"
+                  ? `<br/>${formatPercent(data.value, totalFromSource)} of source`
+                  : "";
               return `${data.source ?? ""} -> ${data.target ?? ""}<br/>${formatValue(
                 data.value
-              )}`;
+              )}${shareLine}`;
             }
-            return `${data.name ?? entry.name ?? ""}<br/>${formatValue(
-              data.value
-            )}`;
+            const nodeName = data.name ?? entry.name ?? "";
+            const nodeValue =
+              typeof data.value === "number"
+                ? data.value
+                : nodeValueByName.get(nodeName) ?? 0;
+            const shareLine =
+              totalFlow > 0
+                ? `<br/>${formatPercent(nodeValue, totalFlow)} of total`
+                : "";
+            return `${nodeName}<br/>${formatValue(nodeValue)}${shareLine}`;
           },
         },
         series: [
@@ -99,6 +149,7 @@ export function SankeyChart({
             emphasis: { focus: "adjacency" },
             data: nodes,
             links,
+            roam: false,
             lineStyle: { color: "gradient", curveness: 0.5, opacity: 0.45 },
             label: { color: chartTheme.text, fontSize: 11 },
             itemStyle: {

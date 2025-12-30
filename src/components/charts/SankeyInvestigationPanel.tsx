@@ -8,6 +8,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { QuadrantPoint, SankeyMode } from "@/lib/types";
 import {
   SANKEY_MODES,
+  buildSankeyDataset,
   buildSankeyEvidenceUrl,
   getSankeyDefinition,
   type SankeyDataset,
@@ -35,14 +36,33 @@ export function SankeyInvestigationPanel({
   const [mode, setMode] = useState<SankeyMode>("investment");
   const [dataset, setDataset] = useState<SankeyDataset | null>(null);
   const [loading, setLoading] = useState(true);
+  const useSampleData =
+    process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
   const definition = useMemo(() => getSankeyDefinition(mode), [mode]);
   const selectionLabel = point.entity_label ? point.entity_label : "Selected dot";
   const panelLabel = dataset?.label ?? definition.label;
   const panelDescription = dataset?.description ?? definition.description;
+  const scopeSummary = useMemo(() => {
+    const level = filters.scope.level;
+    if (filters.scope.ids.length) {
+      return `${level}: ${filters.scope.ids.join(", ")}`;
+    }
+    return `${level}: all`;
+  }, [filters.scope.ids, filters.scope.level]);
 
   useEffect(() => {
     let active = true;
+    if (useSampleData) {
+      const sample = buildSankeyDataset(mode);
+      if (active) {
+        setDataset(sample);
+        setLoading(false);
+      }
+      return () => {
+        active = false;
+      };
+    }
     getSankey({
       mode,
       filters,
@@ -93,6 +113,7 @@ export function SankeyInvestigationPanel({
     point.entity_label,
     point.window_end,
     point.window_start,
+    useSampleData,
   ]);
 
   const handleModeChange = (nextMode: SankeyMode) => {
@@ -129,7 +150,10 @@ export function SankeyInvestigationPanel({
   const hasDataset = Boolean(resolvedDataset);
 
   return (
-    <div className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4 text-xs text-[var(--ink-muted)]">
+    <div
+      className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-4 text-xs text-[var(--ink-muted)]"
+      data-testid="sankey-investigation-panel"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--ink-muted)]">
@@ -140,6 +164,9 @@ export function SankeyInvestigationPanel({
           </p>
           <p className="mt-1 text-[11px] text-[var(--ink-muted)]">
             {panelDescription}
+          </p>
+          <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+            Scope: {scopeSummary}
           </p>
         </div>
         <div className="text-[10px] uppercase tracking-[0.25em] text-[var(--ink-muted)]">
@@ -176,13 +203,13 @@ export function SankeyInvestigationPanel({
           <div className="rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card)] p-4 text-[11px] text-[var(--ink-muted)]">
             {loading
               ? "Loading Sankey data..."
-              : "Sankey data unavailable for this selection."}
+              : "Not enough data in the current scope and time window."}
           </div>
         )}
       </div>
       {hasDataset ? (
         <p className="mt-2 text-[11px] text-[var(--ink-muted)]">
-          Click a node to open evidence lists for this scope and window.
+          Click a node or link to open evidence lists for this scope and window.
         </p>
       ) : null}
     </div>

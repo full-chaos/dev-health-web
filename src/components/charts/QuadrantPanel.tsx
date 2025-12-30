@@ -206,6 +206,12 @@ export function QuadrantPanel({
     }
     return items;
   }, [data, showZoneOverlay, zoneOverlay]);
+  const selectablePoints = useMemo(() => {
+    if (!data?.points?.length) {
+      return [];
+    }
+    return data.points.length <= 6 ? data.points : [];
+  }, [data]);
   const activeHoveredOverlayKey = useMemo(() => {
     if (!showZoneOverlay || !hoveredOverlayKey) {
       return null;
@@ -668,7 +674,7 @@ export function QuadrantPanel({
               onClick={() => setShowSankey((prev) => !prev)}
               className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
             >
-              {showSankey ? "Hide Sankey" : "Sankey: Investment Flow"}
+              {showSankey ? "Hide Sankey" : "View investment flow"}
             </button>
           </div>
           {showZoneMenu && showZoneQuestions ? (
@@ -719,9 +725,23 @@ export function QuadrantPanel({
           ) : null}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-[var(--ink-muted)]">
-          Select a dot to open investigation steps.
-        </p>
+        <div className="mt-3 text-xs text-[var(--ink-muted)]">
+          <p>Select a dot to open investigation steps.</p>
+          {selectablePoints.length ? (
+            <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
+              {selectablePoints.map((point) => (
+                <button
+                  key={point.entity_id}
+                  type="button"
+                  onClick={() => handlePointSelect(point)}
+                  className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-1 text-[var(--accent-2)]"
+                >
+                  {point.entity_label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       )}
       {supplementalLinks.length ? (
         <div className="mt-4 flex flex-wrap gap-3 text-xs">

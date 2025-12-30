@@ -5,13 +5,14 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { NestedPieChart2D } from "@/components/charts/NestedPieChart2D";
 import { NestedPieChart3D } from "@/components/charts/NestedPieChart3D";
 import { QuadrantChart } from "@/components/charts/QuadrantChart";
+import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
 import {
+  sankeyStateTransitionSample,
   workItemFlowEfficiencyDailySample,
   workItemMetricsDailySample,
-  workItemStatusTransitionSample,
   workItemTypeByScopeSample,
   workItemTypeSummarySample,
 } from "@/data/devHealthOpsSample";
@@ -23,6 +24,7 @@ import {
   toThroughputBarSeries,
   toWorkItemTypeDonutData,
 } from "@/lib/chartTransforms";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { FlameFrame, HeatmapResponse, QuadrantResponse } from "@/lib/types";
 
 export default function Home() {
@@ -35,7 +37,7 @@ export default function Home() {
   });
   const donut = toWorkItemTypeDonutData(workItemTypeSummarySample);
   const nestedPie = toNestedPieData(workItemTypeByScopeSample);
-  const sankey = toSankeyData(workItemStatusTransitionSample);
+  const sankey = toSankeyData(sankeyStateTransitionSample);
   const heatmapAxesX = ["09", "10", "11", "12", "13", "14", "15", "16", "17"];
   const heatmapAxesY = ["Mon", "Tue", "Wed", "Thu", "Fri"];
   const heatmapValues = [
@@ -238,6 +240,19 @@ export default function Home() {
     ],
     annotations: [],
   };
+  const demoFilters = {
+    ...defaultMetricFilter,
+    time: {
+      range_days: 7,
+      compare_days: 7,
+      start_date: "2025-01-01",
+      end_date: "2025-01-07",
+    },
+    scope: {
+      level: "team",
+      ids: ["core"],
+    },
+  };
   const icFocusIds = ["ic-1"];
 
   return (
@@ -393,6 +408,16 @@ export default function Home() {
             height={280}
             focusEntityIds={quadrantFocusIds}
             scopeType="team"
+          />
+        </section>
+
+        <section data-testid="quadrant-investigation">
+          <QuadrantPanel
+            title="Quadrant investigation"
+            description="Open a dot to review investigation paths and Sankey flows."
+            data={quadrantData}
+            filters={demoFilters}
+            emptyState="Quadrant data unavailable for this scope."
           />
         </section>
 
