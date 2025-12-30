@@ -12,7 +12,7 @@ import { decodeFilter } from "@/lib/filters/encode";
 import { formatMetricValue, formatNumber, formatPercent, formatTimestamp } from "@/lib/formatters";
 import { getMetricLabel, getMetricUnit } from "@/lib/metrics/catalog";
 import { getRangeParams, withRangeParams } from "@/lib/people/query";
-import type { MetricDelta, PersonCollaborationStat } from "@/lib/types";
+import type { Freshness, MetricDelta, PersonCollaborationStat } from "@/lib/types";
 
 const PERSON_METRIC_KEYS = [
   "cycle_time",
@@ -104,6 +104,32 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
   const deltas = summary?.deltas?.length ? summary.deltas : fallbackPersonDeltas;
   const placeholderDeltas = !summary?.deltas?.length;
   const person = summary?.person;
+  const rawSources = summary?.freshness.sources as
+    | Freshness["sources"]
+    | Record<string, string>
+    | null
+    | undefined;
+  const normalizeSources = (input: typeof rawSources) => {
+    if (!input) {
+      return { list: [], hasData: false };
+    }
+    if (Array.isArray(input)) {
+      return { list: input, hasData: true };
+    }
+    const list = Object.entries(input).map(([key, status]) => ({
+      key,
+      label: key
+        .replace(/[_-]+/g, " ")
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" "),
+      last_seen_at: null,
+      status,
+    }));
+    return { list, hasData: true };
+  };
+  const { list: sources, hasData: hasSources } = normalizeSources(rawSources);
   const narrative = summary?.narrative ?? [];
   const workMix = summary?.sections?.work_mix;
   const flowBreakdown = summary?.sections?.flow_breakdown;
@@ -285,15 +311,17 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                   </span>
                 </div>
                 <div className="mt-3 grid gap-2 text-xs">
-                  {summary?.freshness.sources ? (
-                    Object.entries(summary.freshness.sources).map(([key, value]) => (
+                  {sources.length ? (
+                    sources.map((source) => (
                       <div
-                        key={key}
+                        key={source.key}
                         className="flex items-center justify-between rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] px-3 py-2"
                       >
-                        <span className="uppercase tracking-[0.2em]">{key}</span>
+                        <span className="uppercase tracking-[0.2em]">
+                          {source.label}
+                        </span>
                         <span className="font-semibold text-[var(--foreground)]">
-                          {value}
+                          {source.status}
                         </span>
                       </div>
                     ))

@@ -76,13 +76,46 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   const home = await loadHome(filters);
   const coverage = home?.freshness.coverage;
-  const coverageLow = coverage ? coverage.repos_covered_pct < 70 : false;
+  const rawSources = home?.freshness.sources as
+    | HomeResponse["freshness"]["sources"]
+    | Record<string, string>
+    | null
+    | undefined;
+  const normalizeSources = (input: typeof rawSources) => {
+    if (!input) {
+      return { list: [], hasData: false };
+    }
+    if (Array.isArray(input)) {
+      return { list: input, hasData: true };
+    }
+    const list = Object.entries(input).map(([key, status]) => ({
+      key,
+      label: key
+        .replace(/[_-]+/g, " ")
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" "),
+      last_seen_at: null,
+      status,
+    }));
+    return { list, hasData: true };
+  };
+  const { list: sourceList, hasData: hasSources } = normalizeSources(rawSources);
+  const hasRepoSources = sourceList.some(
+    (source) => source.key === "github" || source.key === "gitlab"
+  );
+  const hasWorkSources = sourceList.some((source) => source.key === "jira");
+  const coverageReady = hasRepoSources && hasWorkSources;
+  const coverageLow = coverageReady && coverage ? coverage.repos_covered_pct < 70 : false;
   const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
   const scopeDetail = filters.scope.ids.length
     ? filters.scope.ids.join(", ")
     : `all ${filters.scope.level}s`;
+  const setupLink = home?.tiles?.measure?.link;
+  const setupHref = setupLink ? withFilterParam(setupLink, filters) : null;
 
   return (
     <div className="min-h-screen bg-[image:var(--hero-gradient)] text-[var(--foreground)]">
@@ -124,21 +157,42 @@ export default async function Home({ searchParams }: HomePageProps) {
                       System status
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[var(--ink-muted)]">
-                    {home?.freshness.sources ? (
-                      Object.entries(home.freshness.sources).map(([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between rounded-2xl bg-[var(--card-70)] px-3 py-2"
-                        >
-                          <span className="uppercase tracking-[0.2em]">{key}</span>
-                          <span className="font-semibold text-[var(--foreground)]">
-                            {value}
-                          </span>
+                  <div
+                    className="mt-3 grid grid-cols-2 gap-3 text-xs text-[var(--ink-muted)]"
+                    data-testid="system-status-sources"
+                  >
+                    {hasSources ? (
+                      sourceList.length ? (
+                        sourceList.map((source) => (
+                          <div
+                            key={source.key}
+                            className="flex items-center justify-between rounded-2xl bg-[var(--card-70)] px-3 py-2"
+                          >
+                            <span className="uppercase tracking-[0.2em]">
+                              {source.label}
+                            </span>
+                            <span className="font-semibold text-[var(--foreground)]">
+                              {source.status}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-2 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-2">
+                          <p>No integrations have ingested data yet.</p>
+                          {setupHref ? (
+                            <Link
+                              href={setupHref}
+                              className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                            >
+                              Go to setup
+                            </Link>
+                          ) : null}
                         </div>
-                      ))
+                      )
                     ) : (
-                      <div className="col-span-2 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-2">
+                      <div
+                        className="col-span-2 rounded-2xl border border-dashed border-[var(--card-stroke)] bg-[var(--card-60)] px-3 py-2"
+                      >
                         Source signals pending.
                       </div>
                     )}
@@ -146,15 +200,40 @@ export default async function Home({ searchParams }: HomePageProps) {
                 </div>
                 <div className="rounded-3xl border border-[var(--card-stroke)] bg-[var(--accent-2)]/10 p-4 text-xs text-[var(--ink-muted)]">
                   <p className="text-[var(--accent-2)]/90">Setup coverage</p>
-                  <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                    {coverage ? formatPercent(coverage.repos_covered_pct) : "--"}
-                  </p>
-                  <p className="mt-2">
-                    PR to issue links: {coverage ? formatPercent(coverage.prs_linked_to_issues_pct) : "--"}
-                  </p>
-                  <p>
-                    Cycle states: {coverage ? formatPercent(coverage.issues_with_cycle_states_pct) : "--"}
-                  </p>
+                  {coverageReady && coverage ? (
+                    <>
+                      <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+                        {formatPercent(coverage.repos_covered_pct)}
+                      </p>
+                      <p className="mt-2">
+                        PR to issue links:{" "}
+                        {formatPercent(coverage.prs_linked_to_issues_pct)}
+                      </p>
+                      <p>
+                        Cycle states:{" "}
+                        {formatPercent(coverage.issues_with_cycle_states_pct)}
+                      </p>
+                    </>
+                  ) : hasSources ? (
+                    <p className="mt-3 text-sm text-[var(--ink-muted)]">
+                      Insufficient data to calculate coverage.
+                      {setupHref ? (
+                        <>
+                          {" "}
+                          <Link
+                            href={setupHref}
+                            className="text-xs uppercase tracking-[0.2em] text-[var(--accent-2)]"
+                          >
+                            Set up integrations
+                          </Link>
+                        </>
+                      ) : null}
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-sm text-[var(--ink-muted)]">
+                      Coverage signals pending.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -4,9 +4,16 @@ export type Coverage = {
   issues_with_cycle_states_pct: number;
 };
 
+export type SourceStatus = {
+  key: string;
+  label: string;
+  last_seen_at: string | null;
+  status: "ok" | "degraded" | "down" | "no_data";
+};
+
 export type Freshness = {
   last_ingested_at: string | null;
-  sources: Record<string, "ok" | "degraded" | "down">;
+  sources: SourceStatus[];
   coverage: Coverage;
 };
 
