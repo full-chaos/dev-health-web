@@ -17,6 +17,7 @@ import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { mapInvestmentToNestedPie } from "@/lib/mappers";
 import { LandscapeView } from "@/components/work/LandscapeView";
 import { HeatmapView } from "@/components/work/HeatmapView";
+import { reviewHeatmapSample } from "@/data/devHealthOpsSample";
 import { FlowView } from "@/components/work/FlowView";
 import { FlameView } from "@/components/work/FlameView";
 import { EvidenceView } from "@/components/work/EvidenceView";
@@ -77,7 +78,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
   const wipExplain = await getExplainData({ metric: "wip_saturation", filters }).catch(() => null);
   const blockedExplain = await getExplainData({ metric: "blocked_work", filters }).catch(() => null);
-  const reviewHeatmap = await getHeatmap({
+  let reviewHeatmap = await getHeatmap({
     type: "temporal_load",
     metric: "review_wait_density",
     scope_type: filters.scope.level,
@@ -86,6 +87,15 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     start_date: filters.time.start_date,
     end_date: filters.time.end_date,
   }).catch(() => null);
+
+  // In test/dev mode provide sample heatmap data so client views render predictably
+  // (Playwright sets DEV_HEALTH_TEST_MODE when running the dev server).
+  if (process.env.DEV_HEALTH_TEST_MODE === "true" && !reviewHeatmap) {
+    // cast to any to avoid importing types here
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    reviewHeatmap = reviewHeatmapSample;
+  }
   const cycleThroughput = await getQuadrant({
     type: "cycle_throughput",
     scope_type: quadrantScope,

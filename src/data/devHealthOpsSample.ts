@@ -470,6 +470,17 @@ export const sankeyStateTransitionSample: FlowTransitionSummary[] = [
   },
 ];
 
+// Minimal heatmap sample used for test/dev server mode
+export const reviewHeatmapSample = {
+  axes: { x: ["00:00", "06:00", "12:00", "18:00"], y: ["Mon", "Tue", "Wed", "Thu", "Fri"] },
+  cells: [
+    { x: "00:00", y: "Mon", value: 0 },
+    { x: "12:00", y: "Wed", value: 5 },
+  ],
+  legend: { unit: "hours", scale: "linear" },
+  evidence: [],
+};
+
 export const sankeyInvestmentNodes = [
   { name: "Platform modernization", group: "initiative" },
   { name: "Growth experiments", group: "initiative" },
