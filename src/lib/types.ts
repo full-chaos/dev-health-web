@@ -99,6 +99,29 @@ export type InvestmentResponse = {
   edges?: Array<Record<string, unknown>>;
 };
 
+export type SankeyMode = "investment" | "expense" | "state" | "hotspot";
+
+export type SankeyNode = {
+  name: string;
+  group?: string;
+  value?: number;
+};
+
+export type SankeyLink = {
+  source: string;
+  target: string;
+  value: number;
+};
+
+export type SankeyResponse = {
+  mode: SankeyMode;
+  nodes: SankeyNode[];
+  links: SankeyLink[];
+  unit?: string;
+  label?: string;
+  description?: string;
+};
+
 export type PersonIdentity = {
   provider: string;
   handle: string;

@@ -10,6 +10,8 @@ import type {
   PersonDrilldownResponse,
   PersonMetricResponse,
   PersonSummary,
+  SankeyMode,
+  SankeyResponse,
   FlameResponse,
   QuadrantResponse,
 } from "@/lib/types";
@@ -37,6 +39,39 @@ const normalizeFilters = (filters: MetricFilter): MetricFilter => {
     return { ...filters, scope: { ...filters.scope, level: "org" } };
   }
   return filters;
+};
+
+const toRangeDays = (start?: string, end?: string) => {
+  if (!start || !end) {
+    return null;
+  }
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return null;
+  }
+  const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
+  return Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+};
+
+const applyWindowToFilters = (
+  filters: MetricFilter,
+  windowStart?: string,
+  windowEnd?: string
+): MetricFilter => {
+  if (!windowStart && !windowEnd) {
+    return filters;
+  }
+  const rangeDays = toRangeDays(windowStart, windowEnd);
+  return {
+    ...filters,
+    time: {
+      ...filters.time,
+      start_date: windowStart ?? filters.time.start_date,
+      end_date: windowEnd ?? filters.time.end_date,
+      range_days: rangeDays ?? filters.time.range_days,
+    },
+  };
 };
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -102,6 +137,33 @@ export async function getInvestment(filters: MetricFilter) {
     { filters: normalized },
     300,
     { f: encodeFilterParam(normalized) }
+  );
+}
+
+export async function getSankey(params: {
+  mode: SankeyMode;
+  filters: MetricFilter;
+  context?: { entity_id?: string; entity_label?: string };
+  window_start?: string;
+  window_end?: string;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  const withWindow = applyWindowToFilters(
+    normalized,
+    params.window_start,
+    params.window_end
+  );
+  return postJson<SankeyResponse>(
+    "/api/v1/sankey",
+    {
+      mode: params.mode,
+      filters: withWindow,
+      context: params.context,
+      window_start: params.window_start,
+      window_end: params.window_end,
+    },
+    60,
+    { mode: params.mode, f: encodeFilterParam(withWindow) }
   );
 }
 
