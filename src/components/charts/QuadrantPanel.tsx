@@ -20,6 +20,7 @@ import { trackTelemetryEvent } from "@/lib/telemetry";
 import type { QuadrantAxis, QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantChart } from "./QuadrantChart";
+import { SankeyInvestigationPanel } from "./SankeyInvestigationPanel";
 
 const AXIS_DESCRIPTIONS: Record<string, string> = {
   churn: "Rate of code change, rework, and revision.",
@@ -144,6 +145,7 @@ export function QuadrantPanel({
   const [selectedPoint, setSelectedPoint] = useState<QuadrantPoint | null>(null);
   const [selectedPointKey, setSelectedPointKey] = useState<string | null>(null);
   const [showZoneOverlay, setShowZoneOverlay] = useState(true);
+  const [showSankey, setShowSankey] = useState(false);
   const [zoneQuestionsKey, setZoneQuestionsKey] = useState<string | null>(null);
   const [hoveredOverlayKey, setHoveredOverlayKey] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -204,6 +206,12 @@ export function QuadrantPanel({
     }
     return items;
   }, [data, showZoneOverlay, zoneOverlay]);
+  const selectablePoints = useMemo(() => {
+    if (!data?.points?.length) {
+      return [];
+    }
+    return data.points.length <= 6 ? data.points : [];
+  }, [data]);
   const activeHoveredOverlayKey = useMemo(() => {
     if (!showZoneOverlay || !hoveredOverlayKey) {
       return null;
@@ -219,6 +227,7 @@ export function QuadrantPanel({
     setSelectedPoint(point);
     setSelectedPointKey(dataKey);
     setZoneQuestionsKey(null);
+    setShowSankey(false);
   };
 
   useEffect(() => {
@@ -238,6 +247,7 @@ export function QuadrantPanel({
     });
     zoneIgnoredLogged.current = true;
   }, [activeSelectedPoint, axesKey, scopeType, showZoneOverlay, zoneOverlay]);
+
 
   useEffect(() => {
     if (!isGuideOpen) {
@@ -309,7 +319,6 @@ export function QuadrantPanel({
   const heatmapHref =
     heatmapLink?.href ??
     withFilterParam(defaultHeatmapPath(data.axes), filters);
-  const flowBreakdownHref = withFilterParam("/work", filters);
   const supplementalLinks = (relatedLinks ?? []).filter(
     (link) => !link.label.toLowerCase().includes("heatmap")
   );
@@ -535,16 +544,18 @@ export function QuadrantPanel({
         ) : null}
       </div>
       <div
-        className={
+        className={`mt-4 grid w-full gap-4 lg:items-start ${
           showZoneLegend
-            ? "mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]"
-            : "mt-4"
-        }
+            ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)]"
+            : "grid-cols-1"
+        }`}
       >
         <div className="min-w-0">
           <QuadrantChart
             data={data}
             height={chartHeight}
+            className="w-full"
+            style={{ minWidth: 0 }}
             onPointSelect={handlePointSelect}
             focusEntityIds={focusEntityIds}
             scopeType={scopeType}
@@ -588,11 +599,11 @@ export function QuadrantPanel({
                       className="mt-1 h-3 w-3 shrink-0 rounded-full border"
                       style={buildLegendSwatchStyle(item.color)}
                     />
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--foreground)]">
+                    <div className="min-w-0">
+                      <p className="break-words text-xs font-semibold text-[var(--foreground)]">
                         {item.label}
                       </p>
-                      <p className="text-[11px] text-[var(--ink-muted)]">
+                      <p className="break-words text-[11px] leading-snug text-[var(--ink-muted)]">
                         {item.description}
                       </p>
                     </div>
@@ -658,14 +669,13 @@ export function QuadrantPanel({
                   : "Open flame diagram"}
               </Link>
             ) : null}
-            {flowBreakdownHref ? (
-              <Link
-                href={flowBreakdownHref}
-                className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
-              >
-                Sankey: Investment Flow
-              </Link>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => setShowSankey((prev) => !prev)}
+              className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
+            >
+              {showSankey ? "Hide Sankey" : "View investment flow"}
+            </button>
           </div>
           {showZoneMenu && showZoneQuestions ? (
             <div className="mt-4 rounded-2xl border border-[var(--card-stroke)] bg-[var(--card-70)] p-3 text-[11px] text-[var(--ink-muted)]">
@@ -706,11 +716,32 @@ export function QuadrantPanel({
               </p>
             </div>
           ) : null}
+          {showSankey ? (
+            <SankeyInvestigationPanel
+              key={`${activeSelectedPoint.entity_id}-${dataKey ?? "sankey"}`}
+              point={activeSelectedPoint}
+              filters={filters}
+            />
+          ) : null}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-[var(--ink-muted)]">
-          Select a dot to open investigation steps.
-        </p>
+        <div className="mt-3 text-xs text-[var(--ink-muted)]">
+          <p>Select a dot to open investigation steps.</p>
+          {selectablePoints.length ? (
+            <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
+              {selectablePoints.map((point) => (
+                <button
+                  key={point.entity_id}
+                  type="button"
+                  onClick={() => handlePointSelect(point)}
+                  className="rounded-full border border-[var(--card-stroke)] bg-[var(--card-80)] px-3 py-1 text-[var(--accent-2)]"
+                >
+                  {point.entity_label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       )}
       {supplementalLinks.length ? (
         <div className="mt-4 flex flex-wrap gap-3 text-xs">

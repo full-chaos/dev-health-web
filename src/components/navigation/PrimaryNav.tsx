@@ -50,19 +50,17 @@ export function PrimaryNav({ filters, active }: PrimaryNavProps) {
                   key={item.id}
                   href={withFilterParam(item.href, filters)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`group flex items-center justify-between rounded-2xl border px-3 py-2 transition ${
-                    isActive
-                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
-                      : "border-transparent bg-[var(--card-70)] text-[var(--ink-muted)] hover:border-[var(--card-stroke)] hover:text-[var(--foreground)]"
-                  }`}
+                  className={`group flex items-center justify-between rounded-2xl border px-3 py-2 transition ${isActive
+                    ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--foreground)]"
+                    : "border-transparent bg-[var(--card-70)] text-[var(--ink-muted)] hover:border-[var(--card-stroke)] hover:text-[var(--foreground)]"
+                    }`}
                 >
                   <span className="font-medium">{item.label}</span>
                   <span
-                    className={`text-[10px] uppercase tracking-[0.3em] ${
-                      isActive
-                        ? "text-[var(--accent)]"
-                        : "text-[var(--ink-muted)]"
-                    }`}
+                    className={`text-[10px] uppercase tracking-[0.1em] ${isActive
+                      ? "text-[var(--accent)]"
+                      : "text-[var(--ink-muted)]"
+                      }`}
                   >
                     {item.description}
                   </span>

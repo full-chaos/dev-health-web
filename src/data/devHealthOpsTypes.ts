@@ -67,3 +67,9 @@ export type WorkItemStatusTransitionSummary = {
   toStatus: WorkItemStatusCategory;
   count: number;
 };
+
+export type FlowTransitionSummary = {
+  fromStatus: string;
+  toStatus: string;
+  count: number;
+};
