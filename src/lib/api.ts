@@ -1,4 +1,6 @@
 import type {
+  AggregatedFlameMode,
+  AggregatedFlameResponse,
   DrilldownResponse,
   ExplainResponse,
   HealthResponse,
@@ -312,12 +314,35 @@ export async function getFlame(params: {
   return fetchJson<FlameResponse>(url, { cache: "no-store" });
 }
 
+export async function getAggregatedFlame(params: {
+  mode: AggregatedFlameMode;
+  range_days?: number;
+  start_date?: string;
+  end_date?: string;
+  team_id?: string;
+  repo_id?: string;
+  limit?: number;
+  min_value?: number;
+}) {
+  const url = buildUrl("/api/v1/flame/aggregated", {
+    mode: params.mode,
+    range_days: params.range_days ?? 30,
+    start_date: params.start_date ?? "",
+    end_date: params.end_date ?? "",
+    team_id: params.team_id ?? "",
+    repo_id: params.repo_id ?? "",
+    limit: params.limit ?? 500,
+    min_value: params.min_value ?? 1,
+  });
+  return fetchJson<AggregatedFlameResponse>(url, { cache: "no-store" });
+}
+
 export async function getQuadrant(params: {
   type:
-    | "churn_throughput"
-    | "cycle_throughput"
-    | "wip_throughput"
-    | "review_load_latency";
+  | "churn_throughput"
+  | "cycle_throughput"
+  | "wip_throughput"
+  | "review_load_latency";
   scope_type: "org" | "team" | "repo" | "developer" | "person";
   scope_id?: string;
   range_days: number;

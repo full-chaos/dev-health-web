@@ -181,7 +181,7 @@ export function QuadrantPanel({
     }
     const items: ZoneLegendItem[] = [];
     if (zoneOverlay?.zones?.length) {
-          items.push(
+      items.push(
         ...zoneOverlay.zones.map((zone) => ({
           key: `zone-${zone.id}`,
           label: zone.label,
@@ -313,6 +313,10 @@ export function QuadrantPanel({
     ? buildExploreUrl({ api: activeSelectedPoint.evidence_link, filters })
     : buildExploreUrl({ metric: data.axes.y.metric, filters });
   const flameHref = metricExplainHref ? `${metricExplainHref}#evidence` : null;
+  const aggregatedFlameMode = data.axes.x.metric.includes("churn")
+    ? "code_hotspots"
+    : "cycle_breakdown";
+  const aggregatedFlameHref = withFilterParam(`/flame?mode=${aggregatedFlameMode}`, filters);
   const heatmapLink = (relatedLinks ?? []).find((link) =>
     link.label.toLowerCase().includes("heatmap")
   );
@@ -544,11 +548,10 @@ export function QuadrantPanel({
         ) : null}
       </div>
       <div
-        className={`mt-4 grid w-full gap-4 lg:items-start ${
-          showZoneLegend
-            ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)]"
-            : "grid-cols-1"
-        }`}
+        className={`mt-4 grid w-full gap-4 lg:items-start ${showZoneLegend
+          ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)]"
+          : "grid-cols-1"
+          }`}
       >
         <div className="min-w-0">
           <QuadrantChart
@@ -591,8 +594,8 @@ export function QuadrantPanel({
                     onBlur={() => setHoveredOverlayKey(null)}
                     tabIndex={0}
                     className={`flex gap-3 rounded-xl border px-2 py-2 transition ${isActive
-                        ? "border-[var(--card-stroke)] bg-[var(--card-70)]"
-                        : "border-transparent"
+                      ? "border-[var(--card-stroke)] bg-[var(--card-70)]"
+                      : "border-transparent"
                       }`}
                   >
                     <span
@@ -669,6 +672,12 @@ export function QuadrantPanel({
                   : "Open flame diagram"}
               </Link>
             ) : null}
+            <Link
+              href={aggregatedFlameHref}
+              className="rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1 text-[var(--accent-2)]"
+            >
+              View aggregated flame
+            </Link>
             <button
               type="button"
               onClick={() => setShowSankey((prev) => !prev)}
