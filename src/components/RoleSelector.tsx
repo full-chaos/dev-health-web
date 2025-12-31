@@ -44,7 +44,7 @@ export function RoleSelector({ className }: RoleSelectorProps) {
             data-testid="role-selector"
         >
             <span className="text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)">
-                Start from
+                View from
             </span>
             <div className="flex flex-wrap gap-1">
                 {ROLE_OPTIONS.map((role) => {

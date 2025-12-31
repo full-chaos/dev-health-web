@@ -23,7 +23,7 @@ const monoFont = Noto_Sans_Mono({
 
 export const metadata: Metadata = {
   title: "Dev Health Ops",
-  description: "Developer health control room.",
+  description: "Developer Health Ops cockpit.",
 };
 
 const themeScript = `

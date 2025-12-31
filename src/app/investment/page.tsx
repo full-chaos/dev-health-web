@@ -46,16 +46,19 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
               <h1 className="mt-2 font-(--font-display) text-3xl">
                 Elapsed Work Allocation
               </h1>
-              <div className="mt-4 p-3 rounded-2xl border border-(--card-stroke) bg-(--card-80) text-[11px] leading-relaxed text-(--ink-muted)">
-                <span className="text-foreground font-semibold uppercase tracking-wider">Perspective:</span> Investment reflects effort and attention (not spend). Flow moves left-to-right (Allocation &rarr; Streams &rarr; Items).
-              </div>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Effort and attention allocation over the selected window.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Select a segment to investigate.
+              </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
               <Link
                 href={buildExploreUrl({ metric: "throughput", filters })}
                 className="rounded-full border border-(--card-stroke) px-4 py-2"
               >
-                Inspect causes
+                Inspect associations
               </Link>
               <Link
                 href={withFilterParam("/explore/landscape", filters)}
@@ -67,6 +70,14 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
           </header>
 
           <FilterBar view="investment" />
+
+          <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-[11px] leading-relaxed text-(--ink-muted)">
+            <span className="text-foreground font-semibold uppercase tracking-wider">
+              Perspective:
+            </span>{" "}
+            Investment reflects effort and attention (not spend). Flow moves
+            left-to-right (Allocation &rarr; Streams &rarr; Items).
+          </div>
 
           <ContextStrip filters={filters} origin={activeOrigin} />
 

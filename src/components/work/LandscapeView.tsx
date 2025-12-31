@@ -82,7 +82,7 @@ export function LandscapeView({
             <section className="flex flex-col gap-6">
                 <QuadrantPanel
                     title="Elapsed Time × Throughput"
-                    description="Highlight delivery momentum under elapsed time pressure."
+                    description="Operating modes under time in flight and delivery pace."
                     data={cycleThroughput}
                     filters={filters}
                     relatedLinks={[
@@ -95,7 +95,7 @@ export function LandscapeView({
                 />
                 <QuadrantPanel
                     title="WIP × Throughput"
-                    description="Read product direction and role clarity under load."
+                    description="Operating modes under work in flight and delivery pace."
                     data={wipThroughput}
                     filters={filters}
                     relatedLinks={[
@@ -108,7 +108,7 @@ export function LandscapeView({
                 />
                 <QuadrantPanel
                     title="Review Load × Review Latency"
-                    description="Highlight collaboration health and ownership distribution under review pressure."
+                    description="Operating modes under review demand and turnaround."
                     data={reviewLoadLatency}
                     filters={filters}
                     relatedLinks={[
@@ -130,7 +130,7 @@ export function LandscapeView({
                                 View flow
                             </Link>
                             <Link href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}>
-                                Inspect causes
+                                Inspect associations
                             </Link>
                         </div>
                     </div>
@@ -182,7 +182,7 @@ export function LandscapeView({
                         </div>
                     ) : (
                         <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4 text-sm text-(--ink-muted)">
-                            Planned vs unplanned requires tagged work categories.
+                            Planned vs unplanned appears when work categories are tagged.
                         </div>
                     )}
                 </div>

@@ -239,7 +239,7 @@ export default async function PersonMetricPage({
               <h2 className="font-(--font-display) text-xl">Definition</h2>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 {definitionSummary ??
-                  "Definition will appear once the signal library is connected."}
+                  "Definition will appear when the signal library is available."}
               </p>
               {interpretation && (
                 <p className="mt-3 text-sm text-(--ink-muted)">
@@ -347,7 +347,7 @@ export default async function PersonMetricPage({
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-(--font-display) text-xl">Drivers</h2>
+                <h2 className="font-(--font-display) text-xl">Associations</h2>
                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Evidence linked
                 </span>
@@ -378,7 +378,7 @@ export default async function PersonMetricPage({
                   })
                 ) : (
                   <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
-                    Driver statements will appear once data is ingested.
+                    Association statements will appear once data is ingested.
                   </p>
                 )}
               </div>

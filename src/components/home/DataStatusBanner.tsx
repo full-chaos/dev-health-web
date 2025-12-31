@@ -47,8 +47,8 @@ export function DataStatusBanner({
           </p>
         ) : (
           <p>
-            Coverage is low. Trend confidence may be degraded for the current
-            window.
+            Signal density is low. Trend confidence may be reduced for the
+            selected window.
           </p>
         )}
         <Link

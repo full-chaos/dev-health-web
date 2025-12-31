@@ -12,25 +12,25 @@ const QUADRANT_CARDS = [
   {
     type: "churn_throughput" as const,
     title: "Churn × Throughput",
-    description: "Differentiate refactor-heavy and delivery-heavy operating modes.",
+    description: "Operating modes under change volume and delivery pace.",
     heatmapHref: "/code",
   },
   {
     type: "cycle_throughput" as const,
     title: "Cycle Time × Throughput",
-    description: "Highlight delivery momentum under cycle time pressure.",
+    description: "Operating modes under time in flight and delivery pace.",
     heatmapHref: "/work",
   },
   {
     type: "wip_throughput" as const,
     title: "WIP × Throughput",
-    description: "Read product direction and role clarity under load.",
+    description: "Operating modes under work in flight and delivery pace.",
     heatmapHref: "/work",
   },
   {
     type: "review_load_latency" as const,
     title: "Review Load × Review Latency",
-    description: "Highlight collaboration health and ownership distribution under review pressure.",
+    description: "Operating modes under review demand and turnaround.",
     heatmapHref: "/work",
   },
 ];
@@ -119,13 +119,10 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                 Landscape Quadrants
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Classify system modes under competing pressures without ranking teams or people.
+                Operating modes across paired pressures.
               </p>
               <p className="mt-3 text-sm text-(--ink-muted)">
-                Explore system operating modes across multiple pressure pairs.
-              </p>
-              <p className="mt-2 text-xs text-(--ink-muted)">
-                Each view highlights a different pressure pair. Investigation steps are shared.
+                Select a dot to investigate.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -172,7 +169,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             <div className="rounded-[40px] border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
               <div className="mb-6 flex items-center justify-between">
                 <span className="rounded-full bg-(--accent-2)/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-(--accent-2)">
-                  Primary Lens: {roleConfig.label}
+                  Role lens: {roleConfig.label}
                 </span>
               </div>
               <QuadrantPanel
@@ -206,7 +203,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                     {isSecondary && (
                       <div className="mb-4 px-2">
                         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--ink-muted)">
-                          Secondary Context
+                          Secondary lens
                         </span>
                       </div>
                     )}

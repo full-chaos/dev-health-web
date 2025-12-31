@@ -149,7 +149,10 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 {metricLabel}
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Drill-down inspector. Monitor in Metrics, return here for evidence.
+                Evidence detail for the selected metric.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Select evidence to investigate.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -256,7 +259,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-(--font-display) text-xl">Top Drivers</h2>
+                  <h2 className="font-(--font-display) text-xl">Top Associations</h2>
                   <Link
                     href={buildExploreUrl({ metric: metricFromApi, filters, role: activeRole })}
                     className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
@@ -287,7 +290,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                   </div>
                 ) : (
                   <p className="mt-4 text-sm text-(--ink-muted)">
-                    Driver analysis will appear once data is ingested.
+                    Association detail will appear once data is ingested.
                   </p>
                 )}
               </div>

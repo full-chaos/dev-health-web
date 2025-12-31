@@ -42,7 +42,10 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                 Focus Cards
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Evidence-backed bets with suggested experiments.
+                Evidence-linked threads with candidate experiments.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Open a card to review evidence.
               </p>
             </div>
             <Link

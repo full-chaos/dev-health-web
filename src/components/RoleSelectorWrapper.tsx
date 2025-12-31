@@ -15,7 +15,7 @@ export function RoleSelectorWithSuspense({ className }: { className?: string }) 
             fallback={
                 <div className={`flex items-center gap-2 ${className ?? ""}`}>
                     <span className="text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)">
-                        Start from
+                        View from
                     </span>
                     <div className="flex gap-1">
                         {["IC", "EM", "PM", "Leadership"].map((label) => (
@@ -53,7 +53,13 @@ function RoleFramingInner() {
 
 export function RoleFraming() {
     return (
-        <Suspense fallback={<p className="mt-1 text-xs text-(--accent-2)/80">How work is scoped, reviewed, and flows</p>}>
+        <Suspense
+            fallback={
+                <p className="mt-1 text-xs text-(--accent-2)/80">
+                    Work scope, review flow, and delivery pace.
+                </p>
+            }
+        >
             <RoleFramingInner />
         </Suspense>
     );

@@ -22,12 +22,12 @@ export function EvidenceView({
         <section className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex items-center justify-between">
-                    <h2 className="font-(--font-display) text-xl">WIP Drivers</h2>
+                    <h2 className="font-(--font-display) text-xl">WIP Associations</h2>
                     <Link
                         href={buildExploreUrl({ metric: "wip_saturation", filters, role: activeRole })}
                         className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                     >
-                        Inspect causes
+                        Inspect associations
                     </Link>
                 </div>
                 <div className="mt-4 space-y-2 text-sm">
@@ -45,7 +45,7 @@ export function EvidenceView({
                     ))}
                     {!wipExplain?.drivers?.length && (
                         <p className="text-sm text-(--ink-muted)">
-                            WIP driver detail will appear once data is ingested.
+                            WIP association detail will appear once data is ingested.
                         </p>
                     )}
                 </div>
@@ -53,12 +53,12 @@ export function EvidenceView({
 
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex items-center justify-between">
-                    <h2 className="font-(--font-display) text-xl">Blocked Drivers</h2>
+                    <h2 className="font-(--font-display) text-xl">Blocked Associations</h2>
                     <Link
                         href={buildExploreUrl({ metric: "blocked_work", filters, role: activeRole })}
                         className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                     >
-                        Inspect causes
+                        Inspect associations
                     </Link>
                 </div>
                 <div className="mt-4 space-y-2 text-sm">
@@ -76,7 +76,7 @@ export function EvidenceView({
                     ))}
                     {!blockedExplain?.drivers?.length && (
                         <p className="text-sm text-(--ink-muted)">
-                            Blocked driver detail will appear once data is ingested.
+                            Blocked association detail will appear once data is ingested.
                         </p>
                     )}
                 </div>

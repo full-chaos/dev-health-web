@@ -64,11 +64,11 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
     label: "Churn x Throughput",
     metrics: ["churn", "throughput"],
     influence: {
-      lens: "Change strategy and system stability",
+      lens: "Change and throughput pressure",
       framing:
-        "This view differentiates refactor-heavy and delivery-heavy operating modes.",
+        "Operating modes under change volume and delivery pace.",
       habits: [
-        "Architectural evolution and platform shifts",
+        "Architectural evolution and system shifts",
         "Technical debt repayment cadence",
         "Shifting product requirements or scope changes",
         "Late discovery of dependencies and rework loops",
@@ -80,26 +80,26 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         "Does change convert into durable progress?",
       ],
       next:
-        "Use code and work heatmaps, flame diagrams, and metric explain views to see where change concentrates.",
+        "Next investigation: code and work heatmaps, flame diagrams, and metric explain views.",
       notes: [...SHARED_NOTES],
     },
     zones: [
       {
         id: "stability-dominant",
         label: "Stability-Dominant Zone",
-        description: "Stability dominates while delivery remains steady.",
+        description: "Low churn with steady throughput in the selected window.",
         levels: { churn: "low", throughput: "high" },
         signals: ["Low churn", "Steady throughput", "Few rework loops"],
         investigations: [
           "Is stability intentional or a pause in change?",
-          "Are architectural risks building silently?",
+          "Is architectural change accumulating?",
         ],
         color: "rgba(34, 197, 94, 0.12)",
       },
       {
         id: "expansion-pressure",
         label: "Expansion Pressure Zone",
-        description: "Expansion and steady delivery coexist as change and delivery remain high.",
+        description: "High churn with steady throughput in the selected window.",
         levels: { churn: "high", throughput: "high" },
         signals: ["Rising churn", "Strong throughput", "Parallel refactors"],
         investigations: [
@@ -111,7 +111,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "coordination-pressure",
         label: "Saturation / Coordination Pressure Zone",
-        description: "High change with lagging delivery suggests coordination pressure.",
+        description: "High churn with lower throughput in the selected window.",
         levels: { churn: "high", throughput: "low" },
         signals: ["High churn", "Flat throughput", "Handoff delays"],
         investigations: [
@@ -123,7 +123,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "constrained-underutilized",
         label: "Constrained / Underutilized Zone",
-        description: "Flow is limited by potential constraints or intentional pauses.",
+        description: "Low churn with lower throughput in the selected window.",
         levels: { churn: "low", throughput: "low" },
         signals: ["Low churn", "Low throughput", "Blocked intake"],
         investigations: [
@@ -139,9 +139,9 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
     label: "Cycle Time x Throughput",
     metrics: ["cycle_time", "throughput"],
     influence: {
-      lens: "Momentum",
+      lens: "Cycle time and throughput pressure",
       framing:
-        "This view highlights momentum - how quickly work moves through the system relative to what gets delivered.",
+        "Operating modes where time in flight and delivery pace move together.",
       habits: [
         "Requirement clarity and ready backlog",
         "Defect and rework rate",
@@ -155,14 +155,14 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         "Is delivery speed constrained by tooling or process?",
       ],
       next:
-        "Use work heatmaps, flame diagrams, and metric explain views to see where time accumulates.",
+        "Next investigation: work heatmaps, flame diagrams, and metric explain views.",
       notes: [...SHARED_NOTES],
     },
     zones: [
       {
         id: "rapid-flow",
         label: "Rapid Flow Zone",
-        description: "Steady output with short cycles indicates high momentum.",
+        description: "Short cycle time with steady throughput in the selected window.",
         levels: { cycle_time: "low", throughput: "high" },
         signals: ["Low cycle time", "Small batches", "Minimal waiting"],
         investigations: [
@@ -174,7 +174,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "batch-delivery",
         label: "Batch Delivery Zone",
-        description: "High output with long cycles suggests batching or waiting.",
+        description: "Longer cycle time with steady throughput in the selected window.",
         levels: { cycle_time: "high", throughput: "high" },
         signals: ["High throughput", "Batching releases", "Accumulated waiting"],
         investigations: [
@@ -186,7 +186,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "friction-dominant",
         label: "Friction-Dominant Zone",
-        description: "Limited output with long cycles indicates delivery friction.",
+        description: "Longer cycle time with lower throughput in the selected window.",
         levels: { cycle_time: "high", throughput: "low" },
         signals: ["High latency", "Queueing handoffs", "Frequent rework"],
         investigations: [
@@ -198,7 +198,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "quick-low-output",
         label: "Quick Cycles, Low Output Zone",
-        description: "Short cycles with limited output suggest light demand or intake.",
+        description: "Short cycle time with lower throughput in the selected window.",
         levels: { cycle_time: "low", throughput: "low" },
         signals: ["Short cycles", "Small items", "Low intake volume"],
         investigations: [
@@ -214,9 +214,9 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
     label: "WIP x Throughput",
     metrics: ["wip", "throughput"],
     influence: {
-      lens: "Product direction and role clarity",
+      lens: "WIP and throughput pressure",
       framing:
-        "This view reflects clarity of product direction and role boundaries under load.",
+        "Operating modes where work in flight and delivery pace move together.",
       habits: [
         "Well-defined product intent",
         "Limited prototyping churn",
@@ -230,14 +230,14 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         "Is prototyping bleeding into execution?",
       ],
       next:
-        "Use work heatmaps, flame diagrams, and metric explain views to see where work piles up.",
+        "Next investigation: work heatmaps, flame diagrams, and metric explain views.",
       notes: [...SHARED_NOTES],
     },
     zones: [
       {
         id: "focused-delivery",
         label: "Focused Delivery Zone",
-        description: "Steady output with lean work in flight suggests focused direction.",
+        description: "Low WIP with steady throughput in the selected window.",
         levels: { wip: "low", throughput: "high" },
         signals: ["Low WIP", "Lean intake", "Directional focus"],
         investigations: [
@@ -249,7 +249,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "high-load-converting",
         label: "High Load, Converting Zone",
-        description: "Steady output with high work in flight suggests rising coordination pressure.",
+        description: "High WIP with steady throughput in the selected window.",
         levels: { wip: "high", throughput: "high" },
         signals: ["High WIP", "Strong output", "Rising handoffs"],
         investigations: [
@@ -261,7 +261,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "diffuse-effort",
         label: "Diffuse Effort Zone",
-        description: "High work in flight without conversion suggests blurred scope or ownership.",
+        description: "High WIP with lower throughput in the selected window.",
         levels: { wip: "high", throughput: "low" },
         signals: ["Context switching", "Prototype churn", "Blurred scope"],
         investigations: [
@@ -273,7 +273,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "limited-intake",
         label: "Limited Intake Zone",
-        description: "Low work in flight and output suggests limited demand or flow constraints.",
+        description: "Low WIP with lower throughput in the selected window.",
         levels: { wip: "low", throughput: "low" },
         signals: ["Low WIP", "Blocked intake", "Light demand"],
         investigations: [
@@ -289,12 +289,12 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
     label: "Review Load x Review Latency",
     metrics: ["review_load", "review_latency"],
     influence: {
-      lens: "Collaboration health and ownership distribution",
+      lens: "Review load and latency",
       framing:
-        "This view highlights collaboration dynamics and ownership distribution under review pressure.",
+        "Operating modes under review demand and turnaround.",
       habits: [
         "Appropriately sized changes",
-        "Healthy review practices and expectations",
+        "Review practices and expectations",
         "Emerging subject-matter expertise",
         "Uneven skill distribution",
         "Portfolio or project load",
@@ -302,20 +302,20 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       questions: [
         "Are changes sized for effective review?",
         "Is review load concentrated on a few people?",
-        "Is up-leveling or redistribution needed?",
+        "Where does review load concentrate?",
       ],
       next:
-        "Use review heatmaps, flame diagrams, and metric explain views to see where review wait accumulates.",
+        "Next investigation: review heatmaps, flame diagrams, and metric explain views.",
       notes: [
         ...SHARED_NOTES,
-        "Signals can surface at individual, team, or portfolio scope without ranking.",
+        "Signals can surface at individual, team, or portfolio scope without comparison.",
       ],
     },
     zones: [
       {
         id: "responsive-review",
         label: "Responsive Review Zone",
-        description: "Light review demand and quick turnaround indicate healthy collaboration.",
+        description: "Low review load with short review latency in the selected window.",
         levels: { review_load: "low", review_latency: "low" },
         signals: ["Fast turnaround", "Small changes", "High availability"],
         investigations: [
@@ -327,7 +327,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "distributed-review",
         label: "Distributed Review Zone",
-        description: "High review demand with quick turnaround suggests spread ownership.",
+        description: "High review load with short review latency in the selected window.",
         levels: { review_load: "high", review_latency: "low" },
         signals: ["Shared load", "Low latency", "High throughput"],
         investigations: [
@@ -339,11 +339,11 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "bottlenecked-review",
         label: "Bottlenecked Review Zone",
-        description: "High review demand with slow turnaround suggests concentrated ownership.",
+        description: "High review load with long review latency in the selected window.",
         levels: { review_load: "high", review_latency: "high" },
         signals: ["Queueing", "Concentrated load", "Large cycles"],
         investigations: [
-          "Is redistribution or up-leveling needed?",
+          "How is review load distributed?",
           "Are changes sized for effective review?",
         ],
         color: "rgba(244, 63, 94, 0.12)",
@@ -351,11 +351,11 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
       {
         id: "deferred-review",
         label: "Deferred Review Zone",
-        description: "Slow turnaround with light review demand suggests split attention.",
+        description: "Low review load with long review latency in the selected window.",
         levels: { review_load: "low", review_latency: "high" },
         signals: ["Slow turnaround", "Light load", "Split attention"],
         investigations: [
-          "Are reviews blocked bycommitments?",
+          "Are reviews blocked by commitments?",
           "Are expectations explicit?",
         ],
         color: "rgba(249, 115, 22, 0.12)",

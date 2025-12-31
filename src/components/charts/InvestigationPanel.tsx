@@ -47,8 +47,8 @@ export function InvestigationPanel({
             { id: "explain", label: "Explain this state", href: metricExplainHref, type: "review" },
             { id: "heatmaps", label: "View related patterns", href: heatmapHref, type: "wip" },
             { id: "cycle", label: "View time breakdown", href: cycleBreakdownFlameHref, type: "cycle" },
-            { id: "throughput", label: "Inspect causes", href: throughputFlameHref, type: "delivery" },
-            { id: "hotspots", label: "Inspect causes", href: hotspotsFlameHref, type: "churn" },
+            { id: "throughput", label: "Inspect associations", href: throughputFlameHref, type: "delivery" },
+            { id: "hotspots", label: "Inspect associations", href: hotspotsFlameHref, type: "churn" },
             { id: "investment", label: "View flow", href: investmentHref, type: "investment" },
         ];
 
@@ -95,15 +95,15 @@ export function InvestigationPanel({
                         </p>
                         <div className="flex gap-1">
                             <span className="px-1.5 py-0.5 rounded bg-(--accent-2)/10 text-[9px] text-(--accent-2) border border-(--accent-2)/20 uppercase tracking-tighter">
-                                High WIP
+                                WIP concentration
                             </span>
                             <span className="px-1.5 py-0.5 rounded bg-(--accent-2)/10 text-[9px] text-(--accent-2) border border-(--accent-2)/20 uppercase tracking-tighter">
-                                Flow bottleneck
+                                Flow constraint
                             </span>
                         </div>
                     </div>
                     <p className="text-[13px] leading-relaxed text-foreground">
-                        <span className="font-semibold text-(--accent-2)">{roleConfig.framing}.</span> Observed operating mode for <span className="font-semibold">{point.entity_label}</span> during
+                        <span className="font-semibold text-(--accent-2)">{roleConfig.framing}</span> Observed state for <span className="font-semibold">{point.entity_label}</span> during
                         the window of {point.window_start} to {point.window_end}.
                     </p>
                 </section>
@@ -129,7 +129,7 @@ export function InvestigationPanel({
                                     <div className="flex flex-col gap-0.5 text-left">
                                         {isSuggested && (
                                             <span className="text-[9px] uppercase tracking-wider text-(--accent-2) font-bold">
-                                                Suggested for {roleConfig.shortLabel}
+                                                Role lens: {roleConfig.shortLabel}
                                             </span>
                                         )}
                                         <span className="text-[12px] font-medium text-foreground group-hover:text-(--accent-2)">

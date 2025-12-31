@@ -15,26 +15,10 @@ import {
   getZoneOverlay,
 } from "@/lib/quadrantZones";
 import { trackTelemetryEvent } from "@/lib/telemetry";
-import type { QuadrantAxis, QuadrantPoint, QuadrantResponse } from "@/lib/types";
+import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantChart } from "./QuadrantChart";
 import { InvestigationPanel } from "./InvestigationPanel";
-
-const AXIS_DESCRIPTIONS: Record<string, string> = {
-  churn: "System change and technical revision volume.",
-  throughput: "Completed delivery units in the window.",
-  cycle_time: "Elapsed time from start to delivery.",
-  lead_time: "Elapsed time from request to delivery.",
-  wip: "Average concurrent work in flight.",
-  wip_saturation: "Average concurrent work in flight.",
-  review_load: "Review requests per reviewer.",
-  review_latency: "Elapsed time for review completion.",
-};
-
-const describeAxis = (axis: QuadrantAxis) =>
-  AXIS_DESCRIPTIONS[axis.metric] ??
-  `Observed ${axis.label.toLowerCase()} over the selected window.`;
-
 
 const ANNOTATION_COLOR = "rgba(148, 163, 184, 0.2)";
 const overlayKeyFor = (type: "zone" | "annotation", id: string | number) =>
@@ -120,10 +104,11 @@ export function QuadrantPanel({
   const scopeType =
     filters.scope.level === "developer" ? "person" : filters.scope.level;
   const isPersonScope = scopeType === "person";
+  const scopeIds = filters.scope.ids;
   const focusEntityIds = useMemo(() => {
-    const ids = filters.scope.ids ?? [];
+    const ids = scopeIds ?? [];
     return isPersonScope ? ids.slice(0, 1) : ids;
-  }, [isPersonScope, JSON.stringify(filters.scope.ids ?? [])]);
+  }, [isPersonScope, scopeIds]);
   const scopedData = useMemo(() => {
     if (!data || !isPersonScope) {
       return data;
@@ -266,32 +251,18 @@ export function QuadrantPanel({
     );
   }
 
-  const axisXDescription = describeAxis(scopedData.axes.x);
-  const axisYDescription = describeAxis(scopedData.axes.y);
   const pointMeaning =
-    "Each dot represents an observed system state over a fixed time window.";
-  const positionMeaning = "Position reflects operating mode, not performance.";
-  const quadrantMeaning = "Quadrants do not imply good or bad.";
-  const noRankingMeaning =
-    "Avoid ranking, percentile, or score language for this view.";
+    "A dot represents an observed system state over the selected window.";
+  const positionMeaning = "Position reflects operating mode, not evaluation.";
   const influenceNarrative = quadrantDefinition?.influence;
   const influenceLens = influenceNarrative?.lens ?? "Operating mode";
   const influenceFraming =
     influenceNarrative?.framing ??
-    "This view highlights competing pressures without ranking.";
-  const influenceHabits = influenceNarrative?.habits ?? [];
-  const influenceQuestions = influenceNarrative?.questions ?? [];
-  const influenceNotes = influenceNarrative?.notes ?? [];
+    "Operating modes under paired pressures.";
   const influenceNext =
     influenceNarrative?.next ??
-    "Use heatmaps, flame diagrams, and metric explain views to investigate causes.";
-  const zoneMeaning = hasInterpretationOverlay
-    ? "Zones are interpretive overlays that suggest common system modes under this lens; turn off anytime."
-    : null;
-  const infoTitle = isPersonScope ? "How to read your view" : "How to read this view";
-  const notForMeaning = isPersonScope
-    ? "Performance review, scoring, percentiles, or peer comparison."
-    : "Leaderboards, rankings, percentiles, or quality judgments.";
+    "Next investigation: heatmaps, flame diagrams, and metric explain views.";
+  const infoTitle = "View guide";
   const legendLensLabel = influenceNarrative?.lens ?? null;
 
   const supplementalLinks = (relatedLinks ?? []).filter(
@@ -349,7 +320,7 @@ export function QuadrantPanel({
                   {infoTitle}
                 </p>
                 <p className="mt-2 text-sm text-foreground">
-                  How to read this view
+                  Quadrant guide
                 </p>
               </div>
               <button
@@ -363,93 +334,21 @@ export function QuadrantPanel({
             <div className="mt-4 space-y-3">
               <p>
                 <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
-                  1. Lenses:
+                  1. Emphasis:
                 </span>{" "}
                 {influenceLens}. {influenceFraming}
               </p>
               <p>
                 <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
-                  2. Coordinates:
+                  2. Dot:
                 </span>{" "}
-                {scopedData.axes.x.label} ({axisXDescription}) vs {scopedData.axes.y.label} ({axisYDescription}).
+                {pointMeaning} {positionMeaning}
               </p>
               <p>
                 <span className="font-semibold text-foreground uppercase tracking-wider text-[10px]">
-                  3. System Patterns:
+                  3. Next:
                 </span>{" "}
-                {pointMeaning} {positionMeaning} {quadrantMeaning}
-              </p>
-            </div>
-            {influenceNotes.length ? (
-              <>
-                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
-                  Field notes
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-4">
-                  {influenceNotes.slice(0, 3).map((note) => (
-                    <li key={note}>{note}</li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            {influenceHabits.length ? (
-              <>
-                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
-                  Habits that shape this view
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-4">
-                  {influenceHabits.slice(0, 3).map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            {influenceQuestions.length ? (
-              <>
-                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
-                  Questions to investigate
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-4">
-                  {influenceQuestions.slice(0, 3).map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
-              Where to look next
-            </p>
-            <p className="mt-2">{influenceNext}</p>
-            {zoneMeaning ? (
-              <>
-                <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
-                  What zones mean
-                </p>
-                <div className="mt-2 space-y-2">
-                  <p>
-                    <span className="font-semibold text-foreground">
-                      Zones:
-                    </span>{" "}
-                    {zoneMeaning}
-                  </p>
-                </div>
-              </>
-            ) : null}
-            <p className="mt-4 text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
-              What this view is not for
-            </p>
-            <div className="mt-2 space-y-2">
-              <p>
-                <span className="font-semibold text-foreground">
-                  Not for:
-                </span>{" "}
-                {notForMeaning}
-              </p>
-              <p>
-                <span className="font-semibold text-foreground">
-                  No ranking:
-                </span>{" "}
-                {noRankingMeaning}
+                {influenceNext}
               </p>
             </div>
           </div>
@@ -465,7 +364,7 @@ export function QuadrantPanel({
                 onChange={(event) => handleZoneToggle(event.target.checked)}
                 className="h-3.5 w-3.5 accent-(--accent-2)"
               />
-              <span>Show exploratory interpretation</span>
+              <span>Show interpretive overlay</span>
             </label>
             <p className="text-[11px] text-(--ink-muted)">
               Highlights common system modes observed in similar systems.
@@ -553,7 +452,7 @@ export function QuadrantPanel({
               <p>
                 {isPersonScope
                   ? "Individual in view."
-                  : "Select a dot in the chart above to investigate causes and patterns."}
+                  : "Select a dot in the chart above to investigate patterns."}
               </p>
               {selectablePoints.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -596,11 +495,11 @@ export function QuadrantPanel({
           )}
         </div>
 
-        {activeSelectedPoint && (
+        {activeSelectedPoint && scopedData && (
           <aside className="lg:w-[380px] shrink-0 border border-(--card-stroke) rounded-[32px] overflow-hidden shadow-2xl">
             <InvestigationPanel
               point={activeSelectedPoint}
-              data={data}
+              data={scopedData}
               filters={filters}
               title={title}
               onClose={() => {
