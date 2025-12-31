@@ -40,6 +40,9 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
   const placeholderDeltas = !home?.deltas?.length;
 
   const changeFailureMetric = getMetric(deltas, "change_failure_rate");
+  const ciMetric = getMetric(deltas, "ci_success");
+  const reworkMetric = getMetric(deltas, "rework_ratio");
+  
   const explain = await getExplainData({ metric: "change_failure_rate", filters }).catch(() => null);
   const drivers = (explain?.drivers ?? []).slice(0, 5);
   const contributors = (explain?.contributors ?? []).slice(0, 5);
@@ -84,34 +87,24 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
               spark={changeFailureMetric?.spark}
               caption="Change failure rate"
             />
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-              <div className="flex items-center justify-between">
-                <h2 className="font-(--font-display) text-xl">CI Failures</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Pending
-                </span>
-              </div>
-              <p className="mt-3 text-sm text-(--ink-muted)">
-                CI event detail appears when CI signals are available.
-              </p>
-              <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
-                CI telemetry not yet available.
-              </div>
-            </div>
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-              <div className="flex items-center justify-between">
-                <h2 className="font-(--font-display) text-xl">Rework</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Pending
-                </span>
-              </div>
-              <p className="mt-3 text-sm text-(--ink-muted)">
-                Rework detail appears when rework items are labeled.
-              </p>
-              <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
-                Rework signals not yet available.
-              </div>
-            </div>
+            <MetricCard
+              label={ciMetric?.label ?? "CI Success Rate"}
+              href={buildExploreUrl({ metric: "ci_success", filters, role: activeRole })}
+              value={placeholderDeltas ? undefined : ciMetric?.value}
+              unit={ciMetric?.unit}
+              delta={placeholderDeltas ? undefined : ciMetric?.delta_pct}
+              spark={ciMetric?.spark}
+              caption="Pipeline success"
+            />
+            <MetricCard
+              label={reworkMetric?.label ?? "Rework Ratio"}
+              href={buildExploreUrl({ metric: "rework_ratio", filters, role: activeRole })}
+              value={placeholderDeltas ? undefined : reworkMetric?.value}
+              unit={reworkMetric?.unit}
+              delta={placeholderDeltas ? undefined : reworkMetric?.delta_pct}
+              spark={reworkMetric?.spark}
+              caption="Churn from rework"
+            />
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
