@@ -4,7 +4,12 @@ import type { ChangeEvent } from "react";
 import { useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
-type Palette = "material" | "echarts" | "fullchaos" | "fullchaos-cosmic" | "flat";
+type Palette =
+  | "material"
+  | "echarts"
+  | "fullchaos"
+  | "fullchaos-cosmic-train"
+  | "flat";
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
@@ -33,7 +38,7 @@ const normalizePalette = (value: string | null): Palette | null => {
   return value === "material" ||
     value === "echarts" ||
     value === "fullchaos" ||
-    value === "fullchaos-cosmic" ||
+    value === "fullchaos-cosmic-train" ||
     value === "flat"
     ? value
     : null;
@@ -137,7 +142,7 @@ export function ThemeToggle() {
         <option value="material">Material</option>
         <option value="echarts">ECharts</option>
         <option value="fullchaos">Full Chaos</option>
-        <option value="fullchaos-cosmic">Fullchaos Cosmic</option>
+        <option value="fullchaos-cosmic-train">Fullchaos Cosmic Train</option>
         <option value="flat">Flat UI</option>
       </select>
       <button

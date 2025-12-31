@@ -36,7 +36,7 @@ const themeScript = `
       normalizedPalette === "material" ||
       normalizedPalette === "echarts" ||
       normalizedPalette === "fullchaos" ||
-      normalizedPalette === "fullchaos-cosmic" ||
+      normalizedPalette === "fullchaos-cosmic-train" ||
       normalizedPalette === "flat"
     ) {
       document.documentElement.dataset.palette = normalizedPalette;
