@@ -29,6 +29,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 ## Documentation
 
 - `docs/visualizations.md` explains when to use heatmaps vs line charts, and flame diagrams vs cycle time.
+- `docs/hosting.md` covers demo exports, GitHub Pages, and CDN hosting.
 
 ## Frontend Only
 
