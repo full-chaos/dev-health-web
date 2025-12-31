@@ -18,6 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      DEMO_EXPORT: "true"
       BASE_PATH: /dev-health-web
     steps:
       - name: Checkout
