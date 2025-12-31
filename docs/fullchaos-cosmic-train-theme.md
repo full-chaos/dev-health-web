@@ -1,13 +1,13 @@
 # Fullchaos Cosmic Train Theme
 
-Inspired by the meteoric train art, this theme mixes combustion whites, blazing oranges, and cosmic blues so every artifact feels like it’s charging through a starry tunnel.
+Inspired by the meteoric train art, this theme mixes combustion whites, blazing comet tails, and galactic blues so every artifact feels like it’s charging through a starry tunnel.
 
 ## Palette
 
-- **Deep Space** `#0b1024` – charcoal night-sky foundation for backgrounds.
-- **Meteor Orange** `#ff5a1f` – fiery primary accent for highlights and callouts.
-- **Starfire Gold** `#f7c548` – luminous glow color for glow borders or emphasis.
-- **Ion Blue** `#4cc9ff` – cool neon contrast for links, buttons, and data points.
+- **Deep Nebula** `#090b1d` – velvet night-sky foundation for backgrounds.
+- **Streaking Flame** `#ffb035` – blazing comet tail accent for highlights and callouts.
+- **Burning Ember** `#ff5f1f` – molten glow for borders or emphasis.
+- **Galactic Blue** `#63d7ff` – cool cosmic contrast for links, buttons, and data points.
 
 ## Typography
 
@@ -18,18 +18,18 @@ Use a gradient overlay or soft glow around text to echo the train’s fire trail
 
 ## Applying the Theme
 
-1. Set `body` backgrounds to `Deep Space` and raise contrast with thin `Starfire Gold` borders.
-2. Highlight important tokens (buttons, badges, metadata) with `Meteor Orange` and outline with `Ion Blue`.
-3. Pair `Ion Blue` with white text for links or data labels; reserve `Starfire Gold` for light glow effects and iconography.
+1. Set `body` backgrounds to `Deep Nebula` and raise contrast with thin `Burning Ember` borders.
+2. Highlight important tokens (buttons, badges, metadata) with `Streaking Flame` and outline them with `Galactic Blue`.
+3. Pair `Galactic Blue` with white text for links or data labels; reserve `Burning Ember` for glowing edges and iconography.
 
 ## Sample CSS
 
 ```css
 :root {
-  --fullchaos-space: #0b1024;
-  --fullchaos-meteor: #ff5a1f;
-  --fullchaos-starfire: #f7c548;
-  --fullchaos-ion: #4cc9ff;
+  --fullchaos-space: #090b1d;
+  --fullchaos-meteor: #ffb035;
+  --fullchaos-starfire: #ff5f1f;
+  --fullchaos-ion: #63d7ff;
 }
 
 body {
