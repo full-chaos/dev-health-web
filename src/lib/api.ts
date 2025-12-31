@@ -20,8 +20,20 @@ import type {
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+const resolveApiBase = () => {
+  if (typeof window !== "undefined") {
+    const runtimeBase = (
+      window as Window & { __DEV_HEALTH_API_BASE__?: string }
+    ).__DEV_HEALTH_API_BASE__;
+    if (runtimeBase) {
+      return runtimeBase;
+    }
+    return process.env.NEXT_PUBLIC_API_BASE ?? window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+};
+
+export const API_BASE = "https://demo-api.fullchaos.studio";
 
 const buildUrl = (path: string, params?: Record<string, string | number>) => {
   const url = new URL(path, API_BASE);
@@ -59,7 +71,7 @@ const toRangeDays = (start?: string, end?: string) => {
 const applyWindowToFilters = (
   filters: MetricFilter,
   windowStart?: string,
-  windowEnd?: string
+  windowEnd?: string,
 ): MetricFilter => {
   if (!windowStart && !windowEnd) {
     return filters;
@@ -88,7 +100,7 @@ const postJson = async <T>(
   path: string,
   body: unknown,
   revalidate = 60,
-  params?: Record<string, string | number>
+  params?: Record<string, string | number>,
 ) => {
   const url = buildUrl(path, params);
   return fetchJson<T>(url, {
@@ -101,12 +113,9 @@ const postJson = async <T>(
 
 export async function getHomeData(filters: MetricFilter) {
   const normalized = normalizeFilters(filters);
-  return postJson<HomeResponse>(
-    "/api/v1/home",
-    { filters: normalized },
-    60,
-    { f: encodeFilterParam(normalized) }
-  );
+  return postJson<HomeResponse>("/api/v1/home", { filters: normalized }, 60, {
+    f: encodeFilterParam(normalized),
+  });
 }
 
 export async function getExplainData(params: {
@@ -118,7 +127,7 @@ export async function getExplainData(params: {
     "/api/v1/explain",
     { metric: params.metric, filters: normalized },
     60,
-    { metric: params.metric, f: encodeFilterParam(normalized) }
+    { metric: params.metric, f: encodeFilterParam(normalized) },
   );
 }
 
@@ -128,7 +137,7 @@ export async function getOpportunities(filters: MetricFilter) {
     "/api/v1/opportunities",
     { filters: normalized },
     120,
-    { f: encodeFilterParam(normalized) }
+    { f: encodeFilterParam(normalized) },
   );
 }
 
@@ -138,7 +147,7 @@ export async function getInvestment(filters: MetricFilter) {
     "/api/v1/investment",
     { filters: normalized },
     300,
-    { f: encodeFilterParam(normalized) }
+    { f: encodeFilterParam(normalized) },
   );
 }
 
@@ -153,7 +162,7 @@ export async function getSankey(params: {
   const withWindow = applyWindowToFilters(
     normalized,
     params.window_start,
-    params.window_end
+    params.window_end,
   );
   return postJson<SankeyResponse>(
     "/api/v1/sankey",
@@ -165,21 +174,17 @@ export async function getSankey(params: {
       window_end: params.window_end,
     },
     60,
-    { mode: params.mode, f: encodeFilterParam(withWindow) }
+    { mode: params.mode, f: encodeFilterParam(withWindow) },
   );
 }
 
 export async function getDrilldown(
   path: "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues",
   filters: MetricFilter,
-  limit = 50
+  limit = 50,
 ) {
   const normalized = normalizeFilters(filters);
-  return postJson<DrilldownResponse>(
-    path,
-    { filters: normalized, limit },
-    30
-  );
+  return postJson<DrilldownResponse>(path, { filters: normalized, limit }, 30);
 }
 
 export async function checkApiHealth() {
@@ -242,13 +247,16 @@ export async function getPersonDrilldown(params: {
   range_days?: number;
   compare_days?: number;
 }) {
-  const url = buildUrl(`/api/v1/people/${params.personId}/drilldown/${params.type}`, {
-    limit: params.limit ?? 50,
-    cursor: params.cursor ?? "",
-    metric: params.metric ?? "",
-    range_days: params.range_days ?? "",
-    compare_days: params.compare_days ?? "",
-  });
+  const url = buildUrl(
+    `/api/v1/people/${params.personId}/drilldown/${params.type}`,
+    {
+      limit: params.limit ?? 50,
+      cursor: params.cursor ?? "",
+      metric: params.metric ?? "",
+      range_days: params.range_days ?? "",
+      compare_days: params.compare_days ?? "",
+    },
+  );
   return fetchJson<PersonDrilldownResponse>(url, { cache: "no-store" });
 }
 
@@ -293,7 +301,11 @@ export async function getHeatmap(params: {
     if (candidates.length === 1) {
       break;
     }
-    if (response.status !== 400 && response.status !== 404 && response.status !== 422) {
+    if (
+      response.status !== 400 &&
+      response.status !== 404 &&
+      response.status !== 422
+    ) {
       break;
     }
   }
@@ -339,10 +351,10 @@ export async function getAggregatedFlame(params: {
 
 export async function getQuadrant(params: {
   type:
-  | "churn_throughput"
-  | "cycle_throughput"
-  | "wip_throughput"
-  | "review_load_latency";
+    | "churn_throughput"
+    | "cycle_throughput"
+    | "wip_throughput"
+    | "review_load_latency";
   scope_type: "org" | "team" | "repo" | "developer" | "person";
   scope_id?: string;
   range_days: number;
@@ -380,7 +392,11 @@ export async function getQuadrant(params: {
     if (candidates.length === 1) {
       break;
     }
-    if (response.status !== 400 && response.status !== 404 && response.status !== 422) {
+    if (
+      response.status !== 400 &&
+      response.status !== 404 &&
+      response.status !== 422
+    ) {
       break;
     }
   }

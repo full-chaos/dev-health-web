@@ -26,6 +26,12 @@ NEXT_PUBLIC_API_BASE="http://127.0.0.1:8000" npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
+For runtime configuration (no rebuild), start with:
+
+```bash
+npm run start -- --api-base=http://127.0.0.1:8000
+```
+
 ## Documentation
 
 - `docs/visualizations.md` explains when to use heatmaps vs line charts, and flame diagrams vs cycle time.

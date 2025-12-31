@@ -54,7 +54,7 @@ const getStoredPalette = (): Palette | null => {
 
 const getSystemTheme = (): Theme => {
   if (typeof window === "undefined") {
-    return "light";
+    return "dark";
   }
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
@@ -84,12 +84,12 @@ const getThemeSnapshot = (): Theme => {
   if (fromDataset === "light" || fromDataset === "dark") {
     return fromDataset;
   }
-  return getSystemTheme();
+  return "dark";
 };
 
 const getPaletteSnapshot = (): Palette => {
   if (typeof window === "undefined") {
-    return "material";
+    return "fullchaos";
   }
   const stored = getStoredPalette();
   if (stored) {
@@ -100,11 +100,11 @@ const getPaletteSnapshot = (): Palette => {
   if (normalized) {
     return normalized;
   }
-  return "material";
+  return "fullchaos";
 };
 
-const getThemeServerSnapshot = (): Theme => "light";
-const getPaletteServerSnapshot = (): Palette => "material";
+const getThemeServerSnapshot = (): Theme => "dark";
+const getPaletteServerSnapshot = (): Palette => "fullchaos";
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);

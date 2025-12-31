@@ -26,6 +26,17 @@ export const metadata: Metadata = {
   description: "Developer Health Ops cockpit.",
 };
 
+const apiBase =
+  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+
+const apiBaseScript = `
+(() => {
+  try {
+    window.__DEV_HEALTH_API_BASE__ = ${JSON.stringify(apiBase)};
+  } catch {}
+})();
+`;
+
 const themeScript = `
 (() => {
   try {
@@ -55,10 +66,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="light" data-palette="material" suppressHydrationWarning>
+    <html lang="en" data-theme="dark" data-palette="fullchaos" suppressHydrationWarning>
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
+        <script dangerouslySetInnerHTML={{ __html: apiBaseScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <div className="fixed right-6 top-6 z-50">
           <ThemeToggle />

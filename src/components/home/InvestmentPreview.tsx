@@ -6,14 +6,12 @@ import dynamic from "next/dynamic";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse } from "@/lib/types";
 import { mapInvestmentToNestedPie } from "@/lib/mappers";
+import { API_BASE } from "@/lib/api";
 
 const NestedPieChart2D = dynamic(
   () => import("@/components/charts/NestedPieChart2D").then((mod) => mod.NestedPieChart2D),
   { ssr: false }
 );
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
 type InvestmentPreviewProps = {
   filters: MetricFilter;

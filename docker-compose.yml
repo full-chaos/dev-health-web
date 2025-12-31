@@ -1,11 +1,25 @@
+networks:
+  chaos:
+    driver: bridge
+    name: chaos
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
     image: dev-health-web:latest
+    networks:
+      - default
+      - chaos
     ports:
       - "3000:3000"
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_API_BASE: https://demo-api.fullchaos.studio
+    command:
+      - npm
+      - run
+      - start
+      - --
+      - --api-base=https://demo-api.fullchaos.studio
