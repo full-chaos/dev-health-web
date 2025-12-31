@@ -17,9 +17,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      DEMO_EXPORT: "true"
-      BASE_PATH: /dev-health-web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build
-        run: npm run build
+        run: DEMO_EXPORT=true BASE_PATH=/dev-health-web npm run build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
