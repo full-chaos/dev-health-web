@@ -145,7 +145,10 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                 {person?.display_name ?? "Individual metrics"}
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                This view is scoped to one person and never compares across peers.
+                This view is scoped to one person.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Select a metric to investigate.
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
                 {(person?.identities ?? []).map((identity) => (
@@ -203,7 +206,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
           <section>
             <QuadrantPanel
               title="Churn × Throughput landscape"
-              description="View your current operating mode for the selected window without peer comparison."
+              description="Operating mode for the selected window in individual scope."
               data={quadrant}
               filters={quadrantFilters}
               relatedLinks={[
@@ -265,7 +268,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                   }`}
               >
                 <p className="text-xs uppercase tracking-[0.3em]">
-                  Identity coverage
+                  Identity mapping
                 </p>
                 <p className="mt-2 text-2xl font-semibold">
                   {typeof identityCoverage === "number"
@@ -273,7 +276,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                     : "--"}
                 </p>
                 <p className="mt-2 text-xs">
-                  Link accounts to improve attribution accuracy.
+                  Attribution accuracy reflects linked accounts.
                 </p>
               </div>
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">

@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { InvestmentPreview } from "@/components/home/InvestmentPreview";
-import { DataStatusBanner } from "@/components/home/DataStatusBanner";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -9,7 +8,7 @@ import { RoleSelectorWithSuspense, RoleFraming } from "@/components/RoleSelector
 import { checkApiHealth, getHomeData } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue, formatPercent, formatTimestamp } from "@/lib/formatters";
+import { formatDelta, formatMetricValue, formatTimestamp } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { getRoleConfig, isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
 import type { HomeResponse } from "@/lib/types";
@@ -81,15 +80,9 @@ export default async function Home({ searchParams }: HomePageProps) {
   const roleConfig = getRoleConfig(activeRole);
 
   const home = await loadHome(filters);
-  const coverage = home?.freshness.coverage;
-  const coverageLow = coverage ? coverage.repos_covered_pct < 70 : false;
   const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
   const rawDeltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
-  const scopeDetail = filters.scope.ids.length
-    ? filters.scope.ids.join(", ")
-    : `all ${filters.scope.level}s`;
-
   // Reorder Monitoring Views based on role
   const viewPriority: Record<string, string[]> = {
     ic: ["flow", "quality", "throughput", "dora"],
@@ -130,7 +123,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.4em] text-(--ink-muted)">
-                    Good morning
+                    Status
                   </p>
                   <div className="mt-4">
                     <RoleSelectorWithSuspense />
@@ -140,8 +133,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   </h1>
                   <RoleFraming />
                   <p className="mt-3 max-w-xl text-sm text-(--ink-muted)">
-                    System status, risks, and recommended moves for {scopeDetail} over
-                    the last {filters.time.range_days} days.
+                    System patterns over the last {filters.time.range_days} days.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -154,60 +146,18 @@ export default async function Home({ searchParams }: HomePageProps) {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-[1.4fr_0.6fr]">
-                <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-4 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-(--ink-muted)">
-                      Latest ingest: {formatTimestamp(lastIngestedAt)}
-                    </span>
-                    <span className="rounded-full bg-(--accent-3)/40 px-3 py-1 text-xs font-semibold">
-                      System status
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-(--ink-muted)">
-                    {home?.freshness.sources ? (
-                      Object.entries(home.freshness.sources).map(([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between rounded-2xl bg-(--card-70) px-3 py-2"
-                        >
-                          <span className="uppercase tracking-[0.2em]">{key}</span>
-                          <span className="font-semibold text-foreground">
-                            {value}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-2 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-3 py-2">
-                        Source signals pending.
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--accent-2)/10 p-4 text-xs text-(--ink-muted)">
-                  <p className="text-(--accent-2)/90">Setup coverage</p>
-                  <p className="mt-2 text-2xl font-semibold text-foreground">
-                    {coverage ? formatPercent(coverage.repos_covered_pct) : "--"}
-                  </p>
-                  <p className="mt-2">
-                    PR to issue links: {coverage ? formatPercent(coverage.prs_linked_to_issues_pct) : "--"}
-                  </p>
-                  <p>
-                    Cycle states: {coverage ? formatPercent(coverage.issues_with_cycle_states_pct) : "--"}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between">
+                <div />
+                <p className="text-sm text-(--ink-muted)">
+                  Last updated: {formatTimestamp(lastIngestedAt)}
+                </p>
               </div>
             </div>
           </header>
 
           <FilterBar view="home" />
 
-          <DataStatusBanner
-            isUnavailable={!home}
-            lastIngestedAt={lastIngestedAt}
-            coverageLow={coverageLow}
-            filters={filters}
-          />
+          {/* Minimal freshness indicator only — no integration status UI */}
 
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -216,7 +166,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   Monitoring views
                 </p>
                 <p className="mt-1 text-sm text-(--ink-muted)">
-                  Opinionated tabs for steady trend monitoring.
+                  Tabs for steady trend monitoring.
                 </p>
               </div>
               <Link
@@ -255,7 +205,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   Key signals
                 </p>
                 <p className="mt-1 text-sm text-(--ink-muted)">
-                  Small shifts worth inspecting.
+                  Small shifts in the selected window.
                 </p>
               </div>
               <Link
@@ -292,9 +242,9 @@ export default async function Home({ searchParams }: HomePageProps) {
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-              <h2 className="font-(--font-display) text-2xl">Alerts and risks</h2>
+              <h2 className="font-(--font-display) text-2xl">Notable signals</h2>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Short signals that deserve a quick drill-down.
+                Short signals from the selected window.
               </p>
               <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
                 {(home?.summary ?? []).map((sentence) => (
@@ -316,7 +266,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <div className="flex items-center justify-between">
-                <h3 className="font-(--font-display) text-xl">Recommended actions</h3>
+                <h3 className="font-(--font-display) text-xl">Investigation threads</h3>
                 <Link
                   href={withFilterParam("/opportunities", filters)}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
@@ -349,13 +299,13 @@ export default async function Home({ searchParams }: HomePageProps) {
                   className="rounded-2xl border border-(--card-stroke) bg-(--accent)/15 px-4 py-3"
                 >
                   <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                    Execute focus
+                    Focus thread
                   </p>
                   <p className="mt-2 text-base font-semibold">
                     {home?.constraint.title ?? "Constraint pending"}
                   </p>
                   <p className="mt-2 text-sm text-(--ink-muted)">
-                    {home?.constraint.claim ?? "Capture the limiting factor."}
+                    {home?.constraint.claim ?? "Limiting factor pending."}
                   </p>
                 </Link>
               </div>
@@ -365,7 +315,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-(--font-display) text-xl">Focus constraint</h3>
+                <h3 className="font-(--font-display) text-xl">Limiting factor</h3>
                 <Link
                   href={buildExploreUrl({ metric: "review_latency", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
@@ -438,7 +388,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             <div>
               <h3 className="font-(--font-display) text-xl">Investment mix</h3>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Live work allocation preview for the current scope.
+                Work allocation snapshot for the selected window.
               </p>
               <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
                 <Link

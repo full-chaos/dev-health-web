@@ -13,12 +13,12 @@ type NavItem = {
 const navItems: NavItem[] = [
   { id: "home", label: "Home", href: "/", description: "Cockpit" },
   { id: "people", label: "People", href: "/people", description: "Individual" },
-  { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Monitor" },
+  { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Trends" },
   { id: "landscape", label: "Landscape", href: "/explore/landscape", description: "Quadrants" },
   { id: "work", label: "Work", href: "/work", description: "Investment" },
   { id: "code", label: "Code", href: "/code", description: "Signals" },
   { id: "quality", label: "Quality", href: "/quality", description: "Reliability" },
-  { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Actions" },
+  { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
 ];
 
 type PrimaryNavProps = {
@@ -37,10 +37,10 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
               Dev Health Ops
             </p>
             <p className="mt-3 font-(--font-display) text-lg">
-              Control Room
+              Cockpit
             </p>
             <p className="mt-2 text-xs text-(--ink-muted)">
-              Monitor signal, drill into evidence.
+              Observe signals, drill into evidence.
             </p>
           </div>
           <nav className="mt-5 space-y-2 text-sm">
@@ -70,7 +70,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
             })}
           </nav>
           <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
-            Explore opens from evidence links only. Use monitoring views for trends.
+            Explore opens from evidence links only. Monitoring views show trends.
           </div>
         </div>
       </div>

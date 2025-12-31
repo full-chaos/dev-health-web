@@ -58,7 +58,10 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                 Reliability Signals
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Change failure, CI stability, and rework visibility.
+                Change failure, CI stability, and rework signals.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Open a signal to investigate.
               </p>
             </div>
             <Link
@@ -89,10 +92,10 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                 </span>
               </div>
               <p className="mt-3 text-sm text-(--ink-muted)">
-                Connect CI events to surface flaky pipelines and failed runs.
+                CI event detail appears when CI signals are available.
               </p>
               <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
-                CI telemetry not yet configured.
+                CI telemetry not yet available.
               </div>
             </div>
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
@@ -103,10 +106,10 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                 </span>
               </div>
               <p className="mt-3 text-sm text-(--ink-muted)">
-                Tag rework or rollback items to quantify repeated work.
+                Rework detail appears when rework items are labeled.
               </p>
               <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
-                Rework signals not yet tagged.
+                Rework signals not yet available.
               </div>
             </div>
           </section>
@@ -114,7 +117,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
           <section className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-(--font-display) text-xl">Change Failure Drivers</h2>
+                <h2 className="font-(--font-display) text-xl">Change Failure Associations</h2>
                 <Link
                   href={buildExploreUrl({ metric: "change_failure_rate", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
@@ -145,7 +148,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-(--ink-muted)">
-                  Driver analysis will appear once data is ingested.
+                  Association detail will appear once data is ingested.
                 </p>
               )}
             </div>

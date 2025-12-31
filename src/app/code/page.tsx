@@ -90,7 +90,10 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 Churn and Ownership
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Identify hotspots and areas with fragile ownership.
+                Hotspots and ownership concentration in the selected window.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Open a card to investigate.
               </p>
             </div>
             <Link
@@ -115,24 +118,24 @@ export default async function CodePage({ searchParams }: CodePageProps) {
             />
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-(--font-display) text-xl">Ownership Coverage</h2>
+                <h2 className="font-(--font-display) text-xl">Ownership Signals</h2>
                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Manual
                 </span>
               </div>
               <p className="mt-3 text-sm text-(--ink-muted)">
-                Connect CODEOWNERS or review roles to surface bus factor risk.
+                Ownership metadata is not yet available for this scope.
               </p>
               <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
-                Ownership telemetry not yet configured.
+                Ownership telemetry not yet available.
               </div>
             </div>
           </section>
 
           <section>
             <HeatmapPanel
-              title="Hotspot risk accumulation"
-              description="Track where churn and ownership load stack over time."
+              title="Hotspot concentration"
+              description="Where churn and ownership load accumulate over time."
               request={{
                 type: "risk",
                 metric: "hotspot_risk",
@@ -143,7 +146,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 end_date: filters.time.end_date,
               }}
               initialData={hotspotHeatmap}
-              emptyState="Hotspot risk heatmap unavailable."
+              emptyState="Hotspot heatmap unavailable."
               evidenceTitle="Hotspot evidence"
             />
           </section>
@@ -151,7 +154,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
           <section>
             <QuadrantPanel
               title="Churn × Throughput landscape"
-              description="Differentiate refactor-heavy and delivery-heavy operating modes without ranking teams or repos."
+              description="Operating modes under change volume and delivery pace."
               data={churnThroughput}
               filters={filters}
               relatedLinks={[
@@ -216,11 +219,11 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 </Link>
               </div>
               <p className="mt-3 text-sm text-(--ink-muted)">
-                Once ownership signals are connected, this view highlights single maintainer risks.
+                When ownership signals are available, this view shows single-maintainer concentration.
               </p>
               <div className="mt-4 space-y-2 text-sm">
                 <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-(--ink-muted)">
-                  Add ownership metadata to unlock bus factor scoring.
+                  Ownership metadata is required to show bus factor detail.
                 </div>
               </div>
             </div>

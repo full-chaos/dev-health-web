@@ -33,8 +33,10 @@ export default async function PeoplePage({ searchParams }: PeoplePageProps) {
                 Individual metrics
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Self-serve insights for coaching conversations. No peer
-                comparisons.
+                Individual metrics for a single-person view.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Select an individual to investigate.
               </p>
             </div>
           </header>

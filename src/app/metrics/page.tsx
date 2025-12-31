@@ -142,7 +142,10 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 Monitoring view
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Track trends over time. Use Explore only for evidence.
+                Trends over the selected window.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Open a metric to investigate.
               </p>
             </div>
             <Link
@@ -227,7 +230,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
           <section>
             <QuadrantPanel
               title="Churn × Throughput landscape"
-              description="Classify system modes without ranking or scoring."
+              description="Operating modes under change volume and delivery pace."
               data={quadrant}
               filters={filters}
               relatedLinks={[
@@ -240,7 +243,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
           <section className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-(--font-display) text-xl">Likely drivers</h2>
+                <h2 className="font-(--font-display) text-xl">Likely associations</h2>
                 <Link
                   href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
@@ -249,7 +252,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 </Link>
               </div>
               <p className="mt-2 text-xs text-(--ink-muted)">
-                Preview of the active window. Select a driver for drill-down.
+                Preview of the selected window. Select a signal for detail.
               </p>
               {drivers.length ? (
                 <div className="mt-4 space-y-4">
@@ -274,7 +277,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-(--ink-muted)">
-                  Driver analysis will appear once data is ingested.
+                  Association detail will appear once data is ingested.
                 </p>
               )}
             </div>

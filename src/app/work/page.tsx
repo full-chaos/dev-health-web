@@ -155,7 +155,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
                 Work Investment and Flow
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Analyze work allocation, WIP pressure, and blocked effort.
+                Work allocation, WIP pressure, and blocked effort.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Select a tab to investigate.
               </p>
             </div>
             <Link

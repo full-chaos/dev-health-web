@@ -11,8 +11,8 @@ export function ServiceUnavailable() {
           Data service unavailable
         </h1>
         <p className="text-sm text-(--ink-muted)">
-          The API health check failed. Confirm ClickHouse and the API are
-          running, then refresh this page.
+          The API status check failed. ClickHouse and the API must be available
+          to load this view.
         </p>
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
           <p>Quick checks:</p>
