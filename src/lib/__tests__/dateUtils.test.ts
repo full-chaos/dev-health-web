@@ -47,6 +47,9 @@ describe("dateUtils", () => {
       expect(parseDateInput("not-a-date")).toBeNull();
       expect(parseDateInput("2024-01")).toBeNull(); // Missing day
       expect(parseDateInput("01-15")).toBeNull(); // Missing year
+      expect(parseDateInput("2024--15")).toBeNull(); // Empty month
+      expect(parseDateInput("2024-01-")).toBeNull(); // Empty day
+      expect(parseDateInput("-01-15")).toBeNull(); // Empty year
     });
 
     test("rejects invalid dates like February 30th", () => {

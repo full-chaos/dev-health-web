@@ -26,6 +26,10 @@ export const parseDateInput = (value: string) => {
   if (parts.length !== 3) {
     return null;
   }
+  // Check for empty parts before conversion to prevent empty strings from becoming 0
+  if (parts.some((part) => part.trim() === "")) {
+    return null;
+  }
   const [year, month, day] = parts.map((part) => Number(part));
   if (
     !Number.isInteger(year) ||
