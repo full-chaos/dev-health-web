@@ -13,7 +13,7 @@ export const chartColors = [
   "#e53935",
 ];
 
-const fallbackTheme = {
+export const fallbackTheme = {
   text: "#1c1b1f",
   grid: "#e7e0ec",
   muted: "#49454f",
@@ -63,14 +63,29 @@ type ThemeStore = {
 };
 
 let themeStore: ThemeStore = { theme: fallbackTheme, colors: chartColors };
-const listeners = new Set<() => void>();
+// Export for testing
+export const listeners = new Set<() => void>();
 let cleanupFn: (() => void) | null = null;
+
+// Export for testing
+export const getCleanupFn = () => cleanupFn;
+
+// Export for testing - allows resetting module state between tests
+export const resetForTesting = () => {
+  listeners.clear();
+  if (cleanupFn) {
+    cleanupFn();
+  }
+  cleanupFn = null;
+  themeStore = { theme: fallbackTheme, colors: chartColors };
+};
 
 const notifyListeners = () => {
   listeners.forEach((listener) => listener());
 };
 
-const setupObservers = () => {
+// Export for testing
+export const setupObservers = () => {
   if (typeof window === "undefined" || cleanupFn) {
     return;
   }
@@ -109,13 +124,15 @@ const setupObservers = () => {
   };
 };
 
-const teardownObservers = () => {
+// Export for testing
+export const teardownObservers = () => {
   if (listeners.size === 0 && cleanupFn) {
     cleanupFn();
   }
 };
 
-const subscribeToTheme = (listener: () => void) => {
+// Export for testing
+export const subscribeToTheme = (listener: () => void) => {
   listeners.add(listener);
   setupObservers();
 
@@ -125,10 +142,14 @@ const subscribeToTheme = (listener: () => void) => {
   };
 };
 
-const getThemeSnapshot = () => themeStore.theme;
-const getColorsSnapshot = () => themeStore.colors;
-const getServerTheme = () => fallbackTheme;
-const getServerColors = () => chartColors;
+// Export for testing
+export const getThemeSnapshot = () => themeStore.theme;
+// Export for testing
+export const getColorsSnapshot = () => themeStore.colors;
+// Export for testing
+export const getServerTheme = () => fallbackTheme;
+// Export for testing
+export const getServerColors = () => chartColors;
 
 export function useChartTheme() {
   return useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerTheme);
