@@ -64,59 +64,63 @@ type ThemeStore = {
 
 let themeStore: ThemeStore = { theme: fallbackTheme, colors: chartColors };
 const listeners = new Set<() => void>();
+let cleanupFn: (() => void) | null = null;
 
 const notifyListeners = () => {
   listeners.forEach((listener) => listener());
 };
 
+const setupObservers = () => {
+  if (typeof window === "undefined" || cleanupFn) {
+    return;
+  }
+
+  const updateStore = () => {
+    themeStore = { theme: readTheme(), colors: readChartColors() };
+    notifyListeners();
+  };
+
+  // Initial read
+  updateStore();
+
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const observer = new MutationObserver(updateStore);
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme", "data-palette"],
+  });
+
+  if (media.addEventListener) {
+    media.addEventListener("change", updateStore);
+  } else {
+    media.addListener(updateStore);
+  }
+
+  cleanupFn = () => {
+    observer.disconnect();
+    if (media.removeEventListener) {
+      media.removeEventListener("change", updateStore);
+    } else {
+      media.removeListener(updateStore);
+    }
+    cleanupFn = null;
+  };
+};
+
+const teardownObservers = () => {
+  if (listeners.size === 0 && cleanupFn) {
+    cleanupFn();
+  }
+};
+
 const subscribeToTheme = (listener: () => void) => {
   listeners.add(listener);
-
-  // Set up observers only once (when first listener subscribes)
-  if (listeners.size === 1 && typeof window !== "undefined") {
-    const updateStore = () => {
-      themeStore = { theme: readTheme(), colors: readChartColors() };
-      notifyListeners();
-    };
-
-    // Initial read
-    updateStore();
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const observer = new MutationObserver(updateStore);
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme", "data-palette"],
-    });
-
-    if (media.addEventListener) {
-      media.addEventListener("change", updateStore);
-    } else {
-      media.addListener(updateStore);
-    }
-
-    // Store cleanup function for when all listeners unsubscribe
-    const cleanup = () => {
-      observer.disconnect();
-      if (media.removeEventListener) {
-        media.removeEventListener("change", updateStore);
-      } else {
-        media.removeListener(updateStore);
-      }
-    };
-
-    // Return unsubscribe function
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) {
-        cleanup();
-      }
-    };
-  }
+  setupObservers();
 
   return () => {
     listeners.delete(listener);
+    teardownObservers();
   };
 };
 

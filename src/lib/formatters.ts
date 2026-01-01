@@ -1,5 +1,14 @@
-// Cached formatters for better performance - avoid creating new instances on every call
-const cachedFormatters = new Map<string, Intl.NumberFormat>();
+// Pre-created formatters for common use cases - avoids creating new instances on every call
+const defaultFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 1,
+});
+const integerFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+});
+const compactFormatter = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 const timestampFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -7,21 +16,36 @@ const timestampFormatter = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
-const getCachedFormatter = (options?: Intl.NumberFormatOptions): Intl.NumberFormat => {
-  const key = JSON.stringify(options ?? {});
-  let formatter = cachedFormatters.get(key);
+// Fallback cache for custom formatter options
+const customFormatters = new Map<string, Intl.NumberFormat>();
+
+const getFormatter = (options?: Intl.NumberFormatOptions): Intl.NumberFormat => {
+  // Use pre-created formatters for common cases
+  if (!options) {
+    return defaultFormatter;
+  }
+  if (options.maximumFractionDigits === 0 && Object.keys(options).length === 1) {
+    return integerFormatter;
+  }
+  if (options.notation === "compact") {
+    return compactFormatter;
+  }
+
+  // Fallback to cached custom formatter for rare options
+  const key = `${options.maximumFractionDigits ?? ""}:${options.notation ?? ""}`;
+  let formatter = customFormatters.get(key);
   if (!formatter) {
     formatter = new Intl.NumberFormat("en-US", {
       maximumFractionDigits: 1,
       ...options,
     });
-    cachedFormatters.set(key, formatter);
+    customFormatters.set(key, formatter);
   }
   return formatter;
 };
 
 export const formatNumber = (value: number, options?: Intl.NumberFormatOptions) => {
-  return getCachedFormatter(options).format(value);
+  return getFormatter(options).format(value);
 };
 
 export const formatPercent = (value: number) =>

@@ -15,13 +15,19 @@ const NestedPieChart2D = dynamic(
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
+// Consistent height for both loading and loaded states
+const CHART_HEIGHT = 320;
+
 type InvestmentPreviewProps = {
   filters: MetricFilter;
 };
 
 function LoadingState() {
   return (
-    <div className="flex h-[320px] flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60)">
+    <div
+      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60)"
+      style={{ height: CHART_HEIGHT }}
+    >
       <div className="mb-4 flex gap-1">
         <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent)" style={{ animationDelay: "0ms" }} />
         <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent)" style={{ animationDelay: "150ms" }} />
@@ -87,7 +93,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
       <NestedPieChart2D
         categories={nested.categories}
         subtypes={nested.subtypes}
-        height={320}
+        height={CHART_HEIGHT}
       />
     </div>
   );
