@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export const chartColors = [
   "#1e88e5",
@@ -56,86 +56,79 @@ const readChartColors = (): string[] => {
   });
 };
 
-export function useChartTheme() {
-  const [theme, setTheme] = useState<ChartTheme>(fallbackTheme);
+// Shared subscription store to avoid multiple MutationObservers
+type ThemeStore = {
+  theme: ChartTheme;
+  colors: string[];
+};
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
+let themeStore: ThemeStore = { theme: fallbackTheme, colors: chartColors };
+const listeners = new Set<() => void>();
 
-    const updateTheme = () => {
-      setTheme(readTheme());
+const notifyListeners = () => {
+  listeners.forEach((listener) => listener());
+};
+
+const subscribeToTheme = (listener: () => void) => {
+  listeners.add(listener);
+
+  // Set up observers only once (when first listener subscribes)
+  if (listeners.size === 1 && typeof window !== "undefined") {
+    const updateStore = () => {
+      themeStore = { theme: readTheme(), colors: readChartColors() };
+      notifyListeners();
     };
 
-    updateTheme();
+    // Initial read
+    updateStore();
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    if (media.addEventListener) {
-      media.addEventListener("change", updateTheme);
-      const observer = new MutationObserver(updateTheme);
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["data-theme", "data-palette"],
-      });
-      return () => {
-        media.removeEventListener("change", updateTheme);
-        observer.disconnect();
-      };
-    }
-    media.addListener(updateTheme);
-    const observer = new MutationObserver(updateTheme);
+    const observer = new MutationObserver(updateStore);
+
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["data-theme", "data-palette"],
     });
-    return () => {
-      media.removeListener(updateTheme);
-      observer.disconnect();
-    };
-  }, []);
 
-  return theme;
+    if (media.addEventListener) {
+      media.addEventListener("change", updateStore);
+    } else {
+      media.addListener(updateStore);
+    }
+
+    // Store cleanup function for when all listeners unsubscribe
+    const cleanup = () => {
+      observer.disconnect();
+      if (media.removeEventListener) {
+        media.removeEventListener("change", updateStore);
+      } else {
+        media.removeListener(updateStore);
+      }
+    };
+
+    // Return unsubscribe function
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        cleanup();
+      }
+    };
+  }
+
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const getThemeSnapshot = () => themeStore.theme;
+const getColorsSnapshot = () => themeStore.colors;
+const getServerTheme = () => fallbackTheme;
+const getServerColors = () => chartColors;
+
+export function useChartTheme() {
+  return useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerTheme);
 }
 
 export function useChartColors() {
-  const [colors, setColors] = useState<string[]>(chartColors);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const updateColors = () => {
-      setColors(readChartColors());
-    };
-
-    updateColors();
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    if (media.addEventListener) {
-      media.addEventListener("change", updateColors);
-      const observer = new MutationObserver(updateColors);
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["data-theme", "data-palette"],
-      });
-      return () => {
-        media.removeEventListener("change", updateColors);
-        observer.disconnect();
-      };
-    }
-    media.addListener(updateColors);
-    const observer = new MutationObserver(updateColors);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme", "data-palette"],
-    });
-    return () => {
-      media.removeListener(updateColors);
-      observer.disconnect();
-    };
-  }, []);
-
-  return colors;
+  return useSyncExternalStore(subscribeToTheme, getColorsSnapshot, getServerColors);
 }

@@ -1,9 +1,27 @@
+// Cached formatters for better performance - avoid creating new instances on every call
+const cachedFormatters = new Map<string, Intl.NumberFormat>();
+const timestampFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+const getCachedFormatter = (options?: Intl.NumberFormatOptions): Intl.NumberFormat => {
+  const key = JSON.stringify(options ?? {});
+  let formatter = cachedFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 1,
+      ...options,
+    });
+    cachedFormatters.set(key, formatter);
+  }
+  return formatter;
+};
+
 export const formatNumber = (value: number, options?: Intl.NumberFormatOptions) => {
-  const formatter = new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 1,
-    ...options,
-  });
-  return formatter.format(value);
+  return getCachedFormatter(options).format(value);
 };
 
 export const formatPercent = (value: number) =>
@@ -38,10 +56,5 @@ export const formatTimestamp = (value?: string | null) => {
   if (Number.isNaN(date.getTime())) {
     return "Unavailable";
   }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return timestampFormatter.format(date);
 };
