@@ -232,7 +232,7 @@ export default async function PersonMetricPage({
             </div>
           )}
 
-          <PersonRangeBar rangeDays={range_days} compareDays={compare_days} />
+          <PersonRangeBar rangeDays={range_days} />
 
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">

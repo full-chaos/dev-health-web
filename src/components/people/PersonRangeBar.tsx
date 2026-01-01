@@ -2,41 +2,19 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-const toLocalDate = (value: Date) =>
-  new Date(value.getFullYear(), value.getMonth(), value.getDate());
-
-const formatDateInput = (value: Date) => {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const parseDateInput = (value: string) => {
-  const [year, month, day] = value.split("-").map((part) => Number(part));
-  if (!year || !month || !day) {
-    return null;
-  }
-  return new Date(year, month - 1, day);
-};
-
-const addDays = (value: Date, days: number) =>
-  new Date(value.getFullYear(), value.getMonth(), value.getDate() + days);
-
-const diffDaysInclusive = (start: Date, end: Date) => {
-  const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-  const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-  return Math.max(1, Math.round((endUtc - startUtc) / MS_PER_DAY) + 1);
-};
+import {
+  addDays,
+  diffDaysInclusive,
+  formatDateInput,
+  parseDateInput,
+  toLocalDate,
+} from "@/lib/dateUtils";
 
 type PersonRangeBarProps = {
   rangeDays: number;
-  compareDays: number;
 };
 
-export function PersonRangeBar({ rangeDays, compareDays }: PersonRangeBarProps) {
+export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
