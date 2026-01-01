@@ -1,11 +1,11 @@
 // Pre-created formatters for common use cases - avoids creating new instances on every call
-const defaultFormatter = new Intl.NumberFormat("en-US", {
+export const defaultFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
-const integerFormatter = new Intl.NumberFormat("en-US", {
+export const integerFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
-const compactFormatter = new Intl.NumberFormat("en-US", {
+export const compactFormatter = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
@@ -16,10 +16,10 @@ const timestampFormatter = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
-// Fallback cache for custom formatter options
-const customFormatters = new Map<string, Intl.NumberFormat>();
+// Fallback cache for custom formatter options - exported for testing
+export const customFormatters = new Map<string, Intl.NumberFormat>();
 
-const getFormatter = (options?: Intl.NumberFormatOptions): Intl.NumberFormat => {
+export const getFormatter = (options?: Intl.NumberFormatOptions): Intl.NumberFormat => {
   // Use pre-created formatters for common cases
   if (!options) {
     return defaultFormatter;
@@ -27,12 +27,16 @@ const getFormatter = (options?: Intl.NumberFormatOptions): Intl.NumberFormat => 
   if (options.maximumFractionDigits === 0 && Object.keys(options).length === 1) {
     return integerFormatter;
   }
-  if (options.notation === "compact") {
+  if (
+    options.notation === "compact" &&
+    (options.maximumFractionDigits === undefined || options.maximumFractionDigits === 1) &&
+    Object.keys(options).filter((k) => k !== "notation" && k !== "maximumFractionDigits").length === 0
+  ) {
     return compactFormatter;
   }
 
-  // Fallback to cached custom formatter for rare options
-  const key = `${options.maximumFractionDigits ?? ""}:${options.notation ?? ""}`;
+  // Fallback to cached custom formatter for any other options
+  const key = JSON.stringify(options);
   let formatter = customFormatters.get(key);
   if (!formatter) {
     formatter = new Intl.NumberFormat("en-US", {

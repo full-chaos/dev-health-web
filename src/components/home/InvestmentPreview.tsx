@@ -63,7 +63,6 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const filtersKey = getFiltersKey(filters);
 
     fetch(`${API_BASE}/api/v1/investment`, {
       method: "POST",
@@ -74,13 +73,13 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
       .then((response) => (response.ok ? response.json() : null))
       .then((payload) => {
         if (payload) {
-          setState({ data: payload as InvestmentResponse, filtersKey });
+          setState({ data: payload as InvestmentResponse, filtersKey: currentFiltersKey });
         }
       })
       .catch(() => null);
 
     return () => controller.abort();
-  }, [filters]);
+  }, [filters, currentFiltersKey]);
 
   if (isLoading || !state.data) {
     return <LoadingState />;
