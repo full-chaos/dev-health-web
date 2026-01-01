@@ -7,6 +7,7 @@ import type {
   HomeResponse,
   HeatmapResponse,
   InvestmentResponse,
+  MetaResponse,
   OpportunitiesResponse,
   PeopleSearchResult,
   PersonDrilldownResponse,
@@ -167,6 +168,29 @@ export async function checkApiHealth() {
     return { ok: data.status === "ok", data };
   } catch {
     return { ok: false, data: null as HealthResponse | null };
+  }
+}
+
+export async function getApiMeta(): Promise<MetaResponse | null> {
+  if (process.env.DEV_HEALTH_TEST_MODE === "true") {
+    return {
+      backend: "sqlite",
+      version: "test",
+      last_ingest_at: new Date().toISOString(),
+      coverage: { repos: 10 },
+      limits: { drilldown_max: 200 },
+      supported_endpoints: ["/api/v1/home", "/api/v1/meta"],
+    };
+  }
+  const url = buildUrl("/api/v1/meta");
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) {
+      return null;
+    }
+    return (await response.json()) as MetaResponse;
+  } catch {
+    return null;
   }
 }
 
