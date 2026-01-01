@@ -182,7 +182,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
             </div>
           )}
 
-          <PersonRangeBar rangeDays={range_days} compareDays={compare_days} />
+          <PersonRangeBar rangeDays={range_days} />
 
           <section className="grid gap-4 md:grid-cols-3">
             {deltas.map((delta) => (
