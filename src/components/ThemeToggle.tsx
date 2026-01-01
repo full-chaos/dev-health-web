@@ -89,7 +89,7 @@ const getThemeSnapshot = (): Theme => {
 
 const getPaletteSnapshot = (): Palette => {
   if (typeof window === "undefined") {
-    return "material";
+    return "fullchaos";
   }
   const stored = getStoredPalette();
   if (stored) {
@@ -100,11 +100,11 @@ const getPaletteSnapshot = (): Palette => {
   if (normalized) {
     return normalized;
   }
-  return "material";
+  return "fullchaos";
 };
 
 const getThemeServerSnapshot = (): Theme => "light";
-const getPaletteServerSnapshot = (): Palette => "material";
+const getPaletteServerSnapshot = (): Palette => "fullchaos";
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);
