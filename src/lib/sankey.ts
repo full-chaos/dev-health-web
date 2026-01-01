@@ -9,6 +9,7 @@ import {
 } from "@/data/devHealthOpsSample";
 import { toSankeyData } from "@/lib/chartTransforms";
 import { encodeFilterParam } from "@/lib/filters/encode";
+import { applyWindowToFilters } from "@/lib/filters/time";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyLink, SankeyMode, SankeyNode } from "@/lib/types";
 
@@ -72,39 +73,6 @@ const DEFAULT_API_BY_MODE: Record<
   expense: "/api/v1/drilldown/issues",
   state: "/api/v1/drilldown/issues",
   hotspot: "/api/v1/drilldown/prs",
-};
-
-const toRangeDays = (start?: string, end?: string) => {
-  if (!start || !end) {
-    return null;
-  }
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return null;
-  }
-  const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
-  return Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
-};
-
-const applyWindowToFilters = (
-  filters: MetricFilter,
-  windowStart?: string,
-  windowEnd?: string
-): MetricFilter => {
-  if (!windowStart && !windowEnd) {
-    return filters;
-  }
-  const rangeDays = toRangeDays(windowStart, windowEnd);
-  return {
-    ...filters,
-    time: {
-      ...filters.time,
-      start_date: windowStart ?? filters.time.start_date,
-      end_date: windowEnd ?? filters.time.end_date,
-      range_days: rangeDays ?? filters.time.range_days,
-    },
-  };
 };
 
 const dedupeNodes = (nodes: SankeyNode[]) => {

@@ -7,6 +7,7 @@ import type {
   HomeResponse,
   HeatmapResponse,
   InvestmentResponse,
+  MetaResponse,
   OpportunitiesResponse,
   PeopleSearchResult,
   PersonDrilldownResponse,
@@ -19,6 +20,7 @@ import type {
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
+import { applyWindowToFilters } from "@/lib/filters/time";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
@@ -41,39 +43,6 @@ const normalizeFilters = (filters: MetricFilter): MetricFilter => {
     return { ...filters, scope: { ...filters.scope, level: "org" } };
   }
   return filters;
-};
-
-const toRangeDays = (start?: string, end?: string) => {
-  if (!start || !end) {
-    return null;
-  }
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return null;
-  }
-  const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
-  return Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
-};
-
-const applyWindowToFilters = (
-  filters: MetricFilter,
-  windowStart?: string,
-  windowEnd?: string
-): MetricFilter => {
-  if (!windowStart && !windowEnd) {
-    return filters;
-  }
-  const rangeDays = toRangeDays(windowStart, windowEnd);
-  return {
-    ...filters,
-    time: {
-      ...filters.time,
-      start_date: windowStart ?? filters.time.start_date,
-      end_date: windowEnd ?? filters.time.end_date,
-      range_days: rangeDays ?? filters.time.range_days,
-    },
-  };
 };
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -199,6 +168,29 @@ export async function checkApiHealth() {
     return { ok: data.status === "ok", data };
   } catch {
     return { ok: false, data: null as HealthResponse | null };
+  }
+}
+
+export async function getApiMeta(): Promise<MetaResponse | null> {
+  if (process.env.DEV_HEALTH_TEST_MODE === "true") {
+    return {
+      backend: "sqlite",
+      version: "test",
+      last_ingest_at: new Date().toISOString(),
+      coverage: { repos: 10 },
+      limits: { drilldown_max: 200 },
+      supported_endpoints: ["/api/v1/home", "/api/v1/meta"],
+    };
+  }
+  const url = buildUrl("/api/v1/meta");
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) {
+      return null;
+    }
+    return (await response.json()) as MetaResponse;
+  } catch {
+    return null;
   }
 }
 

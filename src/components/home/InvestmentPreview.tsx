@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 
 import type { MetricFilter } from "@/lib/filters/types";
@@ -15,12 +15,51 @@ const NestedPieChart2D = dynamic(
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
+// Consistent height for both loading and loaded states
+const CHART_HEIGHT = 320;
+
 type InvestmentPreviewProps = {
   filters: MetricFilter;
 };
 
+function LoadingState() {
+  return (
+    <div
+      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60)"
+      style={{ height: CHART_HEIGHT }}
+    >
+      <div className="mb-4 flex gap-1">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent)" style={{ animationDelay: "0ms" }} />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent)" style={{ animationDelay: "150ms" }} />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent)" style={{ animationDelay: "300ms" }} />
+      </div>
+      <span className="text-sm text-(--ink-muted)">Loading investment mix…</span>
+    </div>
+  );
+}
+
+// Generate a stable key from filters for tracking data freshness
+const getFiltersKey = (filters: MetricFilter) =>
+  JSON.stringify({
+    scope: filters.scope,
+    time: filters.time,
+  });
+
+type DataState = {
+  data: InvestmentResponse | null;
+  filtersKey: string;
+};
+
 export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
-  const [data, setData] = useState<InvestmentResponse | null>(null);
+  const [state, setState] = useState<DataState>({
+    data: null,
+    filtersKey: "",
+  });
+
+  const currentFiltersKey = useMemo(() => getFiltersKey(filters), [filters]);
+
+  // Compute loading state: we're loading if filtersKey doesn't match current filters
+  const isLoading = state.filtersKey !== currentFiltersKey;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -34,30 +73,26 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
       .then((response) => (response.ok ? response.json() : null))
       .then((payload) => {
         if (payload) {
-          setData(payload as InvestmentResponse);
+          setState({ data: payload as InvestmentResponse, filtersKey: currentFiltersKey });
         }
       })
       .catch(() => null);
 
     return () => controller.abort();
-  }, [filters]);
+  }, [filters, currentFiltersKey]);
 
-  if (!data) {
-    return (
-      <div className="flex h-[320px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
-        Loading investment mix…
-      </div>
-    );
+  if (isLoading || !state.data) {
+    return <LoadingState />;
   }
 
-  const nested = mapInvestmentToNestedPie(data);
+  const nested = mapInvestmentToNestedPie(state.data);
 
   return (
     <div className="rounded-3xl border border-(--card-stroke) bg-card p-4">
       <NestedPieChart2D
         categories={nested.categories}
         subtypes={nested.subtypes}
-        height={320}
+        height={CHART_HEIGHT}
       />
     </div>
   );

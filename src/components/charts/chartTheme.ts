@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export const chartColors = [
   "#1e88e5",
@@ -13,7 +13,7 @@ export const chartColors = [
   "#e53935",
 ];
 
-const fallbackTheme = {
+export const fallbackTheme = {
   text: "#1c1b1f",
   grid: "#e7e0ec",
   muted: "#49454f",
@@ -56,86 +56,105 @@ const readChartColors = (): string[] => {
   });
 };
 
+// Shared subscription store to avoid multiple MutationObservers
+type ThemeStore = {
+  theme: ChartTheme;
+  colors: string[];
+};
+
+let themeStore: ThemeStore = { theme: fallbackTheme, colors: chartColors };
+// Export for testing
+export const listeners = new Set<() => void>();
+let cleanupFn: (() => void) | null = null;
+
+// Export for testing
+export const getCleanupFn = () => cleanupFn;
+
+// Export for testing - allows resetting module state between tests
+export const resetForTesting = () => {
+  listeners.clear();
+  if (cleanupFn) {
+    cleanupFn();
+  }
+  cleanupFn = null;
+  themeStore = { theme: fallbackTheme, colors: chartColors };
+};
+
+const notifyListeners = () => {
+  listeners.forEach((listener) => listener());
+};
+
+// Export for testing
+export const setupObservers = () => {
+  if (typeof window === "undefined" || cleanupFn) {
+    return;
+  }
+
+  const updateStore = () => {
+    themeStore = { theme: readTheme(), colors: readChartColors() };
+    notifyListeners();
+  };
+
+  // Initial read — only update store, don't notify since useSyncExternalStore
+  // already reads the snapshot; notifying here causes a double render.
+  themeStore = { theme: readTheme(), colors: readChartColors() };
+
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const observer = new MutationObserver(updateStore);
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme", "data-palette"],
+  });
+
+  if (media.addEventListener) {
+    media.addEventListener("change", updateStore);
+  } else {
+    media.addListener(updateStore);
+  }
+
+  cleanupFn = () => {
+    observer.disconnect();
+    if (media.removeEventListener) {
+      media.removeEventListener("change", updateStore);
+    } else {
+      media.removeListener(updateStore);
+    }
+    cleanupFn = null;
+  };
+};
+
+// Export for testing
+export const teardownObservers = () => {
+  if (listeners.size === 0 && cleanupFn) {
+    cleanupFn();
+  }
+};
+
+// Export for testing
+export const subscribeToTheme = (listener: () => void) => {
+  listeners.add(listener);
+  setupObservers();
+
+  return () => {
+    listeners.delete(listener);
+    teardownObservers();
+  };
+};
+
+// Export for testing
+export const getThemeSnapshot = () => themeStore.theme;
+// Export for testing
+export const getColorsSnapshot = () => themeStore.colors;
+// Export for testing
+export const getServerTheme = () => fallbackTheme;
+// Export for testing
+export const getServerColors = () => chartColors;
+
 export function useChartTheme() {
-  const [theme, setTheme] = useState<ChartTheme>(fallbackTheme);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const updateTheme = () => {
-      setTheme(readTheme());
-    };
-
-    updateTheme();
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    if (media.addEventListener) {
-      media.addEventListener("change", updateTheme);
-      const observer = new MutationObserver(updateTheme);
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["data-theme", "data-palette"],
-      });
-      return () => {
-        media.removeEventListener("change", updateTheme);
-        observer.disconnect();
-      };
-    }
-    media.addListener(updateTheme);
-    const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme", "data-palette"],
-    });
-    return () => {
-      media.removeListener(updateTheme);
-      observer.disconnect();
-    };
-  }, []);
-
-  return theme;
+  return useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerTheme);
 }
 
 export function useChartColors() {
-  const [colors, setColors] = useState<string[]>(chartColors);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const updateColors = () => {
-      setColors(readChartColors());
-    };
-
-    updateColors();
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    if (media.addEventListener) {
-      media.addEventListener("change", updateColors);
-      const observer = new MutationObserver(updateColors);
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["data-theme", "data-palette"],
-      });
-      return () => {
-        media.removeEventListener("change", updateColors);
-        observer.disconnect();
-      };
-    }
-    media.addListener(updateColors);
-    const observer = new MutationObserver(updateColors);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme", "data-palette"],
-    });
-    return () => {
-      media.removeListener(updateColors);
-      observer.disconnect();
-    };
-  }, []);
-
-  return colors;
+  return useSyncExternalStore(subscribeToTheme, getColorsSnapshot, getServerColors);
 }

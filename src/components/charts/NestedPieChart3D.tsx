@@ -171,6 +171,8 @@ export function NestedPieChart3D({
       }}
       className={className}
       style={mergedStyle}
+      chartTheme={chartTheme}
+      chartColors={chartColors}
     />
   );
 }

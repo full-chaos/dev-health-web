@@ -1,11 +1,12 @@
 import Link from "next/link";
 
+import { BackendBanner } from "@/components/home/BackendBanner";
 import { InvestmentPreview } from "@/components/home/InvestmentPreview";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { RoleSelectorWithSuspense, RoleFraming } from "@/components/RoleSelectorWrapper";
-import { checkApiHealth, getHomeData } from "@/lib/api";
+import { checkApiHealth, getApiMeta, getHomeData } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue, formatTimestamp } from "@/lib/formatters";
@@ -79,7 +80,7 @@ export default async function Home({ searchParams }: HomePageProps) {
   const activeRole = isValidRole(roleParam) ? roleParam : DEFAULT_ROLE;
   const roleConfig = getRoleConfig(activeRole);
 
-  const home = await loadHome(filters);
+  const [home, meta] = await Promise.all([loadHome(filters), getApiMeta()]);
   const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
   const rawDeltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
@@ -147,7 +148,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               </div>
 
               <div className="flex items-center justify-between">
-                <div />
+                <BackendBanner meta={meta} />
                 <p className="text-sm text-(--ink-muted)">
                   Last updated: {formatTimestamp(lastIngestedAt)}
                 </p>

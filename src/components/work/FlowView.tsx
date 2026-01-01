@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSankey } from "@/lib/api";
 import { withFilterParam } from "@/lib/filters/url";
@@ -110,7 +110,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         router.replace(`/work?${params.toString()}`);
     };
 
-    const handleItemClick = (item: {
+    const handleItemClick = useCallback((item: {
         type: "node" | "link";
         name?: string;
         source?: string;
@@ -118,7 +118,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         value?: number;
     }) => {
         setSelectedItem(item);
-    };
+    }, []);
 
     const isLoading = resolvedKey !== requestKey;
     const hasData = dataset && dataset.nodes.length > 0;

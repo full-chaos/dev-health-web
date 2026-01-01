@@ -423,6 +423,8 @@ export function QuadrantChart({
       className={className}
       style={mergedStyle}
       onEvents={{ click: handleClick }}
+      chartTheme={chartTheme}
+      chartColors={colors}
     />
   );
 }

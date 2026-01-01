@@ -64,6 +64,7 @@ export function VerticalBarChart({
       }}
       className={className}
       style={mergedStyle}
+      chartTheme={chartTheme}
     />
   );
 }

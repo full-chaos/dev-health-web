@@ -66,6 +66,7 @@ export function DonutChart({
       }}
       className={className}
       style={mergedStyle}
+      chartTheme={chartTheme}
     />
   );
 }
