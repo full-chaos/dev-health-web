@@ -206,6 +206,8 @@ export function FlameDiagram({
       }}
       className={className}
       style={mergedStyle}
+      chartTheme={chartTheme}
+      chartColors={colors}
     />
   );
 }

@@ -62,6 +62,7 @@ export function TimeseriesChart({
       }}
       className={className}
       style={mergedStyle}
+      chartTheme={chartTheme}
     />
   );
 }

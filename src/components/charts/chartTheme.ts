@@ -80,8 +80,9 @@ const setupObservers = () => {
     notifyListeners();
   };
 
-  // Initial read
-  updateStore();
+  // Initial read — only update store, don't notify since useSyncExternalStore
+  // already reads the snapshot; notifying here causes a double render.
+  themeStore = { theme: readTheme(), colors: readChartColors() };
 
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   const observer = new MutationObserver(updateStore);

@@ -136,6 +136,8 @@ export function HeatmapChart({
       className={className}
       style={mergedStyle}
       onEvents={{ click: handleClick }}
+      chartTheme={chartTheme}
+      chartColors={chartColors}
     />
   );
 }

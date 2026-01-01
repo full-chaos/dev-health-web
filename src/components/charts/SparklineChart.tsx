@@ -69,6 +69,7 @@ export function SparklineChart({
       }}
       className={className}
       style={mergedStyle}
+      chartTheme={chartTheme}
     />
   );
 }

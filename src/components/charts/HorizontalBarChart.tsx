@@ -62,6 +62,7 @@ export function HorizontalBarChart({
       }}
       className={className}
       style={mergedStyle}
+      chartTheme={chartTheme}
     />
   );
 }
