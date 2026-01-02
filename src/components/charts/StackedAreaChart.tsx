@@ -79,6 +79,20 @@ export function StackedAreaChart({
                 return `rgba(${r}, ${g}, ${b}, ${alpha})`;
             };
 
+            // Helper to convert rgb/rgba to rgba with new alpha
+            const rgbToRgba = (color: string, alpha: number) => {
+                const rgbMatch = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+                if (rgbMatch) {
+                    return `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${alpha})`;
+                }
+                const rgbaMatch = color.match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)$/);
+                if (rgbaMatch) {
+                    return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${alpha})`;
+                }
+                // Fallback: return original color if format not recognized
+                return color;
+            };
+
             // Determine gradient colors
             let gradientFill;
             if (s.gradientStart && s.gradientEnd) {
@@ -91,10 +105,10 @@ export function StackedAreaChart({
                     end: hexToRgba(baseColor, 0.1),
                 });
             } else {
-                // Assume rgb/rgba format and use string replacement
+                // Handle rgb/rgba format
                 gradientFill = createAreaGradient({
-                    start: baseColor.replace(")", ", 0.8)").replace("rgb", "rgba"),
-                    end: baseColor.replace(")", ", 0.1)").replace("rgb", "rgba"),
+                    start: rgbToRgba(baseColor, 0.8),
+                    end: rgbToRgba(baseColor, 0.1),
                 });
             }
 
