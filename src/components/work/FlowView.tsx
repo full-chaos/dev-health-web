@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -68,6 +68,14 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const useSampleData = process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+
+    // Refs for tab buttons (for keyboard navigation focus management)
+    const tabRefs = useRef<Record<FlowSubTab, HTMLButtonElement | null>>({
+        investment_mix: null,
+        code_hotspots: null,
+        investment_expense: null,
+        state_flow: null,
+    });
 
     // Sub-tab state
     const subTabParam = searchParams.get("flow_tab") as FlowSubTab | null;
@@ -193,10 +201,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
         const targetTab = FLOW_TABS[targetIndex];
         handleSubTabChange(targetTab.id);
-        // Focus the new tab button
-        setTimeout(() => {
-            document.getElementById(`flow-tab-${targetTab.id}`)?.focus();
-        }, 0);
+        // Focus the new tab button using ref
+        tabRefs.current[targetTab.id]?.focus();
     };
 
     // Build hierarchy data for treemap/sunburst
@@ -301,6 +307,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                 {FLOW_TABS.map((tab) => (
                     <button
                         key={tab.id}
+                        ref={(el) => { tabRefs.current[tab.id] = el; }}
                         id={`flow-tab-${tab.id}`}
                         onClick={() => handleSubTabChange(tab.id)}
                         onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
