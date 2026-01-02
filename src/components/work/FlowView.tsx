@@ -16,7 +16,6 @@ import {
 import {
     toInvestmentHierarchy,
     toHotspotHierarchy,
-    toTransitionMatrix,
     generateSampleExpenseData,
     toStackedAreaData,
     type HierarchyNode,
@@ -24,20 +23,16 @@ import {
 import {
     sankeyHotspotNodes,
     sankeyHotspotLinks,
-    sankeyStateTransitionSample,
 } from "@/data/devHealthOpsSample";
 
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { TreemapChart } from "@/components/charts/TreemapChart";
 import { SunburstChart } from "@/components/charts/SunburstChart";
 import { StackedAreaChart } from "@/components/charts/StackedAreaChart";
-import { TransitionHeatmapChart } from "@/components/charts/TransitionHeatmapChart";
 import {
     ChartTypeToggle,
     TREEMAP_SUNBURST_OPTIONS,
-    SANKEY_HEATMAP_OPTIONS,
     type TreemapSunburstType,
-    type SankeyHeatmapType,
 } from "@/components/charts/ChartTypeToggle";
 import { formatNumber } from "@/lib/formatters";
 
@@ -82,7 +77,6 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     // Chart type toggles (local state, persists during navigation within Flow page)
     const [investmentChartType, setInvestmentChartType] = useState<TreemapSunburstType>("treemap");
     const [hotspotChartType, setHotspotChartType] = useState<TreemapSunburstType>("treemap");
-    const [stateFlowChartType, setStateFlowChartType] = useState<SankeyHeatmapType>("sankey");
 
     // Data states
     const [dataset, setDataset] = useState<SankeyDataset | null>(null);
@@ -201,10 +195,6 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         return toHotspotHierarchy(sankeyHotspotNodes, sankeyHotspotLinks);
     }, []);
 
-    const transitionData = useMemo(() => {
-        return toTransitionMatrix(sankeyStateTransitionSample);
-    }, []);
-
     const expenseData = useMemo(() => {
         return toStackedAreaData(generateSampleExpenseData(30));
     }, []);
@@ -244,22 +234,6 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
             transition: item.type === "link" ? { from: item.source ?? "", to: item.target ?? "" } : undefined,
         });
     }, [dataset]);
-
-    const handleHeatmapClick = useCallback((cell: {
-        from: string;
-        to: string;
-        count: number;
-        percentOfOutgoing: number;
-    }) => {
-        setSelection({
-            view: "state_flow",
-            path: [cell.from, cell.to],
-            metricValue: cell.count,
-            percentTotal: cell.percentOfOutgoing,
-            unit: "transitions",
-            transition: { from: cell.from, to: cell.to },
-        });
-    }, []);
 
     const handleAreaClick = useCallback((params: {
         seriesName: string;
@@ -349,13 +323,6 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                 onChange={setHotspotChartType}
                             />
                         )}
-                        {subTab === "state_flow" && (
-                            <ChartTypeToggle
-                                options={SANKEY_HEATMAP_OPTIONS}
-                                value={stateFlowChartType}
-                                onChange={setStateFlowChartType}
-                            />
-                        )}
                     </div>
 
                     <div className="relative min-h-[400px]" data-testid="chart-sankey">
@@ -416,27 +383,18 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
                         {/* State Flow Tab */}
                         {subTab === "state_flow" && (
-                            stateFlowChartType === "sankey" ? (
-                                hasData ? (
-                                    <SankeyChart
-                                        nodes={dataset!.nodes}
-                                        links={dataset!.links}
-                                        unit={dataset!.unit}
-                                        height={500}
-                                        onItemClick={handleSankeyClick}
-                                    />
-                                ) : !isLoading && (
-                                    <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
-                                        No flow data available for this scope and window.
-                                    </div>
-                                )
-                            ) : (
-                                <TransitionHeatmapChart
-                                    data={transitionData}
-                                    unit="transitions"
+                            hasData ? (
+                                <SankeyChart
+                                    nodes={dataset!.nodes}
+                                    links={dataset!.links}
+                                    unit={dataset!.unit}
                                     height={500}
-                                    onCellClick={handleHeatmapClick}
+                                    onItemClick={handleSankeyClick}
                                 />
+                            ) : !isLoading && (
+                                <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                                    No flow data available for this scope and window.
+                                </div>
                             )
                         )}
                     </div>
