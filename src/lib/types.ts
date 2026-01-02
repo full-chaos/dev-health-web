@@ -115,6 +115,10 @@ export type SankeyNode = {
   name: string;
   group?: string;
   value?: number;
+  /** Hierarchy level (1 = root sources, 2 = first level targets, etc.) */
+  level?: number;
+  /** For aggregated nodes, contains the collapsed children names */
+  collapsedChildren?: string[];
 };
 
 export type SankeyLink = {

@@ -6,6 +6,8 @@ import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
 import type { SankeyLink, SankeyNode } from "@/lib/types";
 
+export type SankeyOrientation = "horizontal" | "vertical";
+
 type SankeyChartProps = {
   nodes: SankeyNode[];
   links: SankeyLink[];
@@ -14,6 +16,12 @@ type SankeyChartProps = {
   width?: number | string;
   className?: string;
   style?: CSSProperties;
+  /**
+   * Orientation of the Sankey flow.
+   * - "horizontal": left-to-right (temporal progression, default)
+   * - "vertical": top-to-bottom (allocation hierarchy)
+   */
+  orientation?: SankeyOrientation;
   onItemClick?: (item: {
     type: "node" | "link";
     name?: string;
@@ -21,6 +29,17 @@ type SankeyChartProps = {
     target?: string;
     value?: number;
   }) => void;
+  /**
+   * Callback when hovering over a node or link.
+   * Called with null when hover ends.
+   */
+  onItemHover?: (item: {
+    type: "node" | "link";
+    name?: string;
+    source?: string;
+    target?: string;
+    value?: number;
+  } | null) => void;
 };
 
 // Compute flow totals from links/nodes data
@@ -84,7 +103,9 @@ export function SankeyChart({
   width = "100%",
   className,
   style,
+  orientation = "horizontal",
   onItemClick,
+  onItemHover,
 }: SankeyChartProps) {
   const chartTheme = useChartTheme();
 
@@ -127,6 +148,49 @@ export function SankeyChart({
     },
     [onItemClick]
   );
+
+  // Memoize hover handlers
+  const handleMouseOver = useCallback(
+    (params: unknown) => {
+      if (!onItemHover || !params || typeof params !== "object") {
+        return;
+      }
+      const entry = params as {
+        dataType?: string;
+        data?: {
+          name?: string;
+          value?: number;
+          source?: string;
+          target?: string;
+        };
+        name?: string;
+      };
+      const data = entry.data ?? {};
+      const isLink = entry.dataType === "edge";
+      onItemHover({
+        type: isLink ? "link" : "node",
+        name: data.name ?? entry.name,
+        source: data.source,
+        target: data.target,
+        value: data.value,
+      });
+    },
+    [onItemHover]
+  );
+
+  const handleMouseOut = useCallback(() => {
+    onItemHover?.(null);
+  }, [onItemHover]);
+
+  // Sort nodes by value within each level for visual clarity (deterministic layout)
+  const sortedNodes = useMemo(() => {
+    return [...nodes].sort((a, b) => {
+      const aVal = nodeValueByName.get(a.name) ?? 0;
+      const bVal = nodeValueByName.get(b.name) ?? 0;
+      // Sort descending by value
+      return bVal - aVal;
+    });
+  }, [nodes, nodeValueByName]);
 
   // Memoize the ECharts option to prevent re-renders
   const option = useMemo(() => {
@@ -188,6 +252,18 @@ export function SankeyChart({
       `;
     };
 
+    // Vertical layout configuration
+    const isVertical = orientation === "vertical";
+    const labelConfig = isVertical
+      ? {
+        color: chartTheme.text,
+        fontSize: 11,
+        position: "right" as const,
+        // Ensure labels don't overlap nodes in vertical mode
+        formatter: "{b}",
+      }
+      : { color: chartTheme.text, fontSize: 11 };
+
     return {
       tooltip: {
         trigger: "item" as const,
@@ -197,24 +273,39 @@ export function SankeyChart({
       series: [
         {
           type: "sankey" as const,
+          orient: (isVertical ? "vertical" : "horizontal") as "vertical" | "horizontal",
           emphasis: { focus: "adjacency" as const },
-          data: nodes,
+          data: sortedNodes,
           links,
           roam: false,
-          lineStyle: { color: "gradient", curveness: 0.5, opacity: 0.45 },
-          label: { color: chartTheme.text, fontSize: 11 },
+          lineStyle: {
+            color: "gradient",
+            curveness: 0.5,
+            opacity: 0.45,
+          },
+          label: labelConfig,
           itemStyle: {
             borderColor: chartTheme.grid,
             borderWidth: 1,
           },
-          nodeGap: 14,
+          nodeGap: isVertical ? 18 : 14,
+          // Increase node width in vertical mode for better visibility
+          nodeWidth: isVertical ? 24 : 20,
+          // Layout algorithm settings for deterministic positioning
+          layoutIterations: 32,
+          // For vertical orientation, provide more breathing room
+          left: isVertical ? "5%" : "1%",
+          right: isVertical ? "20%" : "10%",
+          top: isVertical ? "8%" : "5%",
+          bottom: isVertical ? "5%" : "5%",
         },
       ],
     };
   }, [
-    nodes,
+    sortedNodes,
     links,
     unit,
+    orientation,
     chartTheme.text,
     chartTheme.grid,
     chartTheme.muted,
@@ -225,10 +316,17 @@ export function SankeyChart({
   ]);
 
   // Memoize onEvents to prevent re-renders
-  const onEvents = useMemo(
-    () => (onItemClick ? { click: handleClick } : undefined),
-    [onItemClick, handleClick]
-  );
+  const onEvents = useMemo(() => {
+    const events: Record<string, (params: unknown) => void> = {};
+    if (onItemClick) {
+      events.click = handleClick;
+    }
+    if (onItemHover) {
+      events.mouseover = handleMouseOver;
+      events.mouseout = handleMouseOut;
+    }
+    return Object.keys(events).length > 0 ? events : undefined;
+  }, [onItemClick, onItemHover, handleClick, handleMouseOver, handleMouseOut]);
 
   return (
     <Chart

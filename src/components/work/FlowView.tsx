@@ -9,10 +9,11 @@ import {
     SANKEY_MODES,
     buildSankeyDataset,
     buildSankeyEvidenceUrl,
+    getNodeDetails,
     getSankeyDefinition,
     type SankeyDataset,
 } from "@/lib/sankey";
-import { SankeyChart } from "@/components/charts/SankeyChart";
+import { SankeyChart, type SankeyOrientation } from "@/components/charts/SankeyChart";
 import { formatNumber } from "@/lib/formatters";
 import Link from "next/link";
 
@@ -148,6 +149,40 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         return withFilterParam(`/work?tab=flame&mode=${flameMode}&context_node=${nodeName}`, filters, activeRole);
     }, [flameMode, filters, activeRole, selectedItem]);
 
+    // All flow sankeys use vertical orientation (top → bottom)
+    const orientation: SankeyOrientation = "vertical";
+
+    // Get detailed node information for the Inspect panel
+    const nodeDetails = useMemo(() => {
+        if (!selectedItem || !dataset) return null;
+        const nodeName = selectedItem.type === "node"
+            ? selectedItem.name
+            : (selectedItem.target ?? selectedItem.source);
+        if (!nodeName) return null;
+        // Use original data for accurate child breakdown
+        const nodes = dataset.originalNodes ?? dataset.nodes;
+        const links = dataset.originalLinks ?? dataset.links;
+        return getNodeDetails(nodeName, nodes, links, dataset.collapsedMap);
+    }, [selectedItem, dataset]);
+
+    // Hover state for path highlighting
+    const [hoveredItem, setHoveredItem] = useState<{
+        type: "node" | "link";
+        name?: string;
+        source?: string;
+        target?: string;
+    } | null>(null);
+
+    const handleItemHover = useCallback((item: {
+        type: "node" | "link";
+        name?: string;
+        source?: string;
+        target?: string;
+        value?: number;
+    } | null) => {
+        setHoveredItem(item);
+    }, []);
+
     return (
         <div className="flex flex-col gap-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -157,6 +192,11 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                         <div>
                             <h2 className="text-xl font-(--font-display)">{dataset?.label || definition.label}</h2>
                             <p className="mt-1 text-sm text-(--ink-muted)">{dataset?.description || definition.description}</p>
+                            {mode === "investment" && (
+                                <p className="mt-1 text-xs text-(--ink-muted) italic">
+                                    Vertical flow: sources at top, allocation flows downward
+                                </p>
+                            )}
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {SANKEY_MODES.map((m) => (
@@ -185,8 +225,10 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                 nodes={dataset!.nodes}
                                 links={dataset!.links}
                                 unit={dataset!.unit}
-                                height={500}
+                                height={mode === "investment" ? 600 : 500}
+                                orientation={orientation}
                                 onItemClick={handleItemClick}
+                                onItemHover={handleItemHover}
                             />
                         ) : !isLoading && (
                             <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
@@ -198,11 +240,18 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
                 {/* Inspect Panel */}
                 <div className="flex flex-col gap-4">
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 h-full min-h-[400px]">
+                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 h-full min-h-[400px] overflow-y-auto max-h-[700px]">
                         <p className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">Inspect Flow</p>
                         {!selectedItem ? (
                             <div className="mt-20 text-center">
                                 <p className="text-sm text-(--ink-muted)">Select a node or path to inspect details.</p>
+                                {hoveredItem && (
+                                    <p className="mt-4 text-xs text-(--ink-muted) italic">
+                                        Hovering: {hoveredItem.type === "link"
+                                            ? `${hoveredItem.source} → ${hoveredItem.target}`
+                                            : hoveredItem.name}
+                                    </p>
+                                )}
                             </div>
                         ) : (
                             <div className="mt-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -215,12 +264,50 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                     </h3>
                                 </div>
 
-                                <div>
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Flow Value</p>
-                                    <p className="mt-1 text-2xl font-mono text-foreground">
-                                        {formatNumber(selectedItem.value || 0)} <span className="text-xs uppercase tracking-wider text-(--ink-muted)">{dataset?.unit || "units"}</span>
-                                    </p>
+                                <div className="flex gap-6">
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Flow Value</p>
+                                        <p className="mt-1 text-2xl font-mono text-foreground">
+                                            {formatNumber(nodeDetails?.value ?? selectedItem.value ?? 0)}
+                                            <span className="text-xs uppercase tracking-wider text-(--ink-muted) ml-1">{dataset?.unit || "units"}</span>
+                                        </p>
+                                    </div>
+                                    {nodeDetails && nodeDetails.percentage > 0 && (
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Share of Total</p>
+                                            <p className="mt-1 text-2xl font-mono text-(--accent-2)">
+                                                {nodeDetails.percentage.toFixed(1)}%
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* Collapsed children breakdown (for aggregated nodes) */}
+                                {nodeDetails && nodeDetails.children.length > 0 && (
+                                    <div className="pt-4 border-t border-(--card-stroke)">
+                                        <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted) mb-3">
+                                            Contributing Items ({nodeDetails.children.length} collapsed)
+                                        </p>
+                                        <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                                            {nodeDetails.children.slice(0, 10).map((child) => (
+                                                <div
+                                                    key={child.name}
+                                                    className="flex items-center justify-between text-xs bg-(--card-70) rounded-lg px-3 py-2"
+                                                >
+                                                    <span className="text-foreground truncate mr-2">{child.name}</span>
+                                                    <span className="text-(--ink-muted) font-mono whitespace-nowrap">
+                                                        {formatNumber(child.value)} {dataset?.unit || "units"}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {nodeDetails.children.length > 10 && (
+                                                <p className="text-[10px] text-(--ink-muted) text-center py-1">
+                                                    +{nodeDetails.children.length - 10} more items
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="grid gap-3 pt-4 border-t border-(--card-stroke)">
                                     <Link
