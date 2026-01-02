@@ -21,7 +21,7 @@ test.describe("Work Tabbed Navigation", () => {
         // Switch to Flow
         await page.getByRole("link", { name: "FLOW" }).click();
         await expect(page).toHaveURL(/tab=flow/);
-        await expect(page.getByRole("heading", { name: "Investment flow" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
         await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
         // Switch to Flame
