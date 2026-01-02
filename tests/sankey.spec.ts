@@ -21,5 +21,5 @@ test("sankey investigation opens from quadrant panel", async ({ page }) => {
   await flowLink.click();
 
   await expect(page).toHaveURL(/tab=flow/);
-  await expect(page.getByTestId("chart-sankey").locator("canvas").first()).toBeVisible();
+  await expect(page.getByTestId("flow-chart-container").locator("canvas").first()).toBeVisible();
 });
