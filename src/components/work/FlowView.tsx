@@ -176,7 +176,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     // Handle keyboard navigation for tabs (ARIA tab pattern)
     const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabId: FlowSubTab) => {
         const currentIndex = FLOW_TABS.findIndex(t => t.id === tabId);
-        let targetIndex = currentIndex;
+        let targetIndex;
 
         switch (event.key) {
             case "ArrowLeft":
