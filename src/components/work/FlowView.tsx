@@ -165,6 +165,40 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         router.replace(`/work?${params.toString()}`);
     };
 
+    // Handle keyboard navigation for tabs (ARIA tab pattern)
+    const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabId: FlowSubTab) => {
+        const currentIndex = FLOW_TABS.findIndex(t => t.id === tabId);
+        let targetIndex = currentIndex;
+
+        switch (event.key) {
+            case "ArrowLeft":
+                event.preventDefault();
+                targetIndex = currentIndex > 0 ? currentIndex - 1 : FLOW_TABS.length - 1;
+                break;
+            case "ArrowRight":
+                event.preventDefault();
+                targetIndex = currentIndex < FLOW_TABS.length - 1 ? currentIndex + 1 : 0;
+                break;
+            case "Home":
+                event.preventDefault();
+                targetIndex = 0;
+                break;
+            case "End":
+                event.preventDefault();
+                targetIndex = FLOW_TABS.length - 1;
+                break;
+            default:
+                return;
+        }
+
+        const targetTab = FLOW_TABS[targetIndex];
+        handleSubTabChange(targetTab.id);
+        // Focus the new tab button
+        setTimeout(() => {
+            document.getElementById(`flow-tab-${targetTab.id}`)?.focus();
+        }, 0);
+    };
+
     // Build hierarchy data for treemap/sunburst
     const investmentHierarchy = useMemo((): HierarchyNode => {
         return toInvestmentHierarchy(investmentCategoriesSample, investmentSubtypesSample);
@@ -269,9 +303,11 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                         key={tab.id}
                         id={`flow-tab-${tab.id}`}
                         onClick={() => handleSubTabChange(tab.id)}
+                        onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
                         role="tab"
                         aria-selected={subTab === tab.id}
                         aria-controls={`flow-panel-${tab.id}`}
+                        tabIndex={subTab === tab.id ? 0 : -1}
                         className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${subTab === tab.id
                             ? "border-(--accent-2) bg-(--accent-2) text-white"
                             : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
