@@ -263,11 +263,15 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     return (
         <div className="flex flex-col gap-6">
             {/* Sub-tab navigation */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Flow visualization tabs">
                 {FLOW_TABS.map((tab) => (
                     <button
                         key={tab.id}
+                        id={`flow-tab-${tab.id}`}
                         onClick={() => handleSubTabChange(tab.id)}
+                        role="tab"
+                        aria-selected={subTab === tab.id}
+                        aria-controls={`flow-panel-${tab.id}`}
                         className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${subTab === tab.id
                             ? "border-(--accent-2) bg-(--accent-2) text-white"
                             : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
@@ -304,7 +308,13 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                         )}
                     </div>
 
-                    <div className="relative min-h-[400px]" data-testid="flow-chart-container">
+                    <div 
+                        className="relative min-h-[400px]" 
+                        data-testid="flow-chart-container"
+                        role="tabpanel"
+                        id={`flow-panel-${subTab}`}
+                        aria-labelledby={`flow-tab-${subTab}`}
+                    >
                         {isLoading && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
                                 <p className="text-sm text-(--ink-muted) animate-pulse">Loading flow data...</p>
