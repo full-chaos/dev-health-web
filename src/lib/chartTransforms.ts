@@ -304,9 +304,6 @@ export const toHotspotHierarchy = (
   nodes: Array<{ name: string; group?: string }>,
   links: Array<{ source: string; target: string; value: number }>
 ): HierarchyNode => {
-  // Group nodes by their group type
-  const nodesByName = new Map(nodes.map((n) => [n.name, n]));
-
   // Build adjacency list: source -> targets with values
   const adjacency = new Map<string, Array<{ target: string; value: number }>>();
   links.forEach((link) => {
