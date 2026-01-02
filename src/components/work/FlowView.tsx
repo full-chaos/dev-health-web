@@ -304,7 +304,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                         )}
                     </div>
 
-                    <div className="relative min-h-[400px]" data-testid="chart-sankey">
+                    <div className="relative min-h-[400px]" data-testid="flow-chart-container">
                         {isLoading && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
                                 <p className="text-sm text-(--ink-muted) animate-pulse">Loading flow data...</p>
