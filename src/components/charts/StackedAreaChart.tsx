@@ -68,15 +68,7 @@ export function StackedAreaChart({
         return series.map((s, idx) => {
             const baseColor = s.color || chartColors[idx % chartColors.length];
 
-            // Create gradient from provided colors or derive from base
-            const gradient = s.gradientStart && s.gradientEnd
-                ? createAreaGradient({ start: s.gradientStart, end: s.gradientEnd })
-                : createAreaGradient({
-                    start: baseColor.replace(")", ", 0.8)").replace("rgb", "rgba"),
-                    end: baseColor.replace(")", ", 0.1)").replace("rgb", "rgba"),
-                });
-
-            // If baseColor is hex, convert for gradient
+            // Helper to convert hex to rgba
             const hexToRgba = (hex: string, alpha: number) => {
                 const normalized = hex.replace("#", "");
                 if (normalized.length !== 6) return hex;
@@ -87,13 +79,24 @@ export function StackedAreaChart({
                 return `rgba(${r}, ${g}, ${b}, ${alpha})`;
             };
 
-            const isHex = baseColor.startsWith("#");
-            const gradientFill = isHex
-                ? createAreaGradient({
+            // Determine gradient colors
+            let gradientFill;
+            if (s.gradientStart && s.gradientEnd) {
+                // Use provided gradient colors
+                gradientFill = createAreaGradient({ start: s.gradientStart, end: s.gradientEnd });
+            } else if (baseColor.startsWith("#")) {
+                // Convert hex to rgba gradient
+                gradientFill = createAreaGradient({
                     start: hexToRgba(baseColor, 0.8),
                     end: hexToRgba(baseColor, 0.1),
-                })
-                : gradient;
+                });
+            } else {
+                // Assume rgb/rgba format and use string replacement
+                gradientFill = createAreaGradient({
+                    start: baseColor.replace(")", ", 0.8)").replace("rgb", "rgba"),
+                    end: baseColor.replace(")", ", 0.1)").replace("rgb", "rgba"),
+                });
+            }
 
             return {
                 name: s.name,
