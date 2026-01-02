@@ -617,3 +617,33 @@ export const sankeyHotspotLinks = [
   { source: "rollback.yml", target: "fix", value: 3 },
   { source: "rollback.yml", target: "refactor", value: 1 },
 ];
+
+/**
+ * Sample investment category data for Investment Mix visualizations
+ */
+export const investmentCategoriesSample = [
+  { key: "product", name: "Product", value: 57 },
+  { key: "data", name: "Data", value: 40 },
+  { key: "quality", name: "Quality", value: 27 },
+  { key: "infra", name: "Infrastructure", value: 32 },
+  { key: "security", name: "Security", value: 18 },
+  { key: "docs", name: "Documentation", value: 10 },
+];
+
+/**
+ * Sample investment subtype data for Investment Mix visualizations
+ */
+export const investmentSubtypesSample = [
+  { name: "Features", value: 35, parentKey: "product" },
+  { name: "UX Improvements", value: 22, parentKey: "product" },
+  { name: "Pipeline", value: 24, parentKey: "data" },
+  { name: "Analytics", value: 16, parentKey: "data" },
+  { name: "Testing", value: 15, parentKey: "quality" },
+  { name: "Bug Fixes", value: 12, parentKey: "quality" },
+  { name: "Platform", value: 20, parentKey: "infra" },
+  { name: "DevOps", value: 12, parentKey: "infra" },
+  { name: "Auth", value: 10, parentKey: "security" },
+  { name: "Compliance", value: 8, parentKey: "security" },
+  { name: "API Docs", value: 6, parentKey: "docs" },
+  { name: "Guides", value: 4, parentKey: "docs" },
+];

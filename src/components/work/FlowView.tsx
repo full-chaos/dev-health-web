@@ -23,6 +23,8 @@ import {
 import {
     sankeyHotspotNodes,
     sankeyHotspotLinks,
+    investmentCategoriesSample,
+    investmentSubtypesSample,
 } from "@/data/devHealthOpsSample";
 
 import { SankeyChart } from "@/components/charts/SankeyChart";
@@ -165,30 +167,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
     // Build hierarchy data for treemap/sunburst
     const investmentHierarchy = useMemo((): HierarchyNode => {
-        // Use sample data for investment mix
-        const categories = [
-            { key: "product", name: "Product", value: 57 },
-            { key: "data", name: "Data", value: 40 },
-            { key: "quality", name: "Quality", value: 27 },
-            { key: "infra", name: "Infrastructure", value: 32 },
-            { key: "security", name: "Security", value: 18 },
-            { key: "docs", name: "Documentation", value: 10 },
-        ];
-        const subtypes = [
-            { name: "Features", value: 35, parentKey: "product" },
-            { name: "UX Improvements", value: 22, parentKey: "product" },
-            { name: "Pipeline", value: 24, parentKey: "data" },
-            { name: "Analytics", value: 16, parentKey: "data" },
-            { name: "Testing", value: 15, parentKey: "quality" },
-            { name: "Bug Fixes", value: 12, parentKey: "quality" },
-            { name: "Platform", value: 20, parentKey: "infra" },
-            { name: "DevOps", value: 12, parentKey: "infra" },
-            { name: "Auth", value: 10, parentKey: "security" },
-            { name: "Compliance", value: 8, parentKey: "security" },
-            { name: "API Docs", value: 6, parentKey: "docs" },
-            { name: "Guides", value: 4, parentKey: "docs" },
-        ];
-        return toInvestmentHierarchy(categories, subtypes);
+        return toInvestmentHierarchy(investmentCategoriesSample, investmentSubtypesSample);
     }, []);
 
     const hotspotHierarchy = useMemo((): HierarchyNode => {
