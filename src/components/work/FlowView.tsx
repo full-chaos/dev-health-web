@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -23,6 +23,8 @@ import {
 import {
     sankeyHotspotNodes,
     sankeyHotspotLinks,
+    investmentCategoriesSample,
+    investmentSubtypesSample,
 } from "@/data/devHealthOpsSample";
 
 import { SankeyChart } from "@/components/charts/SankeyChart";
@@ -66,6 +68,14 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const useSampleData = process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+
+    // Refs for tab buttons (for keyboard navigation focus management)
+    const tabRefs = useRef<Record<FlowSubTab, HTMLButtonElement | null>>({
+        investment_mix: null,
+        code_hotspots: null,
+        investment_expense: null,
+        state_flow: null,
+    });
 
     // Sub-tab state
     const subTabParam = searchParams.get("flow_tab") as FlowSubTab | null;
@@ -163,32 +173,41 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         router.replace(`/work?${params.toString()}`);
     };
 
+    // Handle keyboard navigation for tabs (ARIA tab pattern)
+    const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabId: FlowSubTab) => {
+        const currentIndex = FLOW_TABS.findIndex(t => t.id === tabId);
+        let targetIndex = currentIndex;
+
+        switch (event.key) {
+            case "ArrowLeft":
+                event.preventDefault();
+                targetIndex = currentIndex > 0 ? currentIndex - 1 : FLOW_TABS.length - 1;
+                break;
+            case "ArrowRight":
+                event.preventDefault();
+                targetIndex = currentIndex < FLOW_TABS.length - 1 ? currentIndex + 1 : 0;
+                break;
+            case "Home":
+                event.preventDefault();
+                targetIndex = 0;
+                break;
+            case "End":
+                event.preventDefault();
+                targetIndex = FLOW_TABS.length - 1;
+                break;
+            default:
+                return;
+        }
+
+        const targetTab = FLOW_TABS[targetIndex];
+        handleSubTabChange(targetTab.id);
+        // Focus the new tab button using ref
+        tabRefs.current[targetTab.id]?.focus();
+    };
+
     // Build hierarchy data for treemap/sunburst
     const investmentHierarchy = useMemo((): HierarchyNode => {
-        // Use sample data for investment mix
-        const categories = [
-            { key: "product", name: "Product", value: 57 },
-            { key: "data", name: "Data", value: 40 },
-            { key: "quality", name: "Quality", value: 27 },
-            { key: "infra", name: "Infrastructure", value: 32 },
-            { key: "security", name: "Security", value: 18 },
-            { key: "docs", name: "Documentation", value: 10 },
-        ];
-        const subtypes = [
-            { name: "Features", value: 35, parentKey: "product" },
-            { name: "UX Improvements", value: 22, parentKey: "product" },
-            { name: "Pipeline", value: 24, parentKey: "data" },
-            { name: "Analytics", value: 16, parentKey: "data" },
-            { name: "Testing", value: 15, parentKey: "quality" },
-            { name: "Bug Fixes", value: 12, parentKey: "quality" },
-            { name: "Platform", value: 20, parentKey: "infra" },
-            { name: "DevOps", value: 12, parentKey: "infra" },
-            { name: "Auth", value: 10, parentKey: "security" },
-            { name: "Compliance", value: 8, parentKey: "security" },
-            { name: "API Docs", value: 6, parentKey: "docs" },
-            { name: "Guides", value: 4, parentKey: "docs" },
-        ];
-        return toInvestmentHierarchy(categories, subtypes);
+        return toInvestmentHierarchy(investmentCategoriesSample, investmentSubtypesSample);
     }, []);
 
     const hotspotHierarchy = useMemo((): HierarchyNode => {
@@ -284,11 +303,18 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     return (
         <div className="flex flex-col gap-6">
             {/* Sub-tab navigation */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Flow visualization tabs">
                 {FLOW_TABS.map((tab) => (
                     <button
                         key={tab.id}
+                        ref={(el) => { tabRefs.current[tab.id] = el; }}
+                        id={`flow-tab-${tab.id}`}
                         onClick={() => handleSubTabChange(tab.id)}
+                        onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
+                        role="tab"
+                        aria-selected={subTab === tab.id}
+                        aria-controls={`flow-panel-${tab.id}`}
+                        tabIndex={subTab === tab.id ? 0 : -1}
                         className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${subTab === tab.id
                             ? "border-(--accent-2) bg-(--accent-2) text-white"
                             : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
@@ -325,7 +351,13 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                         )}
                     </div>
 
-                    <div className="relative min-h-[400px]" data-testid="chart-sankey">
+                    <div 
+                        className="relative min-h-[400px]" 
+                        data-testid="flow-chart-container"
+                        role="tabpanel"
+                        id={`flow-panel-${subTab}`}
+                        aria-labelledby={`flow-tab-${subTab}`}
+                    >
                         {isLoading && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
                                 <p className="text-sm text-(--ink-muted) animate-pulse">Loading flow data...</p>

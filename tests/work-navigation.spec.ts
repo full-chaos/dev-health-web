@@ -22,7 +22,7 @@ test.describe("Work Tabbed Navigation", () => {
         await page.getByRole("link", { name: "FLOW" }).click();
         await expect(page).toHaveURL(/tab=flow/);
         await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
-        await expect(page.getByTestId("chart-sankey")).toBeVisible();
+        await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
         // Switch to Flame
         await page.getByRole("link", { name: "FLAME" }).click();
@@ -77,7 +77,7 @@ test.describe("Work Tabbed Navigation", () => {
         await page.goto("/work?tab=flow");
 
         // Wait for Sankey to render
-        await expect(page.getByTestId("chart-sankey")).toBeVisible();
+        await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
         // Click a node in the Sankey (this might be tricky with ECharts canvas)
         // We'll simulate by going directly to a state with a selected item if the component supports it

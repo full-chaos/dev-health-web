@@ -68,15 +68,7 @@ export function StackedAreaChart({
         return series.map((s, idx) => {
             const baseColor = s.color || chartColors[idx % chartColors.length];
 
-            // Create gradient from provided colors or derive from base
-            const gradient = s.gradientStart && s.gradientEnd
-                ? createAreaGradient({ start: s.gradientStart, end: s.gradientEnd })
-                : createAreaGradient({
-                    start: baseColor.replace(")", ", 0.8)").replace("rgb", "rgba"),
-                    end: baseColor.replace(")", ", 0.1)").replace("rgb", "rgba"),
-                });
-
-            // If baseColor is hex, convert for gradient
+            // Helper to convert hex to rgba
             const hexToRgba = (hex: string, alpha: number) => {
                 const normalized = hex.replace("#", "");
                 if (normalized.length !== 6) return hex;
@@ -87,13 +79,38 @@ export function StackedAreaChart({
                 return `rgba(${r}, ${g}, ${b}, ${alpha})`;
             };
 
-            const isHex = baseColor.startsWith("#");
-            const gradientFill = isHex
-                ? createAreaGradient({
+            // Helper to convert rgb/rgba to rgba with new alpha
+            const rgbToRgba = (color: string, alpha: number) => {
+                const rgbMatch = color.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
+                if (rgbMatch) {
+                    return `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${alpha})`;
+                }
+                const rgbaMatch = color.match(/^rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)$/);
+                if (rgbaMatch) {
+                    return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${alpha})`;
+                }
+                // Fallback: return original color if format not recognized
+                return color;
+            };
+
+            // Determine gradient colors
+            let gradientFill;
+            if (s.gradientStart && s.gradientEnd) {
+                // Use provided gradient colors
+                gradientFill = createAreaGradient({ start: s.gradientStart, end: s.gradientEnd });
+            } else if (baseColor.startsWith("#")) {
+                // Convert hex to rgba gradient
+                gradientFill = createAreaGradient({
                     start: hexToRgba(baseColor, 0.8),
                     end: hexToRgba(baseColor, 0.1),
-                })
-                : gradient;
+                });
+            } else {
+                // Handle rgb/rgba format
+                gradientFill = createAreaGradient({
+                    start: rgbToRgba(baseColor, 0.8),
+                    end: rgbToRgba(baseColor, 0.1),
+                });
+            }
 
             return {
                 name: s.name,
