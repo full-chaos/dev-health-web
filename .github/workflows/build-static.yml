@@ -39,7 +39,7 @@ jobs:
               id: meta
               run: |
                   # Use shared script to generate version tag
-                  VERSION=$(.github/scripts/generate-version-tag.sh "${{ github.event.inputs.tag }}" "false")
+                  VERSION=$(bash .github/scripts/generate-version-tag.sh "${{ github.event.inputs.tag }}" "false")
 
                   ARTIFACT_NAME="static-build-${VERSION}"
 

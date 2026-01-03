@@ -45,7 +45,7 @@ jobs:
               id: meta
               run: |
                   # Use shared script to generate version tag (with Docker validation)
-                  VERSION=$(.github/scripts/generate-version-tag.sh "${{ github.event.inputs.tag }}" "true")
+                  VERSION=$(bash .github/scripts/generate-version-tag.sh "${{ github.event.inputs.tag }}" "true")
 
                   IMAGE_BASE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
                   IMAGE_TAG="${IMAGE_BASE}:${VERSION}"

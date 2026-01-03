@@ -26,10 +26,10 @@ if [ -n "${CUSTOM_TAG}" ]; then
       echo "Error: Invalid Docker tag '${TAG_INPUT}'. Tags cannot contain consecutive periods or end with a period." >&2
       exit 1
     fi
-    # Validate Docker tag format: must start and end with [A-Za-z0-9_], max 128 chars
-    # Allow single-character tags or multi-character tags with proper format
-    if ! echo "${TAG_INPUT}" | grep -Eq '^[A-Za-z0-9_]([A-Za-z0-9_.-]{0,126}[A-Za-z0-9_])?$'; then
-      echo "Error: Invalid Docker tag '${TAG_INPUT}'. Tags must start and end with alphanumeric or underscore, and be 1-128 chars." >&2
+    # Validate Docker tag format: must start with [A-Za-z0-9_], max 128 chars
+    # Trailing period check above ensures tags don't end with periods
+    if ! echo "${TAG_INPUT}" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$'; then
+      echo "Error: Invalid Docker tag '${TAG_INPUT}'. Tags must start with alphanumeric or underscore, contain only [A-Za-z0-9_.-], and be 1-128 chars." >&2
       exit 1
     fi
   else
@@ -49,11 +49,11 @@ elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
   VERSION="pr-${GITHUB_EVENT_PULL_REQUEST_NUMBER}"
 elif [[ "${GITHUB_REF}" == refs/heads/main ]]; then
   # Main branch
-  VERSION="main-$(echo ${GITHUB_SHA} | cut -c1-7)"
+  VERSION="main-$(echo "${GITHUB_SHA}" | cut -c1-7)"
 else
   # Other branches
   BRANCH_NAME=$(echo "${GITHUB_REF_NAME}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
-  VERSION="${BRANCH_NAME}-$(echo ${GITHUB_SHA} | cut -c1-7)"
+  VERSION="${BRANCH_NAME}-$(echo "${GITHUB_SHA}" | cut -c1-7)"
 fi
 
 echo "${VERSION}"
