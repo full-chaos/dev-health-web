@@ -21,15 +21,15 @@ if [ -n "${CUSTOM_TAG}" ]; then
   TAG_INPUT="${CUSTOM_TAG}"
   
   if [ "${VALIDATE_DOCKER}" = "true" ]; then
-    # Validate Docker tag format: must start with [A-Za-z0-9_], max 128 chars
-    # Cannot end with period or contain consecutive periods
-    if ! echo "${TAG_INPUT}" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9_.-]{0,126}[A-Za-z0-9_]$'; then
-      echo "Error: Invalid Docker tag '${TAG_INPUT}'. Tags must start and end with alphanumeric or underscore, and be 1-128 chars." >&2
-      exit 1
-    fi
-    # Check for consecutive periods
+    # Check for consecutive periods first (fail fast)
     if echo "${TAG_INPUT}" | grep -q '\.\.' ; then
       echo "Error: Invalid Docker tag '${TAG_INPUT}'. Tags cannot contain consecutive periods." >&2
+      exit 1
+    fi
+    # Validate Docker tag format: must start and end with [A-Za-z0-9_], max 128 chars
+    # Allow single-character tags or multi-character tags with proper format
+    if ! echo "${TAG_INPUT}" | grep -Eq '^[A-Za-z0-9_]([A-Za-z0-9_.-]{0,126}[A-Za-z0-9_])?$'; then
+      echo "Error: Invalid Docker tag '${TAG_INPUT}'. Tags must start and end with alphanumeric or underscore, and be 1-128 chars." >&2
       exit 1
     fi
   else
