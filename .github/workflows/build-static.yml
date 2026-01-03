@@ -38,29 +38,8 @@ jobs:
             - name: Generate build metadata
               id: meta
               run: |
-                  # Determine the tag based on context
-                  if [ -n "${{ github.event.inputs.tag }}" ]; then
-                    # Manual dispatch with custom tag - validate input
-                    TAG_INPUT="${{ github.event.inputs.tag }}"
-                    if ! echo "${TAG_INPUT}" | grep -Eq '^[A-Za-z0-9._-]+$'; then
-                      echo "Error: Invalid tag format '${TAG_INPUT}'. Allowed characters: letters, digits, '.', '_', '-'." >&2
-                      exit 1
-                    fi
-                    VERSION="${TAG_INPUT}"
-                  elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-                    # Version tag (v1.0.0)
-                    VERSION="${GITHUB_REF#refs/tags/}"
-                  elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
-                    # Pull request
-                    VERSION="pr-${{ github.event.pull_request.number }}"
-                  elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
-                    # Main branch
-                    VERSION="main-$(echo ${{ github.sha }} | cut -c1-7)"
-                  else
-                    # Other branches
-                    BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
-                    VERSION="${BRANCH_NAME}-$(echo ${{ github.sha }} | cut -c1-7)"
-                  fi
+                  # Use shared script to generate version tag
+                  VERSION=$(.github/scripts/generate-version-tag.sh "${{ github.event.inputs.tag }}" "false")
 
                   ARTIFACT_NAME="static-build-${VERSION}"
 
@@ -71,6 +50,8 @@ jobs:
                   echo "- **Version**: ${VERSION}" >> $GITHUB_STEP_SUMMARY
                   echo "- **Artifact**: ${ARTIFACT_NAME}" >> $GITHUB_STEP_SUMMARY
                   echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+              env:
+                  GITHUB_EVENT_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
