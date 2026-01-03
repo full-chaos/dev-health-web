@@ -80,9 +80,9 @@ jobs:
                   platforms: linux/amd64
                   push: ${{ github.event.inputs.push != false && github.event_name != 'pull_request' }}
                   tags: ${{ steps.meta.outputs.tags }}
+                  # Note: http://127.0.0.1:8000 is a dev-only fallback. Override with NEXT_PUBLIC_API_BASE at runtime for production.
                   build-args: |
                       NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000' }}
-                  # Note: http://127.0.0.1:8000 is a dev-only fallback. Override with NEXT_PUBLIC_API_BASE at runtime for production.
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
                   outputs: ${{ github.event_name == 'pull_request' && 'type=docker,dest=/tmp/docker-image.tar' || 'type=registry' }}
