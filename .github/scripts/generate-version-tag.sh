@@ -22,7 +22,7 @@ if [ -n "${CUSTOM_TAG}" ]; then
   
   if [ "${VALIDATE_DOCKER}" = "true" ]; then
     # Check for consecutive periods or trailing period
-    if echo "${TAG_INPUT}" | grep -qE '(\.\.|\.$$)' ; then
+    if echo "${TAG_INPUT}" | grep -qE '(\.\.|\.$)' ; then
       echo "Error: Invalid Docker tag '${TAG_INPUT}'. Tags cannot contain consecutive periods or end with a period." >&2
       exit 1
     fi
