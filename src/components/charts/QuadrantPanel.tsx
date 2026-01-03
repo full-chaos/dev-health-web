@@ -295,9 +295,9 @@ export function QuadrantPanel({
             <button
               type="button"
               onClick={() => setIsGuideOpen(true)}
-              className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)"
+              className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)  btn-help"
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-(--card-stroke) bg-card text-[11px] text-foreground">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-[11px] text-foreground">
                 ⓘ
               </span>
               View guide

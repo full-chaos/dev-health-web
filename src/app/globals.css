@@ -458,4 +458,8 @@ body {
   .bg-card\/50 {
     background-color: color-mix(in srgb, var(--card) 50%, transparent);
   }
+
+  .btn-help {
+    cursor: help;
+  }
 }
