@@ -22,7 +22,8 @@ permissions:
 
 env:
     # Cloudflare project name - defaults to 'dev-health-web' if secret is not set
-    CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME || 'dev-health-web' }}
+    # Public Cloudflare project name; if the secret is unset or empty, use a non-secret default.
+    CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME != '' ? secrets.CLOUDFLARE_PROJECT_NAME : 'dev-health-web' }}
 
 jobs:
     build:
@@ -104,7 +105,7 @@ jobs:
                       public
                       package.json
                       package-lock.json
-                      next.config.ts
+                      next.config.*
                   retention-days: 14
                   compression-level: 9
 
