@@ -81,7 +81,7 @@ jobs:
               uses: docker/build-push-action@v5
               with:
                   context: .
-                  platforms: linux/amd64
+                  platforms: linux/amd64,linux/arm64
                   push: ${{ github.event.inputs.push != false && github.event_name != 'pull_request' }}
                   tags: ${{ steps.meta.outputs.tags }}
                   # Note: http://127.0.0.1:8000 is a dev-only fallback. Override with NEXT_PUBLIC_API_BASE at runtime for production.
