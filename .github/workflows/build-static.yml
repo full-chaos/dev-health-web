@@ -23,7 +23,7 @@ permissions:
 env:
     # Cloudflare project name - defaults to 'dev-health-web' if secret is not set
     # Public Cloudflare project name; if the secret is unset or empty, use a non-secret default.
-    CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME != '' ? secrets.CLOUDFLARE_PROJECT_NAME : 'dev-health-web' }}
+    CLOUDFLARE_PROJECT_NAME: "${{ secrets.CLOUDFLARE_PROJECT_NAME != '' && secrets.CLOUDFLARE_PROJECT_NAME || 'dev-health-web' }}"
 
 jobs:
     build:
