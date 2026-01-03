@@ -89,7 +89,7 @@ jobs:
                       NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000' }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
-                  outputs: ${{ github.event_name == 'pull_request' && 'type=docker,dest=/tmp/docker-image.tar' || 'type=registry' }}
+                  outputs: ${{ github.event_name == 'pull_request' && 'type=oci,dest=/tmp/docker-image.tar' || 'type=registry' }}
 
             - name: Upload image artifact (PR builds)
               if: github.event_name == 'pull_request'
