@@ -1,0 +1,157 @@
+name: Build Static Assets
+
+on:
+    push:
+        branches:
+            - main
+            - 'release/**'
+        tags:
+            - 'v*.*.*'
+    pull_request:
+        branches:
+            - main
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Build tag (e.g., v1.0.0, pr-123, feature-xyz)'
+                required: false
+                default: ''
+
+permissions:
+    contents: read
+
+env:
+    # Cloudflare project name - defaults to 'dev-health-web' if secret is not set
+    # Public Cloudflare project name; if the secret is unset or empty, use a non-secret default.
+    CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME != '' ? secrets.CLOUDFLARE_PROJECT_NAME : 'dev-health-web' }}
+
+jobs:
+    build:
+        name: Build Static Assets
+        runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.meta.outputs.version }}
+            artifact_name: ${{ steps.meta.outputs.artifact_name }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Generate build metadata
+              id: meta
+              run: |
+                  # Use shared script to generate version tag
+                  VERSION=$(bash .github/scripts/generate-version-tag.sh "${{ github.event.inputs.tag }}" "false")
+
+                  ARTIFACT_NAME="static-build-${VERSION}"
+
+                  echo "version=${VERSION}" >> $GITHUB_OUTPUT
+                  echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+
+                  echo "### Build Info 📦" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Version**: ${VERSION}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Artifact**: ${ARTIFACT_NAME}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+              env:
+                  GITHUB_EVENT_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run linting
+              run: npm run lint
+
+            - name: Run unit tests
+              run: npm run test:unit
+
+            - name: Build application
+              env:
+                  NEXT_PUBLIC_API_BASE: ${{ secrets.NEXT_PUBLIC_API_BASE || 'https://api.dev-health.io' }}
+              run: npm run build
+
+            - name: Create build metadata
+              run: |
+                  mkdir -p .next/meta
+                  cat > .next/meta/build-info.json << EOF
+                  {
+                    "version": "${{ steps.meta.outputs.version }}",
+                    "commit": "${{ github.sha }}",
+                    "branch": "${{ github.ref_name }}",
+                    "buildTime": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+                    "workflow": "${{ github.workflow }}",
+                    "runId": "${{ github.run_id }}",
+                    "actor": "${{ github.actor }}"
+                  }
+                  EOF
+
+                  # Also create individual files for easy access
+                  echo "${{ steps.meta.outputs.version }}" > .next/meta/version.txt
+                  echo "${{ github.sha }}" > .next/meta/commit.txt
+
+            - name: Upload build artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ steps.meta.outputs.artifact_name }}
+                  path: |
+                      .next
+                      public
+                      package.json
+                      package-lock.json
+                      next.config.*
+                  retention-days: 14
+                  compression-level: 9
+
+            - name: Output build results
+              run: |
+                  echo "### Build Complete ✅" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "Artifact: \`${{ steps.meta.outputs.artifact_name }}\`" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "To deploy this build (replace with your deployment workflow):" >> $GITHUB_STEP_SUMMARY
+                  echo '```bash' >> $GITHUB_STEP_SUMMARY
+                  echo "gh workflow run <your-deploy-workflow.yml> -f build_tag=${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+                  echo '```' >> $GITHUB_STEP_SUMMARY
+
+    # Optional: Run e2e tests against the build
+    test-e2e:
+        name: E2E Tests
+        runs-on: ubuntu-latest
+        needs: build
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Install Playwright
+              run: npx playwright install --with-deps chromium
+
+            - name: Run E2E tests
+              run: npm run test:e2e
+              env:
+                  CI: true
+
+            - name: Upload test results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: playwright-report-${{ needs.build.outputs.version }}
+                  path: playwright-report/
+                  retention-days: 7
