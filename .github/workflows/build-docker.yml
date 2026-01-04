@@ -41,7 +41,7 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   fetch-depth: 0
 
@@ -78,7 +78,7 @@ jobs:
 
             - name: Build and push Docker image
               id: build
-              uses: docker/build-push-action@v5
+              uses: docker/build-push-action@v6
               with:
                   context: .
                   platforms: linux/amd64,linux/arm64
@@ -93,7 +93,7 @@ jobs:
 
             - name: Upload image artifact (PR builds)
               if: github.event_name == 'pull_request'
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: docker-image-${{ steps.meta.outputs.version }}
                   path: /tmp/docker-image.tar
