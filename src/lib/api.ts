@@ -22,11 +22,15 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { applyWindowToFilters } from "@/lib/filters/time";
 
+// Use relative path for client-side fetches (proxied by Next.js)
+// For server-side fetches, use the internal container URL if needed
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+  typeof window === "undefined"
+    ? process.env.BACKEND_URL ?? "http://127.0.0.1:8000"
+    : "";
 
 const buildUrl = (path: string, params?: Record<string, string | number>) => {
-  const url = new URL(path, API_BASE);
+  const url = new URL(path, API_BASE || window.location.origin);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value === "" || value === undefined || value === null) {

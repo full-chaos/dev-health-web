@@ -8,9 +8,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# Build-time API base URL (can be overridden)
-ARG NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
-ENV NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
+# Backend API URL (can be overridden at build time or runtime)
+ARG BACKEND_URL=http://127.0.0.1:8000
+ENV BACKEND_URL=${BACKEND_URL}
 RUN npm run build
 
 FROM node:25-alpine AS runner
@@ -18,7 +18,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 # Runtime API base URL (override at container start)
-ENV NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
+ENV BACKEND_URL=http://127.0.0.1:8000
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/.next ./.next
