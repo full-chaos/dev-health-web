@@ -12,14 +12,13 @@ export function ServiceUnavailable() {
           Data service unavailable
         </h1>
         <p className="text-sm text-(--ink-muted)">
-          The API status check failed. ClickHouse and the API must be available
+          The API status check failed. The API must be available
           to load this view.
         </p>
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
           <p>Quick checks:</p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
             <li>API at {config.api.docsUrl}</li>
-            <li>ClickHouse at {config.clickhouse.url}</li>
           </ul>
         </div>
         <Link
