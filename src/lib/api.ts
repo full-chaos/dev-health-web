@@ -26,7 +26,7 @@ import { applyWindowToFilters } from "@/lib/filters/time";
 // For server-side fetches, use the internal container URL if needed
 const API_BASE =
   typeof window === "undefined"
-    ?  process.env.BACKEND_URL ?? "http://127.0.0.1:8000"
+    ? process.env.BACKEND_URL ?? "http://127.0.0.1:8000"
     : "";
 
 const buildUrl = (path: string, params?: Record<string, string | number>) => {
