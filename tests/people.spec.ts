@@ -8,7 +8,7 @@ const samplePerson = {
 };
 
 test("people search opens individual and metric evidence", async ({ page }) => {
-  await page.route("**/api/v1/people**", async (route) => {
+  await page.route("**/api/v1/people*", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -17,7 +17,14 @@ test("people search opens individual and metric evidence", async ({ page }) => {
   });
 
   await page.goto("/people");
+
+  const responsePromise = page.waitForResponse((response) =>
+    response.url().includes("/api/v1/people")
+  );
+
   await page.getByPlaceholder("Name or handle").fill("alex");
+  await responsePromise;
+
   await expect(page.getByText("Alex Harper")).toBeVisible();
   await page.getByText("Alex Harper").click();
   await expect(page).toHaveURL(/\/people\/person-123/);
