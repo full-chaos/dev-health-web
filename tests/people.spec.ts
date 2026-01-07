@@ -8,7 +8,7 @@ const samplePerson = {
 };
 
 test("people search opens individual and metric evidence", async ({ page }) => {
-  await page.route("**/api/v1/people*", async (route) => {
+  await page.route("**/api/v1/people**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
