@@ -8,7 +8,7 @@ import { withFilterParam } from "@/lib/filters/url";
 import type { PeopleSearchResult } from "@/lib/types";
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+  process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 const EMPTY_LIST: string[] = [];
 const EMPTY_RESULTS: PeopleSearchResult[] = [];
 
@@ -273,8 +273,8 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
                 <div>
                   <p
                     className={`text-sm font-semibold ${focusActive && !isFocus
-                        ? "text-(--ink-muted)"
-                        : "text-foreground"
+                      ? "text-(--ink-muted)"
+                      : "text-foreground"
                       }`}
                   >
                     {person.display_name}

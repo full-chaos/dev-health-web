@@ -18,7 +18,7 @@ export function ServiceUnavailable() {
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
           <p>Quick checks:</p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
-            <li>API at {config.api.docsUrl}</li>
+            <li>API at {config.api.baseUrl}</li>
           </ul>
         </div>
         <Link

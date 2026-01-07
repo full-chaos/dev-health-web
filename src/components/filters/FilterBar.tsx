@@ -15,7 +15,7 @@ import {
 } from "@/lib/dateUtils";
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+  process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 const toList = (value: string) =>
   value
