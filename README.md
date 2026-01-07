@@ -6,22 +6,22 @@ This is the application frontend for [dev-health-ops](https://github.com/chrisge
 
 To run the full stack locally:
 
-1) Start ClickHouse (from `dev-health-ops`):
+1. Start ClickHouse (from `dev-health-ops`):
 
 ```bash
 dev-hops grafana up
 ```
 
-2) Run the API:
+2. Run the API:
 
 ```bash
 dev-hops api --db "clickhouse://localhost:8123/default" --reload
 ```
 
-3) Run the web app with the API base set:
+3. Run the web app with the API base set:
 
 ```bash
-NEXT_PUBLIC_API_BASE="http://127.0.0.1:8000" npm run dev
+BACKEND_URL="http://127.0.0.1:8000" npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
