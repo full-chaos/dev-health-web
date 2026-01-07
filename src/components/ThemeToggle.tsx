@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
 type Palette =
@@ -113,6 +113,18 @@ export function ThemeToggle() {
     getPaletteSnapshot,
     getPaletteServerSnapshot
   );
+
+  useEffect(() => {
+
+    const storedTheme = getStoredTheme();
+    if (storedTheme && document.documentElement.dataset.theme !== storedTheme) {
+      applyTheme(storedTheme);
+    }
+    const storedPalette = getStoredPalette();
+    if (storedPalette && document.documentElement.dataset.palette !== storedPalette) {
+      applyPalette(storedPalette);
+    }
+  }, []);
 
   const handleToggle = () => {
     if (typeof window === "undefined") {

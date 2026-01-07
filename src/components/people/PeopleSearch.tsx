@@ -5,10 +5,9 @@ import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
+import { apiClient } from "@/lib/apiClient";
 import type { PeopleSearchResult } from "@/lib/types";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 const EMPTY_LIST: string[] = [];
 const EMPTY_RESULTS: PeopleSearchResult[] = [];
 
@@ -144,23 +143,19 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
       setIsLoading(true);
       setError(null);
       const requests = fetchPlans.map((plan) => {
-        const url = new URL("/api/v1/people", API_BASE);
+        const params: Record<string, string | number> = { limit: 20 };
         if (plan.query) {
-          url.searchParams.set("q", plan.query);
+          params.q = plan.query;
         }
-        url.searchParams.set("limit", "20");
         if (plan.teamId) {
-          url.searchParams.set("scope_type", "team");
-          url.searchParams.set("scope_id", plan.teamId);
-          url.searchParams.set("team_id", plan.teamId);
+          params.scope_type = "team";
+          params.scope_id = plan.teamId;
+          params.team_id = plan.teamId;
         }
-        return fetch(url.toString(), { signal: controller.signal }).then(
-          (response) => {
-            if (!response.ok) {
-              throw new Error("API error");
-            }
-            return response.json();
-          }
+        return apiClient.getJson<PeopleSearchResult[]>(
+          "/api/v1/people",
+          params,
+          { signal: controller.signal }
         );
       });
 
@@ -273,8 +268,8 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
                 <div>
                   <p
                     className={`text-sm font-semibold ${focusActive && !isFocus
-                        ? "text-(--ink-muted)"
-                        : "text-foreground"
+                      ? "text-(--ink-muted)"
+                      : "text-foreground"
                       }`}
                   >
                     {person.display_name}

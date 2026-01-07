@@ -5,15 +5,13 @@ import dynamic from "next/dynamic";
 
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse } from "@/lib/types";
+import { apiClient } from "@/lib/apiClient";
 import { mapInvestmentToNestedPie } from "@/lib/mappers";
 
 const NestedPieChart2D = dynamic(
   () => import("@/components/charts/NestedPieChart2D").then((mod) => mod.NestedPieChart2D),
   { ssr: false }
 );
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
 // Consistent height for both loading and loaded states
 const CHART_HEIGHT = 320;
@@ -64,16 +62,15 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(`${API_BASE}/api/v1/investment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filters }),
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : null))
+    apiClient
+      .postJson<InvestmentResponse>(
+        "/api/v1/investment",
+        { filters },
+        { signal: controller.signal }
+      )
       .then((payload) => {
         if (payload) {
-          setState({ data: payload as InvestmentResponse, filtersKey: currentFiltersKey });
+          setState({ data: payload, filtersKey: currentFiltersKey });
         }
       })
       .catch(() => null);

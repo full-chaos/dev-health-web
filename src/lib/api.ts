@@ -21,26 +21,7 @@ import type {
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { applyWindowToFilters } from "@/lib/filters/time";
-
-// Use relative path for client-side fetches (proxied by Next.js)
-// For server-side fetches, use the internal container URL if needed
-const API_BASE =
-  typeof window === "undefined"
-    ? process.env.BACKEND_URL ?? "http://127.0.0.1:8000"
-    : "";
-
-const buildUrl = (path: string, params?: Record<string, string | number>) => {
-  const url = new URL(path, API_BASE || window.location.origin);
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value === "" || value === undefined || value === null) {
-        return;
-      }
-      url.searchParams.set(key, String(value));
-    });
-  }
-  return url.toString();
-};
+import { apiClient } from "@/lib/apiClient";
 
 const normalizeFilters = (filters: MetricFilter): MetricFilter => {
   if (filters.scope.level === "team" && !filters.scope.ids.length) {
@@ -49,27 +30,18 @@ const normalizeFilters = (filters: MetricFilter): MetricFilter => {
   return filters;
 };
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
-  }
-  return (await response.json()) as T;
-}
-
 const postJson = async <T>(
   path: string,
   body: unknown,
   revalidate = 60,
   params?: Record<string, string | number>
 ) => {
-  const url = buildUrl(path, params);
-  return fetchJson<T>(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    next: { revalidate },
-  });
+  return apiClient.postJson<T>(
+    path,
+    body,
+    { next: { revalidate } },
+    params
+  );
 };
 
 export async function getHomeData(filters: MetricFilter) {
@@ -162,13 +134,12 @@ export async function checkApiHealth() {
       data: { status: "ok", services: { api: "mock" } } as HealthResponse,
     };
   }
-  const url = buildUrl("/api/v1/health");
   try {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) {
-      return { ok: false, data: null as HealthResponse | null };
-    }
-    const data = (await response.json()) as HealthResponse;
+    const data = await apiClient.getJson<HealthResponse>(
+      "/api/v1/health",
+      undefined,
+      { cache: "no-store" }
+    );
     return { ok: data.status === "ok", data };
   } catch {
     return { ok: false, data: null as HealthResponse | null };
@@ -186,21 +157,21 @@ export async function getApiMeta(): Promise<MetaResponse | null> {
       supported_endpoints: ["/api/v1/home", "/api/v1/meta"],
     };
   }
-  const url = buildUrl("/api/v1/meta");
   try {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) {
-      return null;
-    }
-    return (await response.json()) as MetaResponse;
+    return await apiClient.getJson<MetaResponse>("/api/v1/meta", undefined, {
+      cache: "no-store",
+    });
   } catch {
     return null;
   }
 }
 
 export async function searchPeople(query: string, limit = 20) {
-  const url = buildUrl("/api/v1/people", { q: query, limit });
-  return fetchJson<PeopleSearchResult[]>(url, { cache: "no-store" });
+  return apiClient.getJson<PeopleSearchResult[]>(
+    "/api/v1/people",
+    { q: query, limit },
+    { cache: "no-store" }
+  );
 }
 
 export async function getPersonSummary(params: {
@@ -208,11 +179,14 @@ export async function getPersonSummary(params: {
   range_days: number;
   compare_days: number;
 }) {
-  const url = buildUrl(`/api/v1/people/${params.personId}/summary`, {
-    range_days: params.range_days,
-    compare_days: params.compare_days,
-  });
-  return fetchJson<PersonSummary>(url, { cache: "no-store" });
+  return apiClient.getJson<PersonSummary>(
+    `/api/v1/people/${params.personId}/summary`,
+    {
+      range_days: params.range_days,
+      compare_days: params.compare_days,
+    },
+    { cache: "no-store" }
+  );
 }
 
 export async function getPersonMetric(params: {
@@ -221,12 +195,15 @@ export async function getPersonMetric(params: {
   range_days: number;
   compare_days: number;
 }) {
-  const url = buildUrl(`/api/v1/people/${params.personId}/metric`, {
-    metric: params.metric,
-    range_days: params.range_days,
-    compare_days: params.compare_days,
-  });
-  return fetchJson<PersonMetricResponse>(url, { cache: "no-store" });
+  return apiClient.getJson<PersonMetricResponse>(
+    `/api/v1/people/${params.personId}/metric`,
+    {
+      metric: params.metric,
+      range_days: params.range_days,
+      compare_days: params.compare_days,
+    },
+    { cache: "no-store" }
+  );
 }
 
 export async function getPersonDrilldown(params: {
@@ -238,14 +215,17 @@ export async function getPersonDrilldown(params: {
   range_days?: number;
   compare_days?: number;
 }) {
-  const url = buildUrl(`/api/v1/people/${params.personId}/drilldown/${params.type}`, {
-    limit: params.limit ?? 50,
-    cursor: params.cursor ?? "",
-    metric: params.metric ?? "",
-    range_days: params.range_days ?? "",
-    compare_days: params.compare_days ?? "",
-  });
-  return fetchJson<PersonDrilldownResponse>(url, { cache: "no-store" });
+  return apiClient.getJson<PersonDrilldownResponse>(
+    `/api/v1/people/${params.personId}/drilldown/${params.type}`,
+    {
+      limit: params.limit ?? 50,
+      cursor: params.cursor ?? "",
+      metric: params.metric ?? "",
+      range_days: params.range_days ?? "",
+      compare_days: params.compare_days ?? "",
+    },
+    { cache: "no-store" }
+  );
 }
 
 export async function getHeatmap(params: {
@@ -269,19 +249,22 @@ export async function getHeatmap(params: {
 
   let lastError: unknown;
   for (const scopeType of candidates) {
-    const url = buildUrl("/api/v1/heatmap", {
-      type: params.type,
-      metric: params.metric,
-      scope_type: scopeType,
-      scope_id: params.scope_id ?? "",
-      range_days: params.range_days,
-      start_date: params.start_date ?? "",
-      end_date: params.end_date ?? "",
-      x: params.x ?? "",
-      y: params.y ?? "",
-      limit: params.limit ?? 50,
-    });
-    const response = await fetch(url, { cache: "no-store" });
+    const response = await apiClient.request(
+      "/api/v1/heatmap",
+      { cache: "no-store" },
+      {
+        type: params.type,
+        metric: params.metric,
+        scope_type: scopeType,
+        scope_id: params.scope_id ?? "",
+        range_days: params.range_days,
+        start_date: params.start_date ?? "",
+        end_date: params.end_date ?? "",
+        x: params.x ?? "",
+        y: params.y ?? "",
+        limit: params.limit ?? 50,
+      }
+    );
     if (response.ok) {
       return (await response.json()) as HeatmapResponse;
     }
@@ -303,11 +286,14 @@ export async function getFlame(params: {
   entity_type: "issue" | "pr" | "deployment";
   entity_id: string;
 }) {
-  const url = buildUrl("/api/v1/flame", {
-    entity_type: params.entity_type,
-    entity_id: params.entity_id,
-  });
-  return fetchJson<FlameResponse>(url, { cache: "no-store" });
+  return apiClient.getJson<FlameResponse>(
+    "/api/v1/flame",
+    {
+      entity_type: params.entity_type,
+      entity_id: params.entity_id,
+    },
+    { cache: "no-store" }
+  );
 }
 
 export async function getAggregatedFlame(params: {
@@ -320,17 +306,20 @@ export async function getAggregatedFlame(params: {
   limit?: number;
   min_value?: number;
 }) {
-  const url = buildUrl("/api/v1/flame/aggregated", {
-    mode: params.mode,
-    range_days: params.range_days ?? 30,
-    start_date: params.start_date ?? "",
-    end_date: params.end_date ?? "",
-    team_id: params.team_id ?? "",
-    repo_id: params.repo_id ?? "",
-    limit: params.limit ?? 500,
-    min_value: params.min_value ?? 1,
-  });
-  return fetchJson<AggregatedFlameResponse>(url, { cache: "no-store" });
+  return apiClient.getJson<AggregatedFlameResponse>(
+    "/api/v1/flame/aggregated",
+    {
+      mode: params.mode,
+      range_days: params.range_days ?? 30,
+      start_date: params.start_date ?? "",
+      end_date: params.end_date ?? "",
+      team_id: params.team_id ?? "",
+      repo_id: params.repo_id ?? "",
+      limit: params.limit ?? 500,
+      min_value: params.min_value ?? 1,
+    },
+    { cache: "no-store" }
+  );
 }
 
 export async function getQuadrant(params: {
@@ -359,16 +348,19 @@ export async function getQuadrant(params: {
 
   let lastError: unknown;
   for (const scopeType of candidates) {
-    const url = buildUrl("/api/v1/quadrant", {
-      type: params.type,
-      scope_type: scopeType,
-      scope_id: params.scope_id ?? "",
-      range_days: params.range_days,
-      start_date: params.start_date ?? "",
-      end_date: params.end_date ?? "",
-      bucket: params.bucket,
-    });
-    const response = await fetch(url, { cache: "no-store" });
+    const response = await apiClient.request(
+      "/api/v1/quadrant",
+      { cache: "no-store" },
+      {
+        type: params.type,
+        scope_type: scopeType,
+        scope_id: params.scope_id ?? "",
+        range_days: params.range_days,
+        start_date: params.start_date ?? "",
+        end_date: params.end_date ?? "",
+        bucket: params.bucket,
+      }
+    );
     if (response.ok) {
       return (await response.json()) as QuadrantResponse;
     }
