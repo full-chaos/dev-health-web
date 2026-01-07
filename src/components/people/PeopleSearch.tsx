@@ -8,7 +8,7 @@ import { withFilterParam } from "@/lib/filters/url";
 import type { PeopleSearchResult } from "@/lib/types";
 
 const API_BASE =
-  process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://127.0.0.1:8000";
 const EMPTY_LIST: string[] = [];
 const EMPTY_RESULTS: PeopleSearchResult[] = [];
 
