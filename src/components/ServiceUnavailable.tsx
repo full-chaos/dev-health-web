@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { config } from "@/lib/config";
 
 export function ServiceUnavailable() {
   return (
@@ -17,8 +18,8 @@ export function ServiceUnavailable() {
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
           <p>Quick checks:</p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
-            <li>API at http://localhost:8000/docs</li>
-            <li>ClickHouse at http://localhost:8123</li>
+            <li>API at {config.api.docsUrl}</li>
+            <li>ClickHouse at {config.clickhouse.url}</li>
           </ul>
         </div>
         <Link
