@@ -13,7 +13,7 @@ const NestedPieChart2D = dynamic(
 );
 
 const API_BASE =
-  process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://127.0.0.1:8000";
 
 // Consistent height for both loading and loaded states
 const CHART_HEIGHT = 320;
