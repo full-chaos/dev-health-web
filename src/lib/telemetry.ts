@@ -1,7 +1,4 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ??
-  process.env.BACKEND_URL ??
-  "http://127.0.0.1:8000";
+import { apiClient } from "@/lib/apiClient";
 
 type TelemetryPayload = Record<string, string | number | boolean | null>;
 
@@ -17,15 +14,15 @@ export const trackTelemetryEvent = (
     payload,
     ts: new Date().toISOString(),
   });
-  if (navigator.sendBeacon) {
-    const blob = new Blob([body], { type: "application/json" });
-    navigator.sendBeacon(`${API_BASE}/api/v1/telemetry`, blob);
+  if (apiClient.sendBeacon("/api/v1/telemetry", body)) {
     return;
   }
-  fetch(`${API_BASE}/api/v1/telemetry`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-    keepalive: true,
-  }).catch(() => null);
+  apiClient
+    .request("/api/v1/telemetry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    })
+    .catch(() => null);
 };

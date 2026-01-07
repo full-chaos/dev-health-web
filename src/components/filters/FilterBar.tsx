@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
+import { apiClient } from "@/lib/apiClient";
 import {
   addDays,
   diffDaysInclusive,
@@ -13,9 +14,6 @@ import {
   parseDateInput,
   toLocalDate,
 } from "@/lib/dateUtils";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://127.0.0.1:8000";
 
 const toList = (value: string) =>
   value
@@ -225,9 +223,8 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
 
   useEffect(() => {
     let active = true;
-    const url = new URL("/api/v1/filters/options", API_BASE);
-    fetch(url.toString())
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
+    apiClient
+      .getJson<FilterOptions>("/api/v1/filters/options")
       .then((payload) => {
         if (!active) {
           return;
