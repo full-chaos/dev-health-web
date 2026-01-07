@@ -115,9 +115,7 @@ export function ThemeToggle() {
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+
     const storedTheme = getStoredTheme();
     if (storedTheme && document.documentElement.dataset.theme !== storedTheme) {
       applyTheme(storedTheme);
