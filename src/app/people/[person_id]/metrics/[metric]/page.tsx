@@ -328,9 +328,9 @@ export default async function PersonMetricPage({
                   )}
                 </div>
                 <div className="mt-4 space-y-2 text-sm">
-                  {group.items.map((item) => (
+                  {group.items.map((item, index) => (
                     <div
-                      key={`${group.id}-${item.label}`}
+                      key={`${group.id}-${item.label ?? "unknown"}-${index}`}
                       className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                     >
                       <span>{item.label}</span>
