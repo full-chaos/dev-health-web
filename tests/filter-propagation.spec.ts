@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 
 const getFilterParam = (url: string) => new URL(url).searchParams.get("f");
 
