@@ -381,8 +381,6 @@ export function SignalsView({ filters }: SignalsViewProps) {
 
     const formatTreemapTooltip = useCallback(
         (params: unknown, _totalValue: number, _unitLabel: string) => {
-            void _totalValue;
-            void _unitLabel;
             if (!params || typeof params !== "object") return "";
             const entry = params as { data?: Record<string, unknown> };
             const data = entry.data ?? {};
