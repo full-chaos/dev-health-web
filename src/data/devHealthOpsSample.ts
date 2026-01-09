@@ -647,3 +647,167 @@ export const investmentSubtypesSample = [
   { name: "API Docs", value: 6, parentKey: "docs" },
   { name: "Guides", value: 4, parentKey: "docs" },
 ];
+
+export const workUnitSignalsSample = [
+  {
+    work_unit_id: "wu-41c2a",
+    time_range: {
+      start: "2025-02-01T12:00:00Z",
+      end: "2025-02-03T18:00:00Z",
+    },
+    effort: { metric: "churn_loc", value: 820 },
+    categories: {
+      feature: 0.55,
+      maintenance: 0.2,
+      operational: 0.15,
+      quality: 0.1,
+    },
+    confidence: { value: 0.78, band: "moderate" },
+    evidence: {
+      structural: [
+        { type: "work_item_type", value: "story", weight: 1.0 },
+        { type: "repo_scope", repo_ids: ["repo:web-app"] },
+      ],
+      temporal: [
+        {
+          type: "time_range",
+          start: "2025-02-01T12:00:00Z",
+          end: "2025-02-03T18:00:00Z",
+          span_days: 2.25,
+          score: 0.64,
+        },
+      ],
+      textual: [
+        { type: "keyword", keyword: "feature", weight: 0.05, source: "issue_title" },
+      ],
+    },
+  },
+  {
+    work_unit_id: "wu-53a17",
+    time_range: {
+      start: "2025-02-02T09:00:00Z",
+      end: "2025-02-04T16:30:00Z",
+    },
+    effort: { metric: "churn_loc", value: 540 },
+    categories: {
+      feature: 0.15,
+      maintenance: 0.55,
+      operational: 0.1,
+      quality: 0.2,
+    },
+    confidence: { value: 0.84, band: "high" },
+    evidence: {
+      structural: [
+        { type: "work_item_type", value: "chore", weight: 1.0 },
+        { type: "repo_scope", repo_ids: ["repo:core-api"] },
+      ],
+      temporal: [
+        {
+          type: "time_range",
+          start: "2025-02-02T09:00:00Z",
+          end: "2025-02-04T16:30:00Z",
+          span_days: 2.3,
+          score: 0.72,
+        },
+      ],
+      textual: [],
+    },
+  },
+  {
+    work_unit_id: "wu-7ed90",
+    time_range: {
+      start: "2025-02-05T08:00:00Z",
+      end: "2025-02-06T20:00:00Z",
+    },
+    effort: { metric: "churn_loc", value: 310 },
+    categories: {
+      feature: 0.1,
+      maintenance: 0.15,
+      operational: 0.55,
+      quality: 0.2,
+    },
+    confidence: { value: 0.55, band: "low" },
+    evidence: {
+      structural: [
+        { type: "work_item_type", value: "incident", weight: 1.0 },
+        { type: "repo_scope", repo_ids: ["repo:infra"] },
+      ],
+      temporal: [
+        {
+          type: "time_range",
+          start: "2025-02-05T08:00:00Z",
+          end: "2025-02-06T20:00:00Z",
+          span_days: 1.5,
+          score: 0.44,
+        },
+      ],
+      textual: [
+        { type: "keyword", keyword: "hotfix", weight: 0.04, source: "pr_title" },
+      ],
+    },
+  },
+  {
+    work_unit_id: "wu-9b2d4",
+    time_range: {
+      start: "2025-02-06T10:00:00Z",
+      end: "2025-02-08T12:00:00Z",
+    },
+    effort: { metric: "churn_loc", value: 460 },
+    categories: {
+      feature: 0.2,
+      maintenance: 0.15,
+      operational: 0.1,
+      quality: 0.55,
+    },
+    confidence: { value: 0.62, band: "moderate" },
+    evidence: {
+      structural: [
+        { type: "work_item_type", value: "bug", weight: 1.0 },
+        { type: "repo_scope", repo_ids: ["repo:web-app", "repo:core-api"] },
+      ],
+      temporal: [
+        {
+          type: "time_range",
+          start: "2025-02-06T10:00:00Z",
+          end: "2025-02-08T12:00:00Z",
+          span_days: 2.1,
+          score: 0.58,
+        },
+      ],
+      textual: [
+        { type: "keyword", keyword: "fix", weight: 0.03, source: "issue_description" },
+      ],
+    },
+  },
+  {
+    work_unit_id: "wu-c1f80",
+    time_range: {
+      start: "2025-02-08T09:30:00Z",
+      end: "2025-02-09T19:00:00Z",
+    },
+    effort: { metric: "churn_loc", value: 220 },
+    categories: {
+      feature: 0.35,
+      maintenance: 0.25,
+      operational: 0.15,
+      quality: 0.25,
+    },
+    confidence: { value: 0.38, band: "very_low" },
+    evidence: {
+      structural: [
+        { type: "work_item_type", value: "task", weight: 0.7 },
+        { type: "repo_scope", repo_ids: ["repo:search"] },
+      ],
+      temporal: [
+        {
+          type: "time_range",
+          start: "2025-02-08T09:30:00Z",
+          end: "2025-02-09T19:00:00Z",
+          span_days: 1.4,
+          score: 0.41,
+        },
+      ],
+      textual: [],
+    },
+  },
+];

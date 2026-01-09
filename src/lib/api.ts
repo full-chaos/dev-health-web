@@ -17,6 +17,7 @@ import type {
   SankeyResponse,
   FlameResponse,
   QuadrantResponse,
+  WorkUnitSignal,
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
@@ -111,6 +112,27 @@ export async function getSankey(params: {
     },
     60,
     { mode: params.mode, f: encodeFilterParam(withWindow) }
+  );
+}
+
+export async function getWorkUnits(params: {
+  filters: MetricFilter;
+  limit?: number;
+  include_textual?: boolean;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return postJson<WorkUnitSignal[]>(
+    "/api/v1/work-units",
+    {
+      filters: normalized,
+      limit: params.limit,
+      include_textual: params.include_textual,
+    },
+    30,
+    {
+      f: encodeFilterParam(normalized),
+      include_textual: params.include_textual,
+    }
   );
 }
 

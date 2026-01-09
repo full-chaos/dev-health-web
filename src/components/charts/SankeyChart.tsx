@@ -14,6 +14,7 @@ type SankeyChartProps = {
   width?: number | string;
   className?: string;
   style?: CSSProperties;
+  tooltipFormatter?: (params: unknown, unit: string) => string;
   onItemClick?: (item: {
     type: "node" | "link";
     name?: string;
@@ -84,6 +85,7 @@ export function SankeyChart({
   width = "100%",
   className,
   style,
+  tooltipFormatter,
   onItemClick,
 }: SankeyChartProps) {
   const chartTheme = useChartTheme();
@@ -130,7 +132,7 @@ export function SankeyChart({
 
   // Memoize the ECharts option to prevent re-renders
   const option = useMemo(() => {
-    const tooltipFormatter = (params: unknown) => {
+    const defaultTooltipFormatter = (params: unknown) => {
       if (!params || typeof params !== "object") {
         return "";
       }
@@ -192,7 +194,10 @@ export function SankeyChart({
       tooltip: {
         trigger: "item" as const,
         confine: true,
-        formatter: tooltipFormatter,
+        formatter: (params: unknown) =>
+          tooltipFormatter
+            ? tooltipFormatter(params, unit)
+            : defaultTooltipFormatter(params),
       },
       series: [
         {
@@ -222,6 +227,7 @@ export function SankeyChart({
     outgoingTotals,
     nodeValueByName,
     totalFlow,
+    tooltipFormatter,
   ]);
 
   // Memoize onEvents to prevent re-renders

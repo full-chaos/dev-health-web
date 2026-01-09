@@ -132,6 +132,19 @@ export type SankeyResponse = {
   description?: string;
 };
 
+export type WorkUnitSignal = {
+  work_unit_id: string;
+  time_range: { start: string; end: string };
+  effort: { metric: "churn_loc" | "active_hours"; value: number };
+  categories: Record<string, number>;
+  confidence: { value: number; band: "high" | "moderate" | "low" | "very_low" };
+  evidence: {
+    structural: Array<Record<string, unknown>>;
+    temporal: Array<Record<string, unknown>>;
+    textual: Array<Record<string, unknown>>;
+  };
+};
+
 export type PersonIdentity = {
   provider: string;
   handle: string;
@@ -332,4 +345,3 @@ export type AggregatedFlameResponse = {
 };
 
 export * from "./filters/types";
-
