@@ -131,7 +131,7 @@ export async function getWorkUnits(params: {
     30,
     {
       f: encodeFilterParam(normalized),
-      include_textual: params.include_textual,
+      include_textual: params.include_textual ? "true" : "false",
     }
   );
 }

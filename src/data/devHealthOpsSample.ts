@@ -7,6 +7,8 @@ import type {
   WorkItemTypeSummary,
 } from "./devHealthOpsTypes";
 
+import type { WorkUnitSignal } from "../lib/types";
+
 export const workItemMetricsDailySample: WorkItemMetricsDaily[] = [
   {
     day: "2025-02-10",
@@ -648,7 +650,7 @@ export const investmentSubtypesSample = [
   { name: "Guides", value: 4, parentKey: "docs" },
 ];
 
-export const workUnitSignalsSample = [
+export const workUnitSignalsSample: WorkUnitSignal[] = [
   {
     work_unit_id: "wu-41c2a",
     time_range: {
