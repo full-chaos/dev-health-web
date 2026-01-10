@@ -25,7 +25,7 @@ test.describe("Work Tabbed Navigation", () => {
         await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
         // Switch to Signals
-        await page.getByRole("link", { name: "SIGNALS" }).click();
+        await page.getByRole("link", { name: "Signals", exact: true }).click();
         await expect(page).toHaveURL(/tab=signals/);
         await expect(page.getByRole("heading", { name: "Work Unit Signals" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Treemap" })).toBeVisible();
