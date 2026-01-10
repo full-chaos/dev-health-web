@@ -17,7 +17,7 @@ import type {
   SankeyResponse,
   FlameResponse,
   QuadrantResponse,
-  WorkUnitSignal,
+  WorkUnitInvestment,
   WorkUnitExplanation,
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -122,7 +122,7 @@ export async function getWorkUnits(params: {
   include_textual?: boolean;
 }) {
   const normalized = normalizeFilters(params.filters);
-  return postJson<WorkUnitSignal[]>(
+  return postJson<WorkUnitInvestment[]>(
     "/api/v1/work-units",
     {
       filters: normalized,

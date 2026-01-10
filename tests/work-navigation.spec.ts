@@ -24,10 +24,10 @@ test.describe("Work Tabbed Navigation", () => {
         await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
         await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
-        // Switch to Signals
-        await page.getByRole("link", { name: "Signals", exact: true }).click();
-        await expect(page).toHaveURL(/tab=signals/);
-        await expect(page.getByRole("heading", { name: "Work Unit Signals" })).toBeVisible();
+        // Switch to Investment
+        await page.getByRole("link", { name: "Investment", exact: true }).click();
+        await expect(page).toHaveURL(/tab=investment/);
+        await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Treemap" })).toBeVisible();
 
         // Switch to Flame
@@ -37,9 +37,9 @@ test.describe("Work Tabbed Navigation", () => {
         await expect(page.getByTestId("chart-flame")).toBeVisible();
     });
 
-    test("signals tab preserves filters across navigation", async ({ page }) => {
-        await page.goto("/work?tab=signals&range_days=30");
-        await expect(page).toHaveURL(/tab=signals/);
+    test("investment tab preserves filters across navigation", async ({ page }) => {
+        await page.goto("/work?tab=investment&range_days=30");
+        await expect(page).toHaveURL(/tab=investment/);
 
         await page.getByRole("link", { name: "FLOW" }).click();
         await expect(page).toHaveURL(/tab=flow/);

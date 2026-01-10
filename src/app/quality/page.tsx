@@ -58,13 +58,13 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                 Quality
               </p>
               <h1 className="mt-2 font-(--font-display) text-3xl">
-                Reliability Signals
+                Reliability Patterns
               </h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Change failure, CI stability, and rework signals.
+                Change failure, CI stability, and rework indicators.
               </p>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Open a signal to investigate.
+                Open a metric to investigate.
               </p>
             </div>
             <Link

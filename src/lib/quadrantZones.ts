@@ -308,7 +308,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         "Next investigation: review heatmaps, flame diagrams, and metric explain views.",
       notes: [
         ...SHARED_NOTES,
-        "Signals can surface at individual, team, or portfolio scope without comparison.",
+        "Patterns can surface at individual, team, or portfolio scope without comparison.",
       ],
     },
     zones: [

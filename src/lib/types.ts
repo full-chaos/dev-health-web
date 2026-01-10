@@ -116,7 +116,7 @@ export type SankeyNode = {
   group?: string;
   value?: number;
   itemStyle?: { color?: string; opacity?: number };
-  confidenceValue?: number;
+  qualityValue?: number;
   hasTextual?: boolean;
 };
 
@@ -136,34 +136,42 @@ export type SankeyResponse = {
   description?: string;
 };
 
-export type WorkUnitSignal = {
+export type WorkUnitInvestmentBreakdown = {
+  themes: Record<string, number>;
+  subcategories: Record<string, number>;
+};
+
+export type WorkUnitInvestment = {
   /**
-   * Probabilistic work-unit signal emitted by dev-health-ops for UX visualization.
-   * Used to render Work Unit Signals (treemap, sunburst, sankey) without client-side inference.
+   * Probabilistic work-unit investment categorization emitted by dev-health-ops.
+   * Used to render Work Unit Investment views without client-side inference.
    */
   work_unit_id: string;
   /** Time range bounding the connected subgraph. */
   time_range: { start: string; end: string };
   /** Effort value derived by the backend (churn LOC or active hours). */
   effort: { metric: "churn_loc" | "active_hours"; value: number };
-  /** Category probability vector that sums to ~1.0. */
-  categories: Record<string, number>;
-  /** Overall confidence and server-side confidence band. */
-  confidence: { value: number; band: "high" | "moderate" | "low" | "very_low" };
-  /** Evidence payloads backing structural, temporal, and textual modifiers. */
+  /** Investment vectors for themes and subcategories (each sums to ~1.0). */
+  investment: WorkUnitInvestmentBreakdown;
+  /** Evidence quality and server-side band. */
+  evidence_quality: {
+    value: number;
+    band: "high" | "moderate" | "low" | "very_low";
+  };
+  /** Evidence payloads backing textual, structural, and contextual corroboration. */
   evidence: {
-    structural: Array<Record<string, unknown>>;
-    temporal: Array<Record<string, unknown>>;
     textual: Array<Record<string, unknown>>;
+    structural: Array<Record<string, unknown>>;
+    contextual: Array<Record<string, unknown>>;
   };
 };
 export type WorkUnitExplanation = {
   work_unit_id: string;
   summary: string;
   category_rationale: Record<string, string>;
-  signal_importance: string[];
+  evidence_highlights: string[];
   uncertainty_disclosure: string;
-  confidence_limits: string;
+  evidence_quality_limits: string;
 };
 
 export type PersonIdentity = {

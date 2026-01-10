@@ -7,7 +7,7 @@ import type {
   WorkItemTypeSummary,
 } from "./devHealthOpsTypes";
 
-import type { WorkUnitSignal } from "../lib/types";
+import type { WorkUnitInvestment } from "../lib/types";
 
 export const workItemMetricsDailySample: WorkItemMetricsDaily[] = [
   {
@@ -624,33 +624,30 @@ export const sankeyHotspotLinks = [
  * Sample investment category data for Investment Mix visualizations
  */
 export const investmentCategoriesSample = [
-  { key: "product", name: "Product", value: 57 },
-  { key: "data", name: "Data", value: 40 },
-  { key: "quality", name: "Quality", value: 27 },
-  { key: "infra", name: "Infrastructure", value: 32 },
-  { key: "security", name: "Security", value: 18 },
-  { key: "docs", name: "Documentation", value: 10 },
+  { key: "feature_delivery", name: "Feature Delivery", value: 52 },
+  { key: "operational", name: "Operational / Support", value: 24 },
+  { key: "maintenance", name: "Maintenance / Tech Debt", value: 18 },
+  { key: "quality", name: "Quality / Reliability", value: 14 },
+  { key: "risk", name: "Risk / Security", value: 8 },
 ];
 
 /**
  * Sample investment subtype data for Investment Mix visualizations
  */
 export const investmentSubtypesSample = [
-  { name: "Features", value: 35, parentKey: "product" },
-  { name: "UX Improvements", value: 22, parentKey: "product" },
-  { name: "Pipeline", value: 24, parentKey: "data" },
-  { name: "Analytics", value: 16, parentKey: "data" },
-  { name: "Testing", value: 15, parentKey: "quality" },
-  { name: "Bug Fixes", value: 12, parentKey: "quality" },
-  { name: "Platform", value: 20, parentKey: "infra" },
-  { name: "DevOps", value: 12, parentKey: "infra" },
-  { name: "Auth", value: 10, parentKey: "security" },
-  { name: "Compliance", value: 8, parentKey: "security" },
-  { name: "API Docs", value: 6, parentKey: "docs" },
-  { name: "Guides", value: 4, parentKey: "docs" },
+  { name: "New capabilities", value: 30, parentKey: "feature_delivery" },
+  { name: "UX improvements", value: 22, parentKey: "feature_delivery" },
+  { name: "On-call response", value: 14, parentKey: "operational" },
+  { name: "Customer support", value: 10, parentKey: "operational" },
+  { name: "Refactors", value: 12, parentKey: "maintenance" },
+  { name: "Platform upgrades", value: 6, parentKey: "maintenance" },
+  { name: "Test stability", value: 8, parentKey: "quality" },
+  { name: "Bug fixes", value: 6, parentKey: "quality" },
+  { name: "Vulnerability review", value: 5, parentKey: "risk" },
+  { name: "Access hardening", value: 3, parentKey: "risk" },
 ];
 
-export const workUnitSignalsSample: WorkUnitSignal[] = [
+export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
   {
     work_unit_id: "wu-41c2a",
     time_range: {
@@ -658,19 +655,34 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
       end: "2025-02-03T18:00:00Z",
     },
     effort: { metric: "churn_loc", value: 820 },
-    categories: {
-      feature: 0.55,
-      maintenance: 0.2,
-      operational: 0.15,
-      quality: 0.1,
+    investment: {
+      themes: {
+        feature_delivery: 0.52,
+        maintenance: 0.18,
+        operational: 0.16,
+        quality: 0.1,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.customer": 0.32,
+        "feature_delivery.roadmap": 0.2,
+        "maintenance.refactor": 0.12,
+        "maintenance.debt": 0.06,
+        "operational.incident_response": 0.1,
+        "operational.support": 0.06,
+        "quality.testing": 0.1,
+        "risk.security": 0.04,
+      },
     },
-    confidence: { value: 0.78, band: "moderate" },
+    evidence_quality: { value: 0.78, band: "moderate" },
     evidence: {
-      structural: [
-        { type: "work_item_type", value: "story", weight: 1.0 },
-        { type: "repo_scope", repo_ids: ["repo:web-app"] },
+      textual: [
+        { type: "text_phrase", phrase: "feature launch", source: "issue_title" },
       ],
-      temporal: [
+      structural: [
+        { type: "work_item_type", work_item_type: "story", count: 3 },
+      ],
+      contextual: [
         {
           type: "time_range",
           start: "2025-02-01T12:00:00Z",
@@ -678,9 +690,7 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
           span_days: 2.25,
           score: 0.64,
         },
-      ],
-      textual: [
-        { type: "keyword", keyword: "feature", weight: 0.05, source: "issue_title" },
+        { type: "repo_scope", repo_ids: ["repo:web-app"] },
       ],
     },
   },
@@ -691,19 +701,32 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
       end: "2025-02-04T16:30:00Z",
     },
     effort: { metric: "churn_loc", value: 540 },
-    categories: {
-      feature: 0.15,
-      maintenance: 0.55,
-      operational: 0.1,
-      quality: 0.2,
+    investment: {
+      themes: {
+        feature_delivery: 0.12,
+        maintenance: 0.58,
+        operational: 0.08,
+        quality: 0.18,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.enablement": 0.12,
+        "maintenance.debt": 0.3,
+        "maintenance.refactor": 0.18,
+        "maintenance.upgrade": 0.1,
+        "operational.support": 0.08,
+        "quality.bugfix": 0.12,
+        "quality.reliability": 0.06,
+        "risk.compliance": 0.04,
+      },
     },
-    confidence: { value: 0.84, band: "high" },
+    evidence_quality: { value: 0.84, band: "high" },
     evidence: {
+      textual: [],
       structural: [
-        { type: "work_item_type", value: "chore", weight: 1.0 },
-        { type: "repo_scope", repo_ids: ["repo:core-api"] },
+        { type: "work_item_type", work_item_type: "chore", count: 2 },
       ],
-      temporal: [
+      contextual: [
         {
           type: "time_range",
           start: "2025-02-02T09:00:00Z",
@@ -711,8 +734,8 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
           span_days: 2.3,
           score: 0.72,
         },
+        { type: "repo_scope", repo_ids: ["repo:core-api"] },
       ],
-      textual: [],
     },
   },
   {
@@ -722,19 +745,34 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
       end: "2025-02-06T20:00:00Z",
     },
     effort: { metric: "churn_loc", value: 310 },
-    categories: {
-      feature: 0.1,
-      maintenance: 0.15,
-      operational: 0.55,
-      quality: 0.2,
+    investment: {
+      themes: {
+        feature_delivery: 0.06,
+        maintenance: 0.12,
+        operational: 0.6,
+        quality: 0.18,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.customer": 0.06,
+        "maintenance.debt": 0.12,
+        "operational.incident_response": 0.4,
+        "operational.on_call": 0.12,
+        "operational.support": 0.08,
+        "quality.reliability": 0.1,
+        "quality.bugfix": 0.08,
+        "risk.vulnerability": 0.04,
+      },
     },
-    confidence: { value: 0.55, band: "low" },
+    evidence_quality: { value: 0.55, band: "low" },
     evidence: {
-      structural: [
-        { type: "work_item_type", value: "incident", weight: 1.0 },
-        { type: "repo_scope", repo_ids: ["repo:infra"] },
+      textual: [
+        { type: "text_phrase", phrase: "hotfix", source: "pr_title" },
       ],
-      temporal: [
+      structural: [
+        { type: "work_item_type", work_item_type: "incident", count: 1 },
+      ],
+      contextual: [
         {
           type: "time_range",
           start: "2025-02-05T08:00:00Z",
@@ -742,9 +780,7 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
           span_days: 1.5,
           score: 0.44,
         },
-      ],
-      textual: [
-        { type: "keyword", keyword: "hotfix", weight: 0.04, source: "pr_title" },
+        { type: "repo_scope", repo_ids: ["repo:infra"] },
       ],
     },
   },
@@ -755,19 +791,38 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
       end: "2025-02-08T12:00:00Z",
     },
     effort: { metric: "churn_loc", value: 460 },
-    categories: {
-      feature: 0.2,
-      maintenance: 0.15,
-      operational: 0.1,
-      quality: 0.55,
+    investment: {
+      themes: {
+        feature_delivery: 0.14,
+        maintenance: 0.12,
+        operational: 0.08,
+        quality: 0.58,
+        risk: 0.08,
+      },
+      subcategories: {
+        "feature_delivery.roadmap": 0.08,
+        "feature_delivery.enablement": 0.06,
+        "maintenance.refactor": 0.12,
+        "operational.support": 0.08,
+        "quality.bugfix": 0.35,
+        "quality.testing": 0.15,
+        "quality.reliability": 0.08,
+        "risk.security": 0.08,
+      },
     },
-    confidence: { value: 0.62, band: "moderate" },
+    evidence_quality: { value: 0.62, band: "moderate" },
     evidence: {
-      structural: [
-        { type: "work_item_type", value: "bug", weight: 1.0 },
-        { type: "repo_scope", repo_ids: ["repo:web-app", "repo:core-api"] },
+      textual: [
+        {
+          type: "text_phrase",
+          phrase: "fix flaky tests",
+          source: "issue_description",
+        },
       ],
-      temporal: [
+      structural: [
+        { type: "work_item_type", work_item_type: "bug", count: 4 },
+      ],
+      contextual: [
         {
           type: "time_range",
           start: "2025-02-06T10:00:00Z",
@@ -775,9 +830,7 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
           span_days: 2.1,
           score: 0.58,
         },
-      ],
-      textual: [
-        { type: "keyword", keyword: "fix", weight: 0.03, source: "issue_description" },
+        { type: "repo_scope", repo_ids: ["repo:web-app", "repo:core-api"] },
       ],
     },
   },
@@ -788,19 +841,34 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
       end: "2025-02-09T19:00:00Z",
     },
     effort: { metric: "churn_loc", value: 220 },
-    categories: {
-      feature: 0.35,
-      maintenance: 0.25,
-      operational: 0.15,
-      quality: 0.25,
+    investment: {
+      themes: {
+        feature_delivery: 0.32,
+        maintenance: 0.24,
+        operational: 0.12,
+        quality: 0.22,
+        risk: 0.1,
+      },
+      subcategories: {
+        "feature_delivery.customer": 0.18,
+        "feature_delivery.enablement": 0.14,
+        "maintenance.debt": 0.14,
+        "maintenance.upgrade": 0.1,
+        "operational.on_call": 0.06,
+        "operational.support": 0.06,
+        "quality.testing": 0.12,
+        "quality.reliability": 0.1,
+        "risk.security": 0.06,
+        "risk.compliance": 0.04,
+      },
     },
-    confidence: { value: 0.38, band: "very_low" },
+    evidence_quality: { value: 0.38, band: "very_low" },
     evidence: {
+      textual: [],
       structural: [
-        { type: "work_item_type", value: "task", weight: 0.7 },
-        { type: "repo_scope", repo_ids: ["repo:search"] },
+        { type: "work_item_type", work_item_type: "task", count: 2 },
       ],
-      temporal: [
+      contextual: [
         {
           type: "time_range",
           start: "2025-02-08T09:30:00Z",
@@ -808,8 +876,8 @@ export const workUnitSignalsSample: WorkUnitSignal[] = [
           span_days: 1.4,
           score: 0.41,
         },
+        { type: "repo_scope", repo_ids: ["repo:search"] },
       ],
-      textual: [],
     },
   },
 ];

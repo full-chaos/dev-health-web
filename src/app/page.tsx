@@ -32,7 +32,7 @@ const MONITORING_VIEWS = [
   {
     id: "flow",
     label: "Flow",
-    description: "Idea to merge signal.",
+    description: "Idea to merge insight.",
     focus: "Review latency, throughput, WIP.",
     href: "/metrics?tab=flow",
   },
@@ -96,7 +96,7 @@ export default async function Home({ searchParams }: HomePageProps) {
     return priority.indexOf(a.id) - priority.indexOf(b.id);
   });
 
-  // Reorder Key Signals (deltas) based on role investigationOrder
+  // Reorder key shifts (deltas) based on role investigationOrder
   const metricTypeMap: Record<string, string> = {
     review: "review_latency",
     cycle: "cycle_time",
@@ -203,7 +203,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
-                  Key signals
+                  Key shifts
                 </p>
                 <p className="mt-1 text-sm text-(--ink-muted)">
                   Small shifts in the selected window.
@@ -243,9 +243,9 @@ export default async function Home({ searchParams }: HomePageProps) {
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-              <h2 className="font-(--font-display) text-2xl">Notable signals</h2>
+              <h2 className="font-(--font-display) text-2xl">Notable shifts</h2>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Short signals from the selected window.
+                Short shifts from the selected window.
               </p>
               <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
                 {(home?.summary ?? []).map((sentence) => (
