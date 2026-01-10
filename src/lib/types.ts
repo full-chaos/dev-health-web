@@ -157,6 +157,14 @@ export type WorkUnitSignal = {
     textual: Array<Record<string, unknown>>;
   };
 };
+export type WorkUnitExplanation = {
+  work_unit_id: string;
+  summary: string;
+  category_rationale: Record<string, string>;
+  signal_importance: string[];
+  uncertainty_disclosure: string;
+  confidence_limits: string;
+};
 
 export type PersonIdentity = {
   provider: string;

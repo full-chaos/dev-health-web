@@ -9,9 +9,9 @@ import { SunburstChart, type SunburstNode } from "@/components/charts/SunburstCh
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { workUnitSignalsSample } from "@/data/devHealthOpsSample";
-import { getWorkUnits } from "@/lib/api";
+import { getWorkUnits, getWorkUnitExplanation } from "@/lib/api";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
-import type { MetricFilter, SankeyLink, SankeyNode, WorkUnitSignal } from "@/lib/types";
+import type { MetricFilter, SankeyLink, SankeyNode, WorkUnitSignal, WorkUnitExplanation } from "@/lib/types";
 
 type SignalsViewProps = {
     filters: MetricFilter;
@@ -114,6 +114,8 @@ export function SignalsView({ filters }: SignalsViewProps) {
     const [workUnits, setWorkUnits] = useState<WorkUnitSignal[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showWorkUnits, setShowWorkUnits] = useState(false);
+    const [explanation, setExplanation] = useState<WorkUnitExplanation | null>(null);
+    const [isExplaining, setIsExplaining] = useState(false);
 
     const includeTextual = textualMode === "structural_textual";
     const selectedId = searchParams.get("work_unit_id");
@@ -163,6 +165,46 @@ export function SignalsView({ filters }: SignalsViewProps) {
             active = false;
         };
     }, [filters, includeTextual, requestKey, useSampleData]);
+
+    const selectedUnit = useMemo(() => {
+        if (!selectedId) return null;
+        return workUnits.find((unit) => unit.work_unit_id === selectedId) ?? null;
+    }, [selectedId, workUnits]);
+
+    useEffect(() => {
+        if (!selectedId || !selectedUnit) {
+            setExplanation(null);
+            return;
+        }
+
+        let active = true;
+        const fetchExplanation = async () => {
+            setIsExplaining(true);
+            try {
+                const data = await getWorkUnitExplanation({
+                    workUnitId: selectedId,
+                    filters,
+                });
+                if (active) {
+                    setExplanation(data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch explanation:", err);
+                if (active) {
+                    setExplanation(null);
+                }
+            } finally {
+                if (active) {
+                    setIsExplaining(false);
+                }
+            }
+        };
+
+        fetchExplanation();
+        return () => {
+            active = false;
+        };
+    }, [selectedId, selectedUnit, filters]);
 
     const categoryIds = useMemo(() => {
         const ids = new Set<string>();
@@ -581,10 +623,6 @@ export function SignalsView({ filters }: SignalsViewProps) {
         return { nodes, links, edgeMeta };
     }, [workUnits, categoryIds, categoryColorMap, chartTheme.grid]);
 
-    const selectedUnit = useMemo(() => {
-        if (!selectedId) return null;
-        return workUnits.find((unit) => unit.work_unit_id === selectedId) ?? null;
-    }, [selectedId, workUnits]);
 
     const handleSelect = useCallback(
         (workUnitId: string) => {
@@ -631,8 +669,8 @@ export function SignalsView({ filters }: SignalsViewProps) {
                 "\">Confidence shown reflects an average across contributing work units.</div>";
             const textualNote = data.hasTextual
                 ? "<div style=\"margin-top: 6px; color: " +
-                  chartTheme.muted +
-                  "\">Minor textual modifiers were applied. These do not determine classification.</div>"
+                chartTheme.muted +
+                "\">Minor textual modifiers were applied. These do not determine classification.</div>"
                 : "";
             const title = repoScope ? `${categoryLabel} · ${repoScope}` : categoryLabel;
             const workUnitLine = workUnitCount
@@ -665,8 +703,8 @@ export function SignalsView({ filters }: SignalsViewProps) {
             const hasTextual = Boolean(data.hasTextual);
             const textualNote = hasTextual
                 ? "<div style=\"margin-top: 6px; color: " +
-                  chartTheme.muted +
-                  "\">Minor textual modifiers were applied. These do not determine classification.</div>"
+                chartTheme.muted +
+                "\">Minor textual modifiers were applied. These do not determine classification.</div>"
                 : "";
 
             if (nodeType === "work_unit") {
@@ -728,8 +766,8 @@ export function SignalsView({ filters }: SignalsViewProps) {
             const avgConfidence = meta ? meta.avgConfidence : 0;
             const textualNote = meta?.hasTextual
                 ? "<div style=\"margin-top: 6px; color: " +
-                  chartTheme.muted +
-                  "\">Minor textual modifiers were applied. These do not determine classification.</div>"
+                chartTheme.muted +
+                "\">Minor textual modifiers were applied. These do not determine classification.</div>"
                 : "";
 
             return `
@@ -1023,6 +1061,68 @@ export function SignalsView({ filters }: SignalsViewProps) {
                                 ))}
                             </div>
                         </div>
+
+                        {(isExplaining || explanation) && (
+                            <div className="lg:col-span-3 mt-4 overflow-hidden rounded-2xl border border-dashed border-(--accent-2) bg-(--accent-2-10)">
+                                <div className="flex items-center justify-between border-b border-dashed border-(--accent-2) bg-(--accent-2-15) px-4 py-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="rounded bg-(--accent-2) px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                                            AI-Generated
+                                        </div>
+                                        <span className="text-xs font-medium text-(--accent-2)">Signal Explanation</span>
+                                    </div>
+                                    <span className="text-[10px] text-(--ink-muted)">Phase 3 · Non-Authoritative</span>
+                                </div>
+                                <div className="p-5">
+                                    {isExplaining ? (
+                                        <div className="flex items-center gap-2 text-sm text-(--ink-muted)">
+                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-(--accent-2) border-t-transparent" />
+                                            Generating probabilistic explanation…
+                                        </div>
+                                    ) : explanation ? (
+                                        <div className="space-y-6">
+                                            <div>
+                                                <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Summary</h4>
+                                                <p className="mt-2 text-sm leading-relaxed">{explanation.summary}</p>
+                                            </div>
+
+                                            <div className="grid gap-6 md:grid-cols-2">
+                                                <div>
+                                                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Reasons</h4>
+                                                    <div className="mt-3 space-y-3">
+                                                        {Object.entries(explanation.category_rationale).map(([cat, text]) => (
+                                                            <div key={cat} className="rounded-lg bg-(--card-70) p-3">
+                                                                <span className="text-[10px] font-bold uppercase text-(--accent-2)">{cat}</span>
+                                                                <p className="mt-1 text-xs text-(--ink-muted)">{text}</p>
+                                                            </div>
+                                                        ))}
+                                                        {explanation.signal_importance.length > 0 && (
+                                                            <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-(--ink-muted)">
+                                                                {explanation.signal_importance.map((signal, i) => (
+                                                                    <li key={i}>{signal}</li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Uncertainty</h4>
+                                                    <div className="mt-3 space-y-3">
+                                                        <div className="rounded-lg bg-(--card-70) p-3">
+                                                            <p className="text-xs text-(--ink-muted)">{explanation.uncertainty_disclosure}</p>
+                                                        </div>
+                                                        <div className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3">
+                                                            <p className="text-xs font-medium italic text-(--ink-muted)">{explanation.confidence_limits}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <p className="mt-6 text-sm text-(--ink-muted)">

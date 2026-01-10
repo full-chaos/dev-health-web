@@ -18,6 +18,7 @@ import type {
   FlameResponse,
   QuadrantResponse,
   WorkUnitSignal,
+  WorkUnitExplanation,
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
@@ -398,4 +399,22 @@ export async function getQuadrant(params: {
     throw new Error(`API error: ${lastError.status}`);
   }
   throw lastError ?? new Error("API error");
+}
+export async function getWorkUnitExplanation(params: {
+  workUnitId: string;
+  filters: MetricFilter;
+  llmProvider?: string;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return apiClient.postJson<WorkUnitExplanation>(
+    `/api/v1/work-units/${params.workUnitId}/explain`,
+    {},
+    { next: { revalidate: 60 } },
+    {
+      scope_type: normalized.scope.level,
+      scope_id: normalized.scope.ids[0] ?? "",
+      range_days: normalized.time.range_days,
+      llm_provider: params.llmProvider ?? "auto",
+    }
+  );
 }
