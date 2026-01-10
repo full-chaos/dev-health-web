@@ -115,12 +115,16 @@ export type SankeyNode = {
   name: string;
   group?: string;
   value?: number;
+  itemStyle?: { color?: string; opacity?: number };
+  confidenceValue?: number;
+  hasTextual?: boolean;
 };
 
 export type SankeyLink = {
   source: string;
   target: string;
   value: number;
+  lineStyle?: { color?: string; opacity?: number };
 };
 
 export type SankeyResponse = {
@@ -133,11 +137,20 @@ export type SankeyResponse = {
 };
 
 export type WorkUnitSignal = {
+  /**
+   * Probabilistic work-unit signal emitted by dev-health-ops for UX visualization.
+   * Used to render Work Unit Signals (treemap, sunburst, sankey) without client-side inference.
+   */
   work_unit_id: string;
+  /** Time range bounding the connected subgraph. */
   time_range: { start: string; end: string };
+  /** Effort value derived by the backend (churn LOC or active hours). */
   effort: { metric: "churn_loc" | "active_hours"; value: number };
+  /** Category probability vector that sums to ~1.0. */
   categories: Record<string, number>;
+  /** Overall confidence and server-side confidence band. */
   confidence: { value: number; band: "high" | "moderate" | "low" | "very_low" };
+  /** Evidence payloads backing structural, temporal, and textual modifiers. */
   evidence: {
     structural: Array<Record<string, unknown>>;
     temporal: Array<Record<string, unknown>>;

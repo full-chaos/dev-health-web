@@ -19,15 +19,35 @@ type SignalsViewProps = {
 
 type TextualMode = "structural_textual" | "structural_only";
 
-type CategorySummary = {
+type RepoSummary = {
+    repoScope: string;
     total: number;
     confidenceWeighted: number;
-    effortTotal: number;
+    weightTotal: number;
     hasTextual: boolean;
-    units: Array<{
+    workUnits: Array<{
         unit: WorkUnitSignal;
         weightedEffort: number;
     }>;
+};
+
+type CategorySummary = {
+    total: number;
+    confidenceWeighted: number;
+    weightTotal: number;
+    hasTextual: boolean;
+    repos: Map<string, RepoSummary>;
+};
+
+type TreemapAggregate = {
+    categoryId: string;
+    categoryLabel: string;
+    repoScope?: string;
+    value: number;
+    confidenceWeighted: number;
+    weightTotal: number;
+    hasTextual: boolean;
+    workUnitIds: Set<string>;
 };
 
 type SankeyEdgeMeta = {
@@ -59,13 +79,6 @@ const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, v
 
 const formatBandLabel = (band: WorkUnitSignal["confidence"]["band"]) =>
     titleCase(band.replace("_", " "));
-
-const deriveConfidenceBand = (value: number): WorkUnitSignal["confidence"]["band"] => {
-    if (value >= 0.8) return "high";
-    if (value >= 0.6) return "moderate";
-    if (value >= 0.4) return "low";
-    return "very_low";
-};
 
 const formatConfidence = (value: number) => formatNumber(value, { maximumFractionDigits: 2 });
 
@@ -100,9 +113,12 @@ export function SignalsView({ filters }: SignalsViewProps) {
     const [textualMode, setTextualMode] = useState<TextualMode>("structural_textual");
     const [workUnits, setWorkUnits] = useState<WorkUnitSignal[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [showWorkUnits, setShowWorkUnits] = useState(false);
 
     const includeTextual = textualMode === "structural_textual";
     const selectedId = searchParams.get("work_unit_id");
+    const workUnitCount = workUnits.length;
+    const treemapIsSparse = workUnitCount > 0 && workUnitCount < 3;
 
     const requestKey = useMemo(
         () => JSON.stringify({ filters, includeTextual }),
@@ -165,66 +181,181 @@ export function SignalsView({ filters }: SignalsViewProps) {
     }, [categoryIds, chartColors]);
 
     const treemapData = useMemo<TreemapNode>(() => {
-        const totalValue = workUnits.reduce(
-            (sum, unit) => sum + (unit.effort?.value ?? 0),
+        const entries = new Map<string, TreemapAggregate>();
+
+        const upsert = (
+            key: string,
+            payload: {
+                categoryId: string;
+                categoryLabel: string;
+                repoScope?: string;
+                weightedEffort: number;
+                confidenceValue: number;
+                hasTextual: boolean;
+                workUnitId: string;
+            }
+        ) => {
+            const entry = entries.get(key) ?? {
+                categoryId: payload.categoryId,
+                categoryLabel: payload.categoryLabel,
+                repoScope: payload.repoScope,
+                value: 0,
+                confidenceWeighted: 0,
+                weightTotal: 0,
+                hasTextual: false,
+                workUnitIds: new Set<string>(),
+            };
+
+            entry.value += payload.weightedEffort;
+            entry.confidenceWeighted += payload.confidenceValue * payload.weightedEffort;
+            entry.weightTotal += payload.weightedEffort;
+            entry.hasTextual = entry.hasTextual || payload.hasTextual;
+            entry.workUnitIds.add(payload.workUnitId);
+            entries.set(key, entry);
+        };
+
+        workUnits.forEach((unit) => {
+            const categories = unit.categories ?? {};
+            const hasTextual = (unit.evidence?.textual ?? []).length > 0;
+
+            if (treemapIsSparse) {
+                Object.entries(categories).forEach(([categoryId, weight]) => {
+                    if (typeof weight !== "number" || weight <= 0) {
+                        return;
+                    }
+                    const weightedEffort = unit.effort.value * weight;
+                    if (weightedEffort <= 0) {
+                        return;
+                    }
+                    upsert(categoryId, {
+                        categoryId,
+                        categoryLabel: titleCase(categoryId),
+                        weightedEffort,
+                        confidenceValue: unit.confidence.value,
+                        hasTextual,
+                        workUnitId: unit.work_unit_id,
+                    });
+                });
+                return;
+            }
+
+            const repoIds = extractRepoIds(unit);
+            const repoScopes = repoIds.length ? repoIds : ["unassigned"];
+            const repoCount = repoScopes.length || 1;
+
+            Object.entries(categories).forEach(([categoryId, weight]) => {
+                if (typeof weight !== "number" || weight <= 0) {
+                    return;
+                }
+                const weightedEffort = unit.effort.value * weight;
+                if (weightedEffort <= 0) {
+                    return;
+                }
+                const perRepoEffort = weightedEffort / repoCount;
+                repoScopes.forEach((repoScope) => {
+                    upsert(`${categoryId}::${repoScope}`, {
+                        categoryId,
+                        categoryLabel: titleCase(categoryId),
+                        repoScope,
+                        weightedEffort: perRepoEffort,
+                        confidenceValue: unit.confidence.value,
+                        hasTextual,
+                        workUnitId: unit.work_unit_id,
+                    });
+                });
+            });
+        });
+
+        const children = Array.from(entries.values())
+            .map((entry) => {
+                const avgConfidence = entry.weightTotal
+                    ? entry.confidenceWeighted / entry.weightTotal
+                    : 0;
+                const color = categoryColorMap.get(entry.categoryId) ?? chartTheme.grid;
+                const label = treemapIsSparse
+                    ? entry.categoryLabel
+                    : `${entry.categoryLabel} · ${entry.repoScope ?? "unassigned"}`;
+
+                return {
+                    name: label,
+                    value: entry.value,
+                    itemStyle: {
+                        color,
+                        opacity: clamp(avgConfidence),
+                    },
+                    nodeType: treemapIsSparse ? "category" : "category_repo",
+                    categoryId: entry.categoryId,
+                    categoryLabel: entry.categoryLabel,
+                    repoScope: entry.repoScope,
+                    confidenceValue: avgConfidence,
+                    hasTextual: entry.hasTextual,
+                    workUnitCount: entry.workUnitIds.size,
+                };
+            })
+            .filter((node) => (node.value ?? 0) > 0);
+
+        const totalValue = children.reduce(
+            (sum, child) => sum + (child.value ?? 0),
             0
         );
 
-        const children = workUnits.map((unit) => {
-            let dominantKey: string | null = null;
-            let dominantValue = -1;
-            Object.entries(unit.categories ?? {}).forEach(([key, value]) => {
-                if (typeof value === "number" && value > dominantValue) {
-                    dominantValue = value;
-                    dominantKey = key;
-                }
-            });
-
-            const color = dominantKey ? categoryColorMap.get(dominantKey) : undefined;
-            return {
-                name: unit.work_unit_id,
-                value: unit.effort.value,
-                itemStyle: {
-                    color: color ?? chartTheme.grid,
-                    opacity: clamp(unit.confidence.value),
-                },
-                workUnit: unit,
-                dominantCategory: dominantKey
-                    ? { id: dominantKey, label: titleCase(dominantKey), value: dominantValue }
-                    : null,
-                hasTextual: (unit.evidence?.textual ?? []).length > 0,
-            };
-        });
-
         return {
-            name: "WorkUnits",
+            name: "Signals",
             value: totalValue,
             children,
         };
-    }, [workUnits, categoryColorMap, chartTheme.grid]);
+    }, [workUnits, categoryColorMap, chartTheme.grid, treemapIsSparse]);
 
     const sunburstData = useMemo<SunburstNode>(() => {
         const categorySummaries = new Map<string, CategorySummary>();
 
         workUnits.forEach((unit) => {
+            const categories = unit.categories ?? {};
             const hasTextual = (unit.evidence?.textual ?? []).length > 0;
-            Object.entries(unit.categories ?? {}).forEach(([categoryId, weight]) => {
+            const repoIds = extractRepoIds(unit);
+            const repoScopes = repoIds.length ? repoIds : ["unassigned"];
+            const repoCount = repoScopes.length || 1;
+
+            Object.entries(categories).forEach(([categoryId, weight]) => {
                 if (typeof weight !== "number" || weight <= 0) {
                     return;
                 }
                 const weightedEffort = unit.effort.value * weight;
+                if (weightedEffort <= 0) {
+                    return;
+                }
+                const perRepoEffort = weightedEffort / repoCount;
                 const entry = categorySummaries.get(categoryId) ?? {
                     total: 0,
                     confidenceWeighted: 0,
-                    effortTotal: 0,
+                    weightTotal: 0,
                     hasTextual: false,
-                    units: [],
+                    repos: new Map<string, RepoSummary>(),
                 };
                 entry.total += weightedEffort;
-                entry.confidenceWeighted += unit.confidence.value * unit.effort.value;
-                entry.effortTotal += unit.effort.value;
+                entry.confidenceWeighted += unit.confidence.value * weightedEffort;
+                entry.weightTotal += weightedEffort;
                 entry.hasTextual = entry.hasTextual || hasTextual;
-                entry.units.push({ unit, weightedEffort });
+
+                repoScopes.forEach((repoScope) => {
+                    const repoEntry = entry.repos.get(repoScope) ?? {
+                        repoScope,
+                        total: 0,
+                        confidenceWeighted: 0,
+                        weightTotal: 0,
+                        hasTextual: false,
+                        workUnits: [],
+                    };
+                    repoEntry.total += perRepoEffort;
+                    repoEntry.confidenceWeighted += unit.confidence.value * perRepoEffort;
+                    repoEntry.weightTotal += perRepoEffort;
+                    repoEntry.hasTextual = repoEntry.hasTextual || hasTextual;
+                    if (showWorkUnits) {
+                        repoEntry.workUnits.push({ unit, weightedEffort: perRepoEffort });
+                    }
+                    entry.repos.set(repoScope, repoEntry);
+                });
+
                 categorySummaries.set(categoryId, entry);
             });
         });
@@ -236,25 +367,59 @@ export function SignalsView({ filters }: SignalsViewProps) {
             if (!summary || summary.total <= 0) {
                 return;
             }
-            const avgConfidence = summary.effortTotal
-                ? summary.confidenceWeighted / summary.effortTotal
+            const avgConfidence = summary.weightTotal
+                ? summary.confidenceWeighted / summary.weightTotal
                 : 0;
             const color = categoryColorMap.get(categoryId) ?? chartTheme.grid;
             const categoryLabel = titleCase(categoryId);
-            const unitChildren: SunburstNode[] = summary.units.map(({ unit, weightedEffort }) => ({
-                name: unit.work_unit_id,
-                value: weightedEffort,
-                itemStyle: {
-                    color,
-                    opacity: clamp(unit.confidence.value),
-                },
-                workUnitId: unit.work_unit_id,
-                categoryId,
-                categoryLabel,
-                confidenceValue: unit.confidence.value,
-                confidenceBand: unit.confidence.band,
-                hasTextual: (unit.evidence?.textual ?? []).length > 0,
-            }));
+
+            const repoChildren: SunburstNode[] = [];
+            summary.repos.forEach((repoSummary) => {
+                if (repoSummary.total <= 0) {
+                    return;
+                }
+                const repoConfidence = repoSummary.weightTotal
+                    ? repoSummary.confidenceWeighted / repoSummary.weightTotal
+                    : 0;
+                const workUnitChildren: SunburstNode[] = showWorkUnits
+                    ? repoSummary.workUnits.map(({ unit, weightedEffort }) => ({
+                        name: unit.work_unit_id,
+                        value: weightedEffort,
+                        itemStyle: {
+                            color,
+                            opacity: clamp(unit.confidence.value),
+                        },
+                        nodeType: "work_unit",
+                        workUnitId: unit.work_unit_id,
+                        categoryId,
+                        categoryLabel,
+                        repoScope: repoSummary.repoScope,
+                        confidenceValue: unit.confidence.value,
+                        confidenceBand: unit.confidence.band,
+                        hasTextual: (unit.evidence?.textual ?? []).length > 0,
+                        label: { show: false },
+                        emphasis: { label: { show: false } },
+                    }))
+                    : [];
+
+                repoChildren.push({
+                    name: repoSummary.repoScope,
+                    value: repoSummary.total,
+                    itemStyle: {
+                        color,
+                        opacity: clamp(repoConfidence),
+                    },
+                    nodeType: "repo_scope",
+                    categoryId,
+                    categoryLabel,
+                    repoScope: repoSummary.repoScope,
+                    confidenceValue: repoConfidence,
+                    hasTextual: repoSummary.hasTextual,
+                    label: { show: false },
+                    emphasis: { label: { show: true } },
+                    children: showWorkUnits ? workUnitChildren : undefined,
+                });
+            });
 
             children.push({
                 name: categoryLabel,
@@ -263,12 +428,12 @@ export function SignalsView({ filters }: SignalsViewProps) {
                     color,
                     opacity: clamp(avgConfidence),
                 },
+                nodeType: "category",
                 categoryId,
                 categoryLabel,
                 confidenceValue: avgConfidence,
-                confidenceBand: deriveConfidenceBand(avgConfidence),
                 hasTextual: summary.hasTextual,
-                children: unitChildren,
+                children: repoChildren,
             });
         });
 
@@ -282,7 +447,7 @@ export function SignalsView({ filters }: SignalsViewProps) {
             value: totalValue,
             children,
         };
-    }, [workUnits, categoryIds, categoryColorMap, chartTheme.grid]);
+    }, [workUnits, categoryIds, categoryColorMap, chartTheme.grid, showWorkUnits]);
 
     const sankeyData = useMemo(() => {
         const edgeTotals = new Map<
@@ -294,26 +459,36 @@ export function SignalsView({ filters }: SignalsViewProps) {
                 confidenceWeighted: number;
                 weightTotal: number;
                 hasTextual: boolean;
+                categoryId: string;
             }
+        >();
+        const categoryStats = new Map<
+            string,
+            { confidenceWeighted: number; weightTotal: number; hasTextual: boolean }
+        >();
+        const repoStats = new Map<
+            string,
+            { confidenceWeighted: number; weightTotal: number; hasTextual: boolean }
         >();
         const repoSet = new Set<string>();
 
         workUnits.forEach((unit) => {
             const repoIds = extractRepoIds(unit);
             const normalizedRepos = repoIds.length ? repoIds : ["unassigned"];
-            normalizedRepos.forEach((repoId) => repoSet.add(repoId));
             const repoCount = normalizedRepos.length || 1;
             const hasTextual = (unit.evidence?.textual ?? []).length > 0;
+
+            normalizedRepos.forEach((repoId) => repoSet.add(repoId));
 
             Object.entries(unit.categories ?? {}).forEach(([categoryId, weight]) => {
                 if (typeof weight !== "number" || weight <= 0) {
                     return;
                 }
-                // Split across repos to avoid double counting multi-repo work units.
-                const weightedEffort = (unit.effort.value * weight) / repoCount;
+                const weightedEffort = unit.effort.value * weight;
                 if (weightedEffort <= 0) {
                     return;
                 }
+                const perRepoEffort = weightedEffort / repoCount;
                 const source = titleCase(categoryId);
                 normalizedRepos.forEach((repoId) => {
                     const edgeKey = `${source}::${repoId}`;
@@ -324,38 +499,87 @@ export function SignalsView({ filters }: SignalsViewProps) {
                         confidenceWeighted: 0,
                         weightTotal: 0,
                         hasTextual: false,
+                        categoryId,
                     };
-                    entry.value += weightedEffort;
-                    entry.confidenceWeighted += unit.confidence.value * weightedEffort;
-                    entry.weightTotal += weightedEffort;
+                    entry.value += perRepoEffort;
+                    entry.confidenceWeighted += unit.confidence.value * perRepoEffort;
+                    entry.weightTotal += perRepoEffort;
                     entry.hasTextual = entry.hasTextual || hasTextual;
                     edgeTotals.set(edgeKey, entry);
+
+                    const catEntry = categoryStats.get(categoryId) ?? {
+                        confidenceWeighted: 0,
+                        weightTotal: 0,
+                        hasTextual: false,
+                    };
+                    catEntry.confidenceWeighted += unit.confidence.value * perRepoEffort;
+                    catEntry.weightTotal += perRepoEffort;
+                    catEntry.hasTextual = catEntry.hasTextual || hasTextual;
+                    categoryStats.set(categoryId, catEntry);
+
+                    const repoEntry = repoStats.get(repoId) ?? {
+                        confidenceWeighted: 0,
+                        weightTotal: 0,
+                        hasTextual: false,
+                    };
+                    repoEntry.confidenceWeighted += unit.confidence.value * perRepoEffort;
+                    repoEntry.weightTotal += perRepoEffort;
+                    repoEntry.hasTextual = repoEntry.hasTextual || hasTextual;
+                    repoStats.set(repoId, repoEntry);
                 });
             });
         });
 
         const nodes: SankeyNode[] = [];
         categoryIds.forEach((categoryId) => {
-            nodes.push({ name: titleCase(categoryId), group: "category" });
+            const meta = categoryStats.get(categoryId);
+            const avgConfidence = meta?.weightTotal
+                ? meta.confidenceWeighted / meta.weightTotal
+                : 0;
+            const color = categoryColorMap.get(categoryId) ?? chartTheme.grid;
+            nodes.push({
+                name: titleCase(categoryId),
+                group: "category",
+                itemStyle: { color, opacity: clamp(avgConfidence) },
+                confidenceValue: avgConfidence,
+                hasTextual: meta?.hasTextual ?? false,
+            });
         });
         repoSet.forEach((repoId) => {
-            nodes.push({ name: repoId, group: "repo" });
+            const meta = repoStats.get(repoId);
+            const avgConfidence = meta?.weightTotal
+                ? meta.confidenceWeighted / meta.weightTotal
+                : 0;
+            nodes.push({
+                name: repoId,
+                group: "repo",
+                itemStyle: { color: chartTheme.grid, opacity: clamp(avgConfidence) },
+                confidenceValue: avgConfidence,
+                hasTextual: meta?.hasTextual ?? false,
+            });
         });
 
         const links: SankeyLink[] = [];
         const edgeMeta = new Map<string, SankeyEdgeMeta>();
         edgeTotals.forEach((entry) => {
-            links.push({ source: entry.source, target: entry.target, value: entry.value });
+            const avgConfidence = entry.weightTotal
+                ? entry.confidenceWeighted / entry.weightTotal
+                : 0;
+            const color = categoryColorMap.get(entry.categoryId) ?? chartTheme.grid;
+            links.push({
+                source: entry.source,
+                target: entry.target,
+                value: entry.value,
+                lineStyle: { color, opacity: clamp(avgConfidence) },
+            });
             edgeMeta.set(`${entry.source}::${entry.target}`, {
-                avgConfidence: entry.weightTotal
-                    ? entry.confidenceWeighted / entry.weightTotal
-                    : 0,
+                avgConfidence,
                 hasTextual: entry.hasTextual,
             });
         });
 
         return { nodes, links, edgeMeta };
-    }, [workUnits, categoryIds]);
+    }, [workUnits, categoryIds, categoryColorMap, chartTheme.grid]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
@@ -371,50 +595,56 @@ export function SignalsView({ filters }: SignalsViewProps) {
         [router, searchParams]
     );
 
-    const handleTreemapClick = useCallback(
-        (node: { name: string }) => {
-            if (!node.name) return;
-            handleSelect(node.name);
+    const treemapLabelFormatter = useCallback(
+        (params: unknown, totalValue: number) => {
+            if (!params || typeof params !== "object") return "";
+            const entry = params as { data?: { name?: string; value?: number } };
+            const nodeData = entry.data ?? {};
+            const name = typeof nodeData.name === "string" ? nodeData.name : "";
+            const value = typeof nodeData.value === "number" ? nodeData.value : 0;
+            const pct = totalValue > 0 ? (value / totalValue) * 100 : 0;
+            if (!name || pct < 3) return "";
+            if (treemapIsSparse) {
+                return `${name} (${pct.toFixed(0)}%)`;
+            }
+            return name;
         },
-        [handleSelect]
+        [treemapIsSparse]
     );
 
     const formatTreemapTooltip = useCallback(
-        (params: unknown, _totalValue: number, _unitLabel: string) => {
+        (params: unknown, _totalValue: number, unitLabel: string) => {
             if (!params || typeof params !== "object") return "";
             const entry = params as { data?: Record<string, unknown> };
             const data = entry.data ?? {};
-            const workUnit = data.workUnit as WorkUnitSignal | undefined;
-            if (!workUnit) return "";
-            const dominant = data.dominantCategory as
-                | { id: string; label: string; value: number }
-                | null
-                | undefined;
-            const dominantLabel = dominant?.label ?? "No dominant category";
-            const dominantPct =
-                dominant && typeof dominant.value === "number"
-                    ? `${formatNumber(dominant.value * 100, { maximumFractionDigits: 0 })}%`
-                    : "--";
-            const confidenceLabel = `${formatConfidence(workUnit.confidence.value)} (${formatBandLabel(
-                workUnit.confidence.band
-            )})`;
-            const timeRange = buildTimeRangeLabel(
-                workUnit.time_range?.start,
-                workUnit.time_range?.end
-            );
-            const effortUnitLabel = formatEffortUnit(workUnit.effort.metric);
-            const textualNote = (workUnit.evidence?.textual ?? []).length
+            const categoryLabel = (data.categoryLabel as string) ?? (data.name as string) ?? "";
+            if (!categoryLabel) return "";
+            const repoScope = typeof data.repoScope === "string" ? data.repoScope : "";
+            const weightedEffort = typeof data.value === "number" ? data.value : 0;
+            const confidenceValue = typeof data.confidenceValue === "number" ? data.confidenceValue : 0;
+            const workUnitCount = typeof data.workUnitCount === "number" ? data.workUnitCount : 0;
+            const confidenceLabel = formatConfidence(confidenceValue);
+            const effortUnitLabel = unitLabel;
+            const confidenceDisclosure =
+                "<div style=\"margin-top: 6px; font-size: 11px; color: " +
+                chartTheme.muted +
+                "\">Confidence shown reflects an average across contributing work units.</div>";
+            const textualNote = data.hasTextual
                 ? "<div style=\"margin-top: 6px; color: " +
                   chartTheme.muted +
                   "\">Minor textual modifiers were applied. These do not determine classification.</div>"
                 : "";
+            const title = repoScope ? `${categoryLabel} · ${repoScope}` : categoryLabel;
+            const workUnitLine = workUnitCount
+                ? `<div><span style="color: ${chartTheme.muted}">Work units:</span> ${workUnitCount}</div>`
+                : "";
 
             return `
-        <div style="font-weight: 600; margin-bottom: 4px;">WorkUnit ${workUnit.work_unit_id}</div>
-        <div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 4px;">${timeRange}</div>
-        <div><span style="color: ${chartTheme.muted}">Dominant category:</span> ${dominantLabel} (${dominantPct})</div>
-        <div><span style="color: ${chartTheme.muted}">Confidence:</span> ${confidenceLabel}</div>
-        <div><span style="color: ${chartTheme.muted}">Effort:</span> ${formatNumber(workUnit.effort.value)} ${effortUnitLabel}</div>
+        <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
+        <div><span style="color: ${chartTheme.muted}">Weighted effort:</span> ${formatNumber(weightedEffort)} ${effortUnitLabel}</div>
+        <div><span style="color: ${chartTheme.muted}">Avg confidence:</span> ${confidenceLabel}</div>
+        ${workUnitLine}
+        ${confidenceDisclosure}
         ${textualNote}
       `;
         },
@@ -426,30 +656,54 @@ export function SignalsView({ filters }: SignalsViewProps) {
             if (!params || typeof params !== "object") return "";
             const entry = params as { data?: Record<string, unknown> };
             const data = entry.data ?? {};
+            const nodeType = typeof data.nodeType === "string" ? data.nodeType : "category";
             const categoryLabel = (data.categoryLabel as string) ?? (data.name as string) ?? "";
+            const repoScope = typeof data.repoScope === "string" ? data.repoScope : "";
             const weightedEffort = typeof data.value === "number" ? data.value : 0;
             const confidenceValue = typeof data.confidenceValue === "number" ? data.confidenceValue : 0;
-            const confidenceBand = (data.confidenceBand as WorkUnitSignal["confidence"]["band"]) ?? deriveConfidenceBand(confidenceValue);
-            const confidencePrefix = data.workUnitId ? "Confidence" : "Avg confidence";
-            const confidenceLabel = `${formatConfidence(confidenceValue)} (${formatBandLabel(confidenceBand)})`;
-            const workUnitLabel = data.workUnitId
-                ? `<div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 4px;">WorkUnit ${data.workUnitId}</div>`
-                : "";
-            const confidenceDisclosure =
-                "<div style=\"margin-top: 6px; font-size: 11px; color: " +
-                chartTheme.muted +
-                "\">Confidence shown is an average across contributing work units.</div>";
-            const textualNote = data.hasTextual
+            const confidenceLabel = formatConfidence(confidenceValue);
+            const hasTextual = Boolean(data.hasTextual);
+            const textualNote = hasTextual
                 ? "<div style=\"margin-top: 6px; color: " +
                   chartTheme.muted +
                   "\">Minor textual modifiers were applied. These do not determine classification.</div>"
                 : "";
 
-            return `
-        <div style="font-weight: 600; margin-bottom: 4px;">${categoryLabel}</div>
-        ${workUnitLabel}
+            if (nodeType === "work_unit") {
+                const workUnitId = (data.workUnitId as string) ?? (data.name as string) ?? "";
+                const confidenceBand = data.confidenceBand as
+                    | WorkUnitSignal["confidence"]["band"]
+                    | undefined;
+                const bandLabel = confidenceBand ? ` (${formatBandLabel(confidenceBand)})` : "";
+                const categoryLine = categoryLabel
+                    ? `<div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 4px;">${categoryLabel}</div>`
+                    : "";
+                const repoLine = repoScope
+                    ? `<div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 4px;">${repoScope}</div>`
+                    : "";
+
+                return `
+        <div style="font-weight: 600; margin-bottom: 4px;">WorkUnit ${workUnitId}</div>
+        ${categoryLine}
+        ${repoLine}
         <div><span style="color: ${chartTheme.muted}">Weighted effort:</span> ${formatNumber(weightedEffort)} ${unitLabel}</div>
-        <div><span style="color: ${chartTheme.muted}">${confidencePrefix}:</span> ${confidenceLabel}</div>
+        <div><span style="color: ${chartTheme.muted}">Confidence:</span> ${confidenceLabel}${bandLabel}</div>
+        ${textualNote}
+      `;
+            }
+
+            const title = nodeType === "repo_scope" && repoScope
+                ? `${categoryLabel} · ${repoScope}`
+                : categoryLabel;
+            const confidenceDisclosure =
+                "<div style=\"margin-top: 6px; font-size: 11px; color: " +
+                chartTheme.muted +
+                "\">Confidence shown reflects an average across contributing work units.</div>";
+
+            return `
+        <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
+        <div><span style="color: ${chartTheme.muted}">Weighted effort:</span> ${formatNumber(weightedEffort)} ${unitLabel}</div>
+        <div><span style="color: ${chartTheme.muted}">Avg confidence:</span> ${confidenceLabel}</div>
         ${confidenceDisclosure}
         ${textualNote}
       `;
@@ -482,6 +736,7 @@ export function SignalsView({ filters }: SignalsViewProps) {
         <div style="font-weight: 600; margin-bottom: 4px;">${source} → ${target}</div>
         <div><span style="color: ${chartTheme.muted}">Weighted effort:</span> ${formatNumber(value)} ${unitLabel}</div>
         <div><span style="color: ${chartTheme.muted}">Avg confidence:</span> ${formatConfidence(avgConfidence)}</div>
+        <div style="margin-top: 6px; font-size: 11px; color: ${chartTheme.muted};">Confidence shown reflects an average across contributing work units.</div>
         ${textualNote}
       `;
         },
@@ -522,6 +777,48 @@ export function SignalsView({ filters }: SignalsViewProps) {
                 </div>
             </div>
 
+            <div className="grid gap-4 lg:grid-cols-2">
+                <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
+                    <summary className="cursor-pointer list-none font-(--font-display) text-base">
+                        What these signals represent
+                    </summary>
+                    <div className="mt-2">
+                        <p className="text-sm text-(--ink-muted)">
+                            These views show probabilistic work signals inferred from connected work activity across issues, pull requests, commits, and files.
+                        </p>
+                        <p className="mt-2 text-sm text-(--ink-muted)">
+                            A signal reflects how work appears to have behaved based on structure, timing, and limited textual hints.
+                            It is not a label, a verdict, or an assessment of people.
+                        </p>
+                        <p className="mt-2 text-sm text-(--ink-muted)">
+                            Because real work is messy, signals are shown with confidence and uncertainty rather than as fixed categories.
+                        </p>
+                        <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
+                            <li>Signals describe patterns of work, not individual performance.</li>
+                            <li>Categories are probabilistic, not exclusive. Work can span multiple categories at once.</li>
+                            <li>Confidence reflects signal strength, not correctness.</li>
+                            <li>Low confidence indicates mixed or incomplete signals, not bad data.</li>
+                        </ul>
+                        <p className="mt-3 text-xs text-(--ink-muted)">
+                            These signals do not assign intent, measure productivity, or evaluate individuals.
+                        </p>
+                    </div>
+                </details>
+                <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
+                    <summary className="cursor-pointer list-none font-(--font-display) text-base">
+                        How to read the visuals
+                    </summary>
+                    <div className="mt-2">
+                        <ul className="space-y-2 text-sm text-(--ink-muted)">
+                            <li>Size represents effort associated with a signal.</li>
+                            <li>Color indicates which category the signal leans toward.</li>
+                            <li>Opacity represents confidence in the interpretation.</li>
+                            <li>Flows show how effort appears to move across categories and scopes.</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Confidence bands</span>
                 {CONFIDENCE_BANDS.map((band) => (
@@ -539,7 +836,9 @@ export function SignalsView({ filters }: SignalsViewProps) {
                 <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-lg">Treemap</h3>
-                        <span className="text-xs text-(--ink-muted)">Effort size · Confidence opacity</span>
+                        <span className="text-xs text-(--ink-muted)">
+                            Effort size · Confidence opacity · {treemapIsSparse ? "Category view" : "Category · repo scope"}
+                        </span>
                     </div>
                     <div className="mt-4">
                         {isLoading ? (
@@ -553,16 +852,25 @@ export function SignalsView({ filters }: SignalsViewProps) {
                                 height={360}
                                 useInputColors
                                 tooltipFormatter={formatTreemapTooltip}
-                                onNodeClick={handleTreemapClick}
+                                labelFormatter={treemapLabelFormatter}
                             />
                         )}
                     </div>
                 </div>
 
                 <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-(--font-display) text-lg">Sunburst</h3>
-                        <span className="text-xs text-(--ink-muted)">Probability-weighted effort</span>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 className="font-(--font-display) text-lg">Sunburst</h3>
+                            <span className="text-xs text-(--ink-muted)">Probability-weighted effort</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowWorkUnits((prev) => !prev)}
+                            className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                        >
+                            {showWorkUnits ? "Hide work units" : "Show work units"}
+                        </button>
                     </div>
                     <div className="mt-4">
                         {isLoading ? (
@@ -718,7 +1026,7 @@ export function SignalsView({ filters }: SignalsViewProps) {
                     </div>
                 ) : (
                     <p className="mt-6 text-sm text-(--ink-muted)">
-                        Select a work unit from the treemap or dropdown to inspect evidence.
+                        Select a work unit from the dropdown to inspect evidence.
                     </p>
                 )}
             </div>

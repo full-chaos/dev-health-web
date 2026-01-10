@@ -27,6 +27,7 @@ type TreemapChartProps = {
     className?: string;
     style?: CSSProperties;
     useInputColors?: boolean;
+    labelFormatter?: (params: unknown, totalValue: number) => string;
     tooltipFormatter?: (params: unknown, totalValue: number, unit: string) => string;
     onNodeClick?: (node: {
         name: string;
@@ -48,6 +49,7 @@ export function TreemapChart({
     className,
     style,
     useInputColors = false,
+    labelFormatter,
     tooltipFormatter,
     onNodeClick,
 }: TreemapChartProps) {
@@ -151,6 +153,9 @@ export function TreemapChart({
                     label: {
                         show: true,
                         formatter: (params: unknown) => {
+                            if (labelFormatter) {
+                                return labelFormatter(params, totalValue);
+                            }
                             const p = params as { name?: string; value?: number };
                             const name = p.name ?? "";
                             const value = typeof p.value === "number" ? p.value : 0;
@@ -205,7 +210,7 @@ export function TreemapChart({
                 },
             ],
         }) as EChartsOption,
-        [coloredData, totalValue, unit, chartTheme, tooltipFormatter]
+        [coloredData, totalValue, unit, chartTheme, tooltipFormatter, labelFormatter]
     );
 
     return (
