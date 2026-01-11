@@ -81,6 +81,14 @@ export type ExplainResponse = {
   drilldown_links: Record<string, string>;
 };
 
+export type InvestmentMixExplanation = {
+  summary: string;
+  dominant_themes: string[];
+  key_drivers: string[];
+  operational_signals: string[];
+  confidence_note: string;
+};
+
 export type DrilldownResponse = {
   items: Array<Record<string, unknown>>;
 };
@@ -103,8 +111,9 @@ export type HealthResponse = {
 };
 
 export type InvestmentResponse = {
-  categories: Array<{ key: string; name: string; value: number }>;
-  subtypes: Array<{ name: string; value: number; parentKey: string }>;
+  theme_distribution: Record<string, number>;
+  subcategory_distribution: Record<string, number>;
+  evidence_quality_distribution?: Record<string, number>;
   unit?: string;
   edges?: Array<Record<string, unknown>>;
 };

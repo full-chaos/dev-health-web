@@ -6,19 +6,16 @@ import { InvestmentChart } from "@/components/investment/InvestmentChart";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatNumber, formatPercent } from "@/lib/formatters";
-import type { MetricDelta, QuadrantResponse, InvestmentResponse } from "@/lib/types";
+import type { MetricDelta, QuadrantResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
+import type { InvestmentMixAggregate } from "@/lib/investmentMix";
 
 type LandscapeViewProps = {
     filters: MetricFilter;
     activeRole?: string;
     deltas: MetricDelta[];
     placeholderDeltas: boolean;
-    investment: InvestmentResponse | null;
-    nested: {
-        categories: Array<{ key: string; name: string; value: number }>;
-        subtypes: Array<{ name: string; value: number; parentKey: string }>;
-    };
+    investmentMix: InvestmentMixAggregate | null;
     cycleThroughput: QuadrantResponse | null;
     wipThroughput: QuadrantResponse | null;
     reviewLoadLatency: QuadrantResponse | null;
@@ -33,7 +30,7 @@ export function LandscapeView({
     activeRole,
     deltas,
     placeholderDeltas,
-    nested,
+    investmentMix,
     cycleThroughput,
     wipThroughput,
     reviewLoadLatency,
@@ -135,8 +132,13 @@ export function LandscapeView({
                         </div>
                     </div>
                     <div className="mt-4">
-                        {nested.categories.length ? (
-                            <InvestmentChart categories={nested.categories} subtypes={nested.subtypes} />
+                        {investmentMix && Object.keys(investmentMix.theme_distribution ?? {}).length ? (
+                            <InvestmentChart
+                                themeDistribution={investmentMix.theme_distribution}
+                                subcategoryDistribution={investmentMix.subcategory_distribution}
+                                evidenceQualityDistribution={investmentMix.evidence_quality_distribution}
+                                unit={investmentMix.unit ?? "units"}
+                            />
                         ) : (
                             <div className="flex h-[280px] items-center justify-center rounded-3xl border border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                                 Investment data unavailable.

@@ -7,7 +7,7 @@ import type {
   WorkItemTypeSummary,
 } from "./devHealthOpsTypes";
 
-import type { WorkUnitInvestment } from "../lib/types";
+import type { InvestmentResponse, WorkUnitInvestment } from "../lib/types";
 
 export const workItemMetricsDailySample: WorkItemMetricsDaily[] = [
   {
@@ -881,3 +881,31 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
     },
   },
 ];
+
+export const investmentMixSample: InvestmentResponse = {
+  theme_distribution: {
+    feature_delivery: 644.6,
+    maintenance: 606,
+    operational: 423.6,
+    quality: 550.2,
+    risk: 125.6,
+  },
+  subcategory_distribution: {
+    "feature_delivery.customer": 320.6,
+    "feature_delivery.roadmap": 200.8,
+    "feature_delivery.enablement": 123.2,
+    "maintenance.debt": 279.2,
+    "maintenance.refactor": 250.8,
+    "maintenance.upgrade": 76,
+    "operational.incident_response": 206,
+    "operational.support": 167.2,
+    "operational.on_call": 50.4,
+    "quality.bugfix": 250.6,
+    "quality.testing": 177.4,
+    "quality.reliability": 122.2,
+    "risk.security": 82.8,
+    "risk.compliance": 30.4,
+    "risk.vulnerability": 12.4,
+  },
+  unit: "loc",
+};

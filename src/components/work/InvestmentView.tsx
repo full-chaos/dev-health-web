@@ -4,27 +4,23 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
+import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
 import { SankeyChart } from "@/components/charts/SankeyChart";
-import { SunburstChart, type SunburstNode } from "@/components/charts/SunburstChart";
+import { StackedHorizontalBar } from "@/components/charts/StackedHorizontalBar";
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
-import { workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
-import { getWorkUnits, getWorkUnitExplanation } from "@/lib/api";
+import { investmentMixSample, workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
+import { explainInvestmentMix, getInvestment, getWorkUnits, getWorkUnitExplanation } from "@/lib/api";
+import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix, type InvestmentMixAggregate } from "@/lib/investmentMix";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
-import type { MetricFilter, SankeyLink, SankeyNode, WorkUnitInvestment, WorkUnitExplanation } from "@/lib/types";
+import type { MetricFilter } from "@/lib/filters/types";
+import type { InvestmentMixExplanation, SankeyLink, SankeyNode, WorkUnitInvestment, WorkUnitExplanation } from "@/lib/types";
 
 type InvestmentViewProps = {
     filters: MetricFilter;
 };
 
 type CategorizationMode = "text_metadata" | "metadata_only";
-
-type CategorySummary = {
-    total: number;
-    qualityWeighted: number;
-    weightTotal: number;
-    hasTextual: boolean;
-};
 
 type TreemapAggregate = {
     categoryId: string;
@@ -91,6 +87,19 @@ const formatQuality = (value: number) => formatNumber(value, { maximumFractionDi
 const formatEffortUnit = (metric: WorkUnitInvestment["effort"]["metric"]) =>
     metric === "active_hours" ? "hours" : "loc";
 
+const adjustHex = (hex: string, amount: number) => {
+    const normalized = hex.replace("#", "");
+    if (normalized.length !== 6) {
+        return hex;
+    }
+    const value = Number.parseInt(normalized, 16);
+    const clampChannel = (channel: number) => Math.max(0, Math.min(255, channel));
+    const r = clampChannel((value >> 16) + amount);
+    const g = clampChannel(((value >> 8) & 0xff) + amount);
+    const b = clampChannel((value & 0xff) + amount);
+    return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+};
+
 const extractRepoIds = (unit: WorkUnitInvestment) => {
     const entries = unit.evidence?.contextual ?? [];
     for (const entry of entries) {
@@ -119,10 +128,22 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [categorizationMode, setCategorizationMode] = useState<CategorizationMode>("text_metadata");
     const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [investmentMix, setInvestmentMix] = useState<InvestmentMixAggregate | null>(null);
+    const [isMixLoading, setIsMixLoading] = useState(true);
+    const [mixExplanation, setMixExplanation] = useState<{
+        data: InvestmentMixExplanation | null;
+        filtersKey: string;
+        focus: { theme: string | null; subcategory: string | null };
+    }>({
+        data: null,
+        filtersKey: "",
+        focus: { theme: null, subcategory: null },
+    });
     const [focusTheme, setFocusTheme] = useState<string | null>(null);
     const [focusSubcategory, setFocusSubcategory] = useState<string | null>(null);
     const [explanation, setExplanation] = useState<WorkUnitExplanation | null>(null);
     const [isExplaining, setIsExplaining] = useState(false);
+    const [isExplainingMix, setIsExplainingMix] = useState(false);
 
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
@@ -139,6 +160,129 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         () => JSON.stringify({ filters, includeTextual }),
         [filters, includeTextual]
     );
+
+    const mixRequestKey = useMemo(() => JSON.stringify({ filters }), [filters]);
+    const mixExplainKey = useMemo(() => JSON.stringify({ filters }), [filters]);
+
+    useEffect(() => {
+        let active = true;
+
+        const fetchMix = async () => {
+            setIsMixLoading(true);
+            if (useSampleData) {
+                if (active) {
+                    setInvestmentMix(investmentMixSample);
+                    setIsMixLoading(false);
+                }
+                return;
+            }
+
+            try {
+                const data = await getInvestment(filters);
+                if (active) {
+                    setInvestmentMix(normalizeInvestmentMix(data));
+                }
+            } catch {
+                if (active) {
+                    setInvestmentMix(null);
+                }
+            } finally {
+                if (active) {
+                    setIsMixLoading(false);
+                }
+            }
+        };
+
+        fetchMix();
+        return () => {
+            active = false;
+        };
+    }, [filters, mixRequestKey, useSampleData]);
+
+    const regenerateMixExplanation = useCallback(async () => {
+        setIsExplainingMix(true);
+        try {
+            const payload = await explainInvestmentMix({
+                filters,
+                theme: focusTheme,
+                subcategory: focusSubcategory,
+            });
+            setMixExplanation({
+                data: payload,
+                filtersKey: mixExplainKey,
+                focus: { theme: focusTheme, subcategory: focusSubcategory },
+            });
+        } catch {
+            setMixExplanation((current) => ({
+                ...current,
+                data: null,
+                filtersKey: mixExplainKey,
+                focus: { theme: focusTheme, subcategory: focusSubcategory },
+            }));
+        } finally {
+            setIsExplainingMix(false);
+        }
+    }, [filters, focusSubcategory, focusTheme, mixExplainKey]);
+
+    useEffect(() => {
+        let active = true;
+
+        const fetchExplanation = async () => {
+            if (useSampleData) {
+                if (active) {
+                    setMixExplanation({
+                        data: {
+                            summary: "This view suggests effort leans toward a small number of dominant themes, with subcategories providing the specific intent behind that allocation.",
+                            dominant_themes: Object.keys(investmentMixSample.theme_distribution).slice(0, 3).map(titleCase),
+                            key_drivers: [
+                                "Subcategory distribution appears concentrated in the leading theme families.",
+                                "Repo scope destinations are derived from connected work-unit evidence only.",
+                            ],
+                            operational_signals: [
+                                "Evidence quality bands indicate uncertainty varies across contributing work units.",
+                            ],
+                            confidence_note: "AI-generated interpretation based on the data shown above; confidence appears bounded by the evidence quality mix.",
+                        },
+                        filtersKey: mixExplainKey,
+                        focus: { theme: null, subcategory: null },
+                    });
+                }
+                return;
+            }
+
+            try {
+                const payload = await explainInvestmentMix({
+                    filters,
+                    theme: null,
+                    subcategory: null,
+                });
+                if (active) {
+                    setMixExplanation({
+                        data: payload,
+                        filtersKey: mixExplainKey,
+                        focus: { theme: null, subcategory: null },
+                    });
+                }
+            } catch {
+                if (active) {
+                    setMixExplanation({
+                        data: null,
+                        filtersKey: mixExplainKey,
+                        focus: { theme: null, subcategory: null },
+                    });
+                }
+            }
+        };
+
+        if (mixExplanation.filtersKey === mixExplainKey) {
+            return;
+        }
+
+        fetchExplanation();
+        return () => {
+            active = false;
+        };
+    }, [filters, mixExplainKey, mixExplanation.filtersKey, useSampleData]);
 
     useEffect(() => {
         let active = true;
@@ -241,6 +385,14 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return Array.from(ids).sort();
     }, [workUnits, focusTheme]);
 
+    const allSubcategoryIds = useMemo(() => {
+        const ids = new Set<string>();
+        workUnits.forEach((unit) => {
+            Object.keys(unit.investment?.subcategories ?? {}).forEach((key) => ids.add(key));
+        });
+        return Array.from(ids).sort();
+    }, [workUnits]);
+
     const categoryIds = useMemo(
         () => (focusTheme ? subcategoryIds : themeIds),
         [focusTheme, subcategoryIds, themeIds]
@@ -271,6 +423,34 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         });
         return map;
     }, [categoryIds, chartColors]);
+
+    const mixThemes = useMemo(() => (investmentMix ? getSortedThemes(investmentMix) : []), [investmentMix]);
+    const mixSubcategories = useMemo(
+        () => (investmentMix ? getSortedSubcategories(investmentMix) : []),
+        [investmentMix]
+    );
+    const mixTotalValue = useMemo(
+        () => mixThemes.reduce((sum, entry) => sum + entry.value, 0),
+        [mixThemes]
+    );
+    const focusedThemeTotalValue = useMemo(() => {
+        if (!focusTheme || !investmentMix) return 0;
+        return investmentMix.theme_distribution[focusTheme] ?? 0;
+    }, [focusTheme, investmentMix]);
+    const focusedThemeSubcategories = useMemo(() => {
+        if (!focusTheme) return [];
+        return mixSubcategories.filter((entry) => entry.themeKey === focusTheme);
+    }, [focusTheme, mixSubcategories]);
+
+    const handleThemeClick = useCallback((themeKey: string) => {
+        setFocusTheme((current) => (current === themeKey ? null : themeKey));
+    }, []);
+
+    const handleSubcategoryClick = useCallback((subcategoryKey: string) => {
+        const [themeKey] = subcategoryKey.split(".", 1);
+        setFocusTheme(themeKey || null);
+        setFocusSubcategory(subcategoryKey);
+    }, []);
 
     const treemapData = useMemo<TreemapNode>(() => {
         const entries = new Map<string, TreemapAggregate>();
@@ -422,89 +602,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         getCategoriesForUnit,
     ]);
 
-    const sunburstData = useMemo<SunburstNode>(() => {
-        const categorySummaries = new Map<string, CategorySummary>();
-
-        workUnits.forEach((unit) => {
-            const categories = getCategoriesForUnit(unit);
-            const hasTextual = (unit.evidence?.textual ?? []).length > 0;
-
-            Object.entries(categories).forEach(([categoryId, weight]) => {
-                if (typeof weight !== "number" || weight <= 0) {
-                    return;
-                }
-                const weightedEffort = unit.effort.value * weight;
-                if (weightedEffort <= 0) {
-                    return;
-                }
-                const entry = categorySummaries.get(categoryId) ?? {
-                    total: 0,
-                    qualityWeighted: 0,
-                    weightTotal: 0,
-                    hasTextual: false,
-                };
-                entry.total += weightedEffort;
-                entry.qualityWeighted += unit.evidence_quality.value * weightedEffort;
-                entry.weightTotal += weightedEffort;
-                entry.hasTextual = entry.hasTextual || hasTextual;
-                categorySummaries.set(categoryId, entry);
-            });
-        });
-
-        const children: SunburstNode[] = [];
-        const nodeType = focusTheme ? "subcategory" : "theme";
-
-        categoryIds.forEach((categoryId) => {
-            const summary = categorySummaries.get(categoryId);
-            if (!summary || summary.total <= 0) {
-                return;
-            }
-            const avgQuality = summary.weightTotal
-                ? summary.qualityWeighted / summary.weightTotal
-                : 0;
-            const color = categoryColorMap.get(categoryId) ?? chartTheme.grid;
-            const categoryLabel = focusTheme
-                ? formatSubcategoryLabel(categoryId, false)
-                : titleCase(categoryId);
-            const categoryFullLabel = focusTheme
-                ? formatSubcategoryLabel(categoryId, true)
-                : categoryLabel;
-
-            children.push({
-                name: categoryLabel,
-                value: summary.total,
-                itemStyle: {
-                    color,
-                    opacity: clamp(avgQuality),
-                },
-                nodeType,
-                categoryId,
-                categoryLabel,
-                categoryFullLabel,
-                qualityValue: avgQuality,
-                hasTextual: summary.hasTextual,
-            });
-        });
-
-        const totalValue = children.reduce(
-            (sum, child) => sum + (child.value ?? 0),
-            0
-        );
-
-        return {
-            name: "Total",
-            value: totalValue,
-            children,
-        };
-    }, [
-        workUnits,
-        categoryIds,
-        categoryColorMap,
-        chartTheme.grid,
-        focusTheme,
-        getCategoriesForUnit,
-    ]);
-
     const sankeyData = useMemo(() => {
         const edgeTotals = new Map<
             string,
@@ -536,8 +633,12 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
             normalizedRepos.forEach((repoId) => repoSet.add(repoId));
 
-            Object.entries(getCategoriesForUnit(unit)).forEach(([categoryId, weight]) => {
+            const subcategories = unit.investment?.subcategories ?? {};
+            Object.entries(subcategories).forEach(([subcategoryKey, weight]) => {
                 if (typeof weight !== "number" || weight <= 0) {
+                    return;
+                }
+                if (focusTheme && !subcategoryKey.startsWith(`${focusTheme}.`)) {
                     return;
                 }
                 const weightedEffort = unit.effort.value * weight;
@@ -545,9 +646,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     return;
                 }
                 const perRepoEffort = weightedEffort / repoCount;
-                const source = focusTheme
-                    ? formatSubcategoryLabel(categoryId, false)
-                    : titleCase(categoryId);
+                const source = formatSubcategoryLabel(subcategoryKey, true);
                 normalizedRepos.forEach((repoId) => {
                     const edgeKey = `${source}::${repoId}`;
                     const entry = edgeTotals.get(edgeKey) ?? {
@@ -557,7 +656,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                         qualityWeighted: 0,
                         weightTotal: 0,
                         hasTextual: false,
-                        categoryId,
+                        categoryId: subcategoryKey,
                     };
                     entry.value += perRepoEffort;
                     entry.qualityWeighted += unit.evidence_quality.value * perRepoEffort;
@@ -565,7 +664,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     entry.hasTextual = entry.hasTextual || hasTextual;
                     edgeTotals.set(edgeKey, entry);
 
-                    const catEntry = categoryStats.get(categoryId) ?? {
+                    const catEntry = categoryStats.get(subcategoryKey) ?? {
                         qualityWeighted: 0,
                         weightTotal: 0,
                         hasTextual: false,
@@ -573,7 +672,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     catEntry.qualityWeighted += unit.evidence_quality.value * perRepoEffort;
                     catEntry.weightTotal += perRepoEffort;
                     catEntry.hasTextual = catEntry.hasTextual || hasTextual;
-                    categoryStats.set(categoryId, catEntry);
+                    categoryStats.set(subcategoryKey, catEntry);
 
                     const repoEntry = repoStats.get(repoId) ?? {
                         qualityWeighted: 0,
@@ -589,15 +688,35 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         });
 
         const nodes: SankeyNode[] = [];
-        categoryIds.forEach((categoryId) => {
-            const meta = categoryStats.get(categoryId);
+        const sankeyCategoryIds = focusTheme ? subcategoryIds : allSubcategoryIds;
+        const themeKeys = mixThemes.map((entry) => entry.key);
+        const themeColorMap = new Map<string, string>();
+        themeKeys.forEach((key, idx) => {
+            themeColorMap.set(key, chartColors[idx % chartColors.length]);
+        });
+        const subcategoriesByTheme = new Map<string, string[]>();
+        sankeyCategoryIds.forEach((subcategoryKey) => {
+            const [themeKey] = subcategoryKey.split(".", 1);
+            if (!themeKey) return;
+            const list = subcategoriesByTheme.get(themeKey) ?? [];
+            list.push(subcategoryKey);
+            subcategoriesByTheme.set(themeKey, list);
+        });
+        subcategoriesByTheme.forEach((list) => list.sort());
+
+        sankeyCategoryIds.forEach((subcategoryKey) => {
+            const meta = categoryStats.get(subcategoryKey);
             const avgQuality = meta?.weightTotal
                 ? meta.qualityWeighted / meta.weightTotal
                 : 0;
-            const color = categoryColorMap.get(categoryId) ?? chartTheme.grid;
+            const [themeKey] = subcategoryKey.split(".", 1);
+            const baseColor = themeColorMap.get(themeKey ?? "") ?? chartTheme.grid;
+            const themeSubcategories = themeKey ? subcategoriesByTheme.get(themeKey) ?? [] : [];
+            const subIndex = themeSubcategories.indexOf(subcategoryKey);
+            const color = adjustHex(baseColor, 18 + ((subIndex >= 0 ? subIndex : 0) % 3) * 10);
             nodes.push({
-                name: focusTheme ? formatSubcategoryLabel(categoryId, false) : titleCase(categoryId),
-                group: focusTheme ? "subcategory" : "theme",
+                name: formatSubcategoryLabel(subcategoryKey, true),
+                group: "subcategory",
                 itemStyle: { color, opacity: clamp(avgQuality) },
                 qualityValue: avgQuality,
                 hasTextual: meta?.hasTextual ?? false,
@@ -623,7 +742,11 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             const avgQuality = entry.weightTotal
                 ? entry.qualityWeighted / entry.weightTotal
                 : 0;
-            const color = categoryColorMap.get(entry.categoryId) ?? chartTheme.grid;
+            const [themeKey] = entry.categoryId.split(".", 1);
+            const baseColor = themeColorMap.get(themeKey ?? "") ?? chartTheme.grid;
+            const themeSubcategories = themeKey ? subcategoriesByTheme.get(themeKey) ?? [] : [];
+            const subIndex = themeSubcategories.indexOf(entry.categoryId);
+            const color = adjustHex(baseColor, 18 + ((subIndex >= 0 ? subIndex : 0) % 3) * 10);
             links.push({
                 source: entry.source,
                 target: entry.target,
@@ -639,12 +762,40 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return { nodes, links, edgeMeta };
     }, [
         workUnits,
-        categoryIds,
-        categoryColorMap,
         chartTheme.grid,
+        allSubcategoryIds,
         focusTheme,
-        getCategoriesForUnit,
+        mixThemes,
+        chartColors,
+        subcategoryIds,
     ]);
+
+    const sankeyTargets = useMemo(() => {
+        const targets = new Set<string>();
+        sankeyData.links.forEach((link) => targets.add(link.target));
+        return Array.from(targets);
+    }, [sankeyData.links]);
+
+    const sankeySingleTarget = sankeyTargets.length === 1 ? sankeyTargets[0] ?? "" : "";
+
+    const sankeyStackSegments = useMemo(() => {
+        if (!sankeySingleTarget) return [];
+        const colorByNode = new Map<string, string>();
+        sankeyData.nodes.forEach((node) => {
+            const color = node.itemStyle?.color;
+            if (typeof color === "string") {
+                colorByNode.set(node.name, color);
+            }
+        });
+        const totals = new Map<string, number>();
+        sankeyData.links.forEach((link) => {
+            if (link.target !== sankeySingleTarget) return;
+            totals.set(link.source, (totals.get(link.source) ?? 0) + link.value);
+        });
+        return Array.from(totals.entries())
+            .map(([name, value]) => ({ name, value, color: colorByNode.get(name) }))
+            .sort((a, b) => b.value - a.value);
+    }, [sankeyData.links, sankeyData.nodes, sankeySingleTarget]);
 
     const evidenceUnits = useMemo<EvidenceUnit[]>(() => {
         if (!focusSubcategory) return [];
@@ -732,41 +883,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         <div><span style="color: ${chartTheme.muted}">Weighted effort:</span> ${formatNumber(weightedEffort)} ${effortUnitLabel}</div>
         <div><span style="color: ${chartTheme.muted}">Avg evidence quality:</span> ${qualityLabel}</div>
         ${workUnitLine}
-        ${qualityDisclosure}
-        ${textualNote}
-      `;
-        },
-        [chartTheme.muted]
-    );
-
-    const formatSunburstTooltip = useCallback(
-        (params: unknown, _totalValue: number, unitLabel: string) => {
-            if (!params || typeof params !== "object") return "";
-            const entry = params as { data?: Record<string, unknown> };
-            const data = entry.data ?? {};
-            const categoryLabel =
-                (data.categoryFullLabel as string) ??
-                (data.categoryLabel as string) ??
-                (data.name as string) ??
-                "";
-            const weightedEffort = typeof data.value === "number" ? data.value : 0;
-            const qualityValue = typeof data.qualityValue === "number" ? data.qualityValue : 0;
-            const qualityLabel = formatQuality(qualityValue);
-            const hasTextual = Boolean(data.hasTextual);
-            const textualNote = hasTextual
-                ? "<div style=\"margin-top: 6px; color: " +
-                chartTheme.muted +
-                "\">Textual phrases informed the categorization.</div>"
-                : "";
-            const qualityDisclosure =
-                "<div style=\"margin-top: 6px; font-size: 11px; color: " +
-                chartTheme.muted +
-                "\">Evidence quality shown reflects an average across contributing work units.</div>";
-
-            return `
-        <div style="font-weight: 600; margin-bottom: 4px;">${categoryLabel}</div>
-        <div><span style="color: ${chartTheme.muted}">Weighted effort:</span> ${formatNumber(weightedEffort)} ${unitLabel}</div>
-        <div><span style="color: ${chartTheme.muted}">Avg evidence quality:</span> ${qualityLabel}</div>
         ${qualityDisclosure}
         ${textualNote}
       `;
@@ -889,73 +1005,10 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             <li>Color indicates which theme or subcategory the work leans toward.</li>
                             <li>Opacity represents evidence quality for the interpretation.</li>
                             <li>Flows show how effort appears to move from themes or subcategories into repo scope.</li>
-                            <li>Use the focus controls to drill from themes into subcategories and evidence.</li>
+                            <li>Use the investment mix chart to drill from themes into subcategories and evidence.</li>
                         </ul>
                     </div>
                 </details>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
-                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Investment focus</span>
-                <div className="flex items-center gap-2">
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)" htmlFor="theme-focus">
-                        Theme
-                    </label>
-                    <select
-                        id="theme-focus"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs"
-                        value={focusTheme ?? ""}
-                        onChange={(event) => {
-                            const value = event.target.value;
-                            setFocusTheme(value || null);
-                        }}
-                    >
-                        <option value="">All themes</option>
-                        {themeIds.map((themeId) => (
-                            <option key={themeId} value={themeId}>
-                                {titleCase(themeId)}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                {focusTheme && (
-                    <div className="flex items-center gap-2">
-                        <label
-                            className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                            htmlFor="subcategory-focus"
-                        >
-                            Subcategory
-                        </label>
-                        <select
-                            id="subcategory-focus"
-                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs"
-                            value={focusSubcategory ?? ""}
-                            onChange={(event) => {
-                                const value = event.target.value;
-                                setFocusSubcategory(value || null);
-                            }}
-                        >
-                            <option value="">All subcategories</option>
-                            {subcategoryIds.map((subcategoryId) => (
-                                <option key={subcategoryId} value={subcategoryId}>
-                                    {formatSubcategoryLabel(subcategoryId, false)}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-                {(focusTheme || focusSubcategory) && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setFocusTheme(null);
-                            setFocusSubcategory(null);
-                        }}
-                        className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                    >
-                        Clear focus
-                    </button>
-                )}
             </div>
 
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
@@ -1000,38 +1053,191 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <h3 className="font-(--font-display) text-lg">Sunburst</h3>
-                            <span className="text-xs text-(--ink-muted)">Probability-weighted effort by {categoryScopeLabel.toLowerCase()}</span>
+                            <h3 className="font-(--font-display) text-lg">Investment mix</h3>
+                            <span className="text-xs text-(--ink-muted)">Theme → Subcategory (depth 2)</span>
                         </div>
+                        {focusTheme && (
+                            <button
+                                type="button"
+                                onClick={() => setFocusTheme(null)}
+                                className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                            >
+                                Clear theme
+                            </button>
+                        )}
                     </div>
                     <div className="mt-4">
-                        {isLoading ? (
-                            <p className="text-sm text-(--ink-muted)">Loading work units…</p>
-                        ) : workUnits.length === 0 ? (
-                            <p className="text-sm text-(--ink-muted)">No work unit investments available.</p>
+                        {isMixLoading ? (
+                            <p className="text-sm text-(--ink-muted)">Loading investment mix…</p>
+                        ) : !investmentMix || mixThemes.length === 0 ? (
+                            <p className="text-sm text-(--ink-muted)">No investment mix available.</p>
                         ) : (
-                            <SunburstChart
-                                data={sunburstData}
-                                unit={effortUnit}
-                                height={360}
-                                useInputColors
-                                tooltipFormatter={formatSunburstTooltip}
-                            />
+                            <div className="grid gap-4 md:grid-cols-[1.15fr_0.85fr] md:items-start">
+                                <InvestmentMixSunburst
+                                    themeDistribution={investmentMix.theme_distribution}
+                                    subcategoryDistribution={investmentMix.subcategory_distribution}
+                                    evidenceQualityDistribution={investmentMix.evidence_quality_distribution}
+                                    unit={investmentMix.unit ?? effortUnit}
+                                    height={360}
+                                    focusedTheme={focusTheme}
+                                    onThemeClick={handleThemeClick}
+                                    onSubcategoryClick={handleSubcategoryClick}
+                                />
+                                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                            {focusTheme ? "Subcategory breakdown" : "Themes"}
+                                        </p>
+                                        {focusTheme && (
+                                            <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                                {titleCase(focusTheme)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="mt-3 space-y-2 text-sm">
+                                        {focusTheme ? (
+                                            focusedThemeSubcategories.length ? (
+                                                focusedThemeSubcategories.map((entry) => {
+                                                    const pctOfTheme = focusedThemeTotalValue
+                                                        ? (entry.value / focusedThemeTotalValue) * 100
+                                                        : 0;
+                                                    return (
+                                                        <button
+                                                            key={entry.key}
+                                                            type="button"
+                                                            onClick={() => handleSubcategoryClick(entry.key)}
+                                                            className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <div className="truncate text-sm text-foreground">
+                                                                    {formatSubcategoryLabel(entry.key, false)}
+                                                                </div>
+                                                                <div className="mt-1 text-xs text-(--ink-muted)">
+                                                                    {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
+                                                                </div>
+                                                                <div className="text-xs text-(--accent-2)">
+                                                                    {formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}% of theme
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p className="text-sm text-(--ink-muted)">
+                                                    No subcategories observed for this theme.
+                                                </p>
+                                            )
+                                        ) : (
+                                            mixThemes.slice(0, 8).map((entry) => {
+                                                const pct = mixTotalValue ? (entry.value / mixTotalValue) * 100 : 0;
+                                                return (
+                                                    <button
+                                                        key={entry.key}
+                                                        type="button"
+                                                        onClick={() => handleThemeClick(entry.key)}
+                                                        className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <div className="truncate text-sm text-foreground">{titleCase(entry.key)}</div>
+                                                            <div className="mt-1 text-xs text-(--ink-muted)">
+                                                                {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
+                                                            </div>
+                                                            <div className="text-xs text-(--accent-2)">
+                                                                {formatNumber(pct, { maximumFractionDigits: 1 })}% of total
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
 
+            <details open className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                <summary className="cursor-pointer list-none font-(--font-display) text-lg">
+                    What this investment mix indicates
+                </summary>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-xs text-(--ink-muted)">
+                        {mixExplanation.focus.subcategory
+                            ? `Focused: ${formatSubcategoryLabel(mixExplanation.focus.subcategory, true)}`
+                            : mixExplanation.focus.theme
+                                ? `Focused: ${titleCase(mixExplanation.focus.theme)}`
+                                : "Focused: All themes"}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={regenerateMixExplanation}
+                        disabled={isExplainingMix}
+                        className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted) disabled:opacity-50"
+                    >
+                        {isExplainingMix ? "Generating…" : "Regenerate explanation"}
+                    </button>
+                </div>
+                <div className="mt-4 space-y-4">
+                    {!mixExplanation.data || mixExplanation.filtersKey !== mixExplainKey ? (
+                        <p className="text-sm text-(--ink-muted)">
+                            {mixExplanation.filtersKey === mixExplainKey
+                                ? "Explanation unavailable for this window."
+                                : "Generating investment explanation…"}
+                        </p>
+                    ) : (
+                        <>
+                            <p className="text-sm text-foreground">{mixExplanation.data.summary}</p>
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Key drivers</p>
+                                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--ink-muted)">
+                                    {mixExplanation.data.key_drivers.map((item, idx) => (
+                                        <li key={idx}>{item}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Operational signals</p>
+                                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--ink-muted)">
+                                    {mixExplanation.data.operational_signals.map((item, idx) => (
+                                        <li key={idx}>{item}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <p className="text-xs font-medium italic text-(--ink-muted)">
+                                {mixExplanation.data.confidence_note}
+                            </p>
+                        </>
+                    )}
+                    <p className="text-xs text-(--ink-muted)">
+                        AI-generated interpretation based on the data shown above.
+                    </p>
+                </div>
+            </details>
+
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex items-center justify-between">
                     <h3 className="font-(--font-display) text-lg">Sankey</h3>
-                    <span className="text-xs text-(--ink-muted)">{categoryScopeLabel} to repo flow</span>
+                    <span className="text-xs text-(--ink-muted)">Subcategory → repo scope</span>
                 </div>
                 <div className="mt-4">
                     {isLoading ? (
                         <p className="text-sm text-(--ink-muted)">Loading work units…</p>
                     ) : workUnits.length === 0 ? (
                         <p className="text-sm text-(--ink-muted)">No work unit investments available.</p>
+                    ) : sankeyTargets.length <= 1 ? (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between text-xs text-(--ink-muted)">
+                                <span>Single destination detected</span>
+                                <span className="font-mono">{sankeySingleTarget || "unassigned"}</span>
+                            </div>
+                            <StackedHorizontalBar
+                                segments={sankeyStackSegments}
+                                unit={effortUnit}
+                                height={90}
+                            />
+                        </div>
                     ) : (
                         <SankeyChart
                             nodes={sankeyData.nodes}

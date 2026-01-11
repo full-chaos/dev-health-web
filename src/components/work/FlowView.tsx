@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-import { getSankey } from "@/lib/api";
+import { getInvestment, getSankey } from "@/lib/api";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter, SankeyMode } from "@/lib/types";
 import {
@@ -14,7 +14,6 @@ import {
     type SankeyDataset,
 } from "@/lib/sankey";
 import {
-    toInvestmentHierarchy,
     toHotspotHierarchy,
     generateSampleExpenseData,
     toStackedAreaData,
@@ -23,11 +22,12 @@ import {
 import {
     sankeyHotspotNodes,
     sankeyHotspotLinks,
-    investmentCategoriesSample,
-    investmentSubtypesSample,
+    investmentMixSample,
 } from "@/data/devHealthOpsSample";
+import { normalizeInvestmentMix, type InvestmentMixAggregate } from "@/lib/investmentMix";
 
 import { SankeyChart } from "@/components/charts/SankeyChart";
+import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
 import { TreemapChart } from "@/components/charts/TreemapChart";
 import { SunburstChart } from "@/components/charts/SunburstChart";
 import { StackedAreaChart } from "@/components/charts/StackedAreaChart";
@@ -85,13 +85,15 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     const [subTab, setSubTab] = useState<FlowSubTab>(initialSubTab);
 
     // Chart type toggles (local state, persists during navigation within Flow page)
-    const [investmentChartType, setInvestmentChartType] = useState<TreemapSunburstType>("treemap");
     const [hotspotChartType, setHotspotChartType] = useState<TreemapSunburstType>("treemap");
 
     // Data states
     const [dataset, setDataset] = useState<SankeyDataset | null>(null);
     const [resolvedKey, setResolvedKey] = useState<string | null>(null);
     const [selection, setSelection] = useState<FlowSelection | null>(null);
+    const [investmentMix, setInvestmentMix] = useState<InvestmentMixAggregate | null>(null);
+    const [investmentMixResolvedKey, setInvestmentMixResolvedKey] = useState<string | null>(null);
+    const [investmentMixFocusTheme, setInvestmentMixFocusTheme] = useState<string | null>(null);
 
     // Context from URL
     const contextEntityId = searchParams.get("context_entity_id");
@@ -126,11 +128,16 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
     const requestKey = useMemo(() => JSON.stringify(requestPayload), [requestPayload]);
 
-    // Fetch data when mode/filters change
+    // Fetch flow Sankey only for State Flow tab (other tabs are not Sankey-driven)
     useEffect(() => {
         let active = true;
 
         const fetchData = async () => {
+            if (subTab !== "state_flow") {
+                setDataset(null);
+                setResolvedKey(requestKey);
+                return;
+            }
             if (useSampleData) {
                 setDataset(buildSankeyDataset(mode));
                 setResolvedKey(requestKey);
@@ -161,7 +168,44 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
         fetchData();
         return () => { active = false; };
-    }, [mode, requestKey, requestPayload, useSampleData, definition]);
+    }, [mode, requestKey, requestPayload, subTab, useSampleData, definition]);
+
+    const investmentMixRequestKey = useMemo(() => JSON.stringify({ filters }), [filters]);
+
+    useEffect(() => {
+        let active = true;
+
+        const fetchInvestmentMix = async () => {
+            if (useSampleData) {
+                if (active) {
+                    setInvestmentMix(investmentMixSample);
+                    setInvestmentMixResolvedKey(investmentMixRequestKey);
+                }
+                return;
+            }
+            try {
+                const payload = await getInvestment(filters);
+                if (active) {
+                    setInvestmentMix(normalizeInvestmentMix(payload));
+                    setInvestmentMixResolvedKey(investmentMixRequestKey);
+                }
+            } catch {
+                if (active) {
+                    setInvestmentMix(null);
+                    setInvestmentMixResolvedKey(investmentMixRequestKey);
+                }
+            }
+        };
+
+        if (investmentMixResolvedKey === investmentMixRequestKey) {
+            return;
+        }
+
+        fetchInvestmentMix();
+        return () => {
+            active = false;
+        };
+    }, [filters, investmentMixRequestKey, investmentMixResolvedKey, useSampleData]);
 
     // Handle sub-tab change
     const handleSubTabChange = (tab: FlowSubTab) => {
@@ -204,11 +248,6 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         // Focus the new tab button using ref
         tabRefs.current[targetTab.id]?.focus();
     };
-
-    // Build hierarchy data for treemap/sunburst
-    const investmentHierarchy = useMemo((): HierarchyNode => {
-        return toInvestmentHierarchy(investmentCategoriesSample, investmentSubtypesSample);
-    }, []);
 
     const hotspotHierarchy = useMemo((): HierarchyNode => {
         return toHotspotHierarchy(sankeyHotspotNodes, sankeyHotspotLinks);
@@ -335,13 +374,6 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                         </div>
 
                         {/* Chart type toggle - shown for tabs with multiple views */}
-                        {subTab === "investment_mix" && (
-                            <ChartTypeToggle
-                                options={TREEMAP_SUNBURST_OPTIONS}
-                                value={investmentChartType}
-                                onChange={setInvestmentChartType}
-                            />
-                        )}
                         {subTab === "code_hotspots" && (
                             <ChartTypeToggle
                                 options={TREEMAP_SUNBURST_OPTIONS}
@@ -366,20 +398,54 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
                         {/* Investment Mix Tab */}
                         {subTab === "investment_mix" && (
-                            investmentChartType === "treemap" ? (
-                                <TreemapChart
-                                    data={investmentHierarchy}
-                                    unit="items"
-                                    height={500}
-                                    onNodeClick={(node) => handleTreemapClick(node, "investment_mix", "items")}
-                                />
+                            investmentMixResolvedKey !== investmentMixRequestKey ? (
+                                <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                                    Loading investment mix…
+                                </div>
+                            ) : !investmentMix ? (
+                                <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                                    Investment mix unavailable for this scope and window.
+                                </div>
                             ) : (
-                                <SunburstChart
-                                    data={investmentHierarchy}
-                                    unit="items"
-                                    height={500}
-                                    onNodeClick={(node) => handleTreemapClick(node, "investment_mix", "items")}
-                                />
+                                <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+                                    <InvestmentMixSunburst
+                                        themeDistribution={investmentMix.theme_distribution}
+                                        subcategoryDistribution={investmentMix.subcategory_distribution}
+                                        evidenceQualityDistribution={investmentMix.evidence_quality_distribution}
+                                        unit={investmentMix.unit ?? "units"}
+                                        height={500}
+                                        focusedTheme={investmentMixFocusTheme}
+                                        onThemeClick={(themeKey) =>
+                                            setInvestmentMixFocusTheme((current) =>
+                                                current === themeKey ? null : themeKey
+                                            )
+                                        }
+                                        onSubcategoryClick={(subcategoryKey) => {
+                                            const [themeKey] = subcategoryKey.split(".", 1);
+                                            setInvestmentMixFocusTheme(themeKey || null);
+                                        }}
+                                    />
+                                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                            {investmentMixFocusTheme ? "Focused theme" : "How to use"}
+                                        </p>
+                                        <div className="mt-3 space-y-2 text-sm text-(--ink-muted)">
+                                            {investmentMixFocusTheme ? (
+                                                <>
+                                                    <p className="text-foreground font-medium">
+                                                        {investmentMixFocusTheme.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                                                    </p>
+                                                    <p>Click the theme again to clear focus.</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p>Click a theme to focus its subcategories.</p>
+                                                    <p>Click a subcategory to inspect evidence in the Investment tab.</p>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             )
                         )}
 

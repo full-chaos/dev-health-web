@@ -8,7 +8,7 @@ import { checkApiHealth, getInvestment } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatNumber } from "@/lib/formatters";
-import { mapInvestmentToNestedPie } from "@/lib/mappers";
+import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix } from "@/lib/investmentMix";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 
 type InvestmentPageProps = {
@@ -31,7 +31,9 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     : filterFromQueryParams(params);
 
   const data = await getInvestment(filters).catch(() => null);
-  const nested = data ? mapInvestmentToNestedPie(data) : { categories: [], subtypes: [] };
+  const mix = data ? normalizeInvestmentMix(data) : null;
+  const themes = mix ? getSortedThemes(mix) : [];
+  const subcategories = mix ? getSortedSubcategories(mix) : [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -81,11 +83,12 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
 
           <ContextStrip filters={filters} origin={activeOrigin} />
 
-          {nested.categories.length ? (
+          {themes.length ? (
             <InvestmentChart
-              categories={nested.categories}
-              subtypes={nested.subtypes}
-              unit={data?.unit ?? "hours"}
+              themeDistribution={mix?.theme_distribution ?? {}}
+              subcategoryDistribution={mix?.subcategory_distribution ?? {}}
+              evidenceQualityDistribution={mix?.evidence_quality_distribution}
+              unit={mix?.unit ?? "hours"}
             />
           ) : (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-10 text-sm text-(--ink-muted)">
@@ -97,13 +100,13 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <h2 className="font-(--font-display) text-xl">Categories</h2>
               <div className="mt-4 space-y-3 text-sm">
-                {nested.categories.map((category) => (
+                {themes.map((category) => (
                   <Link
                     key={category.key}
                     href={withFilterParam(`/explore?metric=throughput&view=align&category=${category.key}`, filters)}
                     className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                   >
-                    <span>{category.name}</span>
+                    <span>{category.key.replace(/[_-]+/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase())}</span>
                     <span className="text-xs text-(--ink-muted)">
                       {formatNumber(category.value)} units
                     </span>
@@ -114,13 +117,13 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <h2 className="font-(--font-display) text-xl">Streams</h2>
               <div className="mt-4 space-y-3 text-sm">
-                {nested.subtypes.map((subtype) => (
+                {subcategories.map((subtype) => (
                   <Link
-                    key={`${subtype.parentKey}-${subtype.name}`}
-                    href={withFilterParam(`/explore?metric=throughput&view=align&stream=${subtype.name}`, filters)}
+                    key={subtype.key}
+                    href={withFilterParam(`/explore?metric=throughput&view=align&stream=${subtype.key}`, filters)}
                     className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                   >
-                    <span>{subtype.name}</span>
+                    <span>{subtype.key.split(".", 2).join(" · ").replace(/[_-]+/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase())}</span>
                     <span className="text-xs text-(--ink-muted)">
                       {formatNumber(subtype.value)} units
                     </span>

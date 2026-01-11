@@ -7,6 +7,7 @@ import type {
   HomeResponse,
   HeatmapResponse,
   InvestmentResponse,
+  InvestmentMixExplanation,
   MetaResponse,
   OpportunitiesResponse,
   PeopleSearchResult,
@@ -89,6 +90,28 @@ export async function getInvestment(filters: MetricFilter) {
   );
 }
 
+export async function explainInvestmentMix(params: {
+  filters: MetricFilter;
+  theme?: string | null;
+  subcategory?: string | null;
+  llm_provider?: string;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return postJson<InvestmentMixExplanation>(
+    "/api/v1/investment/explain",
+    {
+      filters: normalized,
+      theme: params.theme ?? null,
+      subcategory: params.subcategory ?? null,
+    },
+    0,
+    {
+      f: encodeFilterParam(normalized),
+      llm_provider: params.llm_provider ?? "auto",
+    }
+  );
+}
+
 export async function getSankey(params: {
   mode: SankeyMode;
   filters: MetricFilter;
@@ -113,6 +136,19 @@ export async function getSankey(params: {
     },
     60,
     { mode: params.mode, f: encodeFilterParam(withWindow) }
+  );
+}
+
+export async function getInvestmentFlow(params: {
+  filters: MetricFilter;
+  theme?: string | null;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return postJson<SankeyResponse>(
+    "/api/v1/investment/flow",
+    { filters: normalized, theme: params.theme ?? null },
+    60,
+    { f: encodeFilterParam(normalized) }
   );
 }
 

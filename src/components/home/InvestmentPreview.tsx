@@ -6,10 +6,11 @@ import dynamic from "next/dynamic";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse } from "@/lib/types";
 import { apiClient } from "@/lib/apiClient";
-import { mapInvestmentToNestedPie } from "@/lib/mappers";
+import { normalizeInvestmentMix } from "@/lib/investmentMix";
+import { investmentMixSample } from "@/data/devHealthOpsSample";
 
-const NestedPieChart2D = dynamic(
-  () => import("@/components/charts/NestedPieChart2D").then((mod) => mod.NestedPieChart2D),
+const InvestmentMixSunburst = dynamic(
+  () => import("@/components/charts/InvestmentMixSunburst").then((mod) => mod.InvestmentMixSunburst),
   { ssr: false }
 );
 
@@ -53,13 +54,19 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
     data: null,
     filtersKey: "",
   });
+  const useSampleData = process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
   const currentFiltersKey = useMemo(() => getFiltersKey(filters), [filters]);
 
+  const data = useSampleData ? investmentMixSample : state.data;
+
   // Compute loading state: we're loading if filtersKey doesn't match current filters
-  const isLoading = state.filtersKey !== currentFiltersKey;
+  const isLoading = useSampleData ? false : state.filtersKey !== currentFiltersKey;
 
   useEffect(() => {
+    if (useSampleData) {
+      return;
+    }
     const controller = new AbortController();
 
     apiClient
@@ -76,19 +83,21 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
       .catch(() => null);
 
     return () => controller.abort();
-  }, [filters, currentFiltersKey]);
+  }, [filters, currentFiltersKey, useSampleData]);
 
-  if (isLoading || !state.data) {
+  if (isLoading || !data) {
     return <LoadingState />;
   }
 
-  const nested = mapInvestmentToNestedPie(state.data);
+  const mix = normalizeInvestmentMix(data);
 
   return (
     <div className="rounded-3xl border border-(--card-stroke) bg-card p-4">
-      <NestedPieChart2D
-        categories={nested.categories}
-        subtypes={nested.subtypes}
+      <InvestmentMixSunburst
+        themeDistribution={mix.theme_distribution}
+        subcategoryDistribution={mix.subcategory_distribution}
+        evidenceQualityDistribution={mix.evidence_quality_distribution}
+        unit={mix.unit ?? "units"}
         height={CHART_HEIGHT}
       />
     </div>
