@@ -9,12 +9,15 @@ import { SankeyChart } from "@/components/charts/SankeyChart";
 import { StackedHorizontalBar } from "@/components/charts/StackedHorizontalBar";
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
+import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import { investmentMixSample, workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
-import { explainInvestmentMix, getInvestment, getWorkUnits, getWorkUnitExplanation } from "@/lib/api";
+import { explainInvestmentMix, getInvestment, getWorkUnits, getWorkUnitExplanation, getInvestmentFlow } from "@/lib/api";
 import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix, type InvestmentMixAggregate } from "@/lib/investmentMix";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { InvestmentMixExplanation, SankeyLink, SankeyNode, WorkUnitInvestment, WorkUnitExplanation } from "@/lib/types";
+import type { InvestmentMixExplanation, SankeyLink, SankeyNode, WorkUnitInvestment, WorkUnitExplanation, SankeyResponse } from "@/lib/types";
+
+type SankeyRenderMode = "sankey" | "allocation_bar";
 
 type InvestmentViewProps = {
     filters: MetricFilter;
@@ -22,17 +25,6 @@ type InvestmentViewProps = {
 
 type CategorizationMode = "text_metadata" | "metadata_only";
 
-type TreemapAggregate = {
-    categoryId: string;
-    categoryLabel: string;
-    categoryFullLabel: string;
-    repoScope?: string;
-    value: number;
-    qualityWeighted: number;
-    weightTotal: number;
-    hasTextual: boolean;
-    workUnitIds: Set<string>;
-};
 
 type SankeyEdgeMeta = {
     avgQuality: number;
@@ -100,17 +92,6 @@ const adjustHex = (hex: string, amount: number) => {
     return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 };
 
-const extractRepoIds = (unit: WorkUnitInvestment) => {
-    const entries = unit.evidence?.contextual ?? [];
-    for (const entry of entries) {
-        if (!entry || typeof entry !== "object") continue;
-        const typed = entry as { type?: string; repo_ids?: unknown };
-        if (typed.type === "repo_scope" && Array.isArray(typed.repo_ids)) {
-            return typed.repo_ids.map((repoId) => String(repoId)).filter(Boolean);
-        }
-    }
-    return [] as string[];
-};
 
 const buildTimeRangeLabel = (start?: string, end?: string) => {
     const startLabel = formatTimestamp(start ?? null);
@@ -144,11 +125,12 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [explanation, setExplanation] = useState<WorkUnitExplanation | null>(null);
     const [isExplaining, setIsExplaining] = useState(false);
     const [isExplainingMix, setIsExplainingMix] = useState(false);
+    const [sankeyFlow, setSankeyFlow] = useState<SankeyResponse | null>(null);
+    const [isSankeyLoading, setIsSankeyLoading] = useState(true);
 
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
     const workUnitCount = workUnits.length;
-    const treemapIsSparse = workUnitCount > 0 && workUnitCount < 3;
 
     useEffect(() => {
         if (!focusTheme) {
@@ -323,6 +305,42 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         };
     }, [filters, includeTextual, requestKey, useSampleData]);
 
+    useEffect(() => {
+        let active = true;
+
+        const fetchSankey = async () => {
+            setIsSankeyLoading(true);
+            if (useSampleData) {
+                if (active) {
+                    // Sample logic for Sankey Flow
+                    setSankeyFlow(null);
+                    setIsSankeyLoading(false);
+                }
+                return;
+            }
+
+            try {
+                const data = await getInvestmentFlow({ filters });
+                if (active) {
+                    setSankeyFlow(data);
+                }
+            } catch {
+                if (active) {
+                    setSankeyFlow(null);
+                }
+            } finally {
+                if (active) {
+                    setIsSankeyLoading(false);
+                }
+            }
+        };
+
+        fetchSankey();
+        return () => {
+            active = false;
+        };
+    }, [filters, useSampleData]);
+
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
         return workUnits.find((unit) => unit.work_unit_id === selectedId) ?? null;
@@ -416,13 +434,33 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         [focusTheme]
     );
 
-    const categoryColorMap = useMemo(() => {
+    const themeColorMap = useMemo(() => {
         const map = new Map<string, string>();
-        categoryIds.forEach((id, idx) => {
-            map.set(id, chartColors[idx % chartColors.length]);
+        if (!investmentMix) return map;
+        const themes = getSortedThemes(investmentMix);
+        themes.forEach((theme, index) => {
+            map.set(theme.key, chartColors[index % chartColors.length]);
         });
         return map;
-    }, [categoryIds, chartColors]);
+    }, [investmentMix, chartColors]);
+
+    const categoryColorMap = useMemo(() => {
+        const map = new Map<string, string>();
+        if (!investmentMix) return map;
+        const themes = getSortedThemes(investmentMix);
+        const subcategories = getSortedSubcategories(investmentMix);
+
+        themes.forEach((theme, index) => {
+            const baseColor = chartColors[index % chartColors.length];
+            map.set(theme.key, baseColor);
+
+            const subs = subcategories.filter((s) => s.themeKey === theme.key);
+            subs.forEach((sub, subIdx) => {
+                map.set(sub.key, adjustHex(baseColor, 18 + (subIdx % 3) * 10));
+            });
+        });
+        return map;
+    }, [investmentMix, chartColors]);
 
     const mixThemes = useMemo(() => (investmentMix ? getSortedThemes(investmentMix) : []), [investmentMix]);
     const mixSubcategories = useMemo(
@@ -451,351 +489,87 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         setFocusTheme(themeKey || null);
         setFocusSubcategory(subcategoryKey);
     }, []);
-
     const treemapData = useMemo<TreemapNode>(() => {
-        const entries = new Map<string, TreemapAggregate>();
+        if (!investmentMix) {
+            return { name: "Investment", value: 0, children: [] };
+        }
 
-        const upsert = (
-            key: string,
-            payload: {
-                categoryId: string;
-                categoryLabel: string;
-                categoryFullLabel: string;
-                repoScope?: string;
-                weightedEffort: number;
-                qualityValue: number;
-                hasTextual: boolean;
-                workUnitId: string;
-            }
-        ) => {
-            const entry = entries.get(key) ?? {
-                categoryId: payload.categoryId,
-                categoryLabel: payload.categoryLabel,
-                categoryFullLabel: payload.categoryFullLabel,
-                repoScope: payload.repoScope,
-                value: 0,
-                qualityWeighted: 0,
-                weightTotal: 0,
-                hasTextual: false,
-                workUnitIds: new Set<string>(),
-            };
+        const themes = getSortedThemes(investmentMix);
+        const subcategories = getSortedSubcategories(investmentMix);
+        const qualityDist = investmentMix.evidence_quality_distribution ?? {};
 
-            entry.value += payload.weightedEffort;
-            entry.qualityWeighted += payload.qualityValue * payload.weightedEffort;
-            entry.weightTotal += payload.weightedEffort;
-            entry.hasTextual = entry.hasTextual || payload.hasTextual;
-            entry.workUnitIds.add(payload.workUnitId);
-            entries.set(key, entry);
-        };
+        const children = themes.map((theme) => {
+            const themeLabel = titleCase(theme.key);
+            const baseColor = themeColorMap.get(theme.key) ?? chartTheme.grid;
+            const themeOpacity = qualityDist[theme.key];
 
-        workUnits.forEach((unit) => {
-            const categories = getCategoriesForUnit(unit);
-            const hasTextual = (unit.evidence?.textual ?? []).length > 0;
+            const themeSubcategories = subcategories
+                .filter((sub) => sub.themeKey === theme.key)
+                .map((sub, idx) => {
+                    const subLabel = formatSubcategoryLabel(sub.key, false);
+                    const subFullLabel = formatSubcategoryLabel(sub.key, true);
+                    const subOpacity = qualityDist[sub.key];
 
-            if (treemapIsSparse) {
-                Object.entries(categories).forEach(([categoryId, weight]) => {
-                    if (typeof weight !== "number" || weight <= 0) {
-                        return;
-                    }
-                    const weightedEffort = unit.effort.value * weight;
-                    if (weightedEffort <= 0) {
-                        return;
-                    }
-                    const categoryLabel = focusTheme
-                        ? formatSubcategoryLabel(categoryId, false)
-                        : titleCase(categoryId);
-                    const categoryFullLabel = focusTheme
-                        ? formatSubcategoryLabel(categoryId, true)
-                        : categoryLabel;
-                    upsert(categoryId, {
-                        categoryId,
-                        categoryLabel,
-                        categoryFullLabel,
-                        weightedEffort,
-                        qualityValue: unit.evidence_quality.value,
-                        hasTextual,
-                        workUnitId: unit.work_unit_id,
-                    });
+                    return {
+                        name: subLabel,
+                        value: sub.value,
+                        itemStyle: {
+                            color: adjustHex(baseColor, 18 + (idx % 3) * 10),
+                            opacity: typeof subOpacity === "number" ? clamp(subOpacity) : undefined,
+                        },
+                        nodeType: "subcategory",
+                        categoryId: sub.key,
+                        categoryLabel: subLabel,
+                        categoryFullLabel: subFullLabel,
+                        qualityValue: subOpacity,
+                    } as TreemapNode;
                 });
-                return;
-            }
 
-            const repoIds = extractRepoIds(unit);
-            const repoScopes = repoIds.length ? repoIds : ["unassigned"];
-            const repoCount = repoScopes.length || 1;
-
-            Object.entries(categories).forEach(([categoryId, weight]) => {
-                if (typeof weight !== "number" || weight <= 0) {
-                    return;
-                }
-                const weightedEffort = unit.effort.value * weight;
-                if (weightedEffort <= 0) {
-                    return;
-                }
-                const perRepoEffort = weightedEffort / repoCount;
-                const categoryLabel = focusTheme
-                    ? formatSubcategoryLabel(categoryId, false)
-                    : titleCase(categoryId);
-                const categoryFullLabel = focusTheme
-                    ? formatSubcategoryLabel(categoryId, true)
-                    : categoryLabel;
-                repoScopes.forEach((repoScope) => {
-                    upsert(`${categoryId}::${repoScope}`, {
-                        categoryId,
-                        categoryLabel,
-                        categoryFullLabel,
-                        repoScope,
-                        weightedEffort: perRepoEffort,
-                        qualityValue: unit.evidence_quality.value,
-                        hasTextual,
-                        workUnitId: unit.work_unit_id,
-                    });
-                });
-            });
+            return {
+                name: themeLabel,
+                value: theme.value,
+                itemStyle: {
+                    color: baseColor,
+                    opacity: typeof themeOpacity === "number" ? clamp(themeOpacity) : undefined,
+                },
+                nodeType: "theme",
+                themeKey: theme.key,
+                children: themeSubcategories.length ? themeSubcategories : undefined,
+            } as TreemapNode;
         });
-
-        const children = Array.from(entries.values())
-            .map((entry) => {
-                const avgQuality = entry.weightTotal
-                    ? entry.qualityWeighted / entry.weightTotal
-                    : 0;
-                const color = categoryColorMap.get(entry.categoryId) ?? chartTheme.grid;
-                const label = treemapIsSparse
-                    ? entry.categoryLabel
-                    : `${entry.categoryLabel} · ${entry.repoScope ?? "unassigned"}`;
-
-                return {
-                    name: label,
-                    value: entry.value,
-                    itemStyle: {
-                        color,
-                        opacity: clamp(avgQuality),
-                    },
-                    nodeType: treemapIsSparse ? "category" : "category_repo",
-                    categoryId: entry.categoryId,
-                    categoryLabel: entry.categoryLabel,
-                    categoryFullLabel: entry.categoryFullLabel,
-                    repoScope: entry.repoScope,
-                    qualityValue: avgQuality,
-                    hasTextual: entry.hasTextual,
-                    workUnitCount: entry.workUnitIds.size,
-                };
-            })
-            .filter((node) => (node.value ?? 0) > 0);
-
-        const totalValue = children.reduce(
-            (sum, child) => sum + (child.value ?? 0),
-            0
-        );
 
         return {
             name: "Investment",
-            value: totalValue,
+            value: mixTotalValue,
             children,
         };
     }, [
-        workUnits,
-        categoryColorMap,
+        investmentMix,
+        mixTotalValue,
+        themeColorMap,
         chartTheme.grid,
-        treemapIsSparse,
-        focusTheme,
-        getCategoriesForUnit,
     ]);
 
-    const sankeyData = useMemo(() => {
-        const edgeTotals = new Map<
-            string,
-            {
-                source: string;
-                target: string;
-                value: number;
-                qualityWeighted: number;
-                weightTotal: number;
-                hasTextual: boolean;
-                categoryId: string;
-            }
-        >();
-        const categoryStats = new Map<
-            string,
-            { qualityWeighted: number; weightTotal: number; hasTextual: boolean }
-        >();
-        const repoStats = new Map<
-            string,
-            { qualityWeighted: number; weightTotal: number; hasTextual: boolean }
-        >();
-        const repoSet = new Set<string>();
+    const sankeyRenderMode = useMemo<SankeyRenderMode>(() => {
+        if (!sankeyFlow) return "allocation_bar";
+        return sankeyFlow.chosen_mode === "fallback" ? "allocation_bar" : "sankey";
+    }, [sankeyFlow]);
 
-        workUnits.forEach((unit) => {
-            const repoIds = extractRepoIds(unit);
-            const normalizedRepos = repoIds.length ? repoIds : ["unassigned"];
-            const repoCount = normalizedRepos.length || 1;
-            const hasTextual = (unit.evidence?.textual ?? []).length > 0;
-
-            normalizedRepos.forEach((repoId) => repoSet.add(repoId));
-
-            const subcategories = unit.investment?.subcategories ?? {};
-            Object.entries(subcategories).forEach(([subcategoryKey, weight]) => {
-                if (typeof weight !== "number" || weight <= 0) {
-                    return;
-                }
-                if (focusTheme && !subcategoryKey.startsWith(`${focusTheme}.`)) {
-                    return;
-                }
-                const weightedEffort = unit.effort.value * weight;
-                if (weightedEffort <= 0) {
-                    return;
-                }
-                const perRepoEffort = weightedEffort / repoCount;
-                const source = formatSubcategoryLabel(subcategoryKey, true);
-                normalizedRepos.forEach((repoId) => {
-                    const edgeKey = `${source}::${repoId}`;
-                    const entry = edgeTotals.get(edgeKey) ?? {
-                        source,
-                        target: repoId,
-                        value: 0,
-                        qualityWeighted: 0,
-                        weightTotal: 0,
-                        hasTextual: false,
-                        categoryId: subcategoryKey,
-                    };
-                    entry.value += perRepoEffort;
-                    entry.qualityWeighted += unit.evidence_quality.value * perRepoEffort;
-                    entry.weightTotal += perRepoEffort;
-                    entry.hasTextual = entry.hasTextual || hasTextual;
-                    edgeTotals.set(edgeKey, entry);
-
-                    const catEntry = categoryStats.get(subcategoryKey) ?? {
-                        qualityWeighted: 0,
-                        weightTotal: 0,
-                        hasTextual: false,
-                    };
-                    catEntry.qualityWeighted += unit.evidence_quality.value * perRepoEffort;
-                    catEntry.weightTotal += perRepoEffort;
-                    catEntry.hasTextual = catEntry.hasTextual || hasTextual;
-                    categoryStats.set(subcategoryKey, catEntry);
-
-                    const repoEntry = repoStats.get(repoId) ?? {
-                        qualityWeighted: 0,
-                        weightTotal: 0,
-                        hasTextual: false,
-                    };
-                    repoEntry.qualityWeighted += unit.evidence_quality.value * perRepoEffort;
-                    repoEntry.weightTotal += perRepoEffort;
-                    repoEntry.hasTextual = repoEntry.hasTextual || hasTextual;
-                    repoStats.set(repoId, repoEntry);
-                });
-            });
-        });
-
-        const nodes: SankeyNode[] = [];
-        const sankeyCategoryIds = focusTheme ? subcategoryIds : allSubcategoryIds;
-        const themeKeys = mixThemes.map((entry) => entry.key);
-        const themeColorMap = new Map<string, string>();
-        themeKeys.forEach((key, idx) => {
-            themeColorMap.set(key, chartColors[idx % chartColors.length]);
-        });
-        const subcategoriesByTheme = new Map<string, string[]>();
-        sankeyCategoryIds.forEach((subcategoryKey) => {
-            const [themeKey] = subcategoryKey.split(".", 1);
-            if (!themeKey) return;
-            const list = subcategoriesByTheme.get(themeKey) ?? [];
-            list.push(subcategoryKey);
-            subcategoriesByTheme.set(themeKey, list);
-        });
-        subcategoriesByTheme.forEach((list) => list.sort());
-
-        sankeyCategoryIds.forEach((subcategoryKey) => {
-            const meta = categoryStats.get(subcategoryKey);
-            const avgQuality = meta?.weightTotal
-                ? meta.qualityWeighted / meta.weightTotal
-                : 0;
-            const [themeKey] = subcategoryKey.split(".", 1);
-            const baseColor = themeColorMap.get(themeKey ?? "") ?? chartTheme.grid;
-            const themeSubcategories = themeKey ? subcategoriesByTheme.get(themeKey) ?? [] : [];
-            const subIndex = themeSubcategories.indexOf(subcategoryKey);
-            const color = adjustHex(baseColor, 18 + ((subIndex >= 0 ? subIndex : 0) % 3) * 10);
-            nodes.push({
-                name: formatSubcategoryLabel(subcategoryKey, true),
-                group: "subcategory",
-                itemStyle: { color, opacity: clamp(avgQuality) },
-                qualityValue: avgQuality,
-                hasTextual: meta?.hasTextual ?? false,
-            });
-        });
-        repoSet.forEach((repoId) => {
-            const meta = repoStats.get(repoId);
-            const avgQuality = meta?.weightTotal
-                ? meta.qualityWeighted / meta.weightTotal
-                : 0;
-            nodes.push({
-                name: repoId,
-                group: "repo",
-                itemStyle: { color: chartTheme.grid, opacity: clamp(avgQuality) },
-                qualityValue: avgQuality,
-                hasTextual: meta?.hasTextual ?? false,
-            });
-        });
-
-        const links: SankeyLink[] = [];
-        const edgeMeta = new Map<string, SankeyEdgeMeta>();
-        edgeTotals.forEach((entry) => {
-            const avgQuality = entry.weightTotal
-                ? entry.qualityWeighted / entry.weightTotal
-                : 0;
-            const [themeKey] = entry.categoryId.split(".", 1);
-            const baseColor = themeColorMap.get(themeKey ?? "") ?? chartTheme.grid;
-            const themeSubcategories = themeKey ? subcategoriesByTheme.get(themeKey) ?? [] : [];
-            const subIndex = themeSubcategories.indexOf(entry.categoryId);
-            const color = adjustHex(baseColor, 18 + ((subIndex >= 0 ? subIndex : 0) % 3) * 10);
-            links.push({
-                source: entry.source,
-                target: entry.target,
-                value: entry.value,
-                lineStyle: { color, opacity: clamp(avgQuality) },
-            });
-            edgeMeta.set(`${entry.source}::${entry.target}`, {
-                avgQuality,
-                hasTextual: entry.hasTextual,
-            });
-        });
-
-        return { nodes, links, edgeMeta };
-    }, [
-        workUnits,
-        chartTheme.grid,
-        allSubcategoryIds,
-        focusTheme,
-        mixThemes,
-        chartColors,
-        subcategoryIds,
-    ]);
-
-    const sankeyTargets = useMemo(() => {
-        const targets = new Set<string>();
-        sankeyData.links.forEach((link) => targets.add(link.target));
-        return Array.from(targets);
-    }, [sankeyData.links]);
-
-    const sankeySingleTarget = sankeyTargets.length === 1 ? sankeyTargets[0] ?? "" : "";
-
-    const sankeyStackSegments = useMemo(() => {
-        if (!sankeySingleTarget) return [];
-        const colorByNode = new Map<string, string>();
-        sankeyData.nodes.forEach((node) => {
-            const color = node.itemStyle?.color;
-            if (typeof color === "string") {
-                colorByNode.set(node.name, color);
-            }
-        });
-        const totals = new Map<string, number>();
-        sankeyData.links.forEach((link) => {
-            if (link.target !== sankeySingleTarget) return;
-            totals.set(link.source, (totals.get(link.source) ?? 0) + link.value);
-        });
-        return Array.from(totals.entries())
-            .map(([name, value]) => ({ name, value, color: colorByNode.get(name) }))
+    const sankeyFallbackSegments = useMemo(() => {
+        if (!sankeyFlow || sankeyFlow.chosen_mode !== "fallback") return [];
+        return sankeyFlow.nodes
+            .filter((n) => n.group === "subcategory")
+            .map((n) => {
+                const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === n.name);
+                const color = subId ? categoryColorMap.get(subId) : undefined;
+                return {
+                    name: n.name,
+                    value: n.value ?? 0,
+                    color,
+                };
+            })
             .sort((a, b) => b.value - a.value);
-    }, [sankeyData.links, sankeyData.nodes, sankeySingleTarget]);
+    }, [sankeyFlow, allSubcategoryIds, categoryColorMap]);
 
     const evidenceUnits = useMemo<EvidenceUnit[]>(() => {
         if (!focusSubcategory) return [];
@@ -833,94 +607,50 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const treemapLabelFormatter = useCallback(
         (params: unknown, totalValue: number) => {
             if (!params || typeof params !== "object") return "";
-            const entry = params as { data?: { name?: string; value?: number } };
+            const entry = params as { data?: { name?: string; value?: number; nodeType?: string } };
             const nodeData = entry.data ?? {};
             const name = typeof nodeData.name === "string" ? nodeData.name : "";
             const value = typeof nodeData.value === "number" ? nodeData.value : 0;
             const pct = totalValue > 0 ? (value / totalValue) * 100 : 0;
-            if (!name || pct < 3) return "";
-            if (treemapIsSparse) {
-                return `${name} (${pct.toFixed(0)}%)`;
-            }
-            return name;
+            if (!name || pct < 2) return "";
+            return `${name}\n${pct.toFixed(0)}%`;
         },
-        [treemapIsSparse]
+        []
     );
 
     const formatTreemapTooltip = useCallback(
         (params: unknown, _totalValue: number, unitLabel: string) => {
             if (!params || typeof params !== "object") return "";
-            const entry = params as { data?: Record<string, unknown> };
+            const entry = params as {
+                data?: Record<string, unknown>;
+                treePathInfo?: Array<{ name: string }>;
+            };
             const data = entry.data ?? {};
-            const categoryLabel =
-                (data.categoryFullLabel as string) ??
-                (data.categoryLabel as string) ??
-                (data.name as string) ??
-                "";
-            if (!categoryLabel) return "";
-            const repoScope = typeof data.repoScope === "string" ? data.repoScope : "";
-            const weightedEffort = typeof data.value === "number" ? data.value : 0;
+            const treePath = entry.treePathInfo ?? [];
+
+            // Path: Investment -> Theme -> Subcategory
+            const pathSegments = treePath.slice(1).map(p => p.name);
+            const title = pathSegments.join(" · ");
+            if (!title) return "";
+
+            const value = typeof data.value === "number" ? data.value : 0;
             const qualityValue = typeof data.qualityValue === "number" ? data.qualityValue : 0;
-            const workUnitCount = typeof data.workUnitCount === "number" ? data.workUnitCount : 0;
             const qualityLabel = formatQuality(qualityValue);
             const effortUnitLabel = unitLabel;
-            const qualityDisclosure =
-                "<div style=\"margin-top: 6px; font-size: 11px; color: " +
-                chartTheme.muted +
-                "\">Evidence quality shown reflects an average across contributing work units.</div>";
-            const textualNote = data.hasTextual
-                ? "<div style=\"margin-top: 6px; color: " +
-                chartTheme.muted +
-                "\">Textual phrases informed the categorization.</div>"
-                : "";
-            const title = repoScope ? `${categoryLabel} · ${repoScope}` : categoryLabel;
-            const workUnitLine = workUnitCount
-                ? `<div><span style="color: ${chartTheme.muted}">Work units:</span> ${workUnitCount}</div>`
-                : "";
 
-            return `
-        <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
-        <div><span style="color: ${chartTheme.muted}">Weighted effort:</span> ${formatNumber(weightedEffort)} ${effortUnitLabel}</div>
-        <div><span style="color: ${chartTheme.muted}">Avg evidence quality:</span> ${qualityLabel}</div>
-        ${workUnitLine}
-        ${qualityDisclosure}
-        ${textualNote}
-      `;
+            return buildTooltipHtml({
+                title,
+                value,
+                unit: effortUnitLabel,
+                percent: calcPercent(value, mixTotalValue),
+                mutedColor: chartTheme.muted,
+                accentColor: chartTheme.accent2,
+                extra: `Avg evidence quality: ${qualityLabel}<br/><div style="margin-top: 6px; font-size: 11px; opacity: 0.8;">Evidence quality reflects average across contributing units.</div>`
+            });
         },
-        [chartTheme.muted]
+        [chartTheme.muted, chartTheme.accent2, mixTotalValue]
     );
 
-    const formatSankeyTooltip = useCallback(
-        (params: unknown, unitLabel: string) => {
-            if (!params || typeof params !== "object") return "";
-            const entry = params as {
-                dataType?: string;
-                data?: { source?: string; target?: string; value?: number };
-            };
-            if (entry.dataType !== "edge") return "";
-            const data = entry.data ?? {};
-            const source = data.source ?? "";
-            const target = data.target ?? "";
-            const value = typeof data.value === "number" ? data.value : 0;
-            const edgeKey = `${source}::${target}`;
-            const meta = sankeyData.edgeMeta.get(edgeKey);
-            const avgQuality = meta ? meta.avgQuality : 0;
-            const textualNote = meta?.hasTextual
-                ? "<div style=\"margin-top: 6px; color: " +
-                chartTheme.muted +
-                "\">Textual phrases informed the categorization.</div>"
-                : "";
-
-            return `
-        <div style="font-weight: 600; margin-bottom: 4px;">${source} → ${target}</div>
-        <div><span style="color: ${chartTheme.muted}">Weighted effort:</span> ${formatNumber(value)} ${unitLabel}</div>
-        <div><span style="color: ${chartTheme.muted}">Avg evidence quality:</span> ${formatQuality(avgQuality)}</div>
-        <div style="margin-top: 6px; font-size: 11px; color: ${chartTheme.muted};">Evidence quality shown reflects an average across contributing work units.</div>
-        ${textualNote}
-      `;
-        },
-        [chartTheme.muted, sankeyData.edgeMeta]
-    );
 
     const effortUnit = useMemo(() => {
         const metrics = new Set(workUnits.map((unit) => unit.effort.metric));
@@ -1029,7 +759,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-lg">Treemap</h3>
                         <span className="text-xs text-(--ink-muted)">
-                            Effort size · Evidence quality opacity · {treemapIsSparse ? `${categoryScopeLabel} view` : `${categoryScopeLabel} · repo scope`}
+                            Effort size · Evidence quality opacity · {categoryScopeLabel} view
                         </span>
                     </div>
                     <div className="mt-4">
@@ -1218,33 +948,86 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex items-center justify-between">
-                    <h3 className="font-(--font-display) text-lg">Sankey</h3>
-                    <span className="text-xs text-(--ink-muted)">Subcategory → repo scope</span>
+                    <div className="flex items-center gap-2">
+                        <h3 className="font-(--font-display) text-lg">Sankey</h3>
+                        <div className="group relative">
+                            <span className="cursor-help text-(--ink-muted) transition hover:text-(--ink)">
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </span>
+                            <div className="absolute left-0 top-6 z-50 hidden w-64 rounded-xl border border-(--card-stroke) bg-(--card-dark) p-3 text-[11px] leading-relaxed text-(--ink) shadow-xl group-hover:block">
+                                <p className="font-semibold mb-1">Why is this view selected?</p>
+                                <p className="mb-2 text-(--ink-muted)">Target is chosen automatically based on coverage and distinct target counts.</p>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between border-b border-(--card-stroke) pb-0.5 mb-1">
+                                        <span className="text-(--ink-muted)">Team Coverage</span>
+                                        <span className={sankeyFlow?.team_coverage && sankeyFlow.team_coverage >= 0.7 ? "text-(--accent-1)" : "text-(--ink-muted)"}>
+                                            {sankeyFlow?.team_coverage ? formatNumber(sankeyFlow.team_coverage * 100) : "0"}%
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-(--card-stroke) pb-0.5 mb-1">
+                                        <span className="text-(--ink-muted)">Distinct Teams</span>
+                                        <span className={sankeyFlow?.distinct_team_targets && sankeyFlow.distinct_team_targets >= 2 ? "text-(--accent-1)" : "text-(--ink-muted)"}>
+                                            {sankeyFlow?.distinct_team_targets || 0}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-(--card-stroke) pb-0.5 mb-1">
+                                        <span className="text-(--ink-muted)">Repo Coverage</span>
+                                        <span className={sankeyFlow?.repo_coverage && sankeyFlow.repo_coverage >= 0.7 ? "text-(--accent-1)" : "text-(--ink-muted)"}>
+                                            {sankeyFlow?.repo_coverage ? formatNumber(sankeyFlow.repo_coverage * 100) : "0"}%
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-(--ink-muted)">Distinct Repos</span>
+                                        <span className={sankeyFlow?.distinct_repo_targets && sankeyFlow.distinct_repo_targets >= 2 ? "text-(--accent-1)" : "text-(--ink-muted)"}>
+                                            {sankeyFlow?.distinct_repo_targets || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                                <p className="mt-2 text-[10px] text-(--ink-muted) italic border-t border-(--card-stroke) pt-1">Thresholds: Coverage ≥ 70%, Targets ≥ 2</p>
+                            </div>
+                        </div>
+                    </div>
+                    <span className="text-xs text-(--ink-muted)">{sankeyFlow?.label || "Subcategory → repo scope"}</span>
                 </div>
                 <div className="mt-4">
-                    {isLoading ? (
-                        <p className="text-sm text-(--ink-muted)">Loading work units…</p>
-                    ) : workUnits.length === 0 ? (
-                        <p className="text-sm text-(--ink-muted)">No work unit investments available.</p>
-                    ) : sankeyTargets.length <= 1 ? (
+                    {isSankeyLoading ? (
+                        <p className="text-sm text-(--ink-muted)">Loading flow data…</p>
+                    ) : !sankeyFlow || (sankeyFlow.chosen_mode === "fallback") ? (
                         <div className="space-y-3">
                             <div className="flex items-center justify-between text-xs text-(--ink-muted)">
-                                <span>Single destination detected</span>
-                                <span className="font-mono">{sankeySingleTarget || "unassigned"}</span>
+                                <span className="italic">Directional flow hidden: insufficient destination diversity/coverage.</span>
                             </div>
                             <StackedHorizontalBar
-                                segments={sankeyStackSegments}
+                                segments={sankeyFallbackSegments}
                                 unit={effortUnit}
                                 height={90}
                             />
                         </div>
                     ) : (
                         <SankeyChart
-                            nodes={sankeyData.nodes}
-                            links={sankeyData.links}
+                            nodes={sankeyFlow.nodes}
+                            links={sankeyFlow.links}
                             unit={effortUnit}
                             height={320}
-                            tooltipFormatter={formatSankeyTooltip}
+                            onItemClick={(item) => {
+                                // Extract subcategory from node name if possible
+                                if (item.type === "node") {
+                                    // Map formatted label back to ID if possible, but simpler is to check links
+                                    const link = sankeyFlow.links.find(l => l.source === item.name);
+                                    if (link) {
+                                        // This is a subcategory node
+                                        // We need the ID, but label format is "Theme · Sub"
+                                        // Our subcategoryIds use "theme.sub"
+                                        const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === item.name);
+                                        if (subId) setFocusSubcategory(subId);
+                                    }
+                                } else if (item.type === "link") {
+                                    const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === item.source);
+                                    if (subId) setFocusSubcategory(subId);
+                                }
+                            }}
                         />
                     )}
                 </div>

@@ -143,6 +143,11 @@ export type SankeyResponse = {
   unit?: string;
   label?: string;
   description?: string;
+  team_coverage?: number;
+  repo_coverage?: number;
+  distinct_team_targets?: number;
+  distinct_repo_targets?: number;
+  chosen_mode?: string;
 };
 
 export type WorkUnitInvestmentBreakdown = {
