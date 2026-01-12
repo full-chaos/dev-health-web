@@ -81,12 +81,41 @@ export type ExplainResponse = {
   drilldown_links: Record<string, string>;
 };
 
+export type InvestmentFindingEvidence = {
+  theme: string;
+  subcategory?: string | null;
+  share_pct: number;
+  delta_pct_points?: number | null;
+  evidence_quality_mean?: number | null;
+  evidence_quality_band?: string | null;
+};
+
+export type InvestmentFinding = {
+  finding: string;
+  evidence: InvestmentFindingEvidence;
+};
+
+export type InvestmentConfidence = {
+  level: "high" | "moderate" | "low" | "unknown";
+  quality_mean?: number | null;
+  quality_stddev?: number | null;
+  band_mix: Record<string, number>;
+  drivers: string[];
+};
+
+export type InvestmentActionItem = {
+  action: string;
+  why: string;
+  where: string;
+};
+
 export type InvestmentMixExplanation = {
   summary: string;
-  dominant_themes: string[];
-  key_drivers: string[];
-  operational_signals: string[];
-  confidence_note: string;
+  top_findings: InvestmentFinding[];
+  confidence: InvestmentConfidence;
+  what_to_check_next: InvestmentActionItem[];
+  anti_claims: string[];
+  status?: "valid" | "invalid_json" | "invalid_llm_output";
 };
 
 export type DrilldownResponse = {
@@ -110,10 +139,18 @@ export type HealthResponse = {
   services: Record<string, string>;
 };
 
+export type EvidenceQualityStats = {
+  mean: number | null;
+  stddev: number | null;
+  band_counts: Record<string, number>;
+  quality_drivers: string[];
+};
+
 export type InvestmentResponse = {
   theme_distribution: Record<string, number>;
   subcategory_distribution: Record<string, number>;
   evidence_quality_distribution?: Record<string, number>;
+  evidence_quality_stats?: EvidenceQualityStats;
   unit?: string;
   edges?: Array<Record<string, unknown>>;
 };
@@ -169,8 +206,8 @@ export type WorkUnitInvestment = {
   investment: WorkUnitInvestmentBreakdown;
   /** Evidence quality and server-side band. */
   evidence_quality: {
-    value: number;
-    band: "high" | "moderate" | "low" | "very_low";
+    value: number | null;
+    band: "high" | "moderate" | "low" | "very_low" | "unknown" | null;
   };
   /** Evidence payloads backing textual, structural, and contextual corroboration. */
   evidence: {

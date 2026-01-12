@@ -634,9 +634,13 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             if (!title) return "";
 
             const value = typeof data.value === "number" ? data.value : 0;
-            const qualityValue = typeof data.qualityValue === "number" ? data.qualityValue : 0;
-            const qualityLabel = formatQuality(qualityValue);
+            const qualityValue = typeof data.qualityValue === "number" ? data.qualityValue : null;
+            const qualityLabel = qualityValue !== null ? formatQuality(qualityValue) : "Unknown";
             const effortUnitLabel = unitLabel;
+
+            const qualityExtra = qualityValue !== null
+                ? `Avg evidence quality: ${qualityLabel}<br/><div style="margin-top: 6px; font-size: 11px; opacity: 0.8;">Evidence quality reflects average across contributing units.</div>`
+                : `<div style="opacity: 0.7;">Evidence quality: Unknown<br/>Insufficient evidence to compute quality.</div>`;
 
             return buildTooltipHtml({
                 title,
@@ -645,7 +649,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 percent: calcPercent(value, mixTotalValue),
                 mutedColor: chartTheme.muted,
                 accentColor: chartTheme.accent2,
-                extra: `Avg evidence quality: ${qualityLabel}<br/><div style="margin-top: 6px; font-size: 11px; opacity: 0.8;">Evidence quality reflects average across contributing units.</div>`
+                extra: qualityExtra
             });
         },
         [chartTheme.muted, chartTheme.accent2, mixTotalValue]
@@ -918,31 +922,124 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                         </p>
                     ) : (
                         <>
+                            {/* Summary */}
                             <p className="text-sm text-foreground">{mixExplanation.data.summary}</p>
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Key drivers</p>
-                                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--ink-muted)">
-                                    {mixExplanation.data.key_drivers.map((item, idx) => (
-                                        <li key={idx}>{item}</li>
-                                    ))}
-                                </ul>
+
+                            {/* Top Findings */}
+                            {mixExplanation.data.top_findings.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Findings</p>
+                                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                        {mixExplanation.data.top_findings.slice(0, 3).map((finding, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="rounded-lg border border-(--card-stroke) bg-background/50 p-3"
+                                            >
+                                                <p className="text-sm">{finding.finding}</p>
+                                                <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-(--ink-muted)">
+                                                    <span className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5">
+                                                        {finding.evidence.theme}
+                                                    </span>
+                                                    <span>{finding.evidence.share_pct}%</span>
+                                                    {finding.evidence.evidence_quality_band && (
+                                                        <span className="opacity-70">
+                                                            Quality: {finding.evidence.evidence_quality_band}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Confidence Block */}
+                            <div className="rounded-lg border border-(--card-stroke) bg-background/30 p-3">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Confidence</span>
+                                    <span
+                                        className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${mixExplanation.data.confidence.level === "high"
+                                                ? "bg-emerald-500/20 text-emerald-600"
+                                                : mixExplanation.data.confidence.level === "moderate"
+                                                    ? "bg-amber-500/20 text-amber-600"
+                                                    : mixExplanation.data.confidence.level === "low"
+                                                        ? "bg-red-500/20 text-red-600"
+                                                        : "bg-gray-500/20 text-gray-500"
+                                            }`}
+                                    >
+                                        {mixExplanation.data.confidence.level}
+                                    </span>
+                                    {mixExplanation.data.confidence.quality_mean != null && (
+                                        <span className="text-[10px] text-(--ink-muted)">
+                                            Mean: {(mixExplanation.data.confidence.quality_mean * 100).toFixed(0)}%
+                                            {mixExplanation.data.confidence.quality_stddev != null &&
+                                                ` ± ${(mixExplanation.data.confidence.quality_stddev * 100).toFixed(0)}%`}
+                                        </span>
+                                    )}
+                                </div>
+                                {mixExplanation.data.confidence.drivers.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        {mixExplanation.data.confidence.drivers.map((driver, idx) => (
+                                            <span
+                                                key={idx}
+                                                className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5 text-[10px] text-(--ink-muted)"
+                                                title={
+                                                    driver === "low_text_signal"
+                                                        ? "Short descriptions lack categorization signals"
+                                                        : driver === "weak_cross_links"
+                                                            ? "Few issue↔PR↔commit links detected"
+                                                            : driver === "missing_evidence_metadata"
+                                                                ? "Over 30% of units have unknown quality"
+                                                                : driver === "high_uncertainty_spread"
+                                                                    ? "Quality varies significantly across units"
+                                                                    : driver
+                                                }
+                                            >
+                                                {driver.replace(/_/g, " ")}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Operational signals</p>
-                                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--ink-muted)">
-                                    {mixExplanation.data.operational_signals.map((item, idx) => (
-                                        <li key={idx}>{item}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <p className="text-xs font-medium italic text-(--ink-muted)">
-                                {mixExplanation.data.confidence_note}
-                            </p>
+
+                            {/* What to check next */}
+                            {mixExplanation.data.what_to_check_next.length > 0 && (
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">What to check next</p>
+                                    <ul className="mt-2 space-y-2">
+                                        {mixExplanation.data.what_to_check_next.slice(0, 3).map((action, idx) => (
+                                            <li key={idx} className="text-sm">
+                                                <span className="font-medium">{action.action}</span>
+                                                <span className="text-(--ink-muted)"> — {action.why}</span>
+                                                <span className="block text-[11px] text-(--ink-muted) opacity-70">
+                                                    {action.where}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {/* Anti-claims (collapsible) */}
+                            {mixExplanation.data.anti_claims.length > 0 && (
+                                <details className="text-xs text-(--ink-muted)">
+                                    <summary className="cursor-pointer">What this does NOT say</summary>
+                                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                                        {mixExplanation.data.anti_claims.map((claim, idx) => (
+                                            <li key={idx}>{claim}</li>
+                                        ))}
+                                    </ul>
+                                </details>
+                            )}
+
+                            {/* Status indicator for invalid outputs */}
+                            {mixExplanation.data.status && mixExplanation.data.status !== "valid" && (
+                                <p className="text-[10px] italic text-(--ink-muted)">
+                                    ⚠ Fallback explanation shown ({mixExplanation.data.status})
+                                </p>
+                            )}
                         </>
                     )}
-                    <p className="text-xs text-(--ink-muted)">
-                        AI-generated interpretation based on the data shown above.
-                    </p>
                 </div>
             </details>
 
@@ -1082,8 +1179,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                             {formatNumber(entry.weightedEffort)} {effortUnit}
                                         </div>
                                         <div className="mt-1 text-xs text-(--ink-muted)">
-                                            Evidence quality: {formatQuality(entry.unit.evidence_quality.value)} (
-                                            {formatBandLabel(entry.unit.evidence_quality.band)})
+                                            Evidence quality: {entry.unit.evidence_quality.value !== null
+                                                ? `${formatQuality(entry.unit.evidence_quality.value)} (${formatBandLabel(entry.unit.evidence_quality.band ?? "unknown")})`
+                                                : "Unknown"}
                                         </div>
                                         {hasTextual && (
                                             <div className="mt-2 text-[11px] text-(--ink-muted)">
@@ -1158,7 +1256,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 </div>
                                 <div>
                                     <span className="text-(--ink-muted)">Evidence quality:</span>{" "}
-                                    {formatQuality(selectedUnit.evidence_quality.value)} ({formatBandLabel(selectedUnit.evidence_quality.band)})
+                                    {selectedUnit.evidence_quality.value !== null
+                                        ? `${formatQuality(selectedUnit.evidence_quality.value)} (${formatBandLabel(selectedUnit.evidence_quality.band ?? "unknown")})`
+                                        : "Unknown"}
                                 </div>
                                 {(selectedUnit.evidence?.textual ?? []).length > 0 && (
                                     <div className="text-xs text-(--ink-muted)">
