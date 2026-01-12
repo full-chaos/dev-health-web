@@ -926,7 +926,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             <p className="text-sm text-foreground">{mixExplanation.data.summary}</p>
 
                             {/* Top Findings */}
-                            {mixExplanation.data.top_findings.length > 0 && (
+                            {(mixExplanation.data.top_findings?.length ?? 0) > 0 && (
                                 <div className="space-y-2">
                                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Findings</p>
                                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -958,18 +958,18 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 <div className="flex items-center gap-3">
                                     <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Confidence</span>
                                     <span
-                                        className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${mixExplanation.data.confidence.level === "high"
-                                                ? "bg-emerald-500/20 text-emerald-600"
-                                                : mixExplanation.data.confidence.level === "moderate"
-                                                    ? "bg-amber-500/20 text-amber-600"
-                                                    : mixExplanation.data.confidence.level === "low"
-                                                        ? "bg-red-500/20 text-red-600"
-                                                        : "bg-gray-500/20 text-gray-500"
+                                        className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${mixExplanation.data.confidence?.level === "high"
+                                            ? "bg-emerald-500/20 text-emerald-600"
+                                            : mixExplanation.data.confidence?.level === "moderate"
+                                                ? "bg-amber-500/20 text-amber-600"
+                                                : mixExplanation.data.confidence?.level === "low"
+                                                    ? "bg-red-500/20 text-red-600"
+                                                    : "bg-gray-500/20 text-gray-500"
                                             }`}
                                     >
-                                        {mixExplanation.data.confidence.level}
+                                        {mixExplanation.data.confidence?.level ?? "unknown"}
                                     </span>
-                                    {mixExplanation.data.confidence.quality_mean != null && (
+                                    {mixExplanation.data.confidence?.quality_mean != null && (
                                         <span className="text-[10px] text-(--ink-muted)">
                                             Mean: {(mixExplanation.data.confidence.quality_mean * 100).toFixed(0)}%
                                             {mixExplanation.data.confidence.quality_stddev != null &&
@@ -977,9 +977,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                         </span>
                                     )}
                                 </div>
-                                {mixExplanation.data.confidence.drivers.length > 0 && (
+                                {(mixExplanation.data.confidence?.drivers?.length ?? 0) > 0 && (
                                     <div className="mt-2 flex flex-wrap gap-1">
-                                        {mixExplanation.data.confidence.drivers.map((driver, idx) => (
+                                        {(mixExplanation.data.confidence?.drivers ?? []).map((driver, idx) => (
                                             <span
                                                 key={idx}
                                                 className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5 text-[10px] text-(--ink-muted)"
@@ -1003,7 +1003,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             </div>
 
                             {/* What to check next */}
-                            {mixExplanation.data.what_to_check_next.length > 0 && (
+                            {(mixExplanation.data.what_to_check_next?.length ?? 0) > 0 && (
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">What to check next</p>
                                     <ul className="mt-2 space-y-2">
@@ -1021,7 +1021,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             )}
 
                             {/* Anti-claims (collapsible) */}
-                            {mixExplanation.data.anti_claims.length > 0 && (
+                            {(mixExplanation.data.anti_claims?.length ?? 0) > 0 && (
                                 <details className="text-xs text-(--ink-muted)">
                                     <summary className="cursor-pointer">What this does NOT say</summary>
                                     <ul className="mt-2 list-disc space-y-1 pl-5">
