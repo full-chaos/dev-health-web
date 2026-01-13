@@ -99,6 +99,37 @@ const buildTimeRangeLabel = (start?: string, end?: string) => {
     return `${startLabel} – ${endLabel}`;
 };
 
+const getBaselineFilters = (filters: MetricFilter): MetricFilter => {
+    const { start_date, end_date, range_days } = filters.time;
+    let baselineStart: string;
+    let baselineEnd: string;
+
+    if (start_date && end_date) {
+        const start = new Date(start_date);
+        const end = new Date(end_date);
+        const durationMs = end.getTime() - start.getTime();
+        // Shift back by duration + 1 day
+        const bEnd = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+        const bStart = new Date(bEnd.getTime() - durationMs);
+        baselineStart = bStart.toISOString().split("T")[0];
+        baselineEnd = bEnd.toISOString().split("T")[0];
+    } else {
+        const bEnd = new Date(new Date().getTime() - range_days * 24 * 60 * 60 * 1000);
+        const bStart = new Date(bEnd.getTime() - (range_days - 1) * 24 * 60 * 60 * 1000);
+        baselineStart = bStart.toISOString().split("T")[0];
+        baselineEnd = bEnd.toISOString().split("T")[0];
+    }
+
+    return {
+        ...filters,
+        time: {
+            ...filters.time,
+            start_date: baselineStart,
+            end_date: baselineEnd,
+        },
+    };
+};
+
 export function InvestmentView({ filters }: InvestmentViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -126,6 +157,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [isExplaining, setIsExplaining] = useState(false);
     const [isExplainingMix, setIsExplainingMix] = useState(false);
     const [sankeyFlow, setSankeyFlow] = useState<SankeyResponse | null>(null);
+    const [baselineSankeyFlow, setBaselineSankeyFlow] = useState<SankeyResponse | null>(null);
     const [isSankeyLoading, setIsSankeyLoading] = useState(true);
 
     const includeTextual = categorizationMode === "text_metadata";
@@ -320,13 +352,20 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             }
 
             try {
-                const data = await getInvestmentFlow({ filters });
+                const baselineFilters = getBaselineFilters(filters);
+                const [current, baseline] = await Promise.all([
+                    getInvestmentFlow({ filters }),
+                    getInvestmentFlow({ filters: baselineFilters }),
+                ]);
+
                 if (active) {
-                    setSankeyFlow(data);
+                    setSankeyFlow(current);
+                    setBaselineSankeyFlow(baseline);
                 }
             } catch {
                 if (active) {
                     setSankeyFlow(null);
+                    setBaselineSankeyFlow(null);
                 }
             } finally {
                 if (active) {
@@ -340,6 +379,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             active = false;
         };
     }, [filters, useSampleData]);
+
+    const baselineFilters = useMemo(() => getBaselineFilters(filters), [filters]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
@@ -550,6 +591,22 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         chartTheme.grid,
     ]);
 
+    const currentSankeyTotal = useMemo(() => {
+        if (!sankeyFlow || !sankeyFlow.links.length) return 0;
+        const targets = new Set(sankeyFlow.links.map((l) => l.target));
+        return sankeyFlow.links
+            .filter((l) => !targets.has(l.source))
+            .reduce((acc, l) => acc + l.value, 0);
+    }, [sankeyFlow]);
+
+    const baselineSankeyTotal = useMemo(() => {
+        if (!baselineSankeyFlow || !baselineSankeyFlow.links.length) return 0;
+        const targets = new Set(baselineSankeyFlow.links.map((l) => l.target));
+        return baselineSankeyFlow.links
+            .filter((l) => !targets.has(l.source))
+            .reduce((acc, l) => acc + l.value, 0);
+    }, [baselineSankeyFlow]);
+
     const sankeyRenderMode = useMemo<SankeyRenderMode>(() => {
         if (!sankeyFlow) return "allocation_bar";
         return sankeyFlow.chosen_mode === "fallback" ? "allocation_bar" : "sankey";
@@ -632,31 +689,99 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 name?: string;
             };
             const data = entry.data ?? {};
-            const timeLabel = buildTimeRangeLabel(filters.start_date, filters.end_date);
+            const timeLabel = buildTimeRangeLabel(filters.time.start_date, filters.time.end_date);
+
+            const currentValue = data.value ?? 0;
+            const currentShare = currentSankeyTotal > 0 ? (currentValue / currentSankeyTotal) * 100 : 0;
+
+            let baselineValue = 0;
+            if (entry.dataType === "edge") {
+                const baseLink = baselineSankeyFlow?.links.find(
+                    (l) => l.source === data.source && l.target === data.target
+                );
+                baselineValue = baseLink?.value ?? 0;
+            } else {
+                const nodeName = data.name ?? entry.name ?? "";
+                const baseNode = baselineSankeyFlow?.nodes.find((n) => n.name === nodeName);
+                baselineValue =
+                    baseNode?.value ??
+                    baselineSankeyFlow?.links
+                        .filter((l) => l.source === nodeName || l.target === nodeName)
+                        .reduce((acc, l) => acc + l.value, 0) ??
+                    0;
+                // If node is intermediate, we might need a more complex sum, but usually nodes have values
+                if (baselineValue === 0 && baselineSankeyFlow) {
+                    // Try matching by name if value is missing
+                    const outgoing = baselineSankeyFlow.links
+                        .filter((l) => l.source === nodeName)
+                        .reduce((acc, l) => acc + l.value, 0);
+                    const incoming = baselineSankeyFlow.links
+                        .filter((l) => l.target === nodeName)
+                        .reduce((acc, l) => acc + l.value, 0);
+                    baselineValue = Math.max(incoming, outgoing);
+                }
+            }
+
+            const baselineShare =
+                baselineSankeyTotal > 0 ? (baselineValue / baselineSankeyTotal) * 100 : 0;
+            const delta = currentShare - baselineShare;
+
+            const deltaSign = delta > 0 ? "↑ +" : delta < 0 ? "↓ " : "";
+            const deltaColor =
+                delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
+
+            const deltaHtml = `
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid
+                }; font-size: 11px;">
+                    <div><span style="color: ${chartTheme.muted}">Current allocation share:</span> ${currentShare.toFixed(
+                    1
+                )}%</div>
+                    <div><span style="color: ${chartTheme.muted}">Baseline allocation share:</span> ${baselineShare.toFixed(
+                    1
+                )}%</div>
+                    <div style="font-weight: 600; color: ${deltaColor};">
+                        Delta: ${deltaSign}${delta.toFixed(1)}%
+                    </div>
+                    <div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted
+                }; font-style: italic; line-height: 1.3;">
+                        Delta reflects change in allocation share vs the prior window. It does not indicate cause, impact, or priority.
+                    </div>
+                </div>
+            `;
 
             if (entry.dataType === "edge") {
                 const lines = [
-                    `<strong>Allocation:</strong> ${formatNumber(data.value ?? 0)} ${unit}`,
+                    `<strong>Allocation:</strong> ${formatNumber(currentValue)} ${unit}`,
                     `<strong>From:</strong> ${data.source ?? ""}`,
                     `<strong>To:</strong> ${data.target ?? ""}`,
                     `<strong>Window:</strong> ${timeLabel}`,
                 ];
-                const extra = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 10px; color: ${chartTheme.muted};">
+                const meaning = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 10px; color: ${chartTheme.muted};">
                     <strong>Meaning:</strong> attribution under current filters (not dependency or causation)
                 </div>`;
-                return `<div style="padding: 4px;">${lines.join("<br/>")}${extra}</div>`;
+                return `<div style="padding: 4px;">${lines.join("<br/>")}${deltaHtml}${meaning}</div>`;
             }
 
             const nodeName = data.name ?? entry.name ?? "";
-            const value = data.value ?? 0;
             const lines = [
-                `<strong>Total allocated:</strong> ${formatNumber(value)} ${unit}`,
+                `<strong>Total allocated:</strong> ${formatNumber(currentValue)} ${unit}`,
                 `<strong>Role:</strong> source/target in allocation`,
-                `<strong>Window:</strong> ${timeLabel}`
+                `<strong>Window:</strong> ${timeLabel}`,
             ];
-            return `<div style="padding: 4px;"><strong>${nodeName}</strong><br/><br/>${lines.join("<br/>")}</div>`;
+            return `<div style="padding: 4px;"><strong>${nodeName}</strong><br/><br/>${lines.join(
+                "<br/>"
+            )}${deltaHtml}</div>`;
         },
-        [filters.start_date, filters.end_date, chartTheme.grid, chartTheme.muted]
+        [
+            filters.time,
+            currentSankeyTotal,
+            baselineSankeyTotal,
+            baselineSankeyFlow,
+            chartTheme.grid,
+            chartTheme.muted,
+            chartTheme.accent1,
+            chartTheme.accent2,
+        ]
     );
 
     const formatTreemapTooltip = useCallback(
