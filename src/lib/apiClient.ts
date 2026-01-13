@@ -49,7 +49,9 @@ const fetchJson = async <T>(
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
   }
-  return (await response.json()) as T;
+  // Use text() and trim() to handle keep-alive pings (leading/trailing whitespace)
+  const text = await response.text();
+  return JSON.parse(text.trim()) as T;
 };
 
 const getJson = async <T>(
