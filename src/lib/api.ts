@@ -7,6 +7,7 @@ import type {
   HomeResponse,
   HeatmapResponse,
   InvestmentResponse,
+  InvestmentMixExplanation,
   MetaResponse,
   OpportunitiesResponse,
   PeopleSearchResult,
@@ -17,6 +18,8 @@ import type {
   SankeyResponse,
   FlameResponse,
   QuadrantResponse,
+  WorkUnitInvestment,
+  WorkUnitExplanation,
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
@@ -87,6 +90,28 @@ export async function getInvestment(filters: MetricFilter) {
   );
 }
 
+export async function explainInvestmentMix(params: {
+  filters: MetricFilter;
+  theme?: string | null;
+  subcategory?: string | null;
+  llm_provider?: string;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return postJson<InvestmentMixExplanation>(
+    "/api/v1/investment/explain",
+    {
+      filters: normalized,
+      theme: params.theme ?? null,
+      subcategory: params.subcategory ?? null,
+    },
+    0,
+    {
+      f: encodeFilterParam(normalized),
+      llm_provider: params.llm_provider ?? "auto",
+    }
+  );
+}
+
 export async function getSankey(params: {
   mode: SankeyMode;
   filters: MetricFilter;
@@ -111,6 +136,40 @@ export async function getSankey(params: {
     },
     60,
     { mode: params.mode, f: encodeFilterParam(withWindow) }
+  );
+}
+
+export async function getInvestmentFlow(params: {
+  filters: MetricFilter;
+  theme?: string | null;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return postJson<SankeyResponse>(
+    "/api/v1/investment/flow",
+    { filters: normalized, theme: params.theme ?? null },
+    60,
+    { f: encodeFilterParam(normalized) }
+  );
+}
+
+export async function getWorkUnits(params: {
+  filters: MetricFilter;
+  limit?: number;
+  include_textual?: boolean;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return postJson<WorkUnitInvestment[]>(
+    "/api/v1/work-units",
+    {
+      filters: normalized,
+      limit: params.limit,
+      include_textual: params.include_textual,
+    },
+    30,
+    {
+      f: encodeFilterParam(normalized),
+      include_textual: params.include_textual ? "true" : "false",
+    }
   );
 }
 
@@ -376,4 +435,22 @@ export async function getQuadrant(params: {
     throw new Error(`API error: ${lastError.status}`);
   }
   throw lastError ?? new Error("API error");
+}
+export async function getWorkUnitExplanation(params: {
+  workUnitId: string;
+  filters: MetricFilter;
+  llmProvider?: string;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return apiClient.postJson<WorkUnitExplanation>(
+    `/api/v1/work-units/${params.workUnitId}/explain`,
+    {},
+    { next: { revalidate: 60 } },
+    {
+      scope_type: normalized.scope.level,
+      scope_id: normalized.scope.ids[0] ?? "",
+      range_days: normalized.time.range_days,
+      llm_provider: params.llmProvider ?? "auto",
+    }
+  );
 }

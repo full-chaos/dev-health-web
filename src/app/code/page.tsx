@@ -118,7 +118,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
             />
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-(--font-display) text-xl">Ownership Signals</h2>
+                <h2 className="font-(--font-display) text-xl">Ownership Patterns</h2>
                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                   Manual
                 </span>
@@ -219,7 +219,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 </Link>
               </div>
               <p className="mt-3 text-sm text-(--ink-muted)">
-                When ownership signals are available, this view shows single-maintainer concentration.
+                When ownership patterns are available, this view shows single-maintainer concentration.
               </p>
               <div className="mt-4 space-y-2 text-sm">
                 <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-(--ink-muted)">

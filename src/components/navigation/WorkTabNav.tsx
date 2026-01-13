@@ -4,7 +4,7 @@ import Link from "next/link";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 
-export type WorkTab = "landscape" | "heatmap" | "flow" | "flame" | "evidence";
+export type WorkTab = "landscape" | "heatmap" | "flow" | "investment" | "flame" | "evidence";
 
 type WorkTabNavProps = {
     activeTab: WorkTab;
@@ -16,6 +16,7 @@ const tabs = [
     { id: "landscape", label: "Landscape" },
     { id: "heatmap", label: "Heatmap" },
     { id: "flow", label: "Flow" },
+    { id: "investment", label: "Investment" },
     { id: "flame", label: "Flame" },
     { id: "evidence", label: "Evidence" },
 ] as const;

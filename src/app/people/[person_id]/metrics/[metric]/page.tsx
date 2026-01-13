@@ -239,7 +239,7 @@ export default async function PersonMetricPage({
               <h2 className="font-(--font-display) text-xl">Definition</h2>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 {definitionSummary ??
-                  "Definition will appear when the signal library is available."}
+                  "Definition will appear when the indicator library is available."}
               </p>
               {interpretation && (
                 <p className="mt-3 text-sm text-(--ink-muted)">

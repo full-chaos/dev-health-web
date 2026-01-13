@@ -14,11 +14,12 @@ import {
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
-import { mapInvestmentToNestedPie } from "@/lib/mappers";
+import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import { LandscapeView } from "@/components/work/LandscapeView";
 import { HeatmapView } from "@/components/work/HeatmapView";
 import { reviewHeatmapSample } from "@/data/devHealthOpsSample";
 import { FlowView } from "@/components/work/FlowView";
+import { InvestmentView } from "@/components/work/InvestmentView";
 import { FlameView } from "@/components/work/FlameView";
 import { EvidenceView } from "@/components/work/EvidenceView";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
@@ -53,7 +54,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
   const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-  const activeTab: WorkTab = (typeof tabParam === "string" && ["landscape", "heatmap", "flow", "flame", "evidence"].includes(tabParam))
+  const activeTab: WorkTab = (typeof tabParam === "string" && ["landscape", "heatmap", "flow", "investment", "flame", "evidence"].includes(tabParam))
     ? (tabParam as WorkTab)
     : "landscape";
 
@@ -73,7 +74,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const placeholderDeltas = !home?.deltas?.length;
 
   const investment = await getInvestment(filters).catch(() => null);
-  const nested = investment ? mapInvestmentToNestedPie(investment) : { categories: [], subtypes: [] };
+  const investmentMix = investment ? normalizeInvestmentMix(investment) : null;
 
 
   const wipExplain = await getExplainData({ metric: "wip_saturation", filters }).catch(() => null);
@@ -124,11 +125,19 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     end_date: filters.time.end_date,
   }).catch(() => null);
 
-  const planned = investment
-    ? (findCategory(investment.categories, ["planned", "roadmap", "feature"]) ?? null)
+  const investmentCategoriesForSummary = investmentMix
+    ? Object.entries(investmentMix.theme_distribution).map(([key, value]) => ({
+      key,
+      name: key.replace(/[_-]+/g, " "),
+      value,
+    }))
+    : [];
+
+  const planned = investmentMix
+    ? (findCategory(investmentCategoriesForSummary, ["planned", "roadmap", "feature"]) ?? null)
     : null;
-  const unplanned = investment
-    ? (findCategory(investment.categories, [
+  const unplanned = investmentMix
+    ? (findCategory(investmentCategoriesForSummary, [
       "unplanned",
       "interrupt",
       "incident",
@@ -181,8 +190,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               activeRole={activeRole}
               deltas={deltas}
               placeholderDeltas={placeholderDeltas}
-              investment={investment}
-              nested={nested}
+              investmentMix={investmentMix}
               cycleThroughput={cycleThroughput}
               wipThroughput={wipThroughput}
               reviewLoadLatency={reviewLoadLatency}
@@ -205,6 +213,12 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
             <FlowView
               filters={filters}
               activeRole={activeRole}
+            />
+          )}
+
+          {activeTab === "investment" && (
+            <InvestmentView
+              filters={filters}
             />
           )}
 

@@ -242,7 +242,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             <section id="evidence" className="grid gap-6 lg:grid-cols-3">
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
                 <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
-                  Signal snapshot
+                  Snapshot
                 </p>
                 <div className="mt-3 flex flex-wrap items-baseline gap-3">
                   <span className="text-3xl font-semibold">

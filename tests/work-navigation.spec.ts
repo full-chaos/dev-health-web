@@ -24,11 +24,30 @@ test.describe("Work Tabbed Navigation", () => {
         await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
         await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
+        // Switch to Investment
+        await page.getByRole("link", { name: "Investment", exact: true }).click();
+        await expect(page).toHaveURL(/tab=investment/);
+        await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Treemap" })).toBeVisible();
+
         // Switch to Flame
         await page.getByRole("link", { name: "FLAME" }).click();
         await expect(page).toHaveURL(/tab=flame/);
         await expect(page.getByRole("heading", { name: "Elapsed Time Breakdown" })).toBeVisible();
         await expect(page.getByTestId("chart-flame")).toBeVisible();
+    });
+
+    test("investment tab preserves filters across navigation", async ({ page }) => {
+        await page.goto("/work?tab=investment&range_days=30");
+        await expect(page).toHaveURL(/tab=investment/);
+
+        await page.getByRole("link", { name: "FLOW" }).click();
+        await expect(page).toHaveURL(/tab=flow/);
+        const url = new URL(page.url());
+        const encodedFilter = url.searchParams.get("f");
+        expect(encodedFilter).toBeTruthy();
+        const filters = decodeFilter(encodedFilter);
+        expect(filters.time.range_days).toBe(30);
     });
 
     test("preserves filters across tabs", async ({ page }) => {

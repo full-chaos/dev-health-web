@@ -7,6 +7,8 @@ import type {
   WorkItemTypeSummary,
 } from "./devHealthOpsTypes";
 
+import type { InvestmentResponse, WorkUnitInvestment } from "../lib/types";
+
 export const workItemMetricsDailySample: WorkItemMetricsDaily[] = [
   {
     day: "2025-02-10",
@@ -622,28 +624,288 @@ export const sankeyHotspotLinks = [
  * Sample investment category data for Investment Mix visualizations
  */
 export const investmentCategoriesSample = [
-  { key: "product", name: "Product", value: 57 },
-  { key: "data", name: "Data", value: 40 },
-  { key: "quality", name: "Quality", value: 27 },
-  { key: "infra", name: "Infrastructure", value: 32 },
-  { key: "security", name: "Security", value: 18 },
-  { key: "docs", name: "Documentation", value: 10 },
+  { key: "feature_delivery", name: "Feature Delivery", value: 52 },
+  { key: "operational", name: "Operational / Support", value: 24 },
+  { key: "maintenance", name: "Maintenance / Tech Debt", value: 18 },
+  { key: "quality", name: "Quality / Reliability", value: 14 },
+  { key: "risk", name: "Risk / Security", value: 8 },
 ];
 
 /**
  * Sample investment subtype data for Investment Mix visualizations
  */
 export const investmentSubtypesSample = [
-  { name: "Features", value: 35, parentKey: "product" },
-  { name: "UX Improvements", value: 22, parentKey: "product" },
-  { name: "Pipeline", value: 24, parentKey: "data" },
-  { name: "Analytics", value: 16, parentKey: "data" },
-  { name: "Testing", value: 15, parentKey: "quality" },
-  { name: "Bug Fixes", value: 12, parentKey: "quality" },
-  { name: "Platform", value: 20, parentKey: "infra" },
-  { name: "DevOps", value: 12, parentKey: "infra" },
-  { name: "Auth", value: 10, parentKey: "security" },
-  { name: "Compliance", value: 8, parentKey: "security" },
-  { name: "API Docs", value: 6, parentKey: "docs" },
-  { name: "Guides", value: 4, parentKey: "docs" },
+  { name: "New capabilities", value: 30, parentKey: "feature_delivery" },
+  { name: "UX improvements", value: 22, parentKey: "feature_delivery" },
+  { name: "On-call response", value: 14, parentKey: "operational" },
+  { name: "Customer support", value: 10, parentKey: "operational" },
+  { name: "Refactors", value: 12, parentKey: "maintenance" },
+  { name: "Platform upgrades", value: 6, parentKey: "maintenance" },
+  { name: "Test stability", value: 8, parentKey: "quality" },
+  { name: "Bug fixes", value: 6, parentKey: "quality" },
+  { name: "Vulnerability review", value: 5, parentKey: "risk" },
+  { name: "Access hardening", value: 3, parentKey: "risk" },
 ];
+
+export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
+  {
+    work_unit_id: "wu-41c2a",
+    time_range: {
+      start: "2025-02-01T12:00:00Z",
+      end: "2025-02-03T18:00:00Z",
+    },
+    effort: { metric: "churn_loc", value: 820 },
+    investment: {
+      themes: {
+        feature_delivery: 0.52,
+        maintenance: 0.18,
+        operational: 0.16,
+        quality: 0.1,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.customer": 0.32,
+        "feature_delivery.roadmap": 0.2,
+        "maintenance.refactor": 0.12,
+        "maintenance.debt": 0.06,
+        "operational.incident_response": 0.1,
+        "operational.support": 0.06,
+        "quality.testing": 0.1,
+        "risk.security": 0.04,
+      },
+    },
+    evidence_quality: { value: 0.78, band: "moderate" },
+    evidence: {
+      textual: [
+        { type: "text_phrase", phrase: "feature launch", source: "issue_title" },
+      ],
+      structural: [
+        { type: "work_item_type", work_item_type: "story", count: 3 },
+      ],
+      contextual: [
+        {
+          type: "time_range",
+          start: "2025-02-01T12:00:00Z",
+          end: "2025-02-03T18:00:00Z",
+          span_days: 2.25,
+          score: 0.64,
+        },
+        { type: "repo_scope", repo_ids: ["repo:web-app"] },
+      ],
+    },
+  },
+  {
+    work_unit_id: "wu-53a17",
+    time_range: {
+      start: "2025-02-02T09:00:00Z",
+      end: "2025-02-04T16:30:00Z",
+    },
+    effort: { metric: "churn_loc", value: 540 },
+    investment: {
+      themes: {
+        feature_delivery: 0.12,
+        maintenance: 0.58,
+        operational: 0.08,
+        quality: 0.18,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.enablement": 0.12,
+        "maintenance.debt": 0.3,
+        "maintenance.refactor": 0.18,
+        "maintenance.upgrade": 0.1,
+        "operational.support": 0.08,
+        "quality.bugfix": 0.12,
+        "quality.reliability": 0.06,
+        "risk.compliance": 0.04,
+      },
+    },
+    evidence_quality: { value: 0.84, band: "high" },
+    evidence: {
+      textual: [],
+      structural: [
+        { type: "work_item_type", work_item_type: "chore", count: 2 },
+      ],
+      contextual: [
+        {
+          type: "time_range",
+          start: "2025-02-02T09:00:00Z",
+          end: "2025-02-04T16:30:00Z",
+          span_days: 2.3,
+          score: 0.72,
+        },
+        { type: "repo_scope", repo_ids: ["repo:core-api"] },
+      ],
+    },
+  },
+  {
+    work_unit_id: "wu-7ed90",
+    time_range: {
+      start: "2025-02-05T08:00:00Z",
+      end: "2025-02-06T20:00:00Z",
+    },
+    effort: { metric: "churn_loc", value: 310 },
+    investment: {
+      themes: {
+        feature_delivery: 0.06,
+        maintenance: 0.12,
+        operational: 0.6,
+        quality: 0.18,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.customer": 0.06,
+        "maintenance.debt": 0.12,
+        "operational.incident_response": 0.4,
+        "operational.on_call": 0.12,
+        "operational.support": 0.08,
+        "quality.reliability": 0.1,
+        "quality.bugfix": 0.08,
+        "risk.vulnerability": 0.04,
+      },
+    },
+    evidence_quality: { value: 0.55, band: "low" },
+    evidence: {
+      textual: [
+        { type: "text_phrase", phrase: "hotfix", source: "pr_title" },
+      ],
+      structural: [
+        { type: "work_item_type", work_item_type: "incident", count: 1 },
+      ],
+      contextual: [
+        {
+          type: "time_range",
+          start: "2025-02-05T08:00:00Z",
+          end: "2025-02-06T20:00:00Z",
+          span_days: 1.5,
+          score: 0.44,
+        },
+        { type: "repo_scope", repo_ids: ["repo:infra"] },
+      ],
+    },
+  },
+  {
+    work_unit_id: "wu-9b2d4",
+    time_range: {
+      start: "2025-02-06T10:00:00Z",
+      end: "2025-02-08T12:00:00Z",
+    },
+    effort: { metric: "churn_loc", value: 460 },
+    investment: {
+      themes: {
+        feature_delivery: 0.14,
+        maintenance: 0.12,
+        operational: 0.08,
+        quality: 0.58,
+        risk: 0.08,
+      },
+      subcategories: {
+        "feature_delivery.roadmap": 0.08,
+        "feature_delivery.enablement": 0.06,
+        "maintenance.refactor": 0.12,
+        "operational.support": 0.08,
+        "quality.bugfix": 0.35,
+        "quality.testing": 0.15,
+        "quality.reliability": 0.08,
+        "risk.security": 0.08,
+      },
+    },
+    evidence_quality: { value: 0.62, band: "moderate" },
+    evidence: {
+      textual: [
+        {
+          type: "text_phrase",
+          phrase: "fix flaky tests",
+          source: "issue_description",
+        },
+      ],
+      structural: [
+        { type: "work_item_type", work_item_type: "bug", count: 4 },
+      ],
+      contextual: [
+        {
+          type: "time_range",
+          start: "2025-02-06T10:00:00Z",
+          end: "2025-02-08T12:00:00Z",
+          span_days: 2.1,
+          score: 0.58,
+        },
+        { type: "repo_scope", repo_ids: ["repo:web-app", "repo:core-api"] },
+      ],
+    },
+  },
+  {
+    work_unit_id: "wu-c1f80",
+    time_range: {
+      start: "2025-02-08T09:30:00Z",
+      end: "2025-02-09T19:00:00Z",
+    },
+    effort: { metric: "churn_loc", value: 220 },
+    investment: {
+      themes: {
+        feature_delivery: 0.32,
+        maintenance: 0.24,
+        operational: 0.12,
+        quality: 0.22,
+        risk: 0.1,
+      },
+      subcategories: {
+        "feature_delivery.customer": 0.18,
+        "feature_delivery.enablement": 0.14,
+        "maintenance.debt": 0.14,
+        "maintenance.upgrade": 0.1,
+        "operational.on_call": 0.06,
+        "operational.support": 0.06,
+        "quality.testing": 0.12,
+        "quality.reliability": 0.1,
+        "risk.security": 0.06,
+        "risk.compliance": 0.04,
+      },
+    },
+    evidence_quality: { value: 0.38, band: "very_low" },
+    evidence: {
+      textual: [],
+      structural: [
+        { type: "work_item_type", work_item_type: "task", count: 2 },
+      ],
+      contextual: [
+        {
+          type: "time_range",
+          start: "2025-02-08T09:30:00Z",
+          end: "2025-02-09T19:00:00Z",
+          span_days: 1.4,
+          score: 0.41,
+        },
+        { type: "repo_scope", repo_ids: ["repo:search"] },
+      ],
+    },
+  },
+];
+
+export const investmentMixSample: InvestmentResponse = {
+  theme_distribution: {
+    feature_delivery: 644.6,
+    maintenance: 606,
+    operational: 423.6,
+    quality: 550.2,
+    risk: 125.6,
+  },
+  subcategory_distribution: {
+    "feature_delivery.customer": 320.6,
+    "feature_delivery.roadmap": 200.8,
+    "feature_delivery.enablement": 123.2,
+    "maintenance.debt": 279.2,
+    "maintenance.refactor": 250.8,
+    "maintenance.upgrade": 76,
+    "operational.incident_response": 206,
+    "operational.support": 167.2,
+    "operational.on_call": 50.4,
+    "quality.bugfix": 250.6,
+    "quality.testing": 177.4,
+    "quality.reliability": 122.2,
+    "risk.security": 82.8,
+    "risk.compliance": 30.4,
+    "risk.vulnerability": 12.4,
+  },
+  unit: "loc",
+};

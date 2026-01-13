@@ -13,7 +13,9 @@ export type SunburstNode = {
     children?: SunburstNode[];
     itemStyle?: {
         color?: string;
+        opacity?: number;
     };
+    [key: string]: unknown;
 };
 
 type SunburstChartProps = {
@@ -23,6 +25,8 @@ type SunburstChartProps = {
     width?: number | string;
     className?: string;
     style?: CSSProperties;
+    useInputColors?: boolean;
+    tooltipFormatter?: (params: unknown, totalValue: number, unit: string) => string;
     onNodeClick?: (node: {
         name: string;
         value: number;
@@ -43,6 +47,8 @@ export function SunburstChart({
     width = "100%",
     className,
     style,
+    useInputColors = false,
+    tooltipFormatter,
     onNodeClick,
 }: SunburstChartProps) {
     const chartTheme = useChartTheme();
@@ -53,7 +59,7 @@ export function SunburstChart({
 
     // Assign colors to top-level children
     const coloredData = useMemo(() => {
-        if (!data.children?.length) return data;
+        if (useInputColors || !data.children?.length) return data;
 
         const assignColors = (node: SunburstNode, depth: number, colorIndex: number): SunburstNode => {
             const baseColor = chartColors[colorIndex % chartColors.length];
@@ -83,7 +89,7 @@ export function SunburstChart({
             ...data,
             children: data.children.map((child, idx) => assignColors(child, 0, idx)),
         };
-    }, [data, chartColors]);
+    }, [data, chartColors, useInputColors]);
 
     const handleClick = useCallback(
         (params: unknown) => {
@@ -109,6 +115,9 @@ export function SunburstChart({
             tooltip: {
                 confine: true,
                 formatter: (params: unknown) => {
+                    if (tooltipFormatter) {
+                        return tooltipFormatter(params, totalValue, unit);
+                    }
                     if (!params || typeof params !== "object") return "";
                     const entry = params as {
                         data?: { name?: string; value?: number };
@@ -199,7 +208,7 @@ export function SunburstChart({
                 },
             ],
         }),
-        [coloredData, totalValue, unit, chartTheme]
+        [coloredData, totalValue, unit, chartTheme, tooltipFormatter]
     );
 
     return (

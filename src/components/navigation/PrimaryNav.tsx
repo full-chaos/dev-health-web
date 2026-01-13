@@ -16,7 +16,7 @@ const navItems: NavItem[] = [
   { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Trends" },
   { id: "landscape", label: "Landscape", href: "/explore/landscape", description: "Quadrants" },
   { id: "work", label: "Work", href: "/work", description: "Investment" },
-  { id: "code", label: "Code", href: "/code", description: "Signals" },
+  { id: "code", label: "Code", href: "/code", description: "Ownership" },
   { id: "quality", label: "Quality", href: "/quality", description: "Reliability" },
   { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
 ];
@@ -40,7 +40,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
               Cockpit
             </p>
             <p className="mt-2 text-xs text-(--ink-muted)">
-              Observe signals, drill into evidence.
+              Observe patterns, drill into evidence.
             </p>
           </div>
           <nav className="mt-5 space-y-2 text-sm">

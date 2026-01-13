@@ -81,6 +81,43 @@ export type ExplainResponse = {
   drilldown_links: Record<string, string>;
 };
 
+export type InvestmentFindingEvidence = {
+  theme: string;
+  subcategory?: string | null;
+  share_pct: number;
+  delta_pct_points?: number | null;
+  evidence_quality_mean?: number | null;
+  evidence_quality_band?: string | null;
+};
+
+export type InvestmentFinding = {
+  finding: string;
+  evidence: InvestmentFindingEvidence;
+};
+
+export type InvestmentConfidence = {
+  level: "high" | "moderate" | "low" | "unknown";
+  quality_mean?: number | null;
+  quality_stddev?: number | null;
+  band_mix: Record<string, number>;
+  drivers: string[];
+};
+
+export type InvestmentActionItem = {
+  action: string;
+  why: string;
+  where: string;
+};
+
+export type InvestmentMixExplanation = {
+  summary: string;
+  top_findings: InvestmentFinding[];
+  confidence: InvestmentConfidence;
+  what_to_check_next: InvestmentActionItem[];
+  anti_claims: string[];
+  status?: "valid" | "invalid_json" | "invalid_llm_output";
+};
+
 export type DrilldownResponse = {
   items: Array<Record<string, unknown>>;
 };
@@ -102,9 +139,18 @@ export type HealthResponse = {
   services: Record<string, string>;
 };
 
+export type EvidenceQualityStats = {
+  mean: number | null;
+  stddev: number | null;
+  band_counts: Record<string, number>;
+  quality_drivers: string[];
+};
+
 export type InvestmentResponse = {
-  categories: Array<{ key: string; name: string; value: number }>;
-  subtypes: Array<{ name: string; value: number; parentKey: string }>;
+  theme_distribution: Record<string, number>;
+  subcategory_distribution: Record<string, number>;
+  evidence_quality_distribution?: Record<string, number>;
+  evidence_quality_stats?: EvidenceQualityStats;
   unit?: string;
   edges?: Array<Record<string, unknown>>;
 };
@@ -115,12 +161,16 @@ export type SankeyNode = {
   name: string;
   group?: string;
   value?: number;
+  itemStyle?: { color?: string; opacity?: number };
+  qualityValue?: number;
+  hasTextual?: boolean;
 };
 
 export type SankeyLink = {
   source: string;
   target: string;
   value: number;
+  lineStyle?: { color?: string; opacity?: number };
 };
 
 export type SankeyResponse = {
@@ -130,6 +180,49 @@ export type SankeyResponse = {
   unit?: string;
   label?: string;
   description?: string;
+  team_coverage?: number;
+  repo_coverage?: number;
+  distinct_team_targets?: number;
+  distinct_repo_targets?: number;
+  chosen_mode?: string;
+};
+
+export type WorkUnitInvestmentBreakdown = {
+  themes: Record<string, number>;
+  subcategories: Record<string, number>;
+};
+
+export type WorkUnitInvestment = {
+  /**
+   * Probabilistic work-unit investment categorization emitted by dev-health-ops.
+   * Used to render Work Unit Investment views without client-side inference.
+   */
+  work_unit_id: string;
+  /** Time range bounding the connected subgraph. */
+  time_range: { start: string; end: string };
+  /** Effort value derived by the backend (churn LOC or active hours). */
+  effort: { metric: "churn_loc" | "active_hours"; value: number };
+  /** Investment vectors for themes and subcategories (each sums to ~1.0). */
+  investment: WorkUnitInvestmentBreakdown;
+  /** Evidence quality and server-side band. */
+  evidence_quality: {
+    value: number | null;
+    band: "high" | "moderate" | "low" | "very_low" | "unknown" | null;
+  };
+  /** Evidence payloads backing textual, structural, and contextual corroboration. */
+  evidence: {
+    textual: Array<Record<string, unknown>>;
+    structural: Array<Record<string, unknown>>;
+    contextual: Array<Record<string, unknown>>;
+  };
+};
+export type WorkUnitExplanation = {
+  work_unit_id: string;
+  summary: string;
+  category_rationale: Record<string, string>;
+  evidence_highlights: string[];
+  uncertainty_disclosure: string;
+  evidence_quality_limits: string;
 };
 
 export type PersonIdentity = {
@@ -332,4 +425,3 @@ export type AggregatedFlameResponse = {
 };
 
 export * from "./filters/types";
-

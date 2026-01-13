@@ -252,7 +252,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 </Link>
               </div>
               <p className="mt-2 text-xs text-(--ink-muted)">
-                Preview of the selected window. Select a signal for detail.
+                Preview of the selected window. Select a data point for detail.
               </p>
               {drivers.length ? (
                 <div className="mt-4 space-y-4">
