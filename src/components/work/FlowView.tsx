@@ -24,7 +24,7 @@ import {
     sankeyHotspotLinks,
     investmentMixSample,
 } from "@/data/devHealthOpsSample";
-import { normalizeInvestmentMix, type InvestmentMixAggregate } from "@/lib/investmentMix";
+import { normalizeInvestmentMix, type InvestmentMixAggregate, titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
@@ -57,6 +57,7 @@ const FLOW_TABS: Array<{ id: FlowSubTab; label: string; description: string }> =
 type FlowSelection = {
     view: FlowSubTab;
     path: string[];
+    key?: string;
     metricValue: number;
     percentTotal: number;
     unit: string;
@@ -267,11 +268,44 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         setSelection({
             view,
             path: node.path,
+            key: node.path[node.path.length - 1],
             metricValue: node.value,
             percentTotal: node.percent,
             unit,
         });
     }, []);
+
+    const handleInvestmentMixClick = useCallback((
+        key: string,
+        type: "theme" | "subcategory"
+    ) => {
+        if (!investmentMix) return;
+
+        let path: string[] = [];
+        let value = 0;
+        const total = Object.values(investmentMix.theme_distribution).reduce((a, b) => a + b, 0);
+
+        if (type === "theme") {
+            path = [titleCase(key)];
+            value = investmentMix.theme_distribution[key] ?? 0;
+            // Also update the focus theme for internal sunburst state if needed
+            setInvestmentMixFocusTheme(current => current === key ? null : key);
+        } else {
+            const [themeKey] = key.split(".", 1);
+            path = [titleCase(themeKey || ""), formatSubcategoryLabel(key, true)];
+            value = investmentMix.subcategory_distribution[key] ?? 0;
+            setInvestmentMixFocusTheme(themeKey || null);
+        }
+
+        setSelection({
+            view: "investment_mix",
+            path,
+            key,
+            metricValue: value,
+            percentTotal: total > 0 ? (value / total) * 100 : 0,
+            unit: investmentMix.unit ?? "units",
+        });
+    }, [investmentMix]);
 
     const handleSankeyClick = useCallback((item: {
         type: "node" | "link";
@@ -314,7 +348,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     // Evidence URL for inspect panel
     const evidenceUrl = useMemo(() => {
         if (!selection) return null;
-        const label = selection.path[selection.path.length - 1] ?? null;
+        const label = selection.key ?? selection.path[selection.path.length - 1] ?? null;
         const linkLabel = selection.transition ? `${selection.transition.from} -> ${selection.transition.to}` : null;
         return buildSankeyEvidenceUrl({
             mode,
@@ -333,7 +367,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
     const flameUrl = useMemo(() => {
         if (!selection) return null;
-        const nodeName = selection.path[selection.path.length - 1];
+        const nodeName = selection.key ?? selection.path[selection.path.length - 1];
         return withFilterParam(`/work?tab=flame&mode=${flameMode}&context_node=${nodeName}`, filters, activeRole);
     }, [flameMode, filters, activeRole, selection]);
 
@@ -383,8 +417,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                         )}
                     </div>
 
-                    <div 
-                        className="relative min-h-[400px]" 
+                    <div
+                        className="relative min-h-[400px]"
                         data-testid="flow-chart-container"
                         role="tabpanel"
                         id={`flow-panel-${subTab}`}
@@ -415,15 +449,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                                         unit={investmentMix.unit ?? "units"}
                                         height={500}
                                         focusedTheme={investmentMixFocusTheme}
-                                        onThemeClick={(themeKey) =>
-                                            setInvestmentMixFocusTheme((current) =>
-                                                current === themeKey ? null : themeKey
-                                            )
-                                        }
-                                        onSubcategoryClick={(subcategoryKey) => {
-                                            const [themeKey] = subcategoryKey.split(".", 1);
-                                            setInvestmentMixFocusTheme(themeKey || null);
-                                        }}
+                                        onThemeClick={(themeKey) => handleInvestmentMixClick(themeKey, "theme")}
+                                        onSubcategoryClick={(subcategoryKey) => handleInvestmentMixClick(subcategoryKey, "subcategory")}
                                     />
                                     <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
                                         <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">

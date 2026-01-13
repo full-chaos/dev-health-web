@@ -7,21 +7,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import { formatNumber } from "@/lib/formatters";
-
-const titleCase = (value: string) =>
-  value
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-
-const formatSubcategoryLabel = (key: string) => {
-  const parts = key.split(".", 2);
-  if (parts.length !== 2) return titleCase(key);
-  const sub = parts[1] ?? key;
-  return titleCase(sub);
-};
+import { titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
 const adjustHex = (hex: string, amount: number) => {
   const normalized = hex.replace("#", "");
@@ -108,22 +94,22 @@ export function InvestmentMixSunburst({
         focusedTheme && focusedTheme !== theme.key
           ? undefined
           : subEntries
-              .filter((entry) => entry.key.startsWith(`${theme.key}.`))
-              .sort((a, b) => b.value - a.value)
-              .map((entry, idx) => {
-                const childOpacity = evidenceQualityDistribution?.[entry.key];
-                return {
-                  name: formatSubcategoryLabel(entry.key),
-                  value: entry.value,
-                  itemStyle: {
-                    color: adjustHex(baseColor, 18 + (idx % 3) * 10),
-                    opacity: typeof childOpacity === "number" ? childOpacity : undefined,
-                  },
-                  nodeType: "subcategory",
-                  themeKey: theme.key,
-                  subcategoryKey: entry.key,
-                };
-              });
+            .filter((entry) => entry.key.startsWith(`${theme.key}.`))
+            .sort((a, b) => b.value - a.value)
+            .map((entry, idx) => {
+              const childOpacity = evidenceQualityDistribution?.[entry.key];
+              return {
+                name: formatSubcategoryLabel(entry.key, true),
+                value: entry.value,
+                itemStyle: {
+                  color: adjustHex(baseColor, 18 + (idx % 3) * 10),
+                  opacity: typeof childOpacity === "number" ? childOpacity : undefined,
+                },
+                nodeType: "subcategory",
+                themeKey: theme.key,
+                subcategoryKey: entry.key,
+              };
+            });
 
       return {
         name: themeLabel,
@@ -183,7 +169,7 @@ export function InvestmentMixSunburst({
 
           const title =
             nodeType === "subcategory" && subcategoryKey
-              ? `${titleCase(themeKey)} · ${formatSubcategoryLabel(subcategoryKey)}`
+              ? `${titleCase(themeKey)} · ${formatSubcategoryLabel(subcategoryKey, true)}`
               : typeof node.name === "string"
                 ? node.name
                 : "";

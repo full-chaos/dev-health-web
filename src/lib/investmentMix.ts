@@ -5,6 +5,23 @@ export type InvestmentMixAggregate = {
   evidence_quality_distribution?: Record<string, number>;
 };
 
+export const titleCase = (value: string) =>
+  value
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+export const formatSubcategoryLabel = (key: string, skipParentPrefix = false) => {
+  const parts = key.split(".", 2);
+  if (parts.length !== 2) return titleCase(key);
+  const theme = parts[0] ?? "";
+  const sub = parts[1] ?? key;
+  if (skipParentPrefix) return titleCase(sub);
+  return `${titleCase(theme)} · ${titleCase(sub)}`;
+};
+
 export type LegacyInvestmentMixResponse = {
   categories: Array<{ key: string; name: string; value: number }>;
   subtypes: Array<{ name: string; value: number; parentKey: string }>;
@@ -50,11 +67,11 @@ export const normalizeInvestmentMix = (input: InvestmentMixResponse): Investment
       unit: typeof typed.unit === "string" ? typed.unit : undefined,
       evidence_quality_distribution: isRecord(typed.evidence_quality_distribution)
         ? Object.fromEntries(
-            Object.entries(typed.evidence_quality_distribution).map(([key, value]) => [
-              key,
-              typeof value === "number" ? value : 0,
-            ])
-          )
+          Object.entries(typed.evidence_quality_distribution).map(([key, value]) => [
+            key,
+            typeof value === "number" ? value : 0,
+          ])
+        )
         : undefined,
     };
   }
