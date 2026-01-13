@@ -618,6 +618,47 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         []
     );
 
+    const formatSankeyTooltip = useCallback(
+        (params: unknown, unit: string) => {
+            if (!params || typeof params !== "object") return "";
+            const entry = params as {
+                dataType?: string;
+                data?: {
+                    name?: string;
+                    value?: number;
+                    source?: string;
+                    target?: string;
+                };
+                name?: string;
+            };
+            const data = entry.data ?? {};
+            const timeLabel = buildTimeRangeLabel(filters.start_date, filters.end_date);
+
+            if (entry.dataType === "edge") {
+                const lines = [
+                    `<strong>Allocation:</strong> ${formatNumber(data.value ?? 0)} ${unit}`,
+                    `<strong>From:</strong> ${data.source ?? ""}`,
+                    `<strong>To:</strong> ${data.target ?? ""}`,
+                    `<strong>Window:</strong> ${timeLabel}`,
+                ];
+                const extra = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 10px; color: ${chartTheme.muted};">
+                    <strong>Meaning:</strong> attribution under current filters (not dependency or causation)
+                </div>`;
+                return `<div style="padding: 4px;">${lines.join("<br/>")}${extra}</div>`;
+            }
+
+            const nodeName = data.name ?? entry.name ?? "";
+            const value = data.value ?? 0;
+            const lines = [
+                `<strong>Total allocated:</strong> ${formatNumber(value)} ${unit}`,
+                `<strong>Role:</strong> source/target in allocation`,
+                `<strong>Window:</strong> ${timeLabel}`
+            ];
+            return `<div style="padding: 4px;"><strong>${nodeName}</strong><br/><br/>${lines.join("<br/>")}</div>`;
+        },
+        [filters.start_date, filters.end_date, chartTheme.grid, chartTheme.muted]
+    );
+
     const formatTreemapTooltip = useCallback(
         (params: unknown, _totalValue: number, unitLabel: string) => {
             if (!params || typeof params !== "object") return "";
@@ -1046,14 +1087,14 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <h3 className="font-(--font-display) text-lg">Sankey</h3>
+                        <h3 className="font-(--font-display) text-lg">Investment allocation by destination</h3>
                         <div className="group relative">
                             <span className="cursor-help text-(--ink-muted) transition hover:text-(--ink)">
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </span>
-                            <div className="absolute left-0 top-6 z-50 hidden w-64 rounded-xl border border-(--card-stroke) bg-(--card-dark) p-3 text-[11px] leading-relaxed text-(--ink) shadow-xl group-hover:block">
+                            <div className="absolute left-0 top-6 z-50 hidden w-64 rounded-xl border border-(--card-stroke) bg-card p-3 text-[11px] leading-relaxed text-(--ink) shadow-xl group-hover:block">
                                 <p className="font-semibold mb-1">Why is this view selected?</p>
                                 <p className="mb-2 text-(--ink-muted)">Target is chosen automatically based on coverage and distinct target counts.</p>
                                 <div className="space-y-1">
@@ -1082,13 +1123,26 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                         </span>
                                     </div>
                                 </div>
-                                <p className="mt-2 text-[10px] text-(--ink-muted) italic border-t border-(--card-stroke) pt-1">Thresholds: Coverage ≥ 70%, Targets ≥ 2</p>
+                                <p className="mt-2 text-[10px] text-(--ink-muted) italic border-t border-(--card-stroke) pt-1 mb-2">Thresholds: Coverage ≥ 70%, Targets ≥ 2</p>
+
+                                <div className="border-t border-(--card-stroke) pt-2">
+                                    <p className="font-semibold mb-1">Investment Semantics</p>
+                                    <ul className="list-disc pl-3 space-y-1 text-(--ink-muted)">
+                                        <li>Snapshot for selected window</li>
+                                        <li>Allocation, not dependency</li>
+                                        <li>Not impact, not root cause</li>
+                                        <li><strong>Repo scope:</strong> represents the destination (repo, service, or team) where effort is attributed</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <span className="text-xs text-(--ink-muted)">{sankeyFlow?.label || "Subcategory → repo scope"}</span>
+                    <span className="text-xs text-(--ink-muted)">How the selected investment themes are distributed across destinations in this window.</span>
                 </div>
-                <div className="mt-4">
+                <div className="mt-2 mb-4 text-[11px] text-(--ink-muted) leading-relaxed border-l-2 border-(--card-stroke) pl-3 py-1">
+                    This is a snapshot allocation view. Links show where counted work/effort is attributed under current filters, not why it happened or its impact.
+                </div>
+                <div className="mt-0">
                     {isSankeyLoading ? (
                         <p className="text-sm text-(--ink-muted)">Loading flow data…</p>
                     ) : !sankeyFlow || (sankeyFlow.chosen_mode === "fallback") ? (
@@ -1108,6 +1162,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             links={sankeyFlow.links}
                             unit={effortUnit}
                             height={320}
+                            tooltipFormatter={formatSankeyTooltip}
                             onItemClick={(item) => {
                                 // Extract subcategory from node name if possible
                                 if (item.type === "node") {
