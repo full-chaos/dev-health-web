@@ -15,9 +15,7 @@ import { explainInvestmentMix, getInvestment, getWorkUnits, getWorkUnitExplanati
 import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix, type InvestmentMixAggregate } from "@/lib/investmentMix";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { InvestmentMixExplanation, SankeyLink, SankeyNode, WorkUnitInvestment, WorkUnitExplanation, SankeyResponse } from "@/lib/types";
-
-type SankeyRenderMode = "sankey" | "allocation_bar";
+import type { InvestmentMixExplanation, WorkUnitInvestment, WorkUnitExplanation, SankeyResponse } from "@/lib/types";
 
 type InvestmentViewProps = {
     filters: MetricFilter;
@@ -25,11 +23,6 @@ type InvestmentViewProps = {
 
 type CategorizationMode = "text_metadata" | "metadata_only";
 
-
-type SankeyEdgeMeta = {
-    avgQuality: number;
-    hasTextual: boolean;
-};
 
 type EvidenceUnit = {
     unit: WorkUnitInvestment;
@@ -72,7 +65,7 @@ const formatSubcategoryLabel = (value: string, includeTheme = true) => {
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 
 const formatBandLabel = (band: WorkUnitInvestment["evidence_quality"]["band"]) =>
-    titleCase(band.replace("_", " "));
+    titleCase((band ?? "").replace("_", " "));
 
 const formatQuality = (value: number) => formatNumber(value, { maximumFractionDigits: 2 });
 
@@ -162,7 +155,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
-    const workUnitCount = workUnits.length;
 
     useEffect(() => {
         if (!focusTheme) {
@@ -247,15 +239,36 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     setMixExplanation({
                         data: {
                             summary: "This view suggests effort leans toward a small number of dominant themes, with subcategories providing the specific intent behind that allocation.",
-                            dominant_themes: Object.keys(investmentMixSample.theme_distribution).slice(0, 3).map(titleCase),
-                            key_drivers: [
-                                "Subcategory distribution appears concentrated in the leading theme families.",
-                                "Repo scope destinations are derived from connected work-unit evidence only.",
+                            top_findings: [
+                                {
+                                    finding: "Subcategory distribution appears concentrated in the leading theme families.",
+                                    evidence: {
+                                        theme: Object.keys(investmentMixSample.theme_distribution)[0] || "Unknown",
+                                        share_pct: 40,
+                                        evidence_quality_band: "moderate",
+                                    },
+                                },
+                                {
+                                    finding: "Repo scope destinations are derived from connected work-unit evidence only.",
+                                    evidence: { theme: "Cross-cutting", share_pct: 15 },
+                                },
                             ],
-                            operational_signals: [
-                                "Evidence quality bands indicate uncertainty varies across contributing work units.",
+                            confidence: {
+                                level: "moderate",
+                                drivers: ["high_uncertainty_spread"],
+                                band_mix: { moderate: 0.6, low: 0.4 },
+                            },
+                            what_to_check_next: [
+                                {
+                                    action: "Review low-confidence units",
+                                    why: "Evidence quality bands indicate uncertainty varies.",
+                                    where: "Work Unit drill-down",
+                                },
                             ],
-                            confidence_note: "AI-generated interpretation based on the data shown above; confidence appears bounded by the evidence quality mix.",
+                            anti_claims: [
+                                "This does not measure individual performance.",
+                                "This is not a code quality assessment.",
+                            ],
                         },
                         filtersKey: mixExplainKey,
                         focus: { theme: null, subcategory: null },
@@ -380,8 +393,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         };
     }, [filters, useSampleData]);
 
-    const baselineFilters = useMemo(() => getBaselineFilters(filters), [filters]);
-
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
         return workUnits.find((unit) => unit.work_unit_id === selectedId) ?? null;
@@ -422,28 +433,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         };
     }, [selectedId, selectedUnit, filters]);
 
-    const themeIds = useMemo(() => {
-        const ids = new Set<string>();
-        workUnits.forEach((unit) => {
-            Object.keys(unit.investment?.themes ?? {}).forEach((key) => ids.add(key));
-        });
-        return Array.from(ids).sort();
-    }, [workUnits]);
-
-    const subcategoryIds = useMemo(() => {
-        if (!focusTheme) return [];
-        const ids = new Set<string>();
-        const prefix = `${focusTheme}.`;
-        workUnits.forEach((unit) => {
-            Object.keys(unit.investment?.subcategories ?? {}).forEach((key) => {
-                if (key.startsWith(prefix)) {
-                    ids.add(key);
-                }
-            });
-        });
-        return Array.from(ids).sort();
-    }, [workUnits, focusTheme]);
-
     const allSubcategoryIds = useMemo(() => {
         const ids = new Set<string>();
         workUnits.forEach((unit) => {
@@ -451,29 +440,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         });
         return Array.from(ids).sort();
     }, [workUnits]);
-
-    const categoryIds = useMemo(
-        () => (focusTheme ? subcategoryIds : themeIds),
-        [focusTheme, subcategoryIds, themeIds]
-    );
-
-    const getCategoriesForUnit = useCallback(
-        (unit: WorkUnitInvestment) => {
-            if (!focusTheme) {
-                return unit.investment?.themes ?? {};
-            }
-            const filtered: Record<string, number> = {};
-            const prefix = `${focusTheme}.`;
-            const subcategories = unit.investment?.subcategories ?? {};
-            Object.entries(subcategories).forEach(([key, value]) => {
-                if (key.startsWith(prefix)) {
-                    filtered[key] = value;
-                }
-            });
-            return filtered;
-        },
-        [focusTheme]
-    );
 
     const themeColorMap = useMemo(() => {
         const map = new Map<string, string>();
@@ -606,11 +572,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             .filter((l) => !targets.has(l.source))
             .reduce((acc, l) => acc + l.value, 0);
     }, [baselineSankeyFlow]);
-
-    const sankeyRenderMode = useMemo<SankeyRenderMode>(() => {
-        if (!sankeyFlow) return "allocation_bar";
-        return sankeyFlow.chosen_mode === "fallback" ? "allocation_bar" : "sankey";
-    }, [sankeyFlow]);
 
     const sankeyFallbackSegments = useMemo(() => {
         if (!sankeyFlow || sankeyFlow.chosen_mode !== "fallback") return [];
