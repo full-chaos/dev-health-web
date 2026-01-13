@@ -138,18 +138,26 @@ export function StackedAreaChart({
             if (!onSeriesClick || !params || typeof params !== "object") return;
             const entry = params as {
                 seriesName?: string;
+                componentType?: string;
                 dataIndex?: number;
-                value?: number;
+                value?: number | number[];
+                name?: string;
             };
-            if (!entry.seriesName || typeof entry.dataIndex !== "number") return;
 
+            // Ensure we have a series click or a data point
+            if (typeof entry.dataIndex !== "number") return;
+
+            // For stacked area, if seriesName is missing, it might be a click on axis
+            // But usually ECharts provides the series being aimed at.
+            const seriesName = entry.seriesName || "";
+            const date = entry.name || dates[entry.dataIndex] || "";
+            const value = (Array.isArray(entry.value) ? entry.value[1] : entry.value) ?? 0;
             const dateTotal = dateTotals[entry.dataIndex] ?? 0;
-            const value = entry.value ?? 0;
             const percent = calcPercent(value, dateTotal);
 
             onSeriesClick({
-                seriesName: entry.seriesName,
-                date: dates[entry.dataIndex] ?? "",
+                seriesName,
+                date,
                 value,
                 percent,
             });
