@@ -185,14 +185,15 @@ export function InvestmentMixSunburst({
         },
       },
       legend: {
+        show: true,
         data: data.map((item) => item.name),
         type: "scroll",
-        bottom: 0,
+        bottom: 5,
         left: "center",
-        width: "88%",
-        itemWidth: 12,
-        itemHeight: 8,
-        itemGap: 16,
+        width: "92%",
+        itemWidth: 10,
+        itemHeight: 7,
+        itemGap: 12,
         pageIconSize: 10,
         formatter: (name: string) => {
           const value = legendValueByName.get(name) ?? 0;
@@ -211,8 +212,8 @@ export function InvestmentMixSunburst({
         {
           type: "sunburst" as const,
           data,
-          radius: ["18%", "88%"],
-          center: ["50%", "42%"],
+          radius: ["18%", "70%"],
+          center: ["50%", "50%"],
           sort: "desc" as const,
           nodeClick: false as const,
           emphasis: { focus: "ancestor" as const },
@@ -238,7 +239,7 @@ export function InvestmentMixSunburst({
             {},
             {
               r0: "18%",
-              r: "56%",
+              r: "44%",
               label: {
                 fontSize: 12,
                 fontWeight: 700,
@@ -246,8 +247,8 @@ export function InvestmentMixSunburst({
               itemStyle: { borderWidth: 3 },
             },
             {
-              r0: "56%",
-              r: "88%",
+              r0: "44%",
+              r: "70%",
               label: { show: false },
               emphasis: {
                 label: { show: true, color: chartTheme.text, fontSize: 11 },
