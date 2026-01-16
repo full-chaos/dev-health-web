@@ -144,11 +144,20 @@ export async function getSankey(params: {
 export async function getInvestmentFlow(params: {
   filters: MetricFilter;
   theme?: string | null;
+  flow_mode?: "team_category_repo" | "team_subcategory_repo";
+  drill_category?: string | null;
+  top_n_repos?: number;
 }) {
   const normalized = normalizeFilters(params.filters);
   return postJson<SankeyResponse>(
     "/api/v1/investment/flow",
-    { filters: normalized, theme: params.theme ?? null },
+    {
+      filters: normalized,
+      theme: params.theme ?? null,
+      flow_mode: params.flow_mode ?? null,
+      drill_category: params.drill_category ?? null,
+      top_n_repos: params.top_n_repos,
+    },
     60,
     { f: encodeFilterParam(normalized) }
   );

@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
 import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
 import { SankeyChart } from "@/components/charts/SankeyChart";
-import { StackedHorizontalBar } from "@/components/charts/StackedHorizontalBar";
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
@@ -300,12 +299,15 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [explanation, setExplanation] = useState<WorkUnitExplanation | null>(null);
     const [isExplaining, setIsExplaining] = useState(false);
     const [isExplainingMix, setIsExplainingMix] = useState(false);
-    const [sankeyFlow, setSankeyFlow] = useState<SankeyResponse | null>(null);
+    const [teamCategoryFlow, setTeamCategoryFlow] = useState<SankeyResponse | null>(null);
+    const [teamSubcategoryFlow, setTeamSubcategoryFlow] = useState<SankeyResponse | null>(null);
     const [baselineSankeyFlow, setBaselineSankeyFlow] = useState<SankeyResponse | null>(null);
-    const [isSankeyLoading, setIsSankeyLoading] = useState(true);
+    const [isCategoryFlowLoading, setIsCategoryFlowLoading] = useState(true);
+    const [isSubcategoryFlowLoading, setIsSubcategoryFlowLoading] = useState(false);
     const [repoTeamFlow, setRepoTeamFlow] = useState<SankeyResponse | null>(null);
     const [isRepoTeamLoading, setIsRepoTeamLoading] = useState(false);
     const [repoTeamFlowFailed, setRepoTeamFlowFailed] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
@@ -507,13 +509,13 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     useEffect(() => {
         let active = true;
 
-        const fetchSankey = async () => {
-            setIsSankeyLoading(true);
+        const fetchTeamCategoryFlow = async () => {
+            setIsCategoryFlowLoading(true);
             if (useSampleData) {
                 if (active) {
-                    // Sample logic for Sankey Flow
-                    setSankeyFlow(null);
-                    setIsSankeyLoading(false);
+                    setTeamCategoryFlow(null);
+                    setBaselineSankeyFlow(null);
+                    setIsCategoryFlowLoading(false);
                 }
                 return;
             }
@@ -521,31 +523,79 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             try {
                 const baselineFilters = getBaselineFilters(filters);
                 const [current, baseline] = await Promise.all([
-                    getInvestmentFlow({ filters }),
-                    getInvestmentFlow({ filters: baselineFilters }),
+                    getInvestmentFlow({
+                        filters,
+                        flow_mode: "team_category_repo",
+                        top_n_repos: 12,
+                    }),
+                    getInvestmentFlow({
+                        filters: baselineFilters,
+                        flow_mode: "team_category_repo",
+                        top_n_repos: 12,
+                    }),
                 ]);
 
                 if (active) {
-                    setSankeyFlow(current);
+                    setTeamCategoryFlow(current);
                     setBaselineSankeyFlow(baseline);
                 }
             } catch {
                 if (active) {
-                    setSankeyFlow(null);
+                    setTeamCategoryFlow(null);
                     setBaselineSankeyFlow(null);
                 }
             } finally {
                 if (active) {
-                    setIsSankeyLoading(false);
+                    setIsCategoryFlowLoading(false);
                 }
             }
         };
 
-        fetchSankey();
+        fetchTeamCategoryFlow();
         return () => {
             active = false;
         };
     }, [filters, useSampleData]);
+
+    useEffect(() => {
+        let active = true;
+
+        const fetchTeamSubcategoryFlow = async () => {
+            if (!selectedCategory || useSampleData) {
+                if (active) {
+                    setTeamSubcategoryFlow(null);
+                    setIsSubcategoryFlowLoading(false);
+                }
+                return;
+            }
+
+            setIsSubcategoryFlowLoading(true);
+            try {
+                const flow = await getInvestmentFlow({
+                    filters,
+                    flow_mode: "team_subcategory_repo",
+                    drill_category: selectedCategory,
+                    top_n_repos: 12,
+                });
+                if (active) {
+                    setTeamSubcategoryFlow(flow);
+                }
+            } catch {
+                if (active) {
+                    setTeamSubcategoryFlow(null);
+                }
+            } finally {
+                if (active) {
+                    setIsSubcategoryFlowLoading(false);
+                }
+            }
+        };
+
+        fetchTeamSubcategoryFlow();
+        return () => {
+            active = false;
+        };
+    }, [filters, selectedCategory, useSampleData]);
 
     useEffect(() => {
         let active = true;
@@ -747,6 +797,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         chartTheme.grid,
     ]);
 
+    const sankeyFlow = selectedCategory ? teamSubcategoryFlow : teamCategoryFlow;
+    const isSankeyLoading = selectedCategory ? isSubcategoryFlowLoading : isCategoryFlowLoading;
+
     const currentSankeyTotal = useMemo(() => {
         if (!sankeyFlow || !sankeyFlow.links.length) return 0;
         const targets = new Set(sankeyFlow.links.map((l) => l.target));
@@ -763,21 +816,58 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             .reduce((acc, l) => acc + l.value, 0);
     }, [baselineSankeyFlow]);
 
-    const sankeyFallbackSegments = useMemo(() => {
-        if (!sankeyFlow || sankeyFlow.chosen_mode !== "fallback") return [];
-        return sankeyFlow.nodes
-            .filter((n) => n.group === "subcategory")
-            .map((n) => {
-                const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === n.name);
-                const color = subId ? categoryColorMap.get(subId) : undefined;
-                return {
-                    name: n.name,
-                    value: n.value ?? 0,
-                    color,
-                };
-            })
+    const sankeyNodeMap = useMemo(() => {
+        const map = new Map<string, SankeyNode>();
+        (sankeyFlow?.nodes ?? []).forEach((node) => map.set(node.name, node));
+        return map;
+    }, [sankeyFlow]);
+
+    const showBaselineDelta = !selectedCategory && baselineSankeyTotal > 0;
+
+    const sankeyCoverage = useMemo(() => {
+        const coverage = sankeyFlow?.coverage;
+        return {
+            team: coverage?.team_coverage ?? sankeyFlow?.team_coverage ?? 0,
+            repo: coverage?.repo_coverage ?? sankeyFlow?.repo_coverage ?? 0,
+        };
+    }, [sankeyFlow]);
+
+    const categoryShareSummary = useMemo(() => {
+        if (!teamCategoryFlow || !teamCategoryFlow.links.length) return [];
+        const categories = new Set(
+            teamCategoryFlow.nodes
+                .filter((node) => node.group === "category")
+                .map((node) => node.name)
+        );
+        if (!categories.size) return [];
+        const totals = new Map<string, number>();
+        let total = 0;
+        teamCategoryFlow.links.forEach((link) => {
+            if (!categories.has(link.target)) return;
+            totals.set(link.target, (totals.get(link.target) ?? 0) + link.value);
+            total += link.value;
+        });
+        if (total === 0) {
+            teamCategoryFlow.links.forEach((link) => {
+                if (!categories.has(link.source)) return;
+                totals.set(link.source, (totals.get(link.source) ?? 0) + link.value);
+                total += link.value;
+            });
+        }
+        return Array.from(totals.entries())
+            .map(([name, value]) => ({
+                name,
+                value,
+                share: total > 0 ? (value / total) * 100 : 0,
+            }))
             .sort((a, b) => b.value - a.value);
-    }, [sankeyFlow, allSubcategoryIds, categoryColorMap]);
+    }, [teamCategoryFlow]);
+
+    const isSingleTeamScope = filters.scope.level === "team" && filters.scope.ids.length === 1;
+    const topCategorySummary = useMemo(
+        () => categoryShareSummary.slice(0, isSingleTeamScope ? 1 : 3),
+        [categoryShareSummary, isSingleTeamScope]
+    );
 
     const repoTeamSankey = useMemo(() => {
         if (repoTeamFlow) {
@@ -865,86 +955,104 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             const data = entry.data ?? {};
             const timeLabel = buildTimeRangeLabel(filters.time.start_date, filters.time.end_date);
 
-            const currentValue = data.value ?? 0;
-            const currentShare = currentSankeyTotal > 0 ? (currentValue / currentSankeyTotal) * 100 : 0;
+            const isEdge = entry.dataType === "edge";
+            const nodeName = data.name ?? entry.name ?? "";
+            const currentValue = typeof data.value === "number" ? data.value : 0;
+            const nodeValue = sankeyNodeMap.get(nodeName)?.value ?? currentValue;
+            const resolvedValue = isEdge ? currentValue : nodeValue;
+            const currentShare = currentSankeyTotal > 0 ? (resolvedValue / currentSankeyTotal) * 100 : 0;
 
-            let baselineValue = 0;
-            if (entry.dataType === "edge") {
-                const baseLink = baselineSankeyFlow?.links.find(
-                    (l) => l.source === data.source && l.target === data.target
-                );
-                baselineValue = baseLink?.value ?? 0;
-            } else {
-                const nodeName = data.name ?? entry.name ?? "";
-                const baseNode = baselineSankeyFlow?.nodes.find((n) => n.name === nodeName);
-                baselineValue =
-                    baseNode?.value ??
-                    baselineSankeyFlow?.links
-                        .filter((l) => l.source === nodeName || l.target === nodeName)
-                        .reduce((acc, l) => acc + l.value, 0) ??
-                    0;
-                // If node is intermediate, we might need a more complex sum, but usually nodes have values
-                if (baselineValue === 0 && baselineSankeyFlow) {
-                    // Try matching by name if value is missing
-                    const outgoing = baselineSankeyFlow.links
-                        .filter((l) => l.source === nodeName)
-                        .reduce((acc, l) => acc + l.value, 0);
-                    const incoming = baselineSankeyFlow.links
-                        .filter((l) => l.target === nodeName)
-                        .reduce((acc, l) => acc + l.value, 0);
-                    baselineValue = Math.max(incoming, outgoing);
+            const groupLabel = (name?: string) => {
+                const group = name ? sankeyNodeMap.get(name)?.group : undefined;
+                if (group === "team") return "Team";
+                if (group === "category") return "Category";
+                if (group === "subcategory") return "Subcategory";
+                if (group === "repo") return "Repo";
+                return "Node";
+            };
+
+            const drilldownHeader = selectedCategory
+                ? `<div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 6px;">Category: ${selectedCategory}</div>`
+                : "";
+            const drilldownNote = selectedCategory
+                ? `<div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted}; font-style: italic;">Showing subcategories within ${selectedCategory}.</div>`
+                : "";
+
+            let deltaHtml = "";
+            if (showBaselineDelta && baselineSankeyFlow) {
+                let baselineValue = 0;
+                if (isEdge) {
+                    const baseLink = baselineSankeyFlow?.links.find(
+                        (l) => l.source === data.source && l.target === data.target
+                    );
+                    baselineValue = baseLink?.value ?? 0;
+                } else {
+                    const baseNode = baselineSankeyFlow?.nodes.find((n) => n.name === nodeName);
+                    baselineValue =
+                        baseNode?.value ??
+                        baselineSankeyFlow?.links
+                            .filter((l) => l.source === nodeName || l.target === nodeName)
+                            .reduce((acc, l) => acc + l.value, 0) ??
+                        0;
+                    if (baselineValue === 0 && baselineSankeyFlow) {
+                        const outgoing = baselineSankeyFlow.links
+                            .filter((l) => l.source === nodeName)
+                            .reduce((acc, l) => acc + l.value, 0);
+                        const incoming = baselineSankeyFlow.links
+                            .filter((l) => l.target === nodeName)
+                            .reduce((acc, l) => acc + l.value, 0);
+                        baselineValue = Math.max(incoming, outgoing);
+                    }
                 }
-            }
 
-            const baselineShare =
-                baselineSankeyTotal > 0 ? (baselineValue / baselineSankeyTotal) * 100 : 0;
-            const delta = currentShare - baselineShare;
+                const baselineShare =
+                    baselineSankeyTotal > 0 ? (baselineValue / baselineSankeyTotal) * 100 : 0;
+                const delta = currentShare - baselineShare;
+                const deltaSign = delta > 0 ? "↑ +" : delta < 0 ? "↓ " : "";
+                const deltaColor =
+                    delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
 
-            const deltaSign = delta > 0 ? "↑ +" : delta < 0 ? "↓ " : "";
-            const deltaColor =
-                delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
-
-            const deltaHtml = `
+                deltaHtml = `
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid
-                }; font-size: 11px;">
+                    }; font-size: 11px;">
                     <div><span style="color: ${chartTheme.muted}">Current allocation share:</span> ${currentShare.toFixed(
-                    1
-                )}%</div>
+                        1
+                    )}%</div>
                     <div><span style="color: ${chartTheme.muted}">Baseline allocation share:</span> ${baselineShare.toFixed(
-                    1
-                )}%</div>
+                        1
+                    )}%</div>
                     <div style="font-weight: 600; color: ${deltaColor};">
                         Delta: ${deltaSign}${delta.toFixed(1)}%
                     </div>
                     <div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted
-                }; font-style: italic; line-height: 1.3;">
+                    }; font-style: italic; line-height: 1.3;">
                         Delta reflects change in allocation share vs the prior window. It does not indicate cause, impact, or priority.
                     </div>
                 </div>
             `;
+            }
 
-            if (entry.dataType === "edge") {
+            if (isEdge) {
                 const lines = [
                     `<strong>Allocation:</strong> ${formatNumber(currentValue)} ${unit}`,
-                    `<strong>From:</strong> ${data.source ?? ""}`,
-                    `<strong>To:</strong> ${data.target ?? ""}`,
+                    `<strong>From:</strong> ${data.source ?? ""} (${groupLabel(data.source)})`,
+                    `<strong>To:</strong> ${data.target ?? ""} (${groupLabel(data.target)})`,
                     `<strong>Window:</strong> ${timeLabel}`,
                 ];
                 const meaning = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 10px; color: ${chartTheme.muted};">
                     <strong>Meaning:</strong> attribution under current filters (not dependency or causation)
                 </div>`;
-                return `<div style="padding: 4px;">${lines.join("<br/>")}${deltaHtml}${meaning}</div>`;
+                return `<div style="padding: 4px;">${drilldownHeader}${lines.join("<br/>")}${deltaHtml}${meaning}${drilldownNote}</div>`;
             }
 
-            const nodeName = data.name ?? entry.name ?? "";
             const lines = [
-                `<strong>Total allocated:</strong> ${formatNumber(currentValue)} ${unit}`,
-                `<strong>Role:</strong> source/target in allocation`,
+                `<strong>Total allocated:</strong> ${formatNumber(nodeValue)} ${unit}`,
+                `<strong>Type:</strong> ${groupLabel(nodeName)}`,
                 `<strong>Window:</strong> ${timeLabel}`,
             ];
-            return `<div style="padding: 4px;"><strong>${nodeName}</strong><br/><br/>${lines.join(
+            return `<div style="padding: 4px;"><strong>${nodeName}</strong><br/><br/>${drilldownHeader}${lines.join(
                 "<br/>"
-            )}${deltaHtml}</div>`;
+            )}${deltaHtml}${drilldownNote}</div>`;
         },
         [
             filters.time,
@@ -955,6 +1063,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             chartTheme.muted,
             chartTheme.accent1,
             chartTheme.accent2,
+            sankeyNodeMap,
+            selectedCategory,
+            showBaselineDelta,
         ]
     );
 
@@ -1078,7 +1189,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             <li>Size represents effort associated with a theme or subcategory.</li>
                             <li>Color indicates which theme or subcategory the work leans toward.</li>
                             <li>Opacity represents evidence quality for the interpretation.</li>
-                            <li>Flows show how effort appears to move from themes or subcategories into repo scope.</li>
+                            <li>Flows show how effort appears to move from teams into categories and repos.</li>
                             <li>Use the investment mix chart to drill from themes into subcategories and evidence.</li>
                         </ul>
                     </div>
@@ -1384,76 +1495,53 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             </details>
 
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <h3 className="font-(--font-display) text-lg">Investment allocation by destination</h3>
-                        <div className="group relative">
-                            <span className="cursor-help text-(--ink-muted) transition hover:text-(--ink)">
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </span>
-                            <div className="absolute left-0 top-6 z-50 hidden w-64 rounded-xl border border-(--card-stroke) bg-card p-3 text-[11px] leading-relaxed text-(--ink) shadow-xl group-hover:block">
-                                <p className="font-semibold mb-1">Why is this view selected?</p>
-                                <p className="mb-2 text-(--ink-muted)">Target is chosen automatically based on coverage and distinct target counts.</p>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between border-b border-(--card-stroke) pb-0.5 mb-1">
-                                        <span className="text-(--ink-muted)">Team Coverage</span>
-                                        <span className={sankeyFlow?.team_coverage && sankeyFlow.team_coverage >= 0.7 ? "text-(--accent-1)" : "text-(--ink-muted)"}>
-                                            {sankeyFlow?.team_coverage ? formatNumber(sankeyFlow.team_coverage * 100) : "0"}%
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-(--card-stroke) pb-0.5 mb-1">
-                                        <span className="text-(--ink-muted)">Distinct Teams</span>
-                                        <span className={sankeyFlow?.distinct_team_targets && sankeyFlow.distinct_team_targets >= 2 ? "text-(--accent-1)" : "text-(--ink-muted)"}>
-                                            {sankeyFlow?.distinct_team_targets || 0}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-(--card-stroke) pb-0.5 mb-1">
-                                        <span className="text-(--ink-muted)">Repo Coverage</span>
-                                        <span className={sankeyFlow?.repo_coverage && sankeyFlow.repo_coverage >= 0.7 ? "text-(--accent-1)" : "text-(--ink-muted)"}>
-                                            {sankeyFlow?.repo_coverage ? formatNumber(sankeyFlow.repo_coverage * 100) : "0"}%
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-(--ink-muted)">Distinct Repos</span>
-                                        <span className={sankeyFlow?.distinct_repo_targets && sankeyFlow.distinct_repo_targets >= 2 ? "text-(--accent-1)" : "text-(--ink-muted)"}>
-                                            {sankeyFlow?.distinct_repo_targets || 0}
-                                        </span>
-                                    </div>
-                                </div>
-                                <p className="mt-2 text-[10px] text-(--ink-muted) italic border-t border-(--card-stroke) pt-1 mb-2">Thresholds: Coverage ≥ 70%, Targets ≥ 2</p>
-
-                                <div className="border-t border-(--card-stroke) pt-2">
-                                    <p className="font-semibold mb-1">Investment Semantics</p>
-                                    <ul className="list-disc pl-3 space-y-1 text-(--ink-muted)">
-                                        <li>Snapshot for selected window</li>
-                                        <li>Allocation, not dependency</li>
-                                        <li>Not impact, not root cause</li>
-                                        <li><strong>Repo scope:</strong> represents the destination (repo, service, or team) where effort is attributed</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
+                        <p className="mt-1 text-xs text-(--ink-muted)">
+                            Team → Category → Repo. Click a category to drill into subcategories.
+                        </p>
+                        {selectedCategory && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedCategory(null);
+                                    setFocusSubcategory(null);
+                                }}
+                                className="mt-2 inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                            >
+                                Drilldown: Category = {selectedCategory}
+                                <span className="text-xs">×</span>
+                            </button>
+                        )}
                     </div>
-                    <span className="text-xs text-(--ink-muted)">How the selected investment themes are distributed across destinations in this window.</span>
+                    <div className="flex flex-col items-start gap-1 text-xs text-(--ink-muted)">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <span>Team coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.team * 100)}%</strong></span>
+                            <span>Repo coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.repo * 100)}%</strong></span>
+                        </div>
+                        {topCategorySummary.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span>{isSingleTeamScope ? "Top category:" : "Top categories:"}</span>
+                                {topCategorySummary.map((entry) => (
+                                    <span key={entry.name} className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px]">
+                                        {entry.name} {entry.share.toFixed(0)}%
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="mt-2 mb-4 text-[11px] text-(--ink-muted) leading-relaxed border-l-2 border-(--card-stroke) pl-3 py-1">
-                    This is a snapshot allocation view. Links show where counted work/effort is attributed under current filters, not why it happened or its impact.
+                    This view shows where effort appears to land across teams, categories, and repos for the selected window.
+                    Allocation reflects attribution, not dependency or impact.
                 </div>
                 <div className="mt-0">
                     {isSankeyLoading ? (
                         <p className="text-sm text-(--ink-muted)">Loading flow data…</p>
-                    ) : !sankeyFlow || (sankeyFlow.chosen_mode === "fallback") ? (
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between text-xs text-(--ink-muted)">
-                                <span className="italic">Directional flow hidden: insufficient destination diversity/coverage.</span>
-                            </div>
-                            <StackedHorizontalBar
-                                segments={sankeyFallbackSegments}
-                                unit={effortUnit}
-                                height={90}
-                            />
+                    ) : !sankeyFlow || !sankeyFlow.links.length ? (
+                        <div className="flex h-[220px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
+                            No team burden flow available for this scope and window.
                         </div>
                     ) : (
                         <SankeyChart
@@ -1463,19 +1551,24 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             height={320}
                             tooltipFormatter={formatSankeyTooltip}
                             onItemClick={(item) => {
-                                // Extract subcategory from node name if possible
+                                if (!sankeyFlow) return;
                                 if (item.type === "node") {
-                                    // Map formatted label back to ID if possible, but simpler is to check links
-                                    const link = sankeyFlow.links.find(l => l.source === item.name);
-                                    if (link) {
-                                        // This is a subcategory node
-                                        // We need the ID, but label format is "Theme · Sub"
-                                        // Our subcategoryIds use "theme.sub"
-                                        const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === item.name);
+                                    const node = sankeyFlow.nodes.find((n) => n.name === item.name);
+                                    if (node?.group === "category") {
+                                        setFocusSubcategory(null);
+                                        setSelectedCategory(node.name);
+                                        return;
+                                    }
+                                    if (node?.group === "subcategory") {
+                                        const subId = allSubcategoryIds.find(
+                                            (id) => formatSubcategoryLabel(id, true) === item.name
+                                        );
                                         if (subId) setFocusSubcategory(subId);
                                     }
-                                } else if (item.type === "link") {
-                                    const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === item.source);
+                                } else if (item.type === "link" && selectedCategory) {
+                                    const subId = allSubcategoryIds.find(
+                                        (id) => formatSubcategoryLabel(id, true) === item.source
+                                    );
                                     if (subId) setFocusSubcategory(subId);
                                 }
                             }}
