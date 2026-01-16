@@ -10,12 +10,19 @@ import { StackedHorizontalBar } from "@/components/charts/StackedHorizontalBar";
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
-import { investmentMixSample, workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
-import { explainInvestmentMix, getInvestment, getWorkUnits, getWorkUnitExplanation, getInvestmentFlow } from "@/lib/api";
+import { investmentMixSample, investmentRepoTeamMapSample, workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
+import {
+    explainInvestmentMix,
+    getInvestment,
+    getWorkUnits,
+    getWorkUnitExplanation,
+    getInvestmentFlow,
+    getInvestmentRepoTeamFlow,
+} from "@/lib/api";
 import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix, type InvestmentMixAggregate } from "@/lib/investmentMix";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { InvestmentMixExplanation, WorkUnitInvestment, WorkUnitExplanation, SankeyResponse } from "@/lib/types";
+import type { InvestmentMixExplanation, WorkUnitInvestment, WorkUnitExplanation, SankeyLink, SankeyNode, SankeyResponse } from "@/lib/types";
 
 type InvestmentViewProps = {
     filters: MetricFilter;
@@ -60,6 +67,150 @@ const formatSubcategoryLabel = (value: string, includeTheme = true) => {
         return subLabel;
     }
     return `${titleCase(theme)} · ${subLabel}`;
+};
+
+const buildRepoTeamSankey = (
+    units: WorkUnitInvestment[],
+    repoTeamMap: Record<string, string>,
+    categoryColorMap: Map<string, string>
+) => {
+    const nodesByName = new Map<string, SankeyNode>();
+    const linkTotals = new Map<string, number>();
+    let hasTeamAssociations = false;
+
+    const addNode = (name: string, group: string, color?: string) => {
+        if (nodesByName.has(name)) {
+            return;
+        }
+        nodesByName.set(name, {
+            name,
+            group,
+            itemStyle: color ? { color } : undefined,
+        });
+    };
+
+    const addLink = (source: string, target: string, value: number) => {
+        if (!Number.isFinite(value) || value <= 0) {
+            return;
+        }
+        const key = `${source}|||${target}`;
+        linkTotals.set(key, (linkTotals.get(key) ?? 0) + value);
+    };
+
+    units.forEach((unit) => {
+        const effortValue = unit.effort?.value ?? 0;
+        if (!Number.isFinite(effortValue) || effortValue <= 0) {
+            return;
+        }
+
+        const repoIds = (unit.evidence?.contextual ?? [])
+            .flatMap((entry) => {
+                if (!entry || typeof entry !== "object") {
+                    return [];
+                }
+                const record = entry as { type?: unknown; repo_ids?: unknown };
+                if (record.type !== "repo_scope") {
+                    return [];
+                }
+                return Array.isArray(record.repo_ids) ? record.repo_ids : [];
+            })
+            .filter((repoId): repoId is string => typeof repoId === "string");
+        const uniqueRepos = Array.from(new Set(repoIds));
+        const teamNames = (unit.evidence?.contextual ?? [])
+            .flatMap((entry) => {
+                if (!entry || typeof entry !== "object") {
+                    return [];
+                }
+                const record = entry as {
+                    type?: unknown;
+                    team_name?: unknown;
+                    team_id?: unknown;
+                    team?: unknown;
+                    teams?: unknown;
+                    team_names?: unknown;
+                    team_ids?: unknown;
+                };
+                const type = typeof record.type === "string" ? record.type : "";
+                if (type && type !== "team_scope" && type !== "team") {
+                    return [];
+                }
+                const nameList: string[] = [];
+                const idList: string[] = [];
+                if (typeof record.team_name === "string") nameList.push(record.team_name);
+                if (Array.isArray(record.team_names)) {
+                    record.team_names.forEach((team) => {
+                        if (typeof team === "string") nameList.push(team);
+                    });
+                }
+                if (typeof record.team_id === "string") idList.push(record.team_id);
+                if (typeof record.team === "string") idList.push(record.team);
+                if (Array.isArray(record.teams)) {
+                    record.teams.forEach((team) => {
+                        if (typeof team === "string") idList.push(team);
+                    });
+                }
+                if (Array.isArray(record.team_ids)) {
+                    record.team_ids.forEach((team) => {
+                        if (typeof team === "string") idList.push(team);
+                    });
+                }
+                return nameList.length ? nameList : idList;
+            })
+            .map((team) => team.trim())
+            .filter(Boolean);
+        const uniqueTeams = Array.from(new Set(teamNames));
+
+        const mappedRepos = uniqueRepos.filter((repoId) => Boolean(repoTeamMap[repoId]));
+        const useRepoHop = mappedRepos.length > 0;
+        const repoShare = useRepoHop ? 1 / mappedRepos.length : 0;
+        const teamShare = !useRepoHop && uniqueTeams.length ? 1 / uniqueTeams.length : 0;
+        const hasTargets = useRepoHop || uniqueTeams.length > 0;
+        if (!hasTargets) {
+            return;
+        }
+
+        Object.entries(unit.investment?.subcategories ?? {}).forEach(([subcategory, weight]) => {
+            if (!Number.isFinite(weight) || weight <= 0) {
+                return;
+            }
+            const sourceLabel = formatSubcategoryLabel(subcategory, true);
+            const sourceColor = categoryColorMap.get(subcategory);
+            addNode(sourceLabel, "subcategory", sourceColor);
+            if (useRepoHop) {
+                mappedRepos.forEach((repoId) => {
+                    const teamLabel = repoTeamMap[repoId];
+                    if (!teamLabel) {
+                        return;
+                    }
+                    const repoLabel = repoId.replace(/^repo:/, "");
+                    addNode(repoLabel, "repo");
+                    addNode(teamLabel, "team");
+                    const value = effortValue * weight * repoShare;
+                    addLink(sourceLabel, repoLabel, value);
+                    addLink(repoLabel, teamLabel, value);
+                    hasTeamAssociations = true;
+                });
+            } else if (uniqueTeams.length) {
+                uniqueTeams.forEach((teamLabel) => {
+                    addNode(teamLabel, "team");
+                    const value = effortValue * weight * teamShare;
+                    addLink(sourceLabel, teamLabel, value);
+                    hasTeamAssociations = true;
+                });
+            }
+        });
+    });
+
+    const links: SankeyLink[] = Array.from(linkTotals, ([key, value]) => {
+        const [source, target] = key.split("|||");
+        return { source, target, value };
+    });
+
+    return {
+        nodes: Array.from(nodesByName.values()),
+        links,
+        hasTeamAssociations,
+    };
 };
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
@@ -152,6 +303,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [sankeyFlow, setSankeyFlow] = useState<SankeyResponse | null>(null);
     const [baselineSankeyFlow, setBaselineSankeyFlow] = useState<SankeyResponse | null>(null);
     const [isSankeyLoading, setIsSankeyLoading] = useState(true);
+    const [repoTeamFlow, setRepoTeamFlow] = useState<SankeyResponse | null>(null);
+    const [isRepoTeamLoading, setIsRepoTeamLoading] = useState(false);
+    const [repoTeamFlowFailed, setRepoTeamFlowFailed] = useState(false);
 
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
@@ -393,6 +547,42 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         };
     }, [filters, useSampleData]);
 
+    useEffect(() => {
+        let active = true;
+
+        const fetchRepoTeamFlow = async () => {
+            if (useSampleData) {
+                if (active) {
+                    setRepoTeamFlow(null);
+                    setRepoTeamFlowFailed(false);
+                }
+                return;
+            }
+            setIsRepoTeamLoading(true);
+            setRepoTeamFlowFailed(false);
+            try {
+                const flow = await getInvestmentRepoTeamFlow({ filters });
+                if (active) {
+                    setRepoTeamFlow(flow);
+                }
+            } catch {
+                if (active) {
+                    setRepoTeamFlow(null);
+                    setRepoTeamFlowFailed(true);
+                }
+            } finally {
+                if (active) {
+                    setIsRepoTeamLoading(false);
+                }
+            }
+        };
+
+        fetchRepoTeamFlow();
+        return () => {
+            active = false;
+        };
+    }, [filters, useSampleData]);
+
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
         return workUnits.find((unit) => unit.work_unit_id === selectedId) ?? null;
@@ -588,6 +778,29 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             })
             .sort((a, b) => b.value - a.value);
     }, [sankeyFlow, allSubcategoryIds, categoryColorMap]);
+
+    const repoTeamSankey = useMemo(() => {
+        if (repoTeamFlow) {
+            const hasTeams = repoTeamFlow.nodes.some((node) => node.group === "team");
+            return {
+                nodes: repoTeamFlow.nodes,
+                links: repoTeamFlow.links,
+                hasTeamAssociations: hasTeams,
+            };
+        }
+        if (!useSampleData && !repoTeamFlowFailed) {
+            return null;
+        }
+        const units = useSampleData ? workUnitInvestmentsSample : workUnits;
+        if (!units.length) {
+            return null;
+        }
+        const repoTeamMap = useSampleData ? investmentRepoTeamMapSample : {};
+        return buildRepoTeamSankey(units, repoTeamMap, categoryColorMap);
+    }, [repoTeamFlow, useSampleData, repoTeamFlowFailed, workUnits, categoryColorMap]);
+    const repoTeamLinks = repoTeamSankey?.links ?? [];
+    const repoTeamNodes = repoTeamSankey?.nodes ?? [];
+    const repoTeamHasTeams = repoTeamSankey?.hasTeamAssociations ?? false;
 
     const evidenceUnits = useMemo<EvidenceUnit[]>(() => {
         if (!focusSubcategory) return [];
@@ -1267,6 +1480,52 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 }
                             }}
                         />
+                    )}
+                </div>
+            </div>
+
+            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <h3 className="font-(--font-display) text-lg">Prototype destination path: Subcategory → Repo → Team</h3>
+                        <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                            Recommendation 2
+                        </span>
+                    </div>
+                    <span className="text-xs text-(--ink-muted)">Two-hop allocation to highlight team performance behind repos.</span>
+                </div>
+                <div className="mt-2 mb-4 text-[11px] text-(--ink-muted) leading-relaxed border-l-2 border-(--card-stroke) pl-3 py-1">
+                    Prototype view uses repo-to-team mapping when available. If work items have team context but no repo association, allocation flows directly to teams.
+                </div>
+                <div className="mt-0">
+                    {isRepoTeamLoading && !useSampleData ? (
+                        <p className="text-sm text-(--ink-muted)">Loading destination path…</p>
+                    ) : repoTeamHasTeams && repoTeamLinks.length ? (
+                        <SankeyChart
+                            nodes={repoTeamNodes}
+                            links={repoTeamLinks}
+                            unit={effortUnit}
+                            height={320}
+                            onItemClick={(item) => {
+                                if (item.type === "node") {
+                                    const link = repoTeamLinks.find(l => l.source === item.name);
+                                    if (link) {
+                                        const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === item.name);
+                                        if (subId) setFocusSubcategory(subId);
+                                    }
+                                } else if (item.type === "link") {
+                                    const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === item.source);
+                                    if (subId) setFocusSubcategory(subId);
+                                }
+                            }}
+                        />
+                    ) : (
+                        <div className="flex h-[220px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
+                            <div>
+                                <p>We currently have no teams associated with work items.</p>
+                                <p className="mt-2 text-[11px] text-(--ink-muted)">Investment categories still compute from evidence.</p>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

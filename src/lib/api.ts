@@ -154,6 +154,19 @@ export async function getInvestmentFlow(params: {
   );
 }
 
+export async function getInvestmentRepoTeamFlow(params: {
+  filters: MetricFilter;
+  theme?: string | null;
+}) {
+  const normalized = normalizeFilters(params.filters);
+  return postJson<SankeyResponse>(
+    "/api/v1/investment/flow/repo-team",
+    { filters: normalized, theme: params.theme ?? null },
+    60,
+    { f: encodeFilterParam(normalized) }
+  );
+}
+
 export async function getWorkUnits(params: {
   filters: MetricFilter;
   limit?: number;

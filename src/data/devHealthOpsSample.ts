@@ -647,6 +647,16 @@ export const investmentSubtypesSample = [
   { name: "Access hardening", value: 3, parentKey: "risk" },
 ];
 
+/**
+ * Sample repo-to-team mapping for prototype investment flow (repo -> team).
+ */
+export const investmentRepoTeamMapSample: Record<string, string> = {
+  "repo:web-app": "Growth",
+  "repo:core-api": "Core",
+  "repo:infra": "Infra",
+  "repo:search": "Data",
+};
+
 export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
   {
     work_unit_id: "wu-41c2a",
@@ -691,6 +701,7 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
           score: 0.64,
         },
         { type: "repo_scope", repo_ids: ["repo:web-app"] },
+        { type: "team_scope", team_ids: ["growth"], team_names: ["Growth"] },
       ],
     },
   },
@@ -735,6 +746,7 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
           score: 0.72,
         },
         { type: "repo_scope", repo_ids: ["repo:core-api"] },
+        { type: "team_scope", team_ids: ["core"], team_names: ["Core"] },
       ],
     },
   },
@@ -781,6 +793,7 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
           score: 0.44,
         },
         { type: "repo_scope", repo_ids: ["repo:infra"] },
+        { type: "team_scope", team_ids: ["infra"], team_names: ["Infra"] },
       ],
     },
   },
@@ -831,6 +844,7 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
           score: 0.58,
         },
         { type: "repo_scope", repo_ids: ["repo:web-app", "repo:core-api"] },
+        { type: "team_scope", team_ids: ["growth", "core"], team_names: ["Growth", "Core"] },
       ],
     },
   },
@@ -877,6 +891,7 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
           score: 0.41,
         },
         { type: "repo_scope", repo_ids: ["repo:search"] },
+        { type: "team_scope", team_ids: ["data"], team_names: ["Data"] },
       ],
     },
   },
