@@ -10,6 +10,10 @@ const waitForFilterParam = async (page: Page) => {
 };
 
 const updateDeveloperFilter = async (page: Page, value: string, previous: string) => {
+  const expandButton = page.getByRole("button", { name: "Expand filters" });
+  if (await expandButton.isVisible()) {
+    await expandButton.click();
+  }
   await page.getByRole("button", { name: "Advanced filters" }).click();
   await page.locator("summary", { hasText: "Who" }).click();
   await page.getByPlaceholder("alice, bob").fill(value);
