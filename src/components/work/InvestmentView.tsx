@@ -10,6 +10,7 @@ import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import { investmentMixSample, investmentRepoTeamMapSample, workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
+import { encodeFilterParam } from "@/lib/filters/encode";
 import {
     explainInvestmentMix,
     getInvestment,
@@ -925,6 +926,25 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         [router, searchParams]
     );
 
+    const handleTeamFocus = useCallback(
+        (teamName: string) => {
+            if (!teamName || teamName === "Unassigned team") {
+                return;
+            }
+            setSelectedCategory(null);
+            setFocusSubcategory(null);
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("work_unit_id");
+            const nextFilters: MetricFilter = {
+                ...filters,
+                scope: { level: "team", ids: [teamName] },
+            };
+            params.set("f", encodeFilterParam(nextFilters));
+            router.replace(`/work?${params.toString()}`);
+        },
+        [filters, router, searchParams]
+    );
+
     const treemapLabelFormatter = useCallback(
         (params: unknown, totalValue: number) => {
             if (!params || typeof params !== "object") return "";
@@ -1554,6 +1574,10 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 if (!sankeyFlow) return;
                                 if (item.type === "node") {
                                     const node = sankeyFlow.nodes.find((n) => n.name === item.name);
+                                    if (node?.group === "team") {
+                                        handleTeamFocus(node.id ?? node.name);
+                                        return;
+                                    }
                                     if (node?.group === "category") {
                                         setFocusSubcategory(null);
                                         setSelectedCategory(node.name);

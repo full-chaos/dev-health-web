@@ -25,6 +25,12 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { applyWindowToFilters } from "@/lib/filters/time";
 import { apiClient } from "@/lib/apiClient";
+import {
+  graphqlClient,
+  getInvestmentViaGraphQL,
+  getInvestmentFlowViaGraphQL,
+  getInvestmentRepoTeamFlowViaGraphQL,
+} from "@/lib/graphql";
 
 const normalizeFilters = (filters: MetricFilter): MetricFilter => {
   if (filters.scope.level === "team" && !filters.scope.ids.length) {
@@ -84,6 +90,12 @@ export async function getOpportunities(filters: MetricFilter) {
 
 export async function getInvestment(filters: MetricFilter) {
   const normalized = normalizeFilters(filters);
+
+  // Feature flag: use GraphQL transport when enabled
+  if (graphqlClient.isEnabled()) {
+    return getInvestmentViaGraphQL(normalized);
+  }
+
   return postJson<InvestmentResponse>(
     "/api/v1/investment",
     { filters: normalized },
@@ -149,6 +161,15 @@ export async function getInvestmentFlow(params: {
   top_n_repos?: number;
 }) {
   const normalized = normalizeFilters(params.filters);
+
+  // Feature flag: use GraphQL transport when enabled
+  if (graphqlClient.isEnabled()) {
+    return getInvestmentFlowViaGraphQL({
+      ...params,
+      filters: normalized,
+    });
+  }
+
   return postJson<SankeyResponse>(
     "/api/v1/investment/flow",
     {
@@ -168,6 +189,15 @@ export async function getInvestmentRepoTeamFlow(params: {
   theme?: string | null;
 }) {
   const normalized = normalizeFilters(params.filters);
+
+  // Feature flag: use GraphQL transport when enabled
+  if (graphqlClient.isEnabled()) {
+    return getInvestmentRepoTeamFlowViaGraphQL({
+      ...params,
+      filters: normalized,
+    });
+  }
+
   return postJson<SankeyResponse>(
     "/api/v1/investment/flow/repo-team",
     { filters: normalized, theme: params.theme ?? null },
