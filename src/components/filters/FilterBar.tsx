@@ -184,6 +184,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const encoded = searchParams.get("f");
   const initialFilters = useMemo(() => decodeFilter(encoded), [encoded]);
   const [filters, setFilters] = useState<MetricFilter>(initialFilters);
@@ -423,463 +424,487 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
   return (
     <section
       ref={barRef}
-      className={`rounded-[28px] border border-(--card-stroke) p-4 shadow-sm ${condensed ? "bg-(--card-80)" : "bg-(--card-90)"
-        } ${condensed ? "" : "sticky top-4"}`}
+      className={`fixed right-24 top-6 z-40 rounded-[28px] border border-(--card-stroke) shadow-2xl transition-all duration-300 ease-in-out ${
+        isCollapsed ? "w-12 h-12 overflow-hidden" : "w-[calc(100vw-120px)] max-w-5xl p-4"
+      } ${condensed ? "bg-(--card-80)" : "bg-(--card-90)"}`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {view === "people" && (
-            <label className="flex items-center gap-2 text-xs">
-              <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                Search:
-              </span>
-              <input
-                value={peopleQuery}
-                onChange={(event) => updatePeopleQuery(event.target.value)}
-                placeholder="Name or handle"
-                className="w-56 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
-              />
-            </label>
-          )}
-          {visibility.scope && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOpenMenu(openMenu === "scope" ? null : "scope")}
-                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
-                aria-expanded={openMenu === "scope"}
-              >
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                  {scopeLabel}:
-                </span>
-                <span className="text-foreground">{scopeValue}</span>
-                <span className="text-(--ink-muted)">▾</span>
-              </button>
-              {openMenu === "scope" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
-                  {!scopeLock && (
-                    <label className="flex flex-col gap-2 text-xs">
+      <div className="flex h-full items-center">
+        {isCollapsed ? (
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(false)}
+            className="flex h-12 w-12 items-center justify-center text-foreground hover:bg-(--card-70)"
+            aria-label="Expand filters"
+          >
+            <span>🔍</span>
+          </button>
+        ) : (
+          <div className="flex w-full flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCollapsed(true)}
+                  className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-(--card-70) text-foreground transition-colors hover:bg-(--card-60)"
+                  aria-label="Collapse filters"
+                >
+                  ▶
+                </button>
+                {view === "people" && (
+                  <label className="flex items-center gap-2 text-xs">
+                    <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                      Search:
+                    </span>
+                    <input
+                      value={peopleQuery}
+                      onChange={(event) => updatePeopleQuery(event.target.value)}
+                      placeholder="Name or handle"
+                      className="w-56 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                    />
+                  </label>
+                )}
+                {visibility.scope && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenu(openMenu === "scope" ? null : "scope")}
+                      className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                      aria-expanded={openMenu === "scope"}
+                    >
                       <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                        Scope level
+                        {scopeLabel}:
                       </span>
-                      <select
-                        className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
-                        value={scopeLevel}
+                      <span className="text-foreground">{scopeValue}</span>
+                      <span className="text-(--ink-muted)">▾</span>
+                    </button>
+                    {openMenu === "scope" && (
+                      <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
+                        {!scopeLock && (
+                          <label className="flex flex-col gap-2 text-xs">
+                            <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                              Scope level
+                            </span>
+                            <select
+                              className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
+                              value={scopeLevel}
+                              onChange={(event) =>
+                                updateFilters({
+                                  ...filters,
+                                  scope: {
+                                    ...filters.scope,
+                                    level: event.target.value as MetricFilter["scope"]["level"],
+                                    ids: [],
+                                  },
+                                })
+                              }
+                            >
+                              <option value="org">Org</option>
+                              <option value="team">Team</option>
+                              <option value="repo">Repo</option>
+                              <option value="service">Service</option>
+                              <option value="developer">Developer</option>
+                            </select>
+                          </label>
+                        )}
+                        <div className="mt-3 max-h-56 overflow-auto">
+                          {renderOptionList(scopeOptions, effectiveScopeIds, scopeEmptyLabel, (next) =>
+                            updateFilters({
+                              ...filters,
+                              scope: { ...filters.scope, level: scopeLevel, ids: next },
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {visibility.repo && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenu(openMenu === "repo" ? null : "repo")}
+                      className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                      aria-expanded={openMenu === "repo"}
+                    >
+                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                        Repo:
+                      </span>
+                      <span className="text-foreground">{repoValue}</span>
+                      <span className="text-(--ink-muted)">▾</span>
+                    </button>
+                    {openMenu === "repo" && (
+                      <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
+                        <div className="max-h-56 overflow-auto">
+                          {renderOptionList(options.repos, repos, "All", (next) =>
+                            updateFilters({
+                              ...filters,
+                              what: { ...filters.what, repos: next },
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {visibility.developer && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenMenu(openMenu === "developer" ? null : "developer")
+                      }
+                      className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                      aria-expanded={openMenu === "developer"}
+                    >
+                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                        Developer:
+                      </span>
+                      <span className="text-foreground">{developerValue}</span>
+                      <span className="text-(--ink-muted)">▾</span>
+                    </button>
+                    {openMenu === "developer" && (
+                      <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
+                        <div className="max-h-56 overflow-auto">
+                          {renderOptionList(options.developers, developers, "All", (next) =>
+                            updateFilters({
+                              ...filters,
+                              who: { ...filters.who, developers: next },
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {visibility.workType && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenu(openMenu === "work" ? null : "work")}
+                      className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                      aria-expanded={openMenu === "work"}
+                    >
+                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                        Work:
+                      </span>
+                      <span className="text-foreground">{workValue}</span>
+                      <span className="text-(--ink-muted)">▾</span>
+                    </button>
+                    {openMenu === "work" && (
+                      <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
+                        <div className="max-h-56 overflow-auto">
+                          {renderOptionList(options.work_category, workCategory, "All", (next) =>
+                            updateFilters({
+                              ...filters,
+                              why: { ...filters.why, work_category: next },
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {visibility.flowStage && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenu(openMenu === "flow" ? null : "flow")}
+                      className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                      aria-expanded={openMenu === "flow"}
+                    >
+                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                        Flow:
+                      </span>
+                      <span className="text-foreground">{flowValue}</span>
+                      <span className="text-(--ink-muted)">▾</span>
+                    </button>
+                    {openMenu === "flow" && (
+                      <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
+                        <div className="max-h-56 overflow-auto">
+                          {renderOptionList(options.flow_stage, flowStage, "All", (next) =>
+                            updateFilters({
+                              ...filters,
+                              how: { ...filters.how, flow_stage: next },
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {visibility.date && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenu(openMenu === "date" ? null : "date")}
+                      className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                      aria-expanded={openMenu === "date"}
+                    >
+                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                        Date:
+                      </span>
+                      <span className="text-foreground">{dateValue}</span>
+                      <span className="text-(--ink-muted)">▾</span>
+                    </button>
+                    {openMenu === "date" && (
+                      <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
+                        <div className="grid gap-3 text-xs">
+                          <label className="flex flex-col gap-2">
+                            <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                              Start date
+                            </span>
+                            <input
+                              className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
+                              type="date"
+                              value={formatDateInput(startDate)}
+                              onChange={(event) => {
+                                const parsed = parseDateInput(event.target.value);
+                                if (!parsed) {
+                                  return;
+                                }
+                                const nextStart = toLocalDate(parsed);
+                                let nextEnd = endDate;
+                                if (nextStart > nextEnd) {
+                                  nextEnd = nextStart;
+                                }
+                                const nextRangeDays = diffDaysInclusive(nextStart, nextEnd);
+                                updateFilters({
+                                  ...filters,
+                                  time: {
+                                    ...filters.time,
+                                    range_days: nextRangeDays,
+                                    compare_days: nextRangeDays,
+                                    start_date: formatDateInput(nextStart),
+                                    end_date: formatDateInput(nextEnd),
+                                  },
+                                });
+                              }}
+                            />
+                          </label>
+                          <label className="flex flex-col gap-2">
+                            <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                              End date
+                            </span>
+                            <input
+                              className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
+                              type="date"
+                              value={formatDateInput(endDate)}
+                              onChange={(event) => {
+                                const parsed = parseDateInput(event.target.value);
+                                if (!parsed) {
+                                  return;
+                                }
+                                const nextEnd = toLocalDate(parsed);
+                                let nextStart = startDate;
+                                if (nextEnd < nextStart) {
+                                  nextStart = nextEnd;
+                                }
+                                const nextRangeDays = diffDaysInclusive(nextStart, nextEnd);
+                                updateFilters({
+                                  ...filters,
+                                  time: {
+                                    ...filters.time,
+                                    range_days: nextRangeDays,
+                                    compare_days: nextRangeDays,
+                                    start_date: formatDateInput(nextStart),
+                                    end_date: formatDateInput(nextEnd),
+                                  },
+                                });
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="ml-auto flex flex-wrap gap-2 text-xs">
+                {allowAdvanced && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced((prev) => !prev)}
+                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
+                    aria-expanded={showAdvanced}
+                  >
+                    {showAdvanced ? "Hide advanced" : "Advanced filters"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={copyFilters}
+                  className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            {allowAdvanced && showAdvanced && (
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                  <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                    Who
+                  </summary>
+                  <div className="mt-3 space-y-3 text-sm">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs text-(--ink-muted)">Developers</span>
+                      <input
+                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        placeholder="alice, bob"
+                        value={toValue(developers)}
                         onChange={(event) =>
                           updateFilters({
                             ...filters,
-                            scope: {
-                              ...filters.scope,
-                              level: event.target.value as MetricFilter["scope"]["level"],
-                              ids: [],
+                            who: { ...filters.who, developers: toList(event.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs text-(--ink-muted)">Roles</span>
+                      <input
+                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        placeholder="maintainer, reviewer"
+                        value={toValue(roles)}
+                        onChange={(event) =>
+                          updateFilters({
+                            ...filters,
+                            who: { ...filters.who, roles: toList(event.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                </details>
+
+                <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                  <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                    What
+                  </summary>
+                  <div className="mt-3 space-y-3 text-sm">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs text-(--ink-muted)">Repos</span>
+                      <input
+                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        placeholder="org/api, org/ui"
+                        value={toValue(repos)}
+                        onChange={(event) =>
+                          updateFilters({
+                            ...filters,
+                            what: { ...filters.what, repos: toList(event.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs text-(--ink-muted)">Artifacts</span>
+                      <input
+                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        placeholder="pr, issue"
+                        value={toValue(artifacts)}
+                        onChange={(event) =>
+                          updateFilters({
+                            ...filters,
+                            what: {
+                              ...filters.what,
+                              artifacts: toList(event.target.value) as MetricFilter["what"]["artifacts"],
                             },
                           })
                         }
-                      >
-                        <option value="org">Org</option>
-                        <option value="team">Team</option>
-                        <option value="repo">Repo</option>
-                        <option value="service">Service</option>
-                        <option value="developer">Developer</option>
-                      </select>
-                    </label>
-                  )}
-                  <div className="mt-3 max-h-56 overflow-auto">
-                    {renderOptionList(scopeOptions, effectiveScopeIds, scopeEmptyLabel, (next) =>
-                      updateFilters({
-                        ...filters,
-                        scope: { ...filters.scope, level: scopeLevel, ids: next },
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {visibility.repo && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOpenMenu(openMenu === "repo" ? null : "repo")}
-                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
-                aria-expanded={openMenu === "repo"}
-              >
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Repo:
-                </span>
-                <span className="text-foreground">{repoValue}</span>
-                <span className="text-(--ink-muted)">▾</span>
-              </button>
-              {openMenu === "repo" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
-                  <div className="max-h-56 overflow-auto">
-                    {renderOptionList(options.repos, repos, "All", (next) =>
-                      updateFilters({
-                        ...filters,
-                        what: { ...filters.what, repos: next },
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {visibility.developer && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() =>
-                  setOpenMenu(openMenu === "developer" ? null : "developer")
-                }
-                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
-                aria-expanded={openMenu === "developer"}
-              >
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Developer:
-                </span>
-                <span className="text-foreground">{developerValue}</span>
-                <span className="text-(--ink-muted)">▾</span>
-              </button>
-              {openMenu === "developer" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
-                  <div className="max-h-56 overflow-auto">
-                    {renderOptionList(options.developers, developers, "All", (next) =>
-                      updateFilters({
-                        ...filters,
-                        who: { ...filters.who, developers: next },
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {visibility.workType && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOpenMenu(openMenu === "work" ? null : "work")}
-                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
-                aria-expanded={openMenu === "work"}
-              >
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Work:
-                </span>
-                <span className="text-foreground">{workValue}</span>
-                <span className="text-(--ink-muted)">▾</span>
-              </button>
-              {openMenu === "work" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
-                  <div className="max-h-56 overflow-auto">
-                    {renderOptionList(options.work_category, workCategory, "All", (next) =>
-                      updateFilters({
-                        ...filters,
-                        why: { ...filters.why, work_category: next },
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {visibility.flowStage && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOpenMenu(openMenu === "flow" ? null : "flow")}
-                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
-                aria-expanded={openMenu === "flow"}
-              >
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Flow:
-                </span>
-                <span className="text-foreground">{flowValue}</span>
-                <span className="text-(--ink-muted)">▾</span>
-              </button>
-              {openMenu === "flow" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
-                  <div className="max-h-56 overflow-auto">
-                    {renderOptionList(options.flow_stage, flowStage, "All", (next) =>
-                      updateFilters({
-                        ...filters,
-                        how: { ...filters.how, flow_stage: next },
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {visibility.date && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOpenMenu(openMenu === "date" ? null : "date")}
-                className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
-                aria-expanded={openMenu === "date"}
-              >
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Date:
-                </span>
-                <span className="text-foreground">{dateValue}</span>
-                <span className="text-(--ink-muted)">▾</span>
-              </button>
-              {openMenu === "date" && (
-                <div className="absolute left-0 z-20 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
-                  <div className="grid gap-3 text-xs">
-                    <label className="flex flex-col gap-2">
-                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                        Start date
-                      </span>
-                      <input
-                        className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
-                        type="date"
-                        value={formatDateInput(startDate)}
-                        onChange={(event) => {
-                          const parsed = parseDateInput(event.target.value);
-                          if (!parsed) {
-                            return;
-                          }
-                          const nextStart = toLocalDate(parsed);
-                          let nextEnd = endDate;
-                          if (nextStart > nextEnd) {
-                            nextEnd = nextStart;
-                          }
-                          const nextRangeDays = diffDaysInclusive(nextStart, nextEnd);
-                          updateFilters({
-                            ...filters,
-                            time: {
-                              ...filters.time,
-                              range_days: nextRangeDays,
-                              compare_days: nextRangeDays,
-                              start_date: formatDateInput(nextStart),
-                              end_date: formatDateInput(nextEnd),
-                            },
-                          });
-                        }}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-2">
-                      <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                        End date
-                      </span>
-                      <input
-                        className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
-                        type="date"
-                        value={formatDateInput(endDate)}
-                        onChange={(event) => {
-                          const parsed = parseDateInput(event.target.value);
-                          if (!parsed) {
-                            return;
-                          }
-                          const nextEnd = toLocalDate(parsed);
-                          let nextStart = startDate;
-                          if (nextEnd < nextStart) {
-                            nextStart = nextEnd;
-                          }
-                          const nextRangeDays = diffDaysInclusive(nextStart, nextEnd);
-                          updateFilters({
-                            ...filters,
-                            time: {
-                              ...filters.time,
-                              range_days: nextRangeDays,
-                              compare_days: nextRangeDays,
-                              start_date: formatDateInput(nextStart),
-                              end_date: formatDateInput(nextEnd),
-                            },
-                          });
-                        }}
                       />
                     </label>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                </details>
 
-        <div className="ml-auto flex flex-wrap gap-2 text-xs">
-          {allowAdvanced && (
-            <button
-              type="button"
-              onClick={() => setShowAdvanced((prev) => !prev)}
-              className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
-              aria-expanded={showAdvanced}
-            >
-              {showAdvanced ? "Hide advanced" : "Advanced filters"}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
-          >
-            Reset
-          </button>
-          <button
-            type="button"
-            onClick={copyFilters}
-            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 uppercase tracking-[0.2em]"
-          >
-            Copy
-          </button>
-        </div>
+                <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                  <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                    Why
+                  </summary>
+                  <div className="mt-3 space-y-3 text-sm">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs text-(--ink-muted)">Work category</span>
+                      <input
+                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        placeholder="feature, maintenance"
+                        value={toValue(workCategory)}
+                        onChange={(event) =>
+                          updateFilters({
+                            ...filters,
+                            why: { ...filters.why, work_category: toList(event.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs text-(--ink-muted)">Issue type</span>
+                      <input
+                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        placeholder="bug, story"
+                        value={toValue(issueType)}
+                        onChange={(event) =>
+                          updateFilters({
+                            ...filters,
+                            why: { ...filters.why, issue_type: toList(event.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                </details>
+
+                <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                  <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                    How
+                  </summary>
+                  <div className="mt-3 space-y-3 text-sm">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs text-(--ink-muted)">Flow stage</span>
+                      <input
+                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        placeholder="review, build"
+                        value={toValue(flowStage)}
+                        onChange={(event) =>
+                          updateFilters({
+                            ...filters,
+                            how: { ...filters.how, flow_stage: toList(event.target.value) },
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-(--ink-muted)">
+                      <input
+                        type="checkbox"
+                        checked={filters.how.blocked ?? false}
+                        onChange={(event) =>
+                          updateFilters({
+                            ...filters,
+                            how: { ...filters.how, blocked: event.target.checked },
+                          })
+                        }
+                      />
+                      Blocked only
+                    </label>
+                  </div>
+                </details>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-      {allowAdvanced && showAdvanced && (
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
-              Who
-            </summary>
-            <div className="mt-3 space-y-3 text-sm">
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-(--ink-muted)">Developers</span>
-                <input
-                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                  placeholder="alice, bob"
-                  value={toValue(developers)}
-                  onChange={(event) =>
-                    updateFilters({
-                      ...filters,
-                      who: { ...filters.who, developers: toList(event.target.value) },
-                    })
-                  }
-                />
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-(--ink-muted)">Roles</span>
-                <input
-                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                  placeholder="maintainer, reviewer"
-                  value={toValue(roles)}
-                  onChange={(event) =>
-                    updateFilters({
-                      ...filters,
-                      who: { ...filters.who, roles: toList(event.target.value) },
-                    })
-                  }
-                />
-              </label>
-            </div>
-          </details>
-
-          <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
-              What
-            </summary>
-            <div className="mt-3 space-y-3 text-sm">
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-(--ink-muted)">Repos</span>
-                <input
-                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                  placeholder="org/api, org/ui"
-                  value={toValue(repos)}
-                  onChange={(event) =>
-                    updateFilters({
-                      ...filters,
-                      what: { ...filters.what, repos: toList(event.target.value) },
-                    })
-                  }
-                />
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-(--ink-muted)">Artifacts</span>
-                <input
-                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                  placeholder="pr, issue"
-                  value={toValue(artifacts)}
-                  onChange={(event) =>
-                    updateFilters({
-                      ...filters,
-                      what: {
-                        ...filters.what,
-                        artifacts: toList(event.target.value) as MetricFilter["what"]["artifacts"],
-                      },
-                    })
-                  }
-                />
-              </label>
-            </div>
-          </details>
-
-          <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
-              Why
-            </summary>
-            <div className="mt-3 space-y-3 text-sm">
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-(--ink-muted)">Work category</span>
-                <input
-                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                  placeholder="feature, maintenance"
-                  value={toValue(workCategory)}
-                  onChange={(event) =>
-                    updateFilters({
-                      ...filters,
-                      why: { ...filters.why, work_category: toList(event.target.value) },
-                    })
-                  }
-                />
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-(--ink-muted)">Issue type</span>
-                <input
-                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                  placeholder="bug, story"
-                  value={toValue(issueType)}
-                  onChange={(event) =>
-                    updateFilters({
-                      ...filters,
-                      why: { ...filters.why, issue_type: toList(event.target.value) },
-                    })
-                  }
-                />
-              </label>
-            </div>
-          </details>
-
-          <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-            <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
-              How
-            </summary>
-            <div className="mt-3 space-y-3 text-sm">
-              <label className="flex flex-col gap-2">
-                <span className="text-xs text-(--ink-muted)">Flow stage</span>
-                <input
-                  className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                  placeholder="review, build"
-                  value={toValue(flowStage)}
-                  onChange={(event) =>
-                    updateFilters({
-                      ...filters,
-                      how: { ...filters.how, flow_stage: toList(event.target.value) },
-                    })
-                  }
-                />
-              </label>
-              <label className="flex items-center gap-2 text-xs text-(--ink-muted)">
-                <input
-                  type="checkbox"
-                  checked={filters.how.blocked ?? false}
-                  onChange={(event) =>
-                    updateFilters({
-                      ...filters,
-                      how: { ...filters.how, blocked: event.target.checked },
-                    })
-                  }
-                />
-                Blocked only
-              </label>
-            </div>
-          </details>
-        </div>
-      )}
     </section>
   );
 }

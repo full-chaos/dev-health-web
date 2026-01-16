@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore, useState } from "react";
 
 type Theme = "light" | "dark";
 type Palette =
@@ -114,8 +114,9 @@ export function ThemeToggle() {
     getPaletteServerSnapshot
   );
 
-  useEffect(() => {
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
+  useEffect(() => {
     const storedTheme = getStoredTheme();
     if (storedTheme && document.documentElement.dataset.theme !== storedTheme) {
       applyTheme(storedTheme);
@@ -143,27 +144,47 @@ export function ThemeToggle() {
   };
 
   return (
-    <div className="group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)]">
-      <span className="h-2 w-2 rounded-full bg-(--accent) shadow-[0_0_12px_rgba(0,0,0,0.25)]" />
-      <select
-        aria-label="Theme palette"
-        value={palette}
-        onChange={handlePaletteChange}
-        className="bg-transparent text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) focus:text-foreground focus:outline-none"
-      >
-        <option value="material">Material</option>
-        <option value="echarts">ECharts</option>
-        <option value="fullchaos">Full Chaos</option>
-        <option value="fullchaos-cosmic-train">Fullchaos Cosmic Train</option>
-        <option value="flat">Flat UI</option>
-      </select>
+    <div
+      className={`group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) p-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${
+        isCollapsed ? "w-10 overflow-hidden" : "px-3 py-2"
+      }`}
+    >
+      {!isCollapsed && (
+        <>
+          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-(--accent) shadow-[0_0_12px_rgba(0,0,0,0.25)]" />
+          <select
+            aria-label="Theme palette"
+            value={palette}
+            onChange={handlePaletteChange}
+            className="bg-transparent text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) focus:text-foreground focus:outline-none"
+          >
+            <option value="material">Material</option>
+            <option value="echarts">ECharts</option>
+            <option value="fullchaos">Full Chaos</option>
+            <option value="fullchaos-cosmic-train">Fullchaos Cosmic Train</option>
+            <option value="flat">Flat UI</option>
+          </select>
+          <button
+            type="button"
+            onClick={handleToggle}
+            aria-label="Toggle light/dark"
+            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:-translate-y-0.5"
+          >
+            {theme === "dark" ? "Dark" : "Light"}
+          </button>
+        </>
+      )}
       <button
         type="button"
-        onClick={handleToggle}
-        aria-label="Toggle light/dark"
-        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:-translate-y-0.5"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-(--card-70) ${
+          isCollapsed ? "mx-auto" : ""
+        }`}
+        aria-label={isCollapsed ? "Expand settings" : "Collapse settings"}
       >
-        {theme === "dark" ? "Dark" : "Light"}
+        <span className={`transform transition-transform ${isCollapsed ? "" : "rotate-180"}`}>
+          ◀
+        </span>
       </button>
     </div>
   );
