@@ -28,7 +28,6 @@ import { apiClient } from "@/lib/apiClient";
 import {
   graphqlClient,
   getInvestmentViaGraphQL,
-  getInvestmentFlowViaGraphQL,
   getInvestmentRepoTeamFlowViaGraphQL,
 } from "@/lib/graphql";
 
