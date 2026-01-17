@@ -56,6 +56,37 @@ const titleCase = (value: string) =>
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
 
+const THEME_LABELS: Record<string, string> = {
+    feature_delivery: "Feature Delivery",
+    operational: "Operational / Support",
+    maintenance: "Maintenance / Tech Debt",
+    quality: "Quality / Reliability",
+    risk: "Risk / Security",
+};
+
+const THEME_KEYS_BY_LABEL = Object.fromEntries(
+    Object.entries(THEME_LABELS).map(([key, label]) => [label.toLowerCase(), key])
+) as Record<string, string>;
+
+const normalizeThemeKey = (value: string | null) => {
+    if (!value) {
+        return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+    const lower = trimmed.toLowerCase();
+    if (THEME_LABELS[lower]) {
+        return lower;
+    }
+    if (THEME_KEYS_BY_LABEL[lower]) {
+        return THEME_KEYS_BY_LABEL[lower];
+    }
+    const slug = lower.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    return slug || null;
+};
+
 const formatSubcategoryLabel = (value: string, includeTheme = true) => {
     if (!value.includes(".")) {
         return titleCase(value);
@@ -212,6 +243,49 @@ const buildRepoTeamSankey = (
     };
 };
 
+const filterSankeyToTeam = (
+    flow: SankeyResponse | null,
+    teamName: string | null
+) => {
+    if (!flow || !teamName) {
+        return flow;
+    }
+    const hasTeamNode = flow.nodes.some(
+        (node) => node.group === "team" && node.name === teamName
+    );
+    if (!hasTeamNode) {
+        return flow;
+    }
+    const adjacency = new Map<string, string[]>();
+    flow.links.forEach((link) => {
+        const targets = adjacency.get(link.source) ?? [];
+        targets.push(link.target);
+        adjacency.set(link.source, targets);
+    });
+    const allowed = new Set<string>([teamName]);
+    const queue = [teamName];
+    while (queue.length) {
+        const current = queue.shift();
+        if (!current) {
+            continue;
+        }
+        const targets = adjacency.get(current) ?? [];
+        targets.forEach((target) => {
+            if (!allowed.has(target)) {
+                allowed.add(target);
+                queue.push(target);
+            }
+        });
+    }
+    return {
+        ...flow,
+        nodes: flow.nodes.filter((node) => allowed.has(node.name)),
+        links: flow.links.filter(
+            (link) => allowed.has(link.source) && allowed.has(link.target)
+        ),
+    };
+};
+
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 
 const formatBandLabel = (band: WorkUnitInvestment["evidence_quality"]["band"]) =>
@@ -307,7 +381,11 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [repoTeamFlowFailed, setRepoTeamFlowFailed] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [focusedTeam, setFocusedTeam] = useState<string | null>(null);
-    const [showSubcategories, setShowSubcategories] = useState(false);
+    const showSubcategories = Boolean(selectedCategory);
+    const selectedThemeKey = useMemo(
+        () => normalizeThemeKey(selectedCategory),
+        [selectedCategory]
+    );
 
     const sankeyFilters = useMemo(() => {
         if (!focusedTeam) return filters;
@@ -534,11 +612,13 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     getInvestmentFlow({
                         filters: sankeyFilters,
                         flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
+                        theme: selectedThemeKey,
                         top_n_repos: 12,
                     }),
                     getInvestmentFlow({
                         filters: baselineFilters,
                         flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
+                        theme: selectedThemeKey,
                         top_n_repos: 12,
                     }),
                 ]);
@@ -563,7 +643,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, useSampleData, showSubcategories, focusedTeam]);
+    }, [filters, useSampleData, selectedThemeKey, focusedTeam, showSubcategories]);
 
 
 
@@ -767,8 +847,15 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         chartTheme.grid,
     ]);
 
-    const sankeyFlow = teamCategoryFlow;
+    const sankeyFlow = useMemo(
+        () => filterSankeyToTeam(teamCategoryFlow, focusedTeam),
+        [teamCategoryFlow, focusedTeam]
+    );
     const isSankeyLoading = isCategoryFlowLoading;
+    const baselineFlow = useMemo(
+        () => filterSankeyToTeam(baselineSankeyFlow, focusedTeam),
+        [baselineSankeyFlow, focusedTeam]
+    );
 
     const currentSankeyTotal = useMemo(() => {
         if (!sankeyFlow || !sankeyFlow.links.length) return 0;
@@ -779,12 +866,12 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     }, [sankeyFlow]);
 
     const baselineSankeyTotal = useMemo(() => {
-        if (!baselineSankeyFlow || !baselineSankeyFlow.links.length) return 0;
-        const targets = new Set(baselineSankeyFlow.links.map((l) => l.target));
-        return baselineSankeyFlow.links
+        if (!baselineFlow || !baselineFlow.links.length) return 0;
+        const targets = new Set(baselineFlow.links.map((l) => l.target));
+        return baselineFlow.links
             .filter((l) => !targets.has(l.source))
             .reduce((acc, l) => acc + l.value, 0);
-    }, [baselineSankeyFlow]);
+    }, [baselineFlow]);
 
     const sankeyNodeMap = useMemo(() => {
         const map = new Map<string, SankeyNode>();
@@ -803,22 +890,22 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     }, [sankeyFlow]);
 
     const categoryShareSummary = useMemo(() => {
-        if (!teamCategoryFlow || !teamCategoryFlow.links.length) return [];
+        if (!sankeyFlow || !sankeyFlow.links.length) return [];
         const categories = new Set(
-            teamCategoryFlow.nodes
+            sankeyFlow.nodes
                 .filter((node) => node.group === "category")
                 .map((node) => node.name)
         );
         if (!categories.size) return [];
         const totals = new Map<string, number>();
         let total = 0;
-        teamCategoryFlow.links.forEach((link) => {
+        sankeyFlow.links.forEach((link) => {
             if (!categories.has(link.target)) return;
             totals.set(link.target, (totals.get(link.target) ?? 0) + link.value);
             total += link.value;
         });
         if (total === 0) {
-            teamCategoryFlow.links.forEach((link) => {
+            sankeyFlow.links.forEach((link) => {
                 if (!categories.has(link.source)) return;
                 totals.set(link.source, (totals.get(link.source) ?? 0) + link.value);
                 total += link.value;
@@ -831,7 +918,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 share: total > 0 ? (value / total) * 100 : 0,
             }))
             .sort((a, b) => b.value - a.value);
-    }, [teamCategoryFlow]);
+    }, [sankeyFlow]);
 
     const isSingleTeamScope = filters.scope.level === "team" && filters.scope.ids.length === 1;
     const topCategorySummary = useMemo(
@@ -907,6 +994,35 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         []
     );
 
+    const handleCategoryFocus = useCallback((categoryName: string) => {
+        if (!categoryName || categoryName === "Unassigned category") {
+            return;
+        }
+        setFocusSubcategory(null);
+        setSelectedCategory((current) => (current === categoryName ? null : categoryName));
+    }, []);
+
+    const resolveSubcategoryIdFromLabel = useCallback(
+        (label: string) => {
+            const normalized = label.trim().toLowerCase();
+            if (!normalized) {
+                return null;
+            }
+            const includeTheme = !selectedThemeKey;
+            return (
+                allSubcategoryIds.find((id) => {
+                    const [themeKey] = id.split(".", 1);
+                    if (selectedThemeKey && themeKey !== selectedThemeKey) {
+                        return false;
+                    }
+                    const formatted = formatSubcategoryLabel(id, includeTheme);
+                    return formatted.toLowerCase() === normalized;
+                }) ?? null
+            );
+        },
+        [allSubcategoryIds, selectedThemeKey]
+    );
+
     const treemapLabelFormatter = useCallback(
         (params: unknown, totalValue: number) => {
             if (!params || typeof params !== "object") return "";
@@ -948,7 +1064,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             const groupLabel = (name?: string) => {
                 const group = name ? sankeyNodeMap.get(name)?.group : undefined;
                 if (group === "team") return "Team";
-                if (group === "category") return "Category";
+                if (group === "category") return "Theme";
                 if (group === "subcategory") return "Subcategory";
                 if (group === "repo") return "Repo";
                 return "Node";
@@ -958,26 +1074,26 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             const drilldownNote = "";
 
             let deltaHtml = "";
-            if (showBaselineDelta && baselineSankeyFlow) {
+            if (showBaselineDelta && baselineFlow) {
                 let baselineValue = 0;
                 if (isEdge) {
-                    const baseLink = baselineSankeyFlow?.links.find(
+                    const baseLink = baselineFlow.links.find(
                         (l) => l.source === data.source && l.target === data.target
                     );
                     baselineValue = baseLink?.value ?? 0;
                 } else {
-                    const baseNode = baselineSankeyFlow?.nodes.find((n) => n.name === nodeName);
+                    const baseNode = baselineFlow.nodes.find((n) => n.name === nodeName);
                     baselineValue =
                         baseNode?.value ??
-                        baselineSankeyFlow?.links
+                        baselineFlow.links
                             .filter((l) => l.source === nodeName || l.target === nodeName)
                             .reduce((acc, l) => acc + l.value, 0) ??
                         0;
                     if (baselineValue === 0) {
-                        const outgoing = baselineSankeyFlow.links
+                        const outgoing = baselineFlow.links
                             .filter((l) => l.source === nodeName)
                             .reduce((acc, l) => acc + l.value, 0);
-                        const incoming = baselineSankeyFlow.links
+                        const incoming = baselineFlow.links
                             .filter((l) => l.target === nodeName)
                             .reduce((acc, l) => acc + l.value, 0);
                         baselineValue = Math.max(incoming, outgoing);
@@ -1031,7 +1147,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             filters.time,
             currentSankeyTotal,
             baselineSankeyTotal,
-            baselineSankeyFlow,
+            baselineFlow,
             chartTheme.grid,
             chartTheme.muted,
             chartTheme.accent1,
@@ -1161,7 +1277,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             <li>Size represents effort associated with a theme or subcategory.</li>
                             <li>Color indicates which theme or subcategory the work leans toward.</li>
                             <li>Opacity represents evidence quality for the interpretation.</li>
-                            <li>Flows show how effort appears to move from teams into categories and repos.</li>
+                            <li>Flows show how effort appears to move from teams into themes and repos.</li>
                             <li>Use the investment mix chart to drill from themes into subcategories and evidence.</li>
                         </ul>
                     </div>
@@ -1472,8 +1588,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                         <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
                         <p className="mt-1 text-xs text-(--ink-muted)">
                             {showSubcategories
-                                ? "Team → Category → Subcategory → Repo"
-                                : "Team → Category → Repo"
+                                ? `Team → ${selectedCategory ?? "Theme"} → Subcategory → Repo`
+                                : "Team → Theme → Repo"
                             }
                         </p>
 
@@ -1487,6 +1603,16 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 <span className="text-xs">×</span>
                             </button>
                         )}
+                        {selectedCategory && (
+                            <button
+                                type="button"
+                                onClick={() => setSelectedCategory(null)}
+                                className="mt-2 ml-2 inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                            >
+                                Drilldown: Theme = {selectedCategory}
+                                <span className="text-xs">×</span>
+                            </button>
+                        )}
                     </div>
                     <div className="flex flex-col items-start gap-1 text-xs text-(--ink-muted)">
                         <div className="flex flex-wrap items-center gap-3">
@@ -1495,7 +1621,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                         </div>
                         {topCategorySummary.length > 0 && (
                             <div className="flex flex-wrap items-center gap-2">
-                                <span>{isSingleTeamScope ? "Top category:" : "Top categories:"}</span>
+                                <span>{isSingleTeamScope ? "Top theme:" : "Top themes:"}</span>
                                 {topCategorySummary.map((entry) => (
                                     <span key={entry.name} className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px]">
                                         {entry.name} {entry.share.toFixed(0)}%
@@ -1506,7 +1632,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     </div>
                 </div>
                 <div className="mt-2 mb-4 text-[11px] text-(--ink-muted) leading-relaxed border-l-2 border-(--card-stroke) pl-3 py-1">
-                    This view shows where effort appears to land across teams, categories, and repos for the selected window.
+                    This view shows where effort appears to land across teams, themes, and repos for the selected window.
                     Allocation reflects attribution, not dependency or impact.
                 </div>
                 <div className="mt-0">
@@ -1532,20 +1658,20 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                         return;
                                     }
                                     if (node?.group === "category") {
-                                        setShowSubcategories((prev) => !prev);
+                                        handleCategoryFocus(node.name);
                                         return;
                                     }
                                     if (node?.group === "subcategory") {
-                                        const subId = allSubcategoryIds.find(
-                                            (id) => formatSubcategoryLabel(id, true) === item.name
-                                        );
-                                        if (subId) setFocusSubcategory(subId);
+                                        const subId = resolveSubcategoryIdFromLabel(node.name);
+                                        if (subId) {
+                                            setFocusSubcategory(subId);
+                                        }
                                     }
                                 } else if (item.type === "link" && selectedCategory) {
-                                    const subId = allSubcategoryIds.find(
-                                        (id) => formatSubcategoryLabel(id, true) === item.source
-                                    );
-                                    if (subId) setFocusSubcategory(subId);
+                                    const subId = resolveSubcategoryIdFromLabel(item.source ?? "");
+                                    if (subId) {
+                                        setFocusSubcategory(subId);
+                                    }
                                 }
                             }}
                         />
