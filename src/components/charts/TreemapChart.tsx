@@ -27,6 +27,7 @@ type TreemapChartProps = {
     className?: string;
     style?: CSSProperties;
     useInputColors?: boolean;
+    showBreadcrumb?: boolean;
     labelFormatter?: (params: unknown, totalValue: number) => string;
     tooltipFormatter?: (params: unknown, totalValue: number, unit: string) => string;
     onNodeClick?: (node: {
@@ -34,6 +35,7 @@ type TreemapChartProps = {
         value: number;
         path: string[];
         percent: number;
+        data?: TreemapNode;
     }) => void;
 };
 
@@ -49,6 +51,7 @@ export function TreemapChart({
     className,
     style,
     useInputColors = false,
+    showBreadcrumb = true,
     labelFormatter,
     tooltipFormatter,
     onNodeClick,
@@ -87,14 +90,14 @@ export function TreemapChart({
                 data?: { name?: string; value?: number };
                 treePathInfo?: Array<{ name: string; value: number }>;
             };
-            const nodeData = entry.data;
+            const nodeData = entry.data as TreemapNode | undefined;
             if (!nodeData?.name) return;
 
             const path = entry.treePathInfo?.map((p) => p.name) ?? [nodeData.name];
             const value = nodeData.value ?? 0;
             const percent = calcPercent(value, totalValue);
 
-            onNodeClick({ name: nodeData.name, value, path, percent });
+            onNodeClick({ name: nodeData.name, value, path, percent, data: nodeData });
         },
         [onNodeClick, totalValue]
     );
@@ -140,16 +143,18 @@ export function TreemapChart({
                     bottom: 8,
                     roam: false,
                     nodeClick: false as const,
-                    breadcrumb: {
-                        show: true,
-                        top: 4,
-                        left: 8,
-                        itemStyle: {
-                            color: chartTheme.background,
-                            borderColor: chartTheme.stroke,
-                            textStyle: { color: chartTheme.text },
-                        },
-                    },
+                    breadcrumb: showBreadcrumb
+                        ? {
+                            show: true,
+                            top: 4,
+                            left: 8,
+                            itemStyle: {
+                                color: chartTheme.background,
+                                borderColor: chartTheme.stroke,
+                                textStyle: { color: chartTheme.text },
+                            },
+                        }
+                        : { show: false },
                     label: {
                         show: true,
                         formatter: (params: unknown) => {
@@ -210,7 +215,7 @@ export function TreemapChart({
                 },
             ],
         }) as EChartsOption,
-        [coloredData, totalValue, unit, chartTheme, tooltipFormatter, labelFormatter]
+        [coloredData, totalValue, unit, chartTheme, tooltipFormatter, labelFormatter, showBreadcrumb]
     );
 
     return (
