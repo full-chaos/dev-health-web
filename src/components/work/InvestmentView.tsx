@@ -1472,7 +1472,10 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     <div>
                         <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
                         <p className="mt-1 text-xs text-(--ink-muted)">
-                            Team → Category → Subcategory → Repo.
+                            {showSubcategories
+                                ? "Team → Category → Subcategory → Repo"
+                                : "Team → Category → Repo"
+                            }
                         </p>
 
                         {focusedTeam && (
