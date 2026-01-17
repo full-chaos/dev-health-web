@@ -158,6 +158,7 @@ export type InvestmentResponse = {
 export type SankeyMode = "investment" | "expense" | "state" | "hotspot";
 
 export type SankeyNode = {
+  id?: string;
   name: string;
   group?: string;
   value?: number;
@@ -185,6 +186,13 @@ export type SankeyResponse = {
   distinct_team_targets?: number;
   distinct_repo_targets?: number;
   chosen_mode?: string;
+  flow_mode?: string;
+  drill_category?: string;
+  top_n_repos?: number;
+  coverage?: {
+    team: number;
+    repo: number;
+  };
 };
 
 export type WorkUnitInvestmentBreakdown = {
