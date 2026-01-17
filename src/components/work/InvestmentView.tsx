@@ -10,7 +10,6 @@ import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import { investmentMixSample, investmentRepoTeamMapSample, workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
-import { encodeFilterParam } from "@/lib/filters/encode";
 import {
     explainInvestmentMix,
     getInvestment,
