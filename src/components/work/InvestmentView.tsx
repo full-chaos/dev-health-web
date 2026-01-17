@@ -43,10 +43,10 @@ const CATEGORIZATION_OPTIONS: Array<{ id: CategorizationMode; label: string }> =
 ];
 
 const EVIDENCE_QUALITY_BANDS = [
-    { id: "high", label: "High (0.80–1.00)", opacity: 1 },
-    { id: "moderate", label: "Moderate (0.60–0.79)", opacity: 0.75 },
-    { id: "low", label: "Low (0.40–0.59)", opacity: 0.5 },
-    { id: "very_low", label: "Very low (<0.40)", opacity: 0.3 },
+    { id: "high", label: "High (0.80–1.00)", opacityClass: "opacity-100" },
+    { id: "moderate", label: "Moderate (0.60–0.79)", opacityClass: "opacity-75" },
+    { id: "low", label: "Low (0.40–0.59)", opacityClass: "opacity-50" },
+    { id: "very_low", label: "Very low (<0.40)", opacityClass: "opacity-30" },
 ] as const;
 
 const titleCase = (value: string) =>
@@ -301,14 +301,22 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [isExplaining, setIsExplaining] = useState(false);
     const [isExplainingMix, setIsExplainingMix] = useState(false);
     const [teamCategoryFlow, setTeamCategoryFlow] = useState<SankeyResponse | null>(null);
-    const [teamSubcategoryFlow, setTeamSubcategoryFlow] = useState<SankeyResponse | null>(null);
     const [baselineSankeyFlow, setBaselineSankeyFlow] = useState<SankeyResponse | null>(null);
     const [isCategoryFlowLoading, setIsCategoryFlowLoading] = useState(true);
-    const [isSubcategoryFlowLoading, setIsSubcategoryFlowLoading] = useState(false);
     const [repoTeamFlow, setRepoTeamFlow] = useState<SankeyResponse | null>(null);
     const [isRepoTeamLoading, setIsRepoTeamLoading] = useState(false);
     const [repoTeamFlowFailed, setRepoTeamFlowFailed] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [focusedTeam, setFocusedTeam] = useState<string | null>(null);
+    const [showSubcategories, setShowSubcategories] = useState(false);
+
+    const sankeyFilters = useMemo(() => {
+        if (!focusedTeam) return filters;
+        return {
+            ...filters,
+            scope: { level: "team" as const, ids: [focusedTeam] },
+        };
+    }, [filters, focusedTeam]);
 
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
@@ -522,16 +530,16 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             }
 
             try {
-                const baselineFilters = getBaselineFilters(filters);
+                const baselineFilters = getBaselineFilters(sankeyFilters);
                 const [current, baseline] = await Promise.all([
                     getInvestmentFlow({
-                        filters,
-                        flow_mode: "team_category_repo",
+                        filters: sankeyFilters,
+                        flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
                         top_n_repos: 12,
                     }),
                     getInvestmentFlow({
                         filters: baselineFilters,
-                        flow_mode: "team_category_repo",
+                        flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
                         top_n_repos: 12,
                     }),
                 ]);
@@ -556,47 +564,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, useSampleData]);
+    }, [filters, useSampleData, showSubcategories, focusedTeam]);
 
-    useEffect(() => {
-        let active = true;
 
-        const fetchTeamSubcategoryFlow = async () => {
-            if (!selectedCategory || useSampleData) {
-                if (active) {
-                    setTeamSubcategoryFlow(null);
-                    setIsSubcategoryFlowLoading(false);
-                }
-                return;
-            }
-
-            setIsSubcategoryFlowLoading(true);
-            try {
-                const flow = await getInvestmentFlow({
-                    filters,
-                    flow_mode: "team_subcategory_repo",
-                    drill_category: selectedCategory,
-                    top_n_repos: 12,
-                });
-                if (active) {
-                    setTeamSubcategoryFlow(flow);
-                }
-            } catch {
-                if (active) {
-                    setTeamSubcategoryFlow(null);
-                }
-            } finally {
-                if (active) {
-                    setIsSubcategoryFlowLoading(false);
-                }
-            }
-        };
-
-        fetchTeamSubcategoryFlow();
-        return () => {
-            active = false;
-        };
-    }, [filters, selectedCategory, useSampleData]);
 
     useEffect(() => {
         let active = true;
@@ -612,7 +582,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             setIsRepoTeamLoading(true);
             setRepoTeamFlowFailed(false);
             try {
-                const flow = await getInvestmentRepoTeamFlow({ filters });
+                const flow = await getInvestmentRepoTeamFlow({ filters: sankeyFilters });
                 if (active) {
                     setRepoTeamFlow(flow);
                 }
@@ -798,8 +768,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         chartTheme.grid,
     ]);
 
-    const sankeyFlow = selectedCategory ? teamSubcategoryFlow : teamCategoryFlow;
-    const isSankeyLoading = selectedCategory ? isSubcategoryFlowLoading : isCategoryFlowLoading;
+    const sankeyFlow = teamCategoryFlow;
+    const isSankeyLoading = isCategoryFlowLoading;
 
     const currentSankeyTotal = useMemo(() => {
         if (!sankeyFlow || !sankeyFlow.links.length) return 0;
@@ -828,8 +798,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const sankeyCoverage = useMemo(() => {
         const coverage = sankeyFlow?.coverage;
         return {
-            team: coverage?.team_coverage ?? sankeyFlow?.team_coverage ?? 0,
-            repo: coverage?.repo_coverage ?? sankeyFlow?.repo_coverage ?? 0,
+            team: coverage?.team ?? sankeyFlow?.team_coverage ?? 0,
+            repo: coverage?.repo ?? sankeyFlow?.repo_coverage ?? 0,
         };
     }, [sankeyFlow]);
 
@@ -933,16 +903,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             }
             setSelectedCategory(null);
             setFocusSubcategory(null);
-            const params = new URLSearchParams(searchParams.toString());
-            params.delete("work_unit_id");
-            const nextFilters: MetricFilter = {
-                ...filters,
-                scope: { level: "team", ids: [teamName] },
-            };
-            params.set("f", encodeFilterParam(nextFilters));
-            router.replace(`/work?${params.toString()}`);
+            setFocusedTeam(teamName);
         },
-        [filters, router, searchParams]
+        []
     );
 
     const treemapLabelFormatter = useCallback(
@@ -958,6 +921,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         },
         []
     );
+
 
     const formatSankeyTooltip = useCallback(
         (params: unknown, unit: string) => {
@@ -991,12 +955,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 return "Node";
             };
 
-            const drilldownHeader = selectedCategory
-                ? `<div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 6px;">Category: ${selectedCategory}</div>`
-                : "";
-            const drilldownNote = selectedCategory
-                ? `<div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted}; font-style: italic;">Showing subcategories within ${selectedCategory}.</div>`
-                : "";
+            const drilldownHeader = "";
+            const drilldownNote = "";
 
             let deltaHtml = "";
             if (showBaselineDelta && baselineSankeyFlow) {
@@ -1033,23 +993,17 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
 
                 deltaHtml = `
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid
-                    }; font-size: 11px;">
-                    <div><span style="color: ${chartTheme.muted}">Current allocation share:</span> ${currentShare.toFixed(
-                        1
-                    )}%</div>
-                    <div><span style="color: ${chartTheme.muted}">Baseline allocation share:</span> ${baselineShare.toFixed(
-                        1
-                    )}%</div>
-                    <div style="font-weight: 600; color: ${deltaColor};">
-                        Delta: ${deltaSign}${delta.toFixed(1)}%
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 11px;">
+                        <div><span style="color: ${chartTheme.muted}">Current allocation share:</span> ${currentShare.toFixed(1)}%</div>
+                        <div><span style="color: ${chartTheme.muted}">Baseline allocation share:</span> ${baselineShare.toFixed(1)}%</div>
+                        <div style="font-weight: 600; color: ${deltaColor};">
+                            Delta: ${deltaSign}${delta.toFixed(1)}%
+                        </div>
+                        <div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted}; font-style: italic; line-height: 1.3;">
+                            Delta reflects change in allocation share vs the prior window. It does not indicate cause, impact, or priority.
+                        </div>
                     </div>
-                    <div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted
-                    }; font-style: italic; line-height: 1.3;">
-                        Delta reflects change in allocation share vs the prior window. It does not indicate cause, impact, or priority.
-                    </div>
-                </div>
-            `;
+                `;
             }
 
             if (isEdge) {
@@ -1060,8 +1014,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     `<strong>Window:</strong> ${timeLabel}`,
                 ];
                 const meaning = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 10px; color: ${chartTheme.muted};">
-                    <strong>Meaning:</strong> attribution under current filters (not dependency or causation)
-                </div>`;
+                        <strong>Meaning:</strong> attribution under current filters (not dependency or causation)
+                    </div>`;
                 return `<div style="padding: 4px;">${drilldownHeader}${lines.join("<br/>")}${deltaHtml}${meaning}${drilldownNote}</div>`;
             }
 
@@ -1084,7 +1038,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             chartTheme.accent1,
             chartTheme.accent2,
             sankeyNodeMap,
-            selectedCategory,
             showBaselineDelta,
         ]
     );
@@ -1221,8 +1174,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 {EVIDENCE_QUALITY_BANDS.map((band) => (
                     <div key={band.id} className="flex items-center gap-2 text-xs text-(--ink-muted)">
                         <span
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: chartTheme.accent2, opacity: band.opacity }}
+                            className={`h-2.5 w-2.5 rounded-full ${band.opacityClass}`}
+                            style={{ backgroundColor: chartTheme.accent2 }}
                         />
                         <span>{band.label}</span>
                     </div>
@@ -1519,18 +1472,16 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     <div>
                         <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
                         <p className="mt-1 text-xs text-(--ink-muted)">
-                            Team → Category → Repo. Click a category to drill into subcategories.
+                            Team → Category → Subcategory → Repo.
                         </p>
-                        {selectedCategory && (
+
+                        {focusedTeam && (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setSelectedCategory(null);
-                                    setFocusSubcategory(null);
-                                }}
-                                className="mt-2 inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                                onClick={() => setFocusedTeam(null)}
+                                className="mt-2 ml-2 inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
                             >
-                                Drilldown: Category = {selectedCategory}
+                                Drilldown: Team = {focusedTeam}
                                 <span className="text-xs">×</span>
                             </button>
                         )}
@@ -1579,8 +1530,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                         return;
                                     }
                                     if (node?.group === "category") {
-                                        setFocusSubcategory(null);
-                                        setSelectedCategory(node.name);
+                                        setShowSubcategories((prev) => !prev);
                                         return;
                                     }
                                     if (node?.group === "subcategory") {
@@ -1604,7 +1554,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                        <h3 className="font-(--font-display) text-lg">Prototype destination path: Subcategory → Repo → Team</h3>
+                        <h3 className="font-(--font-display) text-lg">Prototype destination path</h3>
                         <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                             Recommendation 2
                         </span>

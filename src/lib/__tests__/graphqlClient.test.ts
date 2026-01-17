@@ -1,0 +1,64 @@
+import { describe, expect, it } from "vitest";
+import { graphqlClient } from "../graphql/client";
+import { adaptSankeyResult } from "../graphql/investmentFetchers";
+import type { SankeyResult } from "../graphql/types";
+
+describe("graphqlClient", () => {
+    describe("isEnabled", () => {
+        it("returns false by default", () => {
+            // NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS is not set
+            expect(graphqlClient.isEnabled()).toBe(false);
+        });
+    });
+
+    describe("request interface", () => {
+        it("exports required functions", () => {
+            expect(typeof graphqlClient.request).toBe("function");
+            expect(typeof graphqlClient.query).toBe("function");
+            expect(typeof graphqlClient.isEnabled).toBe("function");
+        });
+    });
+});
+
+describe("investmentFetchers", () => {
+    describe("adaptSankeyResult", () => {
+        it("maps THEME to category and other dimensions to lowercase", () => {
+            const mockGqlSankey: SankeyResult = {
+                nodes: [
+                    { id: "1", label: "Team A", dimension: "TEAM", value: 100 },
+                    { id: "2", label: "Theme B", dimension: "THEME", value: 100 },
+                    { id: "3", label: "Sub C", dimension: "SUBCATEGORY", value: 100 },
+                    { id: "4", label: "Repo D", dimension: "REPO", value: 100 },
+                ],
+                edges: [
+                    { source: "1", target: "2", value: 100 }
+                ]
+            };
+
+            const result = adaptSankeyResult(mockGqlSankey, "investment");
+
+            expect(result.nodes[0].group).toBe("team");
+            expect(result.nodes[1].group).toBe("category");
+            expect(result.nodes[2].group).toBe("subcategory");
+            expect(result.nodes[3].group).toBe("repo");
+        });
+
+        it("handles empty node labels by providing fallback", () => {
+            const mockGqlSankey: SankeyResult = {
+                nodes: [
+                    { id: "1", label: "", dimension: "TEAM", value: 100 },
+                ],
+                edges: []
+            };
+
+            const result = adaptSankeyResult(mockGqlSankey, "investment");
+            expect(result.nodes[0].name).toBe("(Unassigned team)");
+        });
+
+        it("handles undefined input by returning empty structure", () => {
+            const result = adaptSankeyResult(undefined, "investment");
+            expect(result.nodes).toEqual([]);
+            expect(result.links).toEqual([]);
+        });
+    });
+});

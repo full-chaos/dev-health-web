@@ -186,11 +186,13 @@ export type SankeyResponse = {
   distinct_team_targets?: number;
   distinct_repo_targets?: number;
   chosen_mode?: string;
-  coverage?: Record<string, number>;
-  unassigned_reasons?: Record<string, number>;
   flow_mode?: string;
   drill_category?: string;
   top_n_repos?: number;
+  coverage?: {
+    team: number;
+    repo: number;
+  };
 };
 
 export type WorkUnitInvestmentBreakdown = {

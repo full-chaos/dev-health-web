@@ -156,21 +156,26 @@ export async function getSankey(params: {
 export async function getInvestmentFlow(params: {
   filters: MetricFilter;
   theme?: string | null;
-  flow_mode?: "team_category_repo" | "team_subcategory_repo";
+  flow_mode?:
+  | "team_category_repo"
+  | "team_subcategory_repo"
+  | "team_category_subcategory_repo";
   drill_category?: string | null;
   top_n_repos?: number;
 }) {
   const normalized = normalizeFilters(params.filters);
 
-  // Feature flag: use GraphQL transport when enabled
+  // GraphQL disabled for this view per user request (switched to REST)
+  /*
   if (graphqlClient.isEnabled()) {
     return getInvestmentFlowViaGraphQL({
       ...params,
       filters: normalized,
     });
   }
+  */
 
-  return postJson<SankeyResponse>(
+  const response = await postJson<SankeyResponse>(
     "/api/v1/investment/flow",
     {
       filters: normalized,
@@ -182,6 +187,18 @@ export async function getInvestmentFlow(params: {
     60,
     { f: encodeFilterParam(normalized) }
   );
+
+  // Clean labels (strip prefixes) to match frontend expectations
+  // This mirrors the logic in adaptSankeyResult
+  if (response && Array.isArray(response.nodes)) {
+    response.nodes.forEach((node) => {
+      if (node.name) {
+        node.name = node.name.replace(/^(TEAM|REPO|THEME|SUBCATEGORY):\s*/i, "");
+      }
+    });
+  }
+
+  return response;
 }
 
 export async function getInvestmentRepoTeamFlow(params: {
