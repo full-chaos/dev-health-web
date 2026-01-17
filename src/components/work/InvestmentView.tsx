@@ -973,7 +973,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             .filter((l) => l.source === nodeName || l.target === nodeName)
                             .reduce((acc, l) => acc + l.value, 0) ??
                         0;
-                    if (baselineValue === 0 && baselineSankeyFlow) {
+                    if (baselineValue === 0) {
                         const outgoing = baselineSankeyFlow.links
                             .filter((l) => l.source === nodeName)
                             .reduce((acc, l) => acc + l.value, 0);
