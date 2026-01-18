@@ -249,7 +249,7 @@ const buildRepoTeamSankey = (
     units: WorkUnitInvestment[],
     repoTeamMap: Record<string, string>,
     categoryColorMap: Map<string, string>
-) => {
+): SankeyResponse & { hasTeamAssociations: boolean } => {
     const nodesByName = new Map<string, SankeyNode>();
     const linkTotals = new Map<string, number>();
     let hasTeamAssociations = false;
@@ -850,7 +850,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, useSampleData, selectedThemeKey, focusedTeam, showSubcategories]);
+    }, [filters, sankeyFilters, useSampleData, selectedThemeKey, focusedTeam, showSubcategories]);
 
 
 
@@ -888,7 +888,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, useSampleData]);
+    }, [filters, sankeyFilters, useSampleData]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
@@ -1265,7 +1265,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         [baselineFlow]
     );
 
-    const currentSankeyTotal = sankeyMetrics?.totalFlow ?? 0;
     const baselineSankeyTotal = baselineMetrics?.totalFlow ?? 0;
 
     const sankeyNodeMap = useMemo(() => {
@@ -1328,7 +1327,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             ? "Top theme:"
             : "Top themes:";
 
-    const rawRepoTeamSankey = useMemo(() => {
+    const rawRepoTeamSankey = useMemo<(SankeyResponse & { hasTeamAssociations: boolean }) | null>(() => {
         if (repoTeamFlow) {
             const hasTeams = repoTeamFlow.nodes.some((node) => node.group === "team");
             return { ...repoTeamFlow, hasTeamAssociations: hasTeams };
