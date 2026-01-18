@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
+import { ChartTypeToggle, TREEMAP_SUNBURST_OPTIONS, type TreemapSunburstType } from "@/components/charts/ChartTypeToggle";
 import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
@@ -29,6 +29,14 @@ type InvestmentViewProps = {
 
 type CategorizationMode = "text_metadata" | "metadata_only";
 
+type TreemapSelection = {
+    key: string;
+    type: "theme" | "subcategory";
+    themeLabel: string;
+    themeKey: string | null;
+    subcategoryLabel?: string;
+    subcategoryId?: string | null;
+};
 
 type EvidenceUnit = {
     unit: WorkUnitInvestment;
@@ -47,6 +55,13 @@ const EVIDENCE_QUALITY_BANDS = [
     { id: "low", label: "Low (0.40–0.59)", opacityClass: "opacity-50" },
     { id: "very_low", label: "Very low (<0.40)", opacityClass: "opacity-30" },
 ] as const;
+
+const TOP_N_REPOS = 12;
+const OTHER_REPOS_LABEL = "Other repos";
+const UNASSIGNED_TEAM_LABEL = "Unassigned team";
+const UNASSIGNED_REPO_LABEL = "Unassigned repo";
+const UNASSIGNED_THEME_LABEL = "Unassigned theme";
+const UNASSIGNED_SUBCATEGORY_LABEL = "Unassigned subcategory";
 
 const titleCase = (value: string) =>
     value
@@ -99,11 +114,142 @@ const formatSubcategoryLabel = (value: string, includeTheme = true) => {
     return `${titleCase(theme)} · ${subLabel}`;
 };
 
+const normalizeUnassignedLabel = (value: string, group?: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return value;
+    }
+    const lower = trimmed.toLowerCase();
+    if (!lower.includes("unassigned")) {
+        return trimmed;
+    }
+    if (group === "team") return UNASSIGNED_TEAM_LABEL;
+    if (group === "repo") return UNASSIGNED_REPO_LABEL;
+    if (group === "category") return UNASSIGNED_THEME_LABEL;
+    if (group === "subcategory") return UNASSIGNED_SUBCATEGORY_LABEL;
+    return trimmed;
+};
+
+const isUnassignedLabel = (value: string) => value.toLowerCase().includes("unassigned");
+
+const buildOptionalTimeRangeLabel = (start?: string, end?: string) => {
+    if (!start || !end) return null;
+    const startLabel = formatTimestamp(start);
+    const endLabel = formatTimestamp(end);
+    if (startLabel === "Unavailable" || endLabel === "Unavailable") {
+        return null;
+    }
+    return `${startLabel} – ${endLabel}`;
+};
+
+const computeSankeyMetrics = (nodes: SankeyNode[], links: SankeyLink[]) => {
+    const incomingTotals = new Map<string, number>();
+    const outgoingTotals = new Map<string, number>();
+    const nodeValueByName = new Map<string, number>();
+
+    links.forEach((link) => {
+        outgoingTotals.set(link.source, (outgoingTotals.get(link.source) ?? 0) + link.value);
+        incomingTotals.set(link.target, (incomingTotals.get(link.target) ?? 0) + link.value);
+    });
+
+    nodes.forEach((node) => {
+        const incoming = incomingTotals.get(node.name) ?? 0;
+        const outgoing = outgoingTotals.get(node.name) ?? 0;
+        nodeValueByName.set(node.name, Math.max(incoming, outgoing));
+    });
+
+    const rootTotal = nodes.reduce((total, node) => {
+        const incoming = incomingTotals.get(node.name) ?? 0;
+        if (incoming === 0) {
+            return total + (outgoingTotals.get(node.name) ?? 0);
+        }
+        return total;
+    }, 0);
+
+    const totalFlow =
+        rootTotal > 0
+            ? rootTotal
+            : links.reduce((total, link) => total + link.value, 0);
+
+    return { incomingTotals, outgoingTotals, nodeValueByName, totalFlow };
+};
+
+const limitRepoNodes = (
+    nodes: SankeyNode[],
+    links: SankeyLink[],
+    topN: number
+) => {
+    const repoNodes = nodes.filter((node) => node.group === "repo");
+    if (repoNodes.length <= topN) {
+        return { nodes, links };
+    }
+
+    const groupByName = new Map(nodes.map((node) => [node.name, node.group]));
+    const repoTotals = new Map<string, number>();
+    links.forEach((link) => {
+        if (groupByName.get(link.target) !== "repo") {
+            return;
+        }
+        const sourceGroup = groupByName.get(link.source);
+        if (sourceGroup !== "category" && sourceGroup !== "subcategory") {
+            return;
+        }
+        repoTotals.set(link.target, (repoTotals.get(link.target) ?? 0) + link.value);
+    });
+
+    const orderedRepos = repoNodes
+        .map((node) => node.name)
+        .sort((a, b) => {
+            const aValue = repoTotals.get(a) ?? 0;
+            const bValue = repoTotals.get(b) ?? 0;
+            if (bValue !== aValue) {
+                return bValue - aValue;
+            }
+            return a.localeCompare(b);
+        });
+    const topRepos = orderedRepos.slice(0, topN);
+    const keepRepos = new Set(topRepos);
+    const hasOther = repoNodes.length > topN;
+
+    const linkTotals = new Map<string, number>();
+    links.forEach((link) => {
+        let source = link.source;
+        let target = link.target;
+        if (groupByName.get(target) === "repo" && !keepRepos.has(target)) {
+            target = OTHER_REPOS_LABEL;
+        }
+        if (groupByName.get(source) === "repo" && !keepRepos.has(source)) {
+            source = OTHER_REPOS_LABEL;
+        }
+        const key = `${source}|||${target}`;
+        linkTotals.set(key, (linkTotals.get(key) ?? 0) + link.value);
+    });
+
+    const repoNodeByName = new Map(repoNodes.map((node) => [node.name, node]));
+    const nonRepoNodes = nodes.filter((node) => node.group !== "repo");
+    const orderedRepoNodes = topRepos
+        .map((name) => repoNodeByName.get(name))
+        .filter((node): node is SankeyNode => Boolean(node));
+
+    if (hasOther && !repoNodeByName.has(OTHER_REPOS_LABEL)) {
+        orderedRepoNodes.push({ name: OTHER_REPOS_LABEL, group: "repo" });
+    }
+
+    const limitedNodes = [...nonRepoNodes, ...orderedRepoNodes];
+    const nodeNames = new Set(limitedNodes.map((node) => node.name));
+    const limitedLinks = Array.from(linkTotals, ([key, value]) => {
+        const [source, target] = key.split("|||");
+        return { source, target, value };
+    }).filter((link) => nodeNames.has(link.source) && nodeNames.has(link.target));
+
+    return { nodes: limitedNodes, links: limitedLinks };
+};
+
 const buildRepoTeamSankey = (
     units: WorkUnitInvestment[],
     repoTeamMap: Record<string, string>,
     categoryColorMap: Map<string, string>
-) => {
+): SankeyResponse & { hasTeamAssociations: boolean } => {
     const nodesByName = new Map<string, SankeyNode>();
     const linkTotals = new Map<string, number>();
     let hasTeamAssociations = false;
@@ -188,14 +334,13 @@ const buildRepoTeamSankey = (
             })
             .map((team) => team.trim())
             .filter(Boolean);
-        const uniqueTeams = Array.from(new Set(teamNames));
-
-        const mappedRepos = uniqueRepos.filter((repoId) => Boolean(repoTeamMap[repoId]));
-        const useRepoHop = mappedRepos.length > 0;
-        const repoShare = useRepoHop ? 1 / mappedRepos.length : 0;
-        const teamShare = !useRepoHop && uniqueTeams.length ? 1 / uniqueTeams.length : 0;
-        const hasTargets = useRepoHop || uniqueTeams.length > 0;
-        if (!hasTargets) {
+        const uniqueTeams = Array.from(new Set(teamNames))
+            .map((team) => normalizeUnassignedLabel(team, "team"))
+            .filter(Boolean);
+        const hasRepos = uniqueRepos.length > 0;
+        const repoTargets = hasRepos ? uniqueRepos : [UNASSIGNED_REPO_LABEL];
+        const repoShare = repoTargets.length ? 1 / repoTargets.length : 0;
+        if (!repoShare) {
             return;
         }
 
@@ -206,28 +351,29 @@ const buildRepoTeamSankey = (
             const sourceLabel = formatSubcategoryLabel(subcategory, true);
             const sourceColor = categoryColorMap.get(subcategory);
             addNode(sourceLabel, "subcategory", sourceColor);
-            if (useRepoHop) {
-                mappedRepos.forEach((repoId) => {
-                    const teamLabel = repoTeamMap[repoId];
-                    if (!teamLabel) {
-                        return;
-                    }
-                    const repoLabel = repoId.replace(/^repo:/, "");
-                    addNode(repoLabel, "repo");
+            repoTargets.forEach((repoId) => {
+                const repoLabel = normalizeUnassignedLabel(
+                    repoId === UNASSIGNED_REPO_LABEL ? UNASSIGNED_REPO_LABEL : repoId.replace(/^repo:/, ""),
+                    "repo"
+                );
+                const mappedTeam = repoId === UNASSIGNED_REPO_LABEL ? null : repoTeamMap[repoId];
+                const teamTargets = mappedTeam
+                    ? [normalizeUnassignedLabel(mappedTeam, "team")]
+                    : uniqueTeams.length
+                        ? uniqueTeams
+                        : [UNASSIGNED_TEAM_LABEL];
+                const teamShare = 1 / teamTargets.length;
+                const value = effortValue * weight * repoShare;
+
+                addNode(repoLabel, "repo");
+                addLink(sourceLabel, repoLabel, value);
+
+                teamTargets.forEach((teamLabel) => {
                     addNode(teamLabel, "team");
-                    const value = effortValue * weight * repoShare;
-                    addLink(sourceLabel, repoLabel, value);
-                    addLink(repoLabel, teamLabel, value);
+                    addLink(repoLabel, teamLabel, value * teamShare);
                     hasTeamAssociations = true;
                 });
-            } else if (uniqueTeams.length) {
-                uniqueTeams.forEach((teamLabel) => {
-                    addNode(teamLabel, "team");
-                    const value = effortValue * weight * teamShare;
-                    addLink(sourceLabel, teamLabel, value);
-                    hasTeamAssociations = true;
-                });
-            }
+            });
         });
     });
 
@@ -237,6 +383,7 @@ const buildRepoTeamSankey = (
     });
 
     return {
+        mode: "investment",
         nodes: Array.from(nodesByName.values()),
         links,
         hasTeamAssociations,
@@ -295,6 +442,60 @@ const formatQuality = (value: number) => formatNumber(value, { maximumFractionDi
 
 const formatEffortUnit = (metric: WorkUnitInvestment["effort"]["metric"]) =>
     metric === "active_hours" ? "hours" : "loc";
+
+const formatWorkUnitLabel = (unit: WorkUnitInvestment) => {
+    const candidates = [
+        unit.work_unit_name,
+        unit.display_name,
+        unit.title,
+        unit.summary,
+    ]
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean);
+
+    if (candidates.length) {
+        return candidates[0];
+    }
+
+    const provider = typeof unit.provider === "string" ? unit.provider.trim() : "";
+    const itemType = typeof unit.item_type === "string" ? unit.item_type.trim() : "";
+    const keyCandidate = [
+        typeof unit.key === "string" ? unit.key.trim() : "",
+        typeof unit.external_key === "string" ? unit.external_key.trim() : "",
+    ].find(Boolean) ?? "";
+
+    if (provider && itemType && keyCandidate) {
+        return `${provider}:${itemType}:${keyCandidate}`;
+    }
+
+    if (provider && itemType) {
+        return `${provider}:${itemType}`;
+    }
+
+    const idValue = typeof unit.work_unit_id === "string" ? unit.work_unit_id.trim() : "";
+    if (idValue.includes(":")) {
+        return idValue;
+    }
+
+    return "Work unit";
+};
+
+const formatWorkUnitTypeLabel = (unit: WorkUnitInvestment) => {
+    const primary = typeof unit.work_unit_type === "string" ? unit.work_unit_type.trim() : "";
+    const fallback = typeof unit.item_type === "string" ? unit.item_type.trim() : "";
+    const value = primary || fallback;
+    if (!value) return "";
+    return titleCase(value.replace(/_/g, " "));
+};
+
+const formatWorkUnitIdToken = (workUnitId: string) => {
+    if (!workUnitId) return "";
+    const trimmed = workUnitId.trim();
+    if (trimmed.length <= 14) {
+        return trimmed;
+    }
+    return `${trimmed.slice(0, 8)}…${trimmed.slice(-4)}`;
+};
 
 const adjustHex = (hex: string, amount: number) => {
     const normalized = hex.replace("#", "");
@@ -359,6 +560,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [investmentMix, setInvestmentMix] = useState<InvestmentMixAggregate | null>(null);
     const [isMixLoading, setIsMixLoading] = useState(true);
+    const [mixChartType, setMixChartType] = useState<TreemapSunburstType>("treemap");
+    const [treemapSelection, setTreemapSelection] = useState<TreemapSelection | null>(null);
     const [mixExplanation, setMixExplanation] = useState<{
         data: InvestmentMixExplanation | null;
         filtersKey: string;
@@ -411,6 +614,10 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
     const mixRequestKey = useMemo(() => JSON.stringify({ filters }), [filters]);
     const mixExplainKey = useMemo(() => JSON.stringify({ filters }), [filters]);
+
+    useEffect(() => {
+        setTreemapSelection(null);
+    }, [mixRequestKey]);
 
     useEffect(() => {
         let active = true;
@@ -613,13 +820,13 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                         filters: sankeyFilters,
                         flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
                         theme: selectedThemeKey,
-                        top_n_repos: 12,
+                        top_n_repos: TOP_N_REPOS,
                     }),
                     getInvestmentFlow({
                         filters: baselineFilters,
                         flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
                         theme: selectedThemeKey,
-                        top_n_repos: 12,
+                        top_n_repos: TOP_N_REPOS,
                     }),
                 ]);
 
@@ -643,7 +850,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, useSampleData, selectedThemeKey, focusedTeam, showSubcategories]);
+    }, [filters, sankeyFilters, useSampleData, selectedThemeKey, focusedTeam, showSubcategories]);
 
 
 
@@ -681,12 +888,17 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, useSampleData]);
+    }, [filters, sankeyFilters, useSampleData]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
         return workUnits.find((unit) => unit.work_unit_id === selectedId) ?? null;
     }, [selectedId, workUnits]);
+
+    const selectedUnitTypeLabel = useMemo(() => {
+        if (!selectedUnit) return "";
+        return formatWorkUnitTypeLabel(selectedUnit);
+    }, [selectedUnit]);
 
     useEffect(() => {
         if (!selectedId || !selectedUnit) {
@@ -759,6 +971,126 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return map;
     }, [investmentMix, chartColors]);
 
+    const resolveSubcategoryIdForColor = useCallback(
+        (label: string) => {
+            const normalized = label.trim().toLowerCase();
+            if (!normalized) {
+                return null;
+            }
+            return (
+                allSubcategoryIds.find((id) => {
+                    const [themeKey] = id.split(".", 1);
+                    if (selectedThemeKey && themeKey !== selectedThemeKey) {
+                        return false;
+                    }
+                    const withTheme = formatSubcategoryLabel(id, true).toLowerCase();
+                    const withoutTheme = formatSubcategoryLabel(id, false).toLowerCase();
+                    return withTheme === normalized || withoutTheme === normalized;
+                }) ?? null
+            );
+        },
+        [allSubcategoryIds, selectedThemeKey]
+    );
+
+    const applySankeyNodeColor = useCallback(
+        (node: SankeyNode) => {
+            if (node.itemStyle?.color) {
+                return node;
+            }
+            if (node.group === "category") {
+                const themeKey = normalizeThemeKey(node.name);
+                const color = themeKey ? themeColorMap.get(themeKey) : undefined;
+                if (color) {
+                    return { ...node, itemStyle: { ...node.itemStyle, color } };
+                }
+            }
+            if (node.group === "subcategory") {
+                const subId = resolveSubcategoryIdForColor(node.name);
+                const color = subId ? categoryColorMap.get(subId) : undefined;
+                if (color) {
+                    return { ...node, itemStyle: { ...node.itemStyle, color } };
+                }
+            }
+            return node;
+        },
+        [categoryColorMap, resolveSubcategoryIdForColor, themeColorMap]
+    );
+
+    const prepareSankeyFlow = useCallback(
+        (flow: SankeyResponse | null, topN: number) => {
+            if (!flow) {
+                return null;
+            }
+
+            const groupByOriginalName = new Map<string, string | undefined>();
+            flow.nodes.forEach((node) => {
+                groupByOriginalName.set(node.name, node.group);
+            });
+            const normalizeName = (name: string, group?: string) =>
+                normalizeUnassignedLabel(name, group ?? groupByOriginalName.get(name));
+
+            const nodeMap = new Map<string, SankeyNode>();
+            flow.nodes.forEach((node) => {
+                const normalizedName = normalizeName(node.name, node.group);
+                const coloredNode = applySankeyNodeColor({ ...node, name: normalizedName });
+                const existing = nodeMap.get(normalizedName);
+                if (!existing) {
+                    nodeMap.set(normalizedName, coloredNode);
+                    return;
+                }
+                nodeMap.set(normalizedName, {
+                    ...existing,
+                    group: existing.group ?? coloredNode.group,
+                    itemStyle: existing.itemStyle?.color ? existing.itemStyle : coloredNode.itemStyle,
+                });
+            });
+
+            const linkTotals = new Map<string, number>();
+            flow.links.forEach((link) => {
+                if (!Number.isFinite(link.value) || link.value <= 0) {
+                    return;
+                }
+                const source = normalizeName(link.source, groupByOriginalName.get(link.source));
+                const target = normalizeName(link.target, groupByOriginalName.get(link.target));
+                const key = `${source}|||${target}`;
+                linkTotals.set(key, (linkTotals.get(key) ?? 0) + link.value);
+                if (!nodeMap.has(source)) {
+                    nodeMap.set(source, {
+                        name: source,
+                        group: groupByOriginalName.get(link.source),
+                    });
+                }
+                if (!nodeMap.has(target)) {
+                    nodeMap.set(target, {
+                        name: target,
+                        group: groupByOriginalName.get(link.target),
+                    });
+                }
+            });
+
+            let nodes = Array.from(nodeMap.values());
+            let links = Array.from(linkTotals, ([key, value]) => {
+                const [source, target] = key.split("|||");
+                return { source, target, value };
+            });
+
+            if (topN > 0) {
+                const limited = limitRepoNodes(nodes, links, topN);
+                nodes = limited.nodes;
+                links = limited.links;
+            }
+
+            const metrics = computeSankeyMetrics(nodes, links);
+            nodes = nodes.map((node) => ({
+                ...node,
+                value: metrics.nodeValueByName.get(node.name) ?? node.value,
+            }));
+
+            return { ...flow, nodes, links };
+        },
+        [applySankeyNodeColor]
+    );
+
     const mixThemes = useMemo(() => (investmentMix ? getSortedThemes(investmentMix) : []), [investmentMix]);
     const mixSubcategories = useMemo(
         () => (investmentMix ? getSortedSubcategories(investmentMix) : []),
@@ -785,6 +1117,65 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         const [themeKey] = subcategoryKey.split(".", 1);
         setFocusTheme(themeKey || null);
         setFocusSubcategory(subcategoryKey);
+    }, []);
+
+    const handleTreemapSelection = useCallback((node: {
+        name: string;
+        value: number;
+        path: string[];
+        percent: number;
+        data?: TreemapNode;
+    }) => {
+        const nodeData = node.data as (TreemapNode & {
+            nodeType?: "theme" | "subcategory";
+            themeKey?: string;
+            categoryId?: string;
+            categoryLabel?: string;
+        }) | undefined;
+
+        const nodeType = nodeData?.nodeType === "subcategory" ? "subcategory" : "theme";
+        const categoryId = nodeData?.categoryId ?? null;
+        const themeKey = nodeData?.themeKey ?? (categoryId ? categoryId.split(".", 1)[0] : null);
+        const themeLabel = themeKey ? titleCase(themeKey) : (node.path[0] ?? node.name);
+        const subcategoryLabel = nodeType === "subcategory"
+            ? (nodeData?.categoryLabel ?? node.name)
+            : undefined;
+        const selectionKey = nodeType === "subcategory"
+            ? `subcategory:${categoryId ?? node.name}`
+            : `theme:${themeKey ?? node.name}`;
+
+        setTreemapSelection((current) => {
+            if (current?.key === selectionKey) {
+                return null;
+            }
+            return {
+                key: selectionKey,
+                type: nodeType,
+                themeLabel,
+                themeKey,
+                subcategoryLabel,
+                subcategoryId: categoryId,
+            };
+        });
+    }, []);
+
+    const clearTreemapSelection = useCallback(() => {
+        setTreemapSelection(null);
+    }, []);
+
+    const focusTreemapTheme = useCallback(() => {
+        setTreemapSelection((current) => {
+            if (!current || current.type !== "subcategory") {
+                return current;
+            }
+            const themeKey = current.themeKey ?? current.themeLabel;
+            return {
+                key: `theme:${themeKey}`,
+                type: "theme",
+                themeLabel: current.themeLabel,
+                themeKey: current.themeKey,
+            };
+        });
     }, []);
     const treemapData = useMemo<TreemapNode>(() => {
         if (!investmentMix) {
@@ -847,31 +1238,34 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         chartTheme.grid,
     ]);
 
-    const sankeyFlow = useMemo(
+    const rawSankeyFlow = useMemo(
         () => filterSankeyToTeam(teamCategoryFlow, focusedTeam),
         [teamCategoryFlow, focusedTeam]
     );
-    const isSankeyLoading = isCategoryFlowLoading;
-    const baselineFlow = useMemo(
+    const rawBaselineFlow = useMemo(
         () => filterSankeyToTeam(baselineSankeyFlow, focusedTeam),
         [baselineSankeyFlow, focusedTeam]
     );
+    const sankeyFlow = useMemo(
+        () => prepareSankeyFlow(rawSankeyFlow, TOP_N_REPOS),
+        [rawSankeyFlow, prepareSankeyFlow]
+    );
+    const baselineFlow = useMemo(
+        () => prepareSankeyFlow(rawBaselineFlow, TOP_N_REPOS),
+        [rawBaselineFlow, prepareSankeyFlow]
+    );
+    const isSankeyLoading = isCategoryFlowLoading;
 
-    const currentSankeyTotal = useMemo(() => {
-        if (!sankeyFlow || !sankeyFlow.links.length) return 0;
-        const targets = new Set(sankeyFlow.links.map((l) => l.target));
-        return sankeyFlow.links
-            .filter((l) => !targets.has(l.source))
-            .reduce((acc, l) => acc + l.value, 0);
-    }, [sankeyFlow]);
+    const sankeyMetrics = useMemo(
+        () => (sankeyFlow ? computeSankeyMetrics(sankeyFlow.nodes, sankeyFlow.links) : null),
+        [sankeyFlow]
+    );
+    const baselineMetrics = useMemo(
+        () => (baselineFlow ? computeSankeyMetrics(baselineFlow.nodes, baselineFlow.links) : null),
+        [baselineFlow]
+    );
 
-    const baselineSankeyTotal = useMemo(() => {
-        if (!baselineFlow || !baselineFlow.links.length) return 0;
-        const targets = new Set(baselineFlow.links.map((l) => l.target));
-        return baselineFlow.links
-            .filter((l) => !targets.has(l.source))
-            .reduce((acc, l) => acc + l.value, 0);
-    }, [baselineFlow]);
+    const baselineSankeyTotal = baselineMetrics?.totalFlow ?? 0;
 
     const sankeyNodeMap = useMemo(() => {
         const map = new Map<string, SankeyNode>();
@@ -891,22 +1285,23 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
     const categoryShareSummary = useMemo(() => {
         if (!sankeyFlow || !sankeyFlow.links.length) return [];
-        const categories = new Set(
+        const targetGroup = showSubcategories ? "subcategory" : "category";
+        const groupNames = new Set(
             sankeyFlow.nodes
-                .filter((node) => node.group === "category")
+                .filter((node) => node.group === targetGroup)
                 .map((node) => node.name)
         );
-        if (!categories.size) return [];
+        if (!groupNames.size) return [];
         const totals = new Map<string, number>();
         let total = 0;
         sankeyFlow.links.forEach((link) => {
-            if (!categories.has(link.target)) return;
+            if (!groupNames.has(link.target)) return;
             totals.set(link.target, (totals.get(link.target) ?? 0) + link.value);
             total += link.value;
         });
         if (total === 0) {
             sankeyFlow.links.forEach((link) => {
-                if (!categories.has(link.source)) return;
+                if (!groupNames.has(link.source)) return;
                 totals.set(link.source, (totals.get(link.source) ?? 0) + link.value);
                 total += link.value;
             });
@@ -918,22 +1313,24 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 share: total > 0 ? (value / total) * 100 : 0,
             }))
             .sort((a, b) => b.value - a.value);
-    }, [sankeyFlow]);
+    }, [sankeyFlow, showSubcategories]);
 
     const isSingleTeamScope = filters.scope.level === "team" && filters.scope.ids.length === 1;
+    const summaryLimit = showSubcategories ? 3 : isSingleTeamScope ? 1 : 3;
     const topCategorySummary = useMemo(
-        () => categoryShareSummary.slice(0, isSingleTeamScope ? 1 : 3),
-        [categoryShareSummary, isSingleTeamScope]
+        () => categoryShareSummary.slice(0, summaryLimit),
+        [categoryShareSummary, summaryLimit]
     );
+    const topSummaryLabel = showSubcategories
+        ? "Top subcategories:"
+        : isSingleTeamScope
+            ? "Top theme:"
+            : "Top themes:";
 
-    const repoTeamSankey = useMemo(() => {
+    const rawRepoTeamSankey = useMemo<(SankeyResponse & { hasTeamAssociations: boolean }) | null>(() => {
         if (repoTeamFlow) {
             const hasTeams = repoTeamFlow.nodes.some((node) => node.group === "team");
-            return {
-                nodes: repoTeamFlow.nodes,
-                links: repoTeamFlow.links,
-                hasTeamAssociations: hasTeams,
-            };
+            return { ...repoTeamFlow, hasTeamAssociations: hasTeams };
         }
         if (!useSampleData && !repoTeamFlowFailed) {
             return null;
@@ -945,9 +1342,13 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         const repoTeamMap = useSampleData ? investmentRepoTeamMapSample : {};
         return buildRepoTeamSankey(units, repoTeamMap, categoryColorMap);
     }, [repoTeamFlow, useSampleData, repoTeamFlowFailed, workUnits, categoryColorMap]);
+    const repoTeamSankey = useMemo(
+        () => prepareSankeyFlow(rawRepoTeamSankey, TOP_N_REPOS),
+        [prepareSankeyFlow, rawRepoTeamSankey]
+    );
     const repoTeamLinks = repoTeamSankey?.links ?? [];
     const repoTeamNodes = repoTeamSankey?.nodes ?? [];
-    const repoTeamHasTeams = repoTeamSankey?.hasTeamAssociations ?? false;
+    const repoTeamHasTeams = rawRepoTeamSankey?.hasTeamAssociations ?? false;
 
     const evidenceUnits = useMemo<EvidenceUnit[]>(() => {
         if (!focusSubcategory) return [];
@@ -984,7 +1385,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
     const handleTeamFocus = useCallback(
         (teamName: string) => {
-            if (!teamName || teamName === "Unassigned team") {
+            if (!teamName || teamName === UNASSIGNED_TEAM_LABEL) {
                 return;
             }
             setSelectedCategory(null);
@@ -995,7 +1396,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     );
 
     const handleCategoryFocus = useCallback((categoryName: string) => {
-        if (!categoryName || categoryName === "Unassigned category") {
+        if (!categoryName || isUnassignedLabel(categoryName)) {
             return;
         }
         setFocusSubcategory(null);
@@ -1038,123 +1439,191 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     );
 
 
-    const formatSankeyTooltip = useCallback(
-        (params: unknown, unit: string) => {
-            if (!params || typeof params !== "object") return "";
-            const entry = params as {
-                dataType?: string;
-                data?: {
+    const buildSankeyTooltipFormatter = useCallback(
+        (context: {
+            nodeMap: Map<string, SankeyNode>;
+            metrics: ReturnType<typeof computeSankeyMetrics> | null;
+            baselineFlow?: SankeyResponse | null;
+            baselineMetrics?: ReturnType<typeof computeSankeyMetrics> | null;
+            timeRange: MetricFilter["time"];
+            showBaselineDelta?: boolean;
+        }) => {
+            return (params: unknown, unit: string) => {
+                if (!params || typeof params !== "object" || !context.metrics) return "";
+                const entry = params as {
+                    dataType?: string;
+                    data?: {
+                        name?: string;
+                        value?: number;
+                        source?: string;
+                        target?: string;
+                    };
                     name?: string;
-                    value?: number;
-                    source?: string;
-                    target?: string;
                 };
-                name?: string;
-            };
-            const data = entry.data ?? {};
-            const timeLabel = buildTimeRangeLabel(filters.time.start_date, filters.time.end_date);
+                const data = entry.data ?? {};
+                const isEdge = entry.dataType === "edge";
+                const nodeName = data.name ?? entry.name ?? "";
+                const currentValue = typeof data.value === "number" ? data.value : 0;
+                const nodeValue = context.metrics.nodeValueByName.get(nodeName) ?? currentValue;
+                const resolvedValue = isEdge ? currentValue : nodeValue;
+                const shareRatio =
+                    context.metrics.totalFlow > 0 ? resolvedValue / context.metrics.totalFlow : null;
+                const clampedShare =
+                    shareRatio === null
+                        ? null
+                        : Math.min(1, Math.max(0, shareRatio));
+                const timeLabel = buildOptionalTimeRangeLabel(
+                    context.timeRange.start_date,
+                    context.timeRange.end_date
+                );
 
-            const isEdge = entry.dataType === "edge";
-            const nodeName = data.name ?? entry.name ?? "";
-            const currentValue = typeof data.value === "number" ? data.value : 0;
-            const nodeValue = sankeyNodeMap.get(nodeName)?.value ?? currentValue;
-            const resolvedValue = isEdge ? currentValue : nodeValue;
-            const currentShare = currentSankeyTotal > 0 ? (resolvedValue / currentSankeyTotal) * 100 : 0;
+                const groupLabel = (name?: string) => {
+                    const group = name ? context.nodeMap.get(name)?.group : undefined;
+                    if (group === "team") return "Team";
+                    if (group === "category") return "Theme";
+                    if (group === "subcategory") return "Subcategory";
+                    if (group === "repo") return "Repo";
+                    return "";
+                };
 
-            const groupLabel = (name?: string) => {
-                const group = name ? sankeyNodeMap.get(name)?.group : undefined;
-                if (group === "team") return "Team";
-                if (group === "category") return "Theme";
-                if (group === "subcategory") return "Subcategory";
-                if (group === "repo") return "Repo";
-                return "Node";
-            };
+                const typeBadge = (name: string) => {
+                    const type = groupLabel(name);
+                    if (!type) return "";
+                    return `<span style="margin-left: 6px; padding: 2px 6px; border-radius: 999px; background: ${chartTheme.grid}; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: ${chartTheme.text};">${type}</span>`;
+                };
 
-            const drilldownHeader = "";
-            const drilldownNote = "";
+                const unassignedLine = (name: string) => {
+                    if (name === UNASSIGNED_TEAM_LABEL) {
+                        return "Missing team attribution in source data";
+                    }
+                    if (name === UNASSIGNED_REPO_LABEL) {
+                        return "Missing repo association in source data";
+                    }
+                    return "";
+                };
 
-            let deltaHtml = "";
-            if (showBaselineDelta && baselineFlow) {
-                let baselineValue = 0;
-                if (isEdge) {
-                    const baseLink = baselineFlow.links.find(
-                        (l) => l.source === data.source && l.target === data.target
-                    );
-                    baselineValue = baseLink?.value ?? 0;
-                } else {
-                    const baseNode = baselineFlow.nodes.find((n) => n.name === nodeName);
-                    baselineValue =
-                        baseNode?.value ??
-                        baselineFlow.links
-                            .filter((l) => l.source === nodeName || l.target === nodeName)
-                            .reduce((acc, l) => acc + l.value, 0) ??
-                        0;
-                    if (baselineValue === 0) {
-                        const outgoing = baselineFlow.links
-                            .filter((l) => l.source === nodeName)
-                            .reduce((acc, l) => acc + l.value, 0);
-                        const incoming = baselineFlow.links
-                            .filter((l) => l.target === nodeName)
-                            .reduce((acc, l) => acc + l.value, 0);
-                        baselineValue = Math.max(incoming, outgoing);
+                let deltaHtml = "";
+                if (
+                    context.showBaselineDelta &&
+                    context.baselineFlow &&
+                    context.baselineMetrics &&
+                    clampedShare !== null
+                ) {
+                    let baselineValue = 0;
+                    if (isEdge) {
+                        const baseLink = context.baselineFlow.links.find(
+                            (l) => l.source === data.source && l.target === data.target
+                        );
+                        baselineValue = baseLink?.value ?? 0;
+                    } else {
+                        baselineValue = context.baselineMetrics.nodeValueByName.get(nodeName) ?? 0;
+                    }
+                    const baselineRatio =
+                        context.baselineMetrics.totalFlow > 0
+                            ? baselineValue / context.baselineMetrics.totalFlow
+                            : null;
+                    const baselineShare = baselineRatio === null
+                        ? null
+                        : Math.min(1, Math.max(0, baselineRatio));
+                    if (baselineShare !== null) {
+                        const delta = clampedShare - baselineShare;
+                        const deltaSign = delta > 0 ? "↑ +" : delta < 0 ? "↓ " : "";
+                        const deltaColor =
+                            delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
+
+                        deltaHtml = `
+                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 11px;">
+                                <div><span style="color: ${chartTheme.muted}">Current allocation share:</span> ${(clampedShare * 100).toFixed(1)}%</div>
+                                <div><span style="color: ${chartTheme.muted}">Baseline allocation share:</span> ${(baselineShare * 100).toFixed(1)}%</div>
+                                <div style="font-weight: 600; color: ${deltaColor};">
+                                    Delta: ${deltaSign}${(delta * 100).toFixed(1)}%
+                                </div>
+                                <div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted}; font-style: italic; line-height: 1.3;">
+                                    Delta reflects change in allocation share vs the prior window. It does not indicate cause, impact, or priority.
+                                </div>
+                            </div>
+                        `;
                     }
                 }
 
-                const baselineShare =
-                    baselineSankeyTotal > 0 ? (baselineValue / baselineSankeyTotal) * 100 : 0;
-                const delta = currentShare - baselineShare;
-                const deltaSign = delta > 0 ? "↑ +" : delta < 0 ? "↓ " : "";
-                const deltaColor =
-                    delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
-
-                deltaHtml = `
-                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 11px;">
-                        <div><span style="color: ${chartTheme.muted}">Current allocation share:</span> ${currentShare.toFixed(1)}%</div>
-                        <div><span style="color: ${chartTheme.muted}">Baseline allocation share:</span> ${baselineShare.toFixed(1)}%</div>
-                        <div style="font-weight: 600; color: ${deltaColor};">
-                            Delta: ${deltaSign}${delta.toFixed(1)}%
-                        </div>
-                        <div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted}; font-style: italic; line-height: 1.3;">
-                            Delta reflects change in allocation share vs the prior window. It does not indicate cause, impact, or priority.
-                        </div>
-                    </div>
-                `;
-            }
-
-            if (isEdge) {
-                const lines = [
-                    `<strong>Allocation:</strong> ${formatNumber(currentValue)} ${unit}`,
-                    `<strong>From:</strong> ${data.source ?? ""} (${groupLabel(data.source)})`,
-                    `<strong>To:</strong> ${data.target ?? ""} (${groupLabel(data.target)})`,
-                    `<strong>Window:</strong> ${timeLabel}`,
-                ];
-                const meaning = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 10px; color: ${chartTheme.muted};">
-                        <strong>Meaning:</strong> attribution under current filters (not dependency or causation)
+                if (isEdge) {
+                    const lines = [
+                        `<strong>Allocated:</strong> ${formatNumber(currentValue)} ${unit}`,
+                        `<strong>From:</strong> ${data.source ?? ""}${groupLabel(data.source) ? ` (${groupLabel(data.source)})` : ""}`,
+                        `<strong>To:</strong> ${data.target ?? ""}${groupLabel(data.target) ? ` (${groupLabel(data.target)})` : ""}`,
+                    ];
+                    if (timeLabel) {
+                        lines.push(`<strong>Window:</strong> ${timeLabel}`);
+                    }
+                    const edgeUnassigned = unassignedLine(data.source ?? "") || unassignedLine(data.target ?? "");
+                    if (edgeUnassigned) {
+                        lines.push(`<span style="color: ${chartTheme.muted}; font-size: 10px;">${edgeUnassigned}</span>`);
+                    }
+                    const meaning = `<div style="margin-top: 8px; font-size: 10px; color: ${chartTheme.muted};">
+                        Attribution under current filters (not dependency or causation).
                     </div>`;
-                return `<div style="padding: 4px;">${drilldownHeader}${lines.join("<br/>")}${deltaHtml}${meaning}${drilldownNote}</div>`;
-            }
+                    return `<div style="padding: 4px;">${lines.join("<br/>")}${deltaHtml}${meaning}</div>`;
+                }
 
-            const lines = [
-                `<strong>Total allocated:</strong> ${formatNumber(nodeValue)} ${unit}`,
-                `<strong>Type:</strong> ${groupLabel(nodeName)}`,
-                `<strong>Window:</strong> ${timeLabel}`,
-            ];
-            return `<div style="padding: 4px;"><strong>${nodeName}</strong><br/><br/>${drilldownHeader}${lines.join(
-                "<br/>"
-            )}${deltaHtml}${drilldownNote}</div>`;
+                const lines = [`<strong>Total allocated:</strong> ${formatNumber(nodeValue)} ${unit}`];
+                if (clampedShare !== null) {
+                    lines.push(`<strong>Share:</strong> ${(clampedShare * 100).toFixed(1)}%`);
+                }
+                if (timeLabel) {
+                    lines.push(`<strong>Window:</strong> ${timeLabel}`);
+                }
+                const nodeUnassigned = unassignedLine(nodeName);
+                if (nodeUnassigned) {
+                    lines.push(`<span style="color: ${chartTheme.muted}; font-size: 10px;">${nodeUnassigned}</span>`);
+                }
+                const meaning = `<div style="margin-top: 8px; font-size: 10px; color: ${chartTheme.muted};">
+                    Attribution under current filters (not dependency or causation).
+                </div>`;
+                return `<div style="padding: 4px;"><div style="font-weight: 600;">${nodeName}${typeBadge(
+                    nodeName
+                )}</div><div style="margin-top: 6px;">${lines.join("<br/>")}</div>${deltaHtml}${meaning}</div>`;
+            };
         },
+        [chartTheme.accent1, chartTheme.accent2, chartTheme.grid, chartTheme.muted, chartTheme.text]
+    );
+
+    const repoTeamNodeMap = useMemo(() => {
+        const map = new Map<string, SankeyNode>();
+        (repoTeamSankey?.nodes ?? []).forEach((node) => map.set(node.name, node));
+        return map;
+    }, [repoTeamSankey]);
+    const repoTeamMetrics = useMemo(
+        () => (repoTeamSankey ? computeSankeyMetrics(repoTeamSankey.nodes, repoTeamSankey.links) : null),
+        [repoTeamSankey]
+    );
+    const sankeyTooltipFormatter = useMemo(
+        () =>
+            buildSankeyTooltipFormatter({
+                nodeMap: sankeyNodeMap,
+                metrics: sankeyMetrics,
+                baselineFlow,
+                baselineMetrics,
+                timeRange: filters.time,
+                showBaselineDelta,
+            }),
         [
-            filters.time,
-            currentSankeyTotal,
-            baselineSankeyTotal,
             baselineFlow,
-            chartTheme.grid,
-            chartTheme.muted,
-            chartTheme.accent1,
-            chartTheme.accent2,
+            baselineMetrics,
+            buildSankeyTooltipFormatter,
+            filters.time,
+            sankeyMetrics,
             sankeyNodeMap,
             showBaselineDelta,
         ]
+    );
+    const repoTeamTooltipFormatter = useMemo(
+        () =>
+            buildSankeyTooltipFormatter({
+                nodeMap: repoTeamNodeMap,
+                metrics: repoTeamMetrics,
+                timeRange: filters.time,
+            }),
+        [buildSankeyTooltipFormatter, filters.time, repoTeamMetrics, repoTeamNodeMap]
     );
 
     const formatTreemapTooltip = useCallback(
@@ -1282,153 +1751,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                         </ul>
                     </div>
                 </details>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
-                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Evidence quality bands</span>
-                {EVIDENCE_QUALITY_BANDS.map((band) => (
-                    <div key={band.id} className="flex items-center gap-2 text-xs text-(--ink-muted)">
-                        <span
-                            className={`h-2.5 w-2.5 rounded-full ${band.opacityClass}`}
-                            style={{ backgroundColor: chartTheme.accent2 }}
-                        />
-                        <span>{band.label}</span>
-                    </div>
-                ))}
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-(--font-display) text-lg">Treemap</h3>
-                        <span className="text-xs text-(--ink-muted)">
-                            Effort size · Evidence quality opacity · {categoryScopeLabel} view
-                        </span>
-                    </div>
-                    <div className="mt-4">
-                        {isLoading ? (
-                            <p className="text-sm text-(--ink-muted)">Loading work units…</p>
-                        ) : workUnits.length === 0 ? (
-                            <p className="text-sm text-(--ink-muted)">No work unit investments available.</p>
-                        ) : (
-                            <TreemapChart
-                                data={treemapData}
-                                unit={effortUnit}
-                                height={360}
-                                useInputColors
-                                tooltipFormatter={formatTreemapTooltip}
-                                labelFormatter={treemapLabelFormatter}
-                            />
-                        )}
-                    </div>
-                </div>
-
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <h3 className="font-(--font-display) text-lg">Investment mix</h3>
-                            <span className="text-xs text-(--ink-muted)">Theme → Subcategory (depth 2)</span>
-                        </div>
-                        {focusTheme && (
-                            <button
-                                type="button"
-                                onClick={() => setFocusTheme(null)}
-                                className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                            >
-                                Clear theme
-                            </button>
-                        )}
-                    </div>
-                    <div className="mt-4">
-                        {isMixLoading ? (
-                            <p className="text-sm text-(--ink-muted)">Loading investment mix…</p>
-                        ) : !investmentMix || mixThemes.length === 0 ? (
-                            <p className="text-sm text-(--ink-muted)">No investment mix available.</p>
-                        ) : (
-                            <div className="grid gap-4 md:grid-cols-[1.15fr_0.85fr] md:items-start">
-                                <InvestmentMixSunburst
-                                    themeDistribution={investmentMix.theme_distribution}
-                                    subcategoryDistribution={investmentMix.subcategory_distribution}
-                                    evidenceQualityDistribution={investmentMix.evidence_quality_distribution}
-                                    unit={investmentMix.unit ?? effortUnit}
-                                    height={360}
-                                    focusedTheme={focusTheme}
-                                    onThemeClick={handleThemeClick}
-                                    onSubcategoryClick={handleSubcategoryClick}
-                                />
-                                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                            {focusTheme ? "Subcategory breakdown" : "Themes"}
-                                        </p>
-                                        {focusTheme && (
-                                            <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                                                {titleCase(focusTheme)}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="mt-3 space-y-2 text-sm">
-                                        {focusTheme ? (
-                                            focusedThemeSubcategories.length ? (
-                                                focusedThemeSubcategories.map((entry) => {
-                                                    const pctOfTheme = focusedThemeTotalValue
-                                                        ? (entry.value / focusedThemeTotalValue) * 100
-                                                        : 0;
-                                                    return (
-                                                        <button
-                                                            key={entry.key}
-                                                            type="button"
-                                                            onClick={() => handleSubcategoryClick(entry.key)}
-                                                            className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
-                                                        >
-                                                            <div className="min-w-0">
-                                                                <div className="truncate text-sm text-foreground">
-                                                                    {formatSubcategoryLabel(entry.key, false)}
-                                                                </div>
-                                                                <div className="mt-1 text-xs text-(--ink-muted)">
-                                                                    {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
-                                                                </div>
-                                                                <div className="text-xs text-(--accent-2)">
-                                                                    {formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}% of theme
-                                                                </div>
-                                                            </div>
-                                                        </button>
-                                                    );
-                                                })
-                                            ) : (
-                                                <p className="text-sm text-(--ink-muted)">
-                                                    No subcategories observed for this theme.
-                                                </p>
-                                            )
-                                        ) : (
-                                            mixThemes.slice(0, 8).map((entry) => {
-                                                const pct = mixTotalValue ? (entry.value / mixTotalValue) * 100 : 0;
-                                                return (
-                                                    <button
-                                                        key={entry.key}
-                                                        type="button"
-                                                        onClick={() => handleThemeClick(entry.key)}
-                                                        className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <div className="truncate text-sm text-foreground">{titleCase(entry.key)}</div>
-                                                            <div className="mt-1 text-xs text-(--ink-muted)">
-                                                                {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
-                                                            </div>
-                                                            <div className="text-xs text-(--accent-2)">
-                                                                {formatNumber(pct, { maximumFractionDigits: 1 })}% of total
-                                                            </div>
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
             </div>
 
             <details open className="rounded-3xl border border-(--card-stroke) bg-card p-5">
@@ -1582,46 +1904,248 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 </div>
             </details>
 
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Evidence quality bands</span>
+                {EVIDENCE_QUALITY_BANDS.map((band) => (
+                    <div key={band.id} className="flex items-center gap-2 text-xs text-(--ink-muted)">
+                        <span
+                            className={`h-2.5 w-2.5 rounded-full ${band.opacityClass}`}
+                            style={{ backgroundColor: chartTheme.accent2 }}
+                        />
+                        <span>{band.label}</span>
+                    </div>
+                ))}
+            </div>
+
+            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 className="font-(--font-display) text-lg">
+                            {mixChartType === "treemap" ? "Treemap" : "Investment mix"}
+                        </h3>
+                        <span className="text-xs text-(--ink-muted)">
+                            {mixChartType === "treemap"
+                                ? `Effort size · Evidence quality opacity · ${categoryScopeLabel} view`
+                                : "Theme → Subcategory (depth 2)"}
+                        </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        {mixChartType === "sunburst" && focusTheme && (
+                            <button
+                                type="button"
+                                onClick={() => setFocusTheme(null)}
+                                className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                            >
+                                Clear theme
+                            </button>
+                        )}
+                        <ChartTypeToggle
+                            options={TREEMAP_SUNBURST_OPTIONS}
+                            value={mixChartType}
+                            onChange={setMixChartType}
+                        />
+                    </div>
+                </div>
+                <div className="mt-4">
+                    {mixChartType === "treemap" ? (
+                        <>
+                            <div className="mb-3 flex flex-wrap items-center gap-1 text-xs">
+                                <button
+                                    type="button"
+                                    onClick={treemapSelection ? clearTreemapSelection : undefined}
+                                    className={`rounded-full px-2 py-0.5 text-[11px] ${treemapSelection
+                                        ? "text-(--accent-2) hover:underline"
+                                        : "bg-(--card-stroke) text-foreground"
+                                        }`}
+                                >
+                                    All themes
+                                </button>
+                                {treemapSelection && (
+                                    <>
+                                        <span className="text-(--ink-muted)">/</span>
+                                        {treemapSelection.type === "subcategory" ? (
+                                            <button
+                                                type="button"
+                                                onClick={focusTreemapTheme}
+                                                className="rounded-full px-2 py-0.5 text-[11px] text-(--accent-2) hover:underline"
+                                            >
+                                                {treemapSelection.themeLabel}
+                                            </button>
+                                        ) : (
+                                            <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[11px] text-foreground">
+                                                {treemapSelection.themeLabel}
+                                            </span>
+                                        )}
+                                        {treemapSelection.type === "subcategory" && treemapSelection.subcategoryLabel && (
+                                            <>
+                                                <span className="text-(--ink-muted)">/</span>
+                                                <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[11px] text-foreground">
+                                                    {treemapSelection.subcategoryLabel}
+                                                </span>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                            {isLoading ? (
+                                <p className="text-sm text-(--ink-muted)">Loading work units…</p>
+                            ) : workUnits.length === 0 ? (
+                                <p className="text-sm text-(--ink-muted)">No work unit investments available.</p>
+                            ) : (
+                                <TreemapChart
+                                    data={treemapData}
+                                    unit={effortUnit}
+                                    height={360}
+                                    useInputColors
+                                    showBreadcrumb={false}
+                                    tooltipFormatter={formatTreemapTooltip}
+                                    labelFormatter={treemapLabelFormatter}
+                                    onNodeClick={handleTreemapSelection}
+                                />
+                            )}
+                        </>
+                    ) : isMixLoading ? (
+                        <p className="text-sm text-(--ink-muted)">Loading investment mix…</p>
+                    ) : !investmentMix || mixThemes.length === 0 ? (
+                        <p className="text-sm text-(--ink-muted)">No investment mix available.</p>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-[1.15fr_0.85fr] md:items-start">
+                            <InvestmentMixSunburst
+                                themeDistribution={investmentMix.theme_distribution}
+                                subcategoryDistribution={investmentMix.subcategory_distribution}
+                                evidenceQualityDistribution={investmentMix.evidence_quality_distribution}
+                                unit={investmentMix.unit ?? effortUnit}
+                                height={360}
+                                focusedTheme={focusTheme}
+                                onThemeClick={handleThemeClick}
+                                onSubcategoryClick={handleSubcategoryClick}
+                            />
+                            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        {focusTheme ? "Subcategory breakdown" : "Themes"}
+                                    </p>
+                                    {focusTheme && (
+                                        <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                            {titleCase(focusTheme)}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="mt-3 space-y-2 text-sm">
+                                    {focusTheme ? (
+                                        focusedThemeSubcategories.length ? (
+                                            focusedThemeSubcategories.map((entry) => {
+                                                const pctOfTheme = focusedThemeTotalValue
+                                                    ? (entry.value / focusedThemeTotalValue) * 100
+                                                    : 0;
+                                                return (
+                                                    <button
+                                                        key={entry.key}
+                                                        type="button"
+                                                        onClick={() => handleSubcategoryClick(entry.key)}
+                                                        className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <div className="truncate text-sm text-foreground">
+                                                                {formatSubcategoryLabel(entry.key, false)}
+                                                            </div>
+                                                            <div className="mt-1 text-xs text-(--ink-muted)">
+                                                                {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
+                                                            </div>
+                                                            <div className="text-xs text-(--accent-2)">
+                                                                {formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}% of theme
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })
+                                        ) : (
+                                            <p className="text-sm text-(--ink-muted)">
+                                                No subcategories observed for this theme.
+                                            </p>
+                                        )
+                                    ) : (
+                                        mixThemes.slice(0, 8).map((entry) => {
+                                            const pct = mixTotalValue ? (entry.value / mixTotalValue) * 100 : 0;
+                                            return (
+                                                <button
+                                                    key={entry.key}
+                                                    type="button"
+                                                    onClick={() => handleThemeClick(entry.key)}
+                                                    className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <div className="truncate text-sm text-foreground">{titleCase(entry.key)}</div>
+                                                        <div className="mt-1 text-xs text-(--ink-muted)">
+                                                            {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
+                                                        </div>
+                                                        <div className="text-xs text-(--accent-2)">
+                                                            {formatNumber(pct, { maximumFractionDigits: 1 })}% of total
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                        <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
+                            <div className="flex flex-wrap items-center gap-3 text-[11px] text-(--ink-muted)">
+                                <span>Team coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.team * 100)}%</strong></span>
+                                <span>Repo coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.repo * 100)}%</strong></span>
+                            </div>
+                        </div>
                         <p className="mt-1 text-xs text-(--ink-muted)">
                             {showSubcategories
-                                ? `Team → ${selectedCategory ?? "Theme"} → Subcategory → Repo`
+                                ? "Team → Theme → Subcategory → Repo"
                                 : "Team → Theme → Repo"
                             }
                         </p>
 
-                        {focusedTeam && (
-                            <button
-                                type="button"
-                                onClick={() => setFocusedTeam(null)}
-                                className="mt-2 ml-2 inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                            >
-                                Drilldown: Team = {focusedTeam}
-                                <span className="text-xs">×</span>
-                            </button>
-                        )}
-                        {selectedCategory && (
-                            <button
-                                type="button"
-                                onClick={() => setSelectedCategory(null)}
-                                className="mt-2 ml-2 inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                            >
-                                Drilldown: Theme = {selectedCategory}
-                                <span className="text-xs">×</span>
-                            </button>
+                        {(focusedTeam || selectedCategory) && (
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                {focusedTeam && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFocusedTeam(null)}
+                                        className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                                    >
+                                        Drilldown: Team = {focusedTeam}
+                                        <span className="text-xs">×</span>
+                                    </button>
+                                )}
+                                {selectedCategory && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedCategory(null);
+                                            setFocusSubcategory(null);
+                                        }}
+                                        className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                                    >
+                                        Drilldown: Theme = {selectedCategory}
+                                        <span className="text-xs">×</span>
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
-                    <div className="flex flex-col items-start gap-1 text-xs text-(--ink-muted)">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <span>Team coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.team * 100)}%</strong></span>
-                            <span>Repo coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.repo * 100)}%</strong></span>
-                        </div>
+                    <div className="flex flex-col items-start gap-2 text-xs text-(--ink-muted)">
+                        {selectedCategory && (
+                            <span>Theme focus: <strong className="text-(--ink)">{selectedCategory}</strong></span>
+                        )}
                         {topCategorySummary.length > 0 && (
                             <div className="flex flex-wrap items-center gap-2">
-                                <span>{isSingleTeamScope ? "Top theme:" : "Top themes:"}</span>
+                                <span>{topSummaryLabel}</span>
                                 {topCategorySummary.map((entry) => (
                                     <span key={entry.name} className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px]">
                                         {entry.name} {entry.share.toFixed(0)}%
@@ -1648,7 +2172,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             links={sankeyFlow.links}
                             unit={effortUnit}
                             height={320}
-                            tooltipFormatter={formatSankeyTooltip}
+                            tooltipFormatter={sankeyTooltipFormatter}
                             onItemClick={(item) => {
                                 if (!sankeyFlow) return;
                                 if (item.type === "node") {
@@ -1681,26 +2205,25 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <h3 className="font-(--font-display) text-lg">Prototype destination path</h3>
-                        <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                            Recommendation 2
-                        </span>
+                    <div>
+                        <h3 className="font-(--font-display) text-lg">Where effort lands</h3>
+                        <p className="mt-1 text-xs text-(--ink-muted)">Subcategory → Repo → Team</p>
                     </div>
-                    <span className="text-xs text-(--ink-muted)">Two-hop allocation to highlight team performance behind repos.</span>
+                    <span className="text-xs text-(--ink-muted)">Two-hop allocation to highlight team ownership behind repos.</span>
                 </div>
                 <div className="mt-2 mb-4 text-[11px] text-(--ink-muted) leading-relaxed border-l-2 border-(--card-stroke) pl-3 py-1">
-                    Prototype view uses repo-to-team mapping when available. If work items have team context but no repo association, allocation flows directly to teams.
+                    This view uses repo-to-team mapping when available. Missing repo associations flow through an unassigned repo node.
                 </div>
                 <div className="mt-0">
                     {isRepoTeamLoading && !useSampleData ? (
-                        <p className="text-sm text-(--ink-muted)">Loading destination path…</p>
+                        <p className="text-sm text-(--ink-muted)">Loading destination view…</p>
                     ) : repoTeamHasTeams && repoTeamLinks.length ? (
                         <SankeyChart
                             nodes={repoTeamNodes}
                             links={repoTeamLinks}
                             unit={effortUnit}
                             height={320}
+                            tooltipFormatter={repoTeamTooltipFormatter}
                             onItemClick={(item) => {
                                 if (item.type === "node") {
                                     const link = repoTeamLinks.find(l => l.source === item.name);
@@ -1731,7 +2254,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                         <h3 className="font-(--font-display) text-lg">Evidence drill-down</h3>
                         <span className="text-xs text-(--ink-muted)">
                             {focusSubcategory
-                                ? `Work units supporting ${focusSubcategoryLabel}.`
+                                ? `Work units that contributed to: ${focusSubcategoryLabel}.`
                                 : "Select a subcategory to inspect supporting work units."}
                         </span>
                     </div>
@@ -1758,16 +2281,51 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                             {evidenceUnits.slice(0, 6).map((entry) => {
                                 const hasTextual = (entry.unit.evidence?.textual ?? []).length > 0;
+                                const hasContextual = (entry.unit.evidence?.contextual ?? []).length > 0;
+                                const hasStructural = (entry.unit.evidence?.structural ?? []).length > 0;
+                                const signals: string[] = [];
+                                if (hasTextual) signals.push("text");
+                                if (hasContextual || hasStructural) signals.push("metadata");
+                                const signalsLabel = signals.length
+                                    ? `Evidence signals: ${signals.join(" + ")}`
+                                    : "Evidence signals: inferred from available inputs";
+                                const workUnitLabel = formatWorkUnitLabel(entry.unit);
+                                const workUnitTypeLabel = formatWorkUnitTypeLabel(entry.unit);
+                                const workUnitIdToken = formatWorkUnitIdToken(entry.unit.work_unit_id);
                                 return (
-                                    <button
+                                    <div
                                         key={entry.unit.work_unit_id}
-                                        type="button"
+                                        role="button"
+                                        tabIndex={0}
                                         onClick={() => handleSelect(entry.unit.work_unit_id)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                handleSelect(entry.unit.work_unit_id);
+                                            }
+                                        }}
                                         className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 text-left transition hover:border-(--accent-2)"
                                     >
-                                        <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                                            <span>WorkUnit</span>
-                                            <span className="font-mono text-[11px] tracking-normal text-(--ink)">{entry.unit.work_unit_id}</span>
+                                        <div className="min-w-0">
+                                            <div className="truncate text-sm font-medium text-foreground">{workUnitLabel}</div>
+                                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                                {workUnitTypeLabel ? (
+                                                    <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
+                                                        {workUnitTypeLabel}
+                                                    </span>
+                                                ) : null}
+                                                <span>ID: <span className="font-mono text-[11px] tracking-normal text-(--ink)">{workUnitIdToken}</span></span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        void navigator.clipboard?.writeText(entry.unit.work_unit_id);
+                                                    }}
+                                                    className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]"
+                                                >
+                                                    Copy ID
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="mt-3 text-sm">
                                             <span className="text-(--ink-muted)">Weighted effort:</span>{" "}
@@ -1778,12 +2336,10 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                                 ? `${formatQuality(entry.unit.evidence_quality.value)} (${formatBandLabel(entry.unit.evidence_quality.band ?? "unknown")})`
                                                 : "Unknown"}
                                         </div>
-                                        {hasTextual && (
-                                            <div className="mt-2 text-[11px] text-(--ink-muted)">
-                                                Textual phrases informed this categorization.
-                                            </div>
-                                        )}
-                                    </button>
+                                        <div className="mt-2 text-[11px] text-(--ink-muted)">
+                                            {signalsLabel}
+                                        </div>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -1806,7 +2362,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     </div>
                     <div className="flex items-center gap-2">
                         <label className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)" htmlFor="work-unit-select">
-                            WorkUnit
+                            Work unit
                         </label>
                         <select
                             id="work-unit-select"
@@ -1821,11 +2377,14 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             <option value="" disabled>
                                 Select a work unit
                             </option>
-                            {selectableUnits.map((unit) => (
-                                <option key={unit.work_unit_id} value={unit.work_unit_id}>
-                                    {unit.work_unit_id}
-                                </option>
-                            ))}
+                            {selectableUnits.map((unit) => {
+                                const label = formatWorkUnitLabel(unit);
+                                return (
+                                    <option key={unit.work_unit_id} value={unit.work_unit_id}>
+                                        {label} — {unit.work_unit_id}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
                 </div>
@@ -1836,7 +2395,18 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Overview</p>
                             <div className="mt-3 space-y-2 text-sm">
                                 <div>
-                                    <span className="text-(--ink-muted)">WorkUnit:</span> {selectedUnit.work_unit_id}
+                                    <span className="text-(--ink-muted)">Work unit:</span>{" "}
+                                    {formatWorkUnitLabel(selectedUnit)}
+                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-(--ink-muted)">
+                                        {selectedUnitTypeLabel ? (
+                                            <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
+                                                {selectedUnitTypeLabel}
+                                            </span>
+                                        ) : null}
+                                        <span>
+                                            ID: <span className="font-mono text-(--ink)">{selectedUnit.work_unit_id}</span>
+                                        </span>
+                                    </div>
                                 </div>
                                 <div>
                                     <span className="text-(--ink-muted)">Time range:</span>{" "}

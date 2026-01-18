@@ -204,8 +204,20 @@ export type WorkUnitInvestment = {
   /**
    * Probabilistic work-unit investment categorization emitted by dev-health-ops.
    * Used to render Work Unit Investment views without client-side inference.
-   */
+  */
   work_unit_id: string;
+  /** Human-readable label emitted by dev-health-ops when available. */
+  work_unit_name?: string;
+  /** High-level type for the work unit (issue/pr/commit/etc.). */
+  work_unit_type?: string;
+  /** Human-readable label when available (title, summary, etc.). */
+  display_name?: string;
+  title?: string;
+  summary?: string;
+  provider?: string;
+  item_type?: string;
+  key?: string;
+  external_key?: string;
   /** Time range bounding the connected subgraph. */
   time_range: { start: string; end: string };
   /** Effort value derived by the backend (churn LOC or active hours). */

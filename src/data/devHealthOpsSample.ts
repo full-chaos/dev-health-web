@@ -660,6 +660,12 @@ export const investmentRepoTeamMapSample: Record<string, string> = {
 export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
   {
     work_unit_id: "wu-41c2a",
+    work_unit_type: "story",
+    work_unit_name: "PROJ-123: Launch customer onboarding",
+    display_name: "PROJ-123: Launch customer onboarding",
+    provider: "jira",
+    item_type: "issue",
+    key: "PROJ-123",
     time_range: {
       start: "2025-02-01T12:00:00Z",
       end: "2025-02-03T18:00:00Z",
@@ -707,6 +713,12 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
   },
   {
     work_unit_id: "wu-53a17",
+    work_unit_type: "pr",
+    work_unit_name: "Refactor debt cleanup",
+    display_name: "github:pr:#482 Refactor debt cleanup",
+    provider: "github",
+    item_type: "pr",
+    key: "#482",
     time_range: {
       start: "2025-02-02T09:00:00Z",
       end: "2025-02-04T16:30:00Z",
@@ -752,6 +764,12 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
   },
   {
     work_unit_id: "wu-7ed90",
+    work_unit_type: "incident",
+    work_unit_name: "Hotfix on-call regression",
+    display_name: "INC-77: Hotfix on-call regression",
+    provider: "pagerduty",
+    item_type: "incident",
+    key: "INC-77",
     time_range: {
       start: "2025-02-05T08:00:00Z",
       end: "2025-02-06T20:00:00Z",
@@ -799,6 +817,12 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
   },
   {
     work_unit_id: "wu-9b2d4",
+    work_unit_type: "bug",
+    work_unit_name: "PROJ-231: Fix flaky test suite",
+    display_name: "PROJ-231: Fix flaky test suite",
+    provider: "jira",
+    item_type: "bug",
+    key: "PROJ-231",
     time_range: {
       start: "2025-02-06T10:00:00Z",
       end: "2025-02-08T12:00:00Z",
@@ -850,6 +874,12 @@ export const workUnitInvestmentsSample: WorkUnitInvestment[] = [
   },
   {
     work_unit_id: "wu-c1f80",
+    work_unit_type: "task",
+    work_unit_name: "Search latency audit",
+    display_name: "github:issue:#988 Search latency audit",
+    provider: "github",
+    item_type: "issue",
+    key: "#988",
     time_range: {
       start: "2025-02-08T09:30:00Z",
       end: "2025-02-09T19:00:00Z",
