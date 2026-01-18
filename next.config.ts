@@ -20,27 +20,7 @@ const nextConfig: NextConfig = {
     : {
       pageExtensions: ["tsx", "ts", "jsx", "js"],
     }),
-  ...(isDemoExport
-    ? {}
-    : {
-      async rewrites() {
-        return {
-          // Use afterFiles so Next.js API routes are matched FIRST
-          // This allows /api/v1/llm-proxy/* to be handled by our API route
-          // while other /api/* paths get proxied to the backend
-          afterFiles: [
-            {
-              source: "/api/:path*",
-              destination: `${process.env.BACKEND_URL || "http://127.0.0.1:8000"}/api/:path*`,
-            },
-            {
-              source: "/graphql",
-              destination: `${process.env.BACKEND_URL || "http://127.0.0.1:8000"}/graphql`,
-            },
-          ],
-        };
-      },
-    }),
+  // API proxying is handled by middleware.ts at runtime (not baked at build time)
 };
 
 export default nextConfig;
