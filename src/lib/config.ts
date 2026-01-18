@@ -1,6 +1,8 @@
 export const config = {
   api: {
-    baseUrl: process.env.BACKEND_URL || "http://127.0.0.1:8000",
-    docsUrl: process.env.BACKEND_URL || "http://127.0.0.1:8000/docs",
+    // Use relative paths - Next.js rewrites proxy /api/* and /graphql to backend
+    baseUrl: "",
+    // Docs URL can be set via NEXT_PUBLIC_ env var for external links
+    docsUrl: process.env.NEXT_PUBLIC_DOCS_URL || "/docs",
   },
 };

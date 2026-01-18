@@ -9,19 +9,16 @@ export type ApiFetchInit = RequestInit & {
   };
 };
 
-const API_BASE =
-  typeof window === "undefined"
-    ? process.env.BACKEND_URL ?? "http://127.0.0.1:8000"
-    : "";
-
+// Server-side: fetch directly from backend (BACKEND_URL read at runtime, not build time)
+// Client-side: use relative paths, proxied through Next.js rewrites
 const resolveOrigin = () => {
-  if (API_BASE) {
-    return API_BASE;
-  }
   if (typeof window !== "undefined") {
+    // Browser: use relative paths, Next.js rewrites proxy to backend
     return window.location.origin;
   }
-  return "http://127.0.0.1:8000";
+  // Server-side SSR: must use absolute URL to reach backend directly
+  // process.env is read at runtime, not baked in at build time
+  return process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 };
 
 const buildUrl = (path: string, params?: ApiQueryParams) => {
@@ -96,7 +93,6 @@ const sendBeacon = (
 };
 
 export const apiClient = {
-  baseUrl: API_BASE,
   buildUrl,
   request,
   fetchJson,
