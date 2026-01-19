@@ -21,6 +21,8 @@ export type MeasureInput =
 
 export type BucketIntervalInput = "DAY" | "WEEK" | "MONTH";
 
+export type ScopeLevelInput = "ORG" | "TEAM" | "REPO" | "SERVICE" | "DEVELOPER";
+
 // ==== Input Types ====
 
 export interface DateRangeInput {
@@ -51,11 +53,46 @@ export interface SankeyRequestInput {
     useInvestment?: boolean;
 }
 
+// ==== Filter Input Types ====
+
+export interface ScopeFilterInput {
+    level?: ScopeLevelInput;
+    ids?: string[];
+}
+
+export interface WhoFilterInput {
+    developers?: string[];
+    roles?: string[];
+}
+
+export interface WhatFilterInput {
+    repos?: string[];
+    services?: string[];
+}
+
+export interface WhyFilterInput {
+    workCategory?: string[];
+    issueType?: string[];
+}
+
+export interface HowFilterInput {
+    flowStage?: string[];
+}
+
+export interface FilterInput {
+    scope?: ScopeFilterInput;
+    who?: WhoFilterInput;
+    what?: WhatFilterInput;
+    why?: WhyFilterInput;
+    how?: HowFilterInput;
+}
+
 export interface AnalyticsRequestInput {
     timeseries?: TimeseriesRequestInput[];
     breakdowns?: BreakdownRequestInput[];
     sankey?: SankeyRequestInput;
     useInvestment?: boolean;
+    filters?: FilterInput;
 }
 
 // ==== Output Types ====
@@ -159,6 +196,9 @@ export interface GraphQLResponse<T> {
 
 export interface CatalogQueryResponse {
     catalog: CatalogResult;
+    orgId: string;
+    dimension?: DimensionInput;
+    filters?: FilterInput;
 }
 
 export interface AnalyticsQueryResponse {

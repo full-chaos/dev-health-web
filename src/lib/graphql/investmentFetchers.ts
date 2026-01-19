@@ -14,8 +14,10 @@ import type {
     AnalyticsQueryResponse,
     AnalyticsRequestInput,
     DimensionInput,
+    FilterInput,
     MeasureInput,
     SankeyResult,
+    ScopeLevelInput,
 } from "./types";
 
 /**
@@ -51,6 +53,25 @@ function buildDateRange(filters: MetricFilter): { startDate: string; endDate: st
 }
 
 /**
+ * Translate internal MetricFilter to GraphQL FilterInput.
+ */
+function translateMetricFilterToGraphQL(filters: MetricFilter): FilterInput {
+    return {
+        scope: {
+            level: filters.scope.level.toUpperCase() as ScopeLevelInput,
+            ids: filters.scope.ids,
+        },
+        who: filters.who.developers?.length ? { developers: filters.who.developers } : undefined,
+        what: filters.what.repos?.length ? { repos: filters.what.repos } : undefined,
+        why: (filters.why.work_category?.length || filters.why.issue_type?.length) ? {
+            workCategory: filters.why.work_category,
+            issueType: filters.why.issue_type,
+        } : undefined,
+        how: filters.how.flow_stage?.length ? { flowStage: filters.how.flow_stage } : undefined,
+    };
+}
+
+/**
  * Fetch investment breakdown (theme/subcategory distributions) via GraphQL.
  *
  * Returns data in the same shape as the REST /api/v1/investment endpoint.
@@ -77,6 +98,7 @@ export async function getInvestmentViaGraphQL(
             },
         ],
         useInvestment: true,
+        filters: translateMetricFilterToGraphQL(filters),
     };
 
     const response = await graphqlClient.query<AnalyticsQueryResponse>(
@@ -202,6 +224,7 @@ export async function getInvestmentFlowViaGraphQL(params: {
             useInvestment: true,
         },
         useInvestment: true,
+        filters: translateMetricFilterToGraphQL(filters),
     };
 
     const response = await graphqlClient.query<AnalyticsQueryResponse>(
@@ -217,8 +240,8 @@ export async function getInvestmentFlowViaGraphQL(params: {
     const sankeyData = response.analytics.sankey as unknown as { coverage?: { teamCoverage?: number, team_coverage?: number, repoCoverage?: number, repo_coverage?: number } };
     if (sankeyData?.coverage) {
         result.coverage = {
-            team: sankeyData.coverage.teamCoverage || sankeyData.coverage.team_coverage || 0,
-            repo: sankeyData.coverage.repoCoverage || sankeyData.coverage.repo_coverage || 0,
+            team: Number(sankeyData.coverage.teamCoverage || sankeyData.coverage.team_coverage || 0),
+            repo: Number(sankeyData.coverage.repoCoverage || sankeyData.coverage.repo_coverage || 0),
         };
     }
 
@@ -248,6 +271,7 @@ export async function getInvestmentRepoTeamFlowViaGraphQL(params: {
             useInvestment: true,
         },
         useInvestment: true,
+        filters: translateMetricFilterToGraphQL(filters),
     };
 
     const response = await graphqlClient.query<AnalyticsQueryResponse>(
