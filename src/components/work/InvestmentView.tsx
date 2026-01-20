@@ -418,21 +418,22 @@ const filterSankeyToTeam = (
     if (!flow || !teamName) {
         return flow;
     }
-    const teamKey = `team:${teamName}`;
-    const hasTeamNode = flow.nodes.some(
-        (node) => node.group === "team" && node.name === teamKey
+    // Find the team node - check both with and without prefix for compatibility
+    const teamNode = flow.nodes.find(
+        (node) => node.group === "team" && (node.name === teamName || node.name === `team:${teamName}`)
     );
-    if (!hasTeamNode) {
+    if (!teamNode) {
         return flow;
     }
+    const teamNodeName = teamNode.name;
     const adjacency = new Map<string, string[]>();
     flow.links.forEach((link) => {
         const targets = adjacency.get(link.source) ?? [];
         targets.push(link.target);
         adjacency.set(link.source, targets);
     });
-    const allowed = new Set<string>([teamKey]);
-    const queue = [teamKey];
+    const allowed = new Set<string>([teamNodeName]);
+    const queue = [teamNodeName];
     while (queue.length) {
         const current = queue.shift();
         if (!current) {
