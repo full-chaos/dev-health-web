@@ -269,8 +269,12 @@ export function SankeyChart({
           label: {
             color: chartTheme.text,
             fontSize: 11,
-            formatter: (params: any) => {
-              const name = params.name || "";
+            formatter: (params: unknown) => {
+              if (!params || typeof params !== "object") {
+                return "";
+              }
+              const entry = params as { name?: string };
+              const name = entry.name || "";
               return displayNameForKey(name);
             },
           },
@@ -283,8 +287,6 @@ export function SankeyChart({
       ],
     };
   }, [
-    nodes,
-    links,
     chartNodes,
     chartLinks,
     unit,
