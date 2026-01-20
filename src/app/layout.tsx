@@ -59,6 +59,7 @@ export default function RootLayout({
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
+        <script src="/runtime-config.js" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <div className="fixed right-6 top-6 z-50">
           <ThemeToggle />

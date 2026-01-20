@@ -7,6 +7,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse } from "@/lib/types";
 import { apiClient } from "@/lib/apiClient";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
+import { runtimeConfig } from "@/lib/runtimeConfig";
 import { investmentMixSample } from "@/data/devHealthOpsSample";
 
 const InvestmentMixSunburst = dynamic(
@@ -54,7 +55,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
     data: null,
     filtersKey: "",
   });
-  const useSampleData = process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+  const useSampleData = runtimeConfig.devHealthTestMode();
 
   const currentFiltersKey = useMemo(() => getFiltersKey(filters), [filters]);
 

@@ -6,8 +6,59 @@ import type { SankeyResult } from "../graphql/types";
 describe("graphqlClient", () => {
     describe("isEnabled", () => {
         it("returns false by default", () => {
-            // NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS is not set
-            expect(graphqlClient.isEnabled()).toBe(false);
+            const originalUse = process.env.USE_GRAPHQL_ANALYTICS;
+            const originalPublic = process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
+            delete process.env.USE_GRAPHQL_ANALYTICS;
+            delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
+            try {
+                expect(graphqlClient.isEnabled()).toBe(false);
+            } finally {
+                if (originalUse === undefined) {
+                    delete process.env.USE_GRAPHQL_ANALYTICS;
+                } else {
+                    process.env.USE_GRAPHQL_ANALYTICS = originalUse;
+                }
+                if (originalPublic === undefined) {
+                    delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
+                } else {
+                    process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = originalPublic;
+                }
+            }
+        });
+
+        it("returns true when USE_GRAPHQL_ANALYTICS is enabled", () => {
+            const original = process.env.USE_GRAPHQL_ANALYTICS;
+            process.env.USE_GRAPHQL_ANALYTICS = "true";
+            try {
+                expect(graphqlClient.isEnabled()).toBe(true);
+            } finally {
+                if (original === undefined) {
+                    delete process.env.USE_GRAPHQL_ANALYTICS;
+                } else {
+                    process.env.USE_GRAPHQL_ANALYTICS = original;
+                }
+            }
+        });
+
+        it("falls back to NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS when set", () => {
+            const originalUse = process.env.USE_GRAPHQL_ANALYTICS;
+            const originalPublic = process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
+            delete process.env.USE_GRAPHQL_ANALYTICS;
+            process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "true";
+            try {
+                expect(graphqlClient.isEnabled()).toBe(true);
+            } finally {
+                if (originalUse === undefined) {
+                    delete process.env.USE_GRAPHQL_ANALYTICS;
+                } else {
+                    process.env.USE_GRAPHQL_ANALYTICS = originalUse;
+                }
+                if (originalPublic === undefined) {
+                    delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
+                } else {
+                    process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = originalPublic;
+                }
+            }
         });
     });
 

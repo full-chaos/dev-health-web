@@ -37,6 +37,7 @@ import {
     type TreemapSunburstType,
 } from "@/components/charts/ChartTypeToggle";
 import { formatNumber } from "@/lib/formatters";
+import { runtimeConfig } from "@/lib/runtimeConfig";
 
 type FlowViewProps = {
     filters: MetricFilter;
@@ -69,7 +70,7 @@ type FlowSelection = {
 export function FlowView({ filters, activeRole }: FlowViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const useSampleData = process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    const useSampleData = runtimeConfig.devHealthTestMode();
 
     // Refs for tab buttons (for keyboard navigation focus management)
     const tabRefs = useRef<Record<FlowSubTab, HTMLButtonElement | null>>({

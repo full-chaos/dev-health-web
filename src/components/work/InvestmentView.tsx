@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix, type InvestmentMixAggregate } from "@/lib/investmentMix";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
+import { runtimeConfig } from "@/lib/runtimeConfig";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentMixExplanation, WorkUnitInvestment, WorkUnitExplanation, SankeyLink, SankeyNode, SankeyResponse } from "@/lib/types";
 
@@ -576,7 +577,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const searchParams = useSearchParams();
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
-    const useSampleData = process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    const useSampleData = runtimeConfig.devHealthTestMode();
 
     const [categorizationMode, setCategorizationMode] = useState<CategorizationMode>("text_metadata");
     const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);

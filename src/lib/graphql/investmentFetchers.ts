@@ -3,7 +3,7 @@
  *
  * These fetchers adapt GraphQL responses to match the shapes
  * expected by the existing REST-based UI components.
- * Toggle with NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true.
+ * Toggle with USE_GRAPHQL_ANALYTICS=true (runtime) or NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true.
  */
 
 import type { MetricFilter } from "@/lib/filters/types";
