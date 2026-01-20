@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans, Noto_Sans_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -49,6 +50,8 @@ const themeScript = `
 })();
 `;
 
+const runtimeConfigSrc = `${process.env.BASE_PATH ?? ""}/runtime-config.js`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -59,6 +62,7 @@ export default function RootLayout({
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
+        <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <div className="fixed right-6 top-6 z-50">
           <ThemeToggle />

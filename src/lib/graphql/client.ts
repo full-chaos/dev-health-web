@@ -5,6 +5,7 @@
  * Supports X-Org-Id header and org_id query param for org scoping.
  */
 
+import { runtimeConfig } from "@/lib/runtimeConfig";
 import type { GraphQLResponse } from "./types";
 
 const GRAPHQL_PATH = "/graphql";
@@ -116,7 +117,7 @@ export async function graphqlQuery<T>(
  * Check if GraphQL analytics is enabled via feature flag.
  */
 export function isGraphQLEnabled(): boolean {
-    return process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS === "true";
+    return runtimeConfig.useGraphQLAnalytics();
 }
 
 export const graphqlClient = {

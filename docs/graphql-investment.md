@@ -11,6 +11,12 @@ Set the environment variable to enable GraphQL transport for Investment view dat
 NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true
 ```
 
+For compiled builds (`next start`), the runtime flag is written to
+`public/runtime-config.js` at startup (see `scripts/write-runtime-config.mjs`).
+That file mirrors all `NEXT_PUBLIC_*` values under `publicEnv` (for example
+`NEXT_PUBLIC_DOCS_URL` and `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE`). You can also
+set `USE_GRAPHQL_ANALYTICS=true` for a runtime-only flag.
+
 When enabled, the following Investment view API calls switch from REST to GraphQL:
 
 - `getInvestment()` - theme/subcategory distributions
@@ -41,6 +47,15 @@ cd dev-health-web
 export NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true
 npm run dev
 ```
+
+For a compiled build:
+
+```bash
+npm run build
+NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true npm start
+```
+
+`npm start` runs `scripts/write-runtime-config.mjs` to refresh `public/runtime-config.js`.
 
 ## Investment Query Examples
 
@@ -175,9 +190,12 @@ With the flag disabled, everything works exactly as before using REST endpoints.
 │                      Frontend (dev-health-web)               │
 ├─────────────────────────────────────────────────────────────┤
 │  src/lib/api.ts                                              │
-│    ↓ checks NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS                │
+│    ↓ checks runtime GraphQL flag                             │
 │    ├─ false → REST endpoints (/api/v1/investment/*)          │
 │    └─ true  → GraphQL fetchers                               │
+│                                                              │
+│  scripts/write-runtime-config.mjs                            │
+│    ↓ writes public/runtime-config.js at start                │
 │                                                              │
 │  src/lib/graphql/                                            │
 │    ├─ client.ts          # GraphQL request wrapper           │
