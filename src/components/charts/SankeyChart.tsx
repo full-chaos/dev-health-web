@@ -95,10 +95,61 @@ export function SankeyChart({
     [height, width, style]
   );
 
+  const { chartNodes, chartLinks, labelByKey } = useMemo(() => {
+    const keyByRef = new Map<string, string>();
+    const labelByKey = new Map<string, string>();
+
+    const makeKey = (node: SankeyNode) => {
+      if (node.id) {
+        return node.id;
+      }
+      if (node.group) {
+        return `${node.group}:${node.name}`;
+      }
+      return node.name;
+    };
+
+    nodes.forEach((node) => {
+      const key = makeKey(node);
+      keyByRef.set(node.name, key);
+      if (node.id) {
+        keyByRef.set(node.id, key);
+      }
+      labelByKey.set(key, node.name);
+    });
+
+    const chartNodes = nodes.map((node) => ({
+      ...node,
+      name: keyByRef.get(node.name) ?? makeKey(node),
+    }));
+
+    const chartLinks = links.map((link) => ({
+      ...link,
+      source: keyByRef.get(link.source) ?? link.source,
+      target: keyByRef.get(link.target) ?? link.target,
+    }));
+
+    return { chartNodes, chartLinks, labelByKey };
+  }, [nodes, links]);
+
+  const displayNameForKey = useCallback(
+    (value: string) => {
+      const label = labelByKey.get(value);
+      if (label) {
+        return label;
+      }
+      if (value.includes(":")) {
+        return value.split(":").slice(1).join(":");
+      }
+      return value;
+    },
+    [labelByKey]
+  );
+
   // Memoize flow computations
   const { outgoingTotals, nodeValueByName, totalFlow } = useMemo(
-    () => computeFlowTotals(nodes, links),
-    [nodes, links]
+    () => computeFlowTotals(chartNodes, chartLinks),
+    [chartNodes, chartLinks]
   );
 
   // Memoize click handler
@@ -121,13 +172,13 @@ export function SankeyChart({
       const isLink = entry.dataType === "edge";
       onItemClick({
         type: isLink ? "link" : "node",
-        name: data.name ?? entry.name,
-        source: data.source,
-        target: data.target,
+        name: displayNameForKey(data.name ?? entry.name ?? ""),
+        source: data.source ? displayNameForKey(data.source) : undefined,
+        target: data.target ? displayNameForKey(data.target) : undefined,
         value: data.value,
       });
     },
-    [onItemClick]
+    [displayNameForKey, onItemClick]
   );
 
   // Memoize the ECharts option to prevent re-renders
@@ -146,21 +197,27 @@ export function SankeyChart({
         };
         name?: string;
       };
-      const data = entry.data ?? {};
-      if (entry.dataType === "edge") {
-        const totalFromSource =
-          data.source && outgoingTotals.has(data.source)
-            ? outgoingTotals.get(data.source) ?? 0
-            : 0;
-        const unitLabel = unit === "hours" ? "Elapsed" : "Value";
-        const shareLine =
-          totalFromSource > 0 && typeof data.value === "number"
-            ? `<br/><span style="color: ${chartTheme.accent2}">${formatPercent(data.value, totalFromSource)}</span> of source flow`
+        const data = entry.data ?? {};
+        if (entry.dataType === "edge") {
+          const sourceLabel = data.source
+            ? displayNameForKey(data.source)
             : "";
+          const targetLabel = data.target
+            ? displayNameForKey(data.target)
+            : "";
+          const totalFromSource =
+            data.source && outgoingTotals.has(data.source)
+              ? outgoingTotals.get(data.source) ?? 0
+              : 0;
+          const unitLabel = unit === "hours" ? "Elapsed" : "Value";
+          const shareLine =
+            totalFromSource > 0 && typeof data.value === "number"
+              ? `<br/><span style="color: ${chartTheme.accent2}">${formatPercent(data.value, totalFromSource)}</span> of source flow`
+              : "";
 
-        return `
+          return `
           <div style="font-weight: 600; margin-bottom: 4px;">Flow</div>
-          <div style="font-size: 11px; color: ${chartTheme.muted}">${data.source ?? ""} &rarr; ${data.target ?? ""}</div>
+          <div style="font-size: 11px; color: ${chartTheme.muted}">${sourceLabel} &rarr; ${targetLabel}</div>
           <div style="margin-top: 4px;">
             <span style="color: ${chartTheme.muted}">${unitLabel}:</span> 
             <span style="font-weight: 600; font-family: monospace;">${formatValue(data.value, unit)}</span>
@@ -169,11 +226,13 @@ export function SankeyChart({
         `;
       }
 
-      const nodeName = data.name ?? entry.name ?? "";
+      const rawNodeName = data.name ?? entry.name ?? "";
+      const nodeName = displayNameForKey(rawNodeName);
+
       const nodeValue =
         typeof data.value === "number"
           ? data.value
-          : nodeValueByName.get(nodeName) ?? 0;
+          : nodeValueByName.get(rawNodeName) ?? 0;
       const unitLabel = unit === "hours" ? "Total Elapsed" : "Total Value";
       const shareLine =
         totalFlow > 0
@@ -203,11 +262,22 @@ export function SankeyChart({
         {
           type: "sankey" as const,
           emphasis: { focus: "adjacency" as const },
-          data: nodes,
-          links,
+          data: chartNodes,
+          links: chartLinks,
           roam: false,
           lineStyle: { color: "gradient", curveness: 0.5, opacity: 0.45 },
-          label: { color: chartTheme.text, fontSize: 11 },
+          label: {
+            color: chartTheme.text,
+            fontSize: 11,
+            formatter: (params: unknown) => {
+              if (!params || typeof params !== "object") {
+                return "";
+              }
+              const entry = params as { name?: string };
+              const name = entry.name || "";
+              return displayNameForKey(name);
+            },
+          },
           itemStyle: {
             borderColor: chartTheme.grid,
             borderWidth: 1,
@@ -217,8 +287,8 @@ export function SankeyChart({
       ],
     };
   }, [
-    nodes,
-    links,
+    chartNodes,
+    chartLinks,
     unit,
     chartTheme.text,
     chartTheme.grid,
@@ -228,6 +298,7 @@ export function SankeyChart({
     nodeValueByName,
     totalFlow,
     tooltipFormatter,
+    displayNameForKey,
   ]);
 
   // Memoize onEvents to prevent re-renders

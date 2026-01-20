@@ -60,5 +60,33 @@ describe("investmentFetchers", () => {
             expect(result.nodes).toEqual([]);
             expect(result.links).toEqual([]);
         });
+
+        it("maps edge ids to node names for link parity", () => {
+            const mockGqlSankey: SankeyResult = {
+                nodes: [
+                    { id: "TEAM:Unassigned", label: "Unassigned", dimension: "TEAM", value: 100 },
+                    { id: "REPO:acme/demo", label: "acme/demo", dimension: "REPO", value: 100 },
+                ],
+                edges: [
+                    { source: "REPO:acme/demo", target: "TEAM:Unassigned", value: 100 }
+                ]
+            };
+
+            const result = adaptSankeyResult(mockGqlSankey, "investment");
+            expect(result.links[0]?.source).toBe("acme/demo");
+            expect(result.links[0]?.target).toBe("Unassigned");
+        });
+
+        it("formats subcategory labels to match UI conventions", () => {
+            const mockGqlSankey: SankeyResult = {
+                nodes: [
+                    { id: "SUBCATEGORY:quality.code_review", label: "quality.code_review", dimension: "SUBCATEGORY", value: 100 },
+                ],
+                edges: []
+            };
+
+            const result = adaptSankeyResult(mockGqlSankey, "investment");
+            expect(result.nodes[0]?.name).toBe("Quality · Code Review");
+        });
     });
 });

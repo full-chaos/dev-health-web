@@ -130,6 +130,9 @@ const normalizeUnassignedLabel = (value: string, group?: string) => {
     return trimmed;
 };
 
+const stripSankeyPrefix = (value: string) =>
+    value.replace(/^(team|repo|subcategory|category):\s*/i, "");
+
 const isUnassignedLabel = (value: string) => value.toLowerCase().includes("unassigned");
 
 const buildOptionalTimeRangeLabel = (start?: string, end?: string) => {
@@ -212,14 +215,16 @@ const limitRepoNodes = (
     const hasOther = repoNodes.length > topN;
 
     const linkTotals = new Map<string, number>();
+    const OTHER_REPO_KEY = `repo:${OTHER_REPOS_LABEL}`;
+
     links.forEach((link) => {
         let source = link.source;
         let target = link.target;
         if (groupByName.get(target) === "repo" && !keepRepos.has(target)) {
-            target = OTHER_REPOS_LABEL;
+            target = OTHER_REPO_KEY;
         }
         if (groupByName.get(source) === "repo" && !keepRepos.has(source)) {
-            source = OTHER_REPOS_LABEL;
+            source = OTHER_REPO_KEY;
         }
         const key = `${source}|||${target}`;
         linkTotals.set(key, (linkTotals.get(key) ?? 0) + link.value);
@@ -231,11 +236,23 @@ const limitRepoNodes = (
         .map((name) => repoNodeByName.get(name))
         .filter((node): node is SankeyNode => Boolean(node));
 
-    if (hasOther && !repoNodeByName.has(OTHER_REPOS_LABEL)) {
-        orderedRepoNodes.push({ name: OTHER_REPOS_LABEL, group: "repo" });
+    if (hasOther) {
+        if (!keepRepos.has(OTHER_REPO_KEY)) {
+            const existing = repoNodeByName.get(OTHER_REPO_KEY);
+            if (existing) {
+                orderedRepoNodes.push(existing);
+            } else {
+                orderedRepoNodes.push({ name: OTHER_REPO_KEY, group: "repo" });
+            }
+        }
     }
 
-    const limitedNodes = [...nonRepoNodes, ...orderedRepoNodes];
+    // Deduplicate all nodes by name to prevent "duplicate name or id" errors
+    const allFinalNodes = [...nonRepoNodes, ...orderedRepoNodes];
+    const uniqueNodeMap = new Map<string, SankeyNode>();
+    allFinalNodes.forEach((node) => uniqueNodeMap.set(node.name, node));
+    const limitedNodes = Array.from(uniqueNodeMap.values());
+
     const nodeNames = new Set(limitedNodes.map((node) => node.name));
     const limitedLinks = Array.from(linkTotals, ([key, value]) => {
         const [source, target] = key.split("|||");
@@ -350,12 +367,15 @@ const buildRepoTeamSankey = (
             }
             const sourceLabel = formatSubcategoryLabel(subcategory, true);
             const sourceColor = categoryColorMap.get(subcategory);
-            addNode(sourceLabel, "subcategory", sourceColor);
+            const sourceKey = `subcategory:${sourceLabel}`;
+            addNode(sourceKey, "subcategory", sourceColor);
+
             repoTargets.forEach((repoId) => {
                 const repoLabel = normalizeUnassignedLabel(
                     repoId === UNASSIGNED_REPO_LABEL ? UNASSIGNED_REPO_LABEL : repoId.replace(/^repo:/, ""),
                     "repo"
                 );
+                const repoKey = `repo:${repoLabel}`;
                 const mappedTeam = repoId === UNASSIGNED_REPO_LABEL ? null : repoTeamMap[repoId];
                 const teamTargets = mappedTeam
                     ? [normalizeUnassignedLabel(mappedTeam, "team")]
@@ -365,12 +385,13 @@ const buildRepoTeamSankey = (
                 const teamShare = 1 / teamTargets.length;
                 const value = effortValue * weight * repoShare;
 
-                addNode(repoLabel, "repo");
-                addLink(sourceLabel, repoLabel, value);
+                addNode(repoKey, "repo");
+                addLink(sourceKey, repoKey, value);
 
                 teamTargets.forEach((teamLabel) => {
-                    addNode(teamLabel, "team");
-                    addLink(repoLabel, teamLabel, value * teamShare);
+                    const teamKey = `team:${teamLabel}`;
+                    addNode(teamKey, "team");
+                    addLink(repoKey, teamKey, value * teamShare);
                     hasTeamAssociations = true;
                 });
             });
@@ -397,20 +418,22 @@ const filterSankeyToTeam = (
     if (!flow || !teamName) {
         return flow;
     }
-    const hasTeamNode = flow.nodes.some(
-        (node) => node.group === "team" && node.name === teamName
+    // Find the team node - check both with and without prefix for compatibility
+    const teamNode = flow.nodes.find(
+        (node) => node.group === "team" && (node.name === teamName || node.name === `team:${teamName}`)
     );
-    if (!hasTeamNode) {
+    if (!teamNode) {
         return flow;
     }
+    const teamNodeName = teamNode.name;
     const adjacency = new Map<string, string[]>();
     flow.links.forEach((link) => {
         const targets = adjacency.get(link.source) ?? [];
         targets.push(link.target);
         adjacency.set(link.source, targets);
     });
-    const allowed = new Set<string>([teamName]);
-    const queue = [teamName];
+    const allowed = new Set<string>([teamNodeName]);
+    const queue = [teamNodeName];
     while (queue.length) {
         const current = queue.shift();
         if (!current) {
@@ -1405,7 +1428,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
     const resolveSubcategoryIdFromLabel = useCallback(
         (label: string) => {
-            const normalized = label.trim().toLowerCase();
+            const normalized = stripSankeyPrefix(label).trim().toLowerCase();
             if (!normalized) {
                 return null;
             }
@@ -1416,8 +1439,14 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     if (selectedThemeKey && themeKey !== selectedThemeKey) {
                         return false;
                     }
-                    const formatted = formatSubcategoryLabel(id, includeTheme);
-                    return formatted.toLowerCase() === normalized;
+                    const formatted = formatSubcategoryLabel(id, includeTheme).toLowerCase();
+                    const formattedWithTheme = formatSubcategoryLabel(id, true).toLowerCase();
+                    const formattedWithoutTheme = formatSubcategoryLabel(id, false).toLowerCase();
+                    return (
+                        formatted === normalized ||
+                        formattedWithTheme === normalized ||
+                        formattedWithoutTheme === normalized
+                    );
                 }) ?? null
             );
         },
@@ -2178,7 +2207,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 if (item.type === "node") {
                                     const node = sankeyFlow.nodes.find((n) => n.name === item.name);
                                     if (node?.group === "team") {
-                                        handleTeamFocus(node.id ?? node.name);
+                                        handleTeamFocus(stripSankeyPrefix(node.name));
                                         return;
                                     }
                                     if (node?.group === "category") {
@@ -2226,13 +2255,16 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             tooltipFormatter={repoTeamTooltipFormatter}
                             onItemClick={(item) => {
                                 if (item.type === "node") {
-                                    const link = repoTeamLinks.find(l => l.source === item.name);
-                                    if (link) {
-                                        const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === item.name);
+                                    const normalized = stripSankeyPrefix(item.name ?? "");
+                                    const node = repoTeamNodes.find(
+                                        (entry) => stripSankeyPrefix(entry.name) === normalized
+                                    );
+                                    if (node?.group === "subcategory") {
+                                        const subId = resolveSubcategoryIdFromLabel(node.name);
                                         if (subId) setFocusSubcategory(subId);
                                     }
                                 } else if (item.type === "link") {
-                                    const subId = allSubcategoryIds.find(id => formatSubcategoryLabel(id, true) === item.source);
+                                    const subId = resolveSubcategoryIdFromLabel(item.source ?? "");
                                     if (subId) setFocusSubcategory(subId);
                                 }
                             }}
