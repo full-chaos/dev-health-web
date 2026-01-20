@@ -12,7 +12,7 @@ NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true
 ```
 
 For compiled builds (`next start`), the runtime flag is written to
-`public/runtime-config.js` at startup (see `scripts/write-runtime-config.cjs`).
+`public/runtime-config.js` at startup (see `scripts/write-runtime-config.mjs`).
 That file mirrors all `NEXT_PUBLIC_*` values under `publicEnv` (for example
 `NEXT_PUBLIC_DOCS_URL` and `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE`). You can also
 set `USE_GRAPHQL_ANALYTICS=true` for a runtime-only flag.
@@ -55,7 +55,7 @@ npm run build
 NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true npm start
 ```
 
-`npm start` runs `scripts/write-runtime-config.cjs` to refresh `public/runtime-config.js`.
+`npm start` runs `scripts/write-runtime-config.mjs` to refresh `public/runtime-config.js`.
 
 ## Investment Query Examples
 
@@ -194,7 +194,7 @@ With the flag disabled, everything works exactly as before using REST endpoints.
 │    ├─ false → REST endpoints (/api/v1/investment/*)          │
 │    └─ true  → GraphQL fetchers                               │
 │                                                              │
-│  scripts/write-runtime-config.cjs                            │
+│  scripts/write-runtime-config.mjs                            │
 │    ↓ writes public/runtime-config.js at start                │
 │                                                              │
 │  src/lib/graphql/                                            │

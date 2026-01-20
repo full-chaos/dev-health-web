@@ -1,5 +1,5 @@
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
 const outputPath = path.join(process.cwd(), "public", "runtime-config.js");
 const publicEnv = Object.fromEntries(
