@@ -171,7 +171,7 @@ export function adaptSankeyResult(
         // Strip prefixes if present (e.g. from backend ID formatting leaks)
         name = name.replace(/^(TEAM|REPO|THEME|SUBCATEGORY):\s*/i, "");
         if (group === "subcategory") {
-            name = formatSubcategoryLabel(name, true);
+            name = formatSubcategoryLabel(name, false);
         }
 
         return {
