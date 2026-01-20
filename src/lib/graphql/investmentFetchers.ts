@@ -8,6 +8,7 @@
 
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse, SankeyNode, SankeyLink } from "@/lib/types";
+import { formatSubcategoryLabel } from "@/lib/investmentMix";
 import { graphqlClient } from "./client";
 import { INVESTMENT_BREAKDOWN_QUERY, INVESTMENT_FULL_QUERY } from "./queries";
 import type {
@@ -169,6 +170,9 @@ export function adaptSankeyResult(
         let name = n.label || `(Unassigned ${group})`;
         // Strip prefixes if present (e.g. from backend ID formatting leaks)
         name = name.replace(/^(TEAM|REPO|THEME|SUBCATEGORY):\s*/i, "");
+        if (group === "subcategory") {
+            name = formatSubcategoryLabel(name, true);
+        }
 
         return {
             id: n.id,
@@ -178,10 +182,17 @@ export function adaptSankeyResult(
         };
     });
 
-    // Map GraphQL edges to REST links
+    const nodeNameById = new Map(
+        nodes.map((node) => [node.id ?? node.name, node.name])
+    );
+
+    const normalizeEdgeRef = (ref: string) =>
+        ref.replace(/^(TEAM|REPO|THEME|SUBCATEGORY):\s*/i, "");
+
+    // Map GraphQL edges to REST links (source/target should match node names)
     const links: SankeyLink[] = graphqlSankey.edges.map((e) => ({
-        source: e.source,
-        target: e.target,
+        source: nodeNameById.get(e.source) ?? normalizeEdgeRef(e.source),
+        target: nodeNameById.get(e.target) ?? normalizeEdgeRef(e.target),
         value: e.value,
     }));
 
@@ -263,7 +274,7 @@ export async function getInvestmentRepoTeamFlowViaGraphQL(params: {
 
     const batch: AnalyticsRequestInput = {
         sankey: {
-            path: ["REPO", "TEAM"] as DimensionInput[],
+            path: ["SUBCATEGORY", "REPO", "TEAM"] as DimensionInput[],
             measure: "COUNT" as MeasureInput,
             dateRange,
             maxNodes: 50,
