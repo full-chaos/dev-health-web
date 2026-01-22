@@ -1,5 +1,5 @@
 # Dev Health Web
-
+[Demo](https://demo.fullchaos.studio)
 This is the application frontend for [dev-health-ops](https://github.com/chrisgeo/dev-health-ops).
 
 ## Getting Started
@@ -44,3 +44,4 @@ pnpm dev
 # or
 bun dev
 ```
+![Arc 2026-01-20 11 00 22](https://github.com/user-attachments/assets/8e823e44-2388-477a-bba5-3bd64efde538)
