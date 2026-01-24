@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendUrl } from "@/lib/origin";
 
 /**
  * Proxy to forward /api/* and /graphql requests to the backend.
@@ -19,8 +20,7 @@ export function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // Read BACKEND_URL at runtime
-    const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+    const backendUrl = getBackendUrl();
     const targetUrl = new URL(pathname + request.nextUrl.search, backendUrl);
 
     // Rewrite the request to the backend

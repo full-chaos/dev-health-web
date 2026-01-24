@@ -376,39 +376,23 @@ export async function getHeatmap(params: {
       ? ["person", "developer"]
       : [normalizedScopeType];
 
-  let lastError: unknown;
-  for (const scopeType of candidates) {
-    const response = await apiClient.request(
-      "/api/v1/heatmap",
-      { cache: "no-store" },
-      {
-        type: params.type,
-        metric: params.metric,
-        scope_type: scopeType,
-        scope_id: params.scope_id ?? "",
-        range_days: params.range_days,
-        start_date: params.start_date ?? "",
-        end_date: params.end_date ?? "",
-        x: params.x ?? "",
-        y: params.y ?? "",
-        limit: params.limit ?? 50,
-      }
-    );
-    if (response.ok) {
-      return (await response.json()) as HeatmapResponse;
-    }
-    lastError = response;
-    if (candidates.length === 1) {
-      break;
-    }
-    if (response.status !== 400 && response.status !== 404 && response.status !== 422) {
-      break;
-    }
-  }
-  if (lastError instanceof Response) {
-    throw new Error(`API error: ${lastError.status}`);
-  }
-  throw lastError ?? new Error("API error");
+  return apiClient.fetchWithFallback<HeatmapResponse, string>(
+    "/api/v1/heatmap",
+    { cache: "no-store" },
+    (scopeType) => ({
+      type: params.type,
+      metric: params.metric,
+      scope_type: scopeType,
+      scope_id: params.scope_id ?? "",
+      range_days: params.range_days,
+      start_date: params.start_date ?? "",
+      end_date: params.end_date ?? "",
+      x: params.x ?? "",
+      y: params.y ?? "",
+      limit: params.limit ?? 50,
+    }),
+    candidates
+  );
 }
 
 export async function getFlame(params: {
@@ -475,36 +459,20 @@ export async function getQuadrant(params: {
           ? ["repo", "org"]
           : [normalizedScopeType];
 
-  let lastError: unknown;
-  for (const scopeType of candidates) {
-    const response = await apiClient.request(
-      "/api/v1/quadrant",
-      { cache: "no-store" },
-      {
-        type: params.type,
-        scope_type: scopeType,
-        scope_id: params.scope_id ?? "",
-        range_days: params.range_days,
-        start_date: params.start_date ?? "",
-        end_date: params.end_date ?? "",
-        bucket: params.bucket,
-      }
-    );
-    if (response.ok) {
-      return (await response.json()) as QuadrantResponse;
-    }
-    lastError = response;
-    if (candidates.length === 1) {
-      break;
-    }
-    if (response.status !== 400 && response.status !== 404 && response.status !== 422) {
-      break;
-    }
-  }
-  if (lastError instanceof Response) {
-    throw new Error(`API error: ${lastError.status}`);
-  }
-  throw lastError ?? new Error("API error");
+  return apiClient.fetchWithFallback<QuadrantResponse, string>(
+    "/api/v1/quadrant",
+    { cache: "no-store" },
+    (scopeType) => ({
+      type: params.type,
+      scope_type: scopeType,
+      scope_id: params.scope_id ?? "",
+      range_days: params.range_days,
+      start_date: params.start_date ?? "",
+      end_date: params.end_date ?? "",
+      bucket: params.bucket,
+    }),
+    candidates
+  );
 }
 export async function getWorkUnitExplanation(params: {
   workUnitId: string;

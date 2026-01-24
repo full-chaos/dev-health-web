@@ -1,9 +1,11 @@
+import { isServer, isBrowser } from "@/lib/env";
+
 type RuntimeConfig = {
   publicEnv?: Record<string, string>;
 };
 
 const readRuntimeConfig = (): RuntimeConfig | undefined => {
-  if (typeof window === "undefined") {
+  if (isServer) {
     return undefined;
   }
   return window.__DEV_HEALTH_RUNTIME__;
@@ -23,7 +25,7 @@ const getPublicBoolean = (key: string): boolean =>
 
 export const runtimeConfig = {
   useGraphQLAnalytics: (): boolean => {
-    if (typeof window !== "undefined") {
+    if (isBrowser) {
       return getPublicBoolean("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
     }
     const raw =

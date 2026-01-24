@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/formatters";
 import { buildExploreUrl } from "@/lib/filters/url";
+import { getLocalStorage } from "@/lib/env";
 import type { MetricFilter } from "@/lib/filters/types";
 
 const STORAGE_KEY = "dev-health-last-ingested";
@@ -21,8 +22,7 @@ export function DataStatusBanner({
   coverageLow,
   filters,
 }: DataStatusBannerProps) {
-  const cachedAt =
-    typeof window === "undefined" ? null : localStorage.getItem(STORAGE_KEY);
+  const cachedAt = getLocalStorage()?.getItem(STORAGE_KEY) ?? null;
 
   useEffect(() => {
     if (lastIngestedAt) {

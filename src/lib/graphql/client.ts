@@ -6,21 +6,10 @@
  */
 
 import { runtimeConfig } from "@/lib/runtimeConfig";
+import { resolveOrigin } from "@/lib/origin";
 import type { GraphQLResponse } from "./types";
 
 const GRAPHQL_PATH = "/graphql";
-
-// Server-side: fetch directly from backend (BACKEND_URL read at runtime, not build time)
-// Client-side: use relative paths, proxied through Next.js rewrites
-const resolveOrigin = (): string => {
-    if (typeof window !== "undefined") {
-        // Browser: use relative paths, Next.js rewrites proxy to backend
-        return window.location.origin;
-    }
-    // Server-side SSR: must use absolute URL to reach backend directly
-    // process.env is read at runtime, not baked in at build time
-    return process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
-};
 
 export interface GraphQLClientOptions {
     orgId?: string;
