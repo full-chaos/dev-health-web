@@ -9,7 +9,8 @@ const originalWindow = globalWithWindow.window;
 
 const restoreWindow = () => {
   if (originalWindow === undefined) {
-    delete globalWithWindow.window;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalWithWindow as any).window = undefined;
   } else {
     globalWithWindow.window = originalWindow;
   }
@@ -51,7 +52,8 @@ describe("runtimeConfig", () => {
           NEXT_PUBLIC_DOCS_URL: "https://docs.example.com",
         },
       },
-    } as unknown as Window;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
 
     try {
       expect(runtimeConfig.useGraphQLAnalytics()).toBe(true);
@@ -64,7 +66,8 @@ describe("runtimeConfig", () => {
 
   it("falls back to env values when runtime config is absent", () => {
     const originalEnv = captureEnv();
-    delete globalWithWindow.window;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalWithWindow as any).window = undefined;
     process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "true";
     process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE = "true";
     process.env.NEXT_PUBLIC_DOCS_URL = "https://docs.local";
@@ -80,7 +83,8 @@ describe("runtimeConfig", () => {
 
   it("allows server runtime override for GraphQL", () => {
     const originalEnv = captureEnv();
-    delete globalWithWindow.window;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalWithWindow as any).window = undefined;
     process.env.USE_GRAPHQL_ANALYTICS = "true";
     delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
 

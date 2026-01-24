@@ -14,7 +14,8 @@ import {
 
 // Note: These tests run in Node environment (not jsdom), so window is undefined
 // and observers won't be set up. We test the subscription logic without observers.
-const isNodeEnv = typeof window === "undefined";
+import { isServer } from "@/lib/env";
+const isNodeEnv = isServer;
 
 describe("chartTheme shared observer", () => {
   beforeEach(() => {

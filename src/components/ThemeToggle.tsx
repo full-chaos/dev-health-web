@@ -2,6 +2,7 @@
 
 import type { ChangeEvent } from "react";
 import { useEffect, useSyncExternalStore, useState } from "react";
+import { isServer, getLocalStorage, getWindow } from "@/lib/env";
 
 type Theme = "light" | "dark";
 type Palette =
@@ -24,10 +25,7 @@ const notify = () => {
 };
 
 const getStoredTheme = (): Theme | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  const stored = localStorage.getItem("theme");
+  const stored = getLocalStorage()?.getItem("theme");
   return stored === "light" || stored === "dark" ? stored : null;
 };
 
@@ -45,18 +43,16 @@ const normalizePalette = (value: string | null): Palette | null => {
 };
 
 const getStoredPalette = (): Palette | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  const stored = localStorage.getItem("palette");
+  const stored = getLocalStorage()?.getItem("palette") ?? null;
   return normalizePalette(stored);
 };
 
 const getSystemTheme = (): Theme => {
-  if (typeof window === "undefined") {
+  const win = getWindow();
+  if (!win) {
     return "light";
   }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return win.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 
 const applyTheme = (theme: Theme) => {
@@ -73,7 +69,7 @@ const applyPalette = (palette: Palette) => {
 };
 
 const getThemeSnapshot = (): Theme => {
-  if (typeof window === "undefined") {
+  if (isServer) {
     return "light";
   }
   const stored = getStoredTheme();
@@ -88,7 +84,7 @@ const getThemeSnapshot = (): Theme => {
 };
 
 const getPaletteSnapshot = (): Palette => {
-  if (typeof window === "undefined") {
+  if (isServer) {
     return "fullchaos";
   }
   const stored = getStoredPalette();
@@ -128,7 +124,7 @@ export function ThemeToggle() {
   }, []);
 
   const handleToggle = () => {
-    if (typeof window === "undefined") {
+    if (isServer) {
       return;
     }
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -136,7 +132,7 @@ export function ThemeToggle() {
   };
 
   const handlePaletteChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    if (typeof window === "undefined") {
+    if (isServer) {
       return;
     }
     const nextPalette = event.target.value as Palette;
@@ -145,13 +141,12 @@ export function ThemeToggle() {
 
   return (
     <div
-      className={`group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) p-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${
-        isCollapsed ? "w-10 overflow-hidden" : "px-3 py-2"
-      }`}
+      className={`group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) p-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${isCollapsed ? "w-10 overflow-hidden" : "px-3 py-2"
+        }`}
     >
       {!isCollapsed && (
         <>
-          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-(--accent) shadow-[0_0_12px_rgba(0,0,0,0.25)]" />
+          <span className="h-2 w-2 shrink-0 rounded-full bg-(--accent) shadow-[0_0_12px_rgba(0,0,0,0.25)]" />
           <select
             aria-label="Theme palette"
             value={palette}
@@ -177,9 +172,8 @@ export function ThemeToggle() {
       <button
         type="button"
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-(--card-70) ${
-          isCollapsed ? "mx-auto" : ""
-        }`}
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-(--card-70) ${isCollapsed ? "mx-auto" : ""
+          }`}
         aria-label={isCollapsed ? "Expand settings" : "Collapse settings"}
       >
         <span className={`transform transition-transform ${isCollapsed ? "" : "rotate-180"}`}>

@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
+import { isServer } from "@/lib/env";
 
 type TelemetryPayload = Record<string, string | number | boolean | null>;
 
@@ -6,7 +7,7 @@ export const trackTelemetryEvent = (
   event: string,
   payload: TelemetryPayload = {}
 ) => {
-  if (typeof window === "undefined") {
+  if (isServer) {
     return;
   }
   const body = JSON.stringify({

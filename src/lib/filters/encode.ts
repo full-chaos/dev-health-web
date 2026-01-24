@@ -1,8 +1,9 @@
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { MetricFilter } from "@/lib/filters/types";
+import { isServer } from "@/lib/env";
 
 const toBase64Url = (value: string) => {
-  if (typeof window === "undefined") {
+  if (isServer) {
     return Buffer.from(value, "utf-8").toString("base64url");
   }
   const encoded = btoa(unescape(encodeURIComponent(value)));
@@ -10,7 +11,7 @@ const toBase64Url = (value: string) => {
 };
 
 const fromBase64Url = (value: string) => {
-  if (typeof window === "undefined") {
+  if (isServer) {
     return Buffer.from(value, "base64url").toString("utf-8");
   }
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");

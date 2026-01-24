@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { isServer } from "@/lib/env";
 
 export const chartColors = [
   "#1e88e5",
@@ -26,7 +27,7 @@ export const fallbackTheme = {
 export type ChartTheme = typeof fallbackTheme;
 
 const readTheme = (): ChartTheme => {
-  if (typeof window === "undefined") {
+  if (isServer) {
     return fallbackTheme;
   }
 
@@ -45,7 +46,7 @@ const readTheme = (): ChartTheme => {
 };
 
 const readChartColors = (): string[] => {
-  if (typeof window === "undefined") {
+  if (isServer) {
     return chartColors;
   }
 
@@ -86,7 +87,7 @@ const notifyListeners = () => {
 
 // Export for testing
 export const setupObservers = () => {
-  if (typeof window === "undefined" || cleanupFn) {
+  if (isServer || cleanupFn) {
     return;
   }
 
