@@ -1449,8 +1449,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                 {EVIDENCE_QUALITY_BANDS.map((band) => (
                     <div key={band.id} className="flex items-center gap-2 text-xs text-(--ink-muted)">
                         <span
-                            className={`h-2.5 w-2.5 rounded-full ${band.opacityClass}`}
-                            style={{ backgroundColor: chartTheme.accent2 }}
+                            className={`h-2.5 w-2.5 rounded-full bg-(--accent-2) ${band.opacityClass}`}
                         />
                         <span>{band.label}</span>
                     </div>

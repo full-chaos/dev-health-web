@@ -28,6 +28,7 @@ import { apiClient } from "@/lib/apiClient";
 import {
   graphqlClient,
   getInvestmentViaGraphQL,
+  getInvestmentFlowViaGraphQL,
   getInvestmentRepoTeamFlowViaGraphQL,
 } from "@/lib/graphql";
 
@@ -164,15 +165,13 @@ export async function getInvestmentFlow(params: {
 }) {
   const normalized = normalizeFilters(params.filters);
 
-  // GraphQL disabled for this view per user request (switched to REST)
-  /*
+  // Feature flag: use GraphQL transport when enabled
   if (graphqlClient.isEnabled()) {
     return getInvestmentFlowViaGraphQL({
       ...params,
       filters: normalized,
     });
   }
-  */
 
   const response = await postJson<SankeyResponse>(
     "/api/v1/investment/flow",
