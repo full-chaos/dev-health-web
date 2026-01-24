@@ -264,7 +264,7 @@ export async function checkApiHealth() {
   }
   try {
     const data = await apiClient.getJson<HealthResponse>(
-      "/api/v1/health",
+      "/health",
       undefined,
       { cache: "no-store" }
     );
