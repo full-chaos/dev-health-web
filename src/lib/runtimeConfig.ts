@@ -1,11 +1,14 @@
-import { isServer, isBrowser } from "@/lib/env";
+// Note: We use inline `typeof window` checks here instead of importing from env.ts
+// because env.ts exports static constants evaluated at module load time.
+// For runtime config to be testable, we need dynamic checks that can reflect
+// test mocks of the `window` object.
 
 type RuntimeConfig = {
   publicEnv?: Record<string, string>;
 };
 
 const readRuntimeConfig = (): RuntimeConfig | undefined => {
-  if (isServer) {
+  if (typeof window === "undefined") {
     return undefined;
   }
   return window.__DEV_HEALTH_RUNTIME__;
@@ -25,7 +28,7 @@ const getPublicBoolean = (key: string): boolean =>
 
 export const runtimeConfig = {
   useGraphQLAnalytics: (): boolean => {
-    if (isBrowser) {
+    if (typeof window !== "undefined") {
       return getPublicBoolean("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
     }
     const raw =
