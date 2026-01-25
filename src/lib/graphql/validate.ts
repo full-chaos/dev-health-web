@@ -4,7 +4,7 @@
  * Uses Zod for runtime validation to catch API contract mismatches.
  */
 
-import { z, type ZodSchema, ZodError } from "zod";
+import { type ZodSchema, ZodError } from "zod";
 import {
   AnalyticsResultSchema,
   CatalogResultSchema,

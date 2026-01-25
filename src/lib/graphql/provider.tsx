@@ -7,8 +7,8 @@
  */
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { Provider as UrqlProvider, type Client } from "urql";
-import { createUrqlClient, type UrqlClientOptions } from "./urqlClient";
+import { Provider as UrqlProvider } from "urql";
+import { createUrqlClient } from "./urqlClient";
 
 interface GraphQLProviderProps {
   children: ReactNode;
@@ -33,7 +33,7 @@ const OrgIdContext = createContext<string | undefined>(undefined);
 export function GraphQLProvider({
   children,
   orgId,
-}: GraphQLProviderProps): JSX.Element {
+}: GraphQLProviderProps): React.ReactNode {
   const client = useMemo(() => createUrqlClient({ orgId }), [orgId]);
 
   return (

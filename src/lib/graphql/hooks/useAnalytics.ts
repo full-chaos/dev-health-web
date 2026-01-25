@@ -2,12 +2,13 @@
  * GraphQL hook for analytics queries.
  */
 
-import { useQuery, type UseQueryResponse } from "urql";
-import { INVESTMENT_BREAKDOWN_QUERY, INVESTMENT_SANKEY_QUERY } from "../queries";
+import { useQuery } from "urql";
+import { INVESTMENT_BREAKDOWN_QUERY } from "../queries";
 import type {
   AnalyticsRequestInput,
   AnalyticsResult,
-  GraphQLResponse,
+  DimensionInput,
+  MeasureInput,
 } from "../types";
 
 interface UseAnalyticsOptions {
@@ -73,8 +74,8 @@ export function useBreakdown(options: UseBreakdownOptions): UseAnalyticsResult {
   const batch: AnalyticsRequestInput = {
     breakdowns: [
       {
-        dimension: dimension as any,
-        measure: measure as any,
+        dimension: dimension as DimensionInput,
+        measure: measure as MeasureInput,
         dateRange: { startDate, endDate },
         topN,
       },
@@ -115,8 +116,8 @@ export function useSankey(options: UseSankeyOptions): UseAnalyticsResult {
     breakdowns: [],
     timeseries: [],
     sankey: {
-      path: path as any[],
-      measure: measure as any,
+      path: path as DimensionInput[],
+      measure: measure as MeasureInput,
       dateRange: { startDate, endDate },
       maxNodes,
       maxEdges,

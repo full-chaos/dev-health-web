@@ -9,8 +9,8 @@ import {
   createClient,
   fetchExchange,
   cacheExchange,
+  mapExchange,
   type Client,
-  type Exchange,
 } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
 
@@ -18,39 +18,6 @@ const GRAPHQL_PATH = "/graphql";
 
 export interface UrqlClientOptions {
   orgId?: string;
-}
-
-/**
- * Create exchange for adding org headers to requests.
- */
-function createOrgHeadersExchange(orgId?: string): Exchange {
-  return ({ forward }) =>
-    (ops$) => {
-      return forward(
-        ops$.map((operation) => {
-          if (!orgId) return operation;
-
-          return {
-            ...operation,
-            context: {
-              ...operation.context,
-              fetchOptions: {
-                ...(typeof operation.context.fetchOptions === "object"
-                  ? operation.context.fetchOptions
-                  : {}),
-                headers: {
-                  ...((
-                    typeof operation.context.fetchOptions === "object"
-                      ? operation.context.fetchOptions.headers
-                      : {}) as Record<string, string>),
-                  "X-Org-Id": orgId,
-                },
-              },
-            },
-          };
-        })
-      );
-    };
 }
 
 /**
@@ -72,7 +39,30 @@ export function createUrqlClient(options: UrqlClientOptions = {}): Client {
   return createClient({
     url: url.toString(),
     exchanges: [
-      createOrgHeadersExchange(orgId),
+      mapExchange({
+        onOperation(operation) {
+          if (!orgId) return operation;
+
+          const fetchOptions =
+            typeof operation.context.fetchOptions === "object"
+              ? operation.context.fetchOptions
+              : {};
+
+          return {
+            ...operation,
+            context: {
+              ...operation.context,
+              fetchOptions: {
+                ...fetchOptions,
+                headers: {
+                  ...((fetchOptions.headers ?? {}) as Record<string, string>),
+                  "X-Org-Id": orgId,
+                },
+              },
+            },
+          };
+        },
+      }),
       cacheExchange,
       fetchExchange,
     ],
