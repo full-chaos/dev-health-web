@@ -27,14 +27,23 @@ const getPublicBoolean = (key: string): boolean =>
   getPublicEnvValue(key) === "true";
 
 export const runtimeConfig = {
+  /**
+   * Check if GraphQL analytics is enabled.
+   *
+   * Defaults to TRUE unless explicitly set to "false".
+   * Set NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=false to disable.
+   */
   useGraphQLAnalytics: (): boolean => {
     if (typeof window !== "undefined") {
-      return getPublicBoolean("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
+      const value = getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
+      // Default to true unless explicitly set to "false"
+      return value !== "false";
     }
     const raw =
       process.env.USE_GRAPHQL_ANALYTICS ??
       getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
-    return raw === "true";
+    // Default to true unless explicitly set to "false"
+    return raw !== "false";
   },
   devHealthTestMode: (): boolean =>
     getPublicBoolean("NEXT_PUBLIC_DEV_HEALTH_TEST_MODE"),
