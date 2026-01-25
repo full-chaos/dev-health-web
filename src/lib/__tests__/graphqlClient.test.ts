@@ -5,13 +5,13 @@ import type { SankeyResult } from "../graphql/types";
 
 describe("graphqlClient", () => {
     describe("isEnabled", () => {
-        it("returns false by default", () => {
+        it("returns true by default", () => {
             const originalUse = process.env.USE_GRAPHQL_ANALYTICS;
             const originalPublic = process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
             delete process.env.USE_GRAPHQL_ANALYTICS;
             delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
             try {
-                expect(graphqlClient.isEnabled()).toBe(false);
+                expect(graphqlClient.isEnabled()).toBe(true);
             } finally {
                 if (originalUse === undefined) {
                     delete process.env.USE_GRAPHQL_ANALYTICS;
@@ -22,6 +22,20 @@ describe("graphqlClient", () => {
                     delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
                 } else {
                     process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = originalPublic;
+                }
+            }
+        });
+
+        it("returns false when explicitly disabled", () => {
+            const original = process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
+            process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "false";
+            try {
+                expect(graphqlClient.isEnabled()).toBe(false);
+            } finally {
+                if (original === undefined) {
+                    delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
+                } else {
+                    process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = original;
                 }
             }
         });
