@@ -1,4 +1,10 @@
-# AGENTS.md — Guidance for AI coding agents working on dev-health-web
+# AGENTS.md — dev-health-web
+
+> **Canonical Reference:** See [`/AGENTS.md`](../AGENTS.md) for the unified Dev Health platform agent briefing.
+>
+> **Deep Dives:** See [`/docs/agent-instructions/`](../docs/agent-instructions/) for detailed topic documentation.
+
+This document contains **dev-health-web specific** guidance for the Next.js frontend.
 
 ## Purpose
 
@@ -53,3 +59,29 @@ This document is the authoritative guide for any automated coding agent (Copilot
 ## Contact & further reading
 
 Use the repository README for setup steps and `package.json` scripts to run dev server, tests, and linters.
+
+## Landing the Plane (Session Completion)
+
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+
+**MANDATORY WORKFLOW:**
+
+1. **File issues for remaining work** - Create issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+   ```bash
+   git pull --rebase
+   bd sync
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+5. **Clean up** - Clear stashes, prune remote branches
+6. **Verify** - All changes committed AND pushed
+7. **Hand off** - Provide context for next session
+
+**CRITICAL RULES:**
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing - that leaves work stranded locally
+- NEVER say "ready to push when you are" - YOU must push
+- If push fails, resolve and retry until it succeeds
