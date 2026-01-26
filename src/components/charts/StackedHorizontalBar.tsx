@@ -85,7 +85,7 @@ export function StackedHorizontalBar({
           emphasis: { focus: "series" as const },
         })),
     }),
-    [chartTheme.accent2, chartTheme.grid, chartTheme.muted, segments, total, unit]
+    [chartTheme.accent2, chartTheme.background, chartTheme.grid, chartTheme.muted, chartTheme.stroke, chartTheme.text, segments, total, unit]
   );
 
   return <Chart option={option} className={className} style={mergedStyle} chartTheme={chartTheme} />;
