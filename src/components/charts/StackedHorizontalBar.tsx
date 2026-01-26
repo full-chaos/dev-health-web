@@ -43,6 +43,11 @@ export function StackedHorizontalBar({
       tooltip: {
         trigger: "item" as const,
         confine: true,
+        backgroundColor: chartTheme.background,
+        borderColor: chartTheme.stroke,
+        textStyle: {
+          color: chartTheme.text,
+        },
         formatter: (params: unknown) => {
           const p = params as { seriesName?: string; value?: number };
           const value = typeof p.value === "number" ? p.value : 0;
@@ -80,7 +85,7 @@ export function StackedHorizontalBar({
           emphasis: { focus: "series" as const },
         })),
     }),
-    [chartTheme.accent2, chartTheme.grid, chartTheme.muted, segments, total, unit]
+    [chartTheme.accent2, chartTheme.background, chartTheme.grid, chartTheme.muted, chartTheme.stroke, chartTheme.text, segments, total, unit]
   );
 
   return <Chart option={option} className={className} style={mergedStyle} chartTheme={chartTheme} />;

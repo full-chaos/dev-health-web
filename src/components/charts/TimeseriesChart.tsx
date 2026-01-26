@@ -34,7 +34,15 @@ export function TimeseriesChart({
   return (
     <Chart
       option={{
-        tooltip: { trigger: "axis", confine: true },
+        tooltip: {
+          trigger: "axis",
+          confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
+        },
         grid: { left: 24, right: 16, top: 32, bottom: 32, containLabel: true },
         xAxis: {
           type: "category",

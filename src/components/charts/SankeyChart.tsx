@@ -253,6 +253,37 @@ export function SankeyChart({
       tooltip: {
         trigger: "item" as const,
         confine: true,
+        backgroundColor: chartTheme.background,
+        borderColor: chartTheme.stroke,
+        textStyle: {
+          color: chartTheme.text,
+        },
+        position: (
+          point: number[],
+          _params: unknown,
+          _dom: unknown,
+          _rect: unknown,
+          size: { contentSize: number[]; viewSize: number[] }
+        ): number[] => {
+          const [x, y] = point;
+          const [tooltipWidth, tooltipHeight] = size.contentSize;
+          const [viewWidth, viewHeight] = size.viewSize;
+          const padding = 16;
+          // Position to the right if there's room, otherwise to the left
+          let newX = x + padding;
+          if (newX + tooltipWidth > viewWidth) {
+            newX = x - tooltipWidth - padding;
+          }
+          // Position below if there's room, otherwise above
+          let newY = y + padding;
+          if (newY + tooltipHeight > viewHeight) {
+            newY = y - tooltipHeight - padding;
+          }
+          // Ensure tooltip stays within bounds
+          newX = Math.max(0, Math.min(newX, viewWidth - tooltipWidth));
+          newY = Math.max(0, Math.min(newY, viewHeight - tooltipHeight));
+          return [newX, newY];
+        },
         formatter: (params: unknown) =>
           tooltipFormatter
             ? tooltipFormatter(params, unit)
@@ -294,6 +325,8 @@ export function SankeyChart({
     chartTheme.grid,
     chartTheme.muted,
     chartTheme.accent2,
+    chartTheme.background,
+    chartTheme.stroke,
     outgoingTotals,
     nodeValueByName,
     totalFlow,

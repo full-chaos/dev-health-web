@@ -81,6 +81,11 @@ export function HeatmapChart({
       option={{
         tooltip: {
           confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
           formatter: (params: TooltipComponentFormatterCallbackParams) => {
             const values = getValueArray(params);
             if (!values) {

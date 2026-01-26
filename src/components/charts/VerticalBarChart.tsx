@@ -40,7 +40,15 @@ export function VerticalBarChart({
   return (
     <Chart
       option={{
-        tooltip: { trigger: "axis", confine: true },
+        tooltip: {
+          trigger: "axis",
+          confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
+        },
         legend: {
           data: series.map((item) => item.name),
           bottom: 0,
