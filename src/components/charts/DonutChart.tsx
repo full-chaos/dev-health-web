@@ -37,7 +37,15 @@ export function DonutChart({
   return (
     <Chart
       option={{
-        tooltip: { trigger: "item", confine: true },
+        tooltip: {
+          trigger: "item",
+          confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
+        },
         legend: {
           bottom: 0,
           textStyle: { color: chartTheme.muted },

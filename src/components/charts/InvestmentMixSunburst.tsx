@@ -156,6 +156,11 @@ export function InvestmentMixSunburst({
     () => ({
       tooltip: {
         confine: true,
+        backgroundColor: chartTheme.background,
+        borderColor: chartTheme.stroke,
+        textStyle: {
+          color: chartTheme.text,
+        },
         formatter: (params: unknown) => {
           if (!params || typeof params !== "object") return "";
           const entry = params as { data?: Record<string, unknown> };

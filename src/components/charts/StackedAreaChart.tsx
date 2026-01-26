@@ -176,6 +176,11 @@ export function StackedAreaChart({
                     },
                 },
                 confine: true,
+                backgroundColor: chartTheme.background,
+                borderColor: chartTheme.stroke,
+                textStyle: {
+                    color: chartTheme.text,
+                },
                 formatter: (params: unknown) => {
                     if (!Array.isArray(params) || params.length === 0) return "";
 

@@ -106,6 +106,11 @@ export function TreemapChart({
         () => ({
             tooltip: {
                 confine: true,
+                backgroundColor: chartTheme.background,
+                borderColor: chartTheme.stroke,
+                textStyle: {
+                    color: chartTheme.text,
+                },
                 formatter: (params: unknown) => {
                     if (tooltipFormatter) {
                         return tooltipFormatter(params, totalValue, unit);

@@ -101,7 +101,15 @@ export function NestedPieChart3D({
   return (
     <Chart
       option={{
-        tooltip: { trigger: "item", confine: true },
+        tooltip: {
+          trigger: "item",
+          confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
+        },
         legend: {
           data: categories.map((category) => category.name),
           type: "scroll",

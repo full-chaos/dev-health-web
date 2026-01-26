@@ -44,7 +44,15 @@ export function HorizontalBarChart({
   return (
     <Chart
       option={{
-        tooltip: { trigger: "axis", confine: true },
+        tooltip: {
+          trigger: "axis",
+          confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
+        },
         grid: { left: 80, right: 24, top: 20, bottom: 20 },
         xAxis: {
           type: "value",

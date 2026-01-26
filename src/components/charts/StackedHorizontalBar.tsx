@@ -43,6 +43,11 @@ export function StackedHorizontalBar({
       tooltip: {
         trigger: "item" as const,
         confine: true,
+        backgroundColor: chartTheme.background,
+        borderColor: chartTheme.stroke,
+        textStyle: {
+          color: chartTheme.text,
+        },
         formatter: (params: unknown) => {
           const p = params as { seriesName?: string; value?: number };
           const value = typeof p.value === "number" ? p.value : 0;

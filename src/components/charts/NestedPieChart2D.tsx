@@ -79,6 +79,11 @@ export function NestedPieChart2D({
         tooltip: {
           trigger: "item",
           confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
           formatter: (params: unknown) => {
             const p = params as {
               seriesName: string;

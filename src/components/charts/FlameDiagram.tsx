@@ -131,6 +131,11 @@ export function FlameDiagram({
       option={{
         tooltip: {
           confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
           formatter: formatTooltip,
         },
         grid: { left: 24, right: 24, top: 16, bottom: 40, containLabel: true },

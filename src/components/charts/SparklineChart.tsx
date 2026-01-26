@@ -37,6 +37,11 @@ export function SparklineChart({
         tooltip: {
           trigger: "axis",
           confine: true,
+          backgroundColor: chartTheme.background,
+          borderColor: chartTheme.stroke,
+          textStyle: {
+            color: chartTheme.text,
+          },
           axisPointer: { type: "line" },
         },
         grid: { left: 8, right: 8, top: 10, bottom: 10 },
