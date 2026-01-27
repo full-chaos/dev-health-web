@@ -60,6 +60,39 @@ This document is the authoritative guide for any automated coding agent (Copilot
 
 Use the repository README for setup steps and `package.json` scripts to run dev server, tests, and linters.
 
+---
+
+## Task Tracking (bd + GitHub)
+
+> **Canonical Reference:** See [`/AGENTS.md`](../AGENTS.md#11-task-tracking-bd--github) for full documentation.
+
+**Project Board:** `https://github.com/orgs/full-chaos/projects/1`
+
+### Quick Reference
+
+```bash
+# bd (local task tracking)
+bd create "Task title" --priority P2 --external-ref gh-123
+bd list --status open
+bd status <id> in-progress
+bd status <id> done
+bd dep add <child-id> <parent-id> --type parent-child
+bd sync
+
+# GitHub issues (use labels, not --type)
+gh issue create --title "Title" --body "Description" --label task
+gh issue edit NNN --add-project "https://github.com/orgs/full-chaos/projects/1"
+```
+
+### Workflow
+
+1. Create bd issue with `--external-ref gh-NNN` to link to GitHub
+2. Update bd status during work
+3. Run `bd sync` before `git push`
+4. Close GitHub issue when complete
+
+---
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
