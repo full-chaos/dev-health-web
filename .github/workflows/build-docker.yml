@@ -85,6 +85,7 @@ jobs:
                   platforms: ${{ matrix.platform }}
                   build-args: |
                       BACKEND_URL=${{ secrets.BACKEND_URL || 'http://127.0.0.1:8000' }}
+                  tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
                   outputs: ${{ steps.meta.outputs.should_push == 'true' && 'type=image,push-by-digest=true,name-canonical=true,push=true' || format('type=oci,dest=/tmp/docker-image-{0}.tar', strategy.job-index) }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
