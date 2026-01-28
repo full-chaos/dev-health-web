@@ -124,14 +124,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         [selectedCategory]
     );
 
-    const sankeyFilters = useMemo(() => {
-        if (!focusedTeam) return filters;
-        return {
-            ...filters,
-            scope: { level: "team" as const, ids: [focusedTeam] },
-        };
-    }, [filters, focusedTeam]);
-
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
 
@@ -348,10 +340,10 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             }
 
             try {
-                const baselineFilters = getBaselineFilters(sankeyFilters);
+                const baselineFilters = getBaselineFilters(filters);
                 const [current, baseline] = await Promise.all([
                     getInvestmentFlow({
-                        filters: sankeyFilters,
+                        filters,
                         flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
                         theme: selectedThemeKey,
                         top_n_repos: TOP_N_REPOS,
@@ -384,7 +376,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, sankeyFilters, useSampleData, selectedThemeKey, focusedTeam, showSubcategories]);
+    }, [filters, useSampleData, selectedThemeKey, showSubcategories]);
 
 
 
@@ -402,7 +394,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             setIsRepoTeamLoading(true);
             setRepoTeamFlowFailed(false);
             try {
-                const flow = await getInvestmentRepoTeamFlow({ filters: sankeyFilters });
+                const flow = await getInvestmentRepoTeamFlow({ filters });
                 if (active) {
                     setRepoTeamFlow(flow);
                 }
@@ -422,7 +414,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, sankeyFilters, useSampleData]);
+    }, [filters, useSampleData]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
