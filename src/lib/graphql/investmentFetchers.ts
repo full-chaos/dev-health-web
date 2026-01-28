@@ -218,6 +218,14 @@ export async function getInvestmentFlowViaGraphQL(params: {
     const { filters } = params;
     const orgId = getOrgId(filters);
     const dateRange = buildDateRange(filters);
+    const resolvedTheme = params.drill_category ?? params.theme ?? null;
+    const graphqlFilters = translateMetricFilterToGraphQL(filters);
+    if (resolvedTheme) {
+        graphqlFilters.why = {
+            ...(graphqlFilters.why ?? {}),
+            workCategory: [resolvedTheme],
+        };
+    }
 
     // Map flow_mode to Sankey path
     let path: DimensionInput[] = ["TEAM", "THEME", "REPO"];
@@ -235,7 +243,7 @@ export async function getInvestmentFlowViaGraphQL(params: {
             useInvestment: true,
         },
         useInvestment: true,
-        filters: translateMetricFilterToGraphQL(filters),
+        filters: graphqlFilters,
     };
 
     const response = await graphqlClient.query<AnalyticsQueryResponse>(
