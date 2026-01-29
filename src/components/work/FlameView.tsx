@@ -128,7 +128,7 @@ export function FlameView({ filters }: FlameViewProps) {
                     </div>
                 </div>
 
-                <div className="relative min-h-[400px]" data-testid="chart-flame">
+                <div className="relative" style={{ height: "calc(100vh - 380px)", minHeight: 500 }} data-testid="chart-flame">
                     {loading && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
                             <p className="text-sm text-(--ink-muted) animate-pulse">Loading flame data...</p>
@@ -138,10 +138,10 @@ export function FlameView({ filters }: FlameViewProps) {
                         <HierarchicalFlameGraph
                             root={flameData.root}
                             unit={flameData.unit}
-                            height={500}
+                            height={600}
                         />
                     ) : !loading && (
-                        <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                        <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
                             No flame data available for this scope and window.
                         </div>
                     )}
