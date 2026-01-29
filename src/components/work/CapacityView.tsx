@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ForecastCard } from "@/components/capacity/ForecastCard";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
+import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { getCapacityForecast } from "@/lib/api";
 import type { CapacityForecast } from "@/lib/graphql/types";
@@ -182,28 +183,44 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
       </div>
 
       {forecast && (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">
-            How to Interpret
-          </h3>
-          <div className="grid gap-4 md:grid-cols-3 text-sm text-gray-600 dark:text-gray-300">
-            <div>
-              <span className="font-medium text-green-600 dark:text-green-400">P50 (50%)</span>
-              <p className="mt-1">
-                Optimistic estimate. Half of simulations complete by this date.
-              </p>
-            </div>
-            <div>
-              <span className="font-medium text-amber-600 dark:text-amber-400">P85 (85%)</span>
-              <p className="mt-1">
-                Recommended target. 85% confidence provides buffer for variability.
-              </p>
-            </div>
-            <div>
-              <span className="font-medium text-red-600 dark:text-red-400">P95 (95%)</span>
-              <p className="mt-1">
-                Conservative estimate. Use for commitments with low risk tolerance.
-              </p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-4">
+              Throughput Distribution
+            </h3>
+            <ThroughputHistogram
+              throughputMean={forecast.throughputMean}
+              throughputStddev={forecast.throughputStddev}
+              height={200}
+            />
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              Based on {forecast.historyDays} days of historical data
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">
+              How to Interpret
+            </h3>
+            <div className="grid gap-3 text-sm text-gray-600 dark:text-gray-300">
+              <div>
+                <span className="font-medium text-green-600 dark:text-green-400">P50 (50%)</span>
+                <p className="mt-0.5 text-xs">
+                  Optimistic estimate. Half of simulations complete by this date.
+                </p>
+              </div>
+              <div>
+                <span className="font-medium text-amber-600 dark:text-amber-400">P85 (85%)</span>
+                <p className="mt-0.5 text-xs">
+                  Recommended target. 85% confidence provides buffer for variability.
+                </p>
+              </div>
+              <div>
+                <span className="font-medium text-red-600 dark:text-red-400">P95 (95%)</span>
+                <p className="mt-0.5 text-xs">
+                  Conservative estimate. Use for commitments with low risk tolerance.
+                </p>
+              </div>
             </div>
           </div>
         </div>
