@@ -30,7 +30,9 @@ import {
   getInvestmentViaGraphQL,
   getInvestmentFlowViaGraphQL,
   getInvestmentRepoTeamFlowViaGraphQL,
+  getCapacityForecastViaGraphQL,
 } from "@/lib/graphql";
+import type { CapacityForecast, CapacityForecastInput } from "@/lib/graphql";
 
 const normalizeFilters = (filters: MetricFilter): MetricFilter => {
   if (filters.scope.level === "team" && !filters.scope.ids.length) {
@@ -490,4 +492,12 @@ export async function getWorkUnitExplanation(params: {
       llm_provider: params.llmProvider ?? "auto",
     }
   );
+}
+
+export async function getCapacityForecast(params: {
+  orgId?: string;
+  input?: CapacityForecastInput;
+}): Promise<CapacityForecast | null> {
+  const orgId = params.orgId ?? "default";
+  return getCapacityForecastViaGraphQL(orgId, params.input);
 }
