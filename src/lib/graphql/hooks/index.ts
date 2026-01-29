@@ -7,6 +7,7 @@
 
 export { useAnalytics, useBreakdown, useSankey } from "./useAnalytics";
 export { useCatalog, useDimensionValues } from "./useCatalog";
+export { useCapacityForecast, useCapacityForecasts } from "./useCapacity";
 export {
   useMetricsUpdated,
   useTaskStatus,

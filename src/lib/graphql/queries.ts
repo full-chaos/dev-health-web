@@ -82,3 +82,75 @@ query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
   }
 }
 `;
+
+// ==== Capacity Planning Queries ====
+
+// Query for on-demand capacity forecast computation
+export const CAPACITY_FORECAST_QUERY = `
+query CapacityForecast($orgId: String!, $input: CapacityForecastInput) {
+  capacityForecast(orgId: $orgId, input: $input) {
+    forecastId
+    computedAt
+    teamId
+    workScopeId
+    backlogSize
+    targetItems
+    targetDate
+    p50Date
+    p85Date
+    p95Date
+    p50Days
+    p85Days
+    p95Days
+    p50Items
+    p85Items
+    p95Items
+    throughputMean
+    throughputStddev
+    historyDays
+    insufficientHistory
+    highVariance
+  }
+}
+`;
+
+// Query for listing persisted capacity forecasts
+export const CAPACITY_FORECASTS_QUERY = `
+query CapacityForecasts($orgId: String!, $filters: CapacityForecastFilterInput) {
+  capacityForecasts(orgId: $orgId, filters: $filters) {
+    edges {
+      node {
+        forecastId
+        computedAt
+        teamId
+        workScopeId
+        backlogSize
+        targetItems
+        targetDate
+        p50Date
+        p85Date
+        p95Date
+        p50Days
+        p85Days
+        p95Days
+        p50Items
+        p85Items
+        p95Items
+        throughputMean
+        throughputStddev
+        historyDays
+        insufficientHistory
+        highVariance
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    totalCount
+  }
+}
+`;

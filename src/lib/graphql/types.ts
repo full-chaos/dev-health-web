@@ -204,3 +204,72 @@ export interface CatalogQueryResponse {
 export interface AnalyticsQueryResponse {
     analytics: AnalyticsResult;
 }
+
+// ==== Capacity Planning Types ====
+
+export interface CapacityForecastInput {
+    teamId?: string;
+    workScopeId?: string;
+    targetItems?: number;
+    targetDate?: string;
+    historyDays?: number;
+    simulations?: number;
+}
+
+export interface CapacityForecastFilterInput {
+    teamId?: string;
+    workScopeId?: string;
+    fromDate?: string;
+    toDate?: string;
+    limit?: number;
+}
+
+export interface CapacityForecast {
+    forecastId: string;
+    computedAt: string;
+    teamId?: string;
+    workScopeId?: string;
+    backlogSize: number;
+    targetItems?: number;
+    targetDate?: string;
+    p50Date?: string;
+    p85Date?: string;
+    p95Date?: string;
+    p50Days?: number;
+    p85Days?: number;
+    p95Days?: number;
+    p50Items?: number;
+    p85Items?: number;
+    p95Items?: number;
+    throughputMean: number;
+    throughputStddev: number;
+    historyDays: number;
+    insufficientHistory: boolean;
+    highVariance: boolean;
+}
+
+export interface PageInfo {
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    startCursor?: string;
+    endCursor?: string;
+}
+
+export interface CapacityForecastEdge {
+    node: CapacityForecast;
+    cursor: string;
+}
+
+export interface CapacityForecastConnection {
+    edges: CapacityForecastEdge[];
+    pageInfo: PageInfo;
+    totalCount: number;
+}
+
+export interface CapacityForecastQueryResponse {
+    capacityForecast: CapacityForecast | null;
+}
+
+export interface CapacityForecastsQueryResponse {
+    capacityForecasts: CapacityForecastConnection;
+}
