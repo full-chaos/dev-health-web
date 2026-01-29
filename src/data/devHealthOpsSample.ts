@@ -7,7 +7,7 @@ import type {
   WorkItemTypeSummary,
 } from "./devHealthOpsTypes";
 
-import type { InvestmentResponse, WorkUnitInvestment } from "../lib/types";
+import type { AggregatedFlameResponse, InvestmentResponse, WorkUnitInvestment } from "../lib/types";
 
 export const workItemMetricsDailySample: WorkItemMetricsDaily[] = [
   {
@@ -953,4 +953,165 @@ export const investmentMixSample: InvestmentResponse = {
     "risk.vulnerability": 12.4,
   },
   unit: "loc",
+};
+
+const flameMeta = {
+  window_start: "2025-01-01",
+  window_end: "2025-01-30",
+  filters: {},
+  notes: ["Sample data for demonstration"],
+};
+
+export const cycleBreakdownFlameSample: AggregatedFlameResponse = {
+  mode: "cycle_breakdown",
+  unit: "hours",
+  root: {
+    name: "Total Cycle Time",
+    value: 847.2,
+    children: [
+      {
+        name: "In Progress",
+        value: 412.5,
+        children: [
+          { name: "Development", value: 245.3 },
+          { name: "Code Review", value: 98.7 },
+          { name: "Testing", value: 68.5 },
+        ],
+      },
+      {
+        name: "Waiting",
+        value: 312.4,
+        children: [
+          { name: "Waiting for Review", value: 156.2 },
+          { name: "Blocked", value: 89.1 },
+          { name: "Waiting for Deploy", value: 67.1 },
+        ],
+      },
+      {
+        name: "Review",
+        value: 122.3,
+        children: [
+          { name: "Initial Review", value: 78.4 },
+          { name: "Re-review", value: 43.9 },
+        ],
+      },
+    ],
+  },
+  meta: flameMeta,
+};
+
+export const codeHotspotsFlameSample: AggregatedFlameResponse = {
+  mode: "code_hotspots",
+  unit: "changes",
+  root: {
+    name: "All Repositories",
+    value: 1247,
+    children: [
+      {
+        name: "dev-health-ops",
+        value: 523,
+        children: [
+          {
+            name: "src/api",
+            value: 234,
+            children: [
+              { name: "routes.py", value: 89 },
+              { name: "services/", value: 78 },
+              { name: "middleware.py", value: 67 },
+            ],
+          },
+          {
+            name: "src/processors",
+            value: 178,
+            children: [
+              { name: "sync.py", value: 92 },
+              { name: "local.py", value: 86 },
+            ],
+          },
+          { name: "src/metrics", value: 111 },
+        ],
+      },
+      {
+        name: "dev-health-web",
+        value: 412,
+        children: [
+          {
+            name: "src/components",
+            value: 245,
+            children: [
+              { name: "charts/", value: 134 },
+              { name: "work/", value: 78 },
+              { name: "navigation/", value: 33 },
+            ],
+          },
+          {
+            name: "src/lib",
+            value: 167,
+            children: [
+              { name: "api.ts", value: 56 },
+              { name: "graphql/", value: 62 },
+              { name: "filters/", value: 49 },
+            ],
+          },
+        ],
+      },
+      {
+        name: "atlassian",
+        value: 312,
+        children: [
+          { name: "src/client", value: 156 },
+          { name: "src/schema", value: 98 },
+          { name: "tests/", value: 58 },
+        ],
+      },
+    ],
+  },
+  meta: flameMeta,
+};
+
+export const throughputFlameSample: AggregatedFlameResponse = {
+  mode: "throughput",
+  unit: "items",
+  root: {
+    name: "Completed Work",
+    value: 156,
+    children: [
+      {
+        name: "Features",
+        value: 67,
+        children: [
+          { name: "Customer Requests", value: 34 },
+          { name: "Roadmap Items", value: 22 },
+          { name: "Internal Tools", value: 11 },
+        ],
+      },
+      {
+        name: "Bug Fixes",
+        value: 48,
+        children: [
+          { name: "Critical", value: 8 },
+          { name: "High Priority", value: 18 },
+          { name: "Normal", value: 22 },
+        ],
+      },
+      {
+        name: "Maintenance",
+        value: 28,
+        children: [
+          { name: "Dependency Updates", value: 12 },
+          { name: "Refactoring", value: 10 },
+          { name: "Documentation", value: 6 },
+        ],
+      },
+      {
+        name: "Tech Debt",
+        value: 13,
+        children: [
+          { name: "Performance", value: 7 },
+          { name: "Code Quality", value: 6 },
+        ],
+      },
+    ],
+  },
+  meta: flameMeta,
 };

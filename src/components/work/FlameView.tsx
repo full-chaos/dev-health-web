@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAggregatedFlame } from "@/lib/api";
+import { runtimeConfig } from "@/lib/runtimeConfig";
+import {
+    cycleBreakdownFlameSample,
+    codeHotspotsFlameSample,
+    throughputFlameSample,
+} from "@/data/devHealthOpsSample";
 import type { AggregatedFlameMode, MetricFilter, AggregatedFlameResponse } from "@/lib/types";
 import { HierarchicalFlameGraph } from "@/components/charts/HierarchicalFlameGraph";
 
@@ -10,11 +16,17 @@ type FlameViewProps = {
     filters: MetricFilter;
 };
 
+const SAMPLE_DATA: Record<AggregatedFlameMode, AggregatedFlameResponse> = {
+    cycle_breakdown: cycleBreakdownFlameSample,
+    code_hotspots: codeHotspotsFlameSample,
+    throughput: throughputFlameSample,
+};
+
 export function FlameView({ filters }: FlameViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const useSampleData = runtimeConfig.devHealthTestMode();
 
-    // State from URL or defaults
     const modeParam = searchParams.get("mode") as AggregatedFlameMode | null;
     const initialMode: AggregatedFlameMode = (modeParam && ["cycle_breakdown", "throughput", "code_hotspots"].includes(modeParam))
         ? modeParam
@@ -25,6 +37,7 @@ export function FlameView({ filters }: FlameViewProps) {
     const [loading, setLoading] = useState(true);
 
     const contextNode = searchParams.get("context_node");
+
     const handleModeChange = (nextMode: AggregatedFlameMode) => {
         if (nextMode === mode) return;
         setMode(nextMode);
@@ -33,11 +46,27 @@ export function FlameView({ filters }: FlameViewProps) {
         router.replace(`/work?${params.toString()}`);
     };
 
+    const requestKey = useMemo(
+        () => JSON.stringify({ mode, filters, useSampleData }),
+        [mode, filters, useSampleData]
+    );
+
     useEffect(() => {
         let active = true;
 
         const fetchData = async () => {
             setLoading(true);
+
+            if (useSampleData) {
+                setTimeout(() => {
+                    if (active) {
+                        setFlameData(SAMPLE_DATA[mode]);
+                        setLoading(false);
+                    }
+                }, 400);
+                return;
+            }
+
             try {
                 const response = await getAggregatedFlame({
                     mode,
@@ -49,10 +78,12 @@ export function FlameView({ filters }: FlameViewProps) {
                 });
                 if (!active) return;
                 setFlameData(response);
-                setLoading(false);
             } catch {
                 if (active) {
                     setFlameData(null);
+                }
+            } finally {
+                if (active) {
                     setLoading(false);
                 }
             }
@@ -61,7 +92,7 @@ export function FlameView({ filters }: FlameViewProps) {
         fetchData();
 
         return () => { active = false; };
-    }, [mode, filters]);
+    }, [requestKey, mode, filters, useSampleData]);
 
     const modeLabels: Record<AggregatedFlameMode, string> = {
         cycle_breakdown: "Elapsed Time Breakdown",
