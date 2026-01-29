@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Trends" },
   { id: "landscape", label: "Landscape", href: "/explore/landscape", description: "Quadrants" },
   { id: "work", label: "Work", href: "/work", description: "Investment" },
+  { id: "capacity", label: "Capacity", href: "/capacity", description: "Forecast" },
   { id: "code", label: "Code", href: "/code", description: "Ownership" },
   { id: "quality", label: "Quality", href: "/quality", description: "Reliability" },
   { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
