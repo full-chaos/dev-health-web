@@ -45,9 +45,11 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
     ? filters.scope.ids[0]
     : undefined;
 
+  const historyDays = filters.time.range_days ?? 90;
+
   const requestKey = useMemo(
-    () => JSON.stringify({ orgId, teamId }),
-    [orgId, teamId]
+    () => JSON.stringify({ orgId, teamId, historyDays }),
+    [orgId, teamId, historyDays]
   );
 
   const fetchForecast = useCallback(async () => {
@@ -65,7 +67,7 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
     try {
       const data = await getCapacityForecast({
         orgId,
-        input: teamId ? { teamId } : undefined,
+        input: { teamId, historyDays },
       });
       setForecast(data);
     } catch (err) {
@@ -74,7 +76,7 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
     } finally {
       setIsLoading(false);
     }
-  }, [orgId, teamId, useSampleData]);
+  }, [orgId, teamId, historyDays, useSampleData]);
 
   useEffect(() => {
     let active = true;
@@ -96,7 +98,7 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
       try {
         const data = await getCapacityForecast({
           orgId,
-          input: teamId ? { teamId } : undefined,
+          input: { teamId, historyDays },
         });
         if (active) {
           setForecast(data);
