@@ -58,17 +58,23 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
 
   const { insufficientHistory, highVariance } = forecast;
 
+  const scopeLabel = forecast.workScopeId
+    ? forecast.workScopeId
+    : forecast.teamId
+      ? `Team: ${forecast.teamId}`
+      : "All Teams";
+
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Capacity Forecast
-        </h3>
-        {forecast.teamId && (
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Team: {forecast.teamId}
-          </span>
-        )}
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Capacity Forecast
+          </h3>
+        </div>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Scope: <span className="font-medium text-gray-700 dark:text-gray-300">{scopeLabel}</span>
+        </p>
       </div>
 
       <div className="mb-4">

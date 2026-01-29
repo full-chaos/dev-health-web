@@ -8,6 +8,7 @@ import type {
 } from "./devHealthOpsTypes";
 
 import type { AggregatedFlameResponse, InvestmentResponse, WorkUnitInvestment } from "../lib/types";
+import type { CapacityForecast } from "../lib/graphql/types";
 
 export const workItemMetricsDailySample: WorkItemMetricsDaily[] = [
   {
@@ -1114,4 +1115,64 @@ export const throughputFlameSample: AggregatedFlameResponse = {
     ],
   },
   meta: flameMeta,
+};
+
+export const sampleCapacityForecast: CapacityForecast = {
+  forecastId: "sample-forecast-001",
+  computedAt: "2026-01-29T12:00:00Z",
+  teamId: "team-alpha",
+  workScopeId: "project-main",
+  backlogSize: 47,
+  targetItems: 47,
+  p50Date: "2026-02-10",
+  p85Date: "2026-02-17",
+  p95Date: "2026-02-25",
+  p50Days: 12,
+  p85Days: 19,
+  p95Days: 27,
+  throughputMean: 3.2,
+  throughputStddev: 1.8,
+  historyDays: 90,
+  insufficientHistory: false,
+  highVariance: false,
+};
+
+export const sampleCapacityForecastInsufficientHistory: CapacityForecast = {
+  forecastId: "sample-forecast-002",
+  computedAt: "2026-01-29T12:00:00Z",
+  teamId: "team-beta",
+  workScopeId: "project-new",
+  backlogSize: 23,
+  targetItems: 23,
+  p50Date: "2026-02-08",
+  p85Date: "2026-02-14",
+  p95Date: "2026-02-20",
+  p50Days: 10,
+  p85Days: 16,
+  p95Days: 22,
+  throughputMean: 2.1,
+  throughputStddev: 1.2,
+  historyDays: 14,
+  insufficientHistory: true,
+  highVariance: false,
+};
+
+export const sampleCapacityForecastHighVariance: CapacityForecast = {
+  forecastId: "sample-forecast-003",
+  computedAt: "2026-01-29T12:00:00Z",
+  teamId: "team-gamma",
+  workScopeId: "project-legacy",
+  backlogSize: 65,
+  targetItems: 65,
+  p50Date: "2026-02-15",
+  p85Date: "2026-03-05",
+  p95Date: "2026-03-25",
+  p50Days: 17,
+  p85Days: 35,
+  p95Days: 55,
+  throughputMean: 2.8,
+  throughputStddev: 4.2,
+  historyDays: 60,
+  insufficientHistory: false,
+  highVariance: true,
 };
