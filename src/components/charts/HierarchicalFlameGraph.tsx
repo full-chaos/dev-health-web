@@ -79,6 +79,20 @@ export function HierarchicalFlameGraph({
     const currentRoot = zoomStack.length > 0 ? zoomStack[zoomStack.length - 1].node : root;
     const totalValue = root.value;
 
+    const maxDepth = useMemo(() => {
+        const getDepth = (node: AggregatedFlameNode, depth: number): number => {
+            if (!node.children?.length) return depth;
+            return Math.max(...node.children.map(c => getDepth(c, depth + 1)));
+        };
+        return Math.max(1, getDepth(currentRoot, 1));
+    }, [currentRoot]);
+
+    const rowHeight = useMemo(() => {
+        const availableHeight = typeof height === "number" ? height - 120 : 400;
+        const calculated = Math.floor(availableHeight / maxDepth);
+        return Math.max(28, Math.min(calculated, 60));
+    }, [height, maxDepth]);
+
     const filteredChildren = useMemo(() => {
         if (!searchQuery.trim()) {
             return currentRoot.children ?? [];
@@ -137,7 +151,7 @@ export function HierarchicalFlameGraph({
                     onMouseMove={handleMouseMove}
                     disabled={!hasChildren}
                     className={`
-            block w-full text-left px-1.5 py-1 text-[10px] truncate
+            flex items-center w-full text-left px-2 text-xs truncate
             border border-(--card-stroke) rounded-sm mb-0.5
             transition-all duration-150
             ${hasChildren ? "cursor-pointer hover:brightness-110" : "cursor-default"}
@@ -147,6 +161,8 @@ export function HierarchicalFlameGraph({
                         backgroundColor: getColor(depth, index),
                         color: "white",
                         textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                        height: rowHeight,
+                        minHeight: rowHeight,
                     }}
                     title={node.name}
                 >
