@@ -20,6 +20,7 @@ import { HeatmapView } from "@/components/work/HeatmapView";
 import { reviewHeatmapSample } from "@/data/devHealthOpsSample";
 import { FlowView } from "@/components/work/FlowView";
 import { InvestmentView } from "@/components/work/InvestmentView";
+import { CapacityView } from "@/components/work/CapacityView";
 import { FlameView } from "@/components/work/FlameView";
 import { EvidenceView } from "@/components/work/EvidenceView";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
@@ -54,7 +55,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
   const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-  const activeTab: WorkTab = (typeof tabParam === "string" && ["landscape", "heatmap", "flow", "investment", "flame", "evidence"].includes(tabParam))
+  const activeTab: WorkTab = (typeof tabParam === "string" && ["landscape", "heatmap", "flow", "investment", "capacity", "flame", "evidence"].includes(tabParam))
     ? (tabParam as WorkTab)
     : "landscape";
 
@@ -218,6 +219,12 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
           {activeTab === "investment" && (
             <InvestmentView
+              filters={filters}
+            />
+          )}
+
+          {activeTab === "capacity" && (
+            <CapacityView
               filters={filters}
             />
           )}

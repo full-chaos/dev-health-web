@@ -22,6 +22,7 @@ export const fallbackTheme = {
   stroke: "#e7e0ec",
   accent1: "#3b82f6",
   accent2: "#8b5cf6",
+  accent3: "#ef4444",
 };
 
 export type ChartTheme = typeof fallbackTheme;
@@ -41,8 +42,9 @@ const readTheme = (): ChartTheme => {
   const stroke = styles.getPropertyValue("--card-stroke").trim() || fallbackTheme.stroke;
   const accent1 = styles.getPropertyValue("--accent-1").trim() || fallbackTheme.accent1;
   const accent2 = styles.getPropertyValue("--accent-2").trim() || fallbackTheme.accent2;
+  const accent3 = styles.getPropertyValue("--accent-3").trim() || fallbackTheme.accent3;
 
-  return { text, grid, muted, background, stroke, accent1, accent2 };
+  return { text, grid, muted, background, stroke, accent1, accent2, accent3 };
 };
 
 const readChartColors = (): string[] => {

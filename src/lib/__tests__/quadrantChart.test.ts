@@ -12,6 +12,7 @@ const chartTheme: ChartTheme = {
   stroke: "#e7e0ec",
   accent1: "#3b82f6",
   accent2: "#8b5cf6",
+  accent3: "#ef4444",
 };
 
 const chartColors = ["#1e88e5", "#3949ab", "#8e24aa"];
