@@ -171,7 +171,7 @@ export function HierarchicalFlameGraph({
     const mergedStyle: CSSProperties = { height, width, ...style };
 
     return (
-        <div className={className} style={mergedStyle}>
+        <div className={`flex flex-col ${className ?? ""}`} style={mergedStyle}>
             {/* Controls */}
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
@@ -231,8 +231,7 @@ export function HierarchicalFlameGraph({
 
             {/* Flame Graph */}
             <div
-                className="overflow-auto rounded-lg border border-(--card-stroke) bg-(--card-80) p-2"
-                style={{ maxHeight: typeof height === "number" ? height - 100 : "300px" }}
+                className="flex-1 overflow-auto rounded-lg border border-(--card-stroke) bg-(--card-80) p-2 min-h-0"
             >
                 {filteredChildren.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-sm text-(--ink-muted)">
