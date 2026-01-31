@@ -18,6 +18,8 @@ import type {
   Setting,
   SettingCreate,
   SettingUpdate,
+  Organization,
+  OrganizationUpdate,
 } from "./types";
 
 async function getToken(): Promise<string> {
@@ -210,5 +212,35 @@ export async function deleteSetting(category: string, key: string): Promise<Acti
   return withErrorHandling(async () => {
     const token = await getToken();
     return adminApi.settings.delete(category, key, token);
+  });
+}
+
+export async function getCurrentOrg(): Promise<ActionResult<Organization>> {
+  return withErrorHandling(async () => {
+    const session = await auth();
+    if (!session?.access_token) {
+      throw new AdminApiError(401, "Unauthorized", "No access token");
+    }
+    const orgId = session.user?.org_id;
+    if (!orgId) {
+      throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+    }
+    return adminApi.orgs.get(orgId, session.access_token);
+  });
+}
+
+export async function updateCurrentOrg(
+  data: OrganizationUpdate
+): Promise<ActionResult<Organization>> {
+  return withErrorHandling(async () => {
+    const session = await auth();
+    if (!session?.access_token) {
+      throw new AdminApiError(401, "Unauthorized", "No access token");
+    }
+    const orgId = session.user?.org_id;
+    if (!orgId) {
+      throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+    }
+    return adminApi.orgs.update(orgId, data, session.access_token);
   });
 }

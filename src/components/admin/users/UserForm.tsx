@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import type { UserCreate, UserUpdate, User } from "@/lib/admin/types";
+import type { UserCreate, User } from "@/lib/admin/types";
 
 export type UserFormData = UserCreate & { is_active?: boolean };
 

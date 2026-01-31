@@ -119,7 +119,7 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
     return () => {
       active = false;
     };
-  }, [requestKey, orgId, teamId, useSampleData]);
+  }, [requestKey, orgId, teamId, historyDays, useSampleData]);
 
   const chartData = useMemo(() => {
     if (!forecast) return null;

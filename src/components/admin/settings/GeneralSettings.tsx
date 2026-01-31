@@ -1,23 +1,66 @@
-import React from "react";
-import { SettingsSection } from "./SettingsSection";
+"use client";
 
-export function GeneralSettings() {
+import { useState } from "react";
+import { SettingsSection } from "./SettingsSection";
+import { updateCurrentOrg } from "@/lib/admin/server";
+import type { Organization } from "@/lib/admin/types";
+
+type GeneralSettingsProps = {
+  org?: Organization;
+};
+
+export function GeneralSettings({ org }: GeneralSettingsProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
+
+    const formData = new FormData(e.currentTarget);
+    const result = await updateCurrentOrg({
+      name: formData.get("name") as string,
+      description: formData.get("description") as string || undefined,
+    });
+
+    setIsLoading(false);
+
+    if (result.error) {
+      setMessage({ type: "error", text: result.error });
+    } else {
+      setMessage({ type: "success", text: "Settings saved successfully" });
+    }
+  };
+
   return (
     <SettingsSection
       title="General Settings"
       description="Manage your organization's basic information."
     >
-      <form className="space-y-4">
+      {message && (
+        <div
+          className={`mb-4 rounded-md p-3 text-sm ${
+            message.type === "success"
+              ? "bg-green-500/10 text-green-600"
+              : "bg-red-500/10 text-red-500"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="orgName" className="block text-sm font-medium text-(--foreground)">
+          <label htmlFor="name" className="block text-sm font-medium text-(--foreground)">
             Organization Name
           </label>
           <input
             type="text"
-            id="orgName"
-            name="orgName"
-            defaultValue="Acme Corp"
-            className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+            id="name"
+            name="name"
+            defaultValue={org?.name ?? ""}
+            disabled={isLoading}
+            className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
           />
         </div>
         <div>
@@ -28,7 +71,7 @@ export function GeneralSettings() {
             type="text"
             id="slug"
             name="slug"
-            defaultValue="acme-corp"
+            defaultValue={org?.slug ?? ""}
             disabled
             className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--ink-muted) shadow-sm opacity-50 cursor-not-allowed"
           />
@@ -41,16 +84,18 @@ export function GeneralSettings() {
             id="description"
             name="description"
             rows={3}
-            defaultValue="The best company in the world."
-            className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+            defaultValue={org?.description ?? ""}
+            disabled={isLoading}
+            className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
           />
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
-            className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2"
+            disabled={isLoading}
+            className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50"
           >
-            Save Changes
+            {isLoading ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>

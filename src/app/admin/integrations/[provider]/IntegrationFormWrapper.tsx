@@ -22,9 +22,8 @@ export function IntegrationFormWrapper({
   provider,
   providerName,
   initialStatus,
-  existingCredential,
 }: IntegrationFormWrapperProps) {
-  const handleSave = async (formData: Record<string, FormDataEntryValue>) => {
+  const handleSave = async (formData: Record<string, FormDataEntryValue>): Promise<void> => {
     const credentials: Record<string, unknown> = {};
     const config: Record<string, unknown> = {};
 

@@ -3,16 +3,17 @@
 import React, { useState } from "react";
 import { ConnectionStatus, ConnectionStatusType } from "./ConnectionStatus";
 
+type FormDataRecord = Record<string, FormDataEntryValue>;
+
 type IntegrationFormProps = {
   providerName: string;
   initialStatus: ConnectionStatusType;
-  onSave: (data: any) => Promise<void>;
-  onTestConnection: (data: any) => Promise<boolean>;
+  onSave: (data: FormDataRecord) => Promise<void>;
+  onTestConnection: (data: FormDataRecord) => Promise<boolean>;
   children: React.ReactNode;
 };
 
 export function IntegrationForm({
-  providerName,
   initialStatus,
   onSave,
   onTestConnection,
@@ -34,7 +35,7 @@ export function IntegrationForm({
     try {
       await onSave(data);
       setMessage({ type: "success", text: "Settings saved successfully." });
-    } catch (error) {
+    } catch {
       setMessage({ type: "error", text: "Failed to save settings." });
     } finally {
       setIsSaving(false);
@@ -61,7 +62,7 @@ export function IntegrationForm({
       } else {
         setMessage({ type: "error", text: "Connection failed. Please check your credentials." });
       }
-    } catch (error) {
+    } catch {
       setStatus("error");
       setMessage({ type: "error", text: "An error occurred while testing the connection." });
     } finally {
