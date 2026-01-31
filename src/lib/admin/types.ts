@@ -1,0 +1,391 @@
+/**
+ * Admin API Types
+ * 
+ * TypeScript interfaces matching dev-health-ops/api/admin/schemas.py
+ */
+
+// ---- Settings ----
+
+export interface Setting {
+  key: string;
+  value: string | null;
+  category: string;
+  is_encrypted: boolean;
+  description: string | null;
+}
+
+export interface SettingCreate {
+  key: string;
+  value?: string | null;
+  category?: string;
+  encrypt?: boolean;
+  description?: string | null;
+}
+
+export interface SettingUpdate {
+  value?: string | null;
+  encrypt?: boolean;
+  description?: string | null;
+}
+
+export interface SettingsListResponse {
+  category: string;
+  settings: Setting[];
+}
+
+// ---- Integration Credentials ----
+
+export interface IntegrationCredential {
+  id: string;
+  provider: string;
+  name: string;
+  is_active: boolean;
+  config: Record<string, unknown>;
+  last_test_at: string | null;
+  last_test_success: boolean | null;
+  last_test_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IntegrationCredentialCreate {
+  provider: string;
+  name?: string;
+  credentials: Record<string, unknown>;
+  config?: Record<string, unknown> | null;
+}
+
+export interface IntegrationCredentialUpdate {
+  credentials?: Record<string, unknown> | null;
+  config?: Record<string, unknown> | null;
+  is_active?: boolean | null;
+}
+
+export interface TestConnectionRequest {
+  provider: string;
+  name?: string;
+}
+
+export interface TestConnectionResponse {
+  success: boolean;
+  error: string | null;
+  details: Record<string, unknown> | null;
+}
+
+// ---- Sync Configs ----
+
+export interface SyncConfig {
+  id: string;
+  name: string;
+  provider: string;
+  credential_id: string | null;
+  sync_targets: string[];
+  sync_options: Record<string, unknown>;
+  is_active: boolean;
+  last_sync_at: string | null;
+  last_sync_success: boolean | null;
+  last_sync_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SyncConfigCreate {
+  name: string;
+  provider: string;
+  credential_id?: string | null;
+  sync_targets?: string[];
+  sync_options?: Record<string, unknown>;
+}
+
+export interface SyncConfigUpdate {
+  sync_targets?: string[] | null;
+  sync_options?: Record<string, unknown> | null;
+  is_active?: boolean | null;
+}
+
+// ---- Identity Mappings ----
+
+export interface IdentityMapping {
+  id: string;
+  canonical_id: string;
+  display_name: string | null;
+  email: string | null;
+  provider_identities: Record<string, string[]>;
+  team_ids: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IdentityMappingCreate {
+  canonical_id: string;
+  display_name?: string | null;
+  email?: string | null;
+  provider_identities?: Record<string, string[]>;
+  team_ids?: string[];
+}
+
+export interface IdentityMappingUpdate {
+  display_name?: string | null;
+  email?: string | null;
+  provider_identities?: Record<string, string[]> | null;
+  team_ids?: string[] | null;
+}
+
+// ---- Team Mappings ----
+
+export interface TeamMapping {
+  id: string;
+  team_id: string;
+  name: string;
+  description: string | null;
+  repo_patterns: string[];
+  project_keys: string[];
+  extra_data: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamMappingCreate {
+  team_id: string;
+  name: string;
+  description?: string | null;
+  repo_patterns?: string[];
+  project_keys?: string[];
+  extra_data?: Record<string, unknown>;
+}
+
+export interface TeamMappingUpdate {
+  name?: string | null;
+  description?: string | null;
+  repo_patterns?: string[] | null;
+  project_keys?: string[] | null;
+  extra_data?: Record<string, unknown> | null;
+}
+
+// ---- Users ----
+
+export interface User {
+  id: string;
+  email: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  auth_provider: string;
+  is_active: boolean;
+  is_verified: boolean;
+  is_superuser: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserCreate {
+  email: string;
+  password?: string | null;
+  username?: string | null;
+  full_name?: string | null;
+  auth_provider?: string;
+  auth_provider_id?: string | null;
+  is_verified?: boolean;
+  is_superuser?: boolean;
+}
+
+export interface UserUpdate {
+  email?: string | null;
+  username?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  is_active?: boolean | null;
+  is_verified?: boolean | null;
+}
+
+export interface UserSetPassword {
+  password: string;
+}
+
+// ---- Organizations ----
+
+export interface Organization {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  tier: string;
+  settings: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrganizationCreate {
+  name: string;
+  slug?: string | null;
+  description?: string | null;
+  tier?: string;
+  settings?: Record<string, unknown>;
+  owner_user_id?: string | null;
+}
+
+export interface OrganizationUpdate {
+  name?: string | null;
+  description?: string | null;
+  tier?: string | null;
+  settings?: Record<string, unknown> | null;
+  is_active?: boolean | null;
+}
+
+// ---- Memberships ----
+
+export interface Membership {
+  id: string;
+  org_id: string;
+  user_id: string;
+  role: string;
+  invited_by_id: string | null;
+  joined_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MembershipCreate {
+  user_id: string;
+  role?: string;
+  invited_by_id?: string | null;
+}
+
+export interface MembershipUpdateRole {
+  role: string;
+}
+
+export interface OwnershipTransfer {
+  new_owner_user_id: string;
+}
+
+// ---- Audit Logs ----
+
+export interface AuditLog {
+  id: string;
+  org_id: string;
+  user_id: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string;
+  description: string | null;
+  changes: Record<string, unknown> | null;
+  request_metadata: Record<string, unknown> | null;
+  status: string;
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLog[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AuditLogFilter {
+  user_id?: string | null;
+  action?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  status?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+// ---- IP Allowlist ----
+
+export interface IPAllowlist {
+  id: string;
+  org_id: string;
+  ip_range: string;
+  description: string | null;
+  is_active: boolean;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+  expires_at: string | null;
+}
+
+export interface IPAllowlistCreate {
+  ip_range: string;
+  description?: string | null;
+  expires_at?: string | null;
+}
+
+export interface IPAllowlistUpdate {
+  ip_range?: string | null;
+  description?: string | null;
+  is_active?: boolean | null;
+  expires_at?: string | null;
+}
+
+export interface IPAllowlistListResponse {
+  items: IPAllowlist[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface IPCheckResponse {
+  allowed: boolean;
+  ip_address: string;
+}
+
+// ---- Retention Policies ----
+
+export interface RetentionPolicy {
+  id: string;
+  org_id: string;
+  resource_type: string;
+  retention_days: number;
+  description: string | null;
+  is_active: boolean;
+  last_run_at: string | null;
+  last_run_deleted_count: number | null;
+  next_run_at: string | null;
+  created_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RetentionPolicyCreate {
+  resource_type: string;
+  retention_days?: number;
+  description?: string | null;
+}
+
+export interface RetentionPolicyUpdate {
+  retention_days?: number | null;
+  description?: string | null;
+  is_active?: boolean | null;
+}
+
+export interface RetentionPolicyListResponse {
+  items: RetentionPolicy[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface RetentionExecuteResponse {
+  deleted_count: number;
+  error: string | null;
+}
+
+// ---- Provider types ----
+
+export type Provider = 'github' | 'gitlab' | 'jira' | 'linear';
+
+export const PROVIDERS: Provider[] = ['github', 'gitlab', 'jira', 'linear'];
+
+export const PROVIDER_LABELS: Record<Provider, string> = {
+  github: 'GitHub',
+  gitlab: 'GitLab',
+  jira: 'Jira',
+  linear: 'Linear',
+};

@@ -1,41 +1,11 @@
-import React from "react";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { IdentityTable, Identity } from "@/components/admin/identities/IdentityTable";
+import { IdentityTable } from "@/components/admin/identities/IdentityTable";
+import { listIdentities } from "@/lib/admin/server";
 
-// Mock data
-const MOCK_IDENTITIES: Identity[] = [
-  {
-    canonical_id: "alice-smith",
-    display_name: "Alice Smith",
-    email: "alice@example.com",
-    team_id: "platform-eng",
-    provider_identities: [
-      { provider: "github", username: "alicesmith" },
-      { provider: "jira", username: "asmith" },
-    ],
-  },
-  {
-    canonical_id: "bob-jones",
-    display_name: "Bob Jones",
-    email: "bob@example.com",
-    team_id: "product-a",
-    provider_identities: [
-      { provider: "gitlab", username: "bobjones" },
-      { provider: "email", username: "bob@example.com" },
-    ],
-  },
-  {
-    canonical_id: "charlie-brown",
-    display_name: "Charlie Brown",
-    email: "charlie@example.com",
-    provider_identities: [
-      { provider: "github", username: "cbrown" },
-    ],
-  },
-];
+export default async function IdentitiesPage() {
+  const result = await listIdentities();
 
-export default function IdentitiesPage() {
   return (
     <div>
       <AdminHeader
@@ -50,6 +20,12 @@ export default function IdentitiesPage() {
         </Link>
       </AdminHeader>
 
+      {result.error && (
+        <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+          Failed to load identities: {result.error}
+        </div>
+      )}
+
       <div className="mb-6 flex gap-4">
         <input
           type="text"
@@ -58,7 +34,15 @@ export default function IdentitiesPage() {
         />
       </div>
 
-      <IdentityTable identities={MOCK_IDENTITIES} />
+      <IdentityTable
+        identities={(result.data ?? []).map((i) => ({
+          canonical_id: i.canonical_id,
+          display_name: i.display_name,
+          email: i.email,
+          team_ids: i.team_ids,
+          provider_identities: i.provider_identities,
+        }))}
+      />
     </div>
   );
 }

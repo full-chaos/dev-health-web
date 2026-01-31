@@ -1,44 +1,25 @@
-import React from "react";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { UserTable, User } from "@/components/admin/users/UserTable";
+import { UserTable } from "@/components/admin/users/UserTable";
+import { listUsers } from "@/lib/admin/server";
 
-// Mock data
-const MOCK_USERS: User[] = [
-  {
-    id: "1",
-    name: "Alice Smith",
-    email: "alice@example.com",
-    role: "admin",
-    status: "active",
-    lastLogin: "2023-10-25T10:00:00Z",
-  },
-  {
-    id: "2",
-    name: "Bob Jones",
-    email: "bob@example.com",
-    role: "member",
-    status: "active",
-    lastLogin: "2023-10-24T14:30:00Z",
-  },
-  {
-    id: "3",
-    name: "Charlie Brown",
-    email: "charlie@example.com",
-    role: "viewer",
-    status: "invited",
-  },
-  {
-    id: "4",
-    name: "Diana Prince",
-    email: "diana@example.com",
-    role: "member",
-    status: "inactive",
-    lastLogin: "2023-09-15T09:00:00Z",
-  },
-];
+export default async function UsersPage() {
+  const result = await listUsers();
 
-export default function UsersPage() {
+  if (result.error) {
+    return (
+      <div>
+        <AdminHeader
+          title="Users"
+          description="Manage organization members and their roles."
+        />
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+          Failed to load users: {result.error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <AdminHeader
@@ -59,10 +40,9 @@ export default function UsersPage() {
           placeholder="Search users..."
           className="w-full max-w-sm rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
         />
-        {/* Placeholder for filters */}
       </div>
 
-      <UserTable users={MOCK_USERS} />
+      <UserTable users={result.data ?? []} />
     </div>
   );
 }

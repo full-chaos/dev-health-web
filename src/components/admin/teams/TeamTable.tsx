@@ -4,7 +4,7 @@ import Link from "next/link";
 export type Team = {
   team_id: string;
   name: string;
-  description: string;
+  description: string | null;
   repo_patterns: string[];
   project_keys: string[];
 };
@@ -35,7 +35,7 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
                   {team.name}
                 </Link>
               </td>
-              <td className="px-6 py-4 text-(--ink-muted)">{team.description}</td>
+              <td className="px-6 py-4 text-(--ink-muted)">{team.description ?? "—"}</td>
               <td className="px-6 py-4 text-(--ink-muted)">
                 <div className="flex flex-wrap gap-1">
                   {team.repo_patterns.map((pattern, i) => (

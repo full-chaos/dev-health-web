@@ -1,43 +1,12 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncConfigCard } from "@/components/admin/sync/SyncConfigCard";
-import { SyncConfig } from "@/lib/sync-types";
+import { listSyncConfigs } from "@/lib/admin/server";
+import { toSyncConfig } from "@/lib/sync-types";
 
-// Mock data
-const mockConfigs: SyncConfig[] = [
-  {
-    id: "gh-main",
-    name: "GitHub Main Repo",
-    provider: "github",
-    last_sync_at: "2023-10-27T10:00:00Z",
-    status: "success",
-    schedule: "Every 1 hour",
-  },
-  {
-    id: "jira-corp",
-    name: "Corporate Jira",
-    provider: "jira",
-    last_sync_at: "2023-10-27T09:30:00Z",
-    status: "failed",
-    schedule: "Every 4 hours",
-  },
-  {
-    id: "gl-legacy",
-    name: "Legacy GitLab",
-    provider: "gitlab",
-    last_sync_at: null,
-    status: "never",
-    schedule: "Daily",
-  },
-  {
-    id: "local-dev",
-    name: "Local Development",
-    provider: "local",
-    last_sync_at: "2023-10-27T10:15:00Z",
-    status: "running",
-  },
-];
+export default async function SyncStatusPage() {
+  const result = await listSyncConfigs();
+  const configs = (result.data ?? []).map(toSyncConfig);
 
-export default function SyncStatusPage() {
   return (
     <div className="space-y-8">
       <AdminHeader
@@ -45,8 +14,20 @@ export default function SyncStatusPage() {
         description="Monitor and manage data synchronization jobs."
       />
 
+      {result.error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+          Failed to load sync configs: {result.error}
+        </div>
+      )}
+
+      {configs.length === 0 && !result.error && (
+        <div className="rounded-lg border border-(--card-stroke) bg-(--card-80) p-8 text-center text-(--ink-muted)">
+          No sync configurations found. Configure integrations first.
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {mockConfigs.map((config) => (
+        {configs.map((config) => (
           <SyncConfigCard key={config.id} config={config} />
         ))}
       </div>

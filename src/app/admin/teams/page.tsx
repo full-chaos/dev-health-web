@@ -1,34 +1,11 @@
-import React from "react";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { TeamTable, Team } from "@/components/admin/teams/TeamTable";
+import { TeamTable } from "@/components/admin/teams/TeamTable";
+import { listTeams } from "@/lib/admin/server";
 
-// Mock data
-const MOCK_TEAMS: Team[] = [
-  {
-    team_id: "platform-eng",
-    name: "Platform Engineering",
-    description: "Responsible for internal developer platform and tooling.",
-    repo_patterns: ["github/org/platform-*", "github/org/infra-*"],
-    project_keys: ["PLAT", "INFRA"],
-  },
-  {
-    team_id: "product-a",
-    name: "Product A Team",
-    description: "Core product development team.",
-    repo_patterns: ["github/org/product-a-*"],
-    project_keys: ["PROJA"],
-  },
-  {
-    team_id: "data-science",
-    name: "Data Science",
-    description: "AI/ML and data analytics.",
-    repo_patterns: ["github/org/ds-*", "github/org/ml-*"],
-    project_keys: ["DATA"],
-  },
-];
+export default async function TeamsPage() {
+  const result = await listTeams();
 
-export default function TeamsPage() {
   return (
     <div>
       <AdminHeader
@@ -43,6 +20,12 @@ export default function TeamsPage() {
         </Link>
       </AdminHeader>
 
+      {result.error && (
+        <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+          Failed to load teams: {result.error}
+        </div>
+      )}
+
       <div className="mb-6 flex gap-4">
         <input
           type="text"
@@ -51,7 +34,15 @@ export default function TeamsPage() {
         />
       </div>
 
-      <TeamTable teams={MOCK_TEAMS} />
+      <TeamTable
+        teams={(result.data ?? []).map((t) => ({
+          team_id: t.team_id,
+          name: t.name,
+          description: t.description,
+          repo_patterns: t.repo_patterns,
+          project_keys: t.project_keys,
+        }))}
+      />
     </div>
   );
 }
