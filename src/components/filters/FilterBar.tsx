@@ -437,9 +437,20 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
           className="flex items-center gap-2 text-xs text-foreground hover:text-(--accent) transition-colors"
           aria-label="Expand filters"
         >
-          <span className="text-sm">🔍</span>
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-(--ink-muted)"
+          >
+            <polyline points="2,4 6,8 10,4" />
+          </svg>
           <span className="uppercase tracking-[0.2em] text-(--ink-muted)">Filters</span>
-          <span className="text-(--ink-muted)">▼</span>
         </button>
       ) : (
         <div className="flex w-full flex-col gap-3">
@@ -903,7 +914,18 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
               className="mx-auto mt-2 flex items-center gap-1 rounded-full px-4 py-1 text-xs text-(--ink-muted) transition-colors hover:bg-(--card-70) hover:text-foreground"
               aria-label="Collapse filters"
             >
-              <span>▲</span>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="2,8 6,4 10,8" />
+              </svg>
               <span className="uppercase tracking-[0.15em]">Collapse</span>
             </button>
           </div>
