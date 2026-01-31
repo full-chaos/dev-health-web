@@ -16,9 +16,8 @@ function isPublicPath(pathname: string): boolean {
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
-    const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
 
-    if (authEnabled && !isPublicPath(pathname)) {
+    if (!isPublicPath(pathname)) {
         const session = await auth();
         if (!session) {
             const signInUrl = new URL("/auth/signin", request.url);

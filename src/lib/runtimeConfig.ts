@@ -28,14 +28,6 @@ const getPublicBoolean = (key: string): boolean =>
 
 export const runtimeConfig = {
   /**
-   * Check if authentication is enabled.
-   *
-   * Defaults to FALSE unless explicitly set to "true".
-   * Set NEXT_PUBLIC_AUTH_ENABLED=true to enable authentication.
-   */
-  authEnabled: (): boolean => getPublicBoolean("NEXT_PUBLIC_AUTH_ENABLED"),
-
-  /**
    * Check if GraphQL analytics is enabled.
    *
    * Defaults to TRUE unless explicitly set to "false".
