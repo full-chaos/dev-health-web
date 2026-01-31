@@ -3,8 +3,61 @@
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import { useState, useRef, useEffect } from "react"
+import { runtimeConfig } from "@/lib/runtimeConfig"
 
-export function UserMenu() {
+function AuthDisabledMenu() {
+  const [isOpen, setIsOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1.5 hover:bg-[var(--card-80)] transition-colors"
+      >
+        <div className="h-6 w-6 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-xs font-bold">
+          A
+        </div>
+        <span className="text-sm font-medium text-[var(--foreground)] hidden sm:block">
+          Admin
+        </span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md border border-[var(--card-stroke)] bg-[var(--card)] shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+          <div className="py-1">
+            <Link
+              href="/admin"
+              className="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              onClick={() => setIsOpen(false)}
+            >
+              Admin Panel
+            </Link>
+            <Link
+              href="/admin/settings"
+              className="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              onClick={() => setIsOpen(false)}
+            >
+              Settings
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AuthEnabledMenu() {
   const { data: session, status } = useSession()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -57,6 +110,20 @@ export function UserMenu() {
                 {session.user?.email}
               </span>
             </div>
+            <Link
+              href="/admin"
+              className="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              onClick={() => setIsOpen(false)}
+            >
+              Admin Panel
+            </Link>
+            <Link
+              href="/admin/settings"
+              className="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              onClick={() => setIsOpen(false)}
+            >
+              Settings
+            </Link>
             <button
               onClick={() => signOut()}
               className="block w-full px-4 py-2 text-left text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
@@ -68,4 +135,11 @@ export function UserMenu() {
       )}
     </div>
   )
+}
+
+export function UserMenu() {
+  if (!runtimeConfig.authEnabled()) {
+    return <AuthDisabledMenu />
+  }
+  return <AuthEnabledMenu />
 }
