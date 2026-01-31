@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { id: "integrations", label: "Integrations", href: "/admin/integrations", description: "Connectors" },
   { id: "sync", label: "Sync Status", href: "/admin/sync", description: "Jobs" },
   { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },
+  { id: "identities", label: "Identities", href: "/admin/identities", description: "Mapping" },
 ];
 
 export function AdminSidebar() {
