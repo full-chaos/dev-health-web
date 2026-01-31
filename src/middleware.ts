@@ -1,21 +1,11 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 
-const publicPaths = [
-  "/auth/signin",
-  "/auth/error",
-  "/api/auth",
-]
-
-function isPublicPath(pathname: string): boolean {
-  return publicPaths.some(path => pathname.startsWith(path))
-}
-
 export default auth((req) => {
   const { pathname } = req.nextUrl
   const isAuthenticated = !!req.auth
 
-  if (isPublicPath(pathname)) {
+  if (pathname.startsWith("/auth/")) {
     return NextResponse.next()
   }
 
@@ -30,6 +20,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }
