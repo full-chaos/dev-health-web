@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
 
+const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true";
+
 const PUBLIC_PATHS = [
     "/auth/signin",
     "/auth/error",
@@ -18,7 +20,7 @@ function isPublicPath(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    if (!isPublicPath(pathname)) {
+    if (!isTestMode && !isPublicPath(pathname)) {
         const session = await auth();
         if (!session) {
             const signInUrl = new URL("/auth/signin", request.url);
