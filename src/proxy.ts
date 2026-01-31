@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
 
     const shouldProxy =
         pathname === "/graphql" ||
-        (pathname.startsWith("/api/") && !pathname.startsWith("/api/v1/llm-proxy"));
+        (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth") && !pathname.startsWith("/api/v1/llm-proxy"));
 
     if (!shouldProxy) {
         return NextResponse.next();
