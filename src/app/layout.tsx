@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Noto_Sans, Noto_Sans_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UserMenu } from "@/components/auth/UserMenu";
 
@@ -67,9 +66,8 @@ export default function RootLayout({
         <SessionProvider>
           <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
           <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-          <div className="fixed right-6 top-6 z-50 flex items-center gap-4">
+          <div className="fixed right-6 top-6 z-50">
             <UserMenu />
-            <ThemeToggle />
           </div>
           {children}
         </SessionProvider>

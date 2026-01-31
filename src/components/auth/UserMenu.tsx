@@ -2,8 +2,75 @@
 
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useSyncExternalStore } from "react"
 import { runtimeConfig } from "@/lib/runtimeConfig"
+import { isServer, getLocalStorage, getWindow } from "@/lib/env"
+
+type Theme = "light" | "dark"
+type Listener = () => void
+
+const themeListeners = new Set<Listener>()
+
+const subscribeTheme = (listener: Listener) => {
+  themeListeners.add(listener)
+  return () => themeListeners.delete(listener)
+}
+
+const notifyTheme = () => {
+  themeListeners.forEach((listener) => listener())
+}
+
+const getStoredTheme = (): Theme | null => {
+  const stored = getLocalStorage()?.getItem("theme")
+  return stored === "light" || stored === "dark" ? stored : null
+}
+
+const getSystemTheme = (): Theme => {
+  const win = getWindow()
+  if (!win) return "light"
+  return win.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+const applyTheme = (theme: Theme) => {
+  document.documentElement.dataset.theme = theme
+  document.documentElement.style.colorScheme = theme
+  localStorage.setItem("theme", theme)
+  notifyTheme()
+}
+
+const getThemeSnapshot = (): Theme => {
+  if (isServer) return "light"
+  const stored = getStoredTheme()
+  if (stored) return stored
+  const fromDataset = document.documentElement.dataset.theme
+  if (fromDataset === "light" || fromDataset === "dark") return fromDataset
+  return getSystemTheme()
+}
+
+const getThemeServerSnapshot = (): Theme => "light"
+
+function ThemeToggleButton() {
+  const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot)
+
+  const handleToggle = () => {
+    if (isServer) return
+    const nextTheme = theme === "dark" ? "light" : "dark"
+    applyTheme(nextTheme)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      className="flex w-full items-center justify-between px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+    >
+      <span>Theme</span>
+      <span className="text-xs text-[var(--ink-muted)]">
+        {theme === "dark" ? "Dark" : "Light"}
+      </span>
+    </button>
+  )
+}
 
 function AuthDisabledMenu() {
   const [isOpen, setIsOpen] = useState(false)
@@ -26,10 +93,10 @@ function AuthDisabledMenu() {
         className="flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1.5 hover:bg-[var(--card-80)] transition-colors"
       >
         <div className="h-6 w-6 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-xs font-bold">
-          A
+          U
         </div>
         <span className="text-sm font-medium text-[var(--foreground)] hidden sm:block">
-          Admin
+          Menu
         </span>
       </button>
 
@@ -50,6 +117,9 @@ function AuthDisabledMenu() {
             >
               Settings
             </Link>
+            <div className="border-t border-[var(--card-stroke)]">
+              <ThemeToggleButton />
+            </div>
           </div>
         </div>
       )}
@@ -124,12 +194,17 @@ function AuthEnabledMenu() {
             >
               Settings
             </Link>
-            <button
-              onClick={() => signOut()}
-              className="block w-full px-4 py-2 text-left text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
-            >
-              Sign out
-            </button>
+            <div className="border-t border-[var(--card-stroke)]">
+              <ThemeToggleButton />
+            </div>
+            <div className="border-t border-[var(--card-stroke)]">
+              <button
+                onClick={() => signOut()}
+                className="block w-full px-4 py-2 text-left text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </div>
       )}

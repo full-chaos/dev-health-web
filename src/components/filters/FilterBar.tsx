@@ -424,8 +424,8 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
   return (
     <section
       ref={barRef}
-      className={`fixed right-24 top-6 z-40 rounded-[28px] border border-(--card-stroke) shadow-2xl transition-all duration-300 ease-in-out ${
-        isCollapsed ? "w-12 h-12 overflow-hidden" : "w-[calc(100vw-120px)] max-w-5xl p-4"
+      className={`fixed left-1/2 top-6 z-40 -translate-x-1/2 rounded-[28px] border border-(--card-stroke) shadow-2xl transition-all duration-300 ease-in-out ${
+        isCollapsed ? "px-4 py-2" : "w-[calc(100vw-120px)] max-w-5xl p-4"
       } ${condensed ? "bg-(--card-80)" : "bg-(--card-90)"}`}
     >
       <div className="flex h-full items-center">
@@ -433,10 +433,12 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
           <button
             type="button"
             onClick={() => setIsCollapsed(false)}
-            className="flex h-12 w-12 items-center justify-center text-foreground hover:bg-(--card-70)"
+            className="flex items-center gap-2 text-xs text-foreground hover:text-(--accent) transition-colors"
             aria-label="Expand filters"
           >
             <span>🔍</span>
+            <span className="uppercase tracking-[0.2em] text-(--ink-muted)">Filters</span>
+            <span className="text-(--ink-muted)">▼</span>
           </button>
         ) : (
           <div className="flex w-full flex-col gap-3">
@@ -448,7 +450,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                   className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-(--card-70) text-foreground transition-colors hover:bg-(--card-60)"
                   aria-label="Collapse filters"
                 >
-                  ▶
+                  ▲
                 </button>
                 {view === "people" && (
                   <label className="flex items-center gap-2 text-xs">
