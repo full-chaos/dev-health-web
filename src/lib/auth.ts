@@ -2,6 +2,16 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { getBackendUrl } from "@/lib/origin"
 
+// Auth.js v5 uses AUTH_SECRET env var by convention
+// Provide a development fallback (insecure - only for local dev)
+const authSecret = process.env.AUTH_SECRET 
+  || process.env.NEXTAUTH_SECRET 
+  || (process.env.NODE_ENV === "development" ? "dev-secret-do-not-use-in-production" : undefined)
+
+if (!authSecret && process.env.NODE_ENV === "production") {
+  throw new Error("AUTH_SECRET environment variable is required in production")
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     CredentialsProvider({
@@ -77,6 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   pages: {
     signIn: "/auth/signin",
+    error: "/auth/error",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: authSecret,
 })
