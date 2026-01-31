@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 
 const PUBLIC_PATHS = [
     "/auth/signin",
+    "/auth/error",
     "/api/auth",
     "/_next",
     "/favicon.ico",
