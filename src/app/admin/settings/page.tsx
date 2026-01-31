@@ -1,4 +1,5 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { PreferencesSettings } from "@/components/admin/settings/PreferencesSettings";
 import { GeneralSettings } from "@/components/admin/settings/GeneralSettings";
 import { BillingSettings } from "@/components/admin/settings/BillingSettings";
 import { SecuritySettings } from "@/components/admin/settings/SecuritySettings";
@@ -23,6 +24,7 @@ export default async function OrganizationSettingsPage() {
       )}
 
       <div className="max-w-4xl">
+        <PreferencesSettings />
         <GeneralSettings org={org} />
         <BillingSettings tier={org?.tier} />
         <SecuritySettings />
