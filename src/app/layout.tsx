@@ -3,6 +3,8 @@ import { Noto_Sans, Noto_Sans_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { SessionProvider } from "@/components/auth/SessionProvider";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 const bodyFont = Noto_Sans({
   variable: "--font-body",
@@ -62,12 +64,15 @@ export default function RootLayout({
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
-        <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <div className="fixed right-6 top-6 z-50">
-          <ThemeToggle />
-        </div>
-        {children}
+        <SessionProvider>
+          <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
+          <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+          <div className="fixed right-6 top-6 z-50 flex items-center gap-4">
+            <UserMenu />
+            <ThemeToggle />
+          </div>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );
