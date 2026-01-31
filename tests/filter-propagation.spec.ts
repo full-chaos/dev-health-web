@@ -26,6 +26,12 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
   );
   const nextValue = getFilterParam(page.url());
   expect(nextValue).toBeTruthy();
+  
+  const collapseButton = page.getByRole("button", { name: "Collapse filters" });
+  if (await collapseButton.isVisible()) {
+    await collapseButton.click();
+  }
+  
   return nextValue as string;
 };
 
