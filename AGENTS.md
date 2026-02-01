@@ -40,6 +40,10 @@ This document is the authoritative guide for any automated coding agent (Copilot
 ## Development conventions for agents
 
 - Read this file (`AGENTS.md`) first — it is the source of truth for architecture and flows.
+- **NEVER commit directly to main** — Always create a feature branch first:
+  ```bash
+  git checkout -b <type>/<descriptive-name>  # e.g., fix/chart-resize, feat/new-filter
+  ```
 - Make minimal, surgical changes. Prefer small commits/PRs that address a single concern.
 - Run or update existing tests when adding or modifying behavior. Prefer targeted test updates rather than broad rewrites.
 - Do not commit secrets or environment tokens. Use env vars for examples.
