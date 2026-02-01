@@ -1,62 +1,61 @@
 "use client";
 
 import React, { useState } from "react";
+import type { UserCreate, User } from "@/lib/admin/types";
 
-export type UserFormData = {
-  name: string;
-  email: string;
-  role: string;
-  status: "active" | "inactive" | "invited";
-};
+export type UserFormData = UserCreate & { is_active?: boolean };
 
 type UserFormProps = {
-  initialData?: UserFormData;
-  onSubmit: (data: UserFormData) => void;
+  initialData?: User;
+  onSubmit: (data: UserFormData) => Promise<void>;
   onCancel: () => void;
   isEdit?: boolean;
+  isLoading?: boolean;
+  error?: string | null;
 };
 
-export function UserForm({ initialData, onSubmit, onCancel, isEdit = false }: UserFormProps) {
-  const [formData, setFormData] = useState<UserFormData>(
-    initialData || {
-      name: "",
-      email: "",
-      role: "member",
-      status: "invited",
-    }
-  );
+export function UserForm({
+  initialData,
+  onSubmit,
+  onCancel,
+  isEdit = false,
+  isLoading = false,
+  error = null,
+}: UserFormProps) {
+  const [formData, setFormData] = useState<UserFormData>({
+    email: initialData?.email || "",
+    full_name: initialData?.full_name || "",
+    username: initialData?.username || "",
+    password: "",
+    is_active: initialData?.is_active ?? true,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
+    setFormData((prev) => ({ ...prev, [name]: newValue }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    await onSubmit(formData);
   };
+
+  const inputClass =
+    "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+          {error}
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <label htmlFor="name" className="text-sm font-medium text-(--ink-muted)">
-            Name
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            value={formData.name}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
-            placeholder="John Doe"
-          />
-        </div>
-
-        <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium text-(--ink-muted)">
-            Email
+            Email *
           </label>
           <input
             id="email"
@@ -64,48 +63,86 @@ export function UserForm({ initialData, onSubmit, onCancel, isEdit = false }: Us
             type="email"
             value={formData.email}
             onChange={handleChange}
-            disabled={isEdit} // Email usually immutable
-            className={`w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) ${
-              isEdit ? "cursor-not-allowed opacity-50" : ""
-            }`}
+            disabled={isEdit || isLoading}
+            className={`${inputClass} ${isEdit ? "cursor-not-allowed opacity-50" : ""}`}
             placeholder="john@example.com"
             required
           />
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="role" className="text-sm font-medium text-(--ink-muted)">
-            Role
+          <label htmlFor="full_name" className="text-sm font-medium text-(--ink-muted)">
+            Full Name
           </label>
-          <select
-            id="role"
-            name="role"
-            value={formData.role}
+          <input
+            id="full_name"
+            name="full_name"
+            type="text"
+            value={formData.full_name || ""}
             onChange={handleChange}
-            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
-          >
-            <option value="viewer">Viewer</option>
-            <option value="member">Member</option>
-            <option value="admin">Admin</option>
-          </select>
+            disabled={isLoading}
+            className={inputClass}
+            placeholder="John Doe"
+          />
         </div>
+
+        <div className="space-y-2">
+          <label htmlFor="username" className="text-sm font-medium text-(--ink-muted)">
+            Username
+          </label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            value={formData.username || ""}
+            onChange={handleChange}
+            disabled={isLoading}
+            className={inputClass}
+            placeholder="johndoe"
+          />
+        </div>
+
+        {!isEdit && (
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-sm font-medium text-(--ink-muted)">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password || ""}
+              onChange={handleChange}
+              disabled={isLoading}
+              className={inputClass}
+              placeholder="••••••••"
+              minLength={8}
+            />
+            <p className="text-xs text-(--ink-muted)">
+              Leave blank to send invitation email instead
+            </p>
+          </div>
+        )}
 
         {isEdit && (
           <div className="space-y-2">
-            <label htmlFor="status" className="text-sm font-medium text-(--ink-muted)">
+            <label htmlFor="is_active" className="text-sm font-medium text-(--ink-muted)">
               Status
             </label>
-            <select
-              id="status"
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="invited">Invited</option>
-            </select>
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                id="is_active"
+                name="is_active"
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={handleChange}
+                disabled={isLoading}
+                className="h-4 w-4 rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent)"
+              />
+              <label htmlFor="is_active" className="text-sm text-foreground">
+                Active
+              </label>
+            </div>
           </div>
         )}
       </div>
@@ -114,15 +151,17 @@ export function UserForm({ initialData, onSubmit, onCancel, isEdit = false }: Us
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground"
+          disabled={isLoading}
+          className="rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
+          disabled={isLoading}
+          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
         >
-          {isEdit ? "Save Changes" : "Invite User"}
+          {isLoading ? "Saving..." : isEdit ? "Save Changes" : "Create User"}
         </button>
       </div>
     </form>

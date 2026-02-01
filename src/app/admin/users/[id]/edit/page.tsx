@@ -1,19 +1,7 @@
-import React from "react";
+import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { EditUserFormWrapper } from "./EditUserFormWrapper";
-
-// Mock data fetcher
-async function getUser(id: string) {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return {
-    id,
-    name: "Alice Smith",
-    email: "alice@example.com",
-    role: "admin",
-    status: "active" as const,
-  };
-}
+import { getUser } from "@/lib/admin/server";
 
 export default async function EditUserPage({
   params,
@@ -21,13 +9,19 @@ export default async function EditUserPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await getUser(id);
+  const result = await getUser(id);
+
+  if (result.error || !result.data) {
+    notFound();
+  }
+
+  const user = result.data;
 
   return (
     <div className="max-w-2xl">
       <AdminHeader
         title="Edit User"
-        description={`Update details for ${user.name}`}
+        description={`Update details for ${user.full_name || user.email}`}
       />
       <EditUserFormWrapper user={user} />
     </div>

@@ -1,28 +1,39 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserForm, UserFormData } from "@/components/admin/users/UserForm";
+import { updateUser } from "@/lib/admin/server";
+import type { User } from "@/lib/admin/types";
 
 type EditUserFormWrapperProps = {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    status: "active" | "inactive" | "invited";
-  };
+  user: User;
 };
 
 export function EditUserFormWrapper({ user }: EditUserFormWrapperProps) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (data: UserFormData) => {
-    // Placeholder for API call
-    console.log("Updating user:", user.id, data);
-    // Simulate delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    setIsLoading(true);
+    setError(null);
+
+    const result = await updateUser(user.id, {
+      full_name: data.full_name || undefined,
+      username: data.username || undefined,
+      is_active: data.is_active,
+    });
+
+    setIsLoading(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
     router.push(`/admin/users/${user.id}`);
+    router.refresh();
   };
 
   const handleCancel = () => {
@@ -35,6 +46,8 @@ export function EditUserFormWrapper({ user }: EditUserFormWrapperProps) {
       onSubmit={handleSubmit}
       onCancel={handleCancel}
       isEdit
+      isLoading={isLoading}
+      error={error}
     />
   );
 }

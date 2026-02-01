@@ -57,12 +57,28 @@ export function UserMenu() {
                 {session.user?.email}
               </span>
             </div>
-            <button
-              onClick={() => signOut()}
-              className="block w-full px-4 py-2 text-left text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+            <Link
+              href="/admin"
+              className="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              onClick={() => setIsOpen(false)}
             >
-              Sign out
-            </button>
+              Admin Panel
+            </Link>
+            <Link
+              href="/admin/settings"
+              className="block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              onClick={() => setIsOpen(false)}
+            >
+              Settings
+            </Link>
+            <div className="border-t border-[var(--card-stroke)]">
+              <button
+                onClick={() => signOut()}
+                className="block w-full px-4 py-2 text-left text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </div>
       )}

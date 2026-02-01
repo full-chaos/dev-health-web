@@ -4,11 +4,11 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        BACKEND_URL: ${BACKEND_URL:-http://127.0.0.1:8000}
+        BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
     image: dev-health-web:latest
     ports:
       - "3000:3000"
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-      BACKEND_URL: ${BACKEND_URL:-http://127.0.0.1:8000}
+      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}

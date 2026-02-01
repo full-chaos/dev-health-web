@@ -2,17 +2,12 @@ import React from "react";
 import Link from "next/link";
 import { ProviderBadge } from "./ProviderBadge";
 
-export type ProviderIdentity = {
-  provider: string;
-  username: string;
-};
-
 export type Identity = {
   canonical_id: string;
-  display_name: string;
-  email: string;
-  team_id?: string;
-  provider_identities: ProviderIdentity[];
+  display_name: string | null;
+  email: string | null;
+  team_ids: string[];
+  provider_identities: Record<string, string[]>;
 };
 
 type IdentityTableProps = {
@@ -45,25 +40,32 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
                   {identity.canonical_id}
                 </Link>
               </td>
-              <td className="px-6 py-4 text-(--ink-muted)">{identity.display_name}</td>
-              <td className="px-6 py-4 text-(--ink-muted)">{identity.email}</td>
+              <td className="px-6 py-4 text-(--ink-muted)">{identity.display_name ?? "—"}</td>
+              <td className="px-6 py-4 text-(--ink-muted)">{identity.email ?? "—"}</td>
               <td className="px-6 py-4 text-(--ink-muted)">
-                {identity.team_id ? (
-                  <Link
-                    href={`/admin/teams/${identity.team_id}/edit`}
-                    className="text-(--accent) hover:underline"
-                  >
-                    {identity.team_id}
-                  </Link>
+                {identity.team_ids.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {identity.team_ids.map((teamId) => (
+                      <Link
+                        key={teamId}
+                        href={`/admin/teams/${teamId}/edit`}
+                        className="text-(--accent) hover:underline"
+                      >
+                        {teamId}
+                      </Link>
+                    ))}
+                  </div>
                 ) : (
                   <span className="text-(--ink-muted)/50">Unassigned</span>
                 )}
               </td>
               <td className="px-6 py-4">
                 <div className="flex flex-wrap gap-2">
-                  {identity.provider_identities.map((pid, i) => (
-                    <ProviderBadge key={i} provider={pid.provider} username={pid.username} />
-                  ))}
+                  {Object.entries(identity.provider_identities).map(([provider, usernames]) =>
+                    usernames.map((username, i) => (
+                      <ProviderBadge key={`${provider}-${i}`} provider={provider} username={username} />
+                    ))
+                  )}
                 </div>
               </td>
               <td className="px-6 py-4 text-right">

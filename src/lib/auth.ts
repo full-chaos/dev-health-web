@@ -2,6 +2,10 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { getBackendUrl } from "@/lib/origin"
 
+const authSecret = process.env.AUTH_SECRET 
+  || process.env.NEXTAUTH_SECRET 
+  || "dev-secret-change-in-production"
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     CredentialsProvider({
@@ -77,6 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   pages: {
     signIn: "/auth/signin",
+    error: "/auth/error",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: authSecret,
 })

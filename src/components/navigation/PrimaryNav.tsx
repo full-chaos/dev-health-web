@@ -73,6 +73,15 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
           <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
             Explore opens from evidence links only. Monitoring views show trends.
           </div>
+          <div className="mt-3">
+            <Link
+              href="/admin"
+              className="flex items-center justify-between rounded-2xl border border-transparent bg-(--card-70) px-3 py-2 text-sm text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground transition"
+            >
+              <span className="font-medium">Admin</span>
+              <span className="text-[10px] uppercase tracking-widest">Settings</span>
+            </Link>
+          </div>
         </div>
       </div>
     </aside>

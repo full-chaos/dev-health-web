@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import Link from "next/link";
-import { Identity, ProviderIdentity } from "./IdentityTable";
+import { Identity } from "./IdentityTable";
 import { Team } from "../teams/TeamTable";
+
+type ProviderEntry = { provider: string; username: string };
 
 type IdentityFormProps = {
   initialData?: Identity;
@@ -12,58 +14,73 @@ type IdentityFormProps = {
 
 const PROVIDERS = ["github", "gitlab", "jira", "email"];
 
+function recordToArray(record: Record<string, string[]>): ProviderEntry[] {
+  return Object.entries(record).flatMap(([provider, usernames]) =>
+    usernames.map((username) => ({ provider, username }))
+  );
+}
+
+function arrayToRecord(arr: ProviderEntry[]): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  arr.forEach(({ provider, username }) => {
+    if (!result[provider]) result[provider] = [];
+    if (username) result[provider].push(username);
+  });
+  return result;
+}
+
 export function IdentityForm({
   initialData,
   teams,
   onSubmit,
   isEditing = false,
 }: IdentityFormProps) {
-  const [formData, setFormData] = useState<Identity>(
-    initialData || {
-      canonical_id: "",
-      display_name: "",
-      email: "",
-      team_id: "",
-      provider_identities: [],
-    }
+  const [formData, setFormData] = useState({
+    canonical_id: initialData?.canonical_id ?? "",
+    display_name: initialData?.display_name ?? "",
+    email: initialData?.email ?? "",
+    team_ids: initialData?.team_ids ?? [],
+  });
+  
+  const [providerEntries, setProviderEntries] = useState<ProviderEntry[]>(
+    initialData ? recordToArray(initialData.provider_identities) : []
   );
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "team_ids") {
+      setFormData((prev) => ({ ...prev, team_ids: value ? [value] : [] }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleProviderChange = (
     index: number,
-    field: keyof ProviderIdentity,
+    field: "provider" | "username",
     value: string
   ) => {
-    const newProviders = [...formData.provider_identities];
+    const newProviders = [...providerEntries];
     newProviders[index] = { ...newProviders[index], [field]: value };
-    setFormData((prev) => ({ ...prev, provider_identities: newProviders }));
+    setProviderEntries(newProviders);
   };
 
   const addProvider = () => {
-    setFormData((prev) => ({
-      ...prev,
-      provider_identities: [
-        ...prev.provider_identities,
-        { provider: "github", username: "" },
-      ],
-    }));
+    setProviderEntries((prev) => [...prev, { provider: "github", username: "" }]);
   };
 
   const removeProvider = (index: number) => {
-    const newProviders = [...formData.provider_identities];
-    newProviders.splice(index, 1);
-    setFormData((prev) => ({ ...prev, provider_identities: newProviders }));
+    setProviderEntries((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      provider_identities: arrayToRecord(providerEntries),
+    });
   };
 
   return (
@@ -97,9 +114,8 @@ export function IdentityForm({
             type="text"
             id="display_name"
             name="display_name"
-            value={formData.display_name}
+            value={formData.display_name ?? ""}
             onChange={handleChange}
-            required
             className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
             placeholder="e.g., Alice Smith"
           />
@@ -113,22 +129,21 @@ export function IdentityForm({
             type="email"
             id="email"
             name="email"
-            value={formData.email}
+            value={formData.email ?? ""}
             onChange={handleChange}
-            required
             className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
             placeholder="e.g., alice@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="team_id" className="mb-1.5 block text-sm font-medium">
+          <label htmlFor="team_ids" className="mb-1.5 block text-sm font-medium">
             Team
           </label>
           <select
-            id="team_id"
-            name="team_id"
-            value={formData.team_id || ""}
+            id="team_ids"
+            name="team_ids"
+            value={formData.team_ids[0] ?? ""}
             onChange={handleChange}
             className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
           >
@@ -153,7 +168,7 @@ export function IdentityForm({
             </button>
           </div>
           <div className="space-y-3">
-            {formData.provider_identities.map((pid, index) => (
+            {providerEntries.map((pid, index) => (
               <div key={index} className="flex gap-3">
                 <select
                   value={pid.provider}
@@ -187,7 +202,7 @@ export function IdentityForm({
                 </button>
               </div>
             ))}
-            {formData.provider_identities.length === 0 && (
+            {providerEntries.length === 0 && (
               <p className="text-sm text-(--ink-muted) italic">
                 No provider identities linked.
               </p>

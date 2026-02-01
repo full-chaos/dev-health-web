@@ -38,29 +38,30 @@ const MOCK_IDENTITIES: Record<string, Identity> = {
     canonical_id: "alice-smith",
     display_name: "Alice Smith",
     email: "alice@example.com",
-    team_id: "platform-eng",
-    provider_identities: [
-      { provider: "github", username: "alicesmith" },
-      { provider: "jira", username: "asmith" },
-    ],
+    team_ids: ["platform-eng"],
+    provider_identities: {
+      github: ["alicesmith"],
+      jira: ["asmith"],
+    },
   },
   "bob-jones": {
     canonical_id: "bob-jones",
     display_name: "Bob Jones",
     email: "bob@example.com",
-    team_id: "product-a",
-    provider_identities: [
-      { provider: "gitlab", username: "bobjones" },
-      { provider: "email", username: "bob@example.com" },
-    ],
+    team_ids: ["product-a"],
+    provider_identities: {
+      gitlab: ["bobjones"],
+      email: ["bob@example.com"],
+    },
   },
   "charlie-brown": {
     canonical_id: "charlie-brown",
     display_name: "Charlie Brown",
     email: "charlie@example.com",
-    provider_identities: [
-      { provider: "github", username: "cbrown" },
-    ],
+    team_ids: [],
+    provider_identities: {
+      github: ["cbrown"],
+    },
   },
 };
 

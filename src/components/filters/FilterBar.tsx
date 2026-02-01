@@ -424,32 +424,38 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
   return (
     <section
       ref={barRef}
-      className={`fixed right-24 top-6 z-40 rounded-[28px] border border-(--card-stroke) shadow-2xl transition-all duration-300 ease-in-out ${
-        isCollapsed ? "w-12 h-12 overflow-hidden" : "w-[calc(100vw-120px)] max-w-5xl p-4"
+      className={`fixed left-1/2 top-0 z-40 -translate-x-1/2 border-x border-b border-(--card-stroke) shadow-2xl transition-all duration-300 ease-in-out ${
+        isCollapsed 
+          ? "rounded-b-2xl px-6 py-2" 
+          : "w-[calc(100vw-80px)] max-w-5xl rounded-b-3xl p-4 pt-3"
       } ${condensed ? "bg-(--card-80)" : "bg-(--card-90)"}`}
     >
-      <div className="flex h-full items-center">
-        {isCollapsed ? (
-          <button
-            type="button"
-            onClick={() => setIsCollapsed(false)}
-            className="flex h-12 w-12 items-center justify-center text-foreground hover:bg-(--card-70)"
-            aria-label="Expand filters"
+      {isCollapsed ? (
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(false)}
+          className="flex items-center gap-2 text-xs text-foreground hover:text-(--accent) transition-colors"
+          aria-label="Expand filters"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-(--ink-muted)"
           >
-            <span>🔍</span>
-          </button>
-        ) : (
-          <div className="flex w-full flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCollapsed(true)}
-                  className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-(--card-70) text-foreground transition-colors hover:bg-(--card-60)"
-                  aria-label="Collapse filters"
-                >
-                  ▶
-                </button>
+            <polyline points="2,4 6,8 10,4" />
+          </svg>
+          <span className="uppercase tracking-[0.2em] text-(--ink-muted)">Filters</span>
+        </button>
+      ) : (
+        <div className="flex w-full flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
                 {view === "people" && (
                   <label className="flex items-center gap-2 text-xs">
                     <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -902,9 +908,28 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                 </details>
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(true)}
+              className="mx-auto mt-2 flex items-center gap-1 rounded-full px-4 py-1 text-xs text-(--ink-muted) transition-colors hover:bg-(--card-70) hover:text-foreground"
+              aria-label="Collapse filters"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="2,8 6,4 10,8" />
+              </svg>
+              <span className="uppercase tracking-[0.15em]">Collapse</span>
+            </button>
           </div>
         )}
-      </div>
     </section>
   );
 }
