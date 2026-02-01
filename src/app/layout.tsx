@@ -59,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="dark" data-palette="fullchaos" suppressHydrationWarning>
+    <html lang="en" data-theme="dark" data-palette="fullchaos" style={{ colorScheme: "dark" }} suppressHydrationWarning>
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >

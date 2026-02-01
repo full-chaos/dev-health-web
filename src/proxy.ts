@@ -6,6 +6,7 @@ const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true";
 
 const PUBLIC_PATHS = [
     "/auth/signin",
+    "/auth/signup",
     "/auth/error",
     "/api/auth",
     "/_next",
