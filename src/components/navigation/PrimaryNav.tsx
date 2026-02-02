@@ -1,10 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore, useCallback } from "react";
 
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
+
+const STORAGE_KEY = "devhealth-nav-collapsed";
+
+function getCollapsedState(): Record<string, boolean> {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+function subscribeToStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
 
 type NavItem = {
   id: string;
@@ -52,24 +69,19 @@ type PrimaryNavProps = {
 };
 
 export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const collapsed = useSyncExternalStore(
+    subscribeToStorage,
+    getCollapsedState,
+    () => ({} as Record<string, boolean>) // Server snapshot
+  );
 
-  useEffect(() => {
-    const stored = localStorage.getItem("devhealth-nav-collapsed");
-    if (stored) {
-      try {
-        setCollapsed(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse collapsed state", e);
-      }
-    }
+  const toggleGroup = useCallback((groupId: string) => {
+    const current = getCollapsedState();
+    const next = { ...current, [groupId]: !current[groupId] };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    // Trigger storage event for useSyncExternalStore
+    window.dispatchEvent(new Event("storage"));
   }, []);
-
-  const toggleGroup = (groupId: string) => {
-    const next = { ...collapsed, [groupId]: !collapsed[groupId] };
-    setCollapsed(next);
-    localStorage.setItem("devhealth-nav-collapsed", JSON.stringify(next));
-  };
 
   return (
     <aside className="w-full md:max-w-[220px] md:shrink-0">
