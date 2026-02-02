@@ -18,11 +18,6 @@ test("people search opens individual and metric evidence", async ({ page }) => {
 
   await page.goto("/people");
 
-  const expandButton = page.getByRole("button", { name: "Expand filters" });
-  if (await expandButton.isVisible()) {
-    await expandButton.click();
-  }
-
   const responsePromise = page.waitForResponse((response) =>
     response.url().includes("/api/v1/people")
   );

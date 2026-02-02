@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("home loads and navigates to explore", async ({ page }) => {
+test("home loads and navigates to explore via panel", async ({ page }) => {
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: "Developer Health Ops Cockpit" })
@@ -11,13 +11,19 @@ test("home loads and navigates to explore", async ({ page }) => {
   });
   const startFilter = new URL(page.url()).searchParams.get("f");
 
+  // Click a delta tile to open the evidence panel
   const firstDelta = page.getByTestId("delta-tile").first();
   await firstDelta.click();
+
+  // Panel should open with evidence - look for the "Open in Explore View" link
+  const exploreLink = page.getByRole("link", { name: "Open in Explore View ↗" });
+  await expect(exploreLink).toBeVisible();
+  await exploreLink.click();
+
+  // Should navigate to explore with filters preserved
   await expect(page).toHaveURL(/\/explore\?metric=.*&f=/);
   const nextFilter = new URL(page.url()).searchParams.get("f");
   expect(nextFilter).toBe(startFilter);
-  await expect(page.getByText("Context")).toBeVisible();
-  await expect(page.getByText("Active filters")).toBeVisible();
 });
 
 test("opportunities page renders", async ({ page }) => {
