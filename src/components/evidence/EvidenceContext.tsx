@@ -2,10 +2,16 @@
 
 import { useActiveRole } from "@/components/RoleSelector";
 import { getRoleConfig } from "@/lib/roleContext";
-import { MetricFilter } from "@/lib/filters/types";
+
+type EvidenceData = {
+    trend?: "up" | "down" | "flat";
+    magnitude?: string;
+    summary?: string;
+    why_it_matters?: string;
+};
 
 type EvidenceContextProps = {
-    data: any;
+    data: EvidenceData;
 };
 
 export function EvidenceContext({ data }: EvidenceContextProps) {

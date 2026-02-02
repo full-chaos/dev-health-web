@@ -3,12 +3,40 @@
 import { useEffect, useState } from "react";
 import { getExplainData } from "@/lib/api";
 import { MetricFilter } from "@/lib/filters/types";
+import { Contributor } from "@/lib/types";
 import { EvidenceContext } from "./EvidenceContext";
 import { EvidenceItems } from "./EvidenceItems";
 import { SuggestedActions } from "./SuggestedActions";
 import { buildExploreUrl } from "@/lib/filters/url";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
 import Link from "next/link";
+
+type EvidenceItem = {
+    id: string;
+    title: string;
+    url: string;
+    type: "pr" | "issue" | "commit" | "other";
+    meta?: string;
+};
+
+type Action = {
+    id: string;
+    label: string;
+    type: "experiment" | "process" | "tooling";
+};
+
+type EvidencePanelData = {
+    metric?: string;
+    label?: string;
+    value?: number;
+    delta_pct?: number;
+    summary: string;
+    trend: "up" | "down" | "flat";
+    magnitude: string;
+    why_it_matters?: string;
+    evidence: EvidenceItem[];
+    actions: Action[];
+};
 
 export type EvidencePanelProps = {
     isOpen: boolean;
@@ -27,7 +55,7 @@ export function EvidencePanel({
     metric,
     filters,
 }: EvidencePanelProps) {
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<EvidencePanelData | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -66,14 +94,14 @@ export function EvidencePanel({
                         const trend = deltaPct > 0 ? "up" : deltaPct < 0 ? "down" : "flat";
                         const magnitude = Math.abs(deltaPct) > 10 ? "Significant" : "Moderate";
                         
-                        const evidence = result.evidence || [
+                        const evidence: EvidenceItem[] = result.evidence || [
                             ...(result.drivers || []),
                             ...(result.contributors || [])
-                        ].map((d: any) => ({
+                        ].map((d: Contributor) => ({
                             id: d.id,
                             title: d.label,
                             url: d.evidence_link || "#",
-                            type: "contributor",
+                            type: "other" as const,
                             meta: `${d.value} (${d.delta_pct}%)`
                         }));
 
