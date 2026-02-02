@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import { ForecastCard } from "@/components/capacity/ForecastCard";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
 import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
 import { runtimeConfig } from "@/lib/runtimeConfig";
-import { getCapacityForecast } from "@/lib/api";
+import { useCapacityForecast } from "@/lib/graphql/hooks";
 import type { CapacityForecast } from "@/lib/graphql/types";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -37,9 +37,6 @@ const SAMPLE_FORECAST: CapacityForecast = {
 
 export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) {
   const useSampleData = runtimeConfig.devHealthTestMode();
-  const [forecast, setForecast] = useState<CapacityForecast | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
 
   const teamId = filters.scope.level === "team" && filters.scope.ids.length > 0
     ? filters.scope.ids[0]
@@ -47,79 +44,32 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
 
   const historyDays = filters.time.range_days ?? 90;
 
-  const requestKey = useMemo(
-    () => JSON.stringify({ orgId, teamId, historyDays }),
-    [orgId, teamId, historyDays]
-  );
-
-  const fetchForecast = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    if (useSampleData) {
-      const timer = setTimeout(() => {
-        setForecast(SAMPLE_FORECAST);
-        setIsLoading(false);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-
-    try {
-      const data = await getCapacityForecast({
-        orgId,
-        input: { teamId, historyDays },
-      });
-      setForecast(data);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to fetch forecast"));
-      setForecast(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [orgId, teamId, historyDays, useSampleData]);
+  const [sampleForecast, setSampleForecast] = useState<CapacityForecast | null>(null);
 
   useEffect(() => {
-    let active = true;
+    if (!useSampleData) return;
+    const timer = setTimeout(() => {
+      setSampleForecast(SAMPLE_FORECAST);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [useSampleData]);
 
-    const doFetch = async () => {
-      setIsLoading(true);
-      setError(null);
+  const sampleLoading = useSampleData && sampleForecast === null;
 
-      if (useSampleData) {
-        setTimeout(() => {
-          if (active) {
-            setForecast(SAMPLE_FORECAST);
-            setIsLoading(false);
-          }
-        }, 500);
-        return;
-      }
+  const {
+    data: queryData,
+    loading: queryLoading,
+    error: queryError,
+    refetch,
+  } = useCapacityForecast({
+    orgId,
+    input: { teamId, historyDays },
+    pause: useSampleData,
+  });
 
-      try {
-        const data = await getCapacityForecast({
-          orgId,
-          input: { teamId, historyDays },
-        });
-        if (active) {
-          setForecast(data);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err instanceof Error ? err : new Error("Failed to fetch forecast"));
-          setForecast(null);
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    doFetch();
-    return () => {
-      active = false;
-    };
-  }, [requestKey, orgId, teamId, historyDays, useSampleData]);
+  const forecast = useSampleData ? sampleForecast : queryData;
+  const isLoading = useSampleData ? sampleLoading : queryLoading;
+  const error = useSampleData ? null : queryError;
 
   const chartData = useMemo(() => {
     if (!forecast) return null;
@@ -145,7 +95,7 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
         </div>
         {!useSampleData && (
           <button
-            onClick={() => fetchForecast()}
+            onClick={() => refetch()}
             disabled={isLoading}
             className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
