@@ -6,10 +6,9 @@ import { MetricFilter } from "@/lib/filters/types";
 
 type EvidenceContextProps = {
     data: any;
-    filters: MetricFilter;
 };
 
-export function EvidenceContext({ data, filters }: EvidenceContextProps) {
+export function EvidenceContext({ data }: EvidenceContextProps) {
     const activeRole = useActiveRole();
     const roleConfig = getRoleConfig(activeRole);
 

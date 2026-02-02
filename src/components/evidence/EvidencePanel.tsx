@@ -7,6 +7,7 @@ import { EvidenceContext } from "./EvidenceContext";
 import { EvidenceItems } from "./EvidenceItems";
 import { SuggestedActions } from "./SuggestedActions";
 import { buildExploreUrl } from "@/lib/filters/url";
+import { getMetricDefinition } from "@/lib/metrics/definitions";
 import Link from "next/link";
 
 export type EvidencePanelProps = {
@@ -56,7 +57,38 @@ export function EvidencePanel({
                             filters 
                         });
                     }
-                    setData(result);
+
+                    if (result) {
+                        const metricKey = result.metric || metric;
+                        const definition = metricKey ? getMetricDefinition(metricKey) : undefined;
+                        
+                        const deltaPct = result.delta_pct || 0;
+                        const trend = deltaPct > 0 ? "up" : deltaPct < 0 ? "down" : "flat";
+                        const magnitude = Math.abs(deltaPct) > 10 ? "Significant" : "Moderate";
+                        
+                        const evidence = result.evidence || [
+                            ...(result.drivers || []),
+                            ...(result.contributors || [])
+                        ].map((d: any) => ({
+                            id: d.id,
+                            title: d.label,
+                            url: d.evidence_link || "#",
+                            type: "contributor",
+                            meta: `${d.value} (${d.delta_pct}%)`
+                        }));
+
+                        const actions = result.actions || definition?.suggestedActions || [];
+
+                        setData({
+                            ...result,
+                            summary: result.summary || `${result.label || title} is ${trend} by ${Math.abs(deltaPct)}%`,
+                            trend,
+                            magnitude,
+                            why_it_matters: result.why_it_matters || definition?.whyItMatters,
+                            evidence,
+                            actions
+                        });
+                    }
                 } catch (err) {
                     console.error(err);
                     setError("Failed to load evidence data");
@@ -67,7 +99,7 @@ export function EvidencePanel({
 
             fetchData();
         }
-    }, [isOpen, apiUrl, metric, filters]);
+    }, [isOpen, apiUrl, metric, filters, title]);
 
     if (!isOpen) return null;
 
@@ -116,7 +148,7 @@ export function EvidencePanel({
                         </div>
                     ) : data ? (
                         <>
-                            <EvidenceContext data={data} filters={filters} />
+                            <EvidenceContext data={data} />
                             <EvidenceItems items={data.evidence || []} />
                             <SuggestedActions actions={data.actions || []} />
                         </>
