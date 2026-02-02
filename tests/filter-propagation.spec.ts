@@ -3,7 +3,11 @@ import { test, expect, Page } from "@playwright/test";
 const getFilterParam = (url: string) => new URL(url).searchParams.get("f");
 
 const waitForFilterParam = async (page: Page) => {
-  await page.waitForFunction(() => new URL(window.location.href).searchParams.get("f"));
+  await page.waitForLoadState("networkidle");
+  await page.waitForFunction(
+    () => new URL(window.location.href).searchParams.get("f"),
+    { timeout: 10000 }
+  );
   const value = getFilterParam(page.url());
   expect(value).toBeTruthy();
   return value as string;
@@ -22,7 +26,8 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
       const current = new URL(window.location.href).searchParams.get("f");
       return Boolean(current && current !== prev);
     },
-    previous
+    previous,
+    { timeout: 10000 }
   );
   const nextValue = getFilterParam(page.url());
   expect(nextValue).toBeTruthy();
