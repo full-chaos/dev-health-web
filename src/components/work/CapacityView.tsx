@@ -86,10 +86,10 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          <h2 className="text-xl font-semibold text-foreground">
             Capacity Planning
           </h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-(--ink-muted)">
             Monte Carlo forecast for work completion
           </p>
         </div>
@@ -97,7 +97,7 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
           <button
             onClick={() => refetch()}
             disabled={isLoading}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-lg border border-(--card-stroke) bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? "Computing..." : "Refresh Forecast"}
           </button>
@@ -107,8 +107,8 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <ForecastCard forecast={forecast} loading={isLoading} error={error} />
 
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-4">
+        <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+          <h3 className="text-sm font-medium text-foreground mb-4">
             Completion Projection
           </h3>
           {chartData ? (
@@ -122,12 +122,12 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
             />
           ) : isLoading ? (
             <div className="h-[320px] flex items-center justify-center">
-              <div className="animate-pulse text-sm text-gray-500 dark:text-gray-400">
+              <div className="animate-pulse text-sm text-(--ink-muted)">
                 Loading chart...
               </div>
             </div>
           ) : (
-            <div className="h-[320px] flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="h-[320px] flex items-center justify-center text-sm text-(--ink-muted)">
               No forecast data available
             </div>
           )}
@@ -136,8 +136,8 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
 
       {forecast && (
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-4">
+          <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+            <h3 className="text-sm font-medium text-foreground mb-4">
               Throughput Distribution
             </h3>
             <ThroughputHistogram
@@ -145,16 +145,16 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
               throughputStddev={forecast.throughputStddev}
               height={200}
             />
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-3 text-xs text-(--ink-muted)">
               Based on {forecast.historyDays} days of historical data
             </p>
           </div>
 
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">
+          <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+            <h3 className="text-sm font-medium text-foreground mb-3">
               How to Interpret
             </h3>
-            <div className="grid gap-3 text-sm text-gray-600 dark:text-gray-300">
+            <div className="grid gap-3 text-sm text-(--ink-muted)">
               <div>
                 <span className="font-medium text-green-600 dark:text-green-400">P50 (50%)</span>
                 <p className="mt-0.5 text-xs">
