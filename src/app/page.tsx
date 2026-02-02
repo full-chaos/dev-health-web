@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BackendBanner } from "@/components/home/BackendBanner";
+import { CockpitClient } from "@/components/home/CockpitClient";
 import { InvestmentPreview } from "@/components/home/InvestmentPreview";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -9,17 +10,10 @@ import { RoleSelectorWithSuspense, RoleFraming } from "@/components/RoleSelector
 import { checkApiHealth, getApiMeta, getHomeData } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue, formatTimestamp } from "@/lib/formatters";
+import { formatTimestamp } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { getRoleConfig, isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
 import type { HomeResponse } from "@/lib/types";
-
-const deltaAccent = (value: number) =>
-  value > 0
-    ? "text-(--accent-3)"
-    : value < 0
-      ? "text-(--accent-negative)"
-      : "text-(--ink-muted)";
 
 const MONITORING_VIEWS = [
   {
@@ -199,191 +193,13 @@ export default async function Home({ searchParams }: HomePageProps) {
             </div>
           </section>
 
-          <section>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
-                  Key shifts
-                </p>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                  Small shifts in the selected window.
-                </p>
-              </div>
-              <Link
-                href={withFilterParam("/metrics?tab=flow", filters, activeRole)}
-                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-              >
-                View metrics
-              </Link>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-4">
-              {prioritizedDeltas.map((delta) => (
-                <Link
-                  key={delta.metric}
-                  href={buildExploreUrl({ metric: delta.metric, filters, role: activeRole })}
-                  data-testid="delta-tile"
-                  className="group rounded-3xl border border-(--card-stroke) bg-(--card) p-4 transition hover:-translate-y-1 hover:shadow-lg"
-                >
-                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                    <span>{delta.label}</span>
-                    <span className={deltaAccent(delta.delta_pct)}>
-                      {formatDelta(delta.delta_pct)}
-                    </span>
-                  </div>
-                  <p className="mt-4 text-2xl font-semibold">
-                    {placeholderDeltas ? "--" : formatMetricValue(delta.value, delta.unit)}
-                  </p>
-                  <p className="mt-3 text-xs text-(--ink-muted)">
-                    Open evidence
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-              <h2 className="font-(--font-display) text-2xl">Notable shifts</h2>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Short shifts from the selected window.
-              </p>
-              <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
-                {(home?.summary ?? []).map((sentence) => (
-                  <Link
-                    key={sentence.id}
-                    href={buildExploreUrl({ api: sentence.evidence_link, filters, role: activeRole })}
-                    className="block rounded-2xl border border-transparent bg-(--card-60) px-4 py-3 transition hover:border-(--card-stroke)"
-                  >
-                    {sentence.text}
-                  </Link>
-                ))}
-                {!home?.summary?.length && (
-                  <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3">
-                    Summary will appear once data is ingested.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-              <div className="flex items-center justify-between">
-                <h3 className="font-(--font-display) text-xl">Investigation threads</h3>
-                <Link
-                  href={withFilterParam("/opportunities", filters)}
-                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                >
-                  View all
-                </Link>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {home?.tiles
-                  ? Object.entries(home.tiles).map(([key, tile]) => (
-                    <Link
-                      key={key}
-                      href={withFilterParam(tile.link, filters, activeRole)}
-                      className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
-                    >
-                      <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
-                        {tile.title}
-                      </p>
-                      <p className="mt-2 text-base font-semibold text-foreground">
-                        {tile.subtitle}
-                      </p>
-                      <p className="mt-3 text-xs text-(--ink-muted)">
-                        Evidence
-                      </p>
-                    </Link>
-                  ))
-                  : null}
-                <Link
-                  href={withFilterParam("/opportunities", filters, activeRole)}
-                  className="rounded-2xl border border-(--card-stroke) bg-(--accent)/15 px-4 py-3"
-                >
-                  <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                    Focus thread
-                  </p>
-                  <p className="mt-2 text-base font-semibold">
-                    {home?.constraint.title ?? "Constraint pending"}
-                  </p>
-                  <p className="mt-2 text-sm text-(--ink-muted)">
-                    {home?.constraint.claim ?? "Limiting factor pending."}
-                  </p>
-                </Link>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-(--font-display) text-xl">Limiting factor</h3>
-                <Link
-                  href={buildExploreUrl({ metric: "review_latency", filters, role: activeRole })}
-                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                >
-                  Open evidence
-                </Link>
-              </div>
-              <p className="mt-3 text-sm text-(--ink-muted)">
-                {home?.constraint.claim ?? "Evidence will appear once data is ingested."}
-              </p>
-              <div className="mt-4 space-y-3 text-sm">
-                {(home?.constraint.evidence ?? []).map((item, idx) => (
-                  <Link
-                    key={`${item.label}-${idx}`}
-                    href={buildExploreUrl({ api: item.link, filters, role: activeRole })}
-                    className="block rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
-                {(home?.constraint.experiments ?? []).map((experiment) => (
-                  <span
-                    key={experiment}
-                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
-                  >
-                    {experiment}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-(--font-display) text-xl">Recent events</h3>
-                <Link
-                  href={buildExploreUrl({ filters, role: activeRole })}
-                  className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                >
-                  Open in Explore
-                </Link>
-              </div>
-              <div className="mt-4 space-y-4 text-sm">
-                {(home?.events ?? []).map((event, idx) => (
-                  <Link
-                    key={`${event.type}-${idx}`}
-                    href={buildExploreUrl({ api: event.link, filters, role: activeRole })}
-                    className="block rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3"
-                  >
-                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                      <span>{event.type}</span>
-                      <span>{formatTimestamp(event.ts)}</span>
-                    </div>
-                    <p className="mt-2 text-sm text-foreground">
-                      {event.text}
-                    </p>
-                  </Link>
-                ))}
-                {!home?.events?.length && (
-                  <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card) px-4 py-3 text-(--ink-muted)">
-                    No major shifts detected in the current window.
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
+          <CockpitClient
+            home={home}
+            filters={filters}
+            activeRole={activeRole}
+            prioritizedDeltas={prioritizedDeltas}
+            placeholderDeltas={placeholderDeltas}
+          />
 
           <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
