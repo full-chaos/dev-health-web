@@ -10,15 +10,13 @@ import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import { investmentMixSample, investmentRepoTeamMapSample, workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
+import { useInvestmentMix, useInvestmentFlow, useInvestmentRepoTeamFlow } from "@/lib/graphql/hooks";
 import {
     explainInvestmentMix,
-    getInvestment,
     getWorkUnits,
     getWorkUnitExplanation,
-    getInvestmentFlow,
-    getInvestmentRepoTeamFlow,
 } from "@/lib/api";
-import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix, type InvestmentMixAggregate } from "@/lib/investmentMix";
+import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix } from "@/lib/investmentMix";
 import { formatNumber } from "@/lib/formatters";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { computeSankeyMetrics, limitRepoNodes, filterSankeyToTeam } from "@/lib/sankey";
@@ -92,8 +90,16 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [categorizationMode, setCategorizationMode] = useState<CategorizationMode>("text_metadata");
     const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [investmentMix, setInvestmentMix] = useState<InvestmentMixAggregate | null>(null);
-    const [isMixLoading, setIsMixLoading] = useState(true);
+
+    const { data: mixData, loading: mixLoading } = useInvestmentMix({ filters, pause: useSampleData });
+
+    const investmentMix = useMemo(() => {
+        if (useSampleData) return investmentMixSample;
+        return mixData ? normalizeInvestmentMix(mixData) : null;
+    }, [useSampleData, mixData]);
+
+    const isMixLoading = useSampleData ? false : mixLoading;
+
     const [mixChartType, setMixChartType] = useState<TreemapSunburstType>("treemap");
     const [treemapSelection, setTreemapSelection] = useState<TreemapSelection | null>(null);
     const [mixExplanation, setMixExplanation] = useState<{
@@ -110,12 +116,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const [explanation, setExplanation] = useState<WorkUnitExplanation | null>(null);
     const [isExplaining, setIsExplaining] = useState(false);
     const [isExplainingMix, setIsExplainingMix] = useState(false);
-    const [teamCategoryFlow, setTeamCategoryFlow] = useState<SankeyResponse | null>(null);
-    const [baselineSankeyFlow, setBaselineSankeyFlow] = useState<SankeyResponse | null>(null);
-    const [isCategoryFlowLoading, setIsCategoryFlowLoading] = useState(true);
-    const [repoTeamFlow, setRepoTeamFlow] = useState<SankeyResponse | null>(null);
-    const [isRepoTeamLoading, setIsRepoTeamLoading] = useState(false);
-    const [repoTeamFlowFailed, setRepoTeamFlowFailed] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [focusedTeam, setFocusedTeam] = useState<string | null>(null);
     const showSubcategories = Boolean(selectedCategory);
@@ -123,6 +123,37 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         () => normalizeThemeKey(selectedCategory),
         [selectedCategory]
     );
+
+    const baselineFilters = useMemo(() => getBaselineFilters(filters), [filters]);
+
+    const { data: currentFlow, loading: currentFlowLoading } = useInvestmentFlow({
+        filters,
+        flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
+        theme: selectedThemeKey,
+        topNRepos: TOP_N_REPOS,
+        pause: useSampleData,
+    });
+
+    const { data: baselineFlowData, loading: baselineFlowLoading } = useInvestmentFlow({
+        filters: baselineFilters,
+        flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
+        theme: selectedThemeKey,
+        topNRepos: TOP_N_REPOS,
+        pause: useSampleData,
+    });
+
+    const teamCategoryFlow = useSampleData ? null : currentFlow;
+    const baselineSankeyFlow = useSampleData ? null : baselineFlowData;
+    const isCategoryFlowLoading = useSampleData ? false : (currentFlowLoading || baselineFlowLoading);
+
+    const { data: repoFlowData, loading: repoFlowLoading, error: repoFlowError } = useInvestmentRepoTeamFlow({
+        filters,
+        pause: useSampleData,
+    });
+
+    const repoTeamFlow = useSampleData ? null : repoFlowData;
+    const isRepoTeamLoading = useSampleData ? false : repoFlowLoading;
+    const repoTeamFlowFailed = useSampleData ? false : !!repoFlowError;
 
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
@@ -144,41 +175,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     useEffect(() => {
         setTreemapSelection(null);
     }, [mixRequestKey]);
-
-    useEffect(() => {
-        let active = true;
-
-        const fetchMix = async () => {
-            setIsMixLoading(true);
-            if (useSampleData) {
-                if (active) {
-                    setInvestmentMix(investmentMixSample);
-                    setIsMixLoading(false);
-                }
-                return;
-            }
-
-            try {
-                const data = await getInvestment(filters);
-                if (active) {
-                    setInvestmentMix(normalizeInvestmentMix(data));
-                }
-            } catch {
-                if (active) {
-                    setInvestmentMix(null);
-                }
-            } finally {
-                if (active) {
-                    setIsMixLoading(false);
-                }
-            }
-        };
-
-        fetchMix();
-        return () => {
-            active = false;
-        };
-    }, [filters, mixRequestKey, useSampleData]);
 
     const regenerateMixExplanation = useCallback(async () => {
         setIsExplainingMix(true);
@@ -325,96 +321,11 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         };
     }, [filters, includeTextual, requestKey, useSampleData]);
 
-    useEffect(() => {
-        let active = true;
-
-        const fetchTeamCategoryFlow = async () => {
-            setIsCategoryFlowLoading(true);
-            if (useSampleData) {
-                if (active) {
-                    setTeamCategoryFlow(null);
-                    setBaselineSankeyFlow(null);
-                    setIsCategoryFlowLoading(false);
-                }
-                return;
-            }
-
-            try {
-                const baselineFilters = getBaselineFilters(filters);
-                const [current, baseline] = await Promise.all([
-                    getInvestmentFlow({
-                        filters,
-                        flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
-                        theme: selectedThemeKey,
-                        top_n_repos: TOP_N_REPOS,
-                    }),
-                    getInvestmentFlow({
-                        filters: baselineFilters,
-                        flow_mode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
-                        theme: selectedThemeKey,
-                        top_n_repos: TOP_N_REPOS,
-                    }),
-                ]);
-
-                if (active) {
-                    setTeamCategoryFlow(current);
-                    setBaselineSankeyFlow(baseline);
-                }
-            } catch {
-                if (active) {
-                    setTeamCategoryFlow(null);
-                    setBaselineSankeyFlow(null);
-                }
-            } finally {
-                if (active) {
-                    setIsCategoryFlowLoading(false);
-                }
-            }
-        };
-
-        fetchTeamCategoryFlow();
-        return () => {
-            active = false;
-        };
-    }, [filters, useSampleData, selectedThemeKey, showSubcategories]);
 
 
 
-    useEffect(() => {
-        let active = true;
 
-        const fetchRepoTeamFlow = async () => {
-            if (useSampleData) {
-                if (active) {
-                    setRepoTeamFlow(null);
-                    setRepoTeamFlowFailed(false);
-                }
-                return;
-            }
-            setIsRepoTeamLoading(true);
-            setRepoTeamFlowFailed(false);
-            try {
-                const flow = await getInvestmentRepoTeamFlow({ filters });
-                if (active) {
-                    setRepoTeamFlow(flow);
-                }
-            } catch {
-                if (active) {
-                    setRepoTeamFlow(null);
-                    setRepoTeamFlowFailed(true);
-                }
-            } finally {
-                if (active) {
-                    setIsRepoTeamLoading(false);
-                }
-            }
-        };
 
-        fetchRepoTeamFlow();
-        return () => {
-            active = false;
-        };
-    }, [filters, useSampleData]);
 
     const selectedUnit = useMemo(() => {
         if (!selectedId) return null;
