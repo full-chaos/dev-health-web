@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Provider } from "urql";
 
 import {
   WorkGraphExplorer,
   WorkGraphLegend,
 } from "@/components/charts/WorkGraphExplorer";
 import { useWorkGraphEdges } from "@/lib/graphql/hooks";
-import { createUrqlClient } from "@/lib/graphql/urqlClient";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import type { WorkGraphEdge, WorkGraphNodeType } from "@/lib/graphql/types";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -23,7 +21,7 @@ type GraphViewProps = {
   activeRole?: string;
 };
 
-function GraphViewContent({ filters, activeRole }: GraphViewProps) {
+export function GraphView({ filters, activeRole }: GraphViewProps) {
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
 
   const orgId = filters.scope.ids[0] ?? "";
@@ -208,16 +206,6 @@ function EdgeList({ title, subtitle, edges, getLabel, getRelation }: EdgeListPro
         ))}
       </ul>
     </div>
-  );
-}
-
-export function GraphView(props: GraphViewProps) {
-  const client = useMemo(() => createUrqlClient(), []);
-
-  return (
-    <Provider value={client}>
-      <GraphViewContent {...props} />
-    </Provider>
   );
 }
 
