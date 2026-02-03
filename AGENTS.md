@@ -44,6 +44,11 @@ This document is the authoritative guide for any automated coding agent (Copilot
   ```bash
   git checkout -b <type>/<descriptive-name>  # e.g., fix/chart-resize, feat/new-filter
   ```
+- **Use git worktrees for parallel work** — When starting a new feature or unrelated task, use a worktree:
+  ```bash
+  git worktree add ../dev-health-web-feature-name feature/branch-name
+  ```
+  This keeps each task isolated, preventing cross-contamination of changes.
 - Make minimal, surgical changes. Prefer small commits/PRs that address a single concern.
 - Run or update existing tests when adding or modifying behavior. Prefer targeted test updates rather than broad rewrites.
 - Do not commit secrets or environment tokens. Use env vars for examples.

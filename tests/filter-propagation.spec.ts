@@ -3,18 +3,19 @@ import { test, expect, Page } from "@playwright/test";
 const getFilterParam = (url: string) => new URL(url).searchParams.get("f");
 
 const waitForFilterParam = async (page: Page) => {
-  await page.waitForFunction(() => new URL(window.location.href).searchParams.get("f"));
+  await page.waitForLoadState("networkidle");
+  await page.waitForFunction(
+    () => new URL(window.location.href).searchParams.get("f"),
+    { timeout: 10000 }
+  );
   const value = getFilterParam(page.url());
   expect(value).toBeTruthy();
   return value as string;
 };
 
 const updateDeveloperFilter = async (page: Page, value: string, previous: string) => {
-  const expandButton = page.getByRole("button", { name: "Expand filters" });
-  if (await expandButton.isVisible()) {
-    await expandButton.click();
-  }
-  await page.getByRole("button", { name: "Advanced filters" }).click();
+  // Click "Filters" button to expand the advanced filters panel
+  await page.getByRole("button", { name: "Filters" }).click();
   await page.locator("summary", { hasText: "Who" }).click();
   await page.getByPlaceholder("alice, bob").fill(value);
   await page.waitForFunction(
@@ -22,16 +23,15 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
       const current = new URL(window.location.href).searchParams.get("f");
       return Boolean(current && current !== prev);
     },
-    previous
+    previous,
+    { timeout: 10000 }
   );
   const nextValue = getFilterParam(page.url());
   expect(nextValue).toBeTruthy();
-  
-  const collapseButton = page.getByRole("button", { name: "Collapse filters" });
-  if (await collapseButton.isVisible()) {
-    await collapseButton.click();
-  }
-  
+
+  // Click "Filters" again to collapse the panel (toggle behavior)
+  await page.getByRole("button", { name: "Filters" }).click();
+
   return nextValue as string;
 };
 
@@ -53,13 +53,13 @@ test.describe("filter propagation", () => {
     );
 
     const nav = page.locator("aside nav");
+    // Routes that exist in the primary navigation
     const routes = [
       { label: /People/i, url: /\/people/ },
       { label: /Metrics/i, url: /\/metrics/ },
       { label: /Landscape/i, url: /\/explore\/landscape/ },
       { label: /Work/i, url: /\/work/ },
       { label: /Code/i, url: /\/code/ },
-      { label: /Quality/i, url: /\/quality/ },
       { label: /Opportunities/i, url: /\/opportunities/ },
       { label: /Home/i, url: /\/\?f=/ },
     ];

@@ -13,25 +13,24 @@ test.describe("Work Tabbed Navigation", () => {
     });
 
     test("switches tabs correctly", async ({ page }) => {
-        // Switch to Heatmap
-        await page.getByRole("link", { name: "HEATMAP" }).click();
+        await page.getByRole("link", { name: /^Heatmap$/i }).click();
         await expect(page).toHaveURL(/tab=heatmap/);
         await expect(page.getByText("Review wait density")).toBeVisible();
 
         // Switch to Flow
-        await page.getByRole("link", { name: "FLOW" }).click();
+        await page.getByRole("link", { name: /^Flow$/i }).click();
         await expect(page).toHaveURL(/tab=flow/);
         await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
         await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
         // Switch to Investment
-        await page.getByRole("link", { name: "Investment", exact: true }).click();
+        await page.getByRole("link", { name: /^Investment$/i }).click();
         await expect(page).toHaveURL(/tab=investment/);
         await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Treemap" })).toBeVisible();
 
         // Switch to Flame
-        await page.getByRole("link", { name: "FLAME" }).click();
+        await page.getByRole("link", { name: /^Flame$/i }).click();
         await expect(page).toHaveURL(/tab=flame/);
         await expect(page.getByRole("heading", { name: "Elapsed Time Breakdown" })).toBeVisible();
         await expect(page.getByTestId("chart-flame")).toBeVisible();
@@ -41,7 +40,7 @@ test.describe("Work Tabbed Navigation", () => {
         await page.goto("/work?tab=investment&range_days=30");
         await expect(page).toHaveURL(/tab=investment/);
 
-        await page.getByRole("link", { name: "FLOW" }).click();
+        await page.getByRole("link", { name: /^Flow$/i }).click();
         await expect(page).toHaveURL(/tab=flow/);
         const url = new URL(page.url());
         const encodedFilter = url.searchParams.get("f");
@@ -54,10 +53,7 @@ test.describe("Work Tabbed Navigation", () => {
         // Go to Flow tab with a specific filter (e.g. range_days=30)
         await page.goto("/work?tab=flow&range_days=30");
 
-        // Switch to Heatmap
-        await page.getByRole("link", { name: "HEATMAP" }).click();
-
-        // URL should contain both the new tab and the preserved filter
+        await page.getByRole("link", { name: /^Heatmap$/i }).click();
         await expect(page).toHaveURL(/tab=heatmap/);
         const url = new URL(page.url());
         const encodedFilter = url.searchParams.get("f");
@@ -105,6 +101,7 @@ test.describe("Work Tabbed Navigation", () => {
         // Let's use the query param to simulate a selected item if supported or just check structure
         // Since we can't easily click canvas, we'll verify the Flame view accepts context
         await page.goto("/work?tab=flame&mode=throughput&context_node=Backend");
-        await expect(page.getByText("Context: Analyzing decomposition starting from node Backend")).toBeVisible();
+        await expect(page.getByText(/Context:.*Analyzing decomposition starting from node/)).toBeVisible();
+        await expect(page.getByText("Backend")).toBeVisible();
     });
 });

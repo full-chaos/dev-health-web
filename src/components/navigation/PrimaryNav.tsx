@@ -8,13 +8,17 @@ import type { MetricFilter } from "@/lib/filters/types";
 
 const STORAGE_KEY = "devhealth-nav-collapsed";
 
+// Stable empty object for SSR - useSyncExternalStore requires the server snapshot
+// to return the same reference on every call to avoid infinite loops
+const EMPTY_COLLAPSED: Record<string, boolean> = {};
+
 function getCollapsedState(): Record<string, boolean> {
-  if (typeof window === "undefined") return {};
+  if (typeof window === "undefined") return EMPTY_COLLAPSED;
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
+    return stored ? JSON.parse(stored) : EMPTY_COLLAPSED;
   } catch {
-    return {};
+    return EMPTY_COLLAPSED;
   }
 }
 
@@ -72,7 +76,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
   const collapsed = useSyncExternalStore(
     subscribeToStorage,
     getCollapsedState,
-    () => ({} as Record<string, boolean>) // Server snapshot
+    () => EMPTY_COLLAPSED
   );
 
   const toggleGroup = useCallback((groupId: string) => {
