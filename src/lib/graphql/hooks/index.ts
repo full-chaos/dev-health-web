@@ -17,3 +17,4 @@ export {
   type TaskStatus,
   type SyncProgress,
 } from "./useSubscription";
+export { useWorkGraphEdges, useNodeEdges } from "./useWorkGraph";
