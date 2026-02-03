@@ -1,0 +1,66 @@
+import { useQuery } from "urql";
+import { WORK_GRAPH_EDGES_QUERY } from "../queries";
+import type {
+  WorkGraphEdge,
+  WorkGraphEdgeFilterInput,
+  WorkGraphEdgesResult,
+  PageInfo,
+} from "../types";
+
+interface UseWorkGraphEdgesOptions {
+  orgId: string;
+  filters?: WorkGraphEdgeFilterInput;
+  pause?: boolean;
+}
+
+interface UseWorkGraphEdgesResult {
+  edges: WorkGraphEdge[];
+  totalCount: number;
+  pageInfo: PageInfo | null;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => void;
+}
+
+export function useWorkGraphEdges(
+  options: UseWorkGraphEdgesOptions
+): UseWorkGraphEdgesResult {
+  const { orgId, filters, pause = false } = options;
+
+  const [result, reexecute] = useQuery<{ workGraphEdges: WorkGraphEdgesResult }>(
+    {
+      query: WORK_GRAPH_EDGES_QUERY,
+      variables: { orgId, filters },
+      pause,
+    }
+  );
+
+  return {
+    edges: result.data?.workGraphEdges?.edges ?? [],
+    totalCount: result.data?.workGraphEdges?.totalCount ?? 0,
+    pageInfo: result.data?.workGraphEdges?.pageInfo ?? null,
+    loading: result.fetching,
+    error: result.error ?? null,
+    refetch: reexecute,
+  };
+}
+
+interface UseNodeEdgesOptions {
+  orgId: string;
+  nodeId: string;
+  nodeType?: WorkGraphEdgeFilterInput["sourceType"];
+  limit?: number;
+  pause?: boolean;
+}
+
+export function useNodeEdges(
+  options: UseNodeEdgesOptions
+): UseWorkGraphEdgesResult {
+  const { orgId, nodeId, limit = 100, pause = false } = options;
+
+  return useWorkGraphEdges({
+    orgId,
+    filters: { nodeId, limit },
+    pause,
+  });
+}

@@ -273,3 +273,61 @@ export interface CapacityForecastQueryResponse {
 export interface CapacityForecastsQueryResponse {
     capacityForecasts: CapacityForecastConnection;
 }
+
+// ==== Work Graph Types ====
+
+export type WorkGraphNodeType = "ISSUE" | "PR" | "COMMIT" | "FILE";
+
+export type WorkGraphEdgeType =
+    // Issue-to-issue relationships
+    | "BLOCKS"
+    | "RELATES"
+    | "DUPLICATES"
+    | "IS_BLOCKED_BY"
+    | "IS_RELATED_TO"
+    | "IS_DUPLICATE_OF"
+    | "PARENT_OF"
+    | "CHILD_OF"
+    // Issue-to-PR relationships
+    | "REFERENCES"
+    | "IMPLEMENTS"
+    | "FIXES"
+    // PR-to-commit relationships
+    | "CONTAINS"
+    // Commit-to-file relationships
+    | "TOUCHES";
+
+export type WorkGraphProvenance = "NATIVE" | "EXPLICIT_TEXT" | "HEURISTIC";
+
+export interface WorkGraphEdge {
+    edgeId: string;
+    sourceType: WorkGraphNodeType;
+    sourceId: string;
+    targetType: WorkGraphNodeType;
+    targetId: string;
+    edgeType: WorkGraphEdgeType;
+    provenance: WorkGraphProvenance;
+    confidence: number;
+    evidence: string;
+    repoId?: string;
+    provider?: string;
+}
+
+export interface WorkGraphEdgeFilterInput {
+    repoIds?: string[];
+    sourceType?: WorkGraphNodeType;
+    targetType?: WorkGraphNodeType;
+    edgeType?: WorkGraphEdgeType;
+    nodeId?: string;
+    limit?: number;
+}
+
+export interface WorkGraphEdgesResult {
+    edges: WorkGraphEdge[];
+    totalCount: number;
+    pageInfo: PageInfo;
+}
+
+export interface WorkGraphEdgesQueryResponse {
+    workGraphEdges: WorkGraphEdgesResult;
+}

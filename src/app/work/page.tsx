@@ -23,6 +23,7 @@ import { InvestmentView } from "@/components/work/InvestmentView";
 import { CapacityView } from "@/components/work/CapacityView";
 import { FlameView } from "@/components/work/FlameView";
 import { EvidenceView } from "@/components/work/EvidenceView";
+import { GraphView } from "@/components/work/GraphView";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { WorkTabNav, type WorkTab } from "@/components/navigation/WorkTabNav";
 
@@ -55,7 +56,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
   const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-  const activeTab: WorkTab = (typeof tabParam === "string" && ["landscape", "heatmap", "flow", "investment", "capacity", "flame", "evidence"].includes(tabParam))
+  const activeTab: WorkTab = (typeof tabParam === "string" && ["landscape", "heatmap", "flow", "investment", "capacity", "flame", "evidence", "graph"].includes(tabParam))
     ? (tabParam as WorkTab)
     : "landscape";
 
@@ -241,6 +242,13 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               activeRole={activeRole}
               wipExplain={wipExplain}
               blockedExplain={blockedExplain}
+            />
+          )}
+
+          {activeTab === "graph" && (
+            <GraphView
+              filters={filters}
+              activeRole={activeRole}
             />
           )}
         </main>

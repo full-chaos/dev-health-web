@@ -154,3 +154,30 @@ query CapacityForecasts($orgId: String!, $filters: CapacityForecastFilterInput) 
   }
 }
 `;
+
+export const WORK_GRAPH_EDGES_QUERY = `
+query WorkGraphEdges($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
+  workGraphEdges(orgId: $orgId, filters: $filters) {
+    edges {
+      edgeId
+      sourceType
+      sourceId
+      targetType
+      targetId
+      edgeType
+      provenance
+      confidence
+      evidence
+      repoId
+      provider
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+`;
