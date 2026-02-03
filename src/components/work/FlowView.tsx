@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-import { getInvestment, getSankey } from "@/lib/api";
+import { getSankey } from "@/lib/api";
+import { useInvestmentMix } from "@/lib/graphql/hooks";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter, SankeyMode } from "@/lib/types";
 import {
@@ -90,12 +91,9 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     // Chart type toggles (local state, persists during navigation within Flow page)
     const [hotspotChartType, setHotspotChartType] = useState<TreemapSunburstType>("treemap");
 
-    // Data states
     const [dataset, setDataset] = useState<SankeyDataset | null>(null);
     const [resolvedKey, setResolvedKey] = useState<string | null>(null);
     const [selection, setSelection] = useState<FlowSelection | null>(null);
-    const [investmentMix, setInvestmentMix] = useState<InvestmentMixAggregate | null>(null);
-    const [investmentMixResolvedKey, setInvestmentMixResolvedKey] = useState<string | null>(null);
     const [investmentMixFocusTheme, setInvestmentMixFocusTheme] = useState<string | null>(null);
 
     // Context from URL
@@ -173,42 +171,19 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         return () => { active = false; };
     }, [mode, requestKey, requestPayload, subTab, useSampleData, definition]);
 
-    const investmentMixRequestKey = useMemo(() => JSON.stringify({ filters }), [filters]);
+    const investmentMixResult = useInvestmentMix({ filters, pause: useSampleData });
 
-    useEffect(() => {
-        let active = true;
-
-        const fetchInvestmentMix = async () => {
-            if (useSampleData) {
-                if (active) {
-                    setInvestmentMix(investmentMixSample);
-                    setInvestmentMixResolvedKey(investmentMixRequestKey);
-                }
-                return;
-            }
-            try {
-                const payload = await getInvestment(filters);
-                if (active) {
-                    setInvestmentMix(normalizeInvestmentMix(payload));
-                    setInvestmentMixResolvedKey(investmentMixRequestKey);
-                }
-            } catch {
-                if (active) {
-                    setInvestmentMix(null);
-                    setInvestmentMixResolvedKey(investmentMixRequestKey);
-                }
-            }
-        };
-
-        if (investmentMixResolvedKey === investmentMixRequestKey) {
-            return;
+    const investmentMix = useMemo<InvestmentMixAggregate | null>(() => {
+        if (useSampleData) {
+            return investmentMixSample;
         }
+        if (!investmentMixResult.data) {
+            return null;
+        }
+        return normalizeInvestmentMix(investmentMixResult.data);
+    }, [useSampleData, investmentMixResult.data]);
 
-        fetchInvestmentMix();
-        return () => {
-            active = false;
-        };
-    }, [filters, investmentMixRequestKey, investmentMixResolvedKey, useSampleData]);
+    const investmentMixLoading = useSampleData ? false : investmentMixResult.loading;
 
     // Handle sub-tab change
     const handleSubTabChange = (tab: FlowSubTab) => {
@@ -466,9 +441,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                             </div>
                         )}
 
-                        {/* Investment Mix Tab */}
                         {subTab === "investment_mix" && (
-                            investmentMixResolvedKey !== investmentMixRequestKey ? (
+                            investmentMixLoading ? (
                                 <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
                                     Loading investment mix…
                                 </div>
