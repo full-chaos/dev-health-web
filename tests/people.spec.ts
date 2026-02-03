@@ -17,13 +17,7 @@ test("people search opens individual and metric evidence", async ({ page }) => {
   });
 
   await page.goto("/people");
-
-  const responsePromise = page.waitForResponse((response) =>
-    response.url().includes("/api/v1/people")
-  );
-
   await page.getByPlaceholder("Name or handle").fill("alex");
-  await responsePromise;
 
   await expect(page.getByText("Alex Harper")).toBeVisible();
   await page.getByText("Alex Harper").click();
