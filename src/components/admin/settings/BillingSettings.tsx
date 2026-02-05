@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { SettingsSection } from "./SettingsSection";
 import { createCheckoutSession, createPortalSession } from "@/lib/billing/actions";
@@ -21,20 +21,15 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [selectedTier, setSelectedTier] = useState<"team" | "enterprise" | null>(null);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [showCancelled, setShowCancelled] = useState(false);
+  const [dismissed, setDismissed] = useState<"success" | "cancelled" | null>(null);
+
+  const billingParam = searchParams.get("billing");
+  const showSuccess = useMemo(() => billingParam === "success" && dismissed !== "success", [billingParam, dismissed]);
+  const showCancelled = useMemo(() => billingParam === "cancelled" && dismissed !== "cancelled", [billingParam, dismissed]);
 
   const tierLabel = TIER_LABELS[tier] ?? tier;
   const canUpgrade = tier !== "enterprise";
   const isPaidTier = tier === "team" || tier === "enterprise";
-
-  useEffect(() => {
-    if (searchParams.get("billing") === "success") {
-      setShowSuccess(true);
-    } else if (searchParams.get("billing") === "cancelled") {
-      setShowCancelled(true);
-    }
-  }, [searchParams]);
 
   const handleUpgrade = () => {
     if (!selectedTier) return;
@@ -73,7 +68,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
           <p className="text-sm font-medium">Your plan has been upgraded successfully!</p>
           <button
             type="button"
-            onClick={() => setShowSuccess(false)}
+            onClick={() => setDismissed("success")}
             className="ml-4 text-sm font-medium hover:underline"
           >
             Dismiss
@@ -86,7 +81,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
           <p className="text-sm font-medium">Checkout was cancelled. No changes were made.</p>
           <button
             type="button"
-            onClick={() => setShowCancelled(false)}
+            onClick={() => setDismissed("cancelled")}
             className="ml-4 text-sm font-medium hover:underline"
           >
             Dismiss
