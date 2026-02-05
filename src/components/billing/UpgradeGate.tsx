@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { hasAccess, TIER_FEATURES, FEATURE_TIERS } from "@/lib/billing/tiers";
+import { hasAccess, TIER_FEATURES } from "@/lib/billing/tiers";
 
 type UpgradeGateProps = {
   feature: string;
