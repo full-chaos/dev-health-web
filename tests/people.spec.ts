@@ -1,21 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const samplePerson = {
-  person_id: "person-123",
-  display_name: "Alex Harper",
-  identities: [{ provider: "github", handle: "aharper" }],
-  active: true,
-};
-
 test("people search opens individual and metric evidence", async ({ page }) => {
-  await page.route("**/api/v1/people**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify([samplePerson]),
-    });
-  });
-
   await page.goto("/people");
   await page.getByPlaceholder("Name or handle").fill("alex");
 
