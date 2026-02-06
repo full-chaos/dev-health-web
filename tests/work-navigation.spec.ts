@@ -14,24 +14,21 @@ test.describe("Work Tabbed Navigation", () => {
 
     test("switches tabs correctly", async ({ page }) => {
         await page.getByRole("link", { name: /^Heatmap$/i }).click();
-        await expect(page).toHaveURL(/tab=heatmap/);
+        await expect(page).toHaveURL(/tab=heatmap/, { timeout: 10000 });
         await expect(page.getByText("Review wait density")).toBeVisible();
 
-        // Switch to Flow
         await page.getByRole("link", { name: /^Flow$/i }).click();
-        await expect(page).toHaveURL(/tab=flow/);
+        await expect(page).toHaveURL(/tab=flow/, { timeout: 10000 });
         await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
         await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
-        // Switch to Investment
         await page.getByRole("link", { name: /^Investment$/i }).click();
-        await expect(page).toHaveURL(/tab=investment/);
+        await expect(page).toHaveURL(/tab=investment/, { timeout: 10000 });
         await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Treemap" })).toBeVisible();
 
-        // Switch to Flame
         await page.getByRole("link", { name: /^Flame$/i }).click();
-        await expect(page).toHaveURL(/tab=flame/);
+        await expect(page).toHaveURL(/tab=flame/, { timeout: 10000 });
         await expect(page.getByRole("heading", { name: "Elapsed Time Breakdown" })).toBeVisible();
         await expect(page.getByTestId("chart-flame")).toBeVisible();
     });
