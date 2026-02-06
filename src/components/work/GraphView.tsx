@@ -7,7 +7,6 @@ import {
   WorkGraphLegend,
 } from "@/components/charts/WorkGraphExplorer";
 import { useWorkGraphEdges } from "@/lib/graphql/hooks";
-import { runtimeConfig } from "@/lib/runtimeConfig";
 import type { WorkGraphEdge, WorkGraphNodeType } from "@/lib/graphql/types";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -25,15 +24,13 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
 
   const orgId = filters.scope.ids[0] ?? "";
-  const isTestMode = runtimeConfig.devHealthTestMode();
-
   const { edges, loading, error, totalCount } = useWorkGraphEdges({
     orgId,
     filters: { limit: 500 },
-    pause: !orgId || isTestMode,
+    pause: !orgId,
   });
 
-  const displayEdges = isTestMode || edges.length === 0 ? sampleWorkGraphEdges : edges;
+  const displayEdges = edges.length === 0 ? sampleWorkGraphEdges : edges;
 
   const handleNodeClick = useCallback((nodeId: string, nodeType: WorkGraphNodeType) => {
     setSelectedNode((prev) =>
@@ -67,11 +64,9 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
               Visualize relationships between issues, PRs, commits, and files.
             </p>
           </div>
-          {!isTestMode && (
-            <div className="text-xs text-(--ink-muted)">
-              {loading ? "Loading..." : `${totalCount} edges`}
-            </div>
-          )}
+          <div className="text-xs text-(--ink-muted)">
+            {loading ? "Loading..." : `${totalCount} edges`}
+          </div>
         </div>
 
         {error && (

@@ -6,32 +6,10 @@ import Link from "next/link";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
 import { apiClient } from "@/lib/apiClient";
-import { runtimeConfig } from "@/lib/runtimeConfig";
 import type { PeopleSearchResult } from "@/lib/types";
 
 const EMPTY_LIST: string[] = [];
 const EMPTY_RESULTS: PeopleSearchResult[] = [];
-
-const SAMPLE_PEOPLE: PeopleSearchResult[] = [
-  {
-    person_id: "person-123",
-    display_name: "Alex Harper",
-    identities: [{ provider: "github", handle: "aharper" }],
-    active: true,
-  },
-  {
-    person_id: "person-456",
-    display_name: "Jordan Lee",
-    identities: [{ provider: "github", handle: "jlee" }],
-    active: true,
-  },
-  {
-    person_id: "person-789",
-    display_name: "Sam Rivera",
-    identities: [{ provider: "gitlab", handle: "srivera" }],
-    active: true,
-  },
-];
 
 type PeopleSearchProps = {
   query?: string;
@@ -77,7 +55,6 @@ const matchesTeam = (
 };
 
 export function PeopleSearch({ query, filters }: PeopleSearchProps) {
-  const isTestMode = runtimeConfig.devHealthTestMode();
   const [apiResults, setApiResults] = useState<PeopleSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,18 +74,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
     : canFallbackQuery
       ? selectedDevelopers[0]
       : "";
-  const testModeResults = useMemo(() => {
-    if (!isTestMode) return EMPTY_RESULTS;
-    if (!searchTerm) return SAMPLE_PEOPLE;
-    const q = searchTerm.toLowerCase();
-    return SAMPLE_PEOPLE.filter(
-      (p) =>
-        p.display_name.toLowerCase().includes(q) ||
-        p.identities.some((i) => i.handle.toLowerCase().includes(q))
-    );
-  }, [isTestMode, searchTerm]);
   const fetchPlans = useMemo<PeopleSearchPlan[]>(() => {
-    if (isTestMode) return [];
     if (teamIds.length) {
       return teamIds.map((teamId) => ({
         teamId,
@@ -122,10 +88,10 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
       return selectedDevelopers.map((developer) => ({ query: developer }));
     }
     return [];
-  }, [focusActive, isTestMode, searchTerm, selectedDevelopers, teamIds]);
+  }, [focusActive, searchTerm, selectedDevelopers, teamIds]);
   const shouldFetch = fetchPlans.length > 0;
-  const shouldShowResults = isTestMode ? (searchTerm.length > 0 || focusActive || hasTeamFilter) : shouldFetch;
-  const results = isTestMode ? testModeResults : apiResults;
+  const shouldShowResults = shouldFetch;
+  const results = apiResults;
   const baseResults = useMemo(
     () => (shouldShowResults ? results : EMPTY_RESULTS),
     [results, shouldShowResults]

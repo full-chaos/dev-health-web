@@ -7,8 +7,6 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse } from "@/lib/types";
 import { apiClient } from "@/lib/apiClient";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
-import { runtimeConfig } from "@/lib/runtimeConfig";
-import { investmentMixSample } from "@/data/devHealthOpsSample";
 
 const InvestmentMixSunburst = dynamic(
   () => import("@/components/charts/InvestmentMixSunburst").then((mod) => mod.InvestmentMixSunburst),
@@ -55,19 +53,14 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
     data: null,
     filtersKey: "",
   });
-  const useSampleData = runtimeConfig.devHealthTestMode();
-
   const currentFiltersKey = useMemo(() => getFiltersKey(filters), [filters]);
 
-  const data = useSampleData ? investmentMixSample : state.data;
+  const data = state.data;
 
   // Compute loading state: we're loading if filtersKey doesn't match current filters
-  const isLoading = useSampleData ? false : state.filtersKey !== currentFiltersKey;
+  const isLoading = state.filtersKey !== currentFiltersKey;
 
   useEffect(() => {
-    if (useSampleData) {
-      return;
-    }
     const controller = new AbortController();
 
     apiClient
@@ -84,7 +77,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
       .catch(() => null);
 
     return () => controller.abort();
-  }, [filters, currentFiltersKey, useSampleData]);
+  }, [filters, currentFiltersKey]);
 
   if (isLoading || !data) {
     return <LoadingState />;

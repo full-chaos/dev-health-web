@@ -9,7 +9,6 @@ import { SankeyChart } from "@/components/charts/SankeyChart";
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
-import { investmentMixSample, investmentRepoTeamMapSample, workUnitInvestmentsSample } from "@/data/devHealthOpsSample";
 import { useInvestmentMix, useInvestmentFlow, useInvestmentRepoTeamFlow } from "@/lib/graphql/hooks";
 import {
     explainInvestmentMix,
@@ -18,7 +17,6 @@ import {
 } from "@/lib/api";
 import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix } from "@/lib/investmentMix";
 import { formatNumber } from "@/lib/formatters";
-import { runtimeConfig } from "@/lib/runtimeConfig";
 import { computeSankeyMetrics, limitRepoNodes, filterSankeyToTeam } from "@/lib/sankey";
 import {
     titleCase,
@@ -85,20 +83,15 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
     const searchParams = useSearchParams();
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
-    const useSampleData = runtimeConfig.devHealthTestMode();
-
     const [categorizationMode, setCategorizationMode] = useState<CategorizationMode>("text_metadata");
     const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const { data: mixData, loading: mixLoading } = useInvestmentMix({ filters, pause: useSampleData });
+    const { data: mixData, loading: mixLoading } = useInvestmentMix({ filters });
 
-    const investmentMix = useMemo(() => {
-        if (useSampleData) return investmentMixSample;
-        return mixData ? normalizeInvestmentMix(mixData) : null;
-    }, [useSampleData, mixData]);
+    const investmentMix = useMemo(() => mixData ? normalizeInvestmentMix(mixData) : null, [mixData]);
 
-    const isMixLoading = useSampleData ? false : mixLoading;
+    const isMixLoading = mixLoading;
 
     const [mixChartType, setMixChartType] = useState<TreemapSunburstType>("treemap");
     const [treemapSelection, setTreemapSelection] = useState<TreemapSelection | null>(null);
@@ -131,7 +124,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
         theme: selectedThemeKey,
         topNRepos: TOP_N_REPOS,
-        pause: useSampleData,
     });
 
     const { data: baselineFlowData, loading: baselineFlowLoading } = useInvestmentFlow({
@@ -139,21 +131,19 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
         theme: selectedThemeKey,
         topNRepos: TOP_N_REPOS,
-        pause: useSampleData,
     });
 
-    const teamCategoryFlow = useSampleData ? null : currentFlow;
-    const baselineSankeyFlow = useSampleData ? null : baselineFlowData;
-    const isCategoryFlowLoading = useSampleData ? false : (currentFlowLoading || baselineFlowLoading);
+    const teamCategoryFlow = currentFlow;
+    const baselineSankeyFlow = baselineFlowData;
+    const isCategoryFlowLoading = currentFlowLoading || baselineFlowLoading;
 
     const { data: repoFlowData, loading: repoFlowLoading, error: repoFlowError } = useInvestmentRepoTeamFlow({
         filters,
-        pause: useSampleData,
     });
 
-    const repoTeamFlow = useSampleData ? null : repoFlowData;
-    const isRepoTeamLoading = useSampleData ? false : repoFlowLoading;
-    const repoTeamFlowFailed = useSampleData ? false : !!repoFlowError;
+    const repoTeamFlow = repoFlowData;
+    const isRepoTeamLoading = repoFlowLoading;
+    const repoTeamFlowFailed = !!repoFlowError;
 
     const includeTextual = categorizationMode === "text_metadata";
     const selectedId = searchParams.get("work_unit_id");
@@ -205,49 +195,6 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         let active = true;
 
         const fetchExplanation = async () => {
-            if (useSampleData) {
-                if (active) {
-                    setMixExplanation({
-                        data: {
-                            summary: "This view suggests effort leans toward a small number of dominant themes, with subcategories providing the specific intent behind that allocation.",
-                            top_findings: [
-                                {
-                                    finding: "Subcategory distribution appears concentrated in the leading theme families.",
-                                    evidence: {
-                                        theme: Object.keys(investmentMixSample.theme_distribution)[0] || "Unknown",
-                                        share_pct: 40,
-                                        evidence_quality_band: "moderate",
-                                    },
-                                },
-                                {
-                                    finding: "Repo scope destinations are derived from connected work-unit evidence only.",
-                                    evidence: { theme: "Cross-cutting", share_pct: 15 },
-                                },
-                            ],
-                            confidence: {
-                                level: "moderate",
-                                drivers: ["high_uncertainty_spread"],
-                                band_mix: { moderate: 0.6, low: 0.4 },
-                            },
-                            what_to_check_next: [
-                                {
-                                    action: "Review low-confidence units",
-                                    why: "Evidence quality bands indicate uncertainty varies.",
-                                    where: "Work Unit drill-down",
-                                },
-                            ],
-                            anti_claims: [
-                                "This does not measure individual performance.",
-                                "This is not a code quality assessment.",
-                            ],
-                        },
-                        filtersKey: mixExplainKey,
-                        focus: { theme: null, subcategory: null },
-                    });
-                }
-                return;
-            }
-
             try {
                 const payload = await explainInvestmentMix({
                     filters,
@@ -280,21 +227,13 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, mixExplainKey, mixExplanation.filtersKey, useSampleData]);
+    }, [filters, mixExplainKey, mixExplanation.filtersKey]);
 
     useEffect(() => {
         let active = true;
 
         const fetchUnits = async () => {
             setIsLoading(true);
-            if (useSampleData) {
-                if (active) {
-                    setWorkUnits(workUnitInvestmentsSample);
-                    setIsLoading(false);
-                }
-                return;
-            }
-
             try {
                 const data = await getWorkUnits({
                     filters,
@@ -319,7 +258,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
         return () => {
             active = false;
         };
-    }, [filters, includeTextual, requestKey, useSampleData]);
+    }, [filters, includeTextual, requestKey]);
 
 
 
@@ -769,16 +708,15 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
             const hasTeams = repoTeamFlow.nodes.some((node) => node.group === "team");
             return { ...repoTeamFlow, hasTeamAssociations: hasTeams };
         }
-        if (!useSampleData && !repoTeamFlowFailed) {
+        if (!repoTeamFlowFailed) {
             return null;
         }
-        const units = useSampleData ? workUnitInvestmentsSample : workUnits;
+        const units = workUnits;
         if (!units.length) {
             return null;
         }
-        const repoTeamMap = useSampleData ? investmentRepoTeamMapSample : {};
-        return buildRepoTeamSankey(units, repoTeamMap, categoryColorMap);
-    }, [repoTeamFlow, useSampleData, repoTeamFlowFailed, workUnits, categoryColorMap]);
+        return buildRepoTeamSankey(units, {}, categoryColorMap);
+    }, [repoTeamFlow, repoTeamFlowFailed, workUnits, categoryColorMap]);
     const repoTeamSankey = useMemo(
         () => prepareSankeyFlow(rawRepoTeamSankey, TOP_N_REPOS),
         [prepareSankeyFlow, rawRepoTeamSankey]
@@ -1657,7 +1595,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     This view uses repo-to-team mapping when available. Missing repo associations flow through an unassigned repo node.
                 </div>
                 <div className="mt-0">
-                    {isRepoTeamLoading && !useSampleData ? (
+                    {isRepoTeamLoading ? (
                         <p className="text-sm text-(--ink-muted)">Loading destination view…</p>
                     ) : repoTeamHasTeams && repoTeamLinks.length ? (
                         <SankeyChart
