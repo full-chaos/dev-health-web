@@ -3,8 +3,11 @@ import { decodeFilter } from "../src/lib/filters/encode";
 
 test.describe("Work Tabbed Navigation", () => {
     test.beforeEach(async ({ page }) => {
-        // We use /work as the entry point
         await page.goto("/work");
+        await page.waitForFunction(
+            () => new URL(window.location.href).searchParams.get("f"),
+            { timeout: 15000 },
+        );
     });
 
     test("default tab is landscape", async ({ page }) => {
