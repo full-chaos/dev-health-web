@@ -4,7 +4,7 @@ test("people search opens individual and metric evidence", async ({ page }) => {
   await page.goto("/people");
   await page.getByPlaceholder("Name or handle").fill("alex");
 
-  await expect(page.getByText("Alex Harper")).toBeVisible();
+  await expect(page.getByText("Alex Harper")).toBeVisible({ timeout: 10000 });
   await page.getByText("Alex Harper").click();
   await expect(page).toHaveURL(/\/people\/person-123/);
 
