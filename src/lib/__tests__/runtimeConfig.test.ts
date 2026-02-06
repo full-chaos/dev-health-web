@@ -65,12 +65,10 @@ describe("runtimeConfig", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalWithWindow as any).window = undefined;
     process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "true";
-    process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE = "true";
     process.env.NEXT_PUBLIC_DOCS_URL = "https://docs.local";
 
     try {
       expect(runtimeConfig.useGraphQLAnalytics()).toBe(true);
-      expect(runtimeConfig.devHealthTestMode()).toBe(true);
       expect(runtimeConfig.docsUrl()).toBe("https://docs.local");
     } finally {
       restoreEnv(originalEnv);
