@@ -16,14 +16,6 @@ if (
     process.env.USE_GRAPHQL_ANALYTICS;
 }
 
-if (
-  publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === undefined &&
-  process.env.DEV_HEALTH_TEST_MODE !== undefined
-) {
-  publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE =
-    process.env.DEV_HEALTH_TEST_MODE;
-}
-
 publicEnv.NEXT_PUBLIC_DOCS_URL =
   publicEnv.NEXT_PUBLIC_DOCS_URL || "/docs";
 

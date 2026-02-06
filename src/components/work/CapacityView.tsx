@@ -1,13 +1,11 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 
 import { ForecastCard } from "@/components/capacity/ForecastCard";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
 import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
-import { runtimeConfig } from "@/lib/runtimeConfig";
 import { useCapacityForecast } from "@/lib/graphql/hooks";
-import type { CapacityForecast } from "@/lib/graphql/types";
 import type { MetricFilter } from "@/lib/filters/types";
 
 type CapacityViewProps = {
@@ -15,46 +13,12 @@ type CapacityViewProps = {
   orgId?: string;
 };
 
-const SAMPLE_FORECAST: CapacityForecast = {
-  forecastId: "sample-forecast-001",
-  computedAt: new Date().toISOString(),
-  teamId: "team-alpha",
-  workScopeId: "project-main",
-  backlogSize: 47,
-  targetItems: 47,
-  p50Date: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-  p85Date: new Date(Date.now() + 19 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-  p95Date: new Date(Date.now() + 27 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-  p50Days: 12,
-  p85Days: 19,
-  p95Days: 27,
-  throughputMean: 3.2,
-  throughputStddev: 1.8,
-  historyDays: 90,
-  insufficientHistory: false,
-  highVariance: false,
-};
-
 export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) {
-  const useSampleData = runtimeConfig.devHealthTestMode();
-
   const teamId = filters.scope.level === "team" && filters.scope.ids.length > 0
     ? filters.scope.ids[0]
     : undefined;
 
   const historyDays = filters.time.range_days ?? 90;
-
-  const [sampleForecast, setSampleForecast] = useState<CapacityForecast | null>(null);
-
-  useEffect(() => {
-    if (!useSampleData) return;
-    const timer = setTimeout(() => {
-      setSampleForecast(SAMPLE_FORECAST);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [useSampleData]);
-
-  const sampleLoading = useSampleData && sampleForecast === null;
 
   const {
     data: queryData,
@@ -64,12 +28,11 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
   } = useCapacityForecast({
     orgId,
     input: { teamId, historyDays },
-    pause: useSampleData,
   });
 
-  const forecast = useSampleData ? sampleForecast : queryData;
-  const isLoading = useSampleData ? sampleLoading : queryLoading;
-  const error = useSampleData ? null : queryError;
+  const forecast = queryData;
+  const isLoading = queryLoading;
+  const error = queryError;
 
   const chartData = useMemo(() => {
     if (!forecast) return null;
@@ -93,15 +56,13 @@ export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) 
             Monte Carlo forecast for work completion
           </p>
         </div>
-        {!useSampleData && (
-          <button
-            onClick={() => refetch()}
-            disabled={isLoading}
-            className="rounded-lg border border-(--card-stroke) bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? "Computing..." : "Refresh Forecast"}
-          </button>
-        )}
+        <button
+          onClick={() => refetch()}
+          disabled={isLoading}
+          className="rounded-lg border border-(--card-stroke) bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? "Computing..." : "Refresh Forecast"}
+        </button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">

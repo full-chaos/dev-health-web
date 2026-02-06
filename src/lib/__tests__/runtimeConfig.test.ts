@@ -18,7 +18,6 @@ const restoreWindow = () => {
 
 const captureEnv = () => ({
   NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS,
-  NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE,
   NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL,
   USE_GRAPHQL_ANALYTICS: process.env.USE_GRAPHQL_ANALYTICS,
 });
@@ -41,14 +40,12 @@ describe("runtimeConfig", () => {
   it("prefers runtime config when available", () => {
     const originalEnv = captureEnv();
     process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "false";
-    process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE = "false";
     process.env.NEXT_PUBLIC_DOCS_URL = "/docs";
 
     globalWithWindow.window = {
       __DEV_HEALTH_RUNTIME__: {
         publicEnv: {
           NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: "true",
-          NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
           NEXT_PUBLIC_DOCS_URL: "https://docs.example.com",
         },
       },
@@ -57,7 +54,6 @@ describe("runtimeConfig", () => {
 
     try {
       expect(runtimeConfig.useGraphQLAnalytics()).toBe(true);
-      expect(runtimeConfig.devHealthTestMode()).toBe(true);
       expect(runtimeConfig.docsUrl()).toBe("https://docs.example.com");
     } finally {
       restoreEnv(originalEnv);
@@ -69,12 +65,10 @@ describe("runtimeConfig", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalWithWindow as any).window = undefined;
     process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "true";
-    process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE = "true";
     process.env.NEXT_PUBLIC_DOCS_URL = "https://docs.local";
 
     try {
       expect(runtimeConfig.useGraphQLAnalytics()).toBe(true);
-      expect(runtimeConfig.devHealthTestMode()).toBe(true);
       expect(runtimeConfig.docsUrl()).toBe("https://docs.local");
     } finally {
       restoreEnv(originalEnv);

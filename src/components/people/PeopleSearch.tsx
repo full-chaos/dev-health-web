@@ -55,7 +55,7 @@ const matchesTeam = (
 };
 
 export function PeopleSearch({ query, filters }: PeopleSearchProps) {
-  const [results, setResults] = useState<PeopleSearchResult[]>([]);
+  const [apiResults, setApiResults] = useState<PeopleSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,9 +90,11 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
     return [];
   }, [focusActive, searchTerm, selectedDevelopers, teamIds]);
   const shouldFetch = fetchPlans.length > 0;
+  const shouldShowResults = shouldFetch;
+  const results = apiResults;
   const baseResults = useMemo(
-    () => (shouldFetch ? results : EMPTY_RESULTS),
-    [results, shouldFetch]
+    () => (shouldShowResults ? results : EMPTY_RESULTS),
+    [results, shouldShowResults]
   );
   const hasTeamData = useMemo(
     () => baseResults.some((person) => Boolean(person.team_id)),
@@ -127,7 +129,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
     ? "Team filter applied. Search by name/handle to refine results."
     : "Select a team or search by name/handle to find someone.";
   const showEmptyResults =
-    shouldFetch && !isLoading && !error && visibleResults.length === 0;
+    shouldShowResults && !isLoading && !error && visibleResults.length === 0;
   const showQueryEmpty = showEmptyResults && queryActive;
   const showTeamEmpty = showEmptyResults && !queryActive && hasTeamFilter;
   const showFocusEmpty =
@@ -181,7 +183,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
               }
             });
           });
-          setResults(Array.from(merged.values()));
+          setApiResults(Array.from(merged.values()));
           setIsLoading(false);
         })
         .catch(() => {
@@ -212,12 +214,12 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
       </div>
 
       <div className="mt-4 space-y-3">
-        {shouldFetch && isLoading && (
+        {shouldShowResults && isLoading && (
           <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             Searching people...
           </div>
         )}
-        {shouldFetch && error && (
+        {shouldShowResults && error && (
           <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             {error}
           </div>
@@ -237,7 +239,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
             No matches for the selected people filter.
           </div>
         )}
-        {shouldFetch &&
+        {shouldShowResults &&
           !isLoading &&
           !error &&
           visibleResults.length > 0 &&
@@ -247,7 +249,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
               No matches for the selected people filter.
             </div>
           )}
-        {!shouldFetch && !focusActive && (
+        {!shouldShowResults && !focusActive && (
           <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
             {emptyPrompt}
           </div>

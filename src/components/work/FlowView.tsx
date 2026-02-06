@@ -8,23 +8,14 @@ import { getSankey } from "@/lib/api";
 import { useInvestmentMix } from "@/lib/graphql/hooks";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter, SankeyMode } from "@/lib/types";
-import {
-    buildSankeyDataset,
-    buildSankeyEvidenceUrl,
-    getSankeyDefinition,
-    type SankeyDataset,
-} from "@/lib/sankey";
+import { buildSankeyEvidenceUrl, getSankeyDefinition, type SankeyDataset } from "@/lib/sankey";
 import {
     toHotspotHierarchy,
     generateSampleExpenseData,
     toStackedAreaData,
     type HierarchyNode,
 } from "@/lib/chartTransforms";
-import {
-    sankeyHotspotNodes,
-    sankeyHotspotLinks,
-    investmentMixSample,
-} from "@/data/devHealthOpsSample";
+import { sankeyHotspotNodes, sankeyHotspotLinks } from "@/data/devHealthOpsSample";
 import { normalizeInvestmentMix, type InvestmentMixAggregate, titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
 import { SankeyChart } from "@/components/charts/SankeyChart";
@@ -38,7 +29,6 @@ import {
     type TreemapSunburstType,
 } from "@/components/charts/ChartTypeToggle";
 import { formatNumber } from "@/lib/formatters";
-import { runtimeConfig } from "@/lib/runtimeConfig";
 
 type FlowViewProps = {
     filters: MetricFilter;
@@ -71,8 +61,6 @@ type FlowSelection = {
 export function FlowView({ filters, activeRole }: FlowViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const useSampleData = runtimeConfig.devHealthTestMode();
-
     // Refs for tab buttons (for keyboard navigation focus management)
     const tabRefs = useRef<Record<FlowSubTab, HTMLButtonElement | null>>({
         investment_mix: null,
@@ -139,12 +127,6 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                 setResolvedKey(requestKey);
                 return;
             }
-            if (useSampleData) {
-                setDataset(buildSankeyDataset(mode));
-                setResolvedKey(requestKey);
-                return;
-            }
-
             try {
                 const response = await getSankey(requestPayload);
                 if (!active) return;
@@ -169,21 +151,18 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
 
         fetchData();
         return () => { active = false; };
-    }, [mode, requestKey, requestPayload, subTab, useSampleData, definition]);
+    }, [mode, requestKey, requestPayload, subTab, definition]);
 
-    const investmentMixResult = useInvestmentMix({ filters, pause: useSampleData });
+    const investmentMixResult = useInvestmentMix({ filters });
 
     const investmentMix = useMemo<InvestmentMixAggregate | null>(() => {
-        if (useSampleData) {
-            return investmentMixSample;
-        }
         if (!investmentMixResult.data) {
             return null;
         }
         return normalizeInvestmentMix(investmentMixResult.data);
-    }, [useSampleData, investmentMixResult.data]);
+    }, [investmentMixResult.data]);
 
-    const investmentMixLoading = useSampleData ? false : investmentMixResult.loading;
+    const investmentMixLoading = investmentMixResult.loading;
 
     // Handle sub-tab change
     const handleSubTabChange = (tab: FlowSubTab) => {
