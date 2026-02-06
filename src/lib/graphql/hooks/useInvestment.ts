@@ -137,7 +137,7 @@ interface UseInvestmentFlowResult {
 }
 
 export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestmentFlowResult {
-  const { filters, flowMode = "team_category_repo", theme = null, topNRepos = 10, pause = false } = options;
+  const { filters, flowMode = "team_category_repo", theme = null, pause = false } = options;
 
   const variables = useMemo(() => {
     const orgId = getOrgId(filters);

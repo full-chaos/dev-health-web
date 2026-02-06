@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Session } from "next-auth";
 
 // Must mock auth before importing the module under test
 vi.mock("@/lib/auth", () => ({
@@ -8,6 +9,19 @@ vi.mock("@/lib/auth", () => ({
 import { getSubscriptionDetails } from "../actions";
 import { auth } from "@/lib/auth";
 
+function mockSession(overrides: Partial<Session> & { user?: Partial<Session["user"]> } = {}): Session {
+  return {
+    access_token: "test-token",
+    user: {
+      id: "user-1",
+      org_id: "org-123",
+      ...overrides.user,
+    },
+    expires: new Date(Date.now() + 86400000).toISOString(),
+    ...overrides,
+  };
+}
+
 describe("getSubscriptionDetails", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -16,10 +30,7 @@ describe("getSubscriptionDetails", () => {
   });
 
   it("returns subscription details when API succeeds", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      access_token: "test-token",
-      user: { org_id: "org-123" },
-    } as any);
+    vi.mocked(auth).mockResolvedValue(mockSession());
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -47,10 +58,7 @@ describe("getSubscriptionDetails", () => {
   });
 
   it("returns community defaults when API returns non-ok", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      access_token: "test-token",
-      user: { org_id: "org-123" },
-    } as any);
+    vi.mocked(auth).mockResolvedValue(mockSession());
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response("Not found", { status: 404 }),
@@ -67,7 +75,7 @@ describe("getSubscriptionDetails", () => {
   });
 
   it("returns error when not authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null as any);
+    vi.mocked(auth).mockResolvedValue(null);
 
     const result = await getSubscriptionDetails();
     expect(result.error).toBeDefined();
@@ -75,10 +83,7 @@ describe("getSubscriptionDetails", () => {
   });
 
   it("maps grace period to past_due status", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      access_token: "test-token",
-      user: { org_id: "org-123" },
-    } as any);
+    vi.mocked(auth).mockResolvedValue(mockSession());
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -101,10 +106,7 @@ describe("getSubscriptionDetails", () => {
   });
 
   it("returns error when no organization ID", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      access_token: "test-token",
-      user: { org_id: undefined },
-    } as any);
+    vi.mocked(auth).mockResolvedValue(mockSession({ user: { id: "user-1", org_id: undefined } }));
 
     const result = await getSubscriptionDetails();
     expect(result.error).toBeDefined();
@@ -112,10 +114,7 @@ describe("getSubscriptionDetails", () => {
   });
 
   it("handles fetch errors gracefully", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      access_token: "test-token",
-      user: { org_id: "org-123" },
-    } as any);
+    vi.mocked(auth).mockResolvedValue(mockSession());
 
     const fetchSpy = vi.spyOn(global, "fetch").mockRejectedValue(
       new Error("Network error"),
