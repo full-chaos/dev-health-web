@@ -258,43 +258,27 @@ export async function getDrilldown(
 }
 
 export async function checkApiHealth() {
-  if (process.env.DEV_HEALTH_TEST_MODE === "true") {
-    return {
-      ok: true,
-      data: { status: "ok", services: { api: "mock" } } as HealthResponse,
-    };
-  }
-  try {
-    const data = await apiClient.getJson<HealthResponse>(
-      "/health",
-      undefined,
-      { cache: "no-store" }
-    );
-    return { ok: data.status === "ok", data };
-  } catch {
-    return { ok: false, data: null as HealthResponse | null };
-  }
-}
+   try {
+     const data = await apiClient.getJson<HealthResponse>(
+       "/health",
+       undefined,
+       { cache: "no-store" }
+     );
+     return { ok: data.status === "ok", data };
+   } catch {
+     return { ok: false, data: null as HealthResponse | null };
+   }
+ }
 
 export async function getApiMeta(): Promise<MetaResponse | null> {
-  if (process.env.DEV_HEALTH_TEST_MODE === "true") {
-    return {
-      backend: "sqlite",
-      version: "test",
-      last_ingest_at: new Date().toISOString(),
-      coverage: { repos: 10 },
-      limits: { drilldown_max: 200 },
-      supported_endpoints: ["/api/v1/home", "/api/v1/meta"],
-    };
-  }
-  try {
-    return await apiClient.getJson<MetaResponse>("/api/v1/meta", undefined, {
-      cache: "no-store",
-    });
-  } catch {
-    return null;
-  }
-}
+   try {
+     return await apiClient.getJson<MetaResponse>("/api/v1/meta", undefined, {
+       cache: "no-store",
+     });
+   } catch {
+     return null;
+   }
+ }
 
 export async function searchPeople(query: string, limit = 20) {
   return apiClient.getJson<PeopleSearchResult[]>(

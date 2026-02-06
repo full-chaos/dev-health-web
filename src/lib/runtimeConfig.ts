@@ -23,9 +23,6 @@ const getPublicEnvValue = (key: string): string | undefined => {
   return process.env[key];
 };
 
-const getPublicBoolean = (key: string): boolean =>
-  getPublicEnvValue(key) === "true";
-
 export const runtimeConfig = {
   /**
    * Check if GraphQL analytics is enabled.
@@ -44,9 +41,7 @@ export const runtimeConfig = {
       getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
     // Default to true unless explicitly set to "false"
     return raw !== "false";
-  },
-  devHealthTestMode: (): boolean =>
-    getPublicBoolean("NEXT_PUBLIC_DEV_HEALTH_TEST_MODE"),
-  docsUrl: (): string =>
+   },
+   docsUrl: (): string =>
     getPublicEnvValue("NEXT_PUBLIC_DOCS_URL") || "/docs",
 };

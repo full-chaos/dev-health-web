@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
 
-const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true";
+const isTestMode = process.env.PLAYWRIGHT_TEST === "true";
 
 const PUBLIC_PATHS = [
     "/auth/signin",
