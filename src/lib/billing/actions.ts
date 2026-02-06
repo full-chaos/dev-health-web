@@ -88,3 +88,65 @@ export async function createPortalSession(): Promise<ActionResult<{ portal_url: 
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
 }
+
+export type SubscriptionDetails = {
+  tier: string;
+  status: "active" | "canceled" | "past_due" | "trialing" | "unknown";
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  features: Record<string, boolean>;
+  limits: Record<string, number>;
+};
+
+export async function getSubscriptionDetails(): Promise<ActionResult<SubscriptionDetails>> {
+  try {
+    const session = await auth();
+    if (!session?.access_token) {
+      return { error: "Unauthorized" };
+    }
+    const orgId = session.user?.org_id;
+    if (!orgId) {
+      return { error: "No organization ID" };
+    }
+
+    const res = await fetch(`${getLicenseSvcUrl()}/api/entitlements/${orgId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.LICENSE_SVC_ADMIN_KEY ?? ""}`,
+        },
+        next: { revalidate: 60 },
+      }
+    );
+
+    if (!res.ok) {
+      return {
+        data: {
+          tier: "community",
+          status: "active",
+          current_period_end: null,
+          cancel_at_period_end: false,
+          features: {},
+          limits: {},
+        },
+      };
+    }
+
+    const entitlements = await res.json();
+    return {
+      data: {
+        tier: entitlements.tier ?? "community",
+        status: entitlements.is_active
+          ? entitlements.is_grace_period
+            ? "past_due"
+            : "active"
+          : "canceled",
+        current_period_end: entitlements.expires_at ?? null,
+        cancel_at_period_end: false,
+        features: entitlements.features ?? {},
+        limits: entitlements.limits ?? {},
+      },
+    };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
