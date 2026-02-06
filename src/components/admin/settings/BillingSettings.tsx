@@ -1,9 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { SettingsSection } from "./SettingsSection";
-import { createCheckoutSession, createPortalSession } from "@/lib/billing/actions";
+import {
+  createCheckoutSession,
+  createPortalSession,
+  getSubscriptionDetails,
+  type SubscriptionDetails,
+} from "@/lib/billing/actions";
 
 const TIER_LABELS: Record<string, string> = {
   community: "Community",
@@ -20,6 +25,10 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [subscriptionResult, setSubscriptionResult] = useState<{
+    data?: SubscriptionDetails;
+    error?: string;
+  } | null>(null);
   const [selectedTier, setSelectedTier] = useState<"team" | "enterprise" | null>(null);
   const [dismissed, setDismissed] = useState<"success" | "cancelled" | null>(null);
 
@@ -27,9 +36,116 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
   const showSuccess = useMemo(() => billingParam === "success" && dismissed !== "success", [billingParam, dismissed]);
   const showCancelled = useMemo(() => billingParam === "cancelled" && dismissed !== "cancelled", [billingParam, dismissed]);
 
-  const tierLabel = TIER_LABELS[tier] ?? tier;
-  const canUpgrade = tier !== "enterprise";
-  const isPaidTier = tier === "team" || tier === "enterprise";
+  const subscription = subscriptionResult?.data;
+  const subscriptionError = subscriptionResult?.error ?? null;
+  const errorMessage = error ?? subscriptionError;
+  const currentTier = subscription?.tier ?? tier;
+  const tierLabel = TIER_LABELS[currentTier] ?? currentTier;
+  const canUpgrade = currentTier !== "enterprise";
+  const isPaidTier = currentTier === "team" || currentTier === "enterprise";
+  const subscriptionStatus = subscription?.status ?? "unknown";
+
+  const statusMeta = useMemo(() => {
+    if (!subscription) return null;
+    switch (subscriptionStatus) {
+      case "active":
+        return {
+          label: "Active",
+          className: "bg-(--accent-2)/10 text-(--accent-2)",
+          dotClassName: "bg-(--accent-2)",
+        };
+      case "past_due":
+        return {
+          label: "Past Due",
+          className: "bg-amber-500/10 text-amber-500",
+          dotClassName: null,
+        };
+      case "canceled":
+        return {
+          label: "Canceled",
+          className: "bg-red-500/10 text-red-500",
+          dotClassName: null,
+        };
+      case "trialing":
+        return {
+          label: "Trialing",
+          className: "bg-(--accent-2)/10 text-(--accent-2)",
+          dotClassName: "bg-(--accent-2)",
+        };
+      default:
+        return null;
+    }
+  }, [subscription, subscriptionStatus]);
+
+  const nextBillingDate = useMemo(() => {
+    const periodEnd = subscription?.current_period_end;
+    if (!periodEnd) return null;
+    const date = new Date(periodEnd);
+    if (Number.isNaN(date.getTime())) return null;
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(date);
+  }, [subscription]);
+
+  const limits = subscription?.limits ?? {};
+  const usersLimit =
+    typeof limits.users === "number"
+      ? limits.users
+      : typeof limits.seats === "number"
+        ? limits.seats
+        : undefined;
+  const reposLimit =
+    typeof limits.repos === "number"
+      ? limits.repos
+      : typeof limits.repositories === "number"
+        ? limits.repositories
+        : undefined;
+  const apiRateLimit =
+    typeof limits.api_rate === "number"
+      ? limits.api_rate
+      : typeof limits.api_rate_per_minute === "number"
+        ? limits.api_rate_per_minute
+        : typeof limits.api_rate_limit === "number"
+          ? limits.api_rate_limit
+          : undefined;
+
+  const formatLimitValue = (value?: number) => {
+    if (value === -1) return "Unlimited";
+    if (typeof value !== "number") return "—";
+    return `${value}`;
+  };
+
+  const formatLimitPair = (value?: number) => {
+    const formatted = formatLimitValue(value);
+    if (formatted === "Unlimited" || formatted === "—") return formatted;
+    return `${formatted} / ${formatted}`;
+  };
+
+  const apiRateLabel = useMemo(() => {
+    if (apiRateLimit === -1) return "Unlimited";
+    if (typeof apiRateLimit !== "number") return "—";
+    return `${apiRateLimit}/min`;
+  }, [apiRateLimit]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadSubscription = async () => {
+      const result = await getSubscriptionDetails();
+      if (!isActive) return;
+      startTransition(() => {
+        setSubscriptionResult(result);
+      });
+    };
+
+    loadSubscription();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handleUpgrade = () => {
     if (!selectedTier) return;
@@ -89,16 +205,49 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
         </div>
       )}
 
-      {error && (
+      {errorMessage && (
         <div className="mb-4 rounded-md border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-700">
-          {error}
+          {errorMessage}
         </div>
       )}
 
       <div className="flex items-center justify-between rounded-md border border-(--card-stroke) bg-(--background) p-4">
         <div>
           <p className="text-sm font-medium text-(--foreground)">Current Plan</p>
-          <p className="text-2xl font-bold text-(--foreground)">{tierLabel}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <p className="text-2xl font-bold text-(--foreground)">{tierLabel}</p>
+            {statusMeta && (
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold ${statusMeta.className}`}
+              >
+                {statusMeta.dotClassName && (
+                  <span className={`h-2 w-2 rounded-full ${statusMeta.dotClassName}`} />
+                )}
+                {statusMeta.label}
+              </span>
+            )}
+          </div>
+          {nextBillingDate && (
+            <p className="mt-2 text-sm text-(--ink-muted)">
+              Next billing date: <span className="font-medium text-(--foreground)">{nextBillingDate}</span>
+            </p>
+          )}
+          {subscription && (
+            <div className="mt-3 grid gap-3 text-sm text-(--ink-muted) sm:grid-cols-3">
+              <div>
+                <span className="font-medium text-(--foreground)">Users:</span>{" "}
+                {formatLimitPair(usersLimit)}
+              </div>
+              <div>
+                <span className="font-medium text-(--foreground)">Repos:</span>{" "}
+                {formatLimitPair(reposLimit)}
+              </div>
+              <div>
+                <span className="font-medium text-(--foreground)">API Rate:</span>{" "}
+                {apiRateLabel}
+              </div>
+            </div>
+          )}
         </div>
         {isPaidTier && (
           <button
@@ -116,7 +265,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
         <div className="mt-6 space-y-4">
           <h3 className="text-lg font-medium text-(--foreground)">Upgrade Plan</h3>
           <div className="grid gap-4 md:grid-cols-2">
-            {tier !== "team" && (
+            {currentTier !== "team" && (
               <button
                 type="button"
                 onClick={() => setSelectedTier("team")}
@@ -163,7 +312,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
       )}
 
       <div className="mt-4 text-sm text-(--ink-muted)">
-        {tier === "community" || tier === "free" ? (
+        {currentTier === "community" || currentTier === "free" ? (
           <p>Upgrade to unlock more features.</p>
         ) : (
           <p>Contact support for billing inquiries.</p>
