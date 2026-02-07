@@ -112,7 +112,7 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
     const res = await fetch(`${getLicenseSvcUrl()}/api/entitlements/${orgId}`,
       {
         headers: {
-          Authorization: `Bearer ${process.env.LICENSE_SVC_ADMIN_KEY ?? ""}`,
+          Authorization: `Bearer ${process.env.ADMIN_API_KEY ?? ""}`,
         },
         next: { revalidate: 60 },
       }

@@ -26,7 +26,7 @@ describe("getSubscriptionDetails", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.stubEnv("LICENSE_SVC_URL", "http://test-license-svc:3100");
-    vi.stubEnv("LICENSE_SVC_ADMIN_KEY", "test-admin-key");
+    vi.stubEnv("ADMIN_API_KEY", "test-admin-key");
   });
 
   it("returns subscription details when API succeeds", async () => {
