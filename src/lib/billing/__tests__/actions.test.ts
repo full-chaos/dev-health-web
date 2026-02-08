@@ -25,8 +25,7 @@ function mockSession(overrides: Partial<Session> & { user?: Partial<Session["use
 describe("getSubscriptionDetails", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.stubEnv("LICENSE_SVC_URL", "http://test-license-svc:3100");
-    vi.stubEnv("ADMIN_API_KEY", "test-admin-key");
+    vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
   });
 
   it("returns subscription details when API succeeds", async () => {
@@ -35,13 +34,11 @@ describe("getSubscriptionDetails", () => {
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          org_id: "org-123",
           tier: "team",
           features: { basic_analytics: true, team_dashboard: true },
           limits: { users: 25, repos: 20, api_rate: 300 },
-          expires_at: "2027-01-01T00:00:00Z",
-          is_active: true,
-          is_grace_period: false,
+          is_licensed: true,
+          in_grace_period: false,
         }),
         { status: 200 },
       ),
@@ -52,7 +49,7 @@ describe("getSubscriptionDetails", () => {
     expect(result.data!.tier).toBe("team");
     expect(result.data!.status).toBe("active");
     expect(result.data!.features).toEqual({ basic_analytics: true, team_dashboard: true });
-    expect(result.data!.current_period_end).toBe("2027-01-01T00:00:00Z");
+    expect(result.data!.current_period_end).toBeNull();
 
     fetchSpy.mockRestore();
   });
@@ -89,11 +86,10 @@ describe("getSubscriptionDetails", () => {
       new Response(
         JSON.stringify({
           tier: "team",
-          is_active: true,
-          is_grace_period: true,
+          is_licensed: true,
+          in_grace_period: true,
           features: {},
           limits: {},
-          expires_at: "2026-01-01T00:00:00Z",
         }),
         { status: 200 },
       ),

@@ -6,8 +6,8 @@ import { auth } from "@/lib/auth";
 type CheckoutResponse = { session_id: string; checkout_url: string };
 type ActionResult<T> = { data: T; error?: never } | { data?: never; error: string };
 
-function getLicenseSvcUrl(): string {
-  return process.env.LICENSE_SVC_URL ?? "http://localhost:3100";
+function getBackendUrl(): string {
+  return process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 }
 
 // Server action: Create Stripe checkout session
@@ -25,14 +25,13 @@ export async function createCheckoutSession(
     }
 
     const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-    const res = await fetch(`${getLicenseSvcUrl()}/api/checkout/session`, {
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/checkout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
-        org_id: orgId,
         tier,
         success_url: `${baseUrl}/admin/settings?billing=success`,
         cancel_url: `${baseUrl}/admin/settings?billing=cancelled`,
@@ -45,14 +44,13 @@ export async function createCheckoutSession(
     }
 
     const data = await res.json();
-    return { data };
+    return { data: { session_id: data.session_id, checkout_url: data.url } };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
 }
 
 // Server action: Create billing portal session (for subscription management)
-// NOTE: license-svc #32 (portal API) is not yet built — this is a forward-compatible stub
 export async function createPortalSession(): Promise<ActionResult<{ portal_url: string }>> {
   try {
     const session = await auth();
@@ -64,26 +62,28 @@ export async function createPortalSession(): Promise<ActionResult<{ portal_url: 
       return { error: "No organization ID" };
     }
 
-    const res = await fetch(`${getLicenseSvcUrl()}/api/portal/billing`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
+    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    const returnUrl = encodeURIComponent(`${baseUrl}/admin/settings`);
+    const res = await fetch(
+      `${getBackendUrl()}/api/v1/billing/portal?return_url=${returnUrl}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       },
-      body: JSON.stringify({ org_id: orgId }),
-    });
+    );
 
     if (!res.ok) {
-      // Portal API may not exist yet (license-svc #32)
       if (res.status === 404) {
-        return { error: "Billing portal is not yet available. Contact support for billing changes." };
+        return { error: "No billing account found for this organization." };
       }
       const error = await res.json().catch(() => ({ detail: res.statusText }));
       return { error: error.detail || `Portal session failed (${res.status})` };
     }
 
     const data = await res.json();
-    return { data };
+    return { data: { portal_url: data.url } };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
@@ -109,13 +109,9 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
       return { error: "No organization ID" };
     }
 
-    const res = await fetch(`${getLicenseSvcUrl()}/api/entitlements/${orgId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.ADMIN_API_KEY ?? ""}`,
-        },
-        next: { revalidate: 60 },
-      }
+    const res = await fetch(
+      `${getBackendUrl()}/api/v1/billing/entitlements/${orgId}`,
+      { next: { revalidate: 60 } },
     );
 
     if (!res.ok) {
@@ -135,12 +131,12 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
     return {
       data: {
         tier: entitlements.tier ?? "community",
-        status: entitlements.is_active
-          ? entitlements.is_grace_period
+        status: entitlements.is_licensed
+          ? entitlements.in_grace_period
             ? "past_due"
             : "active"
           : "canceled",
-        current_period_end: entitlements.expires_at ?? null,
+        current_period_end: null,
         cancel_at_period_end: false,
         features: entitlements.features ?? {},
         limits: entitlements.limits ?? {},
