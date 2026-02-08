@@ -1,23 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import { TeamForm } from "@/components/admin/teams/TeamForm";
 import { Team } from "@/components/admin/teams/TeamTable";
-import { createTeam } from "@/lib/admin/server";
+import { updateTeam } from "@/lib/admin/server";
+import type { TeamMapping } from "@/lib/admin/types";
 
-export default function NewTeamPage() {
+type EditTeamFormWrapperProps = {
+  team: TeamMapping;
+};
+
+export function EditTeamFormWrapper({ team }: EditTeamFormWrapperProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const initialData: Team = {
+    team_id: team.team_id,
+    name: team.name,
+    description: team.description,
+    repo_patterns: team.repo_patterns,
+    project_keys: team.project_keys,
+  };
 
   const handleSubmit = async (data: Team) => {
     setIsLoading(true);
     setError(null);
 
-    const result = await createTeam({
-      team_id: data.team_id,
+    const result = await updateTeam(team.id, {
       name: data.name,
       description: data.description || undefined,
       repo_patterns: data.repo_patterns,
@@ -32,20 +43,17 @@ export default function NewTeamPage() {
     }
 
     router.push("/admin/teams");
+    router.refresh();
   };
 
   return (
-    <div>
-      <AdminHeader
-        title="Add Team"
-        description="Create a new team and define its resource ownership."
-      />
+    <>
       {error && (
         <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
           {error}
         </div>
       )}
-      <TeamForm onSubmit={handleSubmit} isLoading={isLoading} />
-    </div>
+      <TeamForm initialData={initialData} onSubmit={handleSubmit} isEditing isLoading={isLoading} />
+    </>
   );
 }

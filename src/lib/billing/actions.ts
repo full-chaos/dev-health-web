@@ -128,14 +128,18 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
     }
 
     const entitlements = await res.json();
+    const effectiveTier = entitlements.tier ?? "community";
+    const isFreeTier = effectiveTier === "community" || effectiveTier === "free";
     return {
       data: {
-        tier: entitlements.tier ?? "community",
-        status: entitlements.is_licensed
-          ? entitlements.in_grace_period
-            ? "past_due"
-            : "active"
-          : "canceled",
+        tier: effectiveTier,
+        status: isFreeTier
+          ? "active"
+          : entitlements.is_licensed
+            ? entitlements.in_grace_period
+              ? "past_due"
+              : "active"
+            : "canceled",
         current_period_end: null,
         cancel_at_period_end: false,
         features: entitlements.features ?? {},

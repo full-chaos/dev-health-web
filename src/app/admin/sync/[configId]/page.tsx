@@ -1,88 +1,9 @@
+import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
-import { SyncConfig, SyncJob } from "@/lib/sync-types";
+import { getSyncConfig } from "@/lib/admin/server";
+import { toSyncConfig } from "@/lib/sync-types";
 import Link from "next/link";
-
-// Mock data (should match the list page for consistency)
-const mockConfigs: Record<string, SyncConfig> = {
-  "gh-main": {
-    id: "gh-main",
-    name: "GitHub Main Repo",
-    provider: "github",
-    last_sync_at: "2023-10-27T10:00:00Z",
-    status: "success",
-    schedule: "Every 1 hour",
-  },
-  "jira-corp": {
-    id: "jira-corp",
-    name: "Corporate Jira",
-    provider: "jira",
-    last_sync_at: "2023-10-27T09:30:00Z",
-    status: "failed",
-    schedule: "Every 4 hours",
-  },
-  "gl-legacy": {
-    id: "gl-legacy",
-    name: "Legacy GitLab",
-    provider: "gitlab",
-    last_sync_at: null,
-    status: "never",
-    schedule: "Daily",
-  },
-  "local-dev": {
-    id: "local-dev",
-    name: "Local Development",
-    provider: "local",
-    last_sync_at: "2023-10-27T10:15:00Z",
-    status: "running",
-  },
-};
-
-const mockJobs: Record<string, SyncJob[]> = {
-  "gh-main": [
-    {
-      id: "job-1",
-      config_id: "gh-main",
-      started_at: "2023-10-27T10:00:00Z",
-      completed_at: "2023-10-27T10:02:30Z",
-      status: "success",
-      items_synced: 150,
-      errors: [],
-    },
-    {
-      id: "job-2",
-      config_id: "gh-main",
-      started_at: "2023-10-27T09:00:00Z",
-      completed_at: "2023-10-27T09:02:15Z",
-      status: "success",
-      items_synced: 45,
-      errors: [],
-    },
-  ],
-  "jira-corp": [
-    {
-      id: "job-3",
-      config_id: "jira-corp",
-      started_at: "2023-10-27T09:30:00Z",
-      completed_at: "2023-10-27T09:30:45Z",
-      status: "failed",
-      items_synced: 10,
-      errors: ["API Rate Limit Exceeded", "Connection Timeout"],
-    },
-  ],
-  "local-dev": [
-    {
-      id: "job-4",
-      config_id: "local-dev",
-      started_at: "2023-10-27T10:15:00Z",
-      completed_at: null,
-      status: "running",
-      items_synced: 0,
-      errors: [],
-    },
-  ],
-};
 
 interface PageProps {
   params: Promise<{ configId: string }>;
@@ -90,27 +11,21 @@ interface PageProps {
 
 export default async function SyncConfigDetailPage({ params }: PageProps) {
   const { configId } = await params;
-  const config = mockConfigs[configId];
-  const jobs = mockJobs[configId] || [];
+  const result = await getSyncConfig(configId);
 
-  if (!config) {
-    return (
-      <div className="space-y-8">
-        <AdminHeader title="Sync Configuration Not Found" />
-        <p>The requested configuration does not exist.</p>
-        <Link href="/admin/sync" className="text-(--accent) hover:underline">
-          ← Back to Sync Status
-        </Link>
-      </div>
-    );
+  if (result.error || !result.data) {
+    notFound();
   }
+
+  const config = toSyncConfig(result.data);
+  const apiConfig = result.data;
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <AdminHeader
           title={config.name}
-          description={`Provider: ${config.provider} • Schedule: ${config.schedule || "Manual"}`}
+          description={`Provider: ${config.provider}`}
         />
         <Link
           href="/admin/sync"
@@ -143,17 +58,45 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
 
         <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
           <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
-            Total Jobs
+            Active
           </h3>
           <p className="mt-2 text-lg font-medium text-foreground">
-            {jobs.length}
+            {apiConfig.is_active ? "Yes" : "No"}
           </p>
         </div>
       </div>
 
+      {apiConfig.sync_targets.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
+            Sync Targets
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {apiConfig.sync_targets.map((target) => (
+              <span
+                key={target}
+                className="rounded-full bg-(--card-70) px-3 py-1 text-xs font-medium text-foreground"
+              >
+                {target}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {apiConfig.last_sync_error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
+          <span className="font-medium">Last sync error:</span> {apiConfig.last_sync_error}
+        </div>
+      )}
+
       <div className="space-y-4">
         <h2 className="text-lg font-medium text-foreground">Job History</h2>
-        <SyncJobHistory jobs={jobs} />
+        <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
+          <p className="text-sm text-(--ink-muted)">
+            Job history is not yet available. Sync job tracking is coming soon.
+          </p>
+        </div>
       </div>
     </div>
   );

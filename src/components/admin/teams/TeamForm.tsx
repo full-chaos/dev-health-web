@@ -6,9 +6,10 @@ type TeamFormProps = {
   initialData?: Team;
   onSubmit: (data: Team) => void;
   isEditing?: boolean;
+  isLoading?: boolean;
 };
 
-export function TeamForm({ initialData, onSubmit, isEditing = false }: TeamFormProps) {
+export function TeamForm({ initialData, onSubmit, isEditing = false, isLoading = false }: TeamFormProps) {
   const [formData, setFormData] = useState<Team>(
     initialData || {
       team_id: "",
@@ -147,9 +148,10 @@ export function TeamForm({ initialData, onSubmit, isEditing = false }: TeamFormP
         </Link>
         <button
           type="submit"
-          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
+          disabled={isLoading}
+          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
         >
-          {isEditing ? "Update Team" : "Create Team"}
+          {isLoading ? "Saving…" : isEditing ? "Update Team" : "Create Team"}
         </button>
       </div>
     </form>
