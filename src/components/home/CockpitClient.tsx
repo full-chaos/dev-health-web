@@ -112,9 +112,9 @@ export function CockpitClient({
                         Short shifts from the selected window.
                     </p>
                     <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
-                        {(home?.summary ?? []).map((sentence) => (
+                        {(home?.summary ?? []).map((sentence, idx) => (
                             <button
-                                key={sentence.id}
+                                key={sentence.id ?? idx}
                                 onClick={() => openPanel("Notable Shift", { apiUrl: sentence.evidence_link })}
                                 className="block w-full text-left rounded-2xl border border-transparent bg-(--card-60) px-4 py-3 transition hover:border-(--card-stroke)"
                             >
