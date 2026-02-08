@@ -115,16 +115,8 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
     );
 
     if (!res.ok) {
-      return {
-        data: {
-          tier: "community",
-          status: "active",
-          current_period_end: null,
-          cancel_at_period_end: false,
-          features: {},
-          limits: {},
-        },
-      };
+      const detail = await res.json().catch(() => ({ detail: res.statusText }));
+      return { error: detail.detail || `Failed to load billing details (${res.status})` };
     }
 
     const entitlements = await res.json();
@@ -140,8 +132,8 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
               ? "past_due"
               : "active"
             : "canceled",
-        current_period_end: null,
-        cancel_at_period_end: false,
+        current_period_end: entitlements.current_period_end ?? null,
+        cancel_at_period_end: entitlements.cancel_at_period_end ?? false,
         features: entitlements.features ?? {},
         limits: entitlements.limits ?? {},
       },
