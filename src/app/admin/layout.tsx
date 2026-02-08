@@ -14,14 +14,15 @@ export default async function AdminLayout({
   }
 
   const role = session.user.role;
-  if (role !== "admin" && role !== "owner") {
+  const isSuperuser = session.user.is_superuser === true;
+  if (!isSuperuser && role !== "admin" && role !== "owner") {
     redirect("/");
   }
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <div className="md:w-[220px] md:shrink-0 p-6">
-        <AdminSidebar />
+        <AdminSidebar isSuperuser={isSuperuser} />
       </div>
       <main className="flex-1 p-6 md:p-12 md:pt-6">
         {children}

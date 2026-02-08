@@ -9,6 +9,7 @@ declare module "next-auth" {
       id: string
       org_id?: string
       role?: string
+      is_superuser?: boolean
       permissions?: string[]
     } & DefaultSession["user"]
     access_token?: string
@@ -19,6 +20,7 @@ declare module "next-auth" {
     id: string
     org_id?: string
     role?: string
+    is_superuser?: boolean
     permissions?: string[]
     access_token?: string
     refresh_token?: string
@@ -27,11 +29,11 @@ declare module "next-auth" {
 }
 
 declare module "next-auth/jwt" {
-  /** Returned by the `jwt` callback and `getToken`, when using JWT sessions */
   interface JWT {
     id: string
     org_id?: string
     role?: string
+    is_superuser?: boolean
     permissions?: string[]
     access_token?: string
     refresh_token?: string

@@ -41,6 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               email: data.user.email,
               org_id: data.user.org_id,
               role: data.user.role,
+              is_superuser: data.user.is_superuser ?? false,
               permissions: data.user.permissions,
               access_token: data.access_token,
               refresh_token: data.refresh_token,
@@ -61,6 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id
         token.org_id = user.org_id
         token.role = user.role
+        token.is_superuser = user.is_superuser
         token.permissions = user.permissions
         token.access_token = user.access_token
         token.refresh_token = user.refresh_token
@@ -73,6 +75,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string
         session.user.org_id = token.org_id as string
         session.user.role = token.role as string
+        session.user.is_superuser = (token.is_superuser as boolean) ?? false
         session.user.permissions = token.permissions as string[]
         session.access_token = token.access_token as string
       }
