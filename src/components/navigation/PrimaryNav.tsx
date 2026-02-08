@@ -8,15 +8,19 @@ import type { MetricFilter } from "@/lib/filters/types";
 
 const STORAGE_KEY = "devhealth-nav-collapsed";
 
-// Stable empty object for SSR - useSyncExternalStore requires the server snapshot
-// to return the same reference on every call to avoid infinite loops
 const EMPTY_COLLAPSED: Record<string, boolean> = {};
+
+let _cachedRaw: string | null = null;
+let _cachedParsed: Record<string, boolean> = EMPTY_COLLAPSED;
 
 function getCollapsedState(): Record<string, boolean> {
   if (typeof window === "undefined") return EMPTY_COLLAPSED;
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : EMPTY_COLLAPSED;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === _cachedRaw) return _cachedParsed;
+    _cachedRaw = raw;
+    _cachedParsed = raw ? JSON.parse(raw) : EMPTY_COLLAPSED;
+    return _cachedParsed;
   } catch {
     return EMPTY_COLLAPSED;
   }
