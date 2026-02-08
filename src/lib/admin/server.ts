@@ -244,3 +244,35 @@ export async function updateCurrentOrg(
     return adminApi.orgs.update(orgId, data, session.access_token);
   });
 }
+
+export async function deleteCurrentOrg(): Promise<ActionResult<void>> {
+  return withErrorHandling(async () => {
+    const session = await auth();
+    if (!session?.access_token) {
+      throw new AdminApiError(401, "Unauthorized", "No access token");
+    }
+    const orgId = session.user?.org_id;
+    if (!orgId) {
+      throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+    }
+    return adminApi.orgs.delete(orgId, session.access_token);
+  });
+}
+
+export async function getSecuritySettings(): Promise<ActionResult<Setting[]>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    const response = await adminApi.settings.listByCategory("security", token);
+    return response.settings;
+  });
+}
+
+export async function updateSecuritySetting(
+  key: string,
+  value: string
+): Promise<ActionResult<Setting>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.settings.update("security", key, { value }, token);
+  });
+}
