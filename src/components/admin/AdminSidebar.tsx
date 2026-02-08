@@ -20,7 +20,11 @@ const navItems: NavItem[] = [
   { id: "identities", label: "Identities", href: "/admin/identities", description: "Mapping" },
 ];
 
-export function AdminSidebar() {
+type AdminSidebarProps = {
+  isSuperuser?: boolean;
+};
+
+export function AdminSidebar({ isSuperuser }: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -34,6 +38,11 @@ export function AdminSidebar() {
             <p className="mt-3 font-(--font-display) text-lg">
               Admin
             </p>
+            {isSuperuser && (
+              <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-purple-500">
+                Platform Admin
+              </span>
+            )}
             <p className="mt-2 text-xs text-(--ink-muted)">
               System configuration and management.
             </p>
