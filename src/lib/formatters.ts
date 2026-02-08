@@ -9,7 +9,10 @@ export const compactFormatter = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
-const timestampFormatter = new Intl.DateTimeFormat("en-US", {
+// Build timestamp strings manually via formatToParts to avoid hydration
+// mismatches — Node and browsers disagree on literal separators
+// (e.g. "Feb 8, 12:19 PM" vs "Feb 8 at 12:19 PM").
+const _tsParts = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   hour: "numeric",
@@ -84,5 +87,7 @@ export const formatTimestamp = (value?: string | null) => {
   if (Number.isNaN(date.getTime())) {
     return "Unavailable";
   }
-  return timestampFormatter.format(date);
+  const parts = _tsParts.formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("month")} ${get("day")}, ${get("hour")}:${get("minute")} ${get("dayPeriod")}`;
 };
