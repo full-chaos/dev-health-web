@@ -6,7 +6,8 @@ const authSecret = process.env.AUTH_SECRET
   || process.env.NEXTAUTH_SECRET 
   || "dev-secret-change-in-production"
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth = NextAuth({
+  trustHost: true,
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -88,3 +89,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   secret: authSecret,
 })
+
+export const { handlers, signIn, signOut } = nextAuth
+
+import type { Session } from "next-auth"
+
+export async function auth(): Promise<Session | null> {
+  try {
+    return await nextAuth.auth()
+  } catch {
+    return null
+  }
+}
