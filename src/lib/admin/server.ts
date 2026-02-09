@@ -12,6 +12,8 @@ import type {
   TestConnectionResponse,
   SyncConfig,
   SyncConfigCreate,
+  SyncConfigUpdate,
+  SyncJob,
   IdentityMapping,
   IdentityMappingCreate,
   IdentityMappingUpdate,
@@ -152,6 +154,52 @@ export async function getSyncConfig(id: string): Promise<ActionResult<SyncConfig
     }
     return config;
   });
+}
+
+export async function updateSyncConfig(
+  id: string,
+  data: SyncConfigUpdate
+): Promise<ActionResult<SyncConfig>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    const result = await adminApi.syncConfigs.update(id, data, token);
+    revalidatePath("/admin/sync");
+    revalidatePath(`/admin/sync/${id}`);
+    return result;
+  });
+}
+
+export async function deleteSyncConfig(id: string): Promise<ActionResult<void>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    const result = await adminApi.syncConfigs.delete(id, token);
+    revalidatePath("/admin/sync");
+    return result;
+  });
+}
+
+export async function triggerSync(id: string): Promise<ActionResult<void>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    const result = await adminApi.syncConfigs.trigger(id, token);
+    revalidatePath("/admin/sync");
+    revalidatePath(`/admin/sync/${id}`);
+    return result;
+  });
+}
+
+export async function getSyncJobs(id: string): Promise<ActionResult<SyncJob[]>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.syncConfigs.jobs(id, token);
+  });
+}
+
+export async function toggleSyncActive(
+  id: string,
+  isActive: boolean
+): Promise<ActionResult<SyncConfig>> {
+  return updateSyncConfig(id, { is_active: isActive });
 }
 
 export async function listIdentities(): Promise<ActionResult<IdentityMapping[]>> {

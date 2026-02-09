@@ -90,6 +90,17 @@ export interface SyncConfig {
   updated_at: string;
 }
 
+export interface SyncJob {
+  id: string;
+  config_id: string;
+  status: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED";
+  started_at: string;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  items_synced: number;
+  error?: string;
+}
+
 export interface SyncConfigCreate {
   name: string;
   provider: string;

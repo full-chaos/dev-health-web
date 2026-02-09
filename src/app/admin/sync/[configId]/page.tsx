@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
-import { getSyncConfig } from "@/lib/admin/server";
-import { toSyncConfig } from "@/lib/sync-types";
-import Link from "next/link";
+import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
+import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
+import { getSyncConfig, getSyncJobs, triggerSync, getCurrentOrg } from "@/lib/admin/server";
 
 interface PageProps {
   params: Promise<{ configId: string }>;
@@ -11,14 +12,30 @@ interface PageProps {
 
 export default async function SyncConfigDetailPage({ params }: PageProps) {
   const { configId } = await params;
-  const result = await getSyncConfig(configId);
+  const [configResult, jobsResult, orgResult] = await Promise.all([
+    getSyncConfig(configId),
+    getSyncJobs(configId),
+    getCurrentOrg(),
+  ]);
 
-  if (result.error || !result.data) {
+  if (configResult.error || !configResult.data) {
     notFound();
   }
 
-  const config = toSyncConfig(result.data);
-  const apiConfig = result.data;
+  const config = configResult.data;
+  const jobs = jobsResult.data || [];
+  const orgId = orgResult.data?.id || "";
+
+  // Helper to trigger sync from server component (via form action)
+  async function triggerSyncAction() {
+    "use server";
+    await triggerSync(configId);
+  }
+
+  const getStatus = () => {
+    if (!config.last_sync_at) return "never";
+    return config.last_sync_success ? "success" : "failed";
+  };
 
   return (
     <div className="space-y-8">
@@ -26,14 +43,27 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
         <AdminHeader
           title={config.name}
           description={`Provider: ${config.provider}`}
-        />
-        <Link
-          href="/admin/sync"
-          className="text-sm font-medium text-(--ink-muted) hover:text-foreground"
         >
-          ← Back to List
-        </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/admin/sync/${config.id}/edit`}
+              className="rounded-md bg-(--card-70) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-60) hover:text-foreground"
+            >
+              Edit Config
+            </Link>
+            <form action={triggerSyncAction}>
+              <button
+                type="submit"
+                className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent-hover)"
+              >
+                Sync Now
+              </button>
+            </form>
+          </div>
+        </AdminHeader>
       </div>
+
+      <SyncProgressBar configId={config.id} provider={config.provider} orgId={orgId} />
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
@@ -41,7 +71,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
             Current Status
           </h3>
           <div className="mt-2">
-            <SyncStatusBadge status={config.status} className="text-sm px-3 py-1" />
+            <SyncStatusBadge status={getStatus()} className="text-sm px-3 py-1" />
           </div>
         </div>
 
@@ -61,18 +91,18 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
             Active
           </h3>
           <p className="mt-2 text-lg font-medium text-foreground">
-            {apiConfig.is_active ? "Yes" : "No"}
+            {config.is_active ? "Yes" : "No"}
           </p>
         </div>
       </div>
 
-      {apiConfig.sync_targets.length > 0 && (
+      {config.sync_targets.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
             Sync Targets
           </h3>
           <div className="flex flex-wrap gap-2">
-            {apiConfig.sync_targets.map((target) => (
+            {config.sync_targets.map((target) => (
               <span
                 key={target}
                 className="rounded-full bg-(--card-70) px-3 py-1 text-xs font-medium text-foreground"
@@ -84,19 +114,15 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      {apiConfig.last_sync_error && (
+      {config.last_sync_error && (
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
-          <span className="font-medium">Last sync error:</span> {apiConfig.last_sync_error}
+          <span className="font-medium">Last sync error:</span> {config.last_sync_error}
         </div>
       )}
 
       <div className="space-y-4">
         <h2 className="text-lg font-medium text-foreground">Job History</h2>
-        <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
-          <p className="text-sm text-(--ink-muted)">
-            Job history is not yet available. Sync job tracking is coming soon.
-          </p>
-        </div>
+        <SyncJobHistory jobs={jobs} />
       </div>
     </div>
   );
