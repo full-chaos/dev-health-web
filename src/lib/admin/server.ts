@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { adminApi, AdminApiError } from "./api";
+import { revalidatePath } from "next/cache";
 import type {
   User,
   UserCreate,
@@ -93,7 +94,9 @@ export async function createCredential(
 ): Promise<ActionResult<IntegrationCredential>> {
   return withErrorHandling(async () => {
     const token = await getToken();
-    return adminApi.credentials.create(data, token);
+    const result = await adminApi.credentials.create(data, token);
+    revalidatePath("/admin/integrations", "page");
+    return result;
   });
 }
 
@@ -104,7 +107,9 @@ export async function testConnection(
 ): Promise<ActionResult<TestConnectionResponse>> {
   return withErrorHandling(async () => {
     const token = await getToken();
-    return adminApi.credentials.test(provider, name, credentials, token);
+    const result = await adminApi.credentials.test(provider, name, credentials, token);
+    revalidatePath("/admin/integrations", "page");
+    return result;
   });
 }
 
@@ -114,7 +119,9 @@ export async function deleteCredential(
 ): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
     const token = await getToken();
-    return adminApi.credentials.delete(provider, name, token);
+    const result = await adminApi.credentials.delete(provider, name, token);
+    revalidatePath("/admin/integrations", "page");
+    return result;
   });
 }
 

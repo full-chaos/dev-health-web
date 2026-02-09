@@ -62,7 +62,7 @@ export default async function IntegrationsPage() {
     if (!cred) return "not_configured";
     if (cred.last_test_success === true) return "connected";
     if (cred.last_test_success === false) return "error";
-    return "not_configured";
+    return "connected";
   };
 
   const providers: IntegrationProvider[] = Object.entries(PROVIDER_META).map(
