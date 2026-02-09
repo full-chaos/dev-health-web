@@ -140,10 +140,10 @@ export const adminApi = {
     delete: (provider: string, name: string, token?: string) =>
       request<void>(`/credentials/${provider}/${name}`, { method: "DELETE" }, token),
 
-    test: (provider: string, name: string = "default", token?: string) =>
+    test: (provider: string, name: string = "default", credentials?: Record<string, unknown>, token?: string) =>
       request<TestConnectionResponse>(
         "/credentials/test",
-        { method: "POST", body: JSON.stringify({ provider, name }) },
+        { method: "POST", body: JSON.stringify({ provider, name, credentials }) },
         token
       ),
   },
