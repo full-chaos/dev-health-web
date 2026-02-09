@@ -5,6 +5,7 @@ import "./globals.css";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { GraphQLProvider } from "@/lib/graphql/provider";
+import { Toaster } from "sonner";
 
 const bodyFont = Noto_Sans({
   variable: "--font-body",
@@ -65,16 +66,17 @@ export default function RootLayout({
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
         <SessionProvider>
-          <GraphQLProvider>
-            <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
-            <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-            <div className="fixed right-6 top-6 z-50">
-              <UserMenu />
-            </div>
-            {children}
-          </GraphQLProvider>
-        </SessionProvider>
-      </body>
+           <GraphQLProvider>
+             <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
+             <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+             <div className="fixed right-6 top-6 z-50">
+               <UserMenu />
+             </div>
+             {children}
+             <Toaster richColors position="top-right" theme="dark" />
+           </GraphQLProvider>
+         </SessionProvider>
+       </body>
     </html>
   );
 }

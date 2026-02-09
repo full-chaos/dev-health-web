@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { SettingsSection } from "./SettingsSection";
 import {
-  createCheckoutSession,
-  createPortalSession,
-  getSubscriptionDetails,
-  type SubscriptionDetails,
-} from "@/lib/billing/actions";
+   createCheckoutSession,
+   createPortalSession,
+   getSubscriptionDetails,
+   type SubscriptionDetails,
+ } from "@/lib/billing/actions";
 
 const TIER_LABELS: Record<string, string> = {
   community: "Community",
@@ -22,24 +23,21 @@ type BillingSettingsProps = {
 };
 
 export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
-  const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [subscriptionResult, setSubscriptionResult] = useState<{
-    data?: SubscriptionDetails;
-    error?: string;
-  } | null>(null);
-  const [selectedTier, setSelectedTier] = useState<"team" | "enterprise" | null>(null);
-  const [dismissed, setDismissed] = useState<"success" | "cancelled" | null>(null);
+   const searchParams = useSearchParams();
+   const [isPending, startTransition] = useTransition();
+   const [subscriptionResult, setSubscriptionResult] = useState<{
+     data?: SubscriptionDetails;
+     error?: string;
+   } | null>(null);
+   const [selectedTier, setSelectedTier] = useState<"team" | "enterprise" | null>(null);
+   const [dismissed, setDismissed] = useState<"success" | "cancelled" | null>(null);
 
   const billingParam = searchParams.get("billing");
   const showSuccess = useMemo(() => billingParam === "success" && dismissed !== "success", [billingParam, dismissed]);
   const showCancelled = useMemo(() => billingParam === "cancelled" && dismissed !== "cancelled", [billingParam, dismissed]);
 
-  const subscription = subscriptionResult?.data;
-  const subscriptionError = subscriptionResult?.error ?? null;
-  const errorMessage = error ?? subscriptionError;
-  const currentTier = subscription?.tier ?? tier;
+   const subscription = subscriptionResult?.data;
+   const currentTier = subscription?.tier ?? tier;
   const tierLabel = TIER_LABELS[currentTier] ?? currentTier;
   const canUpgrade = currentTier !== "enterprise";
   const isPaidTier = currentTier === "team" || currentTier === "enterprise";
@@ -112,50 +110,50 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
 
 
-  useEffect(() => {
-    let isActive = true;
+   useEffect(() => {
+     let isActive = true;
 
-    const loadSubscription = async () => {
-      const result = await getSubscriptionDetails();
-      if (!isActive) return;
-      startTransition(() => {
-        setSubscriptionResult(result);
-      });
-    };
+     const loadSubscription = async () => {
+       const result = await getSubscriptionDetails();
+       if (!isActive) return;
+       startTransition(() => {
+         setSubscriptionResult(result);
+         if (result.error) {
+           toast.error(result.error);
+         }
+       });
+     };
 
-    loadSubscription();
+     loadSubscription();
 
-    return () => {
-      isActive = false;
-    };
-  }, []);
+     return () => {
+       isActive = false;
+     };
+   }, []);
 
-  const handleUpgrade = () => {
-    if (!selectedTier) return;
-    setError(null);
+   const handleUpgrade = () => {
+     if (!selectedTier) return;
 
-    startTransition(async () => {
-      const result = await createCheckoutSession(selectedTier);
-      if (result.error) {
-        setError(result.error);
-      } else if (result.data?.checkout_url) {
-        window.location.href = result.data.checkout_url;
-      }
-    });
-  };
+     startTransition(async () => {
+       const result = await createCheckoutSession(selectedTier);
+       if (result.error) {
+         toast.error(result.error);
+       } else if (result.data?.checkout_url) {
+         window.location.href = result.data.checkout_url;
+       }
+     });
+   };
 
-  const handleManageBilling = () => {
-    setError(null);
-
-    startTransition(async () => {
-      const result = await createPortalSession();
-      if (result.error) {
-        setError(result.error);
-      } else if (result.data?.portal_url) {
-        window.location.href = result.data.portal_url;
-      }
-    });
-  };
+   const handleManageBilling = () => {
+     startTransition(async () => {
+       const result = await createPortalSession();
+       if (result.error) {
+         toast.error(result.error);
+       } else if (result.data?.portal_url) {
+         window.location.href = result.data.portal_url;
+       }
+     });
+   };
 
   return (
     <SettingsSection
@@ -175,26 +173,20 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
         </div>
       )}
 
-      {showCancelled && (
-        <div className="mb-4 flex items-center justify-between rounded-md border border-amber-500/20 bg-amber-500/10 p-4 text-amber-700">
-          <p className="text-sm font-medium">Checkout was cancelled. No changes were made.</p>
-          <button
-            type="button"
-            onClick={() => setDismissed("cancelled")}
-            className="ml-4 text-sm font-medium hover:underline"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+       {showCancelled && (
+         <div className="mb-4 flex items-center justify-between rounded-md border border-amber-500/20 bg-amber-500/10 p-4 text-amber-700">
+           <p className="text-sm font-medium">Checkout was cancelled. No changes were made.</p>
+           <button
+             type="button"
+             onClick={() => setDismissed("cancelled")}
+             className="ml-4 text-sm font-medium hover:underline"
+           >
+             Dismiss
+           </button>
+         </div>
+       )}
 
-      {errorMessage && (
-        <div className="mb-4 rounded-md border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-700">
-          {errorMessage}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between rounded-md border border-(--card-stroke) bg-(--background) p-4">
+       <div className="flex items-center justify-between rounded-md border border-(--card-stroke) bg-(--background) p-4">
         <div>
           <p className="text-sm font-medium text-(--foreground)">Current Plan</p>
           <div className="mt-1 flex flex-wrap items-center gap-3">

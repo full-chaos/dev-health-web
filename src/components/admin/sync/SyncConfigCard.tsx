@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toast } from "sonner";
 import { SyncConfig } from "@/lib/sync-types";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 
@@ -9,12 +10,10 @@ interface SyncConfigCardProps {
 }
 
 export function SyncConfigCard({ config }: SyncConfigCardProps) {
-  const handleSync = (e: React.MouseEvent) => {
-    e.preventDefault();
-    // Mock sync trigger
-    console.log(`Triggering sync for ${config.id}`);
-    alert(`Sync triggered for ${config.name}`);
-  };
+   const handleSync = (e: React.MouseEvent) => {
+     e.preventDefault();
+     toast.success(`Sync triggered for ${config.name}`);
+   };
 
   return (
     <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6 transition-all hover:border-(--card-stroke-hover)">
@@ -36,12 +35,13 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
         <div className="text-xs text-(--ink-muted)">
           Last sync: {config.last_sync_at ? new Date(config.last_sync_at).toLocaleString() : "Never"}
         </div>
-        <button
-          onClick={handleSync}
-          className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:bg-(--accent-hover) focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2"
-        >
-          Sync Now
-        </button>
+         <button
+           type="button"
+           onClick={handleSync}
+           className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:bg-(--accent-hover) focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2"
+         >
+           Sync Now
+         </button>
       </div>
     </div>
   );

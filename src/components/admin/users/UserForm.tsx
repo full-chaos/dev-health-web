@@ -6,22 +6,20 @@ import type { UserCreate, User } from "@/lib/admin/types";
 export type UserFormData = UserCreate & { is_active?: boolean };
 
 type UserFormProps = {
-  initialData?: User;
-  onSubmit: (data: UserFormData) => Promise<void>;
-  onCancel: () => void;
-  isEdit?: boolean;
-  isLoading?: boolean;
-  error?: string | null;
-};
+   initialData?: User;
+   onSubmit: (data: UserFormData) => Promise<void>;
+   onCancel: () => void;
+   isEdit?: boolean;
+   isLoading?: boolean;
+ };
 
 export function UserForm({
-  initialData,
-  onSubmit,
-  onCancel,
-  isEdit = false,
-  isLoading = false,
-  error = null,
-}: UserFormProps) {
+   initialData,
+   onSubmit,
+   onCancel,
+   isEdit = false,
+   isLoading = false,
+ }: UserFormProps) {
   const [formData, setFormData] = useState<UserFormData>({
     email: initialData?.email || "",
     full_name: initialData?.full_name || "",
@@ -44,15 +42,9 @@ export function UserForm({
   const inputClass =
     "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)";
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
-      {error && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
-          {error}
-        </div>
-      )}
-
-      <div className="grid gap-6 md:grid-cols-2">
+   return (
+     <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium text-(--ink-muted)">
             Email *

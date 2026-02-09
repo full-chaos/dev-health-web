@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { SettingsSection } from "./SettingsSection";
 import { deleteCurrentOrg } from "@/lib/admin/server";
 
@@ -10,39 +11,32 @@ type DangerZoneProps = {
 };
 
 export function DangerZone({ orgName }: DangerZoneProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [error, setError] = useState<string | null>(null);
+   const router = useRouter();
+   const [isPending, startTransition] = useTransition();
+   const [showConfirm, setShowConfirm] = useState(false);
+   const [confirmText, setConfirmText] = useState("");
 
-  const handleDelete = () => {
-    if (confirmText !== orgName) return;
-    setError(null);
+   const handleDelete = () => {
+     if (confirmText !== orgName) return;
 
-    startTransition(async () => {
-      const result = await deleteCurrentOrg();
-      if (result.error) {
-        setError(result.error);
-      } else {
-        // Org is gone — redirect to sign-out / landing
-        router.push("/api/auth/signout?callbackUrl=/");
-      }
-    });
-  };
+     startTransition(async () => {
+       const result = await deleteCurrentOrg();
+       if (result.error) {
+         toast.error(result.error);
+       } else {
+         // Org is gone — redirect to sign-out / landing
+         router.push("/api/auth/signout?callbackUrl=/");
+       }
+     });
+   };
 
   return (
-    <SettingsSection
-      title="Danger Zone"
-      description="Irreversible actions for your organization."
-      danger
-    >
-      {error && (
-        <div className="mb-4 rounded-md border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-      {!showConfirm ? (
+     <SettingsSection
+       title="Danger Zone"
+       description="Irreversible actions for your organization."
+       danger
+     >
+       {!showConfirm ? (
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-(--foreground)">Delete Organization</p>
@@ -74,11 +68,10 @@ export function DangerZone({ orgName }: DangerZoneProps) {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => {
-                setShowConfirm(false);
-                setConfirmText("");
-                setError(null);
-              }}
+               onClick={() => {
+                 setShowConfirm(false);
+                 setConfirmText("");
+               }}
               disabled={isPending}
               className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--foreground) hover:bg-(--card-70) disabled:opacity-50"
             >

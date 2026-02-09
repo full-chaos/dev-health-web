@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { SettingsSection } from "./SettingsSection";
 import { updateCurrentOrg } from "@/lib/admin/server";
 import type { Organization } from "@/lib/admin/types";
@@ -10,46 +11,33 @@ type GeneralSettingsProps = {
 };
 
 export function GeneralSettings({ org }: GeneralSettingsProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setMessage(null);
+   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
+     setIsLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    const result = await updateCurrentOrg({
-      name: formData.get("name") as string,
-      description: formData.get("description") as string || undefined,
-    });
+     const formData = new FormData(e.currentTarget);
+     const result = await updateCurrentOrg({
+       name: formData.get("name") as string,
+       description: formData.get("description") as string || undefined,
+     });
 
-    setIsLoading(false);
+     setIsLoading(false);
 
-    if (result.error) {
-      setMessage({ type: "error", text: result.error });
-    } else {
-      setMessage({ type: "success", text: "Settings saved successfully" });
-    }
-  };
+     if (result.error) {
+       toast.error(result.error);
+     } else {
+       toast.success("Settings saved successfully");
+     }
+   };
 
-  return (
-    <SettingsSection
-      title="General Settings"
-      description="Manage your organization's basic information."
-    >
-      {message && (
-        <div
-          className={`mb-4 rounded-md p-3 text-sm ${
-            message.type === "success"
-              ? "bg-green-500/10 text-green-600"
-              : "bg-red-500/10 text-red-500"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-4">
+   return (
+     <SettingsSection
+       title="General Settings"
+       description="Manage your organization's basic information."
+     >
+       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-(--foreground)">
             Organization Name

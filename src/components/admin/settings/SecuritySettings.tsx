@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { SettingsSection } from "./SettingsSection";
 import { getSecuritySettings, updateSecuritySetting } from "@/lib/admin/server";
 import type { Setting } from "@/lib/admin/types";
@@ -20,9 +21,8 @@ function findSetting(settings: Setting[], key: string): string | null {
 }
 
 export function SecuritySettings() {
-  const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [loaded, setLoaded] = useState(false);
+   const [isPending, startTransition] = useTransition();
+   const [loaded, setLoaded] = useState(false);
 
   const [sessionTimeout, setSessionTimeout] = useState(DEFAULT_SESSION_TIMEOUT);
   const [enforce2fa, setEnforce2fa] = useState(false);
@@ -47,46 +47,34 @@ export function SecuritySettings() {
     return () => { active = false; };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setMessage(null);
+   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault();
 
-    startTransition(async () => {
-      const results = await Promise.allSettled([
-        updateSecuritySetting("session_timeout", sessionTimeout),
-        updateSecuritySetting("enforce_2fa", String(enforce2fa)),
-      ]);
+     startTransition(async () => {
+       const results = await Promise.allSettled([
+         updateSecuritySetting("session_timeout", sessionTimeout),
+         updateSecuritySetting("enforce_2fa", String(enforce2fa)),
+       ]);
 
-      const errors = results
-        .map((r) => (r.status === "fulfilled" ? r.value : { error: "Request failed" }))
-        .filter((r) => r.error)
-        .map((r) => r.error);
+       const errors = results
+         .map((r) => (r.status === "fulfilled" ? r.value : { error: "Request failed" }))
+         .filter((r) => r.error)
+         .map((r) => r.error);
 
-      if (errors.length > 0) {
-        setMessage({ type: "error", text: errors.join("; ") });
-      } else {
-        setMessage({ type: "success", text: "Security settings saved successfully" });
-      }
-    });
-  };
+       if (errors.length > 0) {
+         toast.error(errors.join("; "));
+       } else {
+         toast.success("Security settings saved successfully");
+       }
+     });
+   };
 
-  return (
-    <SettingsSection
-      title="Security"
-      description="Configure security settings for your organization."
-    >
-      {message && (
-        <div
-          className={`mb-4 rounded-md p-3 text-sm ${
-            message.type === "success"
-              ? "bg-green-500/10 text-green-600"
-              : "bg-red-500/10 text-red-500"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-4">
+   return (
+     <SettingsSection
+       title="Security"
+       description="Configure security settings for your organization."
+     >
+       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="sessionTimeout" className="block text-sm font-medium text-(--foreground)">
             Session Timeout
