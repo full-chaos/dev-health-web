@@ -99,11 +99,12 @@ export async function createCredential(
 
 export async function testConnection(
   provider: string,
-  name = "default"
+  name = "default",
+  credentials?: Record<string, unknown>
 ): Promise<ActionResult<TestConnectionResponse>> {
   return withErrorHandling(async () => {
     const token = await getToken();
-    return adminApi.credentials.test(provider, name, token);
+    return adminApi.credentials.test(provider, name, credentials, token);
   });
 }
 

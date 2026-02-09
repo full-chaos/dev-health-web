@@ -64,6 +64,7 @@ export interface IntegrationCredentialUpdate {
 export interface TestConnectionRequest {
   provider: string;
   name?: string;
+  credentials?: Record<string, unknown>;
 }
 
 export interface TestConnectionResponse {

@@ -47,8 +47,15 @@ export function IntegrationFormWrapper({
     }
   };
 
-  const handleTestConnection = async (): Promise<boolean> => {
-    const result = await testConnection(provider, "default");
+  const handleTestConnection = async (formData: Record<string, FormDataEntryValue>): Promise<boolean> => {
+    const credentials: Record<string, unknown> = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      if (!key.startsWith("config_")) {
+        credentials[key] = value;
+      }
+    });
+
+    const result = await testConnection(provider, "default", credentials);
 
     if (result.error) {
       throw new Error(result.error);
