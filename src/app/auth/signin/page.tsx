@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation"
 import Link from "next/link"
+import { auth } from "@/lib/auth"
 import { LoginForm } from "@/components/auth/LoginForm"
 
 type SearchParams = Promise<{ registered?: string }>
@@ -8,6 +10,11 @@ export default async function SignInPage({
 }: {
   searchParams: SearchParams
 }) {
+  const session = await auth()
+  if (session?.user) {
+    redirect("/")
+  }
+
   const params = await searchParams
   const justRegistered = params.registered === "true"
 
