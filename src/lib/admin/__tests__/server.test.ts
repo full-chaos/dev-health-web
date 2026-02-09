@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Session } from "next-auth";
 
 // Mock dependencies BEFORE importing the module under test
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
@@ -17,8 +18,9 @@ import {
 function mockSession() {
   vi.mocked(auth).mockResolvedValue({
     access_token: "test-token",
-    user: { org_id: "org-1" },
-  } as any);
+    user: { id: "u-1", org_id: "org-1" },
+    expires: "",
+  } satisfies Session);
 }
 
 describe("admin/server credential actions", () => {
@@ -55,7 +57,7 @@ describe("admin/server credential actions", () => {
     });
 
     it("returns error when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue(null as any);
+      vi.mocked(auth).mockResolvedValue(null);
       const result = await listCredentials();
       expect(result.error).toBeDefined();
     });
