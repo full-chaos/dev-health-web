@@ -16,7 +16,7 @@ const nextConfig = {
     : {
         pageExtensions: ["tsx", "ts", "jsx", "js"],
       }),
-  // API proxying is handled by middleware.ts at runtime (not baked at build time)
+  // API proxying is handled by proxy.ts at runtime (not baked at build time)
 };
 
 module.exports = nextConfig;
