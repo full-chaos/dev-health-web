@@ -3,48 +3,41 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export function LoginForm() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+   const router = useRouter()
+   const [email, setEmail] = useState("")
+   const [password, setPassword] = useState("")
+   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault()
+     setLoading(true)
 
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      })
+     try {
+       const result = await signIn("credentials", {
+         email,
+         password,
+         redirect: false,
+       })
 
-      if (result?.error) {
-        setError("Invalid email or password")
-      } else {
-        router.push("/")
-        router.refresh()
-      }
-    } catch {
-      setError("An error occurred. Please try again.")
-    } finally {
-      setLoading(false)
-    }
-  }
+       if (result?.error) {
+         toast.error("Invalid email or password")
+       } else {
+         router.push("/")
+         router.refresh()
+       }
+     } catch {
+       toast.error("An error occurred. Please try again.")
+     } finally {
+       setLoading(false)
+     }
+   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
-      {error && (
-        <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md border border-red-200">
-          {error}
-        </div>
-      )}
-      
-      <div className="space-y-2">
+   return (
+     <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
+       <div className="space-y-2">
         <label htmlFor="email" className="block text-sm font-medium text-[var(--foreground)]">
           Email
         </label>

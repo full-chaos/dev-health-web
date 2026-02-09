@@ -3,69 +3,62 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { getBackendUrl } from "@/lib/origin"
 
 export function SignupForm() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [fullName, setFullName] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+   const router = useRouter()
+   const [email, setEmail] = useState("")
+   const [password, setPassword] = useState("")
+   const [confirmPassword, setConfirmPassword] = useState("")
+   const [fullName, setFullName] = useState("")
+   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault()
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
+     if (password !== confirmPassword) {
+       toast.error("Passwords do not match")
+       return
+     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters")
-      return
-    }
+     if (password.length < 8) {
+       toast.error("Password must be at least 8 characters")
+       return
+     }
 
-    setLoading(true)
+     setLoading(true)
 
-    try {
-      const backendUrl = getBackendUrl()
-      const res = await fetch(`${backendUrl}/api/v1/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          full_name: fullName || undefined,
-        }),
-      })
+     try {
+       const backendUrl = getBackendUrl()
+       const res = await fetch(`${backendUrl}/api/v1/auth/register`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           email,
+           password,
+           full_name: fullName || undefined,
+         }),
+       })
 
-      const data = await res.json()
+       const data = await res.json()
 
-      if (!res.ok) {
-        setError(data.detail || "Registration failed")
-        return
-      }
+       if (!res.ok) {
+         toast.error(data.detail || "Registration failed")
+         return
+       }
 
-      router.push("/auth/signin?registered=true")
-    } catch {
-      setError("An error occurred. Please try again.")
-    } finally {
-      setLoading(false)
-    }
-  }
+       router.push("/auth/signin?registered=true")
+     } catch {
+       toast.error("An error occurred. Please try again.")
+     } finally {
+       setLoading(false)
+     }
+   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
-      {error && (
-        <div className="p-3 text-sm text-red-400 bg-red-950/50 rounded-md border border-red-800">
-          {error}
-        </div>
-      )}
-
-      <div className="space-y-2">
+   return (
+     <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
+       <div className="space-y-2">
         <label htmlFor="fullName" className="block text-sm font-medium text-[var(--foreground)]">
           Full Name
         </label>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { ConnectionStatus, ConnectionStatusType } from "./ConnectionStatus";
 
 type FormDataRecord = Record<string, FormDataEntryValue>;
@@ -19,77 +20,62 @@ export function IntegrationForm({
   onTestConnection,
   children,
 }: IntegrationFormProps) {
-  const [status, setStatus] = useState<ConnectionStatusType>(initialStatus);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+   const [status, setStatus] = useState<ConnectionStatusType>(initialStatus);
+   const [isSaving, setIsSaving] = useState(false);
+   const [isTesting, setIsTesting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setMessage(null);
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setIsSaving(true);
 
-    const formData = new FormData(e.target as HTMLFormElement);
-    const data = Object.fromEntries(formData.entries());
+     const formData = new FormData(e.target as HTMLFormElement);
+     const data = Object.fromEntries(formData.entries());
 
-    try {
-      await onSave(data);
-      setMessage({ type: "success", text: "Settings saved successfully." });
-    } catch {
-      setMessage({ type: "error", text: "Failed to save settings." });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+     try {
+       await onSave(data);
+       toast.success("Settings saved successfully.");
+     } catch {
+       toast.error("Failed to save settings.");
+     } finally {
+       setIsSaving(false);
+     }
+   };
 
-  const handleTestConnection = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsTesting(true);
-    setStatus("connecting");
-    setMessage(null);
+   const handleTestConnection = async (e: React.MouseEvent) => {
+     e.preventDefault();
+     setIsTesting(true);
+     setStatus("connecting");
 
-    // In a real app, we would grab the form data here too
-    // For now, we assume the parent handles data gathering or we pass current form state
-    const form = (e.target as HTMLElement).closest("form");
-    const formData = new FormData(form!);
-    const data = Object.fromEntries(formData.entries());
+     // In a real app, we would grab the form data here too
+     // For now, we assume the parent handles data gathering or we pass current form state
+     const form = (e.target as HTMLElement).closest("form");
+     const formData = new FormData(form!);
+     const data = Object.fromEntries(formData.entries());
 
-    try {
-      const success = await onTestConnection(data);
-      setStatus(success ? "connected" : "error");
-      if (success) {
-        setMessage({ type: "success", text: "Connection successful!" });
-      } else {
-        setMessage({ type: "error", text: "Connection failed. Please check your credentials." });
-      }
-    } catch {
-      setStatus("error");
-      setMessage({ type: "error", text: "An error occurred while testing the connection." });
-    } finally {
-      setIsTesting(false);
-    }
-  };
+     try {
+       const success = await onTestConnection(data);
+       setStatus(success ? "connected" : "error");
+       if (success) {
+         toast.success("Connection successful!");
+       } else {
+         toast.error("Connection failed. Please check your credentials.");
+       }
+     } catch {
+       setStatus("error");
+       toast.error("An error occurred while testing the connection.");
+     } finally {
+       setIsTesting(false);
+     }
+   };
 
   return (
     <div className="max-w-2xl rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-(--ink-base)">Configuration</h2>
-        <ConnectionStatus status={status} />
-      </div>
+       <div className="mb-6 flex items-center justify-between">
+         <h2 className="text-xl font-semibold text-(--ink-base)">Configuration</h2>
+         <ConnectionStatus status={status} />
+       </div>
 
-      {message && (
-        <div
-          className={`mb-6 rounded-md p-4 text-sm ${
-            message.type === "success"
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
+       <form onSubmit={handleSubmit} className="space-y-6">
         {children}
 
         <div className="flex items-center justify-end gap-4 pt-4 border-t border-(--border-subtle)">
