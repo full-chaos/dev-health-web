@@ -16,7 +16,7 @@ function getStatus(credential: IntegrationCredential | undefined): ConnectionSta
   if (!credential) return "not_configured";
   if (credential.last_test_success === true) return "connected";
   if (credential.last_test_success === false) return "error";
-  return "not_configured";
+  return "connected";
 }
 
 export default async function IntegrationPage({
