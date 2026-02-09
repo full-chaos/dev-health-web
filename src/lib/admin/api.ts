@@ -11,6 +11,7 @@ import type {
   SyncConfig,
   SyncConfigCreate,
   SyncConfigUpdate,
+  SyncJob,
   IdentityMapping,
   IdentityMappingCreate,
   IdentityMappingUpdate,
@@ -152,6 +153,9 @@ export const adminApi = {
     list: (token?: string) =>
       request<SyncConfig[]>("/sync-configs", {}, token),
 
+    get: (id: string, token?: string) =>
+      request<SyncConfig>(`/sync-configs/${id}`, {}, token),
+
     create: (data: SyncConfigCreate, token?: string) =>
       request<SyncConfig>(
         "/sync-configs",
@@ -168,6 +172,12 @@ export const adminApi = {
 
     delete: (id: string, token?: string) =>
       request<void>(`/sync-configs/${id}`, { method: "DELETE" }, token),
+
+    trigger: (id: string, token?: string) =>
+      request<void>(`/sync-configs/${id}/trigger`, { method: "POST" }, token),
+
+    jobs: (id: string, token?: string) =>
+      request<SyncJob[]>(`/sync-configs/${id}/jobs`, {}, token),
   },
 
   identities: {

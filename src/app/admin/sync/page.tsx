@@ -1,18 +1,25 @@
+import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncConfigCard } from "@/components/admin/sync/SyncConfigCard";
 import { listSyncConfigs } from "@/lib/admin/server";
-import { toSyncConfig } from "@/lib/sync-types";
 
 export default async function SyncStatusPage() {
   const result = await listSyncConfigs();
-  const configs = (result.data ?? []).map(toSyncConfig);
+  const configs = result.data ?? [];
 
   return (
     <div className="space-y-8">
       <AdminHeader
         title="Sync Status"
         description="Monitor and manage data synchronization jobs."
-      />
+      >
+        <Link
+          href="/admin/sync/new"
+          className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent-hover)"
+        >
+          New Config
+        </Link>
+      </AdminHeader>
 
       {result.error && (
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
@@ -22,7 +29,7 @@ export default async function SyncStatusPage() {
 
       {configs.length === 0 && !result.error && (
         <div className="rounded-lg border border-(--card-stroke) bg-(--card-80) p-8 text-center text-(--ink-muted)">
-          No sync configurations found. Configure integrations first.
+          No sync configurations found. Create a new configuration to get started.
         </div>
       )}
 

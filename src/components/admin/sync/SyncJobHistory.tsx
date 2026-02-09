@@ -1,4 +1,4 @@
-import { SyncJob } from "@/lib/sync-types";
+import { SyncJob } from "@/lib/admin/types";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 
 interface SyncJobHistoryProps {
@@ -13,6 +13,21 @@ export function SyncJobHistory({ jobs }: SyncJobHistoryProps) {
       </div>
     );
   }
+
+  const getBadgeStatus = (status: SyncJob["status"]) => {
+    switch (status) {
+      case "SUCCESS":
+        return "success";
+      case "FAILED":
+        return "failed";
+      case "RUNNING":
+        return "running";
+      case "PENDING":
+        return "idle";
+      default:
+        return "never";
+    }
+  };
 
   return (
     <div className="overflow-hidden rounded-xl border border-(--card-stroke) bg-(--card-80)">
@@ -32,20 +47,22 @@ export function SyncJobHistory({ jobs }: SyncJobHistoryProps) {
               Items Synced
             </th>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider">
-              Errors
+              Error
             </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-(--card-stroke) bg-(--card-80)">
           {jobs.map((job) => {
-            const duration = job.completed_at
+            const duration = job.duration_seconds
+              ? `${Math.round(job.duration_seconds)}s`
+              : job.completed_at
               ? Math.round((new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000) + "s"
               : "-";
 
             return (
               <tr key={job.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <SyncStatusBadge status={job.status} />
+                  <SyncStatusBadge status={getBadgeStatus(job.status)} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                   {new Date(job.started_at).toLocaleString()}
@@ -57,12 +74,10 @@ export function SyncJobHistory({ jobs }: SyncJobHistoryProps) {
                   {job.items_synced}
                 </td>
                 <td className="px-6 py-4 text-sm text-red-500">
-                  {job.errors.length > 0 ? (
-                    <ul className="list-disc pl-4">
-                      {job.errors.map((error, i) => (
-                        <li key={i}>{error}</li>
-                      ))}
-                    </ul>
+                  {job.error ? (
+                    <span title={job.error} className="line-clamp-2">
+                      {job.error}
+                    </span>
                   ) : (
                     <span className="text-(--ink-muted)">-</span>
                   )}
