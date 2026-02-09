@@ -61,31 +61,35 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
     e.preventDefault();
 
     startTransition(async () => {
-      let result: { error?: string } | undefined;
-      if (initialData) {
-        result = await updateSyncConfig(initialData.id, {
-          sync_targets: formData.sync_targets,
-          is_active: formData.is_active,
-        });
-      } else {
-        result = await createSyncConfig({
-          name: formData.name,
-          provider: formData.provider,
-          credential_id: formData.credential_id || null,
-          sync_targets: formData.sync_targets,
-        });
-      }
-
-      if (result?.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(initialData ? "Config updated" : "Config created");
-        if (onSuccess) {
-          onSuccess();
+      try {
+        let result: { error?: string } | undefined;
+        if (initialData) {
+          result = await updateSyncConfig(initialData.id, {
+            sync_targets: formData.sync_targets,
+            is_active: formData.is_active,
+          });
         } else {
-          router.push("/admin/sync");
-          router.refresh();
+          result = await createSyncConfig({
+            name: formData.name,
+            provider: formData.provider,
+            credential_id: formData.credential_id || null,
+            sync_targets: formData.sync_targets,
+          });
         }
+
+        if (result?.error) {
+          toast.error(result.error);
+        } else {
+          toast.success(initialData ? "Config updated" : "Config created");
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            router.push("/admin/sync");
+            router.refresh();
+          }
+        }
+      } catch {
+        toast.error("An unexpected error occurred");
       }
     });
   };

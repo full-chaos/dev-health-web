@@ -4,14 +4,13 @@ import { SyncConfigForm } from "@/components/admin/sync/SyncConfigForm";
 import { getSyncConfig, listCredentials } from "@/lib/admin/server";
 
 interface EditSyncConfigPageProps {
-  params: {
-    configId: string;
-  };
+  params: Promise<{ configId: string }>;
 }
 
 export default async function EditSyncConfigPage({ params }: EditSyncConfigPageProps) {
+  const { configId } = await params;
   const [configResult, credentialsResult] = await Promise.all([
-    getSyncConfig(params.configId),
+    getSyncConfig(configId),
     listCredentials(),
   ]);
 
