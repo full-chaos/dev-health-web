@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { SyncConfig, IntegrationCredential, PROVIDERS, PROVIDER_LABELS } from "@/lib/admin/types";
 import { createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
 
@@ -24,7 +25,6 @@ const SYNC_TARGETS = [
 export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConfigFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
@@ -59,37 +59,37 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
 
     startTransition(async () => {
-      let result: { error?: string } | undefined;
-      if (initialData) {
-        result = await updateSyncConfig(initialData.id, {
-          sync_targets: formData.sync_targets,
-          is_active: formData.is_active,
-          // Note: provider and name are usually not editable after creation in some systems, 
-          // but API allows updating sync_options. For now we focus on targets and active state for updates
-          // as per the update type definition which only includes sync_targets, sync_options, is_active.
-        });
-      } else {
-        result = await createSyncConfig({
-          name: formData.name,
-          provider: formData.provider,
-          credential_id: formData.credential_id || null,
-          sync_targets: formData.sync_targets,
-        });
-      }
-
-      if (result?.error) {
-        setMessage({ type: "error", text: result.error });
-      } else {
-        setMessage({ type: "success", text: initialData ? "Config updated" : "Config created" });
-        if (onSuccess) {
-          onSuccess();
+      try {
+        let result: { error?: string } | undefined;
+        if (initialData) {
+          result = await updateSyncConfig(initialData.id, {
+            sync_targets: formData.sync_targets,
+            is_active: formData.is_active,
+          });
         } else {
-          router.push("/admin/sync");
-          router.refresh();
+          result = await createSyncConfig({
+            name: formData.name,
+            provider: formData.provider,
+            credential_id: formData.credential_id || null,
+            sync_targets: formData.sync_targets,
+          });
         }
+
+        if (result?.error) {
+          toast.error(result.error);
+        } else {
+          toast.success(initialData ? "Config updated" : "Config created");
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            router.push("/admin/sync");
+            router.refresh();
+          }
+        }
+      } catch {
+        toast.error("An unexpected error occurred");
       }
     });
   };
@@ -200,18 +200,6 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
           </label>
         </div>
 
-        {/* Feedback Message */}
-        {message && (
-          <div
-            className={`rounded-md p-3 text-sm ${
-              message.type === "success"
-                ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                : "bg-red-500/10 text-red-500 border border-red-500/20"
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
       </div>
 
       {/* Actions */}
@@ -223,7 +211,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
           Cancel
         </Link>
         <button
-          type="button"
+          type="submit"
           disabled={isPending}
           className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
         >

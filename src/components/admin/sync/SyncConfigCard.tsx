@@ -17,37 +17,52 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
   const [isPending, startTransition] = useTransition();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleTrigger = async () => {
+  const handleTrigger = () => {
     startTransition(async () => {
-      const result = await triggerSync(config.id);
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Sync triggered successfully");
-        router.refresh();
+      try {
+        const result = await triggerSync(config.id);
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          toast.success("Sync triggered successfully");
+          router.refresh();
+        }
+      } catch {
+        toast.error("Failed to trigger sync");
       }
     });
   };
 
-  const handleToggleActive = async () => {
+  const handleToggleActive = () => {
     startTransition(async () => {
-      const result = await toggleSyncActive(config.id, !config.is_active);
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        router.refresh();
+      try {
+        const result = await toggleSyncActive(config.id, !config.is_active);
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          toast.success(config.is_active ? "Sync paused" : "Sync resumed");
+          router.refresh();
+        }
+      } catch {
+        toast.error("Failed to update sync config");
       }
     });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     startTransition(async () => {
-      const result = await deleteSyncConfig(config.id);
-      if (result.error) {
-        toast.error(result.error);
+      try {
+        const result = await deleteSyncConfig(config.id);
+        if (result.error) {
+          toast.error(result.error);
+          setShowDeleteConfirm(false);
+        } else {
+          toast.success("Config deleted");
+          router.refresh();
+        }
+      } catch {
+        toast.error("Failed to delete sync config");
         setShowDeleteConfirm(false);
-      } else {
-        router.refresh();
       }
     });
   };
