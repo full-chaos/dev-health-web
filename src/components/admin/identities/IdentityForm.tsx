@@ -10,6 +10,7 @@ type IdentityFormProps = {
   teams: Team[];
   onSubmit: (data: Identity) => void;
   isEditing?: boolean;
+  isLoading?: boolean;
 };
 
 const PROVIDERS = ["github", "gitlab", "jira", "email"];
@@ -34,6 +35,7 @@ export function IdentityForm({
   teams,
   onSubmit,
   isEditing = false,
+  isLoading = false,
 }: IdentityFormProps) {
   const [formData, setFormData] = useState({
     canonical_id: initialData?.canonical_id ?? "",
@@ -220,9 +222,10 @@ export function IdentityForm({
         </Link>
         <button
           type="submit"
-          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
+          disabled={isLoading}
+          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
         >
-          {isEditing ? "Update Identity" : "Create Identity"}
+          {isLoading ? "Saving…" : isEditing ? "Update Identity" : "Create Identity"}
         </button>
       </div>
     </form>

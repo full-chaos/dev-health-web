@@ -13,8 +13,10 @@ import type {
   SyncConfigCreate,
   IdentityMapping,
   IdentityMappingCreate,
+  IdentityMappingUpdate,
   TeamMapping,
   TeamMappingCreate,
+  TeamMappingUpdate,
   Setting,
   SettingCreate,
   SettingUpdate,
@@ -131,6 +133,19 @@ export async function createSyncConfig(
   });
 }
 
+export async function getSyncConfig(id: string): Promise<ActionResult<SyncConfig>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    // syncConfigs API doesn't have a get-by-id endpoint; filter from list
+    const configs = await adminApi.syncConfigs.list(token);
+    const config = configs.find((c) => c.id === id);
+    if (!config) {
+      throw new AdminApiError(404, "Not Found", "Sync configuration not found");
+    }
+    return config;
+  });
+}
+
 export async function listIdentities(): Promise<ActionResult<IdentityMapping[]>> {
   return withErrorHandling(async () => {
     const token = await getToken();
@@ -144,6 +159,23 @@ export async function createIdentity(
   return withErrorHandling(async () => {
     const token = await getToken();
     return adminApi.identities.create(data, token);
+  });
+}
+
+export async function getIdentity(id: string): Promise<ActionResult<IdentityMapping>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.identities.get(id, token);
+  });
+}
+
+export async function updateIdentity(
+  id: string,
+  data: IdentityMappingUpdate
+): Promise<ActionResult<IdentityMapping>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.identities.update(id, data, token);
   });
 }
 
@@ -165,6 +197,23 @@ export async function createTeam(data: TeamMappingCreate): Promise<ActionResult<
   return withErrorHandling(async () => {
     const token = await getToken();
     return adminApi.teams.create(data, token);
+  });
+}
+
+export async function getTeam(teamId: string): Promise<ActionResult<TeamMapping>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.teams.get(teamId, token);
+  });
+}
+
+export async function updateTeam(
+  teamId: string,
+  data: TeamMappingUpdate
+): Promise<ActionResult<TeamMapping>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.teams.update(teamId, data, token);
   });
 }
 
@@ -242,5 +291,37 @@ export async function updateCurrentOrg(
       throw new AdminApiError(400, "Bad Request", "No organization ID in session");
     }
     return adminApi.orgs.update(orgId, data, session.access_token);
+  });
+}
+
+export async function deleteCurrentOrg(): Promise<ActionResult<void>> {
+  return withErrorHandling(async () => {
+    const session = await auth();
+    if (!session?.access_token) {
+      throw new AdminApiError(401, "Unauthorized", "No access token");
+    }
+    const orgId = session.user?.org_id;
+    if (!orgId) {
+      throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+    }
+    return adminApi.orgs.delete(orgId, session.access_token);
+  });
+}
+
+export async function getSecuritySettings(): Promise<ActionResult<Setting[]>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    const response = await adminApi.settings.listByCategory("security", token);
+    return response.settings;
+  });
+}
+
+export async function updateSecuritySetting(
+  key: string,
+  value: string
+): Promise<ActionResult<Setting>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.settings.update("security", key, { value }, token);
   });
 }

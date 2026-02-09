@@ -54,19 +54,17 @@ describe("getSubscriptionDetails", () => {
     fetchSpy.mockRestore();
   });
 
-  it("returns community defaults when API returns non-ok", async () => {
+  it("returns error when API returns non-ok", async () => {
     vi.mocked(auth).mockResolvedValue(mockSession());
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response("Not found", { status: 404 }),
+      new Response(JSON.stringify({ detail: "Not found" }), { status: 404 }),
     );
 
     const result = await getSubscriptionDetails();
-    expect(result.data).toBeDefined();
-    expect(result.data!.tier).toBe("community");
-    expect(result.data!.status).toBe("active");
-    expect(result.data!.features).toEqual({});
-    expect(result.data!.limits).toEqual({});
+    expect(result.error).toBeDefined();
+    expect(result.error).toBe("Not found");
+    expect(result.data).toBeUndefined();
 
     fetchSpy.mockRestore();
   });

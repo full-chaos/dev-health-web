@@ -115,29 +115,25 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
     );
 
     if (!res.ok) {
-      return {
-        data: {
-          tier: "community",
-          status: "active",
-          current_period_end: null,
-          cancel_at_period_end: false,
-          features: {},
-          limits: {},
-        },
-      };
+      const detail = await res.json().catch(() => ({ detail: res.statusText }));
+      return { error: detail.detail || `Failed to load billing details (${res.status})` };
     }
 
     const entitlements = await res.json();
+    const effectiveTier = entitlements.tier ?? "community";
+    const isFreeTier = effectiveTier === "community" || effectiveTier === "free";
     return {
       data: {
-        tier: entitlements.tier ?? "community",
-        status: entitlements.is_licensed
-          ? entitlements.in_grace_period
-            ? "past_due"
-            : "active"
-          : "canceled",
-        current_period_end: null,
-        cancel_at_period_end: false,
+        tier: effectiveTier,
+        status: isFreeTier
+          ? "active"
+          : entitlements.is_licensed
+            ? entitlements.in_grace_period
+              ? "past_due"
+              : "active"
+            : "canceled",
+        current_period_end: entitlements.current_period_end ?? null,
+        cancel_at_period_end: entitlements.cancel_at_period_end ?? false,
         features: entitlements.features ?? {},
         limits: entitlements.limits ?? {},
       },

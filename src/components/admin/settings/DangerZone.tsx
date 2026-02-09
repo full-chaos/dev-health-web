@@ -1,20 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { SettingsSection } from "./SettingsSection";
+import { deleteCurrentOrg } from "@/lib/admin/server";
 
 type DangerZoneProps = {
   orgName?: string;
 };
 
 export function DangerZone({ orgName }: DangerZoneProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleDelete = () => {
-    if (confirmText === orgName) {
-      alert("Organization deletion is not implemented yet.");
-    }
+    if (confirmText !== orgName) return;
+    setError(null);
+
+    startTransition(async () => {
+      const result = await deleteCurrentOrg();
+      if (result.error) {
+        setError(result.error);
+      } else {
+        // Org is gone — redirect to sign-out / landing
+        router.push("/api/auth/signout?callbackUrl=/");
+      }
+    });
   };
 
   return (
@@ -23,6 +37,11 @@ export function DangerZone({ orgName }: DangerZoneProps) {
       description="Irreversible actions for your organization."
       danger
     >
+      {error && (
+        <div className="mb-4 rounded-md border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       {!showConfirm ? (
         <div className="flex items-center justify-between">
           <div>
@@ -49,7 +68,8 @@ export function DangerZone({ orgName }: DangerZoneProps) {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="Organization name"
-            className="block w-full rounded-md border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            disabled={isPending}
+            className="block w-full rounded-md border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
           />
           <div className="flex gap-3">
             <button
@@ -57,18 +77,20 @@ export function DangerZone({ orgName }: DangerZoneProps) {
               onClick={() => {
                 setShowConfirm(false);
                 setConfirmText("");
+                setError(null);
               }}
-              className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--foreground) hover:bg-(--card-70)"
+              disabled={isPending}
+              className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--foreground) hover:bg-(--card-70) disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleDelete}
-              disabled={confirmText !== orgName}
+              disabled={confirmText !== orgName || isPending}
               className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              Delete Forever
+              {isPending ? "Deleting..." : "Delete Forever"}
             </button>
           </div>
         </div>

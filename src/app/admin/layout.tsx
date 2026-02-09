@@ -20,13 +20,13 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <div className="md:w-[220px] md:shrink-0 p-6">
+    <div className="min-h-screen">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-20 pt-10 md:flex-row">
         <AdminSidebar isSuperuser={isSuperuser} />
+        <main className="flex min-w-0 flex-1 flex-col gap-10">
+          {children}
+        </main>
       </div>
-      <main className="flex-1 p-6 md:p-12 md:pt-6">
-        {children}
-      </main>
     </div>
   );
 }

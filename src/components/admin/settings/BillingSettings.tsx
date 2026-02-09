@@ -102,14 +102,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
       : typeof limits.repositories === "number"
         ? limits.repositories
         : undefined;
-  const apiRateLimit =
-    typeof limits.api_rate === "number"
-      ? limits.api_rate
-      : typeof limits.api_rate_per_minute === "number"
-        ? limits.api_rate_per_minute
-        : typeof limits.api_rate_limit === "number"
-          ? limits.api_rate_limit
-          : undefined;
+
 
   const formatLimitValue = (value?: number) => {
     if (value === -1) return "Unlimited";
@@ -117,17 +110,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
     return `${value}`;
   };
 
-  const formatLimitPair = (value?: number) => {
-    const formatted = formatLimitValue(value);
-    if (formatted === "Unlimited" || formatted === "—") return formatted;
-    return `${formatted} / ${formatted}`;
-  };
 
-  const apiRateLabel = useMemo(() => {
-    if (apiRateLimit === -1) return "Unlimited";
-    if (typeof apiRateLimit !== "number") return "—";
-    return `${apiRateLimit}/min`;
-  }, [apiRateLimit]);
 
   useEffect(() => {
     let isActive = true;
@@ -232,20 +215,20 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
               Next billing date: <span className="font-medium text-(--foreground)">{nextBillingDate}</span>
             </p>
           )}
-          {subscription && (
-            <div className="mt-3 grid gap-3 text-sm text-(--ink-muted) sm:grid-cols-3">
-              <div>
-                <span className="font-medium text-(--foreground)">Users:</span>{" "}
-                {formatLimitPair(usersLimit)}
-              </div>
-              <div>
-                <span className="font-medium text-(--foreground)">Repos:</span>{" "}
-                {formatLimitPair(reposLimit)}
-              </div>
-              <div>
-                <span className="font-medium text-(--foreground)">API Rate:</span>{" "}
-                {apiRateLabel}
-              </div>
+          {isPaidTier && subscription && (usersLimit !== undefined || reposLimit !== undefined) && (
+            <div className="mt-3 grid gap-3 text-sm text-(--ink-muted) sm:grid-cols-2">
+              {usersLimit !== undefined && (
+                <div>
+                  <span className="font-medium text-(--foreground)">Users:</span>{" "}
+                  {formatLimitValue(usersLimit)}
+                </div>
+              )}
+              {reposLimit !== undefined && (
+                <div>
+                  <span className="font-medium text-(--foreground)">Repos:</span>{" "}
+                  {formatLimitValue(reposLimit)}
+                </div>
+              )}
             </div>
           )}
         </div>
