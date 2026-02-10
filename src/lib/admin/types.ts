@@ -93,7 +93,7 @@ export interface SyncConfig {
 export interface SyncJob {
   id: string;
   config_id: string;
-  status: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED";
+  status: "pending" | "running" | "success" | "failed";
   started_at: string;
   completed_at: string | null;
   duration_seconds: number | null;
