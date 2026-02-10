@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { SyncConfig } from "@/lib/admin/types";
 import { triggerSync, toggleSyncActive, deleteSyncConfig } from "@/lib/admin/server";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 
 interface SyncConfigCardProps {
@@ -93,9 +94,8 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
       </div>
 
       <div className="mt-6 flex items-center justify-between border-t border-(--card-stroke) pt-4">
-        <div className="text-xs text-(--ink-muted)" suppressHydrationWarning>
-          Last sync:{" "}
-          {config.last_sync_at ? new Date(config.last_sync_at).toLocaleString() : "Never"}
+        <div className="text-xs text-(--ink-muted)">
+          <ClientTimestamp value={config.last_sync_at} prefix="Last sync: " fallback="Never" />
         </div>
         
         <div className="flex items-center gap-2">

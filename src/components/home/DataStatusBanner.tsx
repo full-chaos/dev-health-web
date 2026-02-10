@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { formatTimestamp } from "@/lib/formatters";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { buildExploreUrl } from "@/lib/filters/url";
 import { getLocalStorage } from "@/lib/env";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -43,7 +43,7 @@ export function DataStatusBanner({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {isUnavailable ? (
           <p>
-            <span suppressHydrationWarning>Data unavailable. Last cached: {formatTimestamp(lastIngestedAt ?? cachedAt)}.</span>
+            <span>Data unavailable. Last cached: <ClientTimestamp value={lastIngestedAt ?? cachedAt} suffix="." /></span>
           </p>
         ) : (
           <p>

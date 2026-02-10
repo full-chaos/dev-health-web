@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
 import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
@@ -67,10 +68,8 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
           <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
             Last Sync
           </h3>
-          <p className="mt-2 text-lg font-medium text-foreground" suppressHydrationWarning>
-            {config.last_sync_at
-              ? new Date(config.last_sync_at).toLocaleString()
-              : "Never"}
+          <p className="mt-2 text-lg font-medium text-foreground">
+            <ClientTimestamp value={config.last_sync_at} fallback="Never" />
           </p>
         </div>
 

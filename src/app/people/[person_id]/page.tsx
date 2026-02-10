@@ -9,7 +9,8 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { checkApiHealth, getPersonSummary, getQuadrant } from "@/lib/api";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter } from "@/lib/filters/encode";
-import { formatMetricValue, formatNumber, formatPercent, formatTimestamp } from "@/lib/formatters";
+import { formatMetricValue, formatNumber, formatPercent } from "@/lib/formatters";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { getMetricLabel, getMetricUnit } from "@/lib/metrics/catalog";
 import { getRangeParams, withRangeParams } from "@/lib/people/query";
 import type { MetricDelta, PersonCollaborationStat } from "@/lib/types";
@@ -282,9 +283,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
                 <div className="flex items-center justify-between">
                   <p className="text-xs uppercase tracking-[0.3em]">Freshness</p>
-                  <span className="text-xs uppercase tracking-[0.2em]" suppressHydrationWarning>
-                    {formatTimestamp(summary?.freshness.last_ingested_at)}
-                  </span>
+                  <ClientTimestamp value={summary?.freshness.last_ingested_at} className="text-xs uppercase tracking-[0.2em]" />
                 </div>
                 <div className="mt-3 grid gap-2 text-xs">
                   {summary?.freshness.sources ? (
