@@ -16,13 +16,13 @@ export function SyncJobHistory({ jobs }: SyncJobHistoryProps) {
 
   const getBadgeStatus = (status: SyncJob["status"]) => {
     switch (status) {
-      case "SUCCESS":
+      case "success":
         return "success";
-      case "FAILED":
+      case "failed":
         return "failed";
-      case "RUNNING":
+      case "running":
         return "running";
-      case "PENDING":
+      case "pending":
         return "idle";
       default:
         return "never";
@@ -71,7 +71,7 @@ export function SyncJobHistory({ jobs }: SyncJobHistoryProps) {
                   {duration}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-(--ink-muted)">
-                  {job.items_synced}
+                  {job.items_synced ?? "-"}
                 </td>
                 <td className="px-6 py-4 text-sm text-red-500">
                   {job.error ? (
