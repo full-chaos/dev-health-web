@@ -37,7 +37,7 @@ export function SyncNowButton({ configId, className }: SyncNowButtonProps) {
       disabled={isPending}
       className={
         className ??
-        "rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:opacity-80 active:opacity-70 disabled:opacity-50 transition-opacity"
+        "cursor-pointer rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:opacity-80 active:opacity-70 disabled:opacity-50 transition-opacity"
       }
     >
       {isPending ? "Syncing…" : "Sync Now"}

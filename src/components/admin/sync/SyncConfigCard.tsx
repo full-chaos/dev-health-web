@@ -74,13 +74,14 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
   };
 
   return (
-    <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6 transition-all hover:border-(--card-stroke-hover)">
+    <Link
+      href={`/admin/sync/${config.id}`}
+      className="block cursor-pointer rounded-xl border border-(--card-stroke) bg-(--card-80) p-6 transition-all hover:border-(--card-stroke-hover)"
+    >
       <div className="flex items-start justify-between">
         <div>
           <h3 className="font-medium text-foreground">
-            <Link href={`/admin/sync/${config.id}`} className="hover:underline">
               {config.name}
-            </Link>
           </h3>
           <div className="mt-1 flex items-center gap-2 text-sm text-(--ink-muted)">
             <span className="capitalize">{config.provider}</span>
@@ -98,7 +99,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
           <ClientTimestamp value={config.last_sync_at} prefix="Last sync: " fallback="Never" />
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
           {showDeleteConfirm ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-red-500">Are you sure?</span>
@@ -143,7 +144,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                 type="button"
                 onClick={handleTrigger}
                 disabled={isPending}
-                className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:opacity-80 active:opacity-70 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50 transition-opacity"
+                className="cursor-pointer rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:opacity-80 active:opacity-70 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50 transition-opacity"
               >
                 {isPending ? "Syncing..." : "Sync Now"}
               </button>
@@ -151,6 +152,6 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
