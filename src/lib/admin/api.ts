@@ -21,6 +21,7 @@ import type {
   TeamDiscoverResponse,
   TeamImportRequest,
   TeamImportResponse,
+  PendingChangesResponse,
   User,
   UserCreate,
   UserUpdate,
@@ -241,6 +242,38 @@ export const adminApi = {
         { method: "POST", body: JSON.stringify(data) },
         token
       ),
+
+    pendingChanges: (token?: string) =>
+      request<PendingChangesResponse>('/teams/pending-changes', {}, token),
+
+    approveChanges: (teamId: string, changeIndices?: number[], approveAll = false, token?: string) =>
+      request<{ approved: number }>(
+        `/teams/${teamId}/approve-changes`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            change_indices: changeIndices,
+            approve_all: approveAll,
+          }),
+        },
+        token
+      ),
+
+    dismissChanges: (teamId: string, changeIndices?: number[], dismissAll = false, token?: string) =>
+      request<{ dismissed: number }>(
+        `/teams/${teamId}/dismiss-changes`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            change_indices: changeIndices,
+            dismiss_all: dismissAll,
+          }),
+        },
+        token
+      ),
+
+    triggerDriftSync: (token?: string) =>
+      request<{ status: string }>('/teams/trigger-drift-sync', { method: 'POST' }, token),
   },
 
   users: {

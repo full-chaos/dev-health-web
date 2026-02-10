@@ -23,6 +23,7 @@ import type {
   DiscoveredTeam,
   TeamDiscoverResponse,
   TeamImportResponse,
+  PendingChangesResponse,
   Setting,
   SettingCreate,
   SettingUpdate,
@@ -297,6 +298,46 @@ export async function importTeams(
   return withErrorHandling(async () => {
     const token = await getToken();
     return adminApi.teams.import({ teams, on_conflict: onConflict }, token);
+  });
+}
+
+export async function getPendingTeamChanges(): Promise<ActionResult<PendingChangesResponse>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.teams.pendingChanges(token);
+  });
+}
+
+export async function approveTeamChanges(
+  teamId: string,
+  changeIndices?: number[],
+  approveAll = false
+): Promise<ActionResult<{ approved: number }>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    const result = await adminApi.teams.approveChanges(teamId, changeIndices, approveAll, token);
+    revalidatePath('/admin/teams');
+    return result;
+  });
+}
+
+export async function dismissTeamChanges(
+  teamId: string,
+  changeIndices?: number[],
+  dismissAll = false
+): Promise<ActionResult<{ dismissed: number }>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    const result = await adminApi.teams.dismissChanges(teamId, changeIndices, dismissAll, token);
+    revalidatePath('/admin/teams');
+    return result;
+  });
+}
+
+export async function triggerTeamDriftSync(): Promise<ActionResult<{ status: string }>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.teams.triggerDriftSync(token);
   });
 }
 
