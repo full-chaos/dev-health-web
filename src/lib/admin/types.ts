@@ -176,6 +176,33 @@ export interface TeamMappingUpdate {
   extra_data?: Record<string, unknown> | null;
 }
 
+export interface DiscoveredTeam {
+  provider_type: string;
+  provider_team_id: string;
+  name: string;
+  description?: string | null;
+  member_count?: number | null;
+  associations: Record<string, unknown>;
+}
+
+export interface TeamDiscoverResponse {
+  provider: string;
+  teams: DiscoveredTeam[];
+  total: number;
+}
+
+export interface TeamImportRequest {
+  teams: DiscoveredTeam[];
+  on_conflict: "skip" | "merge";
+}
+
+export interface TeamImportResponse {
+  imported: number;
+  skipped: number;
+  merged: number;
+  details: Array<Record<string, unknown>>;
+}
+
 // ---- Users ----
 
 export interface User {

@@ -20,6 +20,9 @@ import type {
   TeamMapping,
   TeamMappingCreate,
   TeamMappingUpdate,
+  DiscoveredTeam,
+  TeamDiscoverResponse,
+  TeamImportResponse,
   Setting,
   SettingCreate,
   SettingUpdate,
@@ -277,6 +280,23 @@ export async function deleteTeam(teamId: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
     const token = await getToken();
     return adminApi.teams.delete(teamId, token);
+  });
+}
+
+export async function discoverTeams(provider: string): Promise<ActionResult<TeamDiscoverResponse>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.teams.discover(provider, token);
+  });
+}
+
+export async function importTeams(
+  teams: DiscoveredTeam[],
+  onConflict: "skip" | "merge"
+): Promise<ActionResult<TeamImportResponse>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.teams.import({ teams, on_conflict: onConflict }, token);
   });
 }
 

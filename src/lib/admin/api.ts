@@ -18,6 +18,9 @@ import type {
   TeamMapping,
   TeamMappingCreate,
   TeamMappingUpdate,
+  TeamDiscoverResponse,
+  TeamImportRequest,
+  TeamImportResponse,
   User,
   UserCreate,
   UserUpdate,
@@ -228,6 +231,16 @@ export const adminApi = {
 
     delete: (teamId: string, token?: string) =>
       request<void>(`/teams/${teamId}`, { method: "DELETE" }, token),
+
+    discover: (provider: string, token?: string) =>
+      request<TeamDiscoverResponse>(`/teams/discover?provider=${provider}`, {}, token),
+
+    import: (data: TeamImportRequest, token?: string) =>
+      request<TeamImportResponse>(
+        "/teams/import",
+        { method: "POST", body: JSON.stringify(data) },
+        token
+      ),
   },
 
   users: {
