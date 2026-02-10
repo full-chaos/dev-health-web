@@ -15,7 +15,7 @@ export default async function SyncStatusPage() {
       >
         <Link
           href="/admin/sync/new"
-          className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent-hover)"
+          className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:opacity-80 active:opacity-70 transition-opacity"
         >
           New Config
         </Link>

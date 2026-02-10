@@ -93,7 +93,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
       </div>
 
       <div className="mt-6 flex items-center justify-between border-t border-(--card-stroke) pt-4">
-        <div className="text-xs text-(--ink-muted)">
+        <div className="text-xs text-(--ink-muted)" suppressHydrationWarning>
           Last sync:{" "}
           {config.last_sync_at ? new Date(config.last_sync_at).toLocaleString() : "Never"}
         </div>
@@ -143,7 +143,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                 type="button"
                 onClick={handleTrigger}
                 disabled={isPending}
-                className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:bg-(--accent-hover) focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50"
+                className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:opacity-80 active:opacity-70 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50 transition-opacity"
               >
                 {isPending ? "Syncing..." : "Sync Now"}
               </button>
