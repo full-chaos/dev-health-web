@@ -58,7 +58,7 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
                   <h2 className="font-(--font-display) text-xl">
                     {String(flame.entity.work_item_id ?? "Issue")}
                   </h2>
-                  <p className="mt-2 text-xs text-(--ink-muted)">
+                  <p className="mt-2 text-xs text-(--ink-muted)" suppressHydrationWarning>
                     {formatTimestamp(flame.timeline.start)} – {formatTimestamp(flame.timeline.end)}
                   </p>
                 </div>

@@ -282,7 +282,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
                 <div className="flex items-center justify-between">
                   <p className="text-xs uppercase tracking-[0.3em]">Freshness</p>
-                  <span className="text-xs uppercase tracking-[0.2em]">
+                  <span className="text-xs uppercase tracking-[0.2em]" suppressHydrationWarning>
                     {formatTimestamp(summary?.freshness.last_ingested_at)}
                   </span>
                 </div>

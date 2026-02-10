@@ -233,7 +233,7 @@ export function CockpitClient({
                             >
                                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                     <span>{event.type}</span>
-                                    <span>{formatTimestamp(event.ts)}</span>
+                                    <span suppressHydrationWarning>{formatTimestamp(event.ts)}</span>
                                 </div>
                                 <p className="mt-2 text-sm text-foreground">
                                     {event.text}

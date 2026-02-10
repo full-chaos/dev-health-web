@@ -43,7 +43,7 @@ export function DataStatusBanner({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {isUnavailable ? (
           <p>
-            Data unavailable. Last cached: {formatTimestamp(lastIngestedAt ?? cachedAt)}.
+            <span suppressHydrationWarning>Data unavailable. Last cached: {formatTimestamp(lastIngestedAt ?? cachedAt)}.</span>
           </p>
         ) : (
           <p>

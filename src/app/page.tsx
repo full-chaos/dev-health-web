@@ -144,7 +144,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               <div className="flex items-center justify-between">
                 <BackendBanner meta={meta} />
                 <p className="text-sm text-(--ink-muted)">
-                  Last updated: {formatTimestamp(lastIngestedAt)}
+                  <span suppressHydrationWarning>Last updated: {formatTimestamp(lastIngestedAt)}</span>
                 </p>
               </div>
             </div>

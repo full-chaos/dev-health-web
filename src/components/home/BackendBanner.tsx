@@ -26,7 +26,7 @@ export function BackendBanner({ meta }: BackendBannerProps) {
       {meta.last_ingest_at && (
         <>
           <span className="text-(--ink-muted)">•</span>
-          <span className="text-(--ink-muted)">
+          <span className="text-(--ink-muted)" suppressHydrationWarning>
             Synced {formatTimestamp(meta.last_ingest_at)}
           </span>
         </>
