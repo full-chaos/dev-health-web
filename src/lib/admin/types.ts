@@ -452,3 +452,10 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   jira: 'Jira',
   linear: 'Linear',
 };
+
+export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
+  github: ['git', 'prs', 'cicd', 'deployments', 'incidents', 'work-items'],
+  gitlab: ['git', 'prs', 'cicd', 'deployments', 'incidents', 'work-items'],
+  jira: ['work-items'],
+  linear: ['work-items'],
+};
