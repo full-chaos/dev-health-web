@@ -17,6 +17,7 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "graphql": "^16.10.0",
+    "lightningcss-darwin-arm64": "^1.30.2",
     "next": "16.1.5",
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.4",
@@ -31,15 +32,15 @@
     "@playwright/test": "^1.58.0",
     "@tailwindcss/postcss": "^4",
     "@types/express": "^5.0.6",
-    "@types/node": "^25",
-    "@types/react": "^19",
+    "@types/node": "25.2.2",
+    "@types/react": "19.2.13",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.5",
     "express": "^5.2.1",
     "msw": "^2.12.8",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "5.9.3",
     "vitest": "^4.0.18"
   }
 }
