@@ -143,7 +143,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                 type="button"
                 onClick={handleTrigger}
                 disabled={isPending}
-                className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:opacity-80 active:opacity-70 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50 transition-opacity"
+                className="cursor-pointer rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:opacity-80 active:opacity-70 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50 transition-opacity"
               >
                 {isPending ? "Syncing..." : "Sync Now"}
               </button>
