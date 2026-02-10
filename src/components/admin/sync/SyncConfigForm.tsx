@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { SyncConfig, IntegrationCredential, PROVIDERS, PROVIDER_LABELS } from "@/lib/admin/types";
+import { SyncConfig, IntegrationCredential, Provider, PROVIDERS, PROVIDER_LABELS, PROVIDER_SYNC_TARGETS } from "@/lib/admin/types";
 import { createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
 
 type SyncConfigFormProps = {
@@ -13,7 +13,7 @@ type SyncConfigFormProps = {
   onSuccess?: () => void;
 };
 
-const SYNC_TARGETS = [
+const ALL_SYNC_TARGETS = [
   { id: "git", label: "Git Data (Commits, Branches)" },
   { id: "prs", label: "Pull Requests" },
   { id: "cicd", label: "CI/CD Pipelines" },
@@ -21,6 +21,11 @@ const SYNC_TARGETS = [
   { id: "incidents", label: "Incidents" },
   { id: "work-items", label: "Work Items (Issues, Tickets)" },
 ];
+
+function getSyncTargetsForProvider(provider: string) {
+  const allowed = PROVIDER_SYNC_TARGETS[provider as Provider] ?? Object.values(PROVIDER_SYNC_TARGETS).flat();
+  return ALL_SYNC_TARGETS.filter((t) => allowed.includes(t.id));
+}
 
 export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConfigFormProps) {
   const router = useRouter();
@@ -36,6 +41,8 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
 
   const filteredCredentials = credentials.filter((c) => c.provider === formData.provider);
 
+  const availableTargets = getSyncTargetsForProvider(formData.provider);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -43,6 +50,14 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
     
     if (type === "checkbox" && name === "is_active") {
       setFormData((prev) => ({ ...prev, is_active: (e.target as HTMLInputElement).checked }));
+    } else if (name === "provider") {
+      const newAllowed = PROVIDER_SYNC_TARGETS[value as Provider] ?? [];
+      setFormData((prev) => ({
+        ...prev,
+        provider: value,
+        sync_targets: prev.sync_targets.filter((t) => newAllowed.includes(t)),
+        credential_id: "",
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -85,7 +100,6 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
             onSuccess();
           } else {
             router.push("/admin/sync");
-            router.refresh();
           }
         }
       } catch {
@@ -168,7 +182,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
         <div>
           <span className="mb-2 block text-sm font-medium">Sync Targets</span>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {SYNC_TARGETS.map((target) => (
+            {availableTargets.map((target) => (
               <label
                 key={target.id}
                 className="flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 hover:bg-(--card-60)"
