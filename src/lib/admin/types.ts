@@ -154,6 +154,10 @@ export interface TeamMapping {
   repo_patterns: string[];
   project_keys: string[];
   extra_data: Record<string, unknown>;
+  managed_fields: string[];
+  sync_policy: number;
+  flagged_changes: Record<string, unknown> | null;
+  last_drift_sync_at: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -166,6 +170,8 @@ export interface TeamMappingCreate {
   repo_patterns?: string[];
   project_keys?: string[];
   extra_data?: Record<string, unknown>;
+  managed_fields?: string[];
+  sync_policy?: number;
 }
 
 export interface TeamMappingUpdate {
@@ -174,6 +180,51 @@ export interface TeamMappingUpdate {
   repo_patterns?: string[] | null;
   project_keys?: string[] | null;
   extra_data?: Record<string, unknown> | null;
+  managed_fields?: string[] | null;
+  sync_policy?: number | null;
+}
+
+export interface DiscoveredTeam {
+  provider_type: string;
+  provider_team_id: string;
+  name: string;
+  description?: string | null;
+  member_count?: number | null;
+  associations: Record<string, unknown>;
+}
+
+export interface TeamDiscoverResponse {
+  provider: string;
+  teams: DiscoveredTeam[];
+  total: number;
+}
+
+export interface TeamImportRequest {
+  teams: DiscoveredTeam[];
+  on_conflict: "skip" | "merge";
+}
+
+export interface TeamImportResponse {
+  imported: number;
+  skipped: number;
+  merged: number;
+  details: Array<Record<string, unknown>>;
+}
+
+export interface FlaggedChange {
+  team_id: string;
+  team_name: string;
+  change_type: 'field_changed' | 'provider_removed' | 'new_team_available';
+  field?: string | null;
+  old_value?: unknown;
+  new_value?: unknown;
+  discovered_at: string;
+  change_index: number;
+}
+
+export interface PendingChangesResponse {
+  changes: FlaggedChange[];
+  total: number;
 }
 
 // ---- Users ----
