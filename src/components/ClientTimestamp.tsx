@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const formatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -17,6 +17,10 @@ function formatLocal(value: string): string {
   return `${get("month")} ${get("day")}, ${get("hour")}:${get("minute")} ${get("dayPeriod")}`;
 }
 
+const subscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 interface ClientTimestampProps {
   value?: string | null;
   fallback?: string;
@@ -32,16 +36,11 @@ export function ClientTimestamp({
   suffix,
   className,
 }: ClientTimestampProps) {
-  const [formatted, setFormatted] = useState<string>("");
+  const isClient = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  useEffect(() => {
-    if (!value) {
-      setFormatted(fallback);
-      return;
-    }
-    const result = formatLocal(value);
-    setFormatted(result || fallback);
-  }, [value, fallback]);
+  const formatted = isClient
+    ? (value ? formatLocal(value) || fallback : fallback)
+    : "";
 
   return (
     <span className={className}>
