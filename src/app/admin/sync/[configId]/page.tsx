@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
 import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
 import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
-import { getSyncConfig, getSyncJobs, triggerSync, getCurrentOrg } from "@/lib/admin/server";
+import { SyncNowButton } from "@/components/admin/sync/SyncNowButton";
+import { getSyncConfig, getSyncJobs, getCurrentOrg } from "@/lib/admin/server";
 
 interface PageProps {
   params: Promise<{ configId: string }>;
@@ -26,12 +28,6 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
   const jobs = jobsResult.data || [];
   const orgId = orgResult.data?.id || "";
 
-  // Helper to trigger sync from server component (via form action)
-  async function triggerSyncAction() {
-    "use server";
-    await triggerSync(configId);
-  }
-
   const getStatus = () => {
     if (!config.last_sync_at) return "never";
     return config.last_sync_success ? "success" : "failed";
@@ -51,14 +47,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
             >
               Edit Config
             </Link>
-            <form action={triggerSyncAction}>
-              <button
-                type="submit"
-                className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent-hover)"
-              >
-                Sync Now
-              </button>
-            </form>
+            <SyncNowButton configId={config.id} />
           </div>
         </AdminHeader>
       </div>
@@ -80,9 +69,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
             Last Sync
           </h3>
           <p className="mt-2 text-lg font-medium text-foreground">
-            {config.last_sync_at
-              ? new Date(config.last_sync_at).toLocaleString()
-              : "Never"}
+            <ClientTimestamp value={config.last_sync_at} fallback="Never" />
           </p>
         </div>
 

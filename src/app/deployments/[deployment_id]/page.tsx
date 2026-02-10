@@ -5,7 +5,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getFlame } from "@/lib/api";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
-import { formatTimestamp } from "@/lib/formatters";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 
 type DeploymentDetailPageProps = {
   params: Promise<{ deployment_id: string }>;
@@ -62,7 +62,8 @@ export default async function DeploymentDetailPage({
                     {String(flame.entity.deployment_id ?? "Deployment")}
                   </h2>
                   <p className="mt-2 text-xs text-(--ink-muted)">
-                    {formatTimestamp(flame.timeline.start)} – {formatTimestamp(flame.timeline.end)}
+                    <ClientTimestamp value={flame.timeline.start} suffix=" – " />
+                    <ClientTimestamp value={flame.timeline.end} />
                   </p>
                 </div>
                 <div className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">

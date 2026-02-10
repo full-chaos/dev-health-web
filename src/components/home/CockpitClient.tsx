@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { EvidencePanel } from "@/components/evidence";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue, formatTimestamp } from "@/lib/formatters";
+import { formatDelta, formatMetricValue } from "@/lib/formatters";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import type { HomeResponse, MetricDelta } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -233,7 +234,7 @@ export function CockpitClient({
                             >
                                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                     <span>{event.type}</span>
-                                    <span>{formatTimestamp(event.ts)}</span>
+                                    <ClientTimestamp value={event.ts} />
                                 </div>
                                 <p className="mt-2 text-sm text-foreground">
                                     {event.text}

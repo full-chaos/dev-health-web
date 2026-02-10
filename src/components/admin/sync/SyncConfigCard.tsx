@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { SyncConfig } from "@/lib/admin/types";
 import { triggerSync, toggleSyncActive, deleteSyncConfig } from "@/lib/admin/server";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 
 interface SyncConfigCardProps {
@@ -94,8 +95,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
 
       <div className="mt-6 flex items-center justify-between border-t border-(--card-stroke) pt-4">
         <div className="text-xs text-(--ink-muted)">
-          Last sync:{" "}
-          {config.last_sync_at ? new Date(config.last_sync_at).toLocaleString() : "Never"}
+          <ClientTimestamp value={config.last_sync_at} prefix="Last sync: " fallback="Never" />
         </div>
         
         <div className="flex items-center gap-2">
@@ -143,7 +143,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                 type="button"
                 onClick={handleTrigger}
                 disabled={isPending}
-                className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:bg-(--accent-hover) focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50"
+                className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:opacity-80 active:opacity-70 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50 transition-opacity"
               >
                 {isPending ? "Syncing..." : "Sync Now"}
               </button>

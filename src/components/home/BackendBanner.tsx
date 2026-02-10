@@ -1,7 +1,7 @@
 "use client";
 
 import type { MetaResponse } from "@/lib/types";
-import { formatTimestamp } from "@/lib/formatters";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 
 type BackendBannerProps = {
   meta: MetaResponse | null;
@@ -26,9 +26,7 @@ export function BackendBanner({ meta }: BackendBannerProps) {
       {meta.last_ingest_at && (
         <>
           <span className="text-(--ink-muted)">•</span>
-          <span className="text-(--ink-muted)">
-            Synced {formatTimestamp(meta.last_ingest_at)}
-          </span>
+          <ClientTimestamp value={meta.last_ingest_at} prefix="Synced " className="text-(--ink-muted)" />
         </>
       )}
       {coverageItems.length > 0 && (
