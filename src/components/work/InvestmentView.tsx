@@ -1146,6 +1146,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 ? `Focused: ${titleCase(mixExplanation.focus.theme)}`
                                 : "Focused: All themes"}
                     </div>
+                    {(!mixExplanation.data || mixExplanation.data.status !== "llm_unavailable") && (
                     <button
                         type="button"
                         onClick={regenerateMixExplanation}
@@ -1154,9 +1155,14 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     >
                         {isExplainingMix ? "Generating…" : "Regenerate explanation"}
                     </button>
+                    )}
                 </div>
                 <div className="mt-4 space-y-4">
-                    {!mixExplanation.data || mixExplanation.filtersKey !== mixExplainKey ? (
+                    {mixExplanation.data?.status === "llm_unavailable" ? (
+                        <p className="text-sm text-(--ink-muted)">
+                            Investment distribution uses metadata-based categorization. Connect an LLM provider in settings to enable AI-generated explanations.
+                        </p>
+                    ) : !mixExplanation.data || mixExplanation.filtersKey !== mixExplainKey ? (
                         <p className="text-sm text-(--ink-muted)">
                             {mixExplanation.filtersKey === mixExplainKey
                                 ? "Explanation unavailable for this window."
