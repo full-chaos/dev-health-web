@@ -27,7 +27,7 @@ export function EditTeamFormWrapper({ team }: EditTeamFormWrapperProps) {
    const handleSubmit = async (data: Team) => {
      setIsLoading(true);
 
-     const result = await updateTeam(team.id, {
+      const result = await updateTeam(team.team_id, {
        name: data.name,
        description: data.description || undefined,
        repo_patterns: data.repo_patterns,
@@ -41,8 +41,7 @@ export function EditTeamFormWrapper({ team }: EditTeamFormWrapperProps) {
        return;
      }
 
-     router.push("/admin/teams");
-     router.refresh();
+      router.push("/admin/teams");
    };
 
    return (
