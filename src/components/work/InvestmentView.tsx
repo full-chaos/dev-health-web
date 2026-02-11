@@ -1281,7 +1281,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                             )}
 
                             {/* Status indicator for invalid outputs */}
-                            {mixExplanation.data.status && mixExplanation.data.status !== "valid" && mixExplanation.data.status !== "llm_unavailable" && (
+                            {mixExplanation.data.status && mixExplanation.data.status !== "valid" && (
                                 <p className="text-[10px] italic text-(--ink-muted)">
                                     ⚠ Fallback explanation shown ({mixExplanation.data.status})
                                 </p>
