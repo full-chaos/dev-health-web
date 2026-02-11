@@ -115,7 +115,7 @@ export type InvestmentMixExplanation = {
   confidence: InvestmentConfidence;
   what_to_check_next: InvestmentActionItem[];
   anti_claims: string[];
-  status?: "valid" | "invalid_json" | "invalid_llm_output";
+  status?: "valid" | "invalid_json" | "invalid_llm_output" | "llm_unavailable";
 };
 
 export type DrilldownResponse = {
