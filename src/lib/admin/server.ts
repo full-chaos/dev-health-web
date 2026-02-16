@@ -28,7 +28,9 @@ import type {
   SettingCreate,
   SettingUpdate,
   Organization,
+  OrganizationCreate,
   OrganizationUpdate,
+  Membership,
 } from "./types";
 
 async function getToken(): Promise<string> {
@@ -474,5 +476,49 @@ export async function getImpersonationStatus(): Promise<ActionResult<{
   return withErrorHandling(async () => {
     const token = await getToken();
     return adminApi.impersonation.status(token);
+  });
+}
+
+// ---- Superadmin: Organization Management ----
+
+export async function listOrganizations(): Promise<ActionResult<Organization[]>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.orgs.list(token);
+  });
+}
+
+export async function getOrganization(orgId: string): Promise<ActionResult<Organization>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.orgs.get(orgId, token);
+  });
+}
+
+export async function createOrganization(data: OrganizationCreate): Promise<ActionResult<Organization>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.orgs.create(data, token);
+  });
+}
+
+export async function updateOrganization(orgId: string, data: OrganizationUpdate): Promise<ActionResult<Organization>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.orgs.update(orgId, data, token);
+  });
+}
+
+export async function deleteOrganization(orgId: string): Promise<ActionResult<void>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.orgs.delete(orgId, token);
+  });
+}
+
+export async function listOrgMembers(orgId: string): Promise<ActionResult<Membership[]>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.orgs.members.list(orgId, token);
   });
 }

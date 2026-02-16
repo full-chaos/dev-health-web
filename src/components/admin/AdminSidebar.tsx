@@ -72,6 +72,15 @@ export function AdminSidebar({ isSuperuser }: AdminSidebarProps) {
                 </Link>
               );
             })}
+            {isSuperuser && (
+              <Link
+                href="/superadmin"
+                className="group flex items-center justify-between rounded-2xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-purple-400 hover:bg-purple-500/20 transition"
+              >
+                <span className="font-medium">Platform Admin</span>
+                <span className="text-[10px] uppercase tracking-widest">Global</span>
+              </Link>
+            )}
           </nav>
           <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
             Return to <Link href="/" className="underline hover:text-foreground">main app</Link>.
