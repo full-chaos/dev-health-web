@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getUser } from "@/lib/admin/server";
 import { DeleteUserButton } from "./DeleteUserButton";
+import { ImpersonateUserButton } from "@/components/admin/users/ImpersonateUserButton";
 
 export default async function UserDetailPage({
   params,
@@ -100,6 +101,7 @@ export default async function UserDetailPage({
           <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
             <h3 className="mb-4 text-lg font-medium">Quick Actions</h3>
             <div className="space-y-3">
+              <ImpersonateUserButton user={user} />
               <Link
                 href={`/admin/users/${user.id}/edit`}
                 className="block w-full rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground text-left"

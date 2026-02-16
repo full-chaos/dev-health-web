@@ -467,6 +467,26 @@ export const adminApi = {
     resourceTypes: (token?: string) =>
       request<string[]>("/retention/resource-types", {}, token),
   },
+
+  impersonation: {
+    start: (targetUserId: string, token?: string) =>
+      request<{
+        access_token: string;
+        token_type: string;
+        expires_in: number;
+        impersonated_user: { id: string; email: string; role: string; org_id: string };
+      }>("/impersonate", { method: "POST", body: JSON.stringify({ target_user_id: targetUserId }) }, token),
+
+    stop: (token?: string) =>
+      request<{ access_token: string; token_type: string; expires_in: number }>(
+        "/impersonate/stop", { method: "POST" }, token
+      ),
+
+    status: (token?: string) =>
+      request<{ is_impersonating: boolean; impersonated_user_id: string | null; real_user_id: string | null }>(
+        "/impersonate/status", {}, token
+      ),
+  },
 };
 
 export type AdminApi = typeof adminApi;

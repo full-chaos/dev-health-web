@@ -6,6 +6,7 @@ import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { GraphQLProvider } from "@/lib/graphql/provider";
 import { Toaster } from "sonner";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 
 const bodyFont = Noto_Sans({
   variable: "--font-body",
@@ -72,6 +73,7 @@ export default function RootLayout({
              <div className="fixed right-6 top-6 z-50">
                <UserMenu />
              </div>
+             <ImpersonationBanner />
              {children}
              <Toaster richColors position="top-right" theme="dark" />
            </GraphQLProvider>
