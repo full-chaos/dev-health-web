@@ -43,6 +43,7 @@ import type {
   RetentionPolicyUpdate,
   RetentionPolicyListResponse,
   RetentionExecuteResponse,
+  PlatformStats,
 } from "./types";
 
 export class AdminApiError extends Error {
@@ -486,6 +487,11 @@ export const adminApi = {
       request<{ is_impersonating: boolean; impersonated_user_id: string | null; real_user_id: string | null }>(
         "/impersonate/status", {}, token
       ),
+  },
+
+  platform: {
+    stats: (token?: string) =>
+      request<PlatformStats>("/platform/stats", {}, token),
   },
 };
 
