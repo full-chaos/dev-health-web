@@ -239,6 +239,7 @@ export interface User {
   is_active: boolean;
   is_verified: boolean;
   is_superuser: boolean;
+  role?: string;
   last_login_at: string | null;
   created_at: string;
   updated_at: string;

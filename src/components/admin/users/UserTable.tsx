@@ -1,6 +1,11 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import type { User } from "@/lib/admin/types";
+import { useSession } from "next-auth/react";
+import { startImpersonation } from "@/lib/admin/server";
+import { useRouter } from "next/navigation";
 
 export type { User };
 
@@ -19,6 +24,17 @@ function getStatusDisplay(user: User): { label: string; className: string } {
 }
 
 export function UserTable({ users }: UserTableProps) {
+  const { data: session, update } = useSession();
+  const router = useRouter();
+
+  const handleImpersonate = async (userId: string) => {
+    const result = await startImpersonation(userId);
+    if (result.data) {
+      await update({ startImpersonation: result.data });
+      router.push("/");
+    }
+  };
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
       <table className="w-full text-left text-sm">
@@ -35,6 +51,11 @@ export function UserTable({ users }: UserTableProps) {
         <tbody className="divide-y divide-(--card-stroke)">
           {users.map((user) => {
             const status = getStatusDisplay(user);
+            const canImpersonate =
+              session?.user?.id !== user.id &&
+              !user.is_superuser &&
+              user.role !== "admin";
+
             return (
               <tr key={user.id} className="hover:bg-(--card-70)/50">
                 <td className="px-6 py-4 font-medium text-foreground">
@@ -60,7 +81,16 @@ export function UserTable({ users }: UserTableProps) {
                     ? new Date(user.last_login_at).toLocaleDateString()
                     : "Never"}
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-4 text-right space-x-4">
+                  {canImpersonate && (
+                    <button
+                      type="button"
+                      onClick={() => handleImpersonate(user.id)}
+                      className="text-amber-500 hover:underline"
+                    >
+                      Impersonate
+                    </button>
+                  )}
                   <Link
                     href={`/admin/users/${user.id}/edit`}
                     className="text-(--accent) hover:underline"

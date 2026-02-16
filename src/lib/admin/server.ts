@@ -442,3 +442,37 @@ export async function updateSecuritySetting(
     return adminApi.settings.update("security", key, { value }, token);
   });
 }
+
+export async function startImpersonation(targetUserId: string): Promise<ActionResult<{
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  impersonated_user: { id: string; email: string; role: string; org_id: string };
+}>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.impersonation.start(targetUserId, token);
+  });
+}
+
+export async function stopImpersonation(): Promise<ActionResult<{
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.impersonation.stop(token);
+  });
+}
+
+export async function getImpersonationStatus(): Promise<ActionResult<{
+  is_impersonating: boolean;
+  impersonated_user_id: string | null;
+  real_user_id: string | null;
+}>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.impersonation.status(token);
+  });
+}

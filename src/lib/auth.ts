@@ -58,7 +58,7 @@ const nextAuth = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
         token.org_id = user.org_id
@@ -69,6 +69,37 @@ const nextAuth = NextAuth({
         token.refresh_token = user.refresh_token
         token.expires_at = Date.now() + (user.expires_in || 3600) * 1000
       }
+
+      // Handle impersonation start
+      if (trigger === "update" && session?.startImpersonation) {
+        // Store real admin state
+        token.real_access_token = token.access_token
+        token.real_user_id = token.id
+        token.real_role = token.role
+        token.real_org_id = token.org_id
+        // Swap to impersonated state
+        token.access_token = session.startImpersonation.access_token
+        token.id = session.startImpersonation.impersonated_user.id
+        token.role = session.startImpersonation.impersonated_user.role
+        token.org_id = session.startImpersonation.impersonated_user.org_id
+        token.is_impersonating = true
+        token.impersonated_user_id = session.startImpersonation.impersonated_user.id
+      }
+      
+      // Handle impersonation stop
+      if (trigger === "update" && session?.stopImpersonation) {
+        token.access_token = session.stopImpersonation.access_token
+        token.id = token.real_user_id
+        token.role = token.real_role
+        token.org_id = token.real_org_id
+        token.is_impersonating = false
+        token.impersonated_user_id = undefined
+        token.real_access_token = undefined
+        token.real_user_id = undefined
+        token.real_role = undefined
+        token.real_org_id = undefined
+      }
+
       return token
     },
     async session({ session, token }) {
@@ -79,6 +110,9 @@ const nextAuth = NextAuth({
         session.user.is_superuser = (token.is_superuser as boolean) ?? false
         session.user.permissions = token.permissions as string[]
         session.access_token = token.access_token as string
+        session.user.is_impersonating = !!token.is_impersonating
+        session.user.impersonated_user_id = token.impersonated_user_id as string | undefined
+        session.user.real_user_id = token.real_user_id as string | undefined
       }
       return session
     },
