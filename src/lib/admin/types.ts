@@ -460,3 +460,19 @@ export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
   jira: ['work-items'],
   linear: ['work-items'],
 };
+
+// ---- Platform Stats ----
+
+export interface PlatformStats {
+  total_organizations: number;
+  active_organizations: number;
+  total_users: number;
+  active_users: number;
+  superuser_count: number;
+  total_memberships: number;
+  tier_distribution: Record<string, number>;
+  total_sync_configs: number;
+  active_sync_configs: number;
+  recent_syncs_success: number;
+  recent_syncs_failed: number;
+}

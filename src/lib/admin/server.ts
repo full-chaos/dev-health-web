@@ -31,6 +31,7 @@ import type {
   OrganizationCreate,
   OrganizationUpdate,
   Membership,
+  PlatformStats,
 } from "./types";
 
 async function getToken(): Promise<string> {
@@ -520,5 +521,12 @@ export async function listOrgMembers(orgId: string): Promise<ActionResult<Member
   return withErrorHandling(async () => {
     const token = await getToken();
     return adminApi.orgs.members.list(orgId, token);
+  });
+}
+
+export async function getPlatformStats(): Promise<ActionResult<PlatformStats>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.platform.stats(token);
   });
 }
