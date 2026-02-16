@@ -37,6 +37,7 @@ export function UserMenu() {
   return (
     <div className="relative" ref={menuRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="cursor-pointer flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1.5 hover:bg-[var(--card-80)] transition-colors"
       >
@@ -57,6 +58,15 @@ export function UserMenu() {
                 {session.user?.email}
               </span>
             </div>
+            {session.user?.is_superuser && (
+              <Link
+                href="/superadmin"
+                className="cursor-pointer block px-4 py-2 text-sm text-purple-400 hover:bg-[var(--card-80)]"
+                onClick={() => setIsOpen(false)}
+              >
+                Platform Admin
+              </Link>
+            )}
             <Link
               href="/admin"
               className="cursor-pointer block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
@@ -73,6 +83,7 @@ export function UserMenu() {
             </Link>
             <div className="border-t border-[var(--card-stroke)]">
               <button
+                type="button"
                 onClick={() => signOut()}
                 className="cursor-pointer block w-full px-4 py-2 text-left text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
               >
