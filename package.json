@@ -34,10 +34,10 @@
     "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.1.6",
     "express": "^5.2.1",
-    "msw": "^2.12.9",
+    "msw": "^2.12.10",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.18"
