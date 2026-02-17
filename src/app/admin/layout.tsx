@@ -15,6 +15,12 @@ export default async function AdminLayout({
 
   const role = session.user.role;
   const isSuperuser = session.user.is_superuser === true;
+
+  // Superusers without an org context must use Platform Admin instead
+  if (isSuperuser && !session.user.org_id) {
+    redirect("/superadmin");
+  }
+
   if (!isSuperuser && role !== "admin" && role !== "owner") {
     redirect("/");
   }
