@@ -12,6 +12,9 @@ import {
   deleteCredential,
   listCredentials,
   testConnection,
+  listAuditLogs,
+  getAuditLog,
+  listAuditActions,
 } from "../server";
 
 // Helper to mock auth session
@@ -112,6 +115,98 @@ describe("admin/server credential actions", () => {
       const result = await deleteCredential("github", "default");
       expect(result.error).toBeUndefined();
       expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
+      fetchSpy.mockRestore();
+    });
+  });
+});
+
+describe("admin/server audit log actions", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+  });
+
+  describe("listAuditLogs", () => {
+    it("returns audit logs on success", async () => {
+      mockSession();
+      const resp = {
+        items: [
+          {
+            id: "al-1",
+            org_id: "org-1",
+            user_id: "u-1",
+            action: "user.login",
+            resource_type: "user",
+            resource_id: "u-1",
+            description: null,
+            changes: null,
+            request_metadata: null,
+            status: "success",
+            error_message: null,
+            created_at: "2025-01-01T00:00:00Z",
+          },
+        ],
+        total: 1,
+        limit: 50,
+        offset: 0,
+      };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(resp), { status: 200 }));
+
+      const result = await listAuditLogs();
+      expect(result.data).toBeDefined();
+      expect(result.data?.items).toHaveLength(1);
+      expect(result.error).toBeUndefined();
+      fetchSpy.mockRestore();
+    });
+
+    it("returns error when not authenticated", async () => {
+      vi.mocked(auth).mockResolvedValue(null);
+      const result = await listAuditLogs();
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  describe("getAuditLog", () => {
+    it("returns a single audit log on success", async () => {
+      mockSession();
+      const log = {
+        id: "al-1",
+        org_id: "org-1",
+        user_id: "u-1",
+        action: "user.login",
+        resource_type: "user",
+        resource_id: "u-1",
+        description: null,
+        changes: null,
+        request_metadata: null,
+        status: "success",
+        error_message: null,
+        created_at: "2025-01-01T00:00:00Z",
+      };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(log), { status: 200 }));
+
+      const result = await getAuditLog("al-1");
+      expect(result.data).toBeDefined();
+      expect(result.data?.id).toBe("al-1");
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("listAuditActions", () => {
+    it("returns available actions on success", async () => {
+      mockSession();
+      const actions = ["user.login", "user.logout", "credential.create"];
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(actions), { status: 200 }));
+
+      const result = await listAuditActions();
+      expect(result.data).toBeDefined();
+      expect(result.data).toHaveLength(3);
       fetchSpy.mockRestore();
     });
   });
