@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },
   { id: "identities", label: "Identities", href: "/admin/identities", description: "Mapping" },
   { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise" },
+  { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security" },
 ];
 
 type AdminSidebarProps = {
