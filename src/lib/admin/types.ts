@@ -477,3 +477,52 @@ export interface PlatformStats {
   recent_syncs_success: number;
   recent_syncs_failed: number;
 }
+
+// ---- Licensing & Feature Flags ----
+
+export interface FeatureFlag {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  category: string;
+  min_tier: string;
+  is_enabled: boolean;
+  is_beta: boolean;
+  is_deprecated: boolean;
+  created_at: string;
+}
+
+export interface FeatureOverride {
+  id: string;
+  org_id: string;
+  feature_id: string;
+  feature_key: string;
+  is_enabled: boolean;
+  expires_at: string | null;
+  config: Record<string, unknown> | null;
+  reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface FeatureOverrideCreate {
+  feature_id: string;
+  is_enabled?: boolean;
+  expires_at?: string | null;
+  config?: Record<string, unknown> | null;
+  reason?: string | null;
+}
+
+export interface OrgEntitlements {
+  org_id: string;
+  tier: string;
+  licensed_users: number | null;
+  licensed_repos: number | null;
+  features: Record<string, boolean>;
+  features_override: Record<string, boolean> | null;
+  limits_override: Record<string, number | null> | null;
+  expires_at: string | null;
+  is_valid: boolean;
+  limits: Record<string, number | null>;
+}
