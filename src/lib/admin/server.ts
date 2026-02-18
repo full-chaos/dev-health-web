@@ -38,6 +38,11 @@ import type {
   FeatureOverrideCreate,
   AuditLogListResponse,
   AuditLogFilter,
+  IPAllowlist,
+  IPAllowlistCreate,
+  IPAllowlistUpdate,
+  IPAllowlistListResponse,
+  IPCheckResponse,
 } from "./types";
 
 interface SessionContext {
@@ -601,6 +606,7 @@ export async function listPlatformAuditLogs(
   });
 }
 
+
 // ---- Org-scoped Audit Logs ----
 
 export async function listAuditLogs(
@@ -625,5 +631,56 @@ export async function listAuditActions(): Promise<ActionResult<string[]>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     return adminApi.audit.actions(token, orgId);
+  });
+}
+
+// ---- IP Allowlist ----
+
+export async function listIPAllowlistEntries(
+  limit?: number,
+  offset?: number
+): Promise<ActionResult<IPAllowlistListResponse>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.ipAllowlist.list(limit ?? 50, offset ?? 0, token, orgId);
+  });
+}
+
+export async function createIPAllowlistEntry(
+  data: IPAllowlistCreate
+): Promise<ActionResult<IPAllowlist>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.ipAllowlist.create(data, token, orgId);
+    revalidatePath("/admin/ip-allowlist");
+    return result;
+  });
+}
+
+export async function updateIPAllowlistEntry(
+  id: string,
+  data: IPAllowlistUpdate
+): Promise<ActionResult<IPAllowlist>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.ipAllowlist.update(id, data, token, orgId);
+    revalidatePath("/admin/ip-allowlist");
+    return result;
+  });
+}
+
+export async function deleteIPAllowlistEntry(id: string): Promise<ActionResult<void>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.ipAllowlist.delete(id, token, orgId);
+    revalidatePath("/admin/ip-allowlist");
+    return result;
+  });
+}
+
+export async function checkIPAllowed(ipAddress: string): Promise<ActionResult<IPCheckResponse>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.ipAllowlist.check(ipAddress, token, orgId);
   });
 }
