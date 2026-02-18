@@ -7,6 +7,9 @@ const navItems = [
   { id: "dashboard", label: "Dashboard", href: "/superadmin", description: "Overview" },
   { id: "orgs", label: "Organizations", href: "/superadmin/orgs", description: "Tenants" },
   { id: "users", label: "Users", href: "/superadmin/users", description: "Global" },
+  { id: "licensing", label: "Licensing", href: "/superadmin/licensing", description: "Tiers" },
+  { id: "audit", label: "Audit Log", href: "/superadmin/audit", description: "Events" },
+  { id: "settings", label: "Settings", href: "/superadmin/settings", description: "Platform" },
 ];
 
 export function SuperadminSidebar() {

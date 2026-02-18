@@ -44,6 +44,10 @@ import type {
   RetentionPolicyListResponse,
   RetentionExecuteResponse,
   PlatformStats,
+  FeatureFlag,
+  FeatureOverride,
+  FeatureOverrideCreate,
+  OrgEntitlements,
 } from "./types";
 
 export class AdminApiError extends Error {
@@ -64,6 +68,46 @@ async function request<T>(
 ): Promise<T> {
   const baseUrl = getBackendUrl();
   const url = `${baseUrl}/api/v1/admin${path}`;
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+
+  if (accessToken) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    let detail: string | undefined;
+    try {
+      const errorData = await response.json();
+      detail = errorData.detail || errorData.message;
+    } catch {
+      detail = undefined;
+    }
+    throw new AdminApiError(response.status, response.statusText, detail);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json();
+}
+
+async function licensingRequest<T>(
+  path: string,
+  options: RequestInit = {},
+  accessToken?: string
+): Promise<T> {
+  const baseUrl = getBackendUrl();
+  const url = `${baseUrl}/api/v1/licensing${path}`;
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -492,6 +536,43 @@ export const adminApi = {
   platform: {
     stats: (token?: string) =>
       request<PlatformStats>("/platform/stats", {}, token),
+  },
+
+  licensing: {
+    entitlements: (orgId: string, token?: string) =>
+      licensingRequest<OrgEntitlements>(`/entitlements/${orgId}`, {}, token),
+
+    featureFlags: (token?: string) =>
+      request<FeatureFlag[]>("/feature-flags", {}, token),
+
+    overrides: {
+      list: (orgId: string, token?: string) =>
+        request<FeatureOverride[]>(`/orgs/${orgId}/feature-overrides`, {}, token),
+
+      create: (orgId: string, data: FeatureOverrideCreate, token?: string) =>
+        request<FeatureOverride>(
+          `/orgs/${orgId}/feature-overrides`,
+          { method: "POST", body: JSON.stringify(data) },
+          token
+        ),
+
+      delete: (orgId: string, overrideId: string, token?: string) =>
+        request<void>(`/orgs/${orgId}/feature-overrides/${overrideId}`, { method: "DELETE" }, token),
+    },
+  },
+
+  platformAudit: {
+    list: (filters?: AuditLogFilter, limit?: number, offset?: number, token?: string) => {
+      const params = new URLSearchParams();
+      if (limit) params.set("limit", String(limit));
+      if (offset) params.set("offset", String(offset));
+      if (filters) {
+        Object.entries(filters).forEach(([k, v]) => {
+          if (v != null) params.set(k, String(v));
+        });
+      }
+      return request<AuditLogListResponse>(`/platform/audit-logs?${params.toString()}`, {}, token);
+    },
   },
 };
 
