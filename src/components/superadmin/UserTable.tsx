@@ -1,12 +1,28 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import type { User } from "@/lib/admin/types";
+import { useSession } from "next-auth/react";
+import { startImpersonation } from "@/lib/admin/server";
+import { useRouter } from "next/navigation";
 
 type UserTableProps = {
   users: User[];
 };
 
 export function UserTable({ users }: UserTableProps) {
+  const { data: session, update } = useSession();
+  const router = useRouter();
+
+  const handleImpersonate = async (userId: string) => {
+    const result = await startImpersonation(userId);
+    if (result.data) {
+      await update({ startImpersonation: result.data });
+      router.push("/");
+    }
+  };
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
       <table className="w-full text-left text-sm">
@@ -62,7 +78,16 @@ export function UserTable({ users }: UserTableProps) {
                   ? new Date(user.last_login_at).toLocaleDateString()
                   : "-"}
               </td>
-              <td className="px-6 py-4 text-right">
+              <td className="px-6 py-4 text-right space-x-4">
+                {session?.user?.id !== user.id && !user.is_superuser && (
+                  <button
+                    type="button"
+                    onClick={() => handleImpersonate(user.id)}
+                    className="text-amber-500 hover:underline"
+                  >
+                    Impersonate
+                  </button>
+                )}
                 <Link
                   href={`/superadmin/users/${user.id}`}
                   className="text-(--accent) hover:underline"

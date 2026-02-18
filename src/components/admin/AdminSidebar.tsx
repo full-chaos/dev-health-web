@@ -30,6 +30,10 @@ type AdminSidebarProps = {
 export function AdminSidebar({ isSuperuser }: AdminSidebarProps) {
   const pathname = usePathname();
 
+  const filteredNavItems = isSuperuser
+    ? navItems.filter((item) => item.id !== "organization")
+    : navItems;
+
   return (
     <aside className="w-full md:max-w-[220px] md:shrink-0">
       <div className="md:sticky md:top-6">
@@ -51,7 +55,7 @@ export function AdminSidebar({ isSuperuser }: AdminSidebarProps) {
             </p>
           </div>
           <nav className="mt-5 space-y-2 text-sm">
-            {navItems.map((item) => {
+            {filteredNavItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
