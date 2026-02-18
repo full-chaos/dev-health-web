@@ -20,6 +20,12 @@ import {
   updateIPAllowlistEntry,
   deleteIPAllowlistEntry,
   checkIPAllowed,
+  listRetentionPolicies,
+  createRetentionPolicy,
+  updateRetentionPolicy,
+  deleteRetentionPolicy,
+  executeRetentionPolicy,
+  listRetentionResourceTypes,
 } from "../server";
 
 // Helper to mock auth session
@@ -309,6 +315,121 @@ describe("admin/server IP allowlist actions", () => {
       const result = await checkIPAllowed("10.0.0.1");
       expect(result.data).toBeDefined();
       expect(result.data?.allowed).toBe(true);
+      fetchSpy.mockRestore();
+    });
+  });
+});
+
+const mockRetentionPolicy = {
+  id: "rp-1",
+  org_id: "org-1",
+  resource_type: "audit_logs",
+  retention_days: 90,
+  description: "Keep audit logs for 90 days",
+  is_active: true,
+  last_run_at: null,
+  last_run_deleted_count: null,
+  next_run_at: null,
+  created_by_id: "u-1",
+  created_at: "2025-01-01T00:00:00Z",
+  updated_at: "2025-01-01T00:00:00Z",
+};
+
+describe("admin/server retention policy actions", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+  });
+
+  describe("listRetentionPolicies", () => {
+    it("returns policies on success", async () => {
+      mockSession();
+      const resp = { items: [mockRetentionPolicy], total: 1, limit: 50, offset: 0 };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(resp), { status: 200 }));
+
+      const result = await listRetentionPolicies();
+      expect(result.data).toBeDefined();
+      expect(result.data?.items).toHaveLength(1);
+      expect(result.error).toBeUndefined();
+      fetchSpy.mockRestore();
+    });
+
+    it("returns error when not authenticated", async () => {
+      vi.mocked(auth).mockResolvedValue(null);
+      const result = await listRetentionPolicies();
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  describe("createRetentionPolicy", () => {
+    it("calls revalidatePath after successful creation", async () => {
+      mockSession();
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(mockRetentionPolicy), { status: 200 }));
+
+      const result = await createRetentionPolicy({ resource_type: "audit_logs", retention_days: 90 });
+      expect(result.data).toBeDefined();
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/retention");
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("updateRetentionPolicy", () => {
+    it("calls revalidatePath after successful update", async () => {
+      mockSession();
+      const updated = { ...mockRetentionPolicy, retention_days: 180 };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(updated), { status: 200 }));
+
+      const result = await updateRetentionPolicy("rp-1", { retention_days: 180 });
+      expect(result.data).toBeDefined();
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/retention");
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("deleteRetentionPolicy", () => {
+    it("calls revalidatePath after successful deletion", async () => {
+      mockSession();
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+
+      const result = await deleteRetentionPolicy("rp-1");
+      expect(result.error).toBeUndefined();
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/retention");
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("executeRetentionPolicy", () => {
+    it("returns execution result on success", async () => {
+      mockSession();
+      const resp = { deleted_count: 42, error: null };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(resp), { status: 200 }));
+
+      const result = await executeRetentionPolicy("rp-1", true);
+      expect(result.data).toBeDefined();
+      expect(result.data?.deleted_count).toBe(42);
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("listRetentionResourceTypes", () => {
+    it("returns resource types on success", async () => {
+      mockSession();
+      const types = ["audit_logs", "metrics", "work_items"];
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(types), { status: 200 }));
+
+      const result = await listRetentionResourceTypes();
+      expect(result.data).toBeDefined();
+      expect(result.data).toHaveLength(3);
       fetchSpy.mockRestore();
     });
   });
