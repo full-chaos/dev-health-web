@@ -600,3 +600,30 @@ export async function listPlatformAuditLogs(
     return adminApi.platformAudit.list(filters, limit, offset, token);
   });
 }
+
+// ---- Org-scoped Audit Logs ----
+
+export async function listAuditLogs(
+  filters?: AuditLogFilter,
+  limit?: number,
+  offset?: number
+): Promise<ActionResult<AuditLogListResponse>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.audit.list(filters, limit ?? 50, offset ?? 0, token, orgId);
+  });
+}
+
+export async function getAuditLog(id: string): Promise<ActionResult<AuditLogListResponse["items"][0]>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.audit.get(id, token, orgId);
+  });
+}
+
+export async function listAuditActions(): Promise<ActionResult<string[]>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.audit.actions(token, orgId);
+  });
+}
