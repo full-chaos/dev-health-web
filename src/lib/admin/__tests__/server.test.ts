@@ -15,6 +15,11 @@ import {
   listAuditLogs,
   getAuditLog,
   listAuditActions,
+  listIPAllowlistEntries,
+  createIPAllowlistEntry,
+  updateIPAllowlistEntry,
+  deleteIPAllowlistEntry,
+  checkIPAllowed,
 } from "../server";
 
 // Helper to mock auth session
@@ -207,6 +212,103 @@ describe("admin/server audit log actions", () => {
       const result = await listAuditActions();
       expect(result.data).toBeDefined();
       expect(result.data).toHaveLength(3);
+      fetchSpy.mockRestore();
+    });
+  });
+});
+
+const mockIPEntry = {
+  id: "ip-1",
+  org_id: "org-1",
+  ip_range: "10.0.0.0/8",
+  description: "Office network",
+  is_active: true,
+  created_by_id: "u-1",
+  created_at: "2025-01-01T00:00:00Z",
+  updated_at: "2025-01-01T00:00:00Z",
+  expires_at: null,
+};
+
+describe("admin/server IP allowlist actions", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+  });
+
+  describe("listIPAllowlistEntries", () => {
+    it("returns entries on success", async () => {
+      mockSession();
+      const resp = { items: [mockIPEntry], total: 1, limit: 50, offset: 0 };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(resp), { status: 200 }));
+
+      const result = await listIPAllowlistEntries();
+      expect(result.data).toBeDefined();
+      expect(result.data?.items).toHaveLength(1);
+      expect(result.error).toBeUndefined();
+      fetchSpy.mockRestore();
+    });
+
+    it("returns error when not authenticated", async () => {
+      vi.mocked(auth).mockResolvedValue(null);
+      const result = await listIPAllowlistEntries();
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  describe("createIPAllowlistEntry", () => {
+    it("calls revalidatePath after successful creation", async () => {
+      mockSession();
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(mockIPEntry), { status: 200 }));
+
+      const result = await createIPAllowlistEntry({ ip_range: "10.0.0.0/8", description: "Office" });
+      expect(result.data).toBeDefined();
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/ip-allowlist");
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("updateIPAllowlistEntry", () => {
+    it("calls revalidatePath after successful update", async () => {
+      mockSession();
+      const updated = { ...mockIPEntry, is_active: false };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(updated), { status: 200 }));
+
+      const result = await updateIPAllowlistEntry("ip-1", { is_active: false });
+      expect(result.data).toBeDefined();
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/ip-allowlist");
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("deleteIPAllowlistEntry", () => {
+    it("calls revalidatePath after successful deletion", async () => {
+      mockSession();
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+
+      const result = await deleteIPAllowlistEntry("ip-1");
+      expect(result.error).toBeUndefined();
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/ip-allowlist");
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("checkIPAllowed", () => {
+    it("returns check result on success", async () => {
+      mockSession();
+      const resp = { allowed: true, ip_address: "10.0.0.1" };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(resp), { status: 200 }));
+
+      const result = await checkIPAllowed("10.0.0.1");
+      expect(result.data).toBeDefined();
+      expect(result.data?.allowed).toBe(true);
       fetchSpy.mockRestore();
     });
   });
