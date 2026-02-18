@@ -61,6 +61,22 @@ export class AdminApiError extends Error {
   }
 }
 
+function formatErrorDetail(raw: unknown): string | undefined {
+  if (typeof raw === "string") return raw;
+  if (raw == null) return undefined;
+  if (typeof raw === "object" && "error" in raw) {
+    const obj = raw as Record<string, string>;
+    if (obj.error === "feature_not_licensed") {
+      const tier = obj.required_tier || "a higher";
+      return `This feature requires the ${tier} plan (current plan: ${obj.current_tier || "community"}).`;
+    }
+    if (obj.error === "limit_exceeded") {
+      return `Plan limit reached: ${obj.limit || "resource"} (${obj.current}/${obj.maximum}).`;
+    }
+  }
+  return JSON.stringify(raw);
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -92,8 +108,7 @@ async function request<T>(
     let detail: string | undefined;
     try {
       const errorData = await response.json();
-      const raw = errorData.detail || errorData.message;
-      detail = typeof raw === "string" ? raw : raw != null ? JSON.stringify(raw) : undefined;
+      detail = formatErrorDetail(errorData.detail || errorData.message);
     } catch {
       detail = undefined;
     }
@@ -138,8 +153,7 @@ async function licensingRequest<T>(
     let detail: string | undefined;
     try {
       const errorData = await response.json();
-      const raw = errorData.detail || errorData.message;
-      detail = typeof raw === "string" ? raw : raw != null ? JSON.stringify(raw) : undefined;
+      detail = formatErrorDetail(errorData.detail || errorData.message);
     } catch {
       detail = undefined;
     }
