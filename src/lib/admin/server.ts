@@ -91,6 +91,13 @@ export async function deleteUser(userId: string): Promise<ActionResult<void>> {
   });
 }
 
+export async function setUserPassword(userId: string, password: string): Promise<ActionResult<void>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.users.setPassword(userId, password, token);
+  });
+}
+
 export async function listCredentials(): Promise<ActionResult<IntegrationCredential[]>> {
   return withErrorHandling(async () => {
     const token = await getToken();

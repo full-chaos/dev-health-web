@@ -263,6 +263,7 @@ export interface UserUpdate {
   avatar_url?: string | null;
   is_active?: boolean | null;
   is_verified?: boolean | null;
+  is_superuser?: boolean | null;
 }
 
 export interface UserSetPassword {
