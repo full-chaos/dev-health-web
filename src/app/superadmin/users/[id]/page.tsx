@@ -4,6 +4,7 @@ import { SettingsSection } from "@/components/admin/settings/SettingsSection";
 import { UserEditForm } from "@/components/superadmin/UserEditForm";
 import { UserSetPasswordForm } from "@/components/superadmin/UserSetPasswordForm";
 import { UserDeleteSection } from "@/components/superadmin/UserDeleteSection";
+import { ImpersonateUserButton } from "@/components/admin/users/ImpersonateUserButton";
 import { getUser } from "@/lib/admin/server";
 
 type PageProps = {
@@ -37,6 +38,13 @@ export default async function UserDetailPage({ params }: PageProps) {
         description="Manage user password and security settings."
       >
         <UserSetPasswordForm userId={user.id} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Impersonation"
+        description="Log in as this user to see what they see."
+      >
+        <ImpersonateUserButton user={user} />
       </SettingsSection>
 
       <UserDeleteSection userId={user.id} userEmail={user.email} />
