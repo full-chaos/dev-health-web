@@ -43,6 +43,11 @@ import type {
   IPAllowlistUpdate,
   IPAllowlistListResponse,
   IPCheckResponse,
+  RetentionPolicy,
+  RetentionPolicyCreate,
+  RetentionPolicyUpdate,
+  RetentionPolicyListResponse,
+  RetentionExecuteResponse,
 } from "./types";
 
 interface SessionContext {
@@ -682,5 +687,66 @@ export async function checkIPAllowed(ipAddress: string): Promise<ActionResult<IP
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     return adminApi.ipAllowlist.check(ipAddress, token, orgId);
+  });
+}
+
+// ---- Data Retention Policies ----
+
+export async function listRetentionPolicies(
+  limit?: number,
+  offset?: number
+): Promise<ActionResult<RetentionPolicyListResponse>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.retention.list(limit ?? 50, offset ?? 0, token, orgId);
+  });
+}
+
+export async function createRetentionPolicy(
+  data: RetentionPolicyCreate
+): Promise<ActionResult<RetentionPolicy>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.retention.create(data, token, orgId);
+    revalidatePath("/admin/retention");
+    return result;
+  });
+}
+
+export async function updateRetentionPolicy(
+  id: string,
+  data: RetentionPolicyUpdate
+): Promise<ActionResult<RetentionPolicy>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.retention.update(id, data, token, orgId);
+    revalidatePath("/admin/retention");
+    return result;
+  });
+}
+
+export async function deleteRetentionPolicy(id: string): Promise<ActionResult<void>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.retention.delete(id, token, orgId);
+    revalidatePath("/admin/retention");
+    return result;
+  });
+}
+
+export async function executeRetentionPolicy(
+  id: string,
+  dryRun = true
+): Promise<ActionResult<RetentionExecuteResponse>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.retention.execute(id, dryRun, token, orgId);
+  });
+}
+
+export async function listRetentionResourceTypes(): Promise<ActionResult<string[]>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.retention.resourceTypes(token, orgId);
   });
 }
