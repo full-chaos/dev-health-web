@@ -79,7 +79,8 @@ async function withErrorHandling<T>(fn: () => Promise<T>): Promise<ActionResult<
     return { data };
   } catch (err) {
     if (err instanceof AdminApiError) {
-      return { error: err.detail || err.message };
+      const detail = err.detail || err.message;
+      return { error: typeof detail === "string" ? detail : JSON.stringify(detail) };
     }
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }

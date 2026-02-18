@@ -92,7 +92,8 @@ async function request<T>(
     let detail: string | undefined;
     try {
       const errorData = await response.json();
-      detail = errorData.detail || errorData.message;
+      const raw = errorData.detail || errorData.message;
+      detail = typeof raw === "string" ? raw : raw != null ? JSON.stringify(raw) : undefined;
     } catch {
       detail = undefined;
     }
@@ -137,7 +138,8 @@ async function licensingRequest<T>(
     let detail: string | undefined;
     try {
       const errorData = await response.json();
-      detail = errorData.detail || errorData.message;
+      const raw = errorData.detail || errorData.message;
+      detail = typeof raw === "string" ? raw : raw != null ? JSON.stringify(raw) : undefined;
     } catch {
       detail = undefined;
     }
