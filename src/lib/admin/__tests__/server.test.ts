@@ -261,6 +261,27 @@ describe("admin/server IP allowlist actions", () => {
       const result = await listIPAllowlistEntries();
       expect(result.error).toBeDefined();
     });
+
+    it("returns stringified error when backend returns object detail (feature gate)", async () => {
+      mockSession();
+      const featureGateBody = {
+        detail: {
+          error: "feature_not_licensed",
+          feature: "ip_allowlist",
+          required_tier: "enterprise",
+          current_tier: "free",
+        },
+      };
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify(featureGateBody), { status: 402 }));
+
+      const result = await listIPAllowlistEntries();
+      expect(result.error).toBeDefined();
+      expect(typeof result.error).toBe("string");
+      expect(result.error).toContain("feature_not_licensed");
+      fetchSpy.mockRestore();
+    });
   });
 
   describe("createIPAllowlistEntry", () => {
