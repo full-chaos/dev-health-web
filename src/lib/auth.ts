@@ -100,6 +100,33 @@ const nextAuth = NextAuth({
         token.real_org_id = undefined
       }
 
+      // Auto-refresh: when the backend JWT is expired or within 5 min of expiry,
+      // use the refresh_token to get a new access_token. Skip during impersonation
+      // since the impersonated token has its own lifecycle.
+      const expiresAt = token.expires_at as number | undefined
+      if (
+        expiresAt &&
+        !token.is_impersonating &&
+        token.refresh_token &&
+        Date.now() > expiresAt - 5 * 60 * 1000
+      ) {
+        try {
+          const backendUrl = getBackendUrl()
+          const res = await fetch(`${backendUrl}/api/v1/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: token.refresh_token }),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            token.access_token = data.access_token
+            token.expires_at = Date.now() + (data.expires_in || 3600) * 1000
+          }
+        } catch {
+          // Refresh failed — token stays expired, user will be redirected to login
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
