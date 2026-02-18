@@ -64,7 +64,8 @@ export class AdminApiError extends Error {
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  accessToken?: string
+  accessToken?: string,
+  orgId?: string
 ): Promise<T> {
   const baseUrl = getBackendUrl();
   const url = `${baseUrl}/api/v1/admin${path}`;
@@ -76,6 +77,10 @@ async function request<T>(
 
   if (accessToken) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  if (orgId) {
+    (headers as Record<string, string>)["X-Org-Id"] = orgId;
   }
 
   const response = await fetch(url, {
@@ -104,7 +109,8 @@ async function request<T>(
 async function licensingRequest<T>(
   path: string,
   options: RequestInit = {},
-  accessToken?: string
+  accessToken?: string,
+  orgId?: string
 ): Promise<T> {
   const baseUrl = getBackendUrl();
   const url = `${baseUrl}/api/v1/licensing${path}`;
@@ -116,6 +122,10 @@ async function licensingRequest<T>(
 
   if (accessToken) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  if (orgId) {
+    (headers as Record<string, string>)["X-Org-Id"] = orgId;
   }
 
   const response = await fetch(url, {
@@ -143,155 +153,166 @@ async function licensingRequest<T>(
 
 export const adminApi = {
   settings: {
-    listCategories: (token?: string) =>
-      request<string[]>("/settings/categories", {}, token),
+    listCategories: (token?: string, orgId?: string) =>
+      request<string[]>("/settings/categories", {}, token, orgId),
 
-    listByCategory: (category: string, token?: string) =>
-      request<SettingsListResponse>(`/settings/${category}`, {}, token),
+    listByCategory: (category: string, token?: string, orgId?: string) =>
+      request<SettingsListResponse>(`/settings/${category}`, {}, token, orgId),
 
-    get: (category: string, key: string, token?: string) =>
-      request<Setting>(`/settings/${category}/${key}`, {}, token),
+    get: (category: string, key: string, token?: string, orgId?: string) =>
+      request<Setting>(`/settings/${category}/${key}`, {}, token, orgId),
 
-    create: (data: SettingCreate, token?: string) =>
-      request<Setting>("/settings", { method: "POST", body: JSON.stringify(data) }, token),
+    create: (data: SettingCreate, token?: string, orgId?: string) =>
+      request<Setting>("/settings", { method: "POST", body: JSON.stringify(data) }, token, orgId),
 
-    update: (category: string, key: string, data: SettingUpdate, token?: string) =>
+    update: (category: string, key: string, data: SettingUpdate, token?: string, orgId?: string) =>
       request<Setting>(
         `/settings/${category}/${key}`,
         { method: "PUT", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    delete: (category: string, key: string, token?: string) =>
-      request<void>(`/settings/${category}/${key}`, { method: "DELETE" }, token),
+    delete: (category: string, key: string, token?: string, orgId?: string) =>
+      request<void>(`/settings/${category}/${key}`, { method: "DELETE" }, token, orgId),
   },
 
   credentials: {
-    list: (token?: string) =>
-      request<IntegrationCredential[]>("/credentials", {}, token),
+    list: (token?: string, orgId?: string) =>
+      request<IntegrationCredential[]>("/credentials", {}, token, orgId),
 
-    get: (provider: string, name: string, token?: string) =>
-      request<IntegrationCredential>(`/credentials/${provider}/${name}`, {}, token),
+    get: (provider: string, name: string, token?: string, orgId?: string) =>
+      request<IntegrationCredential>(`/credentials/${provider}/${name}`, {}, token, orgId),
 
-    create: (data: IntegrationCredentialCreate, token?: string) =>
+    create: (data: IntegrationCredentialCreate, token?: string, orgId?: string) =>
       request<IntegrationCredential>(
         "/credentials",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    update: (provider: string, name: string, data: IntegrationCredentialUpdate, token?: string) =>
+    update: (provider: string, name: string, data: IntegrationCredentialUpdate, token?: string, orgId?: string) =>
       request<IntegrationCredential>(
         `/credentials/${provider}/${name}`,
         { method: "PATCH", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    delete: (provider: string, name: string, token?: string) =>
-      request<void>(`/credentials/${provider}/${name}`, { method: "DELETE" }, token),
+    delete: (provider: string, name: string, token?: string, orgId?: string) =>
+      request<void>(`/credentials/${provider}/${name}`, { method: "DELETE" }, token, orgId),
 
-    test: (provider: string, name: string = "default", credentials?: Record<string, unknown>, token?: string) =>
+    test: (provider: string, name: string = "default", credentials?: Record<string, unknown>, token?: string, orgId?: string) =>
       request<TestConnectionResponse>(
         "/credentials/test",
         { method: "POST", body: JSON.stringify({ provider, name, credentials }) },
-        token
+        token,
+        orgId
       ),
   },
 
   syncConfigs: {
-    list: (token?: string) =>
-      request<SyncConfig[]>("/sync-configs", {}, token),
+    list: (token?: string, orgId?: string) =>
+      request<SyncConfig[]>("/sync-configs", {}, token, orgId),
 
-    get: (id: string, token?: string) =>
-      request<SyncConfig>(`/sync-configs/${id}`, {}, token),
+    get: (id: string, token?: string, orgId?: string) =>
+      request<SyncConfig>(`/sync-configs/${id}`, {}, token, orgId),
 
-    create: (data: SyncConfigCreate, token?: string) =>
+    create: (data: SyncConfigCreate, token?: string, orgId?: string) =>
       request<SyncConfig>(
         "/sync-configs",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    update: (id: string, data: SyncConfigUpdate, token?: string) =>
+    update: (id: string, data: SyncConfigUpdate, token?: string, orgId?: string) =>
       request<SyncConfig>(
         `/sync-configs/${id}`,
         { method: "PATCH", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    delete: (id: string, token?: string) =>
-      request<void>(`/sync-configs/${id}`, { method: "DELETE" }, token),
+    delete: (id: string, token?: string, orgId?: string) =>
+      request<void>(`/sync-configs/${id}`, { method: "DELETE" }, token, orgId),
 
-    trigger: (id: string, token?: string) =>
-      request<void>(`/sync-configs/${id}/trigger`, { method: "POST" }, token),
+    trigger: (id: string, token?: string, orgId?: string) =>
+      request<void>(`/sync-configs/${id}/trigger`, { method: "POST" }, token, orgId),
 
-    jobs: (id: string, token?: string) =>
-      request<SyncJob[]>(`/sync-configs/${id}/jobs`, {}, token),
+    jobs: (id: string, token?: string, orgId?: string) =>
+      request<SyncJob[]>(`/sync-configs/${id}/jobs`, {}, token, orgId),
   },
 
   identities: {
-    list: (token?: string) =>
-      request<IdentityMapping[]>("/identities", {}, token),
+    list: (token?: string, orgId?: string) =>
+      request<IdentityMapping[]>("/identities", {}, token, orgId),
 
-    get: (id: string, token?: string) =>
-      request<IdentityMapping>(`/identities/${id}`, {}, token),
+    get: (id: string, token?: string, orgId?: string) =>
+      request<IdentityMapping>(`/identities/${id}`, {}, token, orgId),
 
-    create: (data: IdentityMappingCreate, token?: string) =>
+    create: (data: IdentityMappingCreate, token?: string, orgId?: string) =>
       request<IdentityMapping>(
         "/identities",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    update: (id: string, data: IdentityMappingUpdate, token?: string) =>
+    update: (id: string, data: IdentityMappingUpdate, token?: string, orgId?: string) =>
       request<IdentityMapping>(
         `/identities/${id}`,
         { method: "PATCH", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    delete: (id: string, token?: string) =>
-      request<void>(`/identities/${id}`, { method: "DELETE" }, token),
+    delete: (id: string, token?: string, orgId?: string) =>
+      request<void>(`/identities/${id}`, { method: "DELETE" }, token, orgId),
   },
 
   teams: {
-    list: (token?: string) =>
-      request<TeamMapping[]>("/teams", {}, token),
+    list: (token?: string, orgId?: string) =>
+      request<TeamMapping[]>("/teams", {}, token, orgId),
 
-    get: (teamId: string, token?: string) =>
-      request<TeamMapping>(`/teams/${teamId}`, {}, token),
+    get: (teamId: string, token?: string, orgId?: string) =>
+      request<TeamMapping>(`/teams/${teamId}`, {}, token, orgId),
 
-    create: (data: TeamMappingCreate, token?: string) =>
+    create: (data: TeamMappingCreate, token?: string, orgId?: string) =>
       request<TeamMapping>(
         "/teams",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    update: (teamId: string, data: TeamMappingUpdate, token?: string) =>
+    update: (teamId: string, data: TeamMappingUpdate, token?: string, orgId?: string) =>
       request<TeamMapping>(
         `/teams/${teamId}`,
         { method: "PATCH", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    delete: (teamId: string, token?: string) =>
-      request<void>(`/teams/${teamId}`, { method: "DELETE" }, token),
+    delete: (teamId: string, token?: string, orgId?: string) =>
+      request<void>(`/teams/${teamId}`, { method: "DELETE" }, token, orgId),
 
-    discover: (provider: string, token?: string) =>
-      request<TeamDiscoverResponse>(`/teams/discover?provider=${provider}`, {}, token),
+    discover: (provider: string, token?: string, orgId?: string) =>
+      request<TeamDiscoverResponse>(`/teams/discover?provider=${provider}`, {}, token, orgId),
 
-    import: (data: TeamImportRequest, token?: string) =>
+    import: (data: TeamImportRequest, token?: string, orgId?: string) =>
       request<TeamImportResponse>(
         "/teams/import",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    pendingChanges: (token?: string) =>
-      request<PendingChangesResponse>('/teams/pending-changes', {}, token),
+    pendingChanges: (token?: string, orgId?: string) =>
+      request<PendingChangesResponse>('/teams/pending-changes', {}, token, orgId),
 
-    approveChanges: (teamId: string, changeIndices?: number[], approveAll = false, token?: string) =>
+    approveChanges: (teamId: string, changeIndices?: number[], approveAll = false, token?: string, orgId?: string) =>
       request<{ approved: number }>(
         `/teams/${teamId}/approve-changes`,
         {
@@ -301,10 +322,11 @@ export const adminApi = {
             approve_all: approveAll,
           }),
         },
-        token
+        token,
+        orgId
       ),
 
-    dismissChanges: (teamId: string, changeIndices?: number[], dismissAll = false, token?: string) =>
+    dismissChanges: (teamId: string, changeIndices?: number[], dismissAll = false, token?: string, orgId?: string) =>
       request<{ dismissed: number }>(
         `/teams/${teamId}/dismiss-changes`,
         {
@@ -314,101 +336,110 @@ export const adminApi = {
             dismiss_all: dismissAll,
           }),
         },
-        token
+        token,
+        orgId
       ),
 
-    triggerDriftSync: (token?: string) =>
-      request<{ status: string }>('/teams/trigger-drift-sync', { method: 'POST' }, token),
+    triggerDriftSync: (token?: string, orgId?: string) =>
+      request<{ status: string }>('/teams/trigger-drift-sync', { method: 'POST' }, token, orgId),
   },
 
   users: {
-    list: (token?: string) =>
-      request<User[]>("/users", {}, token),
+    list: (token?: string, orgId?: string) =>
+      request<User[]>("/users", {}, token, orgId),
 
-    get: (userId: string, token?: string) =>
-      request<User>(`/users/${userId}`, {}, token),
+    get: (userId: string, token?: string, orgId?: string) =>
+      request<User>(`/users/${userId}`, {}, token, orgId),
 
-    create: (data: UserCreate, token?: string) =>
+    create: (data: UserCreate, token?: string, orgId?: string) =>
       request<User>(
         "/users",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    update: (userId: string, data: UserUpdate, token?: string) =>
+    update: (userId: string, data: UserUpdate, token?: string, orgId?: string) =>
       request<User>(
         `/users/${userId}`,
         { method: "PATCH", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    setPassword: (userId: string, password: string, token?: string) =>
+    setPassword: (userId: string, password: string, token?: string, orgId?: string) =>
       request<void>(
         `/users/${userId}/password`,
         { method: "POST", body: JSON.stringify({ password }) },
-        token
+        token,
+        orgId
       ),
 
-    delete: (userId: string, token?: string) =>
-      request<void>(`/users/${userId}`, { method: "DELETE" }, token),
+    delete: (userId: string, token?: string, orgId?: string) =>
+      request<void>(`/users/${userId}`, { method: "DELETE" }, token, orgId),
   },
 
   orgs: {
-    list: (token?: string) =>
-      request<Organization[]>("/orgs", {}, token),
+    list: (token?: string, headerOrgId?: string) =>
+      request<Organization[]>("/orgs", {}, token, headerOrgId),
 
-    get: (orgId: string, token?: string) =>
-      request<Organization>(`/orgs/${orgId}`, {}, token),
+    get: (orgId: string, token?: string, headerOrgId?: string) =>
+      request<Organization>(`/orgs/${orgId}`, {}, token, headerOrgId),
 
-    create: (data: OrganizationCreate, token?: string) =>
+    create: (data: OrganizationCreate, token?: string, headerOrgId?: string) =>
       request<Organization>(
         "/orgs",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        headerOrgId
       ),
 
-    update: (orgId: string, data: OrganizationUpdate, token?: string) =>
+    update: (orgId: string, data: OrganizationUpdate, token?: string, headerOrgId?: string) =>
       request<Organization>(
         `/orgs/${orgId}`,
         { method: "PATCH", body: JSON.stringify(data) },
-        token
+        token,
+        headerOrgId
       ),
 
-    delete: (orgId: string, token?: string) =>
-      request<void>(`/orgs/${orgId}`, { method: "DELETE" }, token),
+    delete: (orgId: string, token?: string, headerOrgId?: string) =>
+      request<void>(`/orgs/${orgId}`, { method: "DELETE" }, token, headerOrgId),
 
     members: {
-      list: (orgId: string, token?: string) =>
-        request<Membership[]>(`/orgs/${orgId}/members`, {}, token),
+      list: (orgId: string, token?: string, headerOrgId?: string) =>
+        request<Membership[]>(`/orgs/${orgId}/members`, {}, token, headerOrgId),
 
-      add: (orgId: string, data: MembershipCreate, token?: string) =>
+      add: (orgId: string, data: MembershipCreate, token?: string, headerOrgId?: string) =>
         request<Membership>(
           `/orgs/${orgId}/members`,
           { method: "POST", body: JSON.stringify(data) },
-          token
+          token,
+          headerOrgId
         ),
 
-      updateRole: (orgId: string, userId: string, data: MembershipUpdateRole, token?: string) =>
+      updateRole: (orgId: string, userId: string, data: MembershipUpdateRole, token?: string, headerOrgId?: string) =>
         request<Membership>(
           `/orgs/${orgId}/members/${userId}`,
           { method: "PATCH", body: JSON.stringify(data) },
-          token
+          token,
+          headerOrgId
         ),
 
-      remove: (orgId: string, userId: string, token?: string) =>
-        request<void>(`/orgs/${orgId}/members/${userId}`, { method: "DELETE" }, token),
+      remove: (orgId: string, userId: string, token?: string, headerOrgId?: string) =>
+        request<void>(`/orgs/${orgId}/members/${userId}`, { method: "DELETE" }, token, headerOrgId),
 
-      transferOwnership: (orgId: string, newOwnerUserId: string, token?: string) =>
+      transferOwnership: (orgId: string, newOwnerUserId: string, token?: string, headerOrgId?: string) =>
         request<void>(
           `/orgs/${orgId}/transfer-ownership`,
           { method: "POST", body: JSON.stringify({ new_owner_user_id: newOwnerUserId }) },
-          token
+          token,
+          headerOrgId
         ),
     },
   },
 
   audit: {
-    list: (filters?: AuditLogFilter, limit = 50, offset = 0, token?: string) => {
+    list: (filters?: AuditLogFilter, limit = 50, offset = 0, token?: string, orgId?: string) => {
       const params = new URLSearchParams();
       params.set("limit", String(limit));
       params.set("offset", String(offset));
@@ -417,13 +448,13 @@ export const adminApi = {
           if (value != null) params.set(key, String(value));
         });
       }
-      return request<AuditLogListResponse>(`/audit?${params.toString()}`, {}, token);
+      return request<AuditLogListResponse>(`/audit?${params.toString()}`, {}, token, orgId);
     },
 
-    get: (id: string, token?: string) =>
-      request<AuditLogListResponse["items"][0]>(`/audit/${id}`, {}, token),
+    get: (id: string, token?: string, orgId?: string) =>
+      request<AuditLogListResponse["items"][0]>(`/audit/${id}`, {}, token, orgId),
 
-    export: (format: "json" | "csv" = "json", filters?: AuditLogFilter, token?: string) => {
+    export: (format: "json" | "csv" = "json", filters?: AuditLogFilter, token?: string, orgId?: string) => {
       const params = new URLSearchParams();
       params.set("format", format);
       if (filters) {
@@ -431,105 +462,113 @@ export const adminApi = {
           if (value != null) params.set(key, String(value));
         });
       }
-      return request<Blob>(`/audit/export?${params.toString()}`, {}, token);
+      return request<Blob>(`/audit/export?${params.toString()}`, {}, token, orgId);
     },
 
-    actions: (token?: string) =>
-      request<string[]>("/audit/actions", {}, token),
+    actions: (token?: string, orgId?: string) =>
+      request<string[]>("/audit/actions", {}, token, orgId),
   },
 
   ipAllowlist: {
-    list: (limit = 50, offset = 0, token?: string) =>
+    list: (limit = 50, offset = 0, token?: string, orgId?: string) =>
       request<IPAllowlistListResponse>(
         `/ip-allowlist?limit=${limit}&offset=${offset}`,
         {},
-        token
+        token,
+        orgId
       ),
 
-    get: (id: string, token?: string) =>
-      request<IPAllowlist>(`/ip-allowlist/${id}`, {}, token),
+    get: (id: string, token?: string, orgId?: string) =>
+      request<IPAllowlist>(`/ip-allowlist/${id}`, {}, token, orgId),
 
-    create: (data: IPAllowlistCreate, token?: string) =>
+    create: (data: IPAllowlistCreate, token?: string, orgId?: string) =>
       request<IPAllowlist>(
         "/ip-allowlist",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    update: (id: string, data: IPAllowlistUpdate, token?: string) =>
+    update: (id: string, data: IPAllowlistUpdate, token?: string, orgId?: string) =>
       request<IPAllowlist>(
         `/ip-allowlist/${id}`,
         { method: "PATCH", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    delete: (id: string, token?: string) =>
-      request<void>(`/ip-allowlist/${id}`, { method: "DELETE" }, token),
+    delete: (id: string, token?: string, orgId?: string) =>
+      request<void>(`/ip-allowlist/${id}`, { method: "DELETE" }, token, orgId),
 
-    check: (ipAddress: string, token?: string) =>
+    check: (ipAddress: string, token?: string, orgId?: string) =>
       request<IPCheckResponse>(
         "/ip-allowlist/check",
         { method: "POST", body: JSON.stringify({ ip_address: ipAddress }) },
-        token
+        token,
+        orgId
       ),
   },
 
   retention: {
-    list: (limit = 50, offset = 0, token?: string) =>
+    list: (limit = 50, offset = 0, token?: string, orgId?: string) =>
       request<RetentionPolicyListResponse>(
         `/retention?limit=${limit}&offset=${offset}`,
         {},
-        token
+        token,
+        orgId
       ),
 
-    get: (id: string, token?: string) =>
-      request<RetentionPolicy>(`/retention/${id}`, {}, token),
+    get: (id: string, token?: string, orgId?: string) =>
+      request<RetentionPolicy>(`/retention/${id}`, {}, token, orgId),
 
-    create: (data: RetentionPolicyCreate, token?: string) =>
+    create: (data: RetentionPolicyCreate, token?: string, orgId?: string) =>
       request<RetentionPolicy>(
         "/retention",
         { method: "POST", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    update: (id: string, data: RetentionPolicyUpdate, token?: string) =>
+    update: (id: string, data: RetentionPolicyUpdate, token?: string, orgId?: string) =>
       request<RetentionPolicy>(
         `/retention/${id}`,
         { method: "PATCH", body: JSON.stringify(data) },
-        token
+        token,
+        orgId
       ),
 
-    delete: (id: string, token?: string) =>
-      request<void>(`/retention/${id}`, { method: "DELETE" }, token),
+    delete: (id: string, token?: string, orgId?: string) =>
+      request<void>(`/retention/${id}`, { method: "DELETE" }, token, orgId),
 
-    execute: (id: string, dryRun = true, token?: string) =>
+    execute: (id: string, dryRun = true, token?: string, orgId?: string) =>
       request<RetentionExecuteResponse>(
         `/retention/${id}/execute`,
         { method: "POST", body: JSON.stringify({ dry_run: dryRun }) },
-        token
+        token,
+        orgId
       ),
 
-    resourceTypes: (token?: string) =>
-      request<string[]>("/retention/resource-types", {}, token),
+    resourceTypes: (token?: string, orgId?: string) =>
+      request<string[]>("/retention/resource-types", {}, token, orgId),
   },
 
   impersonation: {
-    start: (targetUserId: string, token?: string) =>
+    start: (targetUserId: string, token?: string, orgId?: string) =>
       request<{
         access_token: string;
         token_type: string;
         expires_in: number;
         impersonated_user: { id: string; email: string; role: string; org_id: string };
-      }>("/impersonate", { method: "POST", body: JSON.stringify({ target_user_id: targetUserId }) }, token),
+      }>("/impersonate", { method: "POST", body: JSON.stringify({ target_user_id: targetUserId }) }, token, orgId),
 
-    stop: (token?: string) =>
+    stop: (token?: string, orgId?: string) =>
       request<{ access_token: string; token_type: string; expires_in: number }>(
-        "/impersonate/stop", { method: "POST" }, token
+        "/impersonate/stop", { method: "POST" }, token, orgId
       ),
 
-    status: (token?: string) =>
+    status: (token?: string, orgId?: string) =>
       request<{ is_impersonating: boolean; impersonated_user_id: string | null; real_user_id: string | null }>(
-        "/impersonate/status", {}, token
+        "/impersonate/status", {}, token, orgId
       ),
   },
 
@@ -539,30 +578,31 @@ export const adminApi = {
   },
 
   licensing: {
-    entitlements: (orgId: string, token?: string) =>
-      licensingRequest<OrgEntitlements>(`/entitlements/${orgId}`, {}, token),
+    entitlements: (orgId: string, token?: string, headerOrgId?: string) =>
+      licensingRequest<OrgEntitlements>(`/entitlements/${orgId}`, {}, token, headerOrgId),
 
-    featureFlags: (token?: string) =>
-      request<FeatureFlag[]>("/feature-flags", {}, token),
+    featureFlags: (token?: string, orgId?: string) =>
+      request<FeatureFlag[]>("/feature-flags", {}, token, orgId),
 
     overrides: {
-      list: (orgId: string, token?: string) =>
-        request<FeatureOverride[]>(`/orgs/${orgId}/feature-overrides`, {}, token),
+      list: (orgId: string, token?: string, headerOrgId?: string) =>
+        request<FeatureOverride[]>(`/orgs/${orgId}/feature-overrides`, {}, token, headerOrgId),
 
-      create: (orgId: string, data: FeatureOverrideCreate, token?: string) =>
+      create: (orgId: string, data: FeatureOverrideCreate, token?: string, headerOrgId?: string) =>
         request<FeatureOverride>(
           `/orgs/${orgId}/feature-overrides`,
           { method: "POST", body: JSON.stringify(data) },
-          token
+          token,
+          headerOrgId
         ),
 
-      delete: (orgId: string, overrideId: string, token?: string) =>
-        request<void>(`/orgs/${orgId}/feature-overrides/${overrideId}`, { method: "DELETE" }, token),
+      delete: (orgId: string, overrideId: string, token?: string, headerOrgId?: string) =>
+        request<void>(`/orgs/${orgId}/feature-overrides/${overrideId}`, { method: "DELETE" }, token, headerOrgId),
     },
   },
 
   platformAudit: {
-    list: (filters?: AuditLogFilter, limit?: number, offset?: number, token?: string) => {
+    list: (filters?: AuditLogFilter, limit?: number, offset?: number, token?: string, orgId?: string) => {
       const params = new URLSearchParams();
       if (limit) params.set("limit", String(limit));
       if (offset) params.set("offset", String(offset));
@@ -571,7 +611,7 @@ export const adminApi = {
           if (v != null) params.set(k, String(v));
         });
       }
-      return request<AuditLogListResponse>(`/platform/audit-logs?${params.toString()}`, {}, token);
+      return request<AuditLogListResponse>(`/platform/audit-logs?${params.toString()}`, {}, token, orgId);
     },
   },
 };

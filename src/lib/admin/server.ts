@@ -40,12 +40,25 @@ import type {
   AuditLogFilter,
 } from "./types";
 
-async function getToken(): Promise<string> {
+interface SessionContext {
+  token: string;
+  orgId: string | undefined;
+}
+
+async function getSessionContext(): Promise<SessionContext> {
   const session = await auth();
   if (!session?.access_token) {
     throw new AdminApiError(401, "Unauthorized", "No access token");
   }
-  return session.access_token;
+  return {
+    token: session.access_token,
+    orgId: session.user?.org_id || undefined,
+  };
+}
+
+async function getToken(): Promise<string> {
+  const ctx = await getSessionContext();
+  return ctx.token;
 }
 
 type ActionResult<T> = { data: T; error?: never } | { data?: never; error: string };
@@ -64,50 +77,50 @@ async function withErrorHandling<T>(fn: () => Promise<T>): Promise<ActionResult<
 
 export async function listUsers(): Promise<ActionResult<User[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.users.list(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.users.list(token, orgId);
   });
 }
 
 export async function getUser(userId: string): Promise<ActionResult<User>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.users.get(userId, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.users.get(userId, token, orgId);
   });
 }
 
 export async function createUser(data: UserCreate): Promise<ActionResult<User>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.users.create(data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.users.create(data, token, orgId);
   });
 }
 
 export async function updateUser(userId: string, data: UserUpdate): Promise<ActionResult<User>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.users.update(userId, data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.users.update(userId, data, token, orgId);
   });
 }
 
 export async function deleteUser(userId: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.users.delete(userId, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.users.delete(userId, token, orgId);
   });
 }
 
 export async function setUserPassword(userId: string, password: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.users.setPassword(userId, password, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.users.setPassword(userId, password, token, orgId);
   });
 }
 
 export async function listCredentials(): Promise<ActionResult<IntegrationCredential[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.credentials.list(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.credentials.list(token, orgId);
   });
 }
 
@@ -115,8 +128,8 @@ export async function createCredential(
   data: IntegrationCredentialCreate
 ): Promise<ActionResult<IntegrationCredential>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const result = await adminApi.credentials.create(data, token);
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.credentials.create(data, token, orgId);
     revalidatePath("/admin/integrations", "page");
     return result;
   });
@@ -128,8 +141,8 @@ export async function testConnection(
   credentials?: Record<string, unknown>
 ): Promise<ActionResult<TestConnectionResponse>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const result = await adminApi.credentials.test(provider, name, credentials, token);
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.credentials.test(provider, name, credentials, token, orgId);
     revalidatePath("/admin/integrations", "page");
     return result;
   });
@@ -140,8 +153,8 @@ export async function deleteCredential(
   name: string
 ): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const result = await adminApi.credentials.delete(provider, name, token);
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.credentials.delete(provider, name, token, orgId);
     revalidatePath("/admin/integrations", "page");
     return result;
   });
@@ -149,8 +162,8 @@ export async function deleteCredential(
 
 export async function listSyncConfigs(): Promise<ActionResult<SyncConfig[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.syncConfigs.list(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.syncConfigs.list(token, orgId);
   });
 }
 
@@ -158,16 +171,16 @@ export async function createSyncConfig(
   data: SyncConfigCreate
 ): Promise<ActionResult<SyncConfig>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.syncConfigs.create(data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.syncConfigs.create(data, token, orgId);
   });
 }
 
 export async function getSyncConfig(id: string): Promise<ActionResult<SyncConfig>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const { token, orgId } = await getSessionContext();
     // syncConfigs API doesn't have a get-by-id endpoint; filter from list
-    const configs = await adminApi.syncConfigs.list(token);
+    const configs = await adminApi.syncConfigs.list(token, orgId);
     const config = configs.find((c) => c.id === id);
     if (!config) {
       throw new AdminApiError(404, "Not Found", "Sync configuration not found");
@@ -181,8 +194,8 @@ export async function updateSyncConfig(
   data: SyncConfigUpdate
 ): Promise<ActionResult<SyncConfig>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const result = await adminApi.syncConfigs.update(id, data, token);
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.syncConfigs.update(id, data, token, orgId);
     revalidatePath("/admin/sync");
     revalidatePath(`/admin/sync/${id}`);
     return result;
@@ -191,8 +204,8 @@ export async function updateSyncConfig(
 
 export async function deleteSyncConfig(id: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const result = await adminApi.syncConfigs.delete(id, token);
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.syncConfigs.delete(id, token, orgId);
     revalidatePath("/admin/sync");
     return result;
   });
@@ -200,8 +213,8 @@ export async function deleteSyncConfig(id: string): Promise<ActionResult<void>> 
 
 export async function triggerSync(id: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const result = await adminApi.syncConfigs.trigger(id, token);
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.syncConfigs.trigger(id, token, orgId);
     revalidatePath("/admin/sync");
     revalidatePath(`/admin/sync/${id}`);
     return result;
@@ -210,8 +223,8 @@ export async function triggerSync(id: string): Promise<ActionResult<void>> {
 
 export async function getSyncJobs(id: string): Promise<ActionResult<SyncJob[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.syncConfigs.jobs(id, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.syncConfigs.jobs(id, token, orgId);
   });
 }
 
@@ -224,8 +237,8 @@ export async function toggleSyncActive(
 
 export async function listIdentities(): Promise<ActionResult<IdentityMapping[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.identities.list(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.identities.list(token, orgId);
   });
 }
 
@@ -233,15 +246,15 @@ export async function createIdentity(
   data: IdentityMappingCreate
 ): Promise<ActionResult<IdentityMapping>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.identities.create(data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.identities.create(data, token, orgId);
   });
 }
 
 export async function getIdentity(id: string): Promise<ActionResult<IdentityMapping>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.identities.get(id, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.identities.get(id, token, orgId);
   });
 }
 
@@ -250,36 +263,36 @@ export async function updateIdentity(
   data: IdentityMappingUpdate
 ): Promise<ActionResult<IdentityMapping>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.identities.update(id, data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.identities.update(id, data, token, orgId);
   });
 }
 
 export async function deleteIdentity(id: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.identities.delete(id, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.identities.delete(id, token, orgId);
   });
 }
 
 export async function listTeams(): Promise<ActionResult<TeamMapping[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.list(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.list(token, orgId);
   });
 }
 
 export async function createTeam(data: TeamMappingCreate): Promise<ActionResult<TeamMapping>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.create(data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.create(data, token, orgId);
   });
 }
 
 export async function getTeam(teamId: string): Promise<ActionResult<TeamMapping>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.get(teamId, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.get(teamId, token, orgId);
   });
 }
 
@@ -288,22 +301,22 @@ export async function updateTeam(
   data: TeamMappingUpdate
 ): Promise<ActionResult<TeamMapping>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.update(teamId, data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.update(teamId, data, token, orgId);
   });
 }
 
 export async function deleteTeam(teamId: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.delete(teamId, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.delete(teamId, token, orgId);
   });
 }
 
 export async function discoverTeams(provider: string): Promise<ActionResult<TeamDiscoverResponse>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.discover(provider, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.discover(provider, token, orgId);
   });
 }
 
@@ -312,15 +325,15 @@ export async function importTeams(
   onConflict: "skip" | "merge"
 ): Promise<ActionResult<TeamImportResponse>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.import({ teams, on_conflict: onConflict }, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.import({ teams, on_conflict: onConflict }, token, orgId);
   });
 }
 
 export async function getPendingTeamChanges(): Promise<ActionResult<PendingChangesResponse>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.pendingChanges(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.pendingChanges(token, orgId);
   });
 }
 
@@ -330,8 +343,8 @@ export async function approveTeamChanges(
   approveAll = false
 ): Promise<ActionResult<{ approved: number }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const result = await adminApi.teams.approveChanges(teamId, changeIndices, approveAll, token);
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.teams.approveChanges(teamId, changeIndices, approveAll, token, orgId);
     revalidatePath('/admin/teams');
     return result;
   });
@@ -343,8 +356,8 @@ export async function dismissTeamChanges(
   dismissAll = false
 ): Promise<ActionResult<{ dismissed: number }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const result = await adminApi.teams.dismissChanges(teamId, changeIndices, dismissAll, token);
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.teams.dismissChanges(teamId, changeIndices, dismissAll, token, orgId);
     revalidatePath('/admin/teams');
     return result;
   });
@@ -352,30 +365,30 @@ export async function dismissTeamChanges(
 
 export async function triggerTeamDriftSync(): Promise<ActionResult<{ status: string }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.teams.triggerDriftSync(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.teams.triggerDriftSync(token, orgId);
   });
 }
 
 export async function listSettingCategories(): Promise<ActionResult<string[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.settings.listCategories(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.settings.listCategories(token, orgId);
   });
 }
 
 export async function listSettings(category: string): Promise<ActionResult<Setting[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const response = await adminApi.settings.listByCategory(category, token);
+    const { token, orgId } = await getSessionContext();
+    const response = await adminApi.settings.listByCategory(category, token, orgId);
     return response.settings;
   });
 }
 
 export async function createSetting(data: SettingCreate): Promise<ActionResult<Setting>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.settings.create(data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.settings.create(data, token, orgId);
   });
 }
 
@@ -385,29 +398,25 @@ export async function updateSetting(
   data: SettingUpdate
 ): Promise<ActionResult<Setting>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.settings.update(category, key, data, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.settings.update(category, key, data, token, orgId);
   });
 }
 
 export async function deleteSetting(category: string, key: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.settings.delete(category, key, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.settings.delete(category, key, token, orgId);
   });
 }
 
 export async function getCurrentOrg(): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
-    const session = await auth();
-    if (!session?.access_token) {
-      throw new AdminApiError(401, "Unauthorized", "No access token");
-    }
-    const orgId = session.user?.org_id;
+    const { token, orgId } = await getSessionContext();
     if (!orgId) {
       throw new AdminApiError(400, "Bad Request", "No organization ID in session");
     }
-    return adminApi.orgs.get(orgId, session.access_token);
+    return adminApi.orgs.get(orgId, token, orgId);
   });
 }
 
@@ -415,36 +424,28 @@ export async function updateCurrentOrg(
   data: OrganizationUpdate
 ): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
-    const session = await auth();
-    if (!session?.access_token) {
-      throw new AdminApiError(401, "Unauthorized", "No access token");
-    }
-    const orgId = session.user?.org_id;
+    const { token, orgId } = await getSessionContext();
     if (!orgId) {
       throw new AdminApiError(400, "Bad Request", "No organization ID in session");
     }
-    return adminApi.orgs.update(orgId, data, session.access_token);
+    return adminApi.orgs.update(orgId, data, token, orgId);
   });
 }
 
 export async function deleteCurrentOrg(): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const session = await auth();
-    if (!session?.access_token) {
-      throw new AdminApiError(401, "Unauthorized", "No access token");
-    }
-    const orgId = session.user?.org_id;
+    const { token, orgId } = await getSessionContext();
     if (!orgId) {
       throw new AdminApiError(400, "Bad Request", "No organization ID in session");
     }
-    return adminApi.orgs.delete(orgId, session.access_token);
+    return adminApi.orgs.delete(orgId, token, orgId);
   });
 }
 
 export async function getSecuritySettings(): Promise<ActionResult<Setting[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    const response = await adminApi.settings.listByCategory("security", token);
+    const { token, orgId } = await getSessionContext();
+    const response = await adminApi.settings.listByCategory("security", token, orgId);
     return response.settings;
   });
 }
@@ -454,8 +455,8 @@ export async function updateSecuritySetting(
   value: string
 ): Promise<ActionResult<Setting>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.settings.update("security", key, { value }, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.settings.update("security", key, { value }, token, orgId);
   });
 }
 
@@ -466,8 +467,8 @@ export async function startImpersonation(targetUserId: string): Promise<ActionRe
   impersonated_user: { id: string; email: string; role: string; org_id: string };
 }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.impersonation.start(targetUserId, token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.impersonation.start(targetUserId, token, orgId);
   });
 }
 
@@ -477,8 +478,8 @@ export async function stopImpersonation(): Promise<ActionResult<{
   expires_in: number;
 }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.impersonation.stop(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.impersonation.stop(token, orgId);
   });
 }
 
@@ -488,8 +489,8 @@ export async function getImpersonationStatus(): Promise<ActionResult<{
   real_user_id: string | null;
 }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
-    return adminApi.impersonation.status(token);
+    const { token, orgId } = await getSessionContext();
+    return adminApi.impersonation.status(token, orgId);
   });
 }
 
