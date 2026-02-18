@@ -262,7 +262,7 @@ describe("admin/server IP allowlist actions", () => {
       expect(result.error).toBeDefined();
     });
 
-    it("returns stringified error when backend returns object detail (feature gate)", async () => {
+    it("returns human-readable error when backend returns feature gate detail", async () => {
       mockSession();
       const featureGateBody = {
         detail: {
@@ -279,7 +279,9 @@ describe("admin/server IP allowlist actions", () => {
       const result = await listIPAllowlistEntries();
       expect(result.error).toBeDefined();
       expect(typeof result.error).toBe("string");
-      expect(result.error).toContain("feature_not_licensed");
+      expect(result.error).toContain("enterprise");
+      expect(result.error).toContain("free");
+      expect(result.error).not.toContain("{");
       fetchSpy.mockRestore();
     });
   });
