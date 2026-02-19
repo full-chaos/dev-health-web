@@ -1,13 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { startImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { User } from "@/lib/admin/types";
 
 export function ImpersonateUserButton({ user }: { user: User }) {
   const { data: session, update } = useSession();
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   const canImpersonate =
     session?.user?.id !== user.id &&
@@ -19,10 +22,21 @@ export function ImpersonateUserButton({ user }: { user: User }) {
   }
 
   const handleImpersonate = async () => {
-    const result = await startImpersonation(user.id);
-    if (result.data) {
-      await update({ startImpersonation: result.data });
-      router.push("/");
+    setLoading(true);
+    try {
+      const result = await startImpersonation(user.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.data) {
+        await update({ startImpersonation: result.data });
+        router.push("/");
+      }
+    } catch {
+      toast.error("Failed to start impersonation");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -30,9 +44,10 @@ export function ImpersonateUserButton({ user }: { user: User }) {
     <button
       type="button"
       onClick={handleImpersonate}
-      className="block w-full rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-500 hover:bg-amber-500/20 text-left transition-colors"
+      disabled={loading}
+      className="block w-full rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-500 hover:bg-amber-500/20 text-left transition-colors disabled:opacity-50"
     >
-      Impersonate User
+      {loading ? "Impersonating…" : "Impersonate User"}
     </button>
   );
 }

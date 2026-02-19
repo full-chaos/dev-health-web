@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import type { User } from "@/lib/admin/types";
 import { useSession } from "next-auth/react";
 import { startImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type UserTableProps = {
   users: User[];
@@ -14,12 +15,24 @@ type UserTableProps = {
 export function UserTable({ users }: UserTableProps) {
   const { data: session, update } = useSession();
   const router = useRouter();
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
 
   const handleImpersonate = async (userId: string) => {
-    const result = await startImpersonation(userId);
-    if (result.data) {
-      await update({ startImpersonation: result.data });
-      router.push("/");
+    setImpersonatingId(userId);
+    try {
+      const result = await startImpersonation(userId);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.data) {
+        await update({ startImpersonation: result.data });
+        router.push("/");
+      }
+    } catch {
+      toast.error("Failed to start impersonation");
+    } finally {
+      setImpersonatingId(null);
     }
   };
 
@@ -83,9 +96,10 @@ export function UserTable({ users }: UserTableProps) {
                   <button
                     type="button"
                     onClick={() => handleImpersonate(user.id)}
-                    className="text-amber-500 hover:underline"
+                    disabled={impersonatingId === user.id}
+                    className="text-amber-500 hover:underline disabled:opacity-50"
                   >
-                    Impersonate
+                    {impersonatingId === user.id ? "Impersonating…" : "Impersonate"}
                   </button>
                 )}
                 <Link
