@@ -7,6 +7,7 @@ const junitOutputFile =
 
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: ["live/**"],
   outputDir: "test-results/playwright",
   reporter: [
     ["list"],

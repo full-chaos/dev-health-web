@@ -75,6 +75,7 @@ Copy `.env.example` to `.env.local` and configure as needed.
 | `npm run test:unit` | Run unit tests (Vitest) |
 | `npm run test:integration` | Run integration tier placeholder (currently no suite) |
 | `npm run test:e2e` | Run e2e tests (Playwright) |
+| `npm run test:e2e:live` | Run live-backend e2e smoke tests (Playwright) |
 | `npm run test:ci` | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
 
 ## Test Tiers (Phase 0 Contract)
@@ -82,7 +83,7 @@ Copy `.env.example` to `.env.local` and configure as needed.
 Use the runner-agnostic entrypoint:
 
 ```bash
-bash ci/run_tests.sh <unit|integration|e2e|ci>
+bash ci/run_tests.sh <unit|integration|e2e|live-e2e|ci>
 ```
 
 Examples:
@@ -91,9 +92,24 @@ Examples:
 # Local quick checks
 bash ci/run_tests.sh unit
 bash ci/run_tests.sh e2e
+bash ci/run_tests.sh live-e2e
 
 # Full CI-equivalent gate locally
 npm run test:ci
+```
+
+### Live Backend E2E (Phase 2)
+
+Use this tier when validating against a real `dev-health-ops` backend (no mock server).
+
+Requirements:
+- A running `dev-health-ops` API with healthy `/health` and seeded data (fixtures recommended).
+- `PLAYWRIGHT_LIVE_BACKEND_URL` pointing at that API (defaults to `BACKEND_URL`, then `http://127.0.0.1:8000`).
+
+Example:
+
+```bash
+PLAYWRIGHT_LIVE_BACKEND_URL="http://127.0.0.1:8000" bash ci/run_tests.sh live-e2e
 ```
 
 In GitHub Actions, workflows should call `bash ci/run_tests.sh <tier>` so Playwright browser install and tier behavior stay consistent across runners.

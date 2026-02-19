@@ -22,6 +22,13 @@ This document is the authoritative guide for any automated coding agent (Copilot
 - Charting/data transforms: `src/lib` contains transforms, mappers and helpers used by chart components.
 - Tests: Unit tests live next to their modules under `src` or `src/lib/__tests__`; e2e tests live in `tests/`.
 
+## Testing contract references
+
+- Tier entrypoint and contract: `README.md` ("Test Tiers (Phase 0 Contract)") and `ci/run_tests.sh`.
+- Default Playwright suite (mock/sample-data e2e): `playwright.config.ts` with `testIgnore: ["live/**"]`.
+- Live backend suite (real API required): `playwright.live.config.ts` with `testDir: "./tests/live"`.
+- CI workflow mapping: `.github/workflows/tests.yml` and `.github/workflows/live-e2e.yml`.
+
 ## Diagram types to use
 
 - Component Diagram: shows major UI components and relationships (pages, shared components, charts, filters).
