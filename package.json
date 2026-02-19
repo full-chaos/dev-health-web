@@ -9,8 +9,11 @@
     "prestart": "node scripts/write-runtime-config.mjs",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:integration": "node -e \"console.log('Integration tests are not implemented yet (placeholder).')\"",
+    "test:ci": "bash ci/run_tests.sh ci"
   },
   "dependencies": {
     "@urql/core": "^6.0.1",

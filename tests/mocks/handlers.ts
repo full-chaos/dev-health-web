@@ -100,6 +100,46 @@ const FLAME_RESPONSES: Record<string, unknown> = {
   throughput: throughputFlameSample,
 };
 
+const buildDeploymentFlameResponse = (deploymentId: string) => ({
+  entity: {
+    deployment_id: deploymentId,
+    environment: "staging",
+  },
+  timeline: {
+    start: "2025-02-01T10:00:00.000Z",
+    end: "2025-02-01T10:45:00.000Z",
+  },
+  frames: [
+    {
+      id: "deploy-root",
+      parent_id: null,
+      label: "Deployment pipeline",
+      start: "2025-02-01T10:00:00.000Z",
+      end: "2025-02-01T10:45:00.000Z",
+      state: "active",
+      category: "planned",
+    },
+    {
+      id: "build",
+      parent_id: "deploy-root",
+      label: "Build image",
+      start: "2025-02-01T10:00:00.000Z",
+      end: "2025-02-01T10:15:00.000Z",
+      state: "ci",
+      category: "planned",
+    },
+    {
+      id: "rollout",
+      parent_id: "deploy-root",
+      label: "Rolling update",
+      start: "2025-02-01T10:15:00.000Z",
+      end: "2025-02-01T10:45:00.000Z",
+      state: "active",
+      category: "planned",
+    },
+  ],
+});
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -245,9 +285,21 @@ export const handlers = [
     return HttpResponse.json(data);
   }),
 
-  http.get("*/api/v1/flame", () =>
-    HttpResponse.json(cycleBreakdownFlameSample),
-  ),
+  http.get("*/api/v1/flame", ({ request }) => {
+    const url = new URL(request.url);
+    const entityType = url.searchParams.get("entity_type") ?? "issue";
+    const entityId = url.searchParams.get("entity_id") ?? "sample-entity";
+
+    if (entityType === "deployment" && entityId === "missing-flame") {
+      return HttpResponse.json({ detail: "Not found" }, { status: 404 });
+    }
+
+    if (entityType !== "deployment") {
+      return HttpResponse.json(cycleBreakdownFlameSample);
+    }
+
+    return HttpResponse.json(buildDeploymentFlameResponse(entityId));
+  }),
 
   // ---- Quadrant ----
   http.get("*/api/v1/quadrant", ({ request }) => {

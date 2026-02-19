@@ -22,12 +22,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-      - name: Run Playwright tests
-        run: npm run test:e2e
+      - name: Run CI test contract
+        run: bash ci/run_tests.sh ci
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v6
