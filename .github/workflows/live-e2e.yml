@@ -1,0 +1,128 @@
+name: Live Backend E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        env:
+          CLICKHOUSE_DB: default
+          CLICKHOUSE_USER: ch
+          CLICKHOUSE_PASSWORD: ch
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd "clickhouse-client --user ch --password ch --query 'SELECT 1'" --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - name: Checkout web
+        uses: actions/checkout@v6
+
+      - name: Checkout dev-health-ops
+        uses: actions/checkout@v6
+        with:
+          repository: full-chaos/dev-health-ops
+          path: dev-health-ops
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dev-health-ops dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        working-directory: dev-health-ops
+
+      - name: Seed dev-health-ops fixtures
+        env:
+          CLICKHOUSE_URI: clickhouse://ch:ch@localhost:8123/default
+          POSTGRES_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+        run: |
+          python -m dev_health_ops.cli \
+            --db "$POSTGRES_URI" \
+            --analytics-db "$CLICKHOUSE_URI" \
+            fixtures generate \
+            --sink "$CLICKHOUSE_URI" \
+            --days 30 \
+            --with-metrics \
+            --with-work-graph
+        working-directory: dev-health-ops
+
+      - name: Start dev-health-ops API
+        env:
+          DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+          CLICKHOUSE_URI: clickhouse://ch:ch@localhost:8123/default
+          POSTGRES_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+        run: |
+          nohup python -m dev_health_ops.cli \
+            --db "$DATABASE_URI" \
+            --analytics-db "$CLICKHOUSE_URI" \
+            api --host 127.0.0.1 --port 8000 >/tmp/dev-health-ops-api.log 2>&1 &
+          echo $! >/tmp/dev-health-ops-api.pid
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed health check startup window"
+          cat /tmp/dev-health-ops-api.log || true
+          exit 1
+        working-directory: dev-health-ops
+
+      - name: Run live backend e2e tier
+        env:
+          PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8000
+        run: bash ci/run_tests.sh live-e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report-live
+          path: playwright-report
+
+      - name: Upload API logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: dev-health-ops-api-log
+          path: /tmp/dev-health-ops-api.log
+
+      - name: Stop dev-health-ops API
+        if: always()
+        run: |
+          if [ -f /tmp/dev-health-ops-api.pid ]; then
+            kill "$(cat /tmp/dev-health-ops-api.pid)" || true
+          fi

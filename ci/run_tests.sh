@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <unit|integration|e2e|ci>" >&2
+  echo "Usage: ci/run_tests.sh <unit|integration|e2e|live-e2e|ci>" >&2
 }
 
 if [[ $# -ne 1 ]]; then
@@ -104,6 +104,11 @@ run_e2e() {
   print_playwright_artifact_summary
 }
 
+run_live_e2e() {
+  install_playwright_browser
+  run_npm_script test:e2e:live
+}
+
 case "${tier}" in
   unit)
     run_unit
@@ -113,6 +118,9 @@ case "${tier}" in
     ;;
   e2e)
     run_e2e
+    ;;
+  live-e2e)
+    run_live_e2e
     ;;
   ci)
     export CI=true
