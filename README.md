@@ -98,6 +98,20 @@ npm run test:ci
 
 In GitHub Actions, workflows should call `bash ci/run_tests.sh <tier>` so Playwright browser install and tier behavior stay consistent across runners.
 
+### E2E Reliability Hardening (Phase 3)
+
+- CI runs with Playwright retries enabled (`retries=2` when `CI=true`).
+- Failure artifacts are always retained: traces (`trace: retain-on-failure`), video (`video: retain-on-failure`), and screenshots (`screenshot: only-on-failure`).
+- JUnit output is written to `test-results/playwright/junit.xml` by default.
+- HTML report output is written to `playwright-report/` by default.
+- `ci/run_tests.sh e2e` clears and recreates artifact directories before each run and prints diagnostic context (Node/npm/Playwright versions + artifact paths).
+
+These paths can be overridden with:
+
+```bash
+PLAYWRIGHT_REPORT_DIR=<dir> PLAYWRIGHT_RESULTS_DIR=<dir> PLAYWRIGHT_JUNIT_PATH=<file> bash ci/run_tests.sh e2e
+```
+
 ## Documentation
 
 - `docs/visualizations.md` — Chart selection guide (heatmaps, quadrants, flame diagrams)
