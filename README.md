@@ -71,8 +71,32 @@ Copy `.env.example` to `.env.local` and configure as needed.
 | `npm run build` | Build for production |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm run typecheck` | Run TypeScript checks |
 | `npm run test:unit` | Run unit tests (Vitest) |
+| `npm run test:integration` | Run integration tier placeholder (currently no suite) |
 | `npm run test:e2e` | Run e2e tests (Playwright) |
+| `npm run test:ci` | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
+
+## Test Tiers (Phase 0 Contract)
+
+Use the runner-agnostic entrypoint:
+
+```bash
+bash ci/run_tests.sh <unit|integration|e2e|ci>
+```
+
+Examples:
+
+```bash
+# Local quick checks
+bash ci/run_tests.sh unit
+bash ci/run_tests.sh e2e
+
+# Full CI-equivalent gate locally
+npm run test:ci
+```
+
+In GitHub Actions, workflows should call `bash ci/run_tests.sh <tier>` so Playwright browser install and tier behavior stay consistent across runners.
 
 ## Documentation
 
