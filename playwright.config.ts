@@ -1,11 +1,26 @@
 import { defineConfig } from "@playwright/test";
 
+const isCI = process.env.CI === "true" || process.env.CI === "1";
+const htmlOutputFolder = process.env.PLAYWRIGHT_HTML_REPORT ?? "playwright-report";
+const junitOutputFile =
+  process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? "test-results/playwright/junit.xml";
+
 export default defineConfig({
   testDir: "./tests",
-  reporter: [['html'], ['list']],
+  outputDir: "test-results/playwright",
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: htmlOutputFolder, open: "never" }],
+    ["junit", { outputFile: junitOutputFile }],
+  ],
+  retries: isCI ? 2 : 0,
+  forbidOnly: isCI,
   use: {
     baseURL: "http://127.0.0.1:3001",
     headless: true,
+    trace: "retain-on-failure",
+    video: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
   webServer: [
     {
@@ -24,6 +39,8 @@ export default defineConfig({
       timeout: 120_000,
       env: {
         PLAYWRIGHT_TEST: "true",
+        DEV_HEALTH_TEST_MODE: "true",
+        NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
         BACKEND_URL: "http://127.0.0.1:8001",
       },
     },

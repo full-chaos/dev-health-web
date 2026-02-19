@@ -19,6 +19,13 @@ export NODE_ENV=test
 export NEXT_TELEMETRY_DISABLED=1
 export FORCE_COLOR=0
 
+PLAYWRIGHT_REPORT_DIR="${PLAYWRIGHT_REPORT_DIR:-playwright-report}"
+PLAYWRIGHT_RESULTS_DIR="${PLAYWRIGHT_RESULTS_DIR:-test-results/playwright}"
+PLAYWRIGHT_JUNIT_PATH="${PLAYWRIGHT_JUNIT_PATH:-${PLAYWRIGHT_RESULTS_DIR}/junit.xml}"
+
+export PLAYWRIGHT_HTML_REPORT="${PLAYWRIGHT_HTML_REPORT:-${PLAYWRIGHT_REPORT_DIR}}"
+export PLAYWRIGHT_JUNIT_OUTPUT_NAME="${PLAYWRIGHT_JUNIT_OUTPUT_NAME:-${PLAYWRIGHT_JUNIT_PATH}}"
+
 run_npm_script() {
   local script_name="$1"
   echo "==> npm run ${script_name}"
@@ -43,6 +50,40 @@ install_playwright_browser() {
   npx playwright install chromium
 }
 
+print_e2e_diagnostics() {
+  echo "==> e2e diagnostics"
+  echo "CI=${CI:-false}"
+  echo "NODE_ENV=${NODE_ENV}"
+  echo "PLAYWRIGHT_HTML_REPORT=${PLAYWRIGHT_HTML_REPORT}"
+  echo "PLAYWRIGHT_JUNIT_OUTPUT_NAME=${PLAYWRIGHT_JUNIT_OUTPUT_NAME}"
+  echo "PLAYWRIGHT_RESULTS_DIR=${PLAYWRIGHT_RESULTS_DIR}"
+  echo "node $(node --version)"
+  echo "npm $(npm --version)"
+  echo "playwright $(npx playwright --version)"
+}
+
+prepare_playwright_artifacts() {
+  if [[ -z "${PLAYWRIGHT_HTML_REPORT}" || -z "${PLAYWRIGHT_RESULTS_DIR}" ]]; then
+    echo "Playwright artifact directories must not be empty." >&2
+    exit 1
+  fi
+
+  rm -rf "${PLAYWRIGHT_HTML_REPORT}" "${PLAYWRIGHT_RESULTS_DIR}"
+  mkdir -p "${PLAYWRIGHT_HTML_REPORT}" "${PLAYWRIGHT_RESULTS_DIR}"
+}
+
+print_playwright_artifact_summary() {
+  echo "==> playwright artifact summary"
+  for artifact_path in "${PLAYWRIGHT_HTML_REPORT}" "${PLAYWRIGHT_RESULTS_DIR}"; do
+    if [[ -d "${artifact_path}" ]]; then
+      echo "  ${artifact_path}"
+      find "${artifact_path}" -maxdepth 2 -type f | sort || true
+    else
+      echo "  ${artifact_path} (missing)"
+    fi
+  done
+}
+
 run_unit() {
   run_npm_script test:unit
 }
@@ -53,7 +94,14 @@ run_integration() {
 
 run_e2e() {
   install_playwright_browser
-  run_npm_script test:e2e
+  prepare_playwright_artifacts
+  print_e2e_diagnostics
+  if ! run_npm_script test:e2e; then
+    echo "E2E tests failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return 1
+  fi
+  print_playwright_artifact_summary
 }
 
 case "${tier}" in
