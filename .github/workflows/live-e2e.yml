@@ -67,6 +67,12 @@ jobs:
           pip install -r requirements.txt
         working-directory: dev-health-ops
 
+      - name: Run dev-health-ops migrations
+        env:
+          DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+        run: alembic -c alembic.ini upgrade head
+        working-directory: dev-health-ops
+
       - name: Seed dev-health-ops fixtures
         env:
           CLICKHOUSE_URI: clickhouse://ch:ch@localhost:8123/default
