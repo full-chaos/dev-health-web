@@ -121,6 +121,15 @@ const nextAuth = NextAuth({
             const data = await res.json()
             token.access_token = data.access_token
             token.expires_at = Date.now() + (data.expires_in || 3600) * 1000
+            // Sync session fields from the refreshed user info so they
+            // stay accurate even if a previous refresh produced stale claims.
+            if (data.user) {
+              token.id = data.user.id
+              token.email = data.user.email
+              token.org_id = data.user.org_id
+              token.role = data.user.role
+              token.is_superuser = data.user.is_superuser ?? false
+            }
           }
         } catch {
           // Refresh failed — token stays expired, user will be redirected to login
