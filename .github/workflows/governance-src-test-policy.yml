@@ -1,0 +1,42 @@
+name: Governance - Src Test Policy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+    paths:
+      - src/**
+      - tests/**
+      - .github/pull_request_template.md
+      - .github/scripts/enforce-src-test-governance.mjs
+      - .github/workflows/governance-src-test-policy.yml
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  enforce-src-test-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR base ref
+        run: git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Enforce src test governance
+        env:
+          GOVERNANCE_DIFF_BASE: FETCH_HEAD
+        run: node .github/scripts/enforce-src-test-governance.mjs
+
