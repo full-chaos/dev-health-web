@@ -7,10 +7,8 @@ import { AuditLogFilters } from "@/components/superadmin/AuditLogFilters";
 import { listAuditLogs } from "@/lib/admin/server";
 import type { AuditLog, AuditLogFilter } from "@/lib/admin/types";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
-import { useAdminTier } from "@/components/admin/AdminTierContext";
 
 export default function OrgAuditLogPage() {
-  const { tier } = useAdminTier();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +54,6 @@ export default function OrgAuditLogPage() {
     <UpgradeGate
       feature="audit_log"
       requiredTier="enterprise"
-      currentTier={tier}
     >
       <div>
         <AdminHeader

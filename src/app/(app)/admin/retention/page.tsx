@@ -12,10 +12,8 @@ import {
 } from "@/lib/admin/server";
 import type { RetentionPolicy, RetentionPolicyCreate } from "@/lib/admin/types";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
-import { useAdminTier } from "@/components/admin/AdminTierContext";
 
 export default function RetentionPolicyPage() {
-  const { tier } = useAdminTier();
   const [policies, setPolicies] = useState<RetentionPolicy[]>([]);
   const [resourceTypes, setResourceTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +136,6 @@ export default function RetentionPolicyPage() {
     <UpgradeGate
       feature="retention_policies"
       requiredTier="enterprise"
-      currentTier={tier}
     >
       <div>
         <AdminHeader

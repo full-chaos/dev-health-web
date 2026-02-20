@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { hasAccess } from "@/lib/billing/tiers";
 
 type NavItem = {
   id: string;
   label: string;
   href: string;
   description: string;
-  requiredTier?: string;
+  featureKey?: string;
 };
 
 const navItems: NavItem[] = [
@@ -20,24 +19,24 @@ const navItems: NavItem[] = [
   { id: "sync", label: "Sync Status", href: "/admin/sync", description: "Jobs" },
   { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },
   { id: "identities", label: "Identities", href: "/admin/identities", description: "Mapping" },
-  { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise", requiredTier: "enterprise" },
-  { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security", requiredTier: "enterprise" },
-  { id: "retention", label: "Retention", href: "/admin/retention", description: "Compliance", requiredTier: "enterprise" },
+  { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise", featureKey: "audit_log" },
+  { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security", featureKey: "ip_allowlist" },
+  { id: "retention", label: "Retention", href: "/admin/retention", description: "Compliance", featureKey: "retention_policies" },
 ];
 
 type AdminSidebarProps = {
   isSuperuser?: boolean;
-  tier?: string;
+  features?: Record<string, boolean>;
 };
 
-export function AdminSidebar({ isSuperuser, tier }: AdminSidebarProps) {
+export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
   const pathname = usePathname();
 
   const filteredNavItems = navItems.filter((item) => {
     if (isSuperuser && item.id === "organization") {
       return false;
     }
-    if (item.requiredTier && !hasAccess(tier ?? "community", item.requiredTier)) {
+    if (item.featureKey && features?.[item.featureKey] !== true) {
       return false;
     }
     return true;

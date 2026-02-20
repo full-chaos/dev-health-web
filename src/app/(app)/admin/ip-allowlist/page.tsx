@@ -10,10 +10,8 @@ import {
 } from "@/lib/admin/server";
 import type { IPAllowlist, IPAllowlistCreate } from "@/lib/admin/types";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
-import { useAdminTier } from "@/components/admin/AdminTierContext";
 
 export default function IPAllowlistPage() {
-  const { tier } = useAdminTier();
   const [entries, setEntries] = useState<IPAllowlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +95,6 @@ export default function IPAllowlistPage() {
     <UpgradeGate
       feature="ip_allowlist"
       requiredTier="enterprise"
-      currentTier={tier}
     >
       <div>
         <AdminHeader
