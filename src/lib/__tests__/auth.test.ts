@@ -1,16 +1,25 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+interface RedirectError extends Error {
+  digest: string;
+  url: string;
+}
+
 // Mock nextAuth.auth() — controls what the internal auth() wrapper returns
 const { mockNextAuthAuth } = vi.hoisted(() => ({
   mockNextAuthAuth: vi.fn(),
 }));
 
+function createRedirectError(url: string): RedirectError {
+  const error = new Error("NEXT_REDIRECT") as RedirectError;
+  error.digest = "NEXT_REDIRECT";
+  error.url = url;
+  return error;
+}
+
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
-    const error = new Error("NEXT_REDIRECT");
-    (error as any).digest = "NEXT_REDIRECT";
-    (error as any).url = url;
-    throw error;
+    throw createRedirectError(url);
   }),
 }));
 
@@ -40,9 +49,10 @@ describe("requireSession", () => {
     try {
       await requireSession();
       expect.fail("Should have thrown redirect");
-    } catch (error: any) {
-      expect(error.digest).toBe("NEXT_REDIRECT");
-      expect(error.url).toBe("/auth/signin");
+    } catch (error: unknown) {
+      const redirectErr = error as RedirectError;
+      expect(redirectErr.digest).toBe("NEXT_REDIRECT");
+      expect(redirectErr.url).toBe("/auth/signin");
     }
   });
 
@@ -52,9 +62,10 @@ describe("requireSession", () => {
     try {
       await requireSession("/dashboard");
       expect.fail("Should have thrown redirect");
-    } catch (error: any) {
-      expect(error.digest).toBe("NEXT_REDIRECT");
-      expect(error.url).toBe(
+    } catch (error: unknown) {
+      const redirectErr = error as RedirectError;
+      expect(redirectErr.digest).toBe("NEXT_REDIRECT");
+      expect(redirectErr.url).toBe(
         `/auth/signin?callbackUrl=${encodeURIComponent("/dashboard")}`
       );
     }
@@ -67,9 +78,10 @@ describe("requireSession", () => {
     try {
       await requireSession();
       expect.fail("Should have thrown redirect");
-    } catch (error: any) {
-      expect(error.digest).toBe("NEXT_REDIRECT");
-      expect(error.url).toBe("/auth/signin");
+    } catch (error: unknown) {
+      const redirectErr = error as RedirectError;
+      expect(redirectErr.digest).toBe("NEXT_REDIRECT");
+      expect(redirectErr.url).toBe("/auth/signin");
     }
   });
 
@@ -90,9 +102,10 @@ describe("requireSession", () => {
     try {
       await requireSession();
       expect.fail("Should have thrown redirect");
-    } catch (error: any) {
-      expect(error.digest).toBe("NEXT_REDIRECT");
-      expect(error.url).toBe("/auth/onboard");
+    } catch (error: unknown) {
+      const redirectErr = error as RedirectError;
+      expect(redirectErr.digest).toBe("NEXT_REDIRECT");
+      expect(redirectErr.url).toBe("/auth/onboard");
     }
   });
 
