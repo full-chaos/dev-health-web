@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { redirect } from "next/navigation"
 import { getBackendUrl } from "@/lib/origin"
 
 const authSecret = process.env.AUTH_SECRET 
@@ -211,4 +212,29 @@ export async function auth(): Promise<Session | null> {
   } catch {
     return null
   }
+}
+
+export async function requireSession(callbackUrl?: string): Promise<Session> {
+  const session = await auth()
+  if (!session?.user) {
+    redirect(callbackUrl ? `/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/auth/signin")
+  }
+  return session
+}
+
+export async function requireRole(roles: string | string[], callbackUrl?: string): Promise<Session> {
+  const session = await requireSession(callbackUrl)
+  const roleList = Array.isArray(roles) ? roles : [roles]
+  if (!session.user.is_superuser && !roleList.includes(session.user.role || "")) {
+    redirect("/")
+  }
+  return session
+}
+
+export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
+  const session = await requireSession(callbackUrl)
+  if (session.user.is_superuser !== true) {
+    redirect("/")
+  }
+  return session
 }

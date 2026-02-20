@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 
 export default async function AdminLayout({
@@ -7,22 +7,13 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const session = await requireRole(["admin", "owner"], "/admin");
 
-  if (!session?.user) {
-    redirect("/auth/signin?callbackUrl=/admin");
-  }
-
-  const role = session.user.role;
   const isSuperuser = session.user.is_superuser === true;
 
   // Superusers without an org context must use Platform Admin instead
   if (isSuperuser && !session.user.org_id) {
     redirect("/superadmin");
-  }
-
-  if (!isSuperuser && role !== "admin" && role !== "owner") {
-    redirect("/");
   }
 
   return (
