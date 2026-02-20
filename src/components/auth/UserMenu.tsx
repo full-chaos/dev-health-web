@@ -1,11 +1,13 @@
 "use client"
 
 import { useSession, signOut } from "next-auth/react"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useState, useRef, useEffect } from "react"
 
 export function UserMenu() {
   const { data: session, status } = useSession()
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -18,6 +20,12 @@ export function UserMenu() {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+  // Don't render on auth pages (sign-in, sign-up) — the server-side session
+  // may be invalidated while the client-side useSession() still has stale data.
+  if (pathname?.startsWith("/auth/")) {
+    return null
+  }
 
   if (status === "loading") {
     return <div className="h-8 w-8 animate-pulse rounded-full bg-[var(--card-stroke)]" />
