@@ -23,7 +23,7 @@ export async function proxy(request: NextRequest) {
 
     if (!isTestMode && !isPublicPath(pathname)) {
         const session = await auth();
-        if (!session) {
+        if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
             signInUrl.searchParams.set("callbackUrl", pathname);
             return NextResponse.redirect(signInUrl);
