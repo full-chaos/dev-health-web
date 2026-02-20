@@ -6,7 +6,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CapacityView } from "@/components/work/CapacityView";
 import { checkApiHealth } from "@/lib/api";
-import { getCurrentOrg } from "@/lib/admin/server";
+import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
@@ -23,6 +23,10 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
 
   const orgResult = await getCurrentOrg().catch(() => ({ data: undefined }));
   const org = orgResult.data;
+  const entitlements = org?.id
+    ? await getOrgEntitlements(org.id).catch(() => null)
+    : null;
+  const features = entitlements?.data?.features ?? {};
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
@@ -43,7 +47,7 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
           <UpgradeGate
             feature="capacity_planning"
             requiredTier="team"
-            currentTier={org?.tier ?? "community"}
+            features={features}
           >
             <header className="flex flex-wrap items-center justify-between gap-4">
               <div>

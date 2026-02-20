@@ -1,20 +1,27 @@
+"use client";
+
 import Link from "next/link";
-import { hasAccess, TIER_FEATURES } from "@/lib/billing/tiers";
+import { useAdminTier } from "@/components/admin/AdminTierContext";
+import { TIER_FEATURES } from "@/lib/billing/tiers";
 
 type UpgradeGateProps = {
   feature: string;
   requiredTier: string;
-  currentTier: string;
+  features?: Record<string, boolean>;
   children: React.ReactNode;
 };
 
 export function UpgradeGate({
   feature,
   requiredTier,
-  currentTier,
+  features: featuresProp,
   children,
 }: UpgradeGateProps) {
-  if (hasAccess(currentTier, requiredTier)) {
+  const context = useAdminTier();
+  const features = featuresProp ?? context.features;
+  const currentTier = context.tier;
+
+  if (features[feature] === true) {
     return <>{children}</>;
   }
 
