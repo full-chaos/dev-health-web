@@ -1,4 +1,5 @@
 import { resolveOrigin } from "@/lib/origin";
+import { isServer } from "@/lib/env";
 
 export type ApiQueryParams = Record<
   string,
@@ -24,6 +25,18 @@ const buildUrl = (path: string, params?: ApiQueryParams) => {
   return url.toString();
 };
 
+async function getServerAuthHeaders(): Promise<Record<string, string>> {
+  if (!isServer) return {};
+  try {
+    const { auth } = await import("@/lib/auth");
+    const session = await auth();
+    if (session?.access_token) {
+      return { Authorization: `Bearer ${session.access_token}` };
+    }
+  } catch {}
+  return {};
+}
+
 const inflightRequests = new Map<string, Promise<Response>>();
 
 const request = async (
@@ -34,22 +47,24 @@ const request = async (
   const url = buildUrl(path, params);
   const cacheKey = `${init?.method ?? "GET"}:${url}`;
 
-  // Check for in-flight request to deduplicate concurrent calls
   const existing = inflightRequests.get(cacheKey);
   if (existing) {
     return existing.then((r) => r.clone());
   }
 
-  const promise = fetch(url, init);
+  const authHeaders = await getServerAuthHeaders();
+  const mergedInit: ApiFetchInit = {
+    ...init,
+    headers: { ...authHeaders, ...init?.headers },
+  };
+
+  const promise = fetch(url, mergedInit);
   inflightRequests.set(cacheKey, promise);
 
   try {
     const response = await promise;
-    // We clone because multiple concurrent callers might call .json() or .text()
     return response.clone();
   } finally {
-    // Only deduplicate in-flight requests. Subsequent calls after completion
-    // should perform a new fetch (unless we implement a full data cache).
     inflightRequests.delete(cacheKey);
   }
 };
