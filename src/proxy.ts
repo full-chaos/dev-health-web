@@ -21,6 +21,8 @@ function isPublicPath(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
+    let accessToken: string | undefined;
+
     if (!isTestMode && !isPublicPath(pathname)) {
         const session = await auth();
         if (!session || !session.access_token) {
@@ -28,6 +30,7 @@ export async function proxy(request: NextRequest) {
             signInUrl.searchParams.set("callbackUrl", pathname);
             return NextResponse.redirect(signInUrl);
         }
+        accessToken = session.access_token;
     }
 
     const shouldProxy =
@@ -40,6 +43,14 @@ export async function proxy(request: NextRequest) {
 
     const backendUrl = getBackendUrl();
     const targetUrl = new URL(pathname + request.nextUrl.search, backendUrl);
+
+    if (accessToken) {
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set("Authorization", `Bearer ${accessToken}`);
+        return NextResponse.rewrite(targetUrl, {
+            request: { headers: requestHeaders },
+        });
+    }
 
     return NextResponse.rewrite(targetUrl);
 }

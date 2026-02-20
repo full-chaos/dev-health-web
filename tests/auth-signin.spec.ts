@@ -20,3 +20,17 @@ test("/auth/signin shows post-registration banner", async ({ page }) => {
     page.getByText("Account created successfully. Please sign in."),
   ).toBeVisible();
 });
+
+test("/auth/signin shows error toast on failed login", async ({ page }) => {
+  await page.goto("/auth/signin");
+
+  // Fill in credentials that will fail (mock backend rejects all logins)
+  await page.getByLabel("Email").fill("bad@example.com");
+  await page.getByLabel("Password").fill("wrongpassword");
+  await page.getByRole("button", { name: "Sign In" }).click();
+
+  // The Toaster component must be mounted in the (auth) layout for this to appear
+  await expect(
+    page.getByText("Invalid email or password"),
+  ).toBeVisible({ timeout: 10_000 });
+});
