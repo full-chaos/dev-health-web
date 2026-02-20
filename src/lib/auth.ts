@@ -45,6 +45,7 @@ const nextAuth = NextAuth({
               role: data.user.role,
               is_superuser: data.user.is_superuser ?? false,
               permissions: data.user.permissions,
+              needs_onboarding: data.needs_onboarding ?? false,
               access_token: data.access_token,
               refresh_token: data.refresh_token,
               expires_in: data.expires_in,
@@ -66,10 +67,21 @@ const nextAuth = NextAuth({
         token.role = user.role
         token.is_superuser = user.is_superuser
         token.permissions = user.permissions
+        token.needs_onboarding = user.needs_onboarding
         token.access_token = user.access_token
         token.refresh_token = user.refresh_token
         token.expires_at = Date.now() + (user.expires_in || 3600) * 1000
         token.last_validated = Date.now()
+      }
+
+      // Handle onboarding completion
+      if (trigger === "update" && session?.onboardComplete) {
+        token.access_token = session.onboardComplete.access_token
+        token.refresh_token = session.onboardComplete.refresh_token
+        token.org_id = session.onboardComplete.org_id
+        token.role = session.onboardComplete.role
+        token.needs_onboarding = false
+        token.expires_at = Date.now() + (session.onboardComplete.expires_in || 3600) * 1000
       }
 
       // Handle impersonation start
@@ -185,6 +197,7 @@ const nextAuth = NextAuth({
         session.user.role = token.role as string
         session.user.is_superuser = (token.is_superuser as boolean) ?? false
         session.user.permissions = token.permissions as string[]
+        session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false
         session.access_token = token.access_token as string
         session.user.is_impersonating = !!token.is_impersonating
         session.user.impersonated_user_id = token.impersonated_user_id as string | undefined
@@ -218,6 +231,9 @@ export async function requireSession(callbackUrl?: string): Promise<Session> {
   const session = await auth()
   if (!session?.user) {
     redirect(callbackUrl ? `/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/auth/signin")
+  }
+  if (session.user.needs_onboarding) {
+    redirect("/auth/onboard")
   }
   return session
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -22,12 +22,17 @@ export function LoginForm() {
          redirect: false,
        })
 
-       if (result?.error) {
-         toast.error("Invalid email or password")
-       } else {
-         router.push("/")
-         router.refresh()
-       }
+        if (result?.error) {
+          toast.error("Invalid email or password")
+        } else {
+          const session = await getSession()
+          if (session?.user?.needs_onboarding) {
+            router.push("/auth/onboard")
+          } else {
+            router.push("/")
+            router.refresh()
+          }
+        }
      } catch {
        toast.error("An error occurred. Please try again.")
      } finally {
