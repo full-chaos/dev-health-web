@@ -175,17 +175,18 @@ const nextAuth = NextAuth({
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.org_id = token.org_id as string
-        session.user.role = token.role as string
-        session.user.is_superuser = (token.is_superuser as boolean) ?? false
-        session.user.permissions = token.permissions as string[]
-        session.access_token = token.access_token as string
-        session.user.is_impersonating = !!token.is_impersonating
-        session.user.impersonated_user_id = token.impersonated_user_id as string | undefined
-        session.user.real_user_id = token.real_user_id as string | undefined
+      if (!token?.access_token) {
+        return null as unknown as typeof session
       }
+      session.user.id = token.id as string
+      session.user.org_id = token.org_id as string
+      session.user.role = token.role as string
+      session.user.is_superuser = (token.is_superuser as boolean) ?? false
+      session.user.permissions = token.permissions as string[]
+      session.access_token = token.access_token as string
+      session.user.is_impersonating = !!token.is_impersonating
+      session.user.impersonated_user_id = token.impersonated_user_id as string | undefined
+      session.user.real_user_id = token.real_user_id as string | undefined
       return session
     },
   },
