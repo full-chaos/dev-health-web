@@ -5,6 +5,8 @@ const htmlOutputFolder = process.env.PLAYWRIGHT_HTML_REPORT ?? "playwright-repor
 const junitOutputFile =
   process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? "test-results/playwright/junit.xml";
 
+const AUTH_FILE = "test-results/.auth/state.json";
+
 export default defineConfig({
   testDir: "./tests",
   testIgnore: ["live/**"],
@@ -16,6 +18,24 @@ export default defineConfig({
   ],
   retries: isCI ? 2 : 0,
   forbidOnly: isCI,
+  projects: [
+    {
+      name: "auth-setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
+      name: "authenticated",
+      testIgnore: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /auth\.setup\.ts/],
+      dependencies: ["auth-setup"],
+      use: {
+        storageState: AUTH_FILE,
+      },
+    },
+    {
+      name: "unauthenticated",
+      testMatch: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/],
+    },
+  ],
   use: {
     baseURL: "http://127.0.0.1:3001",
     headless: true,
