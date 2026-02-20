@@ -6,8 +6,23 @@ export const TIER_HIERARCHY: Record<string, number> = {
 };
 
 export const FEATURE_TIERS: Record<string, string> = {
+  basic_analytics: "community",
   investment_view: "team",
+  team_dashboard: "team",
+  custom_integrations: "team",
   capacity_planning: "team",
+  sso: "enterprise",
+  audit_log: "enterprise",
+  ip_allowlist: "enterprise",
+  retention_policies: "enterprise",
+  priority_support: "enterprise",
+};
+
+export const TIER_LABELS: Record<string, string> = {
+  community: "Community",
+  free: "Community",
+  team: "Team",
+  enterprise: "Enterprise",
 };
 
 export const TIER_FEATURES: Record<string, string> = {

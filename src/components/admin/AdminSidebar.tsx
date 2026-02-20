@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { hasAccess } from "@/lib/billing/tiers";
 
 type NavItem = {
   id: string;
   label: string;
   href: string;
   description: string;
+  requiredTier?: string;
 };
 
 const navItems: NavItem[] = [
@@ -18,21 +20,28 @@ const navItems: NavItem[] = [
   { id: "sync", label: "Sync Status", href: "/admin/sync", description: "Jobs" },
   { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },
   { id: "identities", label: "Identities", href: "/admin/identities", description: "Mapping" },
-  { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise" },
-  { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security" },
-  { id: "retention", label: "Retention", href: "/admin/retention", description: "Compliance" },
+  { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise", requiredTier: "enterprise" },
+  { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security", requiredTier: "enterprise" },
+  { id: "retention", label: "Retention", href: "/admin/retention", description: "Compliance", requiredTier: "enterprise" },
 ];
 
 type AdminSidebarProps = {
   isSuperuser?: boolean;
+  tier?: string;
 };
 
-export function AdminSidebar({ isSuperuser }: AdminSidebarProps) {
+export function AdminSidebar({ isSuperuser, tier }: AdminSidebarProps) {
   const pathname = usePathname();
 
-  const filteredNavItems = isSuperuser
-    ? navItems.filter((item) => item.id !== "organization")
-    : navItems;
+  const filteredNavItems = navItems.filter((item) => {
+    if (isSuperuser && item.id === "organization") {
+      return false;
+    }
+    if (item.requiredTier && !hasAccess(tier ?? "community", item.requiredTier)) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <aside className="w-full md:max-w-[220px] md:shrink-0">

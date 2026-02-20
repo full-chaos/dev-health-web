@@ -6,8 +6,11 @@ import { AuditLogTable } from "@/components/superadmin/AuditLogTable";
 import { AuditLogFilters } from "@/components/superadmin/AuditLogFilters";
 import { listAuditLogs } from "@/lib/admin/server";
 import type { AuditLog, AuditLogFilter } from "@/lib/admin/types";
+import { UpgradeGate } from "@/components/billing/UpgradeGate";
+import { useAdminTier } from "@/components/admin/AdminTierContext";
 
 export default function OrgAuditLogPage() {
+  const { tier } = useAdminTier();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,48 +53,54 @@ export default function OrgAuditLogPage() {
   };
 
   return (
-    <div>
-      <AdminHeader
-        title="Audit Logs"
-        description="Browse and filter audit events for your organization."
-      />
+    <UpgradeGate
+      feature="audit_log"
+      requiredTier="enterprise"
+      currentTier={tier}
+    >
+      <div>
+        <AdminHeader
+          title="Audit Logs"
+          description="Browse and filter audit events for your organization."
+        />
 
-      <AuditLogFilters onFilter={handleFilter} />
+        <AuditLogFilters onFilter={handleFilter} />
 
-      {error && (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
-          Error loading audit logs: {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="py-12 text-center text-(--ink-muted)">Loading audit logs...</div>
-      ) : (
-        <>
-          <AuditLogTable logs={logs} />
-          <div className="mt-4 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handlePrevPage}
-              disabled={offset === 0}
-              className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-(--ink-muted)">
-              Showing {offset + 1}-{offset + logs.length}
-            </span>
-            <button
-              type="button"
-              onClick={handleNextPage}
-              disabled={logs.length < limit}
-              className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
-            >
-              Next
-            </button>
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+            Error loading audit logs: {error}
           </div>
-        </>
-      )}
-    </div>
+        )}
+
+        {loading ? (
+          <div className="py-12 text-center text-(--ink-muted)">Loading audit logs...</div>
+        ) : (
+          <>
+            <AuditLogTable logs={logs} />
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={handlePrevPage}
+                disabled={offset === 0}
+                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-(--ink-muted)">
+                Showing {offset + 1}-{offset + logs.length}
+              </span>
+              <button
+                type="button"
+                onClick={handleNextPage}
+                disabled={logs.length < limit}
+                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </UpgradeGate>
   );
 }
