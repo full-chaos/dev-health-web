@@ -2,11 +2,6 @@ import type { Metadata } from "next";
 import { Noto_Sans, Noto_Sans_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-import { SessionProvider } from "@/components/auth/SessionProvider";
-import { UserMenu } from "@/components/auth/UserMenu";
-import { GraphQLProvider } from "@/lib/graphql/provider";
-import { Toaster } from "sonner";
-import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 
 const bodyFont = Noto_Sans({
   variable: "--font-body",
@@ -66,19 +61,12 @@ export default function RootLayout({
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
-        <SessionProvider>
-           <GraphQLProvider>
-             <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
-             <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-             <div className="fixed right-6 top-6 z-50">
-               <UserMenu />
-             </div>
-             <ImpersonationBanner />
-             {children}
-             <Toaster richColors position="top-right" theme="dark" />
-           </GraphQLProvider>
-         </SessionProvider>
-       </body>
+        <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
+        <Script id="theme-script" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
+        {children}
+      </body>
     </html>
   );
 }
