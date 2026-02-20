@@ -11,6 +11,7 @@ declare module "next-auth" {
       role?: string
       is_superuser?: boolean
       permissions?: string[]
+      needs_onboarding?: boolean
       is_impersonating?: boolean
       impersonated_user_id?: string
       real_user_id?: string
@@ -25,6 +26,7 @@ declare module "next-auth" {
     role?: string
     is_superuser?: boolean
     permissions?: string[]
+    needs_onboarding?: boolean
     access_token?: string
     refresh_token?: string
     expires_in?: number
@@ -38,6 +40,7 @@ declare module "next-auth/jwt" {
     role?: string
     is_superuser?: boolean
     permissions?: string[]
+    needs_onboarding?: boolean
     access_token?: string
     refresh_token?: string
     expires_at?: number
