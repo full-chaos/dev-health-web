@@ -104,44 +104,14 @@ const nextAuth = NextAuth({
       const now = Date.now()
       const expiresAt = token.expires_at as number | undefined
       const lastValidated = token.last_validated as number | undefined
+      const tokenExpired = expiresAt && now > expiresAt - 5 * 60 * 1000
 
-      // Periodic backend validation: confirm the user still exists in the DB.
-      // Runs every 5 minutes (not on initial login when `user` is set).
-      const VALIDATION_INTERVAL = 5 * 60 * 1000
-      if (
-        !user &&
-        token.access_token &&
-        (!lastValidated || now - lastValidated > VALIDATION_INTERVAL)
-      ) {
-        try {
-          const backendUrl = getBackendUrl()
-          const res = await fetch(`${backendUrl}/api/v1/auth/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: token.access_token }),
-          })
-          if (res.ok) {
-            const data = await res.json()
-            if (!data.valid) {
-              token.access_token = undefined
-              token.refresh_token = undefined
-              token.error = "user_invalid"
-              return token
-            }
-            token.last_validated = now
-          }
-        } catch {
-          // Network error — don't invalidate for transient failures
-        }
-      }
-
-      // Auto-refresh: when the backend JWT is near expiry, get a new access_token.
+      // Step 1: Refresh expired tokens first (before validation).
       // Skip during impersonation since the impersonated token has its own lifecycle.
       if (
-        expiresAt &&
+        tokenExpired &&
         !token.is_impersonating &&
-        token.refresh_token &&
-        now > expiresAt - 5 * 60 * 1000
+        token.refresh_token
       ) {
         try {
           const backendUrl = getBackendUrl()
@@ -166,27 +136,59 @@ const nextAuth = NextAuth({
             token.access_token = undefined
             token.refresh_token = undefined
             token.error = "refresh_failed"
+            return token
           }
         } catch {
           // Network error — keep existing token, retry on next request
         }
       }
 
+      // Step 2: Periodic backend validation — confirm user still exists in DB.
+      // Only runs when token is NOT expired (fresh or just-refreshed).
+      // Runs every 5 minutes, skips on initial login.
+      const VALIDATION_INTERVAL = 5 * 60 * 1000
+      if (
+        !user &&
+        token.access_token &&
+        !token.error &&
+        (!lastValidated || now - lastValidated > VALIDATION_INTERVAL)
+      ) {
+        try {
+          const backendUrl = getBackendUrl()
+          const res = await fetch(`${backendUrl}/api/v1/auth/validate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: token.access_token }),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            if (!data.valid) {
+              token.access_token = undefined
+              token.refresh_token = undefined
+              token.error = "user_invalid"
+              return token
+            }
+            token.last_validated = now
+          }
+        } catch {
+          // Network error — don't invalidate for transient failures
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
-      if (!token?.access_token) {
-        return null as unknown as typeof session
+      if (token) {
+        session.user.id = token.id as string
+        session.user.org_id = token.org_id as string
+        session.user.role = token.role as string
+        session.user.is_superuser = (token.is_superuser as boolean) ?? false
+        session.user.permissions = token.permissions as string[]
+        session.access_token = token.access_token as string
+        session.user.is_impersonating = !!token.is_impersonating
+        session.user.impersonated_user_id = token.impersonated_user_id as string | undefined
+        session.user.real_user_id = token.real_user_id as string | undefined
       }
-      session.user.id = token.id as string
-      session.user.org_id = token.org_id as string
-      session.user.role = token.role as string
-      session.user.is_superuser = (token.is_superuser as boolean) ?? false
-      session.user.permissions = token.permissions as string[]
-      session.access_token = token.access_token as string
-      session.user.is_impersonating = !!token.is_impersonating
-      session.user.impersonated_user_id = token.impersonated_user_id as string | undefined
-      session.user.real_user_id = token.real_user_id as string | undefined
       return session
     },
   },
@@ -203,7 +205,9 @@ import type { Session } from "next-auth"
 
 export async function auth(): Promise<Session | null> {
   try {
-    return await nextAuth.auth()
+    const session = await nextAuth.auth()
+    if (!session?.access_token) return null
+    return session
   } catch {
     return null
   }
