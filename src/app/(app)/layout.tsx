@@ -3,12 +3,15 @@ import { UserMenu } from "@/components/auth/UserMenu";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { GraphQLProvider } from "@/lib/graphql/provider";
 import { Toaster } from "sonner";
+import { requireSession } from "@/lib/auth";
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await requireSession();
+
   return (
     <SessionProvider>
       <GraphQLProvider>
