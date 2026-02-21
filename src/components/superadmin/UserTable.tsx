@@ -27,7 +27,7 @@ export function UserTable({ users }: UserTableProps) {
       }
       if (result.data) {
         await update({ startImpersonation: result.data });
-        router.push("/");
+        router.push("/dashboard");
       }
     } catch {
       toast.error("Failed to start impersonation");

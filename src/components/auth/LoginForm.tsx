@@ -29,7 +29,7 @@ export function LoginForm() {
           if (session?.user?.needs_onboarding) {
             router.push("/auth/onboard")
           } else {
-            router.push("/")
+            router.push("/dashboard")
             router.refresh()
           }
         }
