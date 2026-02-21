@@ -44,7 +44,7 @@ const expectFilterParam = async (page: Page, expected: string) => {
 
 test.describe("filter propagation", () => {
   test("primary routes retain filter param", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/dashboard");
     const initialFilter = await waitForFilterParam(page);
     const updatedFilter = await updateDeveloperFilter(
       page,
@@ -61,7 +61,7 @@ test.describe("filter propagation", () => {
       { label: /Work/i, url: /\/work/ },
       { label: /Code/i, url: /\/code/ },
       { label: /Opportunities/i, url: /\/opportunities/ },
-      { label: /Home/i, url: /\/\?f=/ },
+      { label: /Home/i, url: /\/dashboard\?f=/ },
     ];
 
     for (const route of routes) {
