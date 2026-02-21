@@ -94,7 +94,7 @@ const SANKEY_RESPONSES: Record<string, { nodes: unknown[]; links: unknown[]; lab
 // Aggregated flame mode → response mapping
 // ---------------------------------------------------------------------------
 
-const FLAME_RESPONSES: Record<string, unknown> = {
+const FLAME_RESPONSES: Record<string, Parameters<typeof HttpResponse.json>[0]> = {
   cycle_breakdown: cycleBreakdownFlameSample,
   code_hotspots: codeHotspotsFlameSample,
   throughput: throughputFlameSample,
@@ -145,6 +145,49 @@ const buildDeploymentFlameResponse = (deploymentId: string) => ({
 // ---------------------------------------------------------------------------
 
 export const handlers = [
+  // ---- Auth (for e2e test authentication) ----
+  http.post("*/api/v1/auth/login", async ({ request }) => {
+    const body = (await request.json()) as { email?: string; password?: string } | null;
+    if (!body?.email || !body?.password) {
+      return HttpResponse.json({ detail: "Missing credentials" }, { status: 400 });
+    }
+    if (body.email !== "test@example.com" || body.password !== "password123") {
+      return HttpResponse.json({ detail: "Invalid email or password" }, { status: 401 });
+    }
+    return HttpResponse.json({
+      user: {
+        id: "e2e-user-1",
+        email: body.email,
+        org_id: "org-e2e",
+        role: "owner",
+        is_superuser: false,
+        permissions: ["read", "write"],
+      },
+      access_token: "mock-access-token-e2e",
+      refresh_token: "mock-refresh-token-e2e",
+      expires_in: 86400,
+      needs_onboarding: false,
+    });
+  }),
+
+  http.post("*/api/v1/auth/validate", () =>
+    HttpResponse.json({ valid: true }),
+  ),
+
+  http.post("*/api/v1/auth/refresh", () =>
+    HttpResponse.json({
+      access_token: "mock-refreshed-token-e2e",
+      expires_in: 86400,
+      user: {
+        id: "e2e-user-1",
+        email: "test@example.com",
+        org_id: "org-e2e",
+        role: "owner",
+        is_superuser: false,
+      },
+    }),
+  ),
+
   // ---- Health & Meta ----
   http.get("*/health", () =>
     HttpResponse.json({ status: "ok", services: { api: "mock" } }),

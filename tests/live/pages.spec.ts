@@ -1,15 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-test("home page loads with live backend", async ({ page }) => {
+test("home page redirects unauthenticated users to sign in", async ({ page }) => {
   await page.goto("/");
+  await expect(page).toHaveURL(/\/auth\/signin/);
   await expect(
-    page.getByRole("heading", { name: "Developer Health Ops Cockpit" })
+    page.getByRole("heading", { name: "Sign in to your account" })
   ).toBeVisible();
 });
 
-test("work page loads with live backend", async ({ page }) => {
+test("work page redirects unauthenticated users to sign in", async ({ page }) => {
   await page.goto("/work");
+  await expect(page).toHaveURL(/\/auth\/signin/);
   await expect(
-    page.getByRole("heading", { name: "Work Investment and Flow" })
+    page.getByRole("heading", { name: "Sign in to your account" })
   ).toBeVisible();
 });
