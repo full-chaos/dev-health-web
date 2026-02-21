@@ -25,7 +25,7 @@ export default defineConfig({
     },
     {
       name: "authenticated",
-      testIgnore: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /auth\.setup\.ts/],
+      testIgnore: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /auth\.setup\.ts/, /live\//],
       dependencies: ["auth-setup"],
       use: {
         storageState: AUTH_FILE,

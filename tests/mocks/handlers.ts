@@ -94,7 +94,7 @@ const SANKEY_RESPONSES: Record<string, { nodes: unknown[]; links: unknown[]; lab
 // Aggregated flame mode → response mapping
 // ---------------------------------------------------------------------------
 
-const FLAME_RESPONSES: Record<string, unknown> = {
+const FLAME_RESPONSES: Record<string, Parameters<typeof HttpResponse.json>[0]> = {
   cycle_breakdown: cycleBreakdownFlameSample,
   code_hotspots: codeHotspotsFlameSample,
   throughput: throughputFlameSample,
@@ -150,6 +150,9 @@ export const handlers = [
     const body = (await request.json()) as { email?: string; password?: string } | null;
     if (!body?.email || !body?.password) {
       return HttpResponse.json({ detail: "Missing credentials" }, { status: 400 });
+    }
+    if (body.email !== "test@example.com" || body.password !== "password123") {
+      return HttpResponse.json({ detail: "Invalid email or password" }, { status: 401 });
     }
     return HttpResponse.json({
       user: {
