@@ -10,7 +10,7 @@ export default async function OnboardPage() {
   }
 
   if (session.user.org_id && !session.user.needs_onboarding) {
-    redirect("/")
+    redirect("/dashboard")
   }
 
   return (

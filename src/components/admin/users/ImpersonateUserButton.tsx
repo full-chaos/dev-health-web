@@ -31,7 +31,7 @@ export function ImpersonateUserButton({ user }: { user: User }) {
       }
       if (result.data) {
         await update({ startImpersonation: result.data });
-        router.push("/");
+        router.push("/dashboard");
       }
     } catch {
       toast.error("Failed to start impersonation");

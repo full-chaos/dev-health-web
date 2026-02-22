@@ -98,7 +98,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
             )}
           </nav>
           <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
-            Return to <Link href="/" className="underline hover:text-foreground">main app</Link>.
+            Return to <Link href="/dashboard" className="underline hover:text-foreground">main app</Link>.
           </div>
         </div>
       </div>
