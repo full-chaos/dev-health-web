@@ -25,7 +25,7 @@ export async function proxy(request: NextRequest) {
 
     if (pathname === "/") {
         const session = await auth();
-        if (session?.access_token) {
+        if (session && session.access_token) {
             return NextResponse.redirect(new URL("/dashboard", request.url));
         }
         return NextResponse.next();
