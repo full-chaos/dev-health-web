@@ -3,6 +3,8 @@
 > **Canonical Reference:** See [`/AGENTS.md`](../AGENTS.md) for the unified Dev Health platform agent briefing.
 >
 > **Deep Dives:** See [`/docs/agent-instructions/`](../docs/agent-instructions/) for detailed topic documentation.
+>
+> **Local Docs:** See [`docs/`](docs/) for dev-health-web-specific documentation (architecture, auth system, design system, GraphQL, testing, visualizations).
 
 This document contains **dev-health-web specific** guidance for the Next.js frontend.
 
@@ -105,7 +107,6 @@ bd sync
 2. Update bd status during work
 3. Run `bd sync` before `git push`
 4. Close/update the linked Linear issue when complete
-
 ---
 
 ## Landing the Plane (Session Completion)
