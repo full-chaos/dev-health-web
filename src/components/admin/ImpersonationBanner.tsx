@@ -17,7 +17,7 @@ export function ImpersonationBanner() {
     if (result?.data) {
       await update({ stopImpersonation: result.data });
       router.refresh();
-      router.push("/");
+      router.push("/dashboard");
     }
   };
 

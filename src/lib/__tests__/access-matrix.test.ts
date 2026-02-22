@@ -154,7 +154,7 @@ describe("requireRole — RBAC enforcement", () => {
       mockNextAuthAuth.mockResolvedValueOnce(
         makeSession({ org_id: "org-1", role, is_superuser: false }),
       );
-      await expectRedirectTo(() => requireRole(adminRoles), "/");
+      await expectRedirectTo(() => requireRole(adminRoles), "/dashboard");
     });
   });
 
@@ -217,7 +217,7 @@ describe("requireRole — RBAC enforcement", () => {
       mockNextAuthAuth.mockResolvedValueOnce(
         makeSession({ org_id: "org-1", role: "member" }),
       );
-      await expectRedirectTo(() => requireRole("admin"), "/");
+      await expectRedirectTo(() => requireRole("admin"), "/dashboard");
     });
   });
 });
@@ -231,14 +231,14 @@ describe("requireSuperuser — platform admin gate", () => {
     mockNextAuthAuth.mockResolvedValueOnce(
       makeSession({ org_id: "org-1", role: "admin", is_superuser: false }),
     );
-    await expectRedirectTo(() => requireSuperuser(), "/");
+    await expectRedirectTo(() => requireSuperuser(), "/dashboard");
   });
 
   it("non-superuser org owner is redirected to /", async () => {
     mockNextAuthAuth.mockResolvedValueOnce(
       makeSession({ org_id: "org-1", role: "owner", is_superuser: false }),
     );
-    await expectRedirectTo(() => requireSuperuser(), "/");
+    await expectRedirectTo(() => requireSuperuser(), "/dashboard");
   });
 
   it("superuser passes the check", async () => {
@@ -707,14 +707,14 @@ describe("full access matrix — RBAC × tier gates", () => {
         const result = await requireRole(["admin", "owner"]);
         expect(result.user.id).toBeDefined();
       } else {
-        // Could redirect to /auth/signin, /auth/onboard, or /
+        // Could redirect to /auth/signin, /auth/onboard, or /dashboard
         try {
           await requireRole(["admin", "owner"]);
           expect.fail("Expected redirect");
         } catch (error: unknown) {
           const redirectErr = error as RedirectError;
           expect(redirectErr.digest).toBe("NEXT_REDIRECT");
-          expect(["/", "/auth/signin", "/auth/onboard"]).toContain(redirectErr.url);
+          expect(["/dashboard", "/auth/signin", "/auth/onboard"]).toContain(redirectErr.url);
         }
       }
     });
@@ -731,7 +731,7 @@ describe("full access matrix — RBAC × tier gates", () => {
         } catch (error: unknown) {
           const redirectErr = error as RedirectError;
           expect(redirectErr.digest).toBe("NEXT_REDIRECT");
-          expect(["/", "/auth/signin", "/auth/onboard"]).toContain(redirectErr.url);
+          expect(["/dashboard", "/auth/signin", "/auth/onboard"]).toContain(redirectErr.url);
         }
       }
     });

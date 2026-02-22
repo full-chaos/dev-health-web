@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 const isTestMode = process.env.PLAYWRIGHT_TEST === "true";
 
 const PUBLIC_PATHS = [
+    "/",
     "/auth/signin",
     "/auth/signup",
     "/auth/error",
@@ -15,11 +16,20 @@ const PUBLIC_PATHS = [
 ];
 
 function isPublicPath(pathname: string): boolean {
-    return PUBLIC_PATHS.some(path => pathname.startsWith(path));
+    if (pathname === "/") return true;
+    return PUBLIC_PATHS.some(path => path !== "/" && pathname.startsWith(path));
 }
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    if (pathname === "/") {
+        const session = await auth();
+        if (session && session.access_token) {
+            return NextResponse.redirect(new URL("/dashboard", request.url));
+        }
+        return NextResponse.next();
+    }
 
     let accessToken: string | undefined;
 

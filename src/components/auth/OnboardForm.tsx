@@ -47,7 +47,7 @@ export function OnboardForm() {
         },
       })
 
-      router.push("/")
+      router.push("/dashboard")
       router.refresh()
     } catch {
       toast.error("An error occurred. Please try again.")

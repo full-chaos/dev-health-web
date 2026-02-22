@@ -22,7 +22,7 @@ export function ServiceUnavailable() {
           </ul>
         </div>
         <Link
-          href="/"
+          href="/dashboard"
           className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
         >
           Retry

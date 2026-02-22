@@ -15,7 +15,7 @@ export default async function SignInPage({
     if (session.user.needs_onboarding) {
       redirect("/auth/onboard")
     }
-    redirect("/")
+    redirect("/dashboard")
   }
 
   const params = await searchParams
