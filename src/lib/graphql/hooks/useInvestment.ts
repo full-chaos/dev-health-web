@@ -81,7 +81,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
       filters: translateFilters(filters),
     };
     return { orgId, batch };
-  }, [filters]);
+  }, [filters, contextOrgId]);
 
   const [result, reexecute] = useQuery<AnalyticsQueryResponse>({
     query: INVESTMENT_BREAKDOWN_QUERY,
@@ -172,7 +172,7 @@ export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestm
       filters: graphqlFilters,
     };
     return { orgId, batch };
-  }, [filters, flowMode, theme]);
+  }, [filters, flowMode, theme, contextOrgId]);
 
   const [result, reexecute] = useQuery<AnalyticsQueryResponse>({
     query: INVESTMENT_FULL_QUERY,
@@ -225,7 +225,7 @@ export function useInvestmentRepoTeamFlow(options: UseInvestmentRepoTeamFlowOpti
       filters: graphqlFilters,
     };
     return { orgId, batch };
-  }, [filters, theme]);
+  }, [filters, theme, contextOrgId]);
 
   const [result, reexecute] = useQuery<AnalyticsQueryResponse>({
     query: INVESTMENT_FULL_QUERY,
