@@ -1,24 +1,27 @@
 import type { Metadata } from "next";
-import { Noto_Sans, Noto_Sans_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const bodyFont = Noto_Sans({
+const bodyFont = Inter({
   variable: "--font-body",
   weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
+  display: "swap",
 });
 
-const displayFont = Noto_Sans({
+const displayFont = Inter({
   variable: "--font-display",
   weight: ["500", "600", "700"],
   subsets: ["latin"],
+  display: "swap",
 });
 
-const monoFont = Noto_Sans_Mono({
+const monoFont = JetBrains_Mono({
   variable: "--font-mono",
   weight: ["400", "500", "600"],
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
