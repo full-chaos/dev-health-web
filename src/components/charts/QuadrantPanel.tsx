@@ -316,7 +316,7 @@ export function QuadrantPanel({
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
+                <p className="text-[10px] uppercase tracking-[0.15em] text-(--ink-muted)">
                   {infoTitle}
                 </p>
                 <p className="mt-2 text-sm text-foreground">
@@ -397,10 +397,10 @@ export function QuadrantPanel({
             {showZoneLegend ? (
               <div className="min-w-0 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 text-xs text-(--ink-muted)">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-(--ink-muted)">
                     Zone legend
                   </p>
-                  <span className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">
+                  <span className="text-[10px] uppercase tracking-[0.15em] text-(--ink-muted)">
                     Interpretive
                   </span>
                 </div>

@@ -51,7 +51,7 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
           >
             <header className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   Capacity
                 </p>
                 <h1 className="mt-2 font-(--font-display) text-3xl">

@@ -196,7 +196,7 @@ export default async function PersonMetricPage({
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Individual metric
               </p>
               <h1 className="mt-2 font-(--font-display) text-3xl">

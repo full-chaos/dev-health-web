@@ -142,7 +142,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Explore
               </p>
               <h1 className="mt-2 font-(--font-display) text-3xl">
@@ -188,12 +188,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   Context
                 </p>
                 <p className="mt-1 text-sm font-semibold">{metricLabel}</p>
               </div>
-              <span className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <span className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 {view.toUpperCase()}
               </span>
             </div>
@@ -210,7 +210,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 ) : null}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   Active filters
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -229,7 +229,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
             <details>
-              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Debug filters
               </summary>
               <pre className="mt-3 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 text-xs text-(--ink-muted)">
@@ -241,7 +241,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
           {view === "explain" && (
             <section id="evidence" className="grid gap-6 lg:grid-cols-3">
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   Snapshot
                 </p>
                 <div className="mt-3 flex flex-wrap items-baseline gap-3">

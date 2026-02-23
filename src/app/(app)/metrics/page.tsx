@@ -135,7 +135,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Metrics
               </p>
               <h1 className="mt-2 font-(--font-display) text-3xl">
@@ -179,7 +179,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   {activeTab.label} monitoring
                 </p>
                 <p className="mt-1 text-sm text-(--ink-muted)">

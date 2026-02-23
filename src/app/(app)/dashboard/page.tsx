@@ -117,7 +117,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.4em] text-(--ink-muted)">
+                  <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     Status
                   </p>
                   <div className="mt-4">
@@ -157,7 +157,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   Monitoring views
                 </p>
                 <p className="mt-1 text-sm text-(--ink-muted)">

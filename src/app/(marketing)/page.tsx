@@ -165,7 +165,7 @@ export default function MarketingPage() {
 
         <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 sm:pt-24">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs uppercase tracking-[0.4em] text-(--ink-muted)">
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
               Engineering effort analytics
             </p>
             <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
@@ -236,7 +236,7 @@ export default function MarketingPage() {
 
         <section id="features" className="mx-auto max-w-7xl px-6 pb-24">
           <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
               Capabilities
             </p>
             <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
@@ -277,7 +277,7 @@ export default function MarketingPage() {
 
         <section id="how-it-works" className="mx-auto max-w-7xl px-6 pb-24">
           <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
-            <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
               How it works
             </p>
             <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
@@ -310,7 +310,7 @@ export default function MarketingPage() {
 
         <section id="who-its-for" className="mx-auto max-w-7xl px-6 pb-24">
           <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
               Built for your role
             </p>
             <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
@@ -350,7 +350,7 @@ export default function MarketingPage() {
 
         <section className="mx-auto max-w-7xl px-6 pb-24">
           <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
-            <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
               Open source
             </p>
             <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
@@ -393,7 +393,7 @@ export default function MarketingPage() {
           </div>
           {Object.entries(FOOTER_LINKS).map(([group, links]) => (
             <div key={group}>
-              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 {group}
               </p>
               <ul className="mt-3 space-y-2">

@@ -67,7 +67,7 @@ export function CockpitClient({
             <section>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                             Key shifts
                         </p>
                         <p className="mt-1 text-sm text-(--ink-muted)">
@@ -148,7 +148,7 @@ export function CockpitClient({
                                     onClick={() => openPanel(tile.title, { apiUrl: tile.link })}
                                     className="group w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
                                 >
-                                    <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+                                    <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                         {tile.title}
                                     </p>
                                     <p className="mt-2 text-base font-semibold text-foreground">
