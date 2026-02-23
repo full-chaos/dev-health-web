@@ -95,20 +95,20 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
   return (
     <aside className="w-full md:max-w-[220px] md:shrink-0">
       <div className="md:sticky md:top-6">
-        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-(--ink-muted)">
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
               Dev Health Ops
             </p>
-            <p className="mt-3 font-(--font-display) text-lg flex items-center gap-2">
+            <p className="mt-2 font-(--font-display) text-lg font-semibold flex items-center gap-2">
               Cockpit <BetaBadge />
             </p>
-            <p className="mt-2 text-xs text-(--ink-muted)">
+            <p className="mt-1 text-xs text-(--ink-muted)">
               Observe patterns, drill into evidence.
             </p>
           </div>
-          
-          <nav className="mt-5 space-y-6 text-sm">
+
+          <nav className="mt-4 space-y-4 text-sm">
             {navGroups.map((group) => (
               <div key={group.id}>
                 <button
@@ -162,7 +162,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
             ))}
           </nav>
           
-          <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
+          <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs text-(--ink-muted)">
             Explore opens from evidence links only. Monitoring views show trends.
           </div>
           <div className="mt-3">
