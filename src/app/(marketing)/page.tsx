@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BetaBadge } from "@/components/BetaBadge";
 
 const FEATURES = [
   {
@@ -142,6 +143,7 @@ export default function MarketingPage() {
           <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
             OSS
           </span>
+          <BetaBadge />
         </Link>
         <div className="flex items-center gap-4">
           <Link

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSyncExternalStore, useCallback } from "react";
+import { BetaBadge } from "@/components/BetaBadge";
 
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -99,8 +100,8 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
             <p className="text-xs uppercase tracking-[0.4em] text-(--ink-muted)">
               Dev Health Ops
             </p>
-            <p className="mt-3 font-(--font-display) text-lg">
-              Cockpit
+            <p className="mt-3 font-(--font-display) text-lg flex items-center gap-2">
+              Cockpit <BetaBadge />
             </p>
             <p className="mt-2 text-xs text-(--ink-muted)">
               Observe patterns, drill into evidence.
