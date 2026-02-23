@@ -210,7 +210,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             </div>
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-4">
+          <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {activeTab.metrics.map((metric) => {
               const data = getMetric(deltas, metric);
               return (

@@ -496,7 +496,7 @@ export function QuadrantPanel({
         </div>
 
         {activeSelectedPoint && scopedData && (
-          <aside className="lg:w-[380px] shrink-0 border border-(--card-stroke) rounded-[32px] overflow-hidden shadow-2xl">
+          <aside className="w-full lg:w-[380px] shrink-0 border border-(--card-stroke) rounded-[32px] overflow-hidden shadow-2xl">
             <InvestigationPanel
               point={activeSelectedPoint}
               data={scopedData}
