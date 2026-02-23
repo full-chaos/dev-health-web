@@ -1,6 +1,7 @@
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
+import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { GraphQLProvider } from "@/lib/graphql/provider";
 import { Toaster } from "sonner";
 import { requireSession } from "@/lib/auth";
@@ -20,6 +21,7 @@ export default async function AppLayout({
         </div>
         <ImpersonationBanner />
         {children}
+        <BugReportButton />
         <Toaster richColors position="top-right" theme="dark" />
       </GraphQLProvider>
     </SessionProvider>
