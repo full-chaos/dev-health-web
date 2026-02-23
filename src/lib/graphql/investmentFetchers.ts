@@ -25,7 +25,7 @@ import type {
  * Get the org ID from filters or context.
  * Throws an error if org_id cannot be determined.
  */
-function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
+export function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
     // Extract org from scope when scope level is "org"
     if (filters.scope.level === "org" && filters.scope.ids.length > 0) {
         return filters.scope.ids[0];
