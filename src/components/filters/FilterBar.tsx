@@ -722,7 +722,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {view === "people" && (
               <label className="flex items-center gap-2 text-xs">
                 <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -732,7 +732,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
                   value={peopleQuery}
                   onChange={(event) => updatePeopleQuery(event.target.value)}
                   placeholder="Name or handle"
-                  className="w-56 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                  className="w-full sm:w-56 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
                 />
               </label>
             )}

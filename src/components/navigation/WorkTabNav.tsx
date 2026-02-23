@@ -25,7 +25,7 @@ const tabs = [
 
 export function WorkTabNav({ activeTab, filters, role }: WorkTabNavProps) {
     return (
-        <div className="flex flex-wrap items-center gap-1 border-b border-(--card-stroke) overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <div className="flex items-center gap-1 border-b border-(--card-stroke) overflow-x-auto whitespace-nowrap scrollbar-hide">
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const href = withFilterParam(`/work?tab=${tab.id}`, filters, role);
