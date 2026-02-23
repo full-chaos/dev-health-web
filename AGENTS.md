@@ -72,7 +72,12 @@ This document is the authoritative guide for any automated coding agent (Copilot
 ## PR & review behavior
 
 - Use descriptive PR titles and reference related tests. Keep changes scoped to one feature or bugfix.
-- If a change affects visuals, include a screenshot or link to Playwright trace when possible.
+- **Visual Evidence Required**: Any change that affects rendered UI **must** include screenshots attached to both the PR and the linked Linear issue/task.
+  - Use the **Playwright MCP** (`playwright` skill) to capture screenshots of affected pages/components after the dev server is running.
+  - Attach screenshots directly to the GitHub PR body (upload via `gh` CLI or drag-and-drop).
+  - Attach screenshots to the linked Linear issue as a comment: `linear i comment <ID> -b "Screenshot attached" --attach <file>`.
+  - **What to capture:** Every page or component visually altered by the change — before/after if modifying existing UI, just after if net-new.
+  - **When to skip:** Changes that are purely type-level or have no rendered output (add `SCREENSHOT-WAIVER: <reason>` to PR body).
 
 ## Contact & further reading
 
