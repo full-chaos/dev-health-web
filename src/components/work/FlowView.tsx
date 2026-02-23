@@ -517,7 +517,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                 {/* Inspect Panel */}
                 <div className="flex flex-col gap-4">
                     <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 h-full min-h-[400px]">
-                        <p className="text-[10px] uppercase tracking-[0.3em] text-(--ink-muted)">Inspect Flow</p>
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-(--ink-muted)">Inspect Flow</p>
                         {!selection ? (
                             <div className="mt-20 text-center">
                                 <p className="text-sm text-(--ink-muted)">Select a node or segment to inspect details.</p>

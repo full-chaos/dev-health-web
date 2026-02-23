@@ -139,7 +139,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Individual view
               </p>
               <h1 className="mt-2 font-(--font-display) text-3xl">
@@ -268,7 +268,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                     : "bg-(--card-80) text-(--ink-muted)"
                   }`}
               >
-                <p className="text-xs uppercase tracking-[0.3em]">
+                <p className="text-xs uppercase tracking-[0.15em]">
                   Identity mapping
                 </p>
                 <p className="mt-2 text-2xl font-semibold">
@@ -282,7 +282,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               </div>
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs uppercase tracking-[0.3em]">Freshness</p>
+                  <p className="text-xs uppercase tracking-[0.15em]">Freshness</p>
                   <ClientTimestamp value={summary?.freshness.last_ingested_at} className="text-xs uppercase tracking-[0.2em]" />
                 </div>
                 <div className="mt-3 grid gap-2 text-xs">

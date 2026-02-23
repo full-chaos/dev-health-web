@@ -260,7 +260,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
         <header className="flex flex-col gap-3">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-(--ink-muted)">
+          <p className="text-sm font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
             Dev Health Ops
           </p>
           <h1 className="text-4xl font-semibold leading-tight tracking-tight">
@@ -425,7 +425,7 @@ export default function Home() {
         <section className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Individual view examples
               </p>
               <h2 className="mt-2 text-lg font-semibold">

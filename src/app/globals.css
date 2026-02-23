@@ -41,6 +41,7 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-body);
+  --font-display: var(--font-display);
   --font-mono: var(--font-mono);
 }
 
@@ -448,6 +449,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 @layer utilities {

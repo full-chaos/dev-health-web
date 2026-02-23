@@ -49,7 +49,7 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
     <section className="rounded-3xl border border-(--card-stroke) bg-(--card-90) p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
             Date range
           </p>
           <p className="mt-1 text-sm text-(--ink-muted)">

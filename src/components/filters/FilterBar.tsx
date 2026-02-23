@@ -880,7 +880,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
         {allowAdvanced && showAdvanced && (
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Who
               </summary>
               <div className="mt-3 space-y-3 text-sm">
@@ -916,7 +916,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
             </details>
 
             <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 What
               </summary>
               <div className="mt-3 space-y-3 text-sm">
@@ -955,7 +955,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
             </details>
 
             <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Why
               </summary>
               <div className="mt-3 space-y-3 text-sm">
@@ -991,7 +991,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
             </details>
 
             <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-(--ink-muted)">
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 How
               </summary>
               <div className="mt-3 space-y-3 text-sm">
