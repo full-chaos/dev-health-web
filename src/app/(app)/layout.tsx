@@ -11,11 +11,11 @@ export default async function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await requireSession();
+  const session = await requireSession();
 
   return (
     <SessionProvider>
-      <GraphQLProvider>
+      <GraphQLProvider orgId={session.user.org_id}>
         <div className="fixed right-6 top-6 z-50">
           <UserMenu />
         </div>

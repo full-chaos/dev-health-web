@@ -6,6 +6,7 @@ import { ForecastCard } from "@/components/capacity/ForecastCard";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
 import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
 import { useCapacityForecast } from "@/lib/graphql/hooks";
+import { useOrgId } from "@/lib/graphql/provider";
 import type { MetricFilter } from "@/lib/filters/types";
 
 type CapacityViewProps = {
@@ -13,7 +14,9 @@ type CapacityViewProps = {
   orgId?: string;
 };
 
-export function CapacityView({ filters, orgId = "default" }: CapacityViewProps) {
+export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
+  const contextOrgId = useOrgId();
+  const orgId = propOrgId || contextOrgId || "";
   const teamId = filters.scope.level === "team" && filters.scope.ids.length > 0
     ? filters.scope.ids[0]
     : undefined;

@@ -33,6 +33,7 @@ import {
   getCapacityForecastViaGraphQL,
 } from "@/lib/graphql";
 import type { CapacityForecast, CapacityForecastInput } from "@/lib/graphql";
+import { auth } from "@/lib/auth";
 
 const normalizeFilters = (filters: MetricFilter): MetricFilter => {
   if (filters.scope.level === "team" && !filters.scope.ids.length) {
@@ -482,6 +483,13 @@ export async function getCapacityForecast(params: {
   orgId?: string;
   input?: CapacityForecastInput;
 }): Promise<CapacityForecast | null> {
-  const orgId = params.orgId ?? "default";
+  let orgId = params.orgId;
+  if (!orgId) {
+    const session = await auth();
+    orgId = session?.user?.org_id;
+  }
+  if (!orgId) {
+    throw new Error("org_id is required: not provided and not found in session");
+  }
   return getCapacityForecastViaGraphQL(orgId, params.input);
 }
