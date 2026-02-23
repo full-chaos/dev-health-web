@@ -81,7 +81,7 @@ export function CockpitClient({
                         View metrics
                     </Link>
                 </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-4">
+                <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
                     {prioritizedDeltas.map((delta) => (
                         <button
                             key={delta.metric}
