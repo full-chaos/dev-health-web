@@ -121,8 +121,8 @@ const FOOTER_LINKS = {
     { label: "Who it's for", href: "#who-its-for" },
   ],
   Resources: [
-    { label: "Documentation", href: "https://github.com/nicholasgriffintn/dev-health-ops", external: true },
-    { label: "GitHub", href: "https://github.com/nicholasgriffintn/dev-health-ops", external: true },
+    { label: "Documentation", href: "https://github.com/full-chaos/dev-health-ops", external: true },
+    { label: "GitHub", href: "https://github.com/full-chaos/dev-health-ops", external: true },
   ],
   Legal: [
     { label: "Privacy", href: "#" },
@@ -183,7 +183,7 @@ export default function MarketingPage() {
                 Start for free
               </Link>
               <Link
-                href="https://github.com/nicholasgriffintn/dev-health-ops"
+                href="https://github.com/full-chaos/dev-health-ops"
                 className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
               >
                 View on GitHub
@@ -367,7 +367,7 @@ export default function MarketingPage() {
                 Get started free
               </Link>
               <Link
-                href="https://github.com/nicholasgriffintn/dev-health-ops"
+                href="https://github.com/full-chaos/dev-health-ops"
                 className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
               >
                 Star on GitHub
