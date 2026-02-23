@@ -9,6 +9,7 @@ import {
 import { useWorkGraphEdges } from "@/lib/graphql/hooks";
 import type { WorkGraphEdge, WorkGraphNodeType } from "@/lib/graphql/types";
 import type { MetricFilter } from "@/lib/filters/types";
+import { useOrgId } from "@/lib/graphql/provider";
 
 type SelectedNode = {
   id: string;
@@ -23,7 +24,8 @@ type GraphViewProps = {
 export function GraphView({ filters, activeRole }: GraphViewProps) {
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
 
-  const orgId = filters.scope.ids[0] ?? "";
+  const contextOrgId = useOrgId();
+  const orgId = filters.scope.ids[0] || contextOrgId || "";
   const { edges, loading, error, totalCount } = useWorkGraphEdges({
     orgId,
     filters: { limit: 500 },

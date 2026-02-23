@@ -12,12 +12,16 @@ import {
   ScopeLevelInput,
 } from "../types";
 import { adaptSankeyResult } from "../investmentFetchers";
+import { useOrgId } from "../provider";
 
-function getOrgId(filters: MetricFilter): string {
+function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
   if (filters.scope.level === "org" && filters.scope.ids.length > 0) {
     return filters.scope.ids[0];
   }
-  return "default";
+  if (contextOrgId) {
+    return contextOrgId;
+  }
+  throw new Error("org_id is required: not found in filters or GraphQL context");
 }
 
 function buildDateRange(filters: MetricFilter): { startDate: string; endDate: string } {
@@ -63,9 +67,10 @@ interface UseInvestmentMixResult {
 
 export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmentMixResult {
   const { filters, pause = false } = options;
+  const contextOrgId = useOrgId();
 
   const variables = useMemo(() => {
-    const orgId = getOrgId(filters);
+    const orgId = getOrgId(filters, contextOrgId);
     const dateRange = buildDateRange(filters);
     const batch: AnalyticsRequestInput = {
       breakdowns: [
@@ -76,7 +81,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
       filters: translateFilters(filters),
     };
     return { orgId, batch };
-  }, [filters]);
+  }, [filters, contextOrgId]);
 
   const [result, reexecute] = useQuery<AnalyticsQueryResponse>({
     query: INVESTMENT_BREAKDOWN_QUERY,
@@ -138,9 +143,10 @@ interface UseInvestmentFlowResult {
 
 export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestmentFlowResult {
   const { filters, flowMode = "team_category_repo", theme = null, pause = false } = options;
+  const contextOrgId = useOrgId();
 
   const variables = useMemo(() => {
-    const orgId = getOrgId(filters);
+    const orgId = getOrgId(filters, contextOrgId);
     const dateRange = buildDateRange(filters);
     const graphqlFilters = translateFilters(filters);
 
@@ -166,7 +172,7 @@ export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestm
       filters: graphqlFilters,
     };
     return { orgId, batch };
-  }, [filters, flowMode, theme]);
+  }, [filters, flowMode, theme, contextOrgId]);
 
   const [result, reexecute] = useQuery<AnalyticsQueryResponse>({
     query: INVESTMENT_FULL_QUERY,
@@ -195,9 +201,10 @@ interface UseInvestmentRepoTeamFlowOptions {
 
 export function useInvestmentRepoTeamFlow(options: UseInvestmentRepoTeamFlowOptions): UseInvestmentFlowResult {
   const { filters, theme = null, pause = false } = options;
+  const contextOrgId = useOrgId();
 
   const variables = useMemo(() => {
-    const orgId = getOrgId(filters);
+    const orgId = getOrgId(filters, contextOrgId);
     const dateRange = buildDateRange(filters);
     const graphqlFilters = translateFilters(filters);
 
@@ -218,7 +225,7 @@ export function useInvestmentRepoTeamFlow(options: UseInvestmentRepoTeamFlowOpti
       filters: graphqlFilters,
     };
     return { orgId, batch };
-  }, [filters, theme]);
+  }, [filters, theme, contextOrgId]);
 
   const [result, reexecute] = useQuery<AnalyticsQueryResponse>({
     query: INVESTMENT_FULL_QUERY,
