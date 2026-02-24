@@ -332,7 +332,7 @@ export default function MarketingPage() {
                   <span className="rounded-full bg-(--accent)/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
                     {persona.tag}
                   </span>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-(--accent-2)">
+                  <span className="text-right text-[10px] uppercase tracking-[0.2em] text-(--accent-2)">
                     {persona.focus}
                   </span>
                 </div>
