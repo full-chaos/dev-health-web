@@ -32,6 +32,7 @@ export async function proxy(request: NextRequest) {
     }
 
     let accessToken: string | undefined;
+    let orgId: string | undefined;
 
     if (!isTestMode && !isPublicPath(pathname)) {
         const session = await auth();
@@ -41,6 +42,7 @@ export async function proxy(request: NextRequest) {
             return NextResponse.redirect(signInUrl);
         }
         accessToken = session.access_token;
+        orgId = session.user?.org_id;
     }
 
     const shouldProxy =
@@ -57,6 +59,9 @@ export async function proxy(request: NextRequest) {
     if (accessToken) {
         const requestHeaders = new Headers(request.headers);
         requestHeaders.set("Authorization", `Bearer ${accessToken}`);
+        if (orgId) {
+            requestHeaders.set("X-Org-Id", orgId);
+        }
         return NextResponse.rewrite(targetUrl, {
             request: { headers: requestHeaders },
         });
