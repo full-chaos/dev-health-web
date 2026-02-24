@@ -45,7 +45,10 @@ export function InvoiceDetailModal({
   }, [invoiceId]);
 
   const refundedAmountCents = useMemo(
-    () => refunds.reduce((sum, item) => sum + item.amount, 0),
+    () =>
+      refunds
+        .filter((item) => item.status === "pending" || item.status === "succeeded")
+        .reduce((sum, item) => sum + item.amount, 0),
     [refunds],
   );
   const refundableAmountCents = Math.max(amountPaidCents - refundedAmountCents, 0);
