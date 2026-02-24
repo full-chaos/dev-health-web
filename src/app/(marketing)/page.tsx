@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BetaBadge } from "@/components/BetaBadge";
 
 const FEATURES = [
   {
@@ -115,324 +114,224 @@ const PERSONAS = [
   },
 ];
 
-const FOOTER_LINKS = {
-  Product: [
-    { label: "Features", href: "#features" },
-    { label: "How it works", href: "#how-it-works" },
-    { label: "Who it's for", href: "#who-its-for" },
-  ],
-  Resources: [
-    { label: "Documentation", href: "https://github.com/full-chaos/dev-health-ops", external: true },
-    { label: "GitHub", href: "https://github.com/full-chaos/dev-health-ops", external: true },
-  ],
-  Legal: [
-    { label: "Privacy", href: "#" },
-    { label: "Terms", href: "#" },
-  ],
-};
-
 export default function MarketingPage() {
   return (
-    <div className="min-h-screen bg-(image:--hero-gradient) text-foreground">
-
-      <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6">
-        <Link href="/" className="flex items-center gap-2" aria-label="Dev Health home">
-          <span className="font-(--font-display) text-lg font-semibold tracking-tight">
-            Dev Health
-          </span>
-          <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
-            OSS
-          </span>
-          <BetaBadge />
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/auth/signin"
-            className="text-sm text-(--ink-muted) transition hover:text-foreground"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/auth/signup"
-            className="rounded-full bg-(--accent) px-5 py-2 text-sm font-medium text-white transition hover:opacity-90"
-          >
-            Get started
-          </Link>
+    <>
+      {/* Hero */}
+      <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 sm:pt-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+            Engineering effort analytics
+          </p>
+          <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
+            Where is your engineering effort{" "}
+            <span className="text-(--accent)">actually</span> going?
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
+            Dev Health is an open-source analytics platform for team operating
+            modes and developer health. See where effort is invested and what
+            it costs your people.
+          </p>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/auth/signup"
+              className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
+            >
+              Start for free
+            </Link>
+            <Link
+              href="https://github.com/full-chaos/dev-health-ops"
+              className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
+            >
+              View on GitHub
+            </Link>
+          </div>
         </div>
-      </nav>
 
-      <main>
-
-        <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 sm:pt-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-              Engineering effort analytics
-            </p>
-            <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
-              Where is your engineering effort{" "}
-              <span className="text-(--accent)">actually</span> going?
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
-              Dev Health is an open-source analytics platform for team operating
-              modes and developer health. See where effort is invested and what
-              it costs your people.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/auth/signup"
-                className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
-              >
-                Start for free
-              </Link>
-              <Link
-                href="https://github.com/full-chaos/dev-health-ops"
-                className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
-              >
-                View on GitHub
-              </Link>
-            </div>
-          </div>
-
-
-          <div className="mx-auto mt-16 max-w-5xl">
-            <div className="overflow-hidden rounded-3xl border border-(--card-stroke) bg-(--card-80) shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
-              <div className="border-b border-(--card-stroke) px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="size-3 rounded-full bg-(--card-stroke)" />
-                  <div className="size-3 rounded-full bg-(--card-stroke)" />
-                  <div className="size-3 rounded-full bg-(--card-stroke)" />
-                  <span className="ml-3 text-xs text-(--ink-muted)">
-                    Dev Health Ops Cockpit
-                  </span>
-                </div>
-              </div>
-              <div className="grid gap-4 p-6 md:grid-cols-3">
-                {["DORA", "Flow", "Quality"].map((tab) => (
-                  <div
-                    key={tab}
-                    className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                      {tab}
-                    </p>
-                    <div className="mt-3 flex items-end gap-1">
-                      {Array.from({ length: 7 }).map((_, i) => (
-                        <div
-                          key={`bar-${tab}-${i}`}
-                          className="flex-1 rounded-sm bg-(--accent)/20"
-                          style={{
-                            height: `${20 + Math.sin(i * 1.2) * 16 + i * 4}px`,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+        {/* Mock dashboard preview */}
+        <div className="mx-auto mt-16 max-w-5xl">
+          <div className="overflow-hidden rounded-3xl border border-(--card-stroke) bg-(--card-80) shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
+            <div className="border-b border-(--card-stroke) px-4 py-3">
+              <div className="flex items-center gap-2">
+                <div className="size-3 rounded-full bg-(--card-stroke)" />
+                <div className="size-3 rounded-full bg-(--card-stroke)" />
+                <div className="size-3 rounded-full bg-(--card-stroke)" />
+                <span className="ml-3 text-xs text-(--ink-muted)">
+                  Dev Health Ops Cockpit
+                </span>
               </div>
             </div>
-          </div>
-        </section>
-
-
-        <section id="features" className="mx-auto max-w-7xl px-6 pb-24">
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-              Capabilities
-            </p>
-            <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
-              Signals, not surveillance
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
-              Every metric traces to evidence. Every insight is a hypothesis
-              starter, not a verdict. Trends over absolutes — direction matters
-              more than point values.
-            </p>
-          </div>
-
-          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((feature) => (
-              <div
-                key={feature.label}
-                className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
-                    {feature.icon}
-                  </div>
+            <div className="grid gap-4 p-6 md:grid-cols-3">
+              {["DORA", "Flow", "Quality"].map((tab) => (
+                <div
+                  key={tab}
+                  className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4"
+                >
                   <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                    {feature.label}
+                    {tab}
                   </p>
-                </div>
-                <h3 className="mt-4 font-(--font-display) text-lg">
-                  {feature.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-
-        <section id="how-it-works" className="mx-auto max-w-7xl px-6 pb-24">
-          <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-              How it works
-            </p>
-            <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
-              From zero to insights in minutes
-            </h2>
-
-            <div className="mt-12 grid gap-8 md:grid-cols-3">
-              {STEPS.map((step, i) => (
-                <div key={step.number} className="relative">
-                  {i < STEPS.length - 1 && (
-                    <div className="absolute right-0 top-6 hidden h-px w-full translate-x-1/2 bg-(--card-stroke) md:block" />
-                  )}
-                  <div className="relative">
-                    <span className="font-(--font-mono) text-3xl font-semibold text-(--accent)/30">
-                      {step.number}
-                    </span>
-                    <h3 className="mt-3 font-(--font-display) text-lg">
-                      {step.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
-                      {step.description}
-                    </p>
+                  <div className="mt-3 flex items-end gap-1">
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <div
+                        key={`bar-${tab}-${i}`}
+                        className="flex-1 rounded-sm bg-(--accent)/20"
+                        style={{
+                          height: `${20 + Math.sin(i * 1.2) * 16 + i * 4}px`,
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
+      {/* Features */}
+      <section id="features" className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="text-center">
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+            Capabilities
+          </p>
+          <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
+            Signals, not surveillance
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
+            Every metric traces to evidence. Every insight is a hypothesis
+            starter, not a verdict. Trends over absolutes — direction matters
+            more than point values.
+          </p>
+        </div>
 
-        <section id="who-its-for" className="mx-auto max-w-7xl px-6 pb-24">
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-              Built for your role
-            </p>
-            <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
-              One platform, four perspectives
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
-              The cockpit adapts to your role — surfacing the metrics and
-              investigation paths that matter most to you.
-            </p>
-          </div>
-
-          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {PERSONAS.map((persona) => (
-              <div
-                key={persona.tag}
-                className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-(--accent)/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
-                    {persona.tag}
-                  </span>
-                  <span className="text-right text-[10px] uppercase tracking-[0.2em] text-(--accent-2)">
-                    {persona.focus}
-                  </span>
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((feature) => (
+            <div
+              key={feature.label}
+              className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                  {feature.icon}
                 </div>
-                <h3 className="mt-4 font-(--font-display) text-lg">
-                  {persona.role}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
-                  {persona.description}
+                <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                  {feature.label}
                 </p>
               </div>
-            ))}
-          </div>
-        </section>
-
-
-        <section className="mx-auto max-w-7xl px-6 pb-24">
-          <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-              Open source
-            </p>
-            <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
-              Built in the open, for everyone
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
-              Dev Health is fully open source. Deploy it on your infrastructure,
-              audit every metric computation, and contribute to the roadmap.
-              Accessibility over extraction.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/auth/signup"
-                className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
-              >
-                Get started free
-              </Link>
-              <Link
-                href="https://github.com/full-chaos/dev-health-ops"
-                className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
-              >
-                Star on GitHub
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
-
-
-      <footer className="border-t border-(--card-stroke)">
-        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <p className="font-(--font-display) text-lg font-semibold">
-              Dev Health
-            </p>
-            <p className="mt-2 text-sm text-(--ink-muted)">
-              Open-source analytics for team operating modes and developer
-              health.
-            </p>
-          </div>
-          {Object.entries(FOOTER_LINKS).map(([group, links]) => (
-            <div key={group}>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                {group}
+              <h3 className="mt-4 font-(--font-display) text-lg">
+                {feature.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
+                {feature.description}
               </p>
-              <ul className="mt-3 space-y-2">
-                {links.map((link) => (
-                  <li key={link.label}>
-                    {"external" in link && link.external ? (
-                      <a
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-(--ink-muted) transition hover:text-foreground"
-                      >
-                        {link.label}
-                      </a>
-                    ) : (
-                      <Link
-                        href={link.href}
-                        className="text-sm text-(--ink-muted) transition hover:text-foreground"
-                      >
-                        {link.label}
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
             </div>
           ))}
         </div>
-        <div className="border-t border-(--card-stroke)">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-            <p className="text-xs text-(--ink-muted)">
-              &copy; {new Date().getFullYear()} Dev Health. All rights reserved.
-            </p>
-            <p className="text-xs text-(--ink-muted)">
-              Learning, not judgment.
-            </p>
+      </section>
+
+      {/* How it works */}
+      <section id="how-it-works" className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+            How it works
+          </p>
+          <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
+            From zero to insights in minutes
+          </h2>
+
+          <div className="mt-12 grid gap-8 md:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <div key={step.number} className="relative">
+                {i < STEPS.length - 1 && (
+                  <div className="absolute right-0 top-6 hidden h-px w-full translate-x-1/2 bg-(--card-stroke) md:block" />
+                )}
+                <div className="relative">
+                  <span className="font-(--font-mono) text-3xl font-semibold text-(--accent)/30">
+                    {step.number}
+                  </span>
+                  <h3 className="mt-3 font-(--font-display) text-lg">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
+                    {step.description}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </footer>
-    </div>
+      </section>
+
+      {/* Who it's for */}
+      <section id="who-its-for" className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="text-center">
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+            Built for your role
+          </p>
+          <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
+            One platform, four perspectives
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
+            The cockpit adapts to your role — surfacing the metrics and
+            investigation paths that matter most to you.
+          </p>
+        </div>
+
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {PERSONAS.map((persona) => (
+            <div
+              key={persona.tag}
+              className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
+            >
+              <div className="flex items-center justify-between">
+                <span className="rounded-full bg-(--accent)/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                  {persona.tag}
+                </span>
+                <span className="text-right text-[10px] uppercase tracking-[0.2em] text-(--accent-2)">
+                  {persona.focus}
+                </span>
+              </div>
+              <h3 className="mt-4 font-(--font-display) text-lg">
+                {persona.role}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
+                {persona.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+            Open source
+          </p>
+          <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
+            Built in the open, for everyone
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
+            Dev Health is fully open source. Deploy it on your infrastructure,
+            audit every metric computation, and contribute to the roadmap.
+            Accessibility over extraction.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/auth/signup"
+              className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
+            >
+              Get started free
+            </Link>
+            <Link
+              href="https://github.com/full-chaos/dev-health-ops"
+              className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
+            >
+              Star on GitHub
+            </Link>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

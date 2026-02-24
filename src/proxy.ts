@@ -6,6 +6,7 @@ const isTestMode = process.env.PLAYWRIGHT_TEST === "true";
 
 const PUBLIC_PATHS = [
     "/",
+    "/pricing",
     "/auth/signin",
     "/auth/signup",
     "/auth/error",
