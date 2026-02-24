@@ -6,34 +6,63 @@ import { auth } from "@/lib/auth";
 type CheckoutResponse = { session_id: string; checkout_url: string };
 type ActionResult<T> = { data: T; error?: never } | { data?: never; error: string };
 
-export type RefundStatus = "pending" | "succeeded" | "failed" | "canceled";
+export type InvoiceLineItem = {
+  id: string;
+  stripe_line_item_id: string | null;
+  description: string | null;
+  amount: number;
+  quantity: number;
+  period_start: string | null;
+  period_end: string | null;
+  stripe_price_id: string | null;
+};
 
-export type RefundRecord = {
+export type InvoiceRecord = {
   id: string;
   org_id: string;
-  invoice_id: string | null;
   subscription_id: string | null;
-  stripe_refund_id: string;
-  stripe_charge_id: string;
-  stripe_payment_intent_id: string | null;
-  amount: number;
+  stripe_invoice_id: string;
+  stripe_customer_id: string;
+  status: string;
+  amount_due: number;
+  amount_paid: number;
+  amount_remaining: number;
   currency: string;
-  status: RefundStatus;
-  reason: string | null;
-  description: string | null;
-  failure_reason: string | null;
-  initiated_by: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  hosted_invoice_url: string | null;
+  pdf_url: string | null;
+  payment_intent_id: string | null;
+  finalized_at: string | null;
+  paid_at: string | null;
+  voided_at: string | null;
+  attempt_count: number;
   metadata: Record<string, unknown>;
   created_at: string | null;
   updated_at: string | null;
+  line_items: InvoiceLineItem[];
 };
 
-type RefundListResponse = {
-  items: RefundRecord[];
+export type InvoiceListResponse = {
+  items: InvoiceRecord[];
   total: number;
   limit: number;
   offset: number;
 };
+
+async function getAuthHeaders(): Promise<ActionResult<HeadersInit>> {
+  const session = await auth();
+  if (!session?.access_token) {
+    return { error: "Unauthorized" };
+  }
+
+  return {
+    data: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  };
+}
 
 function getBackendUrl(): string {
   return process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
@@ -172,84 +201,86 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
   }
 }
 
-export async function createRefund(input: {
-  invoiceId: string;
-  amount?: number;
-  reason?: "duplicate" | "fraudulent" | "requested_by_customer";
-  description?: string;
-}): Promise<ActionResult<RefundRecord>> {
+export async function getInvoices(
+  limit = 20,
+  offset = 0,
+  status?: string,
+): Promise<ActionResult<InvoiceListResponse>> {
+  const headersResult = await getAuthHeaders();
+  if (headersResult.error) {
+    return headersResult;
+  }
+
   try {
-    const session = await auth();
-    if (!session?.access_token) {
-      return { error: "Unauthorized" };
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+    if (status) {
+      params.set("status", status);
     }
 
-    const payload: Record<string, unknown> = {
-      invoice_id: input.invoiceId,
-      reason: input.reason,
-      description: input.description,
-    };
-    if (typeof input.amount === "number") {
-      payload.amount = input.amount;
-    }
-
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/refunds`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(payload),
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices?${params.toString()}`, {
+      method: "GET",
+      headers: headersResult.data,
+      cache: "no-store",
     });
 
     if (!res.ok) {
       const detail = await res.json().catch(() => ({ detail: res.statusText }));
-      return { error: detail.detail || `Refund failed (${res.status})` };
+      return { error: detail.detail || `Failed to load invoices (${res.status})` };
     }
 
-    const data = (await res.json()) as RefundRecord;
+    const data = (await res.json()) as InvoiceListResponse;
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
 }
 
-export async function getRefunds(input?: {
-  limit?: number;
-  offset?: number;
-}): Promise<ActionResult<RefundListResponse>> {
+export async function getInvoice(invoiceId: string): Promise<ActionResult<InvoiceRecord>> {
+  const headersResult = await getAuthHeaders();
+  if (headersResult.error) {
+    return headersResult;
+  }
+
   try {
-    const session = await auth();
-    if (!session?.access_token) {
-      return { error: "Unauthorized" };
-    }
-
-    const params = new URLSearchParams();
-    if (typeof input?.limit === "number") {
-      params.set("limit", String(input.limit));
-    }
-    if (typeof input?.offset === "number") {
-      params.set("offset", String(input.offset));
-    }
-
-    const query = params.toString();
-    const res = await fetch(
-      `${getBackendUrl()}/api/v1/billing/refunds${query ? `?${query}` : ""}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-      },
-    );
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${invoiceId}`, {
+      method: "GET",
+      headers: headersResult.data,
+      cache: "no-store",
+    });
 
     if (!res.ok) {
       const detail = await res.json().catch(() => ({ detail: res.statusText }));
-      return { error: detail.detail || `Unable to load refunds (${res.status})` };
+      return { error: detail.detail || `Failed to load invoice (${res.status})` };
     }
 
-    const data = (await res.json()) as RefundListResponse;
+    const data = (await res.json()) as InvoiceRecord;
+    return { data };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function voidInvoice(invoiceId: string): Promise<ActionResult<InvoiceRecord>> {
+  const headersResult = await getAuthHeaders();
+  if (headersResult.error) {
+    return headersResult;
+  }
+
+  try {
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${invoiceId}/void`, {
+      method: "POST",
+      headers: headersResult.data,
+    });
+
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({ detail: res.statusText }));
+      return { error: detail.detail || `Failed to void invoice (${res.status})` };
+    }
+
+    const data = (await res.json()) as InvoiceRecord;
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
