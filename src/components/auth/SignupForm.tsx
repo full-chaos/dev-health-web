@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
-import { getBackendUrl } from "@/lib/origin"
+import { resolveOrigin } from "@/lib/origin"
 
 export function SignupForm() {
    const router = useRouter()
@@ -30,7 +30,7 @@ export function SignupForm() {
      setLoading(true)
 
      try {
-       const backendUrl = getBackendUrl()
+       const backendUrl = resolveOrigin()
        const res = await fetch(`${backendUrl}/api/v1/auth/register`, {
          method: "POST",
          headers: { "Content-Type": "application/json" },

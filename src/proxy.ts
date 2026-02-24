@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
     "/auth/signup",
     "/auth/error",
     "/api/auth",
+    "/api/v1/auth",
     "/_next",
     "/favicon.ico",
     "/runtime-config.js",
