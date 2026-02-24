@@ -94,7 +94,7 @@ export function EvidencePanel({
                         const trend = deltaPct > 0 ? "up" : deltaPct < 0 ? "down" : "flat";
                         const magnitude = Math.abs(deltaPct) > 10 ? "Significant" : "Moderate";
                         
-                        const evidence: EvidenceItem[] = result.evidence || [
+                        const rawEvidence: EvidenceItem[] = result.evidence || [
                             ...(result.drivers || []),
                             ...(result.contributors || [])
                         ].map((d: Contributor) => ({
@@ -104,6 +104,14 @@ export function EvidencePanel({
                             type: "other" as const,
                             meta: `${d.value} (${d.delta_pct}%)`
                         }));
+
+                        // Deduplicate by id — drivers and contributors overlap
+                        const seen = new Set<string>();
+                        const evidence = rawEvidence.filter((item) => {
+                            if (seen.has(item.id)) return false;
+                            seen.add(item.id);
+                            return true;
+                        });
 
                         const actions = result.actions || definition?.suggestedActions || [];
 
