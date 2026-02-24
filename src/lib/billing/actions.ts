@@ -6,6 +6,35 @@ import { auth } from "@/lib/auth";
 type CheckoutResponse = { session_id: string; checkout_url: string };
 type ActionResult<T> = { data: T; error?: never } | { data?: never; error: string };
 
+export type RefundStatus = "pending" | "succeeded" | "failed" | "canceled";
+
+export type RefundRecord = {
+  id: string;
+  org_id: string;
+  invoice_id: string | null;
+  subscription_id: string | null;
+  stripe_refund_id: string;
+  stripe_charge_id: string;
+  stripe_payment_intent_id: string | null;
+  amount: number;
+  currency: string;
+  status: RefundStatus;
+  reason: string | null;
+  description: string | null;
+  failure_reason: string | null;
+  initiated_by: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type RefundListResponse = {
+  items: RefundRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 function getBackendUrl(): string {
   return process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 }
@@ -138,6 +167,90 @@ export async function getSubscriptionDetails(): Promise<ActionResult<Subscriptio
         limits: entitlements.limits ?? {},
       },
     };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function createRefund(input: {
+  invoiceId: string;
+  amount?: number;
+  reason?: "duplicate" | "fraudulent" | "requested_by_customer";
+  description?: string;
+}): Promise<ActionResult<RefundRecord>> {
+  try {
+    const session = await auth();
+    if (!session?.access_token) {
+      return { error: "Unauthorized" };
+    }
+
+    const payload: Record<string, unknown> = {
+      invoice_id: input.invoiceId,
+      reason: input.reason,
+      description: input.description,
+    };
+    if (typeof input.amount === "number") {
+      payload.amount = input.amount;
+    }
+
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/refunds`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({ detail: res.statusText }));
+      return { error: detail.detail || `Refund failed (${res.status})` };
+    }
+
+    const data = (await res.json()) as RefundRecord;
+    return { data };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function getRefunds(input?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ActionResult<RefundListResponse>> {
+  try {
+    const session = await auth();
+    if (!session?.access_token) {
+      return { error: "Unauthorized" };
+    }
+
+    const params = new URLSearchParams();
+    if (typeof input?.limit === "number") {
+      params.set("limit", String(input.limit));
+    }
+    if (typeof input?.offset === "number") {
+      params.set("offset", String(input.offset));
+    }
+
+    const query = params.toString();
+    const res = await fetch(
+      `${getBackendUrl()}/api/v1/billing/refunds${query ? `?${query}` : ""}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({ detail: res.statusText }));
+      return { error: detail.detail || `Unable to load refunds (${res.status})` };
+    }
+
+    const data = (await res.json()) as RefundListResponse;
+    return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
