@@ -137,6 +137,61 @@ const SAMPLE_INVOICE = {
   ],
 };
 
+type MockBillingPrice = {
+  id: string;
+  plan_id: string;
+  interval: string;
+  amount: number;
+  currency: string;
+  is_active: boolean;
+  stripe_price_id: string | null;
+};
+
+type MockBillingPlan = {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  tier: string;
+  is_active: boolean;
+  display_order: number;
+  stripe_product_id: string | null;
+  metadata: Record<string, unknown>;
+  prices: MockBillingPrice[];
+  bundles: Array<{
+    id: string;
+    key: string;
+    name: string;
+    description: string | null;
+    features: string[];
+  }>;
+};
+
+const MOCK_BILLING_PLANS: MockBillingPlan[] = [
+  {
+    id: "plan-team",
+    key: "team",
+    name: "Team",
+    description: "Team plan",
+    tier: "team",
+    is_active: true,
+    display_order: 1,
+    stripe_product_id: null,
+    metadata: {},
+    prices: [
+      {
+        id: "price-team-monthly",
+        plan_id: "plan-team",
+        interval: "monthly",
+        amount: 4900,
+        currency: "usd",
+        is_active: true,
+        stripe_price_id: null,
+      },
+    ],
+    bundles: [],
+  },
+];
 const buildDeploymentFlameResponse = (deploymentId: string) => ({
   entity: {
     deployment_id: deploymentId,
@@ -197,7 +252,7 @@ export const handlers = [
         email: body.email,
         org_id: "org-e2e",
         role: "owner",
-        is_superuser: false,
+        is_superuser: true,
         permissions: ["read", "write"],
       },
       access_token: "mock-access-token-e2e",
@@ -274,6 +329,102 @@ export const handlers = [
       supported_endpoints: ["/api/v1/home", "/api/v1/meta"],
     }),
   ),
+
+  http.get("*/api/v1/billing/plans", ({ request }) => {
+    const url = new URL(request.url);
+    const includeInactive = url.searchParams.get("include_inactive") === "true";
+    return HttpResponse.json(
+      includeInactive ? MOCK_BILLING_PLANS : MOCK_BILLING_PLANS.filter((plan) => plan.is_active),
+    );
+  }),
+
+  http.post("*/api/v1/billing/plans", async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const id = `plan-${String(body.key ?? "new")}-${Date.now()}`;
+    const prices = Array.isArray(body.prices) ? body.prices : [];
+    const created = {
+      id,
+      key: String(body.key ?? "new"),
+      name: String(body.name ?? "New Plan"),
+      description: (body.description as string | null) ?? null,
+      tier: String(body.tier ?? "team"),
+      is_active: body.is_active !== false,
+      display_order: Number(body.display_order ?? 0),
+      stripe_product_id: null,
+      metadata: {},
+      prices: prices.map((price, index) => {
+        const p = price as Record<string, unknown>;
+        return {
+          id: `${id}-price-${index}`,
+          plan_id: id,
+          interval: String(p.interval ?? "monthly"),
+          amount: Number(p.amount ?? 0),
+          currency: String(p.currency ?? "usd"),
+          is_active: p.is_active !== false,
+          stripe_price_id: null,
+        };
+      }),
+      bundles: [],
+    };
+    MOCK_BILLING_PLANS.push(created);
+    return HttpResponse.json(created);
+  }),
+
+  http.put("*/api/v1/billing/plans/:id", async ({ params, request }) => {
+    const planId = params.id as string;
+    const body = (await request.json()) as Record<string, unknown>;
+    const plan = MOCK_BILLING_PLANS.find((item) => item.id === planId);
+    if (!plan) {
+      return HttpResponse.json({ detail: "Plan not found" }, { status: 404 });
+    }
+    plan.name = String(body.name ?? plan.name);
+    plan.key = String(body.key ?? plan.key);
+    plan.tier = String(body.tier ?? plan.tier);
+    plan.description = (body.description as string | null) ?? plan.description;
+    plan.display_order = Number(body.display_order ?? plan.display_order);
+    if (typeof body.is_active === "boolean") {
+      plan.is_active = body.is_active;
+    }
+    if (Array.isArray(body.prices)) {
+      plan.prices = body.prices.map((price, index) => {
+        const p = price as Record<string, unknown>;
+        return {
+          id: `${plan.id}-price-${index}`,
+          plan_id: plan.id,
+          interval: String(p.interval ?? "monthly"),
+          amount: Number(p.amount ?? 0),
+          currency: String(p.currency ?? "usd"),
+          is_active: p.is_active !== false,
+          stripe_price_id: null,
+        };
+      });
+    }
+    return HttpResponse.json(plan);
+  }),
+
+  http.delete("*/api/v1/billing/plans/:id", ({ params }) => {
+    const planId = params.id as string;
+    const plan = MOCK_BILLING_PLANS.find((item) => item.id === planId);
+    if (!plan) {
+      return HttpResponse.json({ detail: "Plan not found" }, { status: 404 });
+    }
+    plan.is_active = false;
+    return HttpResponse.json({ deleted: true });
+  }),
+
+  http.post("*/api/v1/billing/plans/:id/sync-stripe", ({ params }) => {
+    const planId = params.id as string;
+    const plan = MOCK_BILLING_PLANS.find((item) => item.id === planId);
+    if (!plan) {
+      return HttpResponse.json({ detail: "Plan not found" }, { status: 404 });
+    }
+    plan.stripe_product_id = plan.stripe_product_id ?? `prod_${plan.id}`;
+    plan.prices = plan.prices.map((price) => ({
+      ...price,
+      stripe_price_id: price.stripe_price_id ?? `price_${price.id}`,
+    }));
+    return HttpResponse.json(plan);
+  }),
 
   // ---- Home ----
   http.post("*/api/v1/home", () =>
