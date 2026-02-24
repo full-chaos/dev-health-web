@@ -76,7 +76,7 @@ export function AuditClientPage({ initialEntries }: AuditClientPageProps) {
       />
       <AuditDetailPanel
         entry={selectedEntry}
-        onResolve={async (resolution) => {
+        onResolveAction={async (resolution) => {
           if (!selectedEntry) {
             return;
           }

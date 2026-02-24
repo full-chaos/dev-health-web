@@ -78,9 +78,16 @@ export async function getAuditLog(
       return { error: "Unauthorized" };
     }
 
+    const session = await auth();
+    const orgId = session?.user?.org_id;
+    if (!orgId) {
+      return { error: "No organization found" };
+    }
+
     const params = new URLSearchParams();
+    params.set("org_id", orgId);
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
+      if (value !== undefined && value !== null && value !== "" && key !== "org_id") {
         params.set(key, String(value));
       }
     });
@@ -151,7 +158,14 @@ export async function triggerReconciliation(
     if (!headers) {
       return { error: "Unauthorized" };
     }
-    const query = orgId ? `?org_id=${encodeURIComponent(orgId)}` : "";
+
+    const session = await auth();
+    const resolvedOrgId = orgId ?? session?.user?.org_id;
+    if (!resolvedOrgId) {
+      return { error: "No organization found" };
+    }
+
+    const query = `?org_id=${encodeURIComponent(resolvedOrgId)}`;
     const response = await fetch(`${getBackendUrl()}/api/v1/billing/reconcile${query}`, {
       method: "POST",
       headers,

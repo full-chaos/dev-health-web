@@ -6,10 +6,74 @@ import type { BillingAuditEntry } from "@/app/(app)/admin/billing/audit/actions"
 
 type AuditDetailPanelProps = {
   entry: BillingAuditEntry | null;
-  onResolve: (resolution: string) => Promise<void>;
+  onResolveAction: (resolution: string) => Promise<void>;
 };
 
-export function AuditDetailPanel({ entry, onResolve }: AuditDetailPanelProps) {
+function formatStateValue(value: unknown): string {
+  if (value === undefined) {
+    return "-";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function StateDiff({
+  local,
+  stripe,
+}: {
+  local: Record<string, unknown> | null;
+  stripe: Record<string, unknown> | null;
+}) {
+  const localObj = local ?? {};
+  const stripeObj = stripe ?? {};
+  const allKeys = [...new Set([...Object.keys(localObj), ...Object.keys(stripeObj)])].sort();
+
+  if (allKeys.length === 0) {
+    return <p className="text-sm text-(--ink-muted)">No state data available.</p>;
+  }
+
+  return (
+    <div className="overflow-auto rounded-xl border border-(--card-stroke) bg-(--card-70)">
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="border-b border-(--card-stroke)">
+            <th className="p-2 font-medium">Field</th>
+            <th className="p-2 font-medium">Local</th>
+            <th className="p-2 font-medium">Stripe</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allKeys.map((key) => {
+            const localValue = localObj[key];
+            const stripeValue = stripeObj[key];
+            const localText = formatStateValue(localValue);
+            const stripeText = formatStateValue(stripeValue);
+            const matches = JSON.stringify(localValue) === JSON.stringify(stripeValue);
+
+            return (
+              <tr
+                key={key}
+                className={`border-b border-(--card-stroke)/60 ${matches ? "" : "bg-(--accent)/10"}`}
+              >
+                <td className="p-2 font-medium">{key}</td>
+                <td className={`p-2 ${matches ? "text-(--ink-muted)" : "text-red-300"}`}>{localText}</td>
+                <td className={`p-2 ${matches ? "text-(--ink-muted)" : "text-green-300"}`}>{stripeText}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function AuditDetailPanel({ entry, onResolveAction }: AuditDetailPanelProps) {
   const [resolution, setResolution] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -24,14 +88,7 @@ export function AuditDetailPanel({ entry, onResolve }: AuditDetailPanelProps) {
   return (
     <div className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
       <p className="text-sm font-medium">{entry.description}</p>
-      <div className="grid gap-3 md:grid-cols-2">
-        <pre className="overflow-auto rounded-xl bg-(--card-70) p-3 text-xs">
-          {JSON.stringify(entry.local_state ?? {}, null, 2)}
-        </pre>
-        <pre className="overflow-auto rounded-xl bg-(--card-70) p-3 text-xs">
-          {JSON.stringify(entry.stripe_state ?? {}, null, 2)}
-        </pre>
-      </div>
+      <StateDiff local={entry.local_state} stripe={entry.stripe_state} />
       <form
         className="flex gap-2"
         onSubmit={async (event) => {
@@ -40,7 +97,7 @@ export function AuditDetailPanel({ entry, onResolve }: AuditDetailPanelProps) {
             return;
           }
           setIsSaving(true);
-          await onResolve(resolution);
+          await onResolveAction(resolution);
           setIsSaving(false);
           setResolution("");
         }}
