@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { id: "sync", label: "Sync Status", href: "/admin/sync", description: "Jobs" },
   { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },
   { id: "identities", label: "Identities", href: "/admin/identities", description: "Mapping" },
+  { id: "billing-audit", label: "Billing Audit", href: "/admin/billing/audit", description: "Finance" },
   { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise", featureKey: "audit_log" },
   { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security", featureKey: "ip_allowlist" },
   { id: "retention", label: "Retention", href: "/admin/retention", description: "Compliance", featureKey: "retention_policies" },
