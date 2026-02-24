@@ -25,7 +25,7 @@ export default defineConfig({
     },
     {
       name: "authenticated",
-      testIgnore: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /auth\.setup\.ts/, /live\//],
+      testIgnore: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /auth\.setup\.ts/, /live\//, /marketing-pricing\.spec\.ts/],
       dependencies: ["auth-setup"],
       use: {
         storageState: AUTH_FILE,
@@ -33,7 +33,7 @@ export default defineConfig({
     },
     {
       name: "unauthenticated",
-      testMatch: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/],
+      testMatch: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /marketing-pricing\.spec\.ts/],
     },
   ],
   use: {
