@@ -6,7 +6,7 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { getSubscriptionDetails } from "../actions";
+import { createRefund, getRefunds, getSubscriptionDetails } from "../actions";
 import { auth } from "@/lib/auth";
 
 function mockSession(overrides: Partial<Session> & { user?: Partial<Session["user"]> } = {}): Session {
@@ -118,6 +118,85 @@ describe("getSubscriptionDetails", () => {
     expect(result.error).toBeDefined();
     expect(result.error).toBe("Network error");
 
+    fetchSpy.mockRestore();
+  });
+});
+
+describe("refund actions", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+  });
+
+  it("creates refund successfully", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession());
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "refund-1",
+          org_id: "org-123",
+          invoice_id: "invoice-1",
+          subscription_id: null,
+          stripe_refund_id: "re_123",
+          stripe_charge_id: "ch_123",
+          stripe_payment_intent_id: "pi_123",
+          amount: 500,
+          currency: "usd",
+          status: "pending",
+          reason: "requested_by_customer",
+          description: "Customer asked",
+          failure_reason: null,
+          initiated_by: null,
+          metadata: {},
+          created_at: null,
+          updated_at: null,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await createRefund({
+      invoiceId: "invoice-1",
+      amount: 500,
+      reason: "requested_by_customer",
+    });
+
+    expect(result.data?.stripe_refund_id).toBe("re_123");
+    fetchSpy.mockRestore();
+  });
+
+  it("returns refund creation error", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession());
+
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ detail: "Invoice not found" }), { status: 404 }));
+
+    const result = await createRefund({ invoiceId: "invoice-missing" });
+
+    expect(result.error).toBe("Invoice not found");
+    fetchSpy.mockRestore();
+  });
+
+  it("loads refunds list", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession());
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+          total: 0,
+          limit: 20,
+          offset: 0,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await getRefunds({ limit: 20, offset: 0 });
+
+    expect(result.data?.total).toBe(0);
     fetchSpy.mockRestore();
   });
 });
