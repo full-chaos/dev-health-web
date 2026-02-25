@@ -186,7 +186,7 @@ const MOCK_BILLING_PLANS: MockBillingPlan[] = [
         amount: 4900,
         currency: "usd",
         is_active: true,
-        stripe_price_id: null,
+        stripe_price_id: "price_team_monthly_e2e",
       },
     ],
     bundles: [],
@@ -209,7 +209,7 @@ const MOCK_BILLING_PLANS: MockBillingPlan[] = [
         amount: 12900,
         currency: "usd",
         is_active: true,
-        stripe_price_id: null,
+        stripe_price_id: "price_enterprise_monthly_e2e",
       },
     ],
     bundles: [],
@@ -352,6 +352,45 @@ export const handlers = [
       updated_at: new Date().toISOString(),
     });
   }),
+
+  // ---- Subscriptions ----
+  http.get("*/api/v1/billing/subscriptions", () =>
+    HttpResponse.json({
+      id: "sub-e2e-1",
+      status: "active",
+      stripe_subscription_id: "sub_e2e_001",
+      stripe_customer_id: "cus_e2e_001",
+      current_period_start: "2026-02-01T00:00:00.000Z",
+      current_period_end: "2026-02-28T23:59:59.000Z",
+      cancel_at_period_end: false,
+      canceled_at: null,
+      trial_start: null,
+      trial_end: null,
+      plan: { name: "Team", key: "team" },
+      price: { interval: "monthly", display_amount: "$49", amount: "4900" },
+    }),
+  ),
+
+  http.get("*/api/v1/billing/subscriptions/history", () =>
+    HttpResponse.json({
+      items: [],
+      total: 0,
+      limit: 25,
+      offset: 0,
+    }),
+  ),
+
+  http.post("*/api/v1/billing/subscriptions/change-plan", () =>
+    HttpResponse.json({ status: "plan_change_scheduled" }),
+  ),
+
+  http.post("*/api/v1/billing/subscriptions/cancel", () =>
+    HttpResponse.json({ status: "cancellation_scheduled" }),
+  ),
+
+  http.post("*/api/v1/billing/subscriptions/reactivate", () =>
+    HttpResponse.json({ status: "reactivated" }),
+  ),
 
   // ---- Health & Meta ----
   http.get("*/health", () =>
