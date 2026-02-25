@@ -74,6 +74,8 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
   const hasSubscription = subscription !== null;
   const isFree = !hasSubscription;
 
+  useEffect(() => { load(); }, [load]);
+
   const statusClass = hasSubscription
     ? STATUS_COLORS[subscription.status] ?? "bg-zinc-500/15 text-zinc-700"
     : "bg-green-500/15 text-green-700";
