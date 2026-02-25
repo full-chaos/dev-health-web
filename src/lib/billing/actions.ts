@@ -79,6 +79,15 @@ export type InvoiceListResponse = {
   offset: number;
 };
 
+// Validates that an ID only contains safe characters (alphanumeric, hyphens, underscores)
+const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/;
+function sanitizeId(id: string): string {
+  if (!SAFE_ID_RE.test(id)) {
+    throw new Error("Invalid ID format");
+  }
+  return id;
+}
+
 async function getAuthHeaders(): Promise<ActionResult<HeadersInit>> {
   const session = await auth();
   if (!session?.access_token) {
@@ -274,7 +283,7 @@ export async function getInvoice(invoiceId: string): Promise<ActionResult<Invoic
   }
 
   try {
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${invoiceId}`, {
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}`, {
       method: "GET",
       headers: headersResult.data,
       cache: "no-store",
@@ -299,7 +308,7 @@ export async function voidInvoice(invoiceId: string): Promise<ActionResult<Invoi
   }
 
   try {
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${invoiceId}/void`, {
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}/void`, {
       method: "POST",
       headers: headersResult.data,
     });
