@@ -69,16 +69,20 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
   const [plans, setPlans] = useState<BillingPlanRecord[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [plansLoading, setPlansLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  const statusClass = STATUS_COLORS[subscription?.status ?? ""] ?? "bg-zinc-500/15 text-zinc-700";
+  const hasSubscription = subscription !== null;
+  const isFree = !hasSubscription;
+
+  const statusClass = hasSubscription
+    ? STATUS_COLORS[subscription.status] ?? "bg-zinc-500/15 text-zinc-700"
+    : "bg-green-500/15 text-green-700";
 
   const statusLabel = useMemo(() => {
-    const value = subscription?.status;
-    if (!value) {
-      return "Unknown";
-    }
+    if (!hasSubscription) return "Free";
+    const value = subscription.status;
     return value.replace("_", " ");
-  }, [subscription?.status]);
+  }, [hasSubscription, subscription?.status]);
 
   const load = useCallback(() => {
     startTransition(async () => {
@@ -88,22 +92,27 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
       ]);
 
       if ("error" in subRes) {
-        toast.error(subRes.error);
+        // 404 is expected for free-tier users with no Stripe subscription
+        // Only toast on unexpected errors
+        if (!subRes.error?.includes("No active subscription")) {
+          toast.error(subRes.error);
+        }
       } else {
         setSubscription(subRes.data);
       }
 
       if ("error" in historyRes) {
-        toast.error(historyRes.error);
+        // History may also 404 for free-tier — silently ignore
+        if (!historyRes.error?.includes("No active subscription") && !historyRes.error?.includes("not found")) {
+          toast.error(historyRes.error);
+        }
       } else {
         setHistory(historyRes.data.items);
       }
+
+      setLoaded(true);
     });
   }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const openPlanModal = () => {
     setPlansLoading(true);
@@ -174,7 +183,9 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
   const interval = pickString(subscription?.price, ["interval", "billing_interval"]);
   const amount = pickString(subscription?.price, ["display_amount", "amount", "unit_amount"]);
-  const planName = pickString(subscription?.plan, ["name", "key", "slug", "code"]);
+  const planName = hasSubscription
+    ? pickString(subscription.plan, ["name", "key", "slug", "code"])
+    : tier.charAt(0).toUpperCase() + tier.slice(1);
 
   return (
     <SettingsSection title="Billing" description="Manage your subscription and history.">
@@ -182,14 +193,20 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
             <p className="text-sm text-(--ink-muted)">Current Plan</p>
-            <p className="text-2xl font-semibold text-(--foreground)">{planName === "-" ? tier : planName}</p>
+            <p className="text-2xl font-semibold text-(--foreground)">{planName}</p>
             <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold capitalize ${statusClass}`}>
               {statusLabel}
             </span>
-            <p className="text-sm text-(--ink-muted)">Price: {amount} / {interval}</p>
-            <p className="text-sm text-(--ink-muted)">
-              Period: {formatDate(subscription?.current_period_start ?? null)} - {formatDate(subscription?.current_period_end ?? null)}
-            </p>
+            {hasSubscription ? (
+              <>
+                <p className="text-sm text-(--ink-muted)">Price: {amount} / {interval}</p>
+                <p className="text-sm text-(--ink-muted)">
+                  Period: {formatDate(subscription.current_period_start ?? null)} - {formatDate(subscription.current_period_end ?? null)}
+                </p>
+              </>
+            ) : loaded ? (
+              <p className="text-sm text-(--ink-muted)">No billing — upgrade to unlock paid features.</p>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2">
             <button
@@ -198,19 +215,21 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
               disabled={isPending}
               className="rounded-md border border-(--card-stroke) px-3 py-2 text-sm hover:bg-(--card) disabled:opacity-50"
             >
-              Change Plan
+              {isFree ? "Upgrade" : "Change Plan"}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                const ok = window.confirm("Cancel at period end? Click Cancel for immediate cancellation.");
-                onCancel(!ok);
-              }}
-              disabled={isPending}
-              className="rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
+            {hasSubscription && (
+              <button
+                type="button"
+                onClick={() => {
+                  const ok = window.confirm("Cancel at period end? Click Cancel for immediate cancellation.");
+                  onCancel(!ok);
+                }}
+                disabled={isPending}
+                className="rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            )}
             {subscription?.cancel_at_period_end && (
               <button
                 type="button"
