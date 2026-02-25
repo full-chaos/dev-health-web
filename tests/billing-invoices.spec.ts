@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("invoice list renders and void flow works", async ({ page }) => {
-  await page.goto("/admin/billing/invoices");
+  await page.goto("/superadmin/billing/invoices");
 
   await expect(page.getByRole("heading", { name: "Invoices" })).toBeVisible();
   await expect(page.getByText("in_e2e_001")).toBeVisible();

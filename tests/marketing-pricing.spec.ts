@@ -39,27 +39,48 @@ test.describe("Marketing landing page", () => {
 });
 
 test.describe("Pricing page", () => {
-  test("renders pricing page heading and plan cards", async ({ page }) => {
+  test("renders pricing page heading and all three tiers", async ({ page }) => {
     await page.goto("/pricing");
     await expect(
-      page.getByRole("heading", { name: /plans for every stage/i })
+      page.getByRole("heading", { name: /simple, transparent pricing/i })
     ).toBeVisible();
-    // Dynamic page shows Team and Enterprise from fallback data
-    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Enterprise" })).toBeVisible();
+    // All three tiers visible (scoped to tier card section to avoid comparison table duplicates)
+    const tierCards = page.locator('section').filter({ has: page.locator('.grid.sm\\:grid-cols-3') });
+    await expect(tierCards.getByText('Community').first()).toBeVisible();
+    await expect(tierCards.getByText('Team').first()).toBeVisible();
+    await expect(tierCards.getByText('Enterprise').first()).toBeVisible();
   });
 
-  test("displays fallback prices when API unavailable", async ({ page }) => {
+  test("displays dynamic prices from billing API", async ({ page }) => {
     await page.goto("/pricing");
-    // Team: $49/month, Enterprise: $129/month from FALLBACK_PLANS
-    await expect(page.getByText("$49")).toBeVisible();
-    await expect(page.getByText("$129")).toBeVisible();
+    // Mock server returns Team=$49 (4900 cents) and Enterprise=$129 (12900 cents)
+    await expect(page.getByText('$49').first()).toBeVisible();
+    await expect(page.getByText('$129').first()).toBeVisible();
+    // Community is always free (use first() since 'Free' appears in multiple places)
+    await expect(page.getByText('Free').first()).toBeVisible();
+  });
+
+  test("shows comparison table", async ({ page }) => {
+    await page.goto("/pricing");
+    await expect(page.getByText("Compare plans")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /all features at a glance/i })
+    ).toBeVisible();
   });
 
   test("CTA buttons link to signup", async ({ page }) => {
     await page.goto("/pricing");
-    const chooseTeam = page.getByRole("link", { name: /choose team/i });
-    await expect(chooseTeam).toHaveAttribute("href", "/auth/signup");
+    const startTrial = page.getByRole("link", { name: /start free trial/i });
+    await expect(startTrial).toHaveAttribute("href", "/auth/signup");
+  });
+
+  test("bottom CTA section is visible", async ({ page }) => {
+    await page.goto("/pricing");
+    await expect(
+      page.getByRole("heading", { name: /ready to understand your engineering effort/i })
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /get started free/i }).last()).toBeVisible();
+    await expect(page.getByRole("link", { name: /talk to sales/i })).toBeVisible();
   });
 
   test("navigating from landing to pricing works", async ({ page }) => {
@@ -67,7 +88,7 @@ test.describe("Pricing page", () => {
     await page.getByRole("navigation").getByRole("link", { name: "Pricing" }).click();
     await expect(page).toHaveURL(/\/pricing/);
     await expect(
-      page.getByRole("heading", { name: /plans for every stage/i })
+      page.getByRole("heading", { name: /simple, transparent pricing/i })
     ).toBeVisible();
   });
 });

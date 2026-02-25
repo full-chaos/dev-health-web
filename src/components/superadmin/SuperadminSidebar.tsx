@@ -10,6 +10,9 @@ const navItems = [
   { id: "licensing", label: "Licensing", href: "/superadmin/licensing", description: "Tiers" },
   { id: "audit", label: "Audit Log", href: "/superadmin/audit", description: "Events" },
   { id: "settings", label: "Settings", href: "/superadmin/settings", description: "Platform" },
+  { id: "billing-plans", label: "Billing Plans", href: "/superadmin/billing/plans", description: "Pricing" },
+  { id: "invoices", label: "Invoices", href: "/superadmin/billing/invoices", description: "Billing" },
+  { id: "billing-audit", label: "Billing Audit", href: "/superadmin/billing/audit", description: "Finance" },
 ];
 
 export function SuperadminSidebar() {

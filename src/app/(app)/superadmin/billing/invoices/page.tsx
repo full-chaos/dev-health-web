@@ -1,8 +1,11 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { InvoiceList } from "@/components/admin/billing/InvoiceList";
+import { requireSuperuser } from "@/lib/auth";
 import { getInvoices } from "@/lib/billing/actions";
 
 export default async function AdminInvoicesPage() {
+  await requireSuperuser("/superadmin/billing/invoices");
+
   const result = await getInvoices(20, 0);
   const invoiceData = result.data ?? { items: [], total: 0, limit: 20, offset: 0 };
 

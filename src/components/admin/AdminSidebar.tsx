@@ -15,16 +15,13 @@ const navItems: NavItem[] = [
   { id: "dashboard", label: "Dashboard", href: "/admin", description: "Overview" },
   { id: "users", label: "Users", href: "/admin/users", description: "Management" },
   { id: "organization", label: "Organization", href: "/admin/settings", description: "Settings" },
-  { id: "invoices", label: "Invoices", href: "/admin/billing/invoices", description: "Billing" },
   { id: "integrations", label: "Integrations", href: "/admin/integrations", description: "Connectors" },
   { id: "sync", label: "Sync Status", href: "/admin/sync", description: "Jobs" },
   { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },
   { id: "identities", label: "Identities", href: "/admin/identities", description: "Mapping" },
-  { id: "billing-audit", label: "Billing Audit", href: "/admin/billing/audit", description: "Finance" },
   { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise", featureKey: "audit_log" },
   { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security", featureKey: "ip_allowlist" },
   { id: "retention", label: "Retention", href: "/admin/retention", description: "Compliance", featureKey: "retention_policies" },
-  { id: "billing-plans", label: "Billing Plans", href: "/admin/billing/plans", description: "Platform" },
 ];
 
 type AdminSidebarProps = {
@@ -37,9 +34,6 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
 
   const filteredNavItems = navItems.filter((item) => {
     if (isSuperuser && item.id === "organization") {
-      return false;
-    }
-    if (item.id === "billing-plans" && !isSuperuser) {
       return false;
     }
     if (item.featureKey && features?.[item.featureKey] !== true) {
