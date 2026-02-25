@@ -184,7 +184,7 @@ function getBackendUrl(): string {
   return process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+async function getAuthHeadersOrThrow(): Promise<Record<string, string>> {
   const session = await auth();
   if (!session?.access_token) {
     throw new Error("Unauthorized");
@@ -204,7 +204,7 @@ async function withErrorHandling<T>(fn: () => Promise<T>): Promise<ActionResult<
 }
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = await getAuthHeaders();
+  const headers = await getAuthHeadersOrThrow();
   const response = await fetch(`${getBackendUrl()}${path}`, {
     ...init,
     headers: {
