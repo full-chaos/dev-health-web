@@ -52,14 +52,22 @@ This will serve the app at [http://localhost:3000](http://localhost:3000) using 
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BACKEND_URL` | Backend API URL | `http://127.0.0.1:8000` |
-| `NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS` | Enable GraphQL analytics | `false` |
-| `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` | Use sample data (for testing) | `false` |
-| `NEXT_PUBLIC_DOCS_URL` | Documentation link URL | — |
-| `DEMO_EXPORT` | Enable static export mode | `false` |
-| `BASE_PATH` | Subpath for hosting (e.g., `/app`) | — |
+| Variable | Required | Purpose | Default / Notes |
+|----------|----------|---------|-----------------|
+| `BACKEND_URL` | No | Backend API base URL | `http://127.0.0.1:8000` |
+| `AUTH_SECRET` | Prod: Yes, Dev: No | Auth.js signing/encryption secret | Falls back to a dev-only in-code value |
+| `LINEAR_API_KEY` | Optional feature | Enables `POST /api/feedback` Linear issue creation | Must be set with `LINEAR_TEAM_ID`; route returns `503` if missing |
+| `LINEAR_TEAM_ID` | Optional feature | Linear team target for feedback issues | Must be set with `LINEAR_API_KEY` |
+| `NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS` | No | Client/runtime GraphQL analytics toggle | Enabled unless set to `false` |
+| `USE_GRAPHQL_ANALYTICS` | No | Server-side runtime fallback for GraphQL toggle | Used when the public flag is absent |
+| `NEXT_PUBLIC_DOCS_URL` | No | Docs/help link URL in UI | `/docs` |
+| `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` | No | Use sample data in test/demo paths | `false` |
+| `DEMO_EXPORT` | No | Enable static export build mode | `false` |
+| `BASE_PATH` | No | Subpath hosting prefix (example: `/app`) | Empty (root) |
+
+Deprecated (still read for compatibility):
+
+- `NEXTAUTH_SECRET` -> use `AUTH_SECRET`.
 
 Copy `.env.example` to `.env.local` and configure as needed.
 
