@@ -39,45 +39,27 @@ test.describe("Marketing landing page", () => {
 });
 
 test.describe("Pricing page", () => {
-  test("renders all three pricing tiers", async ({ page }) => {
+  test("renders pricing page heading and plan cards", async ({ page }) => {
     await page.goto("/pricing");
     await expect(
-      page.getByRole("heading", { name: /simple, transparent pricing/i })
+      page.getByRole("heading", { name: /plans for every stage/i })
     ).toBeVisible();
-    await expect(page.getByRole("paragraph").filter({ hasText: /^Community$/ })).toBeVisible();
-    await expect(page.getByRole("paragraph").filter({ hasText: /^Team$/ })).toBeVisible();
-    await expect(page.getByRole("paragraph").filter({ hasText: /^Enterprise$/ })).toBeVisible();
+    // Dynamic page shows Team and Enterprise from fallback data
+    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Enterprise" })).toBeVisible();
   });
 
-  test("team tier is highlighted with most popular badge", async ({ page }) => {
+  test("displays fallback prices when API unavailable", async ({ page }) => {
     await page.goto("/pricing");
-    await expect(page.getByText("Most Popular")).toBeVisible();
+    // Team: $49/month, Enterprise: $129/month from FALLBACK_PLANS
+    await expect(page.getByText("$49")).toBeVisible();
+    await expect(page.getByText("$129")).toBeVisible();
   });
 
-  test("displays correct prices", async ({ page }) => {
+  test("CTA buttons link to signup", async ({ page }) => {
     await page.goto("/pricing");
-    await expect(page.getByText("Free", { exact: true })).toBeVisible();
-    await expect(page.getByText("$12")).toBeVisible();
-    await expect(page.getByText("Custom", { exact: true })).toBeVisible();
-  });
-
-  test("comparison table renders all features", async ({ page }) => {
-    await page.goto("/pricing");
-    await expect(
-      page.getByRole("heading", { name: /all features at a glance/i })
-    ).toBeVisible();
-    await expect(page.getByText("DORA Metrics")).toBeVisible();
-    await expect(page.getByRole("cell", { name: "SSO / SAML" })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "Audit Logs" })).toBeVisible();
-  });
-
-  test("CTA buttons have correct hrefs", async ({ page }) => {
-    await page.goto("/pricing");
-    const getStarted = page.getByRole("link", { name: "Get started free" }).first();
-    await expect(getStarted).toHaveAttribute("href", "/auth/signup");
-
-    const contactSales = page.getByRole("link", { name: "Contact sales" });
-    await expect(contactSales).toHaveAttribute("href", "mailto:sales@fullchaos.dev");
+    const chooseTeam = page.getByRole("link", { name: /choose team/i });
+    await expect(chooseTeam).toHaveAttribute("href", "/auth/signup");
   });
 
   test("navigating from landing to pricing works", async ({ page }) => {
@@ -85,7 +67,7 @@ test.describe("Pricing page", () => {
     await page.getByRole("navigation").getByRole("link", { name: "Pricing" }).click();
     await expect(page).toHaveURL(/\/pricing/);
     await expect(
-      page.getByRole("heading", { name: /simple, transparent pricing/i })
+      page.getByRole("heading", { name: /plans for every stage/i })
     ).toBeVisible();
   });
 });

@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
   { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise", featureKey: "audit_log" },
   { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security", featureKey: "ip_allowlist" },
   { id: "retention", label: "Retention", href: "/admin/retention", description: "Compliance", featureKey: "retention_policies" },
+  { id: "billing-plans", label: "Billing Plans", href: "/admin/billing/plans", description: "Platform" },
 ];
 
 type AdminSidebarProps = {
@@ -36,6 +37,9 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
 
   const filteredNavItems = navItems.filter((item) => {
     if (isSuperuser && item.id === "organization") {
+      return false;
+    }
+    if (item.id === "billing-plans" && !isSuperuser) {
       return false;
     }
     if (item.featureKey && features?.[item.featureKey] !== true) {

@@ -6,7 +6,7 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { getSubscription } from "../actions";
+import { getSubscription, createRefund, getRefunds } from "../actions";
 import { auth } from "@/lib/auth";
 
 function mockSession(overrides: Partial<Session> & { user?: Partial<Session["user"]> } = {}): Session {
