@@ -3,9 +3,11 @@ import { expect, test } from "@playwright/test";
 test("pricing page renders plans from billing API", async ({ page }) => {
   await page.goto("/pricing");
 
-  await expect(page.getByRole("heading", { name: "Plans for every stage of delivery maturity" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Team" })).toBeVisible();
-  await expect(page.getByText("$49", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /simple, transparent pricing/i })).toBeVisible();
+  // Team tier card is visible with dynamic price from mock API ($49 = 4900 cents)
+  const tierCards = page.locator('section').filter({ has: page.locator('.grid.sm\\:grid-cols-3') });
+  await expect(tierCards.getByText('Team').first()).toBeVisible();
+  await expect(page.getByText('$49', { exact: false })).toBeVisible();
 });
 
 test("superadmin billing plan management supports CRUD and sync", async ({ page }) => {

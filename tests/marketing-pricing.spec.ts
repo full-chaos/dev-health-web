@@ -44,19 +44,20 @@ test.describe("Pricing page", () => {
     await expect(
       page.getByRole("heading", { name: /simple, transparent pricing/i })
     ).toBeVisible();
-    // All three tiers visible
-    await expect(page.getByText("Community")).toBeVisible();
-    await expect(page.getByText("Team")).toBeVisible();
-    await expect(page.getByText("Enterprise")).toBeVisible();
+    // All three tiers visible (scoped to tier card section to avoid comparison table duplicates)
+    const tierCards = page.locator('section').filter({ has: page.locator('.grid.sm\\:grid-cols-3') });
+    await expect(tierCards.getByText('Community').first()).toBeVisible();
+    await expect(tierCards.getByText('Team').first()).toBeVisible();
+    await expect(tierCards.getByText('Enterprise').first()).toBeVisible();
   });
 
   test("displays dynamic prices from billing API", async ({ page }) => {
     await page.goto("/pricing");
     // Mock server returns Team=$49 (4900 cents) and Enterprise=$129 (12900 cents)
-    await expect(page.getByText("$49")).toBeVisible();
-    await expect(page.getByText("$129")).toBeVisible();
-    // Community is always free
-    await expect(page.getByText("Free")).toBeVisible();
+    await expect(page.getByText('$49').first()).toBeVisible();
+    await expect(page.getByText('$129').first()).toBeVisible();
+    // Community is always free (use first() since 'Free' appears in multiple places)
+    await expect(page.getByText('Free').first()).toBeVisible();
   });
 
   test("shows comparison table", async ({ page }) => {
