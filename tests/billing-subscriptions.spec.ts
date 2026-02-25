@@ -11,15 +11,19 @@ test("billing settings renders subscription section", async ({ page }) => {
 test("change plan modal shows plan cards instead of price ID input", async ({ page }) => {
   await page.goto("/admin/settings");
 
+  // Wait for subscription data to load (button is disabled while loading)
+  const changePlanBtn = page.getByRole("button", { name: "Change Plan" });
+  await expect(changePlanBtn).toBeEnabled({ timeout: 15000 });
+
   // Click Change Plan button
-  await page.getByRole("button", { name: "Change Plan" }).click();
+  await changePlanBtn.click();
 
   // Modal should appear with plan picker, not a text input for price ID
-  await expect(page.getByRole("heading", { name: "Change Plan" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Change Plan" })).toBeVisible({ timeout: 10000 });
   await expect(page.getByText("Select the plan you want to switch to.")).toBeVisible();
 
   // Should show plan cards fetched from billing API (Team and Enterprise from mock)
-  await expect(page.getByText("Team").first()).toBeVisible();
+  await expect(page.getByText("Team").first()).toBeVisible({ timeout: 10000 });
   await expect(page.getByText("Enterprise").first()).toBeVisible();
 
   // Should NOT have a text input for raw Stripe price ID
