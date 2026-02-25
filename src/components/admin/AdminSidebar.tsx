@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { id: "dashboard", label: "Dashboard", href: "/admin", description: "Overview" },
   { id: "users", label: "Users", href: "/admin/users", description: "Management" },
   { id: "organization", label: "Organization", href: "/admin/settings", description: "Settings" },
+  { id: "invoices", label: "Invoices", href: "/admin/billing/invoices", description: "Billing" },
   { id: "integrations", label: "Integrations", href: "/admin/integrations", description: "Connectors" },
   { id: "sync", label: "Sync Status", href: "/admin/sync", description: "Jobs" },
   { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },

@@ -100,6 +100,43 @@ const FLAME_RESPONSES: Record<string, Parameters<typeof HttpResponse.json>[0]> =
   throughput: throughputFlameSample,
 };
 
+const SAMPLE_INVOICE = {
+  id: "inv-e2e-1",
+  org_id: "org-e2e",
+  subscription_id: "sub-e2e-1",
+  stripe_invoice_id: "in_e2e_001",
+  stripe_customer_id: "cus_e2e_001",
+  status: "open",
+  amount_due: 12000,
+  amount_paid: 0,
+  amount_remaining: 12000,
+  currency: "usd",
+  period_start: "2026-02-01T00:00:00.000Z",
+  period_end: "2026-02-29T23:59:59.000Z",
+  hosted_invoice_url: "https://billing.stripe.test/in_e2e_001",
+  pdf_url: "https://billing.stripe.test/in_e2e_001.pdf",
+  payment_intent_id: null,
+  finalized_at: "2026-02-01T00:00:00.000Z",
+  paid_at: null,
+  voided_at: null,
+  attempt_count: 0,
+  metadata: {},
+  created_at: "2026-02-01T00:00:00.000Z",
+  updated_at: "2026-02-01T00:00:00.000Z",
+  line_items: [
+    {
+      id: "line-e2e-1",
+      stripe_line_item_id: "il_e2e_1",
+      description: "Team plan",
+      amount: 12000,
+      quantity: 1,
+      period_start: "2026-02-01T00:00:00.000Z",
+      period_end: "2026-02-29T23:59:59.000Z",
+      stripe_price_id: "price_e2e_team",
+    },
+  ],
+};
+
 const buildDeploymentFlameResponse = (deploymentId: string) => ({
   entity: {
     deployment_id: deploymentId,
@@ -187,6 +224,40 @@ export const handlers = [
       },
     }),
   ),
+
+  http.get("*/api/v1/billing/invoices", ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get("status");
+    const item = SAMPLE_INVOICE;
+    const items = status && status.length > 0 ? (item.status === status ? [item] : []) : [item];
+    return HttpResponse.json({
+      items,
+      total: items.length,
+      limit: Number(url.searchParams.get("limit") ?? "20"),
+      offset: Number(url.searchParams.get("offset") ?? "0"),
+    });
+  }),
+
+  http.get("*/api/v1/billing/invoices/:invoiceId", ({ params }) => {
+    if (params.invoiceId !== SAMPLE_INVOICE.id) {
+      return HttpResponse.json({ detail: "Invoice not found" }, { status: 404 });
+    }
+    return HttpResponse.json(SAMPLE_INVOICE);
+  }),
+
+  http.post("*/api/v1/billing/invoices/:invoiceId/void", ({ params }) => {
+    if (params.invoiceId !== SAMPLE_INVOICE.id) {
+      return HttpResponse.json({ detail: "Invoice not found" }, { status: 404 });
+    }
+
+    return HttpResponse.json({
+      ...SAMPLE_INVOICE,
+      status: "void",
+      amount_remaining: 0,
+      voided_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }),
 
   // ---- Health & Meta ----
   http.get("*/health", () =>
