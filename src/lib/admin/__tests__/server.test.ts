@@ -8,6 +8,8 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import {
+  listUsers,
+  listPlatformUsers,
   createCredential,
   deleteCredential,
   listCredentials,
@@ -128,6 +130,50 @@ describe("admin/server credential actions", () => {
       expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
       fetchSpy.mockRestore();
     });
+  });
+});
+
+describe("admin/server user list actions", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+  });
+
+  it("listUsers includes org header and q query", async () => {
+    mockSession();
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+    const result = await listUsers("alice");
+
+    expect(result.error).toBeUndefined();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+    expect(url).toContain("/api/v1/admin/users?q=alice");
+    expect(options?.headers).toMatchObject({
+      Authorization: "Bearer test-token",
+      "X-Org-Id": "org-1",
+    });
+    fetchSpy.mockRestore();
+  });
+
+  it("listPlatformUsers omits org header and supports q query", async () => {
+    mockSession();
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+    const result = await listPlatformUsers("bob");
+
+    expect(result.error).toBeUndefined();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+    expect(url).toContain("/api/v1/admin/users?q=bob");
+    const headers = options?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer test-token");
+    expect(headers["X-Org-Id"]).toBeUndefined();
+    fetchSpy.mockRestore();
   });
 });
 

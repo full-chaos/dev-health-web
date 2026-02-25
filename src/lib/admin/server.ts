@@ -86,10 +86,17 @@ async function withErrorHandling<T>(fn: () => Promise<T>): Promise<ActionResult<
   }
 }
 
-export async function listUsers(): Promise<ActionResult<User[]>> {
+export async function listUsers(query?: string): Promise<ActionResult<User[]>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
-    return adminApi.users.list(token, orgId);
+    return adminApi.users.list(token, orgId, query);
+  });
+}
+
+export async function listPlatformUsers(query?: string): Promise<ActionResult<User[]>> {
+  return withErrorHandling(async () => {
+    const token = await getToken();
+    return adminApi.users.list(token, undefined, query);
   });
 }
 
