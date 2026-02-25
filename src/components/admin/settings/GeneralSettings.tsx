@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { SettingsSection } from "./SettingsSection";
-import { updateCurrentOrg } from "@/lib/admin/server";
+import { updateOrgProfile } from "@/lib/admin/server";
 import type { Organization } from "@/lib/admin/types";
 
 type GeneralSettingsProps = {
@@ -18,9 +18,9 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
      setIsLoading(true);
 
      const formData = new FormData(e.currentTarget);
-     const result = await updateCurrentOrg({
+     const result = await updateOrgProfile({
        name: formData.get("name") as string,
-       description: formData.get("description") as string || undefined,
+       description: (formData.get("description") as string) || undefined,
      });
 
      setIsLoading(false);

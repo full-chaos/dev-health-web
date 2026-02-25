@@ -337,6 +337,22 @@ export const handlers = [
     });
   }),
 
+  // ---- Org self-service profile update ----
+  http.patch("*/api/v1/orgs/me", async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown> | null;
+    return HttpResponse.json({
+      id: "org-e2e",
+      slug: "my-organization-e2e",
+      name: typeof body?.name === "string" ? body.name : "My Organization",
+      description: typeof body?.description === "string" ? body.description : null,
+      tier: "community",
+      settings: {},
+      is_active: true,
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: new Date().toISOString(),
+    });
+  }),
+
   // ---- Health & Meta ----
   http.get("*/health", () =>
     HttpResponse.json({ status: "ok", services: { api: "mock" } }),

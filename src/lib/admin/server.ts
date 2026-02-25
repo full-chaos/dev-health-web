@@ -443,6 +443,45 @@ export async function updateCurrentOrg(
   });
 }
 
+/**
+ * Self-service org profile update — calls /api/v1/orgs/me (non-admin endpoint)
+ * so that org owners/admins can update name & description without superuser.
+ */
+export async function updateOrgProfile(
+  data: { name?: string; description?: string | null }
+): Promise<ActionResult<Organization>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    if (!orgId) {
+      throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+    }
+
+    const baseUrl = (await import("@/lib/origin")).getBackendUrl();
+    const response = await fetch(`${baseUrl}/api/v1/orgs/me`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "X-Org-Id": orgId,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      let detail: string | undefined;
+      try {
+        const errorData = await response.json();
+        detail = errorData.detail || errorData.message;
+      } catch {
+        detail = undefined;
+      }
+      throw new AdminApiError(response.status, response.statusText, detail);
+    }
+
+    return (await response.json()) as Organization;
+  });
+}
+
 export async function deleteCurrentOrg(): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
