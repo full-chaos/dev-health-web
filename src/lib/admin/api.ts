@@ -361,8 +361,15 @@ export const adminApi = {
   },
 
   users: {
-    list: (token?: string, orgId?: string) =>
-      request<User[]>("/users", {}, token, orgId),
+    list: (token?: string, orgId?: string, q?: string) => {
+      const params = new URLSearchParams();
+      if (q && q.trim().length > 0) {
+        params.set("q", q.trim());
+      }
+      const query = params.toString();
+      const path = query ? `/users?${query}` : "/users";
+      return request<User[]>(path, {}, token, orgId);
+    },
 
     get: (userId: string, token?: string, orgId?: string) =>
       request<User>(`/users/${userId}`, {}, token, orgId),
