@@ -79,7 +79,7 @@ test.describe("Pricing page", () => {
     await expect(
       page.getByRole("heading", { name: /ready to understand your engineering effort/i })
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /get started free/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /get started free/i }).last()).toBeVisible();
     await expect(page.getByRole("link", { name: /talk to sales/i })).toBeVisible();
   });
 
