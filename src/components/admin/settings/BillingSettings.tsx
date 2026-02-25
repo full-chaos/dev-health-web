@@ -74,7 +74,6 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
   const hasSubscription = subscription !== null;
   const isFree = !hasSubscription;
 
-  useEffect(() => { load(); }, [load]);
 
   const statusClass = hasSubscription
     ? STATUS_COLORS[subscription.status] ?? "bg-zinc-500/15 text-zinc-700"
@@ -115,6 +114,8 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
       setLoaded(true);
     });
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const openPlanModal = () => {
     setPlansLoading(true);
