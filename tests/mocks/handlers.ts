@@ -191,6 +191,29 @@ const MOCK_BILLING_PLANS: MockBillingPlan[] = [
     ],
     bundles: [],
   },
+  {
+    id: "plan-enterprise",
+    key: "enterprise",
+    name: "Enterprise",
+    description: "Enterprise plan",
+    tier: "enterprise",
+    is_active: true,
+    display_order: 2,
+    stripe_product_id: null,
+    metadata: {},
+    prices: [
+      {
+        id: "price-enterprise-monthly",
+        plan_id: "plan-enterprise",
+        interval: "monthly",
+        amount: 12900,
+        currency: "usd",
+        is_active: true,
+        stripe_price_id: null,
+      },
+    ],
+    bundles: [],
+  },
 ];
 const buildDeploymentFlameResponse = (deploymentId: string) => ({
   entity: {
