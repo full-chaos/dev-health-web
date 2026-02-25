@@ -4,7 +4,7 @@ import { requireSuperuser } from "@/lib/auth";
 import { listBillingPlans } from "@/lib/billing/actions";
 
 export default async function BillingPlansAdminPage() {
-  await requireSuperuser("/admin/billing/plans");
+  await requireSuperuser("/superadmin/billing/plans");
 
   const plansResult = await listBillingPlans(true);
   const plans = plansResult.data ?? [];

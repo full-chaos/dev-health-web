@@ -9,7 +9,7 @@ test("pricing page renders plans from billing API", async ({ page }) => {
 });
 
 test("superadmin billing plan management supports CRUD and sync", async ({ page }) => {
-  await page.goto("/admin/billing/plans");
+  await page.goto("/superadmin/billing/plans");
 
   await expect(page.getByRole("heading", { name: "Billing Plans" })).toBeVisible();
 

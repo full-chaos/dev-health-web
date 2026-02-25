@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReconciliationReport } from "@/app/(app)/admin/billing/audit/actions";
+import type { ReconciliationReport } from "@/app/(app)/superadmin/billing/audit/actions";
 
 type ReconciliationTriggerProps = {
   running: boolean;

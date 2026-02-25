@@ -1,6 +1,6 @@
 "use client";
 
-import type { BillingAuditEntry } from "@/app/(app)/admin/billing/audit/actions";
+import type { BillingAuditEntry } from "@/app/(app)/superadmin/billing/audit/actions";
 
 type AuditLogTableProps = {
   entries: BillingAuditEntry[];
