@@ -3,6 +3,15 @@
 import { auth } from "@/lib/auth";
 import { getBackendUrl } from "@/lib/origin";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function validateId(id: string): string {
+  if (!UUID_RE.test(id)) {
+    throw new Error("Invalid audit entry ID");
+  }
+  return id;
+}
+
 export type ActionResult<T> = { data: T; error?: never } | { data?: never; error: string };
 
 export type BillingAuditEntry = {
@@ -111,7 +120,8 @@ export async function getAuditEntry(id: string): Promise<ActionResult<BillingAud
     if (!headers) {
       return { error: "Unauthorized" };
     }
-    const response = await fetch(`${getBackendUrl()}/api/v1/billing/audit/${id}`, {
+    const safeId = validateId(id);
+    const response = await fetch(`${getBackendUrl()}/api/v1/billing/audit/${safeId}`, {
       method: "GET",
       headers,
       cache: "no-store",
@@ -135,7 +145,8 @@ export async function resolveAuditMismatch(
     if (!headers) {
       return { error: "Unauthorized" };
     }
-    const response = await fetch(`${getBackendUrl()}/api/v1/billing/audit/${id}/resolve`, {
+    const safeId = validateId(id);
+    const response = await fetch(`${getBackendUrl()}/api/v1/billing/audit/${safeId}/resolve`, {
       method: "POST",
       headers,
       body: JSON.stringify({ resolution }),
