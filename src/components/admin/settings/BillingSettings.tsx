@@ -8,7 +8,9 @@ import {
   changePlan,
   getSubscription,
   getSubscriptionHistory,
+  listBillingPlans,
   reactivateSubscription,
+  type BillingPlanRecord,
   type SubscriptionDetails,
   type SubscriptionHistoryItem,
 } from "@/lib/billing/actions";
@@ -51,12 +53,22 @@ function formatDate(value: string | null): string {
   return parsed.toLocaleDateString();
 }
 
+function formatAmount(amountInCents: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    maximumFractionDigits: 0,
+  }).format(amountInCents / 100);
+}
+
 export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
   const [isPending, startTransition] = useTransition();
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
   const [history, setHistory] = useState<SubscriptionHistoryItem[]>([]);
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [priceId, setPriceId] = useState("");
+  const [plans, setPlans] = useState<BillingPlanRecord[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [plansLoading, setPlansLoading] = useState(false);
 
   const statusClass = STATUS_COLORS[subscription?.status ?? ""] ?? "bg-zinc-500/15 text-zinc-700";
 
@@ -93,14 +105,39 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
     load();
   }, [load]);
 
+  const openPlanModal = () => {
+    setPlansLoading(true);
+    setSelectedPlanId(null);
+    setShowPlanModal(true);
+    startTransition(async () => {
+      const result = await listBillingPlans();
+      if (result.error) {
+        toast.error(result.error);
+        setPlansLoading(false);
+        return;
+      }
+      setPlans((result.data ?? []).filter((p) => p.is_active));
+      setPlansLoading(false);
+    });
+  };
+
   const onChangePlan = () => {
+    if (!selectedPlanId) {
+      toast.error("Select a plan");
+      return;
+    }
+
+    const plan = plans.find((p) => p.id === selectedPlanId);
+    const monthlyPrice = plan?.prices.find((p) => p.interval === "monthly" && p.is_active);
+    const priceId = monthlyPrice?.stripe_price_id;
+
     if (!priceId) {
-      toast.error("Enter a Stripe price ID");
+      toast.error("Selected plan has no active Stripe price configured");
       return;
     }
 
     startTransition(async () => {
-      const result = await changePlan(priceId.trim());
+      const result = await changePlan(priceId);
       if (result.error) {
         toast.error(result.error);
         return;
@@ -157,7 +194,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => setShowPlanModal(true)}
+              onClick={openPlanModal}
               disabled={isPending}
               className="rounded-md border border-(--card-stroke) px-3 py-2 text-sm hover:bg-(--card) disabled:opacity-50"
             >
@@ -209,30 +246,80 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
       {showPlanModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
-            <h3 className="text-lg font-semibold">Change Plan</h3>
-            <p className="mt-1 text-sm text-zinc-600">Enter Stripe price ID for the target plan.</p>
-            <input
-              value={priceId}
-              onChange={(event) => setPriceId(event.target.value)}
-              placeholder="price_..."
-              className="mt-3 w-full rounded-md border px-3 py-2 text-sm"
-            />
-            <div className="mt-4 flex justify-end gap-2">
+          <div className="w-full max-w-lg rounded-lg border border-(--card-stroke) bg-(--card-80) p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-(--foreground)">Change Plan</h3>
+            <p className="mt-1 text-sm text-(--ink-muted)">Select the plan you want to switch to.</p>
+
+            {plansLoading ? (
+              <div className="mt-6 flex items-center justify-center py-8">
+                <div className="size-6 animate-spin rounded-full border-2 border-(--accent) border-t-transparent" />
+              </div>
+            ) : plans.length === 0 ? (
+              <p className="mt-6 text-center text-sm text-(--ink-muted)">No plans available.</p>
+            ) : (
+              <div className="mt-4 grid gap-3">
+                {plans.map((plan) => {
+                  const monthly = plan.prices.find((p) => p.interval === "monthly" && p.is_active);
+                  const isSelected = selectedPlanId === plan.id;
+                  const isCurrent = planName !== "-" && plan.name.toLowerCase() === planName.toLowerCase();
+
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => setSelectedPlanId(plan.id)}
+                      disabled={isCurrent}
+                      className={`rounded-md border p-4 text-left transition ${
+                        isSelected
+                          ? "border-(--accent) bg-(--accent)/10 ring-1 ring-(--accent)"
+                          : isCurrent
+                            ? "border-(--card-stroke) bg-(--card-70) opacity-60 cursor-not-allowed"
+                            : "border-(--card-stroke) hover:border-(--accent)/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-(--foreground)">{plan.name}</span>
+                        {isCurrent && (
+                          <span className="rounded-full bg-(--accent)/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-(--accent)">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      {plan.description && (
+                        <p className="mt-1 text-xs text-(--ink-muted)">{plan.description}</p>
+                      )}
+                      <p className="mt-2 text-sm font-medium text-(--foreground)">
+                        {monthly ? formatAmount(monthly.amount, monthly.currency) : "Contact sales"}
+                        {monthly && <span className="text-xs font-normal text-(--ink-muted)"> / month</span>}
+                      </p>
+                      {plan.bundles.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {plan.bundles.flatMap((b) => b.features).slice(0, 4).map((feat) => (
+                            <li key={feat} className="text-xs text-(--ink-muted)">• {feat}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowPlanModal(false)}
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-md border border-(--card-stroke) px-3 py-2 text-sm hover:bg-(--card) text-(--foreground)"
               >
-                Close
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={onChangePlan}
-                disabled={isPending}
+                disabled={isPending || !selectedPlanId}
                 className="rounded-md bg-(--accent) px-3 py-2 text-sm text-white disabled:opacity-50"
               >
-                Confirm
+                {isPending ? "Switching…" : "Confirm Change"}
               </button>
             </div>
           </div>
