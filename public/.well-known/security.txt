@@ -1,5 +1,5 @@
-Contact: security@devhealth.dev
+Contact: security@fullchaos.dev
 Expires: 2027-02-26T00:00:00.000Z
 Preferred-Languages: en
-Canonical: https://devhealth.dev/.well-known/security.txt
-Policy: https://devhealth.dev/security-policy
+Canonical: https://www.fullchaos.dev/.well-known/security.txt
+Policy: https://www.fullchaos.dev/security-policy
