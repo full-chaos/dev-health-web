@@ -23,9 +23,9 @@ function findSetting(settings: Setting[], key: string): string | null {
 export function SecuritySettings() {
    const [isPending, startTransition] = useTransition();
    const [loaded, setLoaded] = useState(false);
+  // TODO: 2FA enforcement — see CHAOS-555 and CHAOS-528 epic
 
   const [sessionTimeout, setSessionTimeout] = useState(DEFAULT_SESSION_TIMEOUT);
-  const [enforce2fa, setEnforce2fa] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -37,8 +37,6 @@ export function SecuritySettings() {
       if (result.data) {
         const timeout = findSetting(result.data, "session_timeout");
         if (timeout) setSessionTimeout(timeout);
-        const twoFa = findSetting(result.data, "enforce_2fa");
-        if (twoFa !== null) setEnforce2fa(twoFa === "true");
       }
       setLoaded(true);
     };
@@ -53,7 +51,6 @@ export function SecuritySettings() {
      startTransition(async () => {
        const results = await Promise.allSettled([
          updateSecuritySetting("session_timeout", sessionTimeout),
-         updateSecuritySetting("enforce_2fa", String(enforce2fa)),
        ]);
 
        const errors = results
@@ -93,20 +90,6 @@ export function SecuritySettings() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="flex items-center">
-          <input
-            id="2fa"
-            name="2fa"
-            type="checkbox"
-            checked={enforce2fa}
-            onChange={(e) => setEnforce2fa(e.target.checked)}
-            disabled={isPending || !loaded}
-            className="h-4 w-4 rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent)"
-          />
-          <label htmlFor="2fa" className="ml-2 block text-sm text-(--foreground)">
-            Enforce Two-Factor Authentication (2FA)
-          </label>
         </div>
         <div className="flex justify-end">
           <button
