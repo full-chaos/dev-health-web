@@ -518,36 +518,33 @@ export async function updateSecuritySetting(
 }
 
 export async function startImpersonation(targetUserId: string): Promise<ActionResult<{
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  impersonated_user: { id: string; email: string; role: string; org_id: string };
+  status: string;
+  target_user: { id: string; email: string; org_id: string; role: string };
+  expires_at: string;
 }>> {
   return withErrorHandling(async () => {
-    const { token, orgId } = await getSessionContext();
-    return adminApi.impersonation.start(targetUserId, token, orgId);
+    const token = await getToken();
+    return adminApi.impersonation.start(targetUserId, token);
   });
 }
 
-export async function stopImpersonation(): Promise<ActionResult<{
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-}>> {
+export async function stopImpersonation(): Promise<ActionResult<{ status: string }>> {
   return withErrorHandling(async () => {
-    const { token, orgId } = await getSessionContext();
-    return adminApi.impersonation.stop(token, orgId);
+    const token = await getToken();
+    return adminApi.impersonation.stop(token);
   });
 }
 
 export async function getImpersonationStatus(): Promise<ActionResult<{
   is_impersonating: boolean;
-  impersonated_user_id: string | null;
-  real_user_id: string | null;
+  target_user_id: string | null;
+  target_email: string | null;
+  target_org_id: string | null;
+  expires_at: string | null;
 }>> {
   return withErrorHandling(async () => {
-    const { token, orgId } = await getSessionContext();
-    return adminApi.impersonation.status(token, orgId);
+    const token = await getToken();
+    return adminApi.impersonation.status(token);
   });
 }
 

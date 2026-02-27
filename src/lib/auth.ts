@@ -84,46 +84,14 @@ const nextAuth = NextAuth({
         token.expires_at = Date.now() + (session.onboardComplete.expires_in || 3600) * 1000
       }
 
-      // Handle impersonation start
-      if (trigger === "update" && session?.startImpersonation) {
-        // Store real admin state
-        token.real_access_token = token.access_token
-        token.real_user_id = token.id
-        token.real_role = token.role
-        token.real_org_id = token.org_id
-        // Swap to impersonated state
-        token.access_token = session.startImpersonation.access_token
-        token.id = session.startImpersonation.impersonated_user.id
-        token.role = session.startImpersonation.impersonated_user.role
-        token.org_id = session.startImpersonation.impersonated_user.org_id
-        token.is_impersonating = true
-        token.impersonated_user_id = session.startImpersonation.impersonated_user.id
-      }
-      
-      // Handle impersonation stop
-      if (trigger === "update" && session?.stopImpersonation) {
-        token.access_token = session.stopImpersonation.access_token
-        token.id = token.real_user_id
-        token.role = token.real_role
-        token.org_id = token.real_org_id
-        token.is_impersonating = false
-        token.impersonated_user_id = undefined
-        token.real_access_token = undefined
-        token.real_user_id = undefined
-        token.real_role = undefined
-        token.real_org_id = undefined
-      }
-
       const now = Date.now()
       const expiresAt = token.expires_at as number | undefined
       const lastValidated = token.last_validated as number | undefined
       const tokenExpired = expiresAt && now > expiresAt - 5 * 60 * 1000
 
       // Step 1: Refresh expired tokens first (before validation).
-      // Skip during impersonation since the impersonated token has its own lifecycle.
       if (
         tokenExpired &&
-        !token.is_impersonating &&
         token.refresh_token
       ) {
         try {
@@ -201,7 +169,6 @@ const nextAuth = NextAuth({
         session.access_token = token.access_token as string
         session.user.is_impersonating = !!token.is_impersonating
         session.user.impersonated_user_id = token.impersonated_user_id as string | undefined
-        session.user.real_user_id = token.real_user_id as string | undefined
       }
       return session
     },

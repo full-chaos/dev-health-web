@@ -576,22 +576,27 @@ export const adminApi = {
   },
 
   impersonation: {
-    start: (targetUserId: string, token?: string, orgId?: string) =>
+    start: (targetUserId: string, token?: string) =>
       request<{
-        access_token: string;
-        token_type: string;
-        expires_in: number;
-        impersonated_user: { id: string; email: string; role: string; org_id: string };
-      }>("/impersonate", { method: "POST", body: JSON.stringify({ target_user_id: targetUserId }) }, token, orgId),
+        status: string;
+        target_user: { id: string; email: string; org_id: string; role: string };
+        expires_at: string;
+      }>("/impersonate", { method: "POST", body: JSON.stringify({ target_user_id: targetUserId }) }, token),
 
-    stop: (token?: string, orgId?: string) =>
-      request<{ access_token: string; token_type: string; expires_in: number }>(
-        "/impersonate/stop", { method: "POST" }, token, orgId
+    stop: (token?: string) =>
+      request<{ status: string }>(
+        "/impersonate/stop", { method: "POST" }, token
       ),
 
-    status: (token?: string, orgId?: string) =>
-      request<{ is_impersonating: boolean; impersonated_user_id: string | null; real_user_id: string | null }>(
-        "/impersonate/status", {}, token, orgId
+    status: (token?: string) =>
+      request<{
+        is_impersonating: boolean;
+        target_user_id: string | null;
+        target_email: string | null;
+        target_org_id: string | null;
+        expires_at: string | null;
+      }>(
+        "/impersonate/status", {}, token
       ),
   },
 
