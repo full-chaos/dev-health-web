@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import type { User } from "@/lib/admin/types";
 
 export function ImpersonateUserButton({ user }: { user: User }) {
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +30,7 @@ export function ImpersonateUserButton({ user }: { user: User }) {
         return;
       }
       if (result.data) {
-        await update({ startImpersonation: result.data });
+        router.refresh();
         router.push("/dashboard");
       }
     } catch {
