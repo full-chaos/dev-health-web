@@ -160,6 +160,20 @@ test.describe("impersonation lifecycle", () => {
     const data = (await res.json()) as { status?: string };
     expect(data.status).toBe("stopped");
   });
+
+  // Best-effort cleanup to avoid leaving the backend in an impersonating state
+  test.afterAll(async ({ request }) => {
+    if (!superuserToken) {
+      return;
+    }
+    try {
+      await request.post(`${liveBackendUrl}/api/v1/admin/impersonate/stop`, {
+        headers: { Authorization: `Bearer ${superuserToken}` },
+      });
+    } catch {
+      // Ignore cleanup errors; this is best-effort only.
+    }
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
