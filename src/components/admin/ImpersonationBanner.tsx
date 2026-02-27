@@ -5,7 +5,7 @@ import { stopImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 
 export function ImpersonationBanner() {
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
 
   if (!session?.user?.is_impersonating) {
@@ -14,10 +14,9 @@ export function ImpersonationBanner() {
 
   const handleStopImpersonation = async () => {
     const result = await stopImpersonation();
-    if (result?.data) {
-      await update({ stopImpersonation: result.data });
+    if (!result?.error) {
       router.refresh();
-      router.push("/dashboard");
+      router.push("/superadmin");
     }
   };
 
