@@ -90,3 +90,28 @@ Support for "Login as User" functionality:
 | `src/proxy.ts` | Network-level auth enforcement and header injection |
 | `src/lib/auth.ts` (guards) | Server-side redirect logic (`requireSession`, `requireRole`, `requireSuperuser`) |
 | `src/components/auth/ImpersonationBanner.tsx` | UI indicator for active impersonation |
+
+## Environment Variables
+
+Auth-related environment variables (see `.env.example` for full list):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AUTH_SECRET` | Production | Secret used to sign/encrypt JWTs. Generate with `openssl rand -base64 32`. Auto-generated in dev. |
+| `AUTH_URL` | Non-localhost | Full URL where the app is hosted (e.g., `https://app.example.com`). Required for CSRF origin validation in Docker, reverse proxy, or production environments. Without this, sign-in/sign-up fails with a "request origin validation" error. Auto-detected on `localhost`. |
+| `BACKEND_URL` | Always | URL of the dev-health-ops backend API (default: `http://127.0.0.1:8000`). |
+
+### Troubleshooting: "request origin validation" error
+
+If you see this error during sign-in or sign-up, Auth.js cannot match the request's `Origin` header against the expected URL. This happens when:
+
+1. Running behind a reverse proxy (nginx, Caddy, etc.)
+2. Running in Docker with port mapping
+3. Deployed to production without `AUTH_URL` set
+
+**Fix:** Set `AUTH_URL` to the publicly accessible URL of the app:
+
+```bash
+AUTH_URL=https://app.example.com  # production
+AUTH_URL=http://localhost:3000     # local dev (usually auto-detected)
+```
