@@ -69,7 +69,6 @@ function makeSession(overrides: Partial<Session["user"]> & { access_token?: stri
       needs_onboarding: false,
       is_impersonating: false,
       impersonated_user_id: undefined,
-      real_user_id: undefined,
       ...userOverrides,
     },
     expires: new Date(Date.now() + 86400000).toISOString(),
@@ -506,7 +505,6 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
         is_superuser: true, // original superadmin flag preserved
         is_impersonating: true,
         impersonated_user_id: "impersonated-user-1",
-        real_user_id: "superadmin-1",
         needs_onboarding: false,
       });
     }
@@ -545,7 +543,6 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
         is_superuser: true,
         is_impersonating: true,
         impersonated_user_id: "enterprise-admin-1",
-        real_user_id: "superadmin-1",
         needs_onboarding: false,
       });
     }
@@ -573,7 +570,6 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
         is_superuser: true, // original superadmin flag preserved
         is_impersonating: true,
         impersonated_user_id: "orgless-user-1",
-        real_user_id: "superadmin-1",
         needs_onboarding: false, // NOT changed during impersonation
       });
     }
