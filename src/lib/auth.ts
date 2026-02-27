@@ -84,10 +84,13 @@ const nextAuth = NextAuth({
         token.expires_at = Date.now() + (session.onboardComplete.expires_in || 3600) * 1000
       }
 
-      // For superusers: sync impersonation state from backend on every callback.
+      // For superusers: sync impersonation state from backend at most every 30s.
       // This ensures router.refresh() picks up the current impersonation state
-      // without waiting for the 5-minute periodic validation window.
-      if (token.is_superuser && token.access_token && !user) {
+      // without hammering the backend on every JWT callback.
+      const now = Date.now()
+      const IMPERSONATION_POLL_INTERVAL = 30 * 1000 // 30 seconds — matches backend cache TTL
+      const lastImpersonationCheck = token.last_impersonation_check as number | undefined
+      if (token.is_superuser && token.access_token && !user && (!lastImpersonationCheck || now - lastImpersonationCheck > IMPERSONATION_POLL_INTERVAL)) {
         try {
           const backendUrl = getBackendUrl()
           const statusRes = await fetch(`${backendUrl}/api/v1/admin/impersonate/status`, {
@@ -100,13 +103,14 @@ const nextAuth = NextAuth({
             const statusData = await statusRes.json() as { is_impersonating: boolean; target_user_id?: string | null }
             token.is_impersonating = statusData.is_impersonating
             token.impersonated_user_id = statusData.target_user_id ?? undefined
+            token.last_impersonation_check = now
           }
         } catch {
           // Network error — keep existing impersonation state
         }
       }
 
-      const now = Date.now()
+
       const expiresAt = token.expires_at as number | undefined
       const lastValidated = token.last_validated as number | undefined
       const tokenExpired = expiresAt && now > expiresAt - 5 * 60 * 1000
