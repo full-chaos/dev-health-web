@@ -5,20 +5,20 @@ import { stopImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 
 export function ImpersonationBanner() {
-const { data: session } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
 
   if (!session?.user?.is_impersonating) {
     return null;
   }
 
-const handleStopImpersonation = async () => {
-  const result = await stopImpersonation();
-  if (!result?.error) {
-    router.refresh();
-    router.push("/superadmin");
-  }
-};
+  const handleStopImpersonation = async () => {
+    const result = await stopImpersonation();
+    if (!result?.error) {
+      router.refresh();
+      router.push("/superadmin");
+    }
+  };
 
   return (
     <div className="w-full bg-amber-500 text-black px-4 py-3 text-center shadow-md flex items-center justify-center gap-4 z-[100] relative">

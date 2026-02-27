@@ -103,10 +103,12 @@ const nextAuth = NextAuth({
             const statusData = await statusRes.json() as { is_impersonating: boolean; target_user_id?: string | null }
             token.is_impersonating = statusData.is_impersonating
             token.impersonated_user_id = statusData.target_user_id ?? undefined
-            token.last_impersonation_check = now
           }
         } catch {
           // Network error — keep existing impersonation state
+        } finally {
+          // Always rate-limit impersonation status checks, even on failures
+          token.last_impersonation_check = now
         }
       }
 
