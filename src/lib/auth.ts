@@ -84,6 +84,28 @@ const nextAuth = NextAuth({
         token.expires_at = Date.now() + (session.onboardComplete.expires_in || 3600) * 1000
       }
 
+      // For superusers: sync impersonation state from backend on every callback.
+      // This ensures router.refresh() picks up the current impersonation state
+      // without waiting for the 5-minute periodic validation window.
+      if (token.is_superuser && token.access_token && !user) {
+        try {
+          const backendUrl = getBackendUrl()
+          const statusRes = await fetch(`${backendUrl}/api/v1/admin/impersonate/status`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token.access_token as string}`,
+            },
+          })
+          if (statusRes.ok) {
+            const statusData = await statusRes.json() as { is_impersonating: boolean; target_user_id?: string | null }
+            token.is_impersonating = statusData.is_impersonating
+            token.impersonated_user_id = statusData.target_user_id ?? undefined
+          }
+        } catch {
+          // Network error — keep existing impersonation state
+        }
+      }
+
       const now = Date.now()
       const expiresAt = token.expires_at as number | undefined
       const lastValidated = token.last_validated as number | undefined
