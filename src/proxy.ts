@@ -63,9 +63,15 @@ export async function proxy(request: NextRequest) {
 
     if (pathname === "/") {
         const session = await auth();
-        const response = session && session.access_token
-            ? NextResponse.redirect(new URL("/dashboard", request.url))
-            : NextResponse.next();
+        if (session && session.access_token) {
+            const redirect = NextResponse.redirect(new URL("/dashboard", request.url));
+            redirect.headers.set("x-nonce", nonce);
+            redirect.headers.set("Content-Security-Policy", csp);
+            return redirect;
+        }
+        const rootHeaders = new Headers(request.headers);
+        rootHeaders.set("x-nonce", nonce);
+        const response = NextResponse.next({ request: { headers: rootHeaders } });
         response.headers.set("x-nonce", nonce);
         response.headers.set("Content-Security-Policy", csp);
         return response;

@@ -143,7 +143,7 @@ export async function graphqlFetch<T>(
   const client = getUrqlClient(options.orgId);
 
   const result = await client
-    .query<T>(query as string, variables, { requestPolicy: "network-only" })
+    .query<T>(query, variables, { requestPolicy: "network-only" })
     .toPromise();
 
   if (result.error) {
