@@ -13,6 +13,7 @@ import {
   type Client,
 } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
+import { errorExchange, timingExchange } from "./urqlExchanges";
 
 const GRAPHQL_PATH = "/graphql";
 
@@ -39,6 +40,7 @@ export function createUrqlClient(options: UrqlClientOptions = {}): Client {
   return createClient({
     url: url.toString(),
     exchanges: [
+      // Org-header injection (must be first to affect outgoing operations).
       mapExchange({
         onOperation(operation) {
           if (!orgId) return operation;
@@ -63,6 +65,9 @@ export function createUrqlClient(options: UrqlClientOptions = {}): Client {
           };
         },
       }),
+      // Observability exchanges — capture errors and measure timing.
+      timingExchange,
+      errorExchange,
       cacheExchange,
       fetchExchange,
     ],
