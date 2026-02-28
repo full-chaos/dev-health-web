@@ -5,6 +5,7 @@ import type {
   WorkItemTypeByScope,
   WorkItemTypeSummary,
 } from "@/data/devHealthOpsTypes";
+import { titleCase } from "@/utils/string";
 
 export type PieSegment = {
   name: string;
@@ -31,14 +32,6 @@ type SparklineMetric = keyof Pick<
   | "bugCompletedRatio"
   | "predictabilityScore"
 >;
-
-const titleCase = (value: string) =>
-  value
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 
 const normalizeKey = (value: string) => value.trim().toLowerCase();
 

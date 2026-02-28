@@ -5,13 +5,7 @@ export type InvestmentMixAggregate = {
   evidence_quality_distribution?: Record<string, number>;
 };
 
-export const titleCase = (value: string) =>
-  value
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+export { titleCase } from "@/utils/string";
 
 export const formatSubcategoryLabel = (key: string, skipParentPrefix = false) => {
   const parts = key.split(".", 2);
