@@ -1,8 +1,12 @@
 /**
  * urql GraphQL client configuration for dev-health-web.
  *
- * Provides a normalized cache, automatic request deduplication,
- * and TypeScript-first GraphQL operations.
+ * Single GraphQL client for all data fetching — both React hooks (via
+ * useQuery/useSubscription) and imperative fetches (via graphqlFetch).
+ *
+ * Replaces the dual-client setup (urqlClient + fetch-based client.ts):
+ *  - React components use urql hooks as before.
+ *  - Server actions / non-hook code use graphqlFetch() from this module.
  */
 
 import {
@@ -11,9 +15,11 @@ import {
   cacheExchange,
   mapExchange,
   type Client,
+  type TypedDocumentNode,
 } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
 import { errorExchange, timingExchange } from "./urqlExchanges";
+import type { GraphQLResponse } from "./types";
 
 const GRAPHQL_PATH = "/graphql";
 
@@ -106,3 +112,79 @@ export function resetUrqlClient(): void {
   _client = null;
   _currentOrgId = undefined;
 }
+
+// ============================================================================
+// Imperative GraphQL fetch — replaces the fetch-based graphqlClient
+// ============================================================================
+
+interface GraphQLFetchOptions {
+  orgId?: string;
+}
+
+/**
+ * Execute a GraphQL query imperatively (no React required).
+ *
+ * Suitable for use in Server Actions, API routes, and non-component code.
+ * Uses the shared urql client under the hood so both hooks and imperative
+ * calls share caching and error handling infrastructure.
+ *
+ * @param query  - GraphQL query string or TypedDocumentNode
+ * @param variables - Query variables
+ * @param options - Optional org ID and other options
+ * @returns The typed query result data
+ * @throws Error if the query returns GraphQL errors or missing data
+ */
+export async function graphqlFetch<T>(
+  query: string | TypedDocumentNode<T, Record<string, unknown>>,
+  variables: Record<string, unknown> = {},
+  options: GraphQLFetchOptions = {}
+): Promise<T> {
+  const client = getUrqlClient(options.orgId);
+
+  const result = await client
+    .query<T>(query as string, variables, { requestPolicy: "network-only" })
+    .toPromise();
+
+  if (result.error) {
+    throw new Error(`GraphQL error: ${result.error.message}`);
+  }
+
+  if (!result.data) {
+    throw new Error("GraphQL response missing data");
+  }
+
+  return result.data;
+}
+
+// ============================================================================
+// Legacy graphqlClient shim — keep callers working during transition
+// ============================================================================
+
+/**
+ * @deprecated Use graphqlFetch() directly. This shim will be removed once all
+ * callers in investmentFetchers and capacityFetchers are updated.
+ */
+export const graphqlClient = {
+  query: async <T>(
+    query: string,
+    variables: Record<string, unknown>,
+    options: GraphQLFetchOptions = {}
+  ): Promise<T> => graphqlFetch<T>(query, variables, options),
+
+  isEnabled: (): boolean => {
+    // Deferred import avoids a circular dep with runtimeConfig
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { runtimeConfig } = require("@/lib/runtimeConfig") as typeof import("@/lib/runtimeConfig");
+    return runtimeConfig.useGraphQLAnalytics();
+  },
+
+  /** @deprecated use graphqlFetch */
+  request: async <T>(
+    query: string,
+    variables: Record<string, unknown>,
+    options: GraphQLFetchOptions = {}
+  ): Promise<GraphQLResponse<T>> => {
+    const data = await graphqlFetch<T>(query, variables, options);
+    return { data };
+  },
+};

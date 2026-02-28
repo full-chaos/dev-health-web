@@ -13,6 +13,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "codegen": "graphql-codegen --config codegen.ts",
+    "codegen:check": "graphql-codegen --config codegen.ts --check",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test -c playwright.live.config.ts",
     "test:unit": "vitest run",
@@ -38,6 +40,9 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.3",
+    "@graphql-codegen/client-preset": "^4.5.1",
+    "@graphql-codegen/typescript": "^4.1.4",
     "@mswjs/http-middleware": "^0.10.3",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
