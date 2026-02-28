@@ -22,8 +22,8 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
     return <ServiceUnavailable />;
   }
 
-  const orgResult = await getCurrentOrg().catch(() => ({ data: undefined }));
-  const org = orgResult.data;
+  const orgResult = await fetchOrNull(getCurrentOrg(), "capacity/org");
+  const org = orgResult?.data;
   const entitlements = org?.id
     ? await fetchOrNull(getOrgEntitlements(org.id), "capacity/entitlements")
     : null;

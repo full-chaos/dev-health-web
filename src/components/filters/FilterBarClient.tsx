@@ -260,8 +260,9 @@ export function FilterBarClient({
           flow_stage: payload.flow_stage ?? [],
         });
       })
-      .catch(() => {
+      .catch((err) => {
         if (active) {
+          console.warn("FilterBarClient: failed to load filter options", err);
           setOptions((prev) => ({ ...prev }));
         }
       });

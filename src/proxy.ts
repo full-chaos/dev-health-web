@@ -49,7 +49,7 @@ function buildCspHeader(nonce: string): string {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
-        "connect-src 'self' https://*.vercel.app",
+        "connect-src 'self' https://*.vercel.app https://*.sentry.io",
         "frame-ancestors 'none'",
     ].join("; ");
 }

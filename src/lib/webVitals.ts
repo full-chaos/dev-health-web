@@ -91,8 +91,8 @@ function reportToEndpoint(metric: WebVitalsMetric): void {
 export function onVital(metric: WebVitalsMetric): void {
   reportToSentry(metric);
 
-  // Only report to custom endpoint if RUM ingestion is configured.
-  if (process.env.NEXT_PUBLIC_RUM_ENDPOINT !== "false") {
+  // Only report to custom endpoint if RUM ingestion is explicitly configured.
+  if (process.env.NEXT_PUBLIC_RUM_ENDPOINT) {
     reportToEndpoint(metric);
   }
 }
