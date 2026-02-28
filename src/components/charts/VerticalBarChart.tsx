@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { BarSeriesOption } from "echarts";
+import type { BarSeriesOption } from "echarts/core";
 
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";

@@ -3,7 +3,8 @@
 import dynamic from "next/dynamic";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EChartsOption } from "echarts";
+// Import types from echarts/core to support tree-shaking (see src/lib/echartsInit.ts)
+import type { EChartsOption } from "echarts/core";
 
 import { type ChartTheme, useChartColors, useChartTheme } from "./chartTheme";
 

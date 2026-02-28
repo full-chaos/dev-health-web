@@ -6,7 +6,7 @@ import type {
   EChartsOption,
   MarkAreaComponentOption,
   TooltipComponentFormatterCallbackParams,
-} from "echarts";
+} from "echarts/core";
 
 import type { ZoneOverlay } from "@/lib/quadrantZones";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";

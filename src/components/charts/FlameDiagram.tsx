@@ -5,7 +5,7 @@ import type {
   TooltipComponentFormatterCallbackParams,
   CustomSeriesRenderItemAPI,
   CustomSeriesRenderItemParams,
-} from "echarts";
+} from "echarts/core";
 
 import type { FlameFrame } from "@/lib/types";
 

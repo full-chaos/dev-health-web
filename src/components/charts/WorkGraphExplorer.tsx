@@ -1,7 +1,7 @@
 "use client";
 
 import { type CSSProperties, useMemo } from "react";
-import type { EChartsOption } from "echarts";
+import type { EChartsOption } from "echarts/core";
 
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";

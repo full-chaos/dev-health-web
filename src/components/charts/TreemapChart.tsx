@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
-import type { EChartsOption } from "echarts";
+import type { EChartsOption } from "echarts/core";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";

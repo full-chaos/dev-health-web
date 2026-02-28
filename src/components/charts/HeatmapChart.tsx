@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 
-import type { TooltipComponentFormatterCallbackParams } from "echarts";
+import type { TooltipComponentFormatterCallbackParams } from "echarts/core";
 
 import type { HeatmapResponse } from "@/lib/types";
 
