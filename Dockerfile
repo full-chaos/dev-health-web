@@ -28,10 +28,10 @@ COPY --from=builder /app/next.config.js ./next.config.js
 
 EXPOSE 3000
 
-# Health check — polls the app's /api/health endpoint every 30 s.
+# Health check — polls the app's /health endpoint every 30 s.
 # start-period gives Next.js time to fully initialise before checks begin.
 # Container is marked unhealthy after 3 consecutive failures (90 s total).
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health || exit 1
+  CMD wget -qO- http://localhost:3000/health || exit 1
 
 CMD ["npm", "run", "start"]
