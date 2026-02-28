@@ -30,9 +30,14 @@ const nextConfig = {
             value: "max-age=63072000; includeSubDomains; preload",
           },
           {
+            // Static-export / CDN fallback CSP (no middleware nonce available).
+            // unsafe-eval is intentionally excluded. Middleware injects a
+            // per-request nonce-based CSP for all server-rendered routes.
+            // unsafe-inline here covers only the static export path where
+            // middleware does not run.
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.vercel.app https://*.sentry.io;",
+              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.vercel.app https://*.sentry.io; frame-ancestors 'none';",
           },
         ],
       },
