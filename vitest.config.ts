@@ -8,10 +8,35 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "node",
-    include: [
-      "src/lib/**/__tests__/**/*.test.ts",
-      "src/utils/**/__tests__/**/*.test.ts",
+    // Component tests use jsdom; lib/util tests keep node environment.
+    // Projects allow different environments per directory.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          environment: "node",
+          include: [
+            "src/lib/**/__tests__/**/*.test.ts",
+            "src/utils/**/__tests__/**/*.test.ts",
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "components",
+          environment: "jsdom",
+          globals: true,
+          setupFiles: ["src/test/setup.ts"],
+          include: ["src/components/**/*.test.tsx", "src/app/**/*.test.tsx"],
+        },
+      },
     ],
+    coverage: {
+      provider: "v8",
+      include: ["src/components/**", "src/app/**"],
+      reporter: ["text", "lcov"],
+    },
   },
 });
