@@ -32,7 +32,7 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.vercel.app;",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.vercel.app https://*.sentry.io;",
           },
         ],
       },
@@ -41,4 +41,24 @@ const nextConfig = {
   // API proxying is handled by proxy.ts at runtime (not baked at build time)
 };
 
-module.exports = nextConfig;
+// Wrap with Sentry only when the DSN is configured to avoid no-op overhead
+// during local development and CI runs without Sentry credentials.
+const hasSentry = Boolean(
+  process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN
+);
+
+if (hasSentry) {
+  const { withSentryConfig } = require("@sentry/nextjs");
+  module.exports = withSentryConfig(nextConfig, {
+    // Suppress the Sentry CLI output during builds.
+    silent: true,
+    // Automatically instrument Next.js data fetching methods.
+    autoInstrumentServerFunctions: true,
+    // Hide source maps from the browser bundle but upload them to Sentry.
+    hideSourceMaps: true,
+    // Disable Sentry telemetry.
+    telemetry: false,
+  });
+} else {
+  module.exports = nextConfig;
+}
