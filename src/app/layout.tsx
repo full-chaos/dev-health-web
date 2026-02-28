@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { headers } from "next/headers";
 import "./globals.css";
+import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 
 const bodyFont = Inter({
   variable: "--font-body",
@@ -74,6 +75,7 @@ export default async function RootLayout({
         <Script id="theme-script" strategy="beforeInteractive" nonce={nonce}>
           {themeScript}
         </Script>
+        <WebVitalsReporter />
         {children}
       </body>
     </html>
