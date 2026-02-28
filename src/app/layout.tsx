@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
 import { headers } from "next/headers";
 import "./globals.css";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
@@ -71,10 +70,9 @@ export default async function RootLayout({
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
-        <Script src={runtimeConfigSrc} strategy="beforeInteractive" nonce={nonce} />
-        <Script id="theme-script" strategy="beforeInteractive" nonce={nonce}>
-          {themeScript}
-        </Script>
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- must run before paint to prevent FOUC */}
+        <script src={runtimeConfigSrc} nonce={nonce} suppressHydrationWarning />
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeScript }} />
         <WebVitalsReporter />
         {children}
       </body>
