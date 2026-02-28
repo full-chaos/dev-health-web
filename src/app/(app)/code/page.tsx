@@ -15,6 +15,7 @@ import {
   getQuadrant,
 } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
@@ -50,31 +51,40 @@ export default async function CodePage({ searchParams }: CodePageProps) {
         ? filters.scope.level
         : "org";
 
-  const home = await getHomeData(filters).catch(() => null);
+  const home = await fetchOrNull(getHomeData(filters), "code/home-data");
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
 
   const churnMetric = getMetric(deltas, "churn");
-  const churnExplain = await getExplainData({ metric: "churn", filters }).catch(() => null);
+  const churnExplain = await fetchOrNull(
+    getExplainData({ metric: "churn", filters }),
+    "code/explain-churn"
+  );
   const hotspots = (churnExplain?.contributors ?? []).slice(0, 6);
-  const hotspotHeatmap = await getHeatmap({
-    type: "risk",
-    metric: "hotspot_risk",
-    scope_type: filters.scope.level,
-    scope_id: scopeId,
-    range_days: filters.time.range_days,
-    start_date: filters.time.start_date,
-    end_date: filters.time.end_date,
-  }).catch(() => null);
-  const churnThroughput = await getQuadrant({
-    type: "churn_throughput",
-    scope_type: quadrantScope,
-    scope_id: scopeId,
-    range_days: filters.time.range_days,
-    bucket: "week",
-    start_date: filters.time.start_date,
-    end_date: filters.time.end_date,
-  }).catch(() => null);
+  const hotspotHeatmap = await fetchOrNull(
+    getHeatmap({
+      type: "risk",
+      metric: "hotspot_risk",
+      scope_type: filters.scope.level,
+      scope_id: scopeId,
+      range_days: filters.time.range_days,
+      start_date: filters.time.start_date,
+      end_date: filters.time.end_date,
+    }),
+    "code/hotspot-heatmap"
+  );
+  const churnThroughput = await fetchOrNull(
+    getQuadrant({
+      type: "churn_throughput",
+      scope_type: quadrantScope,
+      scope_id: scopeId,
+      range_days: filters.time.range_days,
+      bucket: "week",
+      start_date: filters.time.start_date,
+      end_date: filters.time.end_date,
+    }),
+    "code/churn-throughput-quadrant"
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">

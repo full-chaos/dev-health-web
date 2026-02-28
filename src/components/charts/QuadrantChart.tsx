@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+// Type-only imports from full echarts package (erased at runtime — no bundle impact).
 import type {
   DefaultLabelFormatterCallbackParams,
   EChartsOption,

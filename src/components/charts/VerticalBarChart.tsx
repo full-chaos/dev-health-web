@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+// Type-only import from full echarts package (erased at runtime — no bundle impact).
 import type { BarSeriesOption } from "echarts";
 
 import { Chart } from "./Chart";

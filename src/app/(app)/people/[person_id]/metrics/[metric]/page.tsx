@@ -7,6 +7,7 @@ import { PersonRangeBar } from "@/components/people/PersonRangeBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { checkApiHealth, getHeatmap, getPersonDrilldown, getPersonMetric, getPersonSummary } from "@/lib/api";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter } from "@/lib/filters/encode";
 import { formatNumber } from "@/lib/formatters";
 import { getMetricLabel } from "@/lib/metrics/catalog";
@@ -105,18 +106,19 @@ export default async function PersonMetricPage({
     : rawParams.cursor;
 
   const [summary, metricData] = await Promise.all([
-    getPersonSummary({ personId, range_days, compare_days }).catch(() => null),
-    getPersonMetric({ personId, metric, range_days, compare_days }).catch(
-      () => null
-    ),
+    fetchOrNull(getPersonSummary({ personId, range_days, compare_days }), `people/${personId}/summary`),
+    fetchOrNull(getPersonMetric({ personId, metric, range_days, compare_days }), `people/${personId}/metric-${metric}`),
   ]);
-  const activeHoursHeatmap = await getHeatmap({
-    type: "individual",
-    metric: "active_hours",
-    scope_type: "person",
-    scope_id: personId,
-    range_days,
-  }).catch(() => null);
+  const activeHoursHeatmap = await fetchOrNull(
+    getHeatmap({
+      type: "individual",
+      metric: "active_hours",
+      scope_type: "person",
+      scope_id: personId,
+      range_days,
+    }),
+    `people/${personId}/active-hours-heatmap`
+  );
 
   const person = summary?.person;
   const label = metricData?.label ?? getMetricLabel(metric);
@@ -139,15 +141,18 @@ export default async function PersonMetricPage({
     : [];
 
   const drilldown = evidenceType
-    ? await getPersonDrilldown({
-      personId,
-      type: evidenceType,
-      limit,
-      cursor: cursorParam ?? undefined,
-      metric,
-      range_days,
-      compare_days,
-    }).catch(() => null)
+    ? await fetchOrNull(
+        getPersonDrilldown({
+          personId,
+          type: evidenceType,
+          limit,
+          cursor: cursorParam ?? undefined,
+          metric,
+          range_days,
+          compare_days,
+        }),
+        `people/${personId}/drilldown-${evidenceType}`
+      )
     : null;
 
   const breakdowns = metricData?.breakdowns ?? {};

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* ============================================================
+ * BASE TOKENS — default (Material Light)
+ * All palette blocks ONLY override these same tokens, so the
+ * property list is defined exactly once here.
+ * ============================================================ */
 :root {
   color-scheme: light;
   --background: #fffbfe;
@@ -36,15 +41,9 @@
   );
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
-}
-
+/* ============================================================
+ * DARK MODE (OS preference) — Material Dark
+ * ============================================================ */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
@@ -83,6 +82,9 @@
   }
 }
 
+/* ============================================================
+ * PALETTE: material
+ * ============================================================ */
 :root[data-palette="material"][data-theme="light"] {
   color-scheme: light;
   --background: #fffbfe;
@@ -155,6 +157,9 @@
   );
 }
 
+/* ============================================================
+ * PALETTE: echarts
+ * ============================================================ */
 :root[data-palette="echarts"][data-theme="light"] {
   color-scheme: light;
   --background: #f8fafc;
@@ -227,6 +232,9 @@
   );
 }
 
+/* ============================================================
+ * PALETTE: fullchaos
+ * ============================================================ */
 :root[data-palette="fullchaos"][data-theme="light"] {
   color-scheme: light;
   --background: #f8fafc;
@@ -299,6 +307,9 @@
   );
 }
 
+/* ============================================================
+ * PALETTE: fullchaos-cosmic-train
+ * ============================================================ */
 :root[data-palette="fullchaos-cosmic-train"][data-theme="light"] {
   color-scheme: light;
   --background: #fff8f0;
@@ -373,6 +384,9 @@
   );
 }
 
+/* ============================================================
+ * PALETTE: flat
+ * ============================================================ */
 :root[data-palette="flat"][data-theme="light"] {
   color-scheme: light;
   --background: #ecf0f1;
@@ -445,6 +459,22 @@
   );
 }
 
+/* ============================================================
+ * TAILWIND THEME BRIDGE
+ * Map design tokens into Tailwind's color / font namespaces.
+ * ============================================================ */
+@theme inline {
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+/* ============================================================
+ * GLOBAL BASE STYLES
+ * ============================================================ */
 body {
   background: var(--background);
   color: var(--foreground);

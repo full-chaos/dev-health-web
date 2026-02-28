@@ -1,8 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-
-export type ActionResult<T> = { data: T; error?: never } | { data?: never; error: string };
+import type { ActionResult } from "@/lib/result";
 
 export type SubscriptionDetails = {
   id: string;

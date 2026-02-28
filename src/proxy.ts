@@ -22,15 +22,59 @@ function isPublicPath(pathname: string): boolean {
     return PUBLIC_PATHS.some(path => path !== "/" && pathname.startsWith(path));
 }
 
+/**
+ * Generate a cryptographically random nonce for Content-Security-Policy.
+ * Returns a base64url-encoded 16-byte random value.
+ */
+function generateNonce(): string {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+}
+
+/**
+ * Build the Content-Security-Policy header value.
+ *
+ * unsafe-eval is intentionally excluded — Next.js 13+ App Router does not
+ * require it. The nonce covers all first-party inline scripts (theme init,
+ * runtime-config.js) so unsafe-inline is also removed from script-src.
+ */
+function buildCspHeader(nonce: string): string {
+    return [
+        "default-src 'self'",
+        `script-src 'self' 'nonce-${nonce}'`,
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "font-src 'self' data:",
+        "connect-src 'self' https://*.vercel.app https://*.sentry.io",
+        "frame-ancestors 'none'",
+    ].join("; ");
+}
+
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    // Generate a per-request nonce and attach it so the layout can read it.
+    const nonce = generateNonce();
+    const csp = buildCspHeader(nonce);
 
     if (pathname === "/") {
         const session = await auth();
         if (session && session.access_token) {
-            return NextResponse.redirect(new URL("/dashboard", request.url));
+            const redirect = NextResponse.redirect(new URL("/dashboard", request.url));
+            redirect.headers.set("x-nonce", nonce);
+            redirect.headers.set("Content-Security-Policy", csp);
+            return redirect;
         }
-        return NextResponse.next();
+        const rootHeaders = new Headers(request.headers);
+        rootHeaders.set("x-nonce", nonce);
+        const response = NextResponse.next({ request: { headers: rootHeaders } });
+        response.headers.set("x-nonce", nonce);
+        response.headers.set("Content-Security-Policy", csp);
+        return response;
     }
 
     let accessToken: string | undefined;
@@ -41,7 +85,9 @@ export async function proxy(request: NextRequest) {
         if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
             signInUrl.searchParams.set("callbackUrl", pathname);
-            return NextResponse.redirect(signInUrl);
+            const redirect = NextResponse.redirect(signInUrl);
+            redirect.headers.set("Content-Security-Policy", csp);
+            return redirect;
         }
         accessToken = session.access_token;
         orgId = session.user?.org_id;
@@ -52,24 +98,37 @@ export async function proxy(request: NextRequest) {
         (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth") && !pathname.startsWith("/api/v1/llm-proxy"));
 
     if (!shouldProxy) {
-        return NextResponse.next();
+        const response = NextResponse.next({
+            request: {
+                headers: new Headers({
+                    ...Object.fromEntries(request.headers),
+                    "x-nonce": nonce,
+                }),
+            },
+        });
+        response.headers.set("x-nonce", nonce);
+        response.headers.set("Content-Security-Policy", csp);
+        return response;
     }
 
     const backendUrl = getBackendUrl();
     const targetUrl = new URL(pathname + request.nextUrl.search, backendUrl);
 
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-nonce", nonce);
     if (accessToken) {
-        const requestHeaders = new Headers(request.headers);
         requestHeaders.set("Authorization", `Bearer ${accessToken}`);
         if (orgId) {
             requestHeaders.set("X-Org-Id", orgId);
         }
-        return NextResponse.rewrite(targetUrl, {
-            request: { headers: requestHeaders },
-        });
     }
 
-    return NextResponse.rewrite(targetUrl);
+    const response = NextResponse.rewrite(targetUrl, {
+        request: { headers: requestHeaders },
+    });
+    response.headers.set("x-nonce", nonce);
+    response.headers.set("Content-Security-Policy", csp);
+    return response;
 }
 
 export const config = {

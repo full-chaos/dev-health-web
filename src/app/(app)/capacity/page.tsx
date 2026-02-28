@@ -7,6 +7,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CapacityView } from "@/components/work/CapacityView";
 import { checkApiHealth } from "@/lib/api";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
@@ -21,10 +22,10 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
     return <ServiceUnavailable />;
   }
 
-  const orgResult = await getCurrentOrg().catch(() => ({ data: undefined }));
-  const org = orgResult.data;
+  const orgResult = await fetchOrNull(getCurrentOrg(), "capacity/org");
+  const org = orgResult?.data;
   const entitlements = org?.id
-    ? await getOrgEntitlements(org.id).catch(() => null)
+    ? await fetchOrNull(getOrgEntitlements(org.id), "capacity/entitlements")
     : null;
   const features = entitlements?.data?.features ?? {};
 

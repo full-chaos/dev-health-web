@@ -1,9 +1,9 @@
-FROM node:25-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:25-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -13,7 +13,7 @@ ARG BACKEND_URL=http://127.0.0.1:8000
 ENV BACKEND_URL=${BACKEND_URL}
 RUN npm run build
 
-FROM node:25-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -27,4 +27,11 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/next.config.js ./next.config.js
 
 EXPOSE 3000
+
+# Health check — polls the app's /api/health endpoint every 30 s.
+# start-period gives Next.js time to fully initialise before checks begin.
+# Container is marked unhealthy after 3 consecutive failures (90 s total).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget -qO- http://localhost:3000/api/health || exit 1
+
 CMD ["npm", "run", "start"]

@@ -5,6 +5,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getOpportunities } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 
 type OpportunitiesPageProps = {
@@ -26,7 +27,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const data = await getOpportunities(filters).catch(() => null);
+  const data = await fetchOrNull(getOpportunities(filters), "opportunities/data");
 
   return (
     <div className="min-h-screen bg-background text-foreground">

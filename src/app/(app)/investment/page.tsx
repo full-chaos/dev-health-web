@@ -7,6 +7,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getInvestment } from "@/lib/api";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatNumber } from "@/lib/formatters";
@@ -26,7 +27,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
   const orgResult = await getCurrentOrg().catch(() => ({ data: undefined }));
   const org = orgResult.data;
   const entitlements = org?.id
-    ? await getOrgEntitlements(org.id).catch(() => null)
+    ? await fetchOrNull(getOrgEntitlements(org.id), "investment/entitlements")
     : null;
   const features = entitlements?.data?.features ?? {};
 
@@ -39,7 +40,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const data = await getInvestment(filters).catch(() => null);
+  const data = await fetchOrNull(getInvestment(filters), "investment/data");
   const mix = data ? normalizeInvestmentMix(data) : null;
   const themes = mix ? getSortedThemes(mix) : [];
   const subcategories = mix ? getSortedSubcategories(mix) : [];

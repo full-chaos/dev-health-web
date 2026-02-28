@@ -13,6 +13,29 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // Prevent silent swallowing of errors — use fetchOrNull or log explicitly.
+    // Pattern: .catch(() => null) or .catch(() => {}) with no body.
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          // .catch(() => null)
+          selector:
+            "CallExpression[callee.property.name='catch'] > ArrowFunctionExpression.arguments:first-child[body.type='Literal'][body.value=null]",
+          message:
+            "Silent .catch(() => null) swallows errors. Use fetchOrNull() or log the error explicitly.",
+        },
+        {
+          // .catch(() => {})
+          selector:
+            "CallExpression[callee.property.name='catch'] > ArrowFunctionExpression.arguments:first-child[body.type='BlockStatement'][body.body.length=0]",
+          message:
+            "Empty .catch(() => {}) swallows errors. Use fetchOrNull() or log the error explicitly.",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

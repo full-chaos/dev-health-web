@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
+// Type-only import from full echarts package (erased at runtime — no bundle impact).
 import type { EChartsOption } from "echarts";
 
 import { Chart } from "./Chart";

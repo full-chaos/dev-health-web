@@ -5,6 +5,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getQuadrant } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { withFilterParam } from "@/lib/filters/url";
 import { getRoleConfig } from "@/lib/roleContext";
 
@@ -75,15 +76,18 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
   const quadrantData = canQuery
     ? await Promise.all(
       QUADRANT_CARDS.map((card) =>
-        getQuadrant({
-          type: card.type,
-          scope_type: scopeType,
-          scope_id: scopeId,
-          range_days: filters.time.range_days,
-          start_date: filters.time.start_date,
-          end_date: filters.time.end_date,
-          bucket,
-        }).catch(() => null)
+        fetchOrNull(
+          getQuadrant({
+            type: card.type,
+            scope_type: scopeType,
+            scope_id: scopeId,
+            range_days: filters.time.range_days,
+            start_date: filters.time.start_date,
+            end_date: filters.time.end_date,
+            bucket,
+          }),
+          `landscape/quadrant-${card.type}`
+        )
       )
     )
     : QUADRANT_CARDS.map(() => null);

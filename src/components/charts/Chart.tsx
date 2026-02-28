@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+// Type-only import from full echarts package (types are erased at runtime — no bundle impact).
+// Runtime components are registered via src/lib/echartsInit.ts (tree-shaking).
 import type { EChartsOption } from "echarts";
 
 import { type ChartTheme, useChartColors, useChartTheme } from "./chartTheme";

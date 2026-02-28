@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { adminApi, AdminApiError } from "./api";
 import { revalidatePath } from "next/cache";
+import type { ActionResult } from "@/lib/result";
 import type {
   User,
   UserCreate,
@@ -70,8 +71,6 @@ async function getToken(): Promise<string> {
   const ctx = await getSessionContext();
   return ctx.token;
 }
-
-type ActionResult<T> = { data: T; error?: never } | { data?: never; error: string };
 
 async function withErrorHandling<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   try {

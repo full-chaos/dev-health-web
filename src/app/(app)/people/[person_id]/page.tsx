@@ -8,6 +8,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { checkApiHealth, getPersonSummary, getQuadrant } from "@/lib/api";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter } from "@/lib/filters/encode";
 import { formatMetricValue, formatNumber, formatPercent } from "@/lib/formatters";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
@@ -89,18 +90,14 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
     scope: { level: "developer" as const, ids: [personId] },
   };
 
-  const summary = await getPersonSummary({
-    personId,
-    range_days,
-    compare_days,
-  }).catch(() => null);
-  const quadrant = await getQuadrant({
-    type: "churn_throughput",
-    scope_type: "person",
-    scope_id: personId,
-    range_days,
-    bucket: "week",
-  }).catch(() => null);
+  const summary = await fetchOrNull(
+    getPersonSummary({ personId, range_days, compare_days }),
+    `people/${personId}/summary`
+  );
+  const quadrant = await fetchOrNull(
+    getQuadrant({ type: "churn_throughput", scope_type: "person", scope_id: personId, range_days, bucket: "week" }),
+    `people/${personId}/quadrant`
+  );
 
   const deltas = summary?.deltas?.length ? summary.deltas : fallbackPersonDeltas;
   const placeholderDeltas = !summary?.deltas?.length;

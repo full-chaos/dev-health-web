@@ -8,6 +8,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getExplainData, getHomeData, getQuadrant } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
@@ -99,31 +100,34 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
   const activeTab =
     METRIC_TABS.find((tab) => tab.id === tabParam) ?? METRIC_TABS[0];
 
-  const home = await getHomeData(filters).catch(() => null);
+  const home = await fetchOrNull(getHomeData(filters), "metrics/home-data");
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
   const highlightMetric = getMetric(deltas, activeTab.highlight);
   const highlightLabel = highlightMetric?.label ?? activeTab.highlight;
 
-  const highlight = await getExplainData({
-    metric: activeTab.highlight,
-    filters,
-  }).catch(() => null);
+  const highlight = await fetchOrNull(
+    getExplainData({ metric: activeTab.highlight, filters }),
+    `metrics/explain-${activeTab.highlight}`
+  );
   const quadrantScope: "org" | "team" | "repo" | "developer" =
     filters.scope.level === "developer"
       ? "developer"
       : filters.scope.level === "team" || filters.scope.level === "repo"
         ? filters.scope.level
         : "org";
-  const quadrant = await getQuadrant({
-    type: "churn_throughput",
-    scope_type: quadrantScope,
-    scope_id: filters.scope.ids[0] ?? "",
-    range_days: filters.time.range_days,
-    bucket: "week",
-    start_date: filters.time.start_date,
-    end_date: filters.time.end_date,
-  }).catch(() => null);
+  const quadrant = await fetchOrNull(
+    getQuadrant({
+      type: "churn_throughput",
+      scope_type: quadrantScope,
+      scope_id: filters.scope.ids[0] ?? "",
+      range_days: filters.time.range_days,
+      bucket: "week",
+      start_date: filters.time.start_date,
+      end_date: filters.time.end_date,
+    }),
+    "metrics/quadrant"
+  );
 
   const drivers = (highlight?.drivers ?? []).slice(0, 5);
   const contributors = (highlight?.contributors ?? []).slice(0, 5);

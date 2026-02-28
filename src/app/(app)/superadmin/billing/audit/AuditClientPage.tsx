@@ -12,8 +12,8 @@ import {
   type BillingAuditFilters,
   type ReconciliationReport,
 } from "./actions";
-import { AuditLogFilters } from "@/components/admin/billing/AuditLogFilters";
-import { AuditLogTable } from "@/components/admin/billing/AuditLogTable";
+import { AuditLogFilters } from "@/components/shared/AuditLogFilters";
+import { AuditLogTable } from "@/components/shared/AuditLogTable";
 import { AuditDetailPanel } from "@/components/admin/billing/AuditDetailPanel";
 import { ReconciliationTrigger } from "@/components/admin/billing/ReconciliationTrigger";
 
@@ -39,7 +39,7 @@ export function AuditClientPage({ initialEntries }: AuditClientPageProps) {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Billing Audit</h1>
-      <AuditLogFilters onApply={(filters) => void refresh(filters)} />
+      <AuditLogFilters variant="billing" onApply={(filters) => void refresh(filters)} />
       <ReconciliationTrigger
         running={running}
         report={report}
@@ -60,6 +60,7 @@ export function AuditClientPage({ initialEntries }: AuditClientPageProps) {
         }}
       />
       <AuditLogTable
+        variant="billing"
         entries={entries}
         onSelect={async (entryId) => {
           const result = await getAuditEntry(entryId);

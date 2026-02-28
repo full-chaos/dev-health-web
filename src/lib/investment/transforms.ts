@@ -13,6 +13,7 @@ import type {
 } from "@/lib/types";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
+import { titleCase as sharedTitleCase } from "@/utils/string";
 
 // ============================================================================
 // Theme / Subcategory label utilities
@@ -39,14 +40,9 @@ export const TOP_N_REPOS = 12;
 
 /**
  * Title case a string, converting underscores/hyphens to spaces.
+ * Re-exported from shared utils for backward compatibility.
  */
-export const titleCase = (value: string): string =>
-    value
-        .replace(/[_-]+/g, " ")
-        .trim()
-        .split(/\s+/)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" ");
+export const titleCase = sharedTitleCase;
 
 /**
  * Normalize a theme key to its canonical form.

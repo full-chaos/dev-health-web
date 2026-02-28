@@ -1,6 +1,20 @@
 import { resolveOrigin } from "@/lib/origin";
 import { isServer } from "@/lib/env";
 
+/**
+ * Generate a unique request ID for distributed tracing.
+ *
+ * Uses crypto.randomUUID() when available (all modern runtimes) and falls
+ * back to a timestamp+random string for environments that don't support it.
+ */
+function generateRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export type ApiQueryParams = Record<
   string,
   string | number | boolean | null | undefined
@@ -53,9 +67,22 @@ const request = async (
   }
 
   const authHeaders = await getServerAuthHeaders();
+
+  // Attach X-Request-ID for distributed tracing across the web → backend boundary.
+  // Callers may supply their own via init.headers; we only generate if absent.
+  const existingHeaders = (init?.headers ?? {}) as Record<string, string>;
+  const requestId =
+    existingHeaders["X-Request-ID"] ??
+    existingHeaders["x-request-id"] ??
+    generateRequestId();
+
   const mergedInit: ApiFetchInit = {
     ...init,
-    headers: { ...authHeaders, ...init?.headers },
+    headers: {
+      ...authHeaders,
+      ...existingHeaders,
+      "X-Request-ID": requestId,
+    },
   };
 
   const promise = fetch(url, mergedInit);
