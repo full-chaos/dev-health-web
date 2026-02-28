@@ -1,3 +1,7 @@
+// @ts-check
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { withSentryConfig } = require("@sentry/nextjs");
+
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   ...(process.env.DEMO_EXPORT === "true"
@@ -46,4 +50,18 @@ const nextConfig = {
   // API proxying is handled by proxy.ts at runtime (not baked at build time)
 };
 
-module.exports = nextConfig;
+module.exports = withSentryConfig(nextConfig, {
+  // Suppress source map upload logs during build
+  silent: !process.env.CI,
+  // Upload source maps only when SENTRY_AUTH_TOKEN is set
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Disable source map upload if auth token is not set (local dev)
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  // Automatically tree-shake Sentry logger statements to reduce bundle size
+  disableLogger: true,
+  // Enables automatic instrumentation of Vercel Cron Monitors
+  automaticVercelMonitors: false,
+});
