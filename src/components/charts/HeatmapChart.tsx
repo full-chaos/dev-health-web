@@ -2,7 +2,8 @@
 
 import type { CSSProperties } from "react";
 
-import type { TooltipComponentFormatterCallbackParams } from "echarts/core";
+// Type-only import from full echarts package (erased at runtime — no bundle impact).
+import type { TooltipComponentFormatterCallbackParams } from "echarts";
 
 import type { HeatmapResponse } from "@/lib/types";
 

@@ -3,8 +3,9 @@
 import dynamic from "next/dynamic";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-// Import types from echarts/core to support tree-shaking (see src/lib/echartsInit.ts)
-import type { EChartsOption } from "echarts/core";
+// Type-only import from full echarts package (types are erased at runtime — no bundle impact).
+// Runtime components are registered via src/lib/echartsInit.ts (tree-shaking).
+import type { EChartsOption } from "echarts";
 
 import { type ChartTheme, useChartColors, useChartTheme } from "./chartTheme";
 

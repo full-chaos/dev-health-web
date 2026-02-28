@@ -2,7 +2,8 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
-import type { EChartsOption } from "echarts/core";
+// Type-only import from full echarts package (erased at runtime — no bundle impact).
+import type { EChartsOption } from "echarts";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";

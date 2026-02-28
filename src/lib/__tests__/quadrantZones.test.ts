@@ -7,22 +7,30 @@ import {
 import type { QuadrantResponse } from "../types";
 
 // Helper to build a minimal QuadrantResponse
+function makePoint(x: number, y: number, idx: number) {
+  return {
+    entity_id: `id-${idx}`,
+    entity_label: `point-${idx}`,
+    x,
+    y,
+    window_start: "2024-01-01",
+    window_end: "2024-01-31",
+    evidence_link: "",
+  };
+}
+
 function makeQuadrantResponse(
   xMetric: string,
   yMetric: string,
-  points: Array<{ x: number; y: number; label?: string }>
+  points: Array<{ x: number; y: number }>
 ): QuadrantResponse {
   return {
     axes: {
       x: { metric: xMetric, unit: "", label: xMetric },
       y: { metric: yMetric, unit: "", label: yMetric },
     },
-    points: points.map((p, i) => ({
-      x: p.x,
-      y: p.y,
-      label: p.label ?? `point-${i}`,
-      id: `id-${i}`,
-    })),
+    points: points.map((p, i) => makePoint(p.x, p.y, i)),
+    annotations: [],
   };
 }
 
@@ -74,6 +82,7 @@ describe("getZoneOverlay", () => {
       { x: 5, y: 8 },
       { x: 9, y: 2 },
       { x: 7, y: 6 },
+      { x: 3, y: 7 },
     ]);
     const overlay = getZoneOverlay(data);
     expect(overlay).not.toBeNull();

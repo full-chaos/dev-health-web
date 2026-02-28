@@ -13,6 +13,7 @@ export type InvestmentMixAggregate = {
  */
 
 export { titleCase } from "@/utils/string";
+import { titleCase } from "@/utils/string";
 
 export const formatSubcategoryLabel = (key: string, skipParentPrefix = false) => {
   const parts = key.split(".", 2);

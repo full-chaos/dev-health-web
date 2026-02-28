@@ -1,12 +1,13 @@
 "use client";
 
 import type { CSSProperties } from "react";
+// Type-only imports from full echarts package (erased at runtime — no bundle impact).
 import type {
   DefaultLabelFormatterCallbackParams,
   EChartsOption,
   MarkAreaComponentOption,
   TooltipComponentFormatterCallbackParams,
-} from "echarts/core";
+} from "echarts";
 
 import type { ZoneOverlay } from "@/lib/quadrantZones";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";

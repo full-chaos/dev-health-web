@@ -1,11 +1,12 @@
 "use client";
 
 import type { CSSProperties } from "react";
+// Type-only imports from full echarts package (erased at runtime — no bundle impact).
 import type {
   TooltipComponentFormatterCallbackParams,
   CustomSeriesRenderItemAPI,
   CustomSeriesRenderItemParams,
-} from "echarts/core";
+} from "echarts";
 
 import type { FlameFrame } from "@/lib/types";
 
