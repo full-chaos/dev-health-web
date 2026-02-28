@@ -2,8 +2,13 @@
 
 /* ============================================================
  * BASE TOKENS — default (Material Light)
- * All palette blocks ONLY override these same tokens, so the
- * property list is defined exactly once here.
+ *
+ * Computed tokens (resolve dynamically — redeclare only when
+ * a theme value diverges from the derived default):
+ *   --card-90/80/70/60  derived from --card via color-mix
+ *   --chart-text        derived from --foreground
+ *   --chart-muted       derived from --ink-muted
+ *   --chart-grid        derived from --card-stroke
  * ============================================================ */
 :root {
   color-scheme: light;
@@ -15,14 +20,14 @@
   --accent-3: #7d5260;
   --accent-negative: #b3261e;
   --card: #ffffff;
-  --card-90: rgba(255, 255, 255, 0.9);
-  --card-80: rgba(255, 255, 255, 0.8);
-  --card-70: rgba(255, 255, 255, 0.7);
-  --card-60: rgba(255, 255, 255, 0.6);
+  --card-90: color-mix(in srgb, var(--card) 90%, transparent);
+  --card-80: color-mix(in srgb, var(--card) 80%, transparent);
+  --card-70: color-mix(in srgb, var(--card) 70%, transparent);
+  --card-60: color-mix(in srgb, var(--card) 60%, transparent);
   --card-stroke: #e7e0ec;
-  --chart-grid: #e7e0ec;
-  --chart-text: #1c1b1f;
-  --chart-muted: #49454f;
+  --chart-grid: var(--card-stroke);
+  --chart-text: var(--foreground);
+  --chart-muted: var(--ink-muted);
   --chart-color-1: #1e88e5;
   --chart-color-2: #3949ab;
   --chart-color-3: #8e24aa;
@@ -55,14 +60,7 @@
     --accent-3: #efb8c8;
     --accent-negative: #f2b8b5;
     --card: #211f26;
-    --card-90: rgba(33, 31, 38, 0.9);
-    --card-80: rgba(33, 31, 38, 0.8);
-    --card-70: rgba(33, 31, 38, 0.7);
-    --card-60: rgba(33, 31, 38, 0.6);
     --card-stroke: #49454f;
-    --chart-grid: #49454f;
-    --chart-text: #e6e1e5;
-    --chart-muted: #cac4d0;
     --chart-color-1: #90caf9;
     --chart-color-2: #9fa8da;
     --chart-color-3: #ce93d8;
@@ -95,14 +93,7 @@
   --accent-3: #7d5260;
   --accent-negative: #b3261e;
   --card: #ffffff;
-  --card-90: rgba(255, 255, 255, 0.9);
-  --card-80: rgba(255, 255, 255, 0.8);
-  --card-70: rgba(255, 255, 255, 0.7);
-  --card-60: rgba(255, 255, 255, 0.6);
   --card-stroke: #e7e0ec;
-  --chart-grid: #e7e0ec;
-  --chart-text: #1c1b1f;
-  --chart-muted: #49454f;
   --chart-color-1: #1e88e5;
   --chart-color-2: #3949ab;
   --chart-color-3: #8e24aa;
@@ -131,14 +122,7 @@
   --accent-3: #efb8c8;
   --accent-negative: #f2b8b5;
   --card: #211f26;
-  --card-90: rgba(33, 31, 38, 0.9);
-  --card-80: rgba(33, 31, 38, 0.8);
-  --card-70: rgba(33, 31, 38, 0.7);
-  --card-60: rgba(33, 31, 38, 0.6);
   --card-stroke: #49454f;
-  --chart-grid: #49454f;
-  --chart-text: #e6e1e5;
-  --chart-muted: #cac4d0;
   --chart-color-1: #90caf9;
   --chart-color-2: #9fa8da;
   --chart-color-3: #ce93d8;
@@ -170,13 +154,7 @@
   --accent-3: #f59e0b;
   --accent-negative: #ef4444;
   --card: #ffffff;
-  --card-90: rgba(255, 255, 255, 0.9);
-  --card-80: rgba(255, 255, 255, 0.8);
-  --card-70: rgba(255, 255, 255, 0.7);
-  --card-60: rgba(255, 255, 255, 0.6);
   --card-stroke: #e2e8f0;
-  --chart-grid: #e2e8f0;
-  --chart-text: #0f172a;
   --chart-muted: #64748b;
   --chart-color-1: #38bdf8;
   --chart-color-2: #22d3ee;
@@ -206,14 +184,7 @@
   --accent-3: #fbbf24;
   --accent-negative: #f87171;
   --card: #111827;
-  --card-90: rgba(17, 24, 39, 0.9);
-  --card-80: rgba(17, 24, 39, 0.8);
-  --card-70: rgba(17, 24, 39, 0.7);
-  --card-60: rgba(17, 24, 39, 0.6);
   --card-stroke: #334155;
-  --chart-grid: #334155;
-  --chart-text: #e2e8f0;
-  --chart-muted: #94a3b8;
   --chart-color-1: #38bdf8;
   --chart-color-2: #22d3ee;
   --chart-color-3: #34d399;
@@ -245,10 +216,6 @@
   --accent-3: #f59e0b;
   --accent-negative: #ef4444;
   --card: #ffffff;
-  --card-90: rgba(255, 255, 255, 0.9);
-  --card-80: rgba(255, 255, 255, 0.8);
-  --card-70: rgba(255, 255, 255, 0.7);
-  --card-60: rgba(255, 255, 255, 0.6);
   --card-stroke: #e2e8f0;
   --chart-grid: #e5e7eb;
   --chart-text: #111827;
@@ -281,14 +248,7 @@
   --accent-3: #fbbf24;
   --accent-negative: #f87171;
   --card: #111827;
-  --card-90: rgba(17, 24, 39, 0.9);
-  --card-80: rgba(17, 24, 39, 0.8);
-  --card-70: rgba(17, 24, 39, 0.7);
-  --card-60: rgba(17, 24, 39, 0.6);
   --card-stroke: #334155;
-  --chart-grid: #334155;
-  --chart-text: #e2e8f0;
-  --chart-muted: #94a3b8;
   --chart-color-1: #1f77b4;
   --chart-color-2: #ff7f0e;
   --chart-color-3: #2ca02c;
@@ -320,13 +280,7 @@
   --accent-3: #63d7ff;
   --accent-negative: #e53e3e;
   --card: #fffdf9;
-  --card-90: rgba(255, 253, 249, 0.9);
-  --card-80: rgba(255, 253, 249, 0.8);
-  --card-70: rgba(255, 253, 249, 0.7);
-  --card-60: rgba(255, 253, 249, 0.6);
   --card-stroke: #f5dfc7;
-  --chart-grid: #f5dfc7;
-  --chart-text: #090b1d;
   --chart-muted: #7a5f4f;
   --chart-color-1: #ffb035;
   --chart-color-2: #ff5f1f;
@@ -357,14 +311,7 @@
   --accent-3: #63d7ff;
   --accent-negative: #ff6f6f;
   --card: #0f1126;
-  --card-90: rgba(15, 17, 38, 0.9);
-  --card-80: rgba(15, 17, 38, 0.8);
-  --card-70: rgba(15, 17, 38, 0.7);
-  --card-60: rgba(15, 17, 38, 0.6);
   --card-stroke: #1f2247;
-  --chart-grid: #1f2247;
-  --chart-text: #f6f6fa;
-  --chart-muted: #c9cadf;
   --chart-color-1: #ffb035;
   --chart-color-2: #ff5f1f;
   --chart-color-3: #63d7ff;
@@ -397,14 +344,7 @@
   --accent-3: #f39c12;
   --accent-negative: #e74c3c;
   --card: #ffffff;
-  --card-90: rgba(255, 255, 255, 0.9);
-  --card-80: rgba(255, 255, 255, 0.8);
-  --card-70: rgba(255, 255, 255, 0.7);
-  --card-60: rgba(255, 255, 255, 0.6);
   --card-stroke: #d5dadd;
-  --chart-grid: #d5dadd;
-  --chart-text: #2c3e50;
-  --chart-muted: #7f8c8d;
   --chart-color-1: #1abc9c;
   --chart-color-2: #2ecc71;
   --chart-color-3: #3498db;
@@ -433,14 +373,7 @@
   --accent-3: #f5c542;
   --accent-negative: #f1948a;
   --card: #34495e;
-  --card-90: rgba(52, 73, 94, 0.9);
-  --card-80: rgba(52, 73, 94, 0.8);
-  --card-70: rgba(52, 73, 94, 0.7);
-  --card-60: rgba(52, 73, 94, 0.6);
   --card-stroke: #3d566e;
-  --chart-grid: #3d566e;
-  --chart-text: #ecf0f1;
-  --chart-muted: #bdc3c7;
   --chart-color-1: #1abc9c;
   --chart-color-2: #2ecc71;
   --chart-color-3: #5dade2;
