@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { AuditLogTable } from "@/components/superadmin/AuditLogTable";
-import { AuditLogFilters } from "@/components/superadmin/AuditLogFilters";
+import { AuditLogTable } from "@/components/shared/AuditLogTable";
+import { AuditLogFilters } from "@/components/shared/AuditLogFilters";
 import { listAuditLogs } from "@/lib/admin/server";
 import type { AuditLog, AuditLogFilter } from "@/lib/admin/types";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
@@ -61,7 +61,7 @@ export default function OrgAuditLogPage() {
           description="Browse and filter audit events for your organization."
         />
 
-        <AuditLogFilters onFilter={handleFilter} />
+        <AuditLogFilters variant="admin" onFilter={handleFilter} />
 
         {error && (
           <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
@@ -73,7 +73,7 @@ export default function OrgAuditLogPage() {
           <div className="py-12 text-center text-(--ink-muted)">Loading audit logs...</div>
         ) : (
           <>
-            <AuditLogTable logs={logs} />
+            <AuditLogTable variant="admin" entries={logs} />
             <div className="mt-4 flex items-center justify-between">
               <button
                 type="button"
