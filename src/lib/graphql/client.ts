@@ -5,6 +5,10 @@
  * urqlClient.ts. This file is kept so existing imports continue to work
  * during migration.
  *
+ * TODO(CHAOS-659): Remove this shim once all callers import from
+ * "@/lib/graphql/urqlClient" directly. Only one external test file
+ * (src/lib/__tests__/graphqlClient.test.ts) still imports from here.
+ *
  * @deprecated Import from "@/lib/graphql/urqlClient" directly.
  */
 

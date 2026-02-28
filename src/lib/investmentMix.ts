@@ -5,6 +5,13 @@ export type InvestmentMixAggregate = {
   evidence_quality_distribution?: Record<string, number>;
 };
 
+/**
+ * @deprecated The backend no longer sends the legacy categories/subtypes shape.
+ * This type and the normalisation branch below will be removed once all
+ * backend instances are confirmed to serve the theme_distribution contract.
+ * Track removal in CHAOS-659.
+ */
+
 export { titleCase } from "@/utils/string";
 
 export const formatSubcategoryLabel = (key: string, skipParentPrefix = false) => {
@@ -70,7 +77,26 @@ export const normalizeInvestmentMix = (input: InvestmentMixResponse): Investment
     };
   }
 
+  // Legacy path: backend sent categories/subtypes instead of theme_distribution.
+  // Log a warning so we can track when this is still being triggered.
+  // TODO(CHAOS-659): Remove this branch once all backend instances serve the
+  // theme_distribution contract and the warning no longer appears in logs.
   const legacy = input as LegacyInvestmentMixResponse;
+
+  if (typeof window === "undefined") {
+    // Server-side only — import logger lazily to avoid browser bundle impact.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { logger } = require("@/lib/logger");
+      logger.warn(
+        { keys: Object.keys(typed) },
+        "investmentMix: received legacy categories/subtypes response shape — backend should upgrade to theme_distribution contract (CHAOS-659)"
+      );
+    } catch {
+      // Ignore if logger is unavailable.
+    }
+  }
+
   const theme_distribution: Record<string, number> = {};
   const subcategory_distribution: Record<string, number> = {};
 
