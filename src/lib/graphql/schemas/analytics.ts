@@ -127,11 +127,56 @@ export const SankeyRequestInputSchema = z.object({
   useInvestment: z.boolean().optional(),
 });
 
+// =============================================================================
+// Filter input schemas
+// =============================================================================
+
+export const ScopeLevelInputSchema = z.enum([
+  "ORG",
+  "TEAM",
+  "REPO",
+  "SERVICE",
+  "DEVELOPER",
+]);
+
+export const ScopeFilterInputSchema = z.object({
+  level: ScopeLevelInputSchema.optional(),
+  ids: z.array(z.string().min(1)).optional(),
+});
+
+export const WhoFilterInputSchema = z.object({
+  developers: z.array(z.string().min(1)).optional(),
+  roles: z.array(z.string().min(1)).optional(),
+});
+
+export const WhatFilterInputSchema = z.object({
+  repos: z.array(z.string().min(1)).optional(),
+  services: z.array(z.string().min(1)).optional(),
+});
+
+export const WhyFilterInputSchema = z.object({
+  workCategory: z.array(z.string().min(1)).optional(),
+  issueType: z.array(z.string().min(1)).optional(),
+});
+
+export const HowFilterInputSchema = z.object({
+  flowStage: z.array(z.string().min(1)).optional(),
+});
+
+export const FilterInputSchema = z.object({
+  scope: ScopeFilterInputSchema.optional(),
+  who: WhoFilterInputSchema.optional(),
+  what: WhatFilterInputSchema.optional(),
+  why: WhyFilterInputSchema.optional(),
+  how: HowFilterInputSchema.optional(),
+});
+
 export const AnalyticsRequestInputSchema = z.object({
   timeseries: z.array(TimeseriesRequestInputSchema).default([]),
   breakdowns: z.array(BreakdownRequestInputSchema).default([]),
   sankey: SankeyRequestInputSchema.optional(),
   useInvestment: z.boolean().optional(),
+  filters: FilterInputSchema.optional(),
 });
 
 // =============================================================================
@@ -155,3 +200,10 @@ export type TimeseriesRequestInput = z.infer<typeof TimeseriesRequestInputSchema
 export type BreakdownRequestInput = z.infer<typeof BreakdownRequestInputSchema>;
 export type SankeyRequestInput = z.infer<typeof SankeyRequestInputSchema>;
 export type AnalyticsRequestInput = z.infer<typeof AnalyticsRequestInputSchema>;
+export type ScopeLevelInput = z.infer<typeof ScopeLevelInputSchema>;
+export type ScopeFilterInput = z.infer<typeof ScopeFilterInputSchema>;
+export type WhoFilterInput = z.infer<typeof WhoFilterInputSchema>;
+export type WhatFilterInput = z.infer<typeof WhatFilterInputSchema>;
+export type WhyFilterInput = z.infer<typeof WhyFilterInputSchema>;
+export type HowFilterInput = z.infer<typeof HowFilterInputSchema>;
+export type FilterInput = z.infer<typeof FilterInputSchema>;
