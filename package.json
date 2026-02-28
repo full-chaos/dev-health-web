@@ -24,11 +24,12 @@
     "lightningcss": "^1.31.1",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sonner": "^2.0.7",
     "urql": "^5.0.1",
-    "webapp": ".",
     "zod": "^4.3.6"
   },
   "devDependencies": {
