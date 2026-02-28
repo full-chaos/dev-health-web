@@ -70,53 +70,61 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
         ? filters.scope.level
         : "org";
 
-  const home = await getHomeData(filters).catch(() => null);
+  const [
+    home,
+    investment,
+    wipExplain,
+    blockedExplain,
+    reviewHeatmap,
+    cycleThroughput,
+    wipThroughput,
+    reviewLoadLatency,
+  ] = await Promise.all([
+    getHomeData(filters).catch(() => null),
+    getInvestment(filters).catch(() => null),
+    getExplainData({ metric: "wip_saturation", filters }).catch(() => null),
+    getExplainData({ metric: "blocked_work", filters }).catch(() => null),
+    getHeatmap({
+      type: "temporal_load",
+      metric: "review_wait_density",
+      scope_type: filters.scope.level,
+      scope_id: scopeId,
+      range_days: filters.time.range_days,
+      start_date: filters.time.start_date,
+      end_date: filters.time.end_date,
+    }).catch(() => null),
+    getQuadrant({
+      type: "cycle_throughput",
+      scope_type: quadrantScope,
+      scope_id: scopeId,
+      range_days: filters.time.range_days,
+      bucket: "week",
+      start_date: filters.time.start_date,
+      end_date: filters.time.end_date,
+    }).catch(() => null),
+    getQuadrant({
+      type: "wip_throughput",
+      scope_type: quadrantScope,
+      scope_id: scopeId,
+      range_days: filters.time.range_days,
+      bucket: "week",
+      start_date: filters.time.start_date,
+      end_date: filters.time.end_date,
+    }).catch(() => null),
+    getQuadrant({
+      type: "review_load_latency",
+      scope_type: quadrantScope,
+      scope_id: scopeId,
+      range_days: filters.time.range_days,
+      bucket: "week",
+      start_date: filters.time.start_date,
+      end_date: filters.time.end_date,
+    }).catch(() => null),
+  ]);
+
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
-
-  const investment = await getInvestment(filters).catch(() => null);
   const investmentMix = investment ? normalizeInvestmentMix(investment) : null;
-
-
-  const wipExplain = await getExplainData({ metric: "wip_saturation", filters }).catch(() => null);
-  const blockedExplain = await getExplainData({ metric: "blocked_work", filters }).catch(() => null);
-   const reviewHeatmap = await getHeatmap({
-     type: "temporal_load",
-     metric: "review_wait_density",
-     scope_type: filters.scope.level,
-     scope_id: scopeId,
-     range_days: filters.time.range_days,
-     start_date: filters.time.start_date,
-     end_date: filters.time.end_date,
-   }).catch(() => null);
-
-   const cycleThroughput = await getQuadrant({
-    type: "cycle_throughput",
-    scope_type: quadrantScope,
-    scope_id: scopeId,
-    range_days: filters.time.range_days,
-    bucket: "week",
-    start_date: filters.time.start_date,
-    end_date: filters.time.end_date,
-  }).catch(() => null);
-  const wipThroughput = await getQuadrant({
-    type: "wip_throughput",
-    scope_type: quadrantScope,
-    scope_id: scopeId,
-    range_days: filters.time.range_days,
-    bucket: "week",
-    start_date: filters.time.start_date,
-    end_date: filters.time.end_date,
-  }).catch(() => null);
-  const reviewLoadLatency = await getQuadrant({
-    type: "review_load_latency",
-    scope_type: quadrantScope,
-    scope_id: scopeId,
-    range_days: filters.time.range_days,
-    bucket: "week",
-    start_date: filters.time.start_date,
-    end_date: filters.time.end_date,
-  }).catch(() => null);
 
   const investmentCategoriesForSummary = investmentMix
     ? Object.entries(investmentMix.theme_distribution).map(([key, value]) => ({
