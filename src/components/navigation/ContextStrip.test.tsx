@@ -12,14 +12,15 @@ function makeFilter(overrides?: Partial<MetricFilter["scope"]>): MetricFilter {
     },
     time: {
       range_days: 30,
+      compare_days: 0,
       start_date: undefined,
       end_date: undefined,
     },
-    developer: { ids: [] },
-    repo: { ids: [] },
-    work_type: { ids: [] },
-    flow_stage: { ids: [] },
-  } as MetricFilter;
+    who: {},
+    what: {},
+    why: {},
+    how: {},
+  };
 }
 
 describe("ContextStrip", () => {
@@ -55,7 +56,7 @@ describe("ContextStrip", () => {
 
   it("renders a date range when start and end dates are set", () => {
     const filter = makeFilter();
-    filter.time = { range_days: 30, start_date: "2024-01-01", end_date: "2024-01-31" };
+    filter.time = { range_days: 30, compare_days: 0, start_date: "2024-01-01", end_date: "2024-01-31" };
     render(<ContextStrip filters={filter} />);
     expect(screen.getByText(/2024-01-01 to 2024-01-31/)).toBeInTheDocument();
   });

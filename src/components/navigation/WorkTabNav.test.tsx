@@ -15,12 +15,12 @@ vi.mock("@/lib/filters/url", () => ({
 
 const filters: MetricFilter = {
   scope: { level: "repo", ids: [] },
-  time: { range_days: 30, start_date: undefined, end_date: undefined },
-  developer: { ids: [] },
-  repo: { ids: [] },
-  work_type: { ids: [] },
-  flow_stage: { ids: [] },
-} as MetricFilter;
+  time: { range_days: 30, compare_days: 0, start_date: undefined, end_date: undefined },
+  who: {},
+  what: {},
+  why: {},
+  how: {},
+};
 
 describe("WorkTabNav", () => {
   it("renders all tab labels", () => {

@@ -2,6 +2,7 @@
  * Shared vi.mock() factories for common Next.js / app dependencies.
  * Import these in test files as needed.
  */
+import { vi } from "vitest";
 
 export const mockRouter = {
   push: vi.fn(),
