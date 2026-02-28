@@ -18,6 +18,7 @@ import {
   type TypedDocumentNode,
 } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
+import { runtimeConfig } from "@/lib/runtimeConfig";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 import type { GraphQLResponse } from "./types";
 
@@ -172,9 +173,6 @@ export const graphqlClient = {
   ): Promise<T> => graphqlFetch<T>(query, variables, options),
 
   isEnabled: (): boolean => {
-    // Deferred import avoids a circular dep with runtimeConfig
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { runtimeConfig } = require("@/lib/runtimeConfig") as typeof import("@/lib/runtimeConfig");
     return runtimeConfig.useGraphQLAnalytics();
   },
 

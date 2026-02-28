@@ -6,8 +6,8 @@
  * Catches errors from layouts and pages rendered inside the root layout.
  * Reports to Sentry and provides a retry button to attempt recovery.
  */
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -16,7 +16,7 @@ interface ErrorProps {
 
 export default function Error({ error, reset }: ErrorProps) {
   useEffect(() => {
-    Sentry.captureException(error);
+    logger.error({ err: error, digest: error.digest }, "Unhandled route error");
   }, [error]);
 
   return (

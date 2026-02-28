@@ -7,7 +7,6 @@
  * This replaces the entire <html>…</html> shell, so we must render our own.
  * Reports to Sentry when available.
  */
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 interface GlobalErrorProps {
@@ -17,7 +16,8 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    Sentry.captureException(error);
+    // Log to console — Sentry can be re-added later when compatible
+    console.error("[GlobalError]", error);
   }, [error]);
 
   return (

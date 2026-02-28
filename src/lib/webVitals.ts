@@ -1,17 +1,15 @@
 /**
  * Web Vitals / RUM reporter for dev-health-web.
  *
- * Collects Core Web Vitals (LCP, INP, CLS, FCP, TTFB) and reports them to:
- * 1. Sentry (via captureEvent) when Sentry is initialised.
- * 2. A custom `/api/v1/rum` endpoint as a secondary sink (optional).
+ * Collects Core Web Vitals (LCP, INP, CLS, FCP, TTFB) and reports them via
+ * structured logging and an optional `/api/v1/rum` endpoint.
  *
  * Usage — add to Next.js instrumentation or a layout component:
  *   import { initWebVitals } from "@/lib/webVitals";
  *   initWebVitals();
- *
- * Next.js App Router also supports exporting `reportWebVitals` from the
- * root layout file, which is the recommended integration point.
  */
+
+import { logger } from "@/lib/logger";
 
 export type WebVitalsMetric = {
   id: string;
@@ -21,38 +19,6 @@ export type WebVitalsMetric = {
   rating: "good" | "needs-improvement" | "poor";
   navigationType: string;
 };
-
-/**
- * Send a single Web Vitals metric to Sentry as a measurement.
- */
-function reportToSentry(metric: WebVitalsMetric): void {
-  // Guard: Sentry may not be available in test or dev without DSN.
-  try {
-    const Sentry = require("@sentry/nextjs");
-    if (typeof Sentry?.captureEvent === "function") {
-      Sentry.captureEvent({
-        type: "transaction",
-        transaction: metric.name,
-        measurements: {
-          [metric.name.toLowerCase()]: {
-            value: metric.value,
-            unit: metric.name === "CLS" ? "" : "millisecond",
-          },
-        },
-        tags: {
-          "web_vitals.rating": metric.rating,
-          "web_vitals.navigation_type": metric.navigationType,
-        },
-        extra: {
-          metricId: metric.id,
-          delta: metric.delta,
-        },
-      });
-    }
-  } catch {
-    // Sentry not loaded — skip.
-  }
-}
 
 /**
  * Report to a custom `/api/v1/rum` analytics endpoint when available.
@@ -89,9 +55,11 @@ function reportToEndpoint(metric: WebVitalsMetric): void {
  * Process a Web Vitals metric — called by Next.js or our own observer.
  */
 export function onVital(metric: WebVitalsMetric): void {
-  reportToSentry(metric);
+  logger.info(
+    { metric: metric.name, value: metric.value, rating: metric.rating },
+    "web-vital"
+  );
 
-  // Only report to custom endpoint if RUM ingestion is explicitly configured.
   if (process.env.NEXT_PUBLIC_RUM_ENDPOINT) {
     reportToEndpoint(metric);
   }

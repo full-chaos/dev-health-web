@@ -1,8 +1,8 @@
 /**
  * Custom urql exchanges for dev-health-web.
  *
- * errorExchange   — captures GraphQL errors to Sentry and logs them.
- * timingExchange  — records per-operation wall-clock time to Sentry measurements.
+ * errorExchange   — captures GraphQL errors and logs them via pino.
+ * timingExchange  — records per-operation wall-clock time and logs slow ops.
  */
 
 import { mapExchange, type Operation, type OperationResult } from "@urql/core";
@@ -19,7 +19,7 @@ function operationLabel(operation: Operation): string {
 }
 
 /**
- * errorExchange — reports GraphQL errors to Sentry and structured log.
+ * errorExchange — logs GraphQL errors via structured logger.
  *
  * Captures:
  * - Network errors (fetch failures, non-200 responses)
@@ -36,14 +36,6 @@ export const errorExchange = mapExchange({
         { err: error.networkError, operation: label },
         "urql: network error"
       );
-      try {
-        const Sentry = require("@sentry/nextjs");
-        Sentry.captureException(error.networkError, {
-          tags: { "urql.operation": label },
-        });
-      } catch {
-        // Sentry not available.
-      }
     }
 
     if (error.graphQLErrors?.length) {
@@ -51,23 +43,6 @@ export const errorExchange = mapExchange({
         { graphQLErrors: error.graphQLErrors, operation: label },
         "urql: GraphQL errors"
       );
-      // Only report to Sentry for server-side or unexpected GraphQL errors.
-      const criticalErrors = error.graphQLErrors.filter(
-        (e) =>
-          !(e.extensions?.code === "UNAUTHENTICATED" ||
-            e.extensions?.code === "FORBIDDEN")
-      );
-      if (criticalErrors.length) {
-        try {
-          const Sentry = require("@sentry/nextjs");
-          Sentry.captureException(new Error(`GraphQL: ${criticalErrors.map((e) => e.message).join("; ")}`), {
-            tags: { "urql.operation": label },
-            extra: { graphQLErrors: criticalErrors },
-          });
-        } catch {
-          // Sentry not available.
-        }
-      }
     }
   },
 });
@@ -75,8 +50,8 @@ export const errorExchange = mapExchange({
 /**
  * timingExchange — records per-operation wall-clock time.
  *
- * Uses performance.now() to measure request round-trips and emits
- * Sentry measurements for slow operations (> 2 s).
+ * Uses performance.now() to measure request round-trips and logs
+ * slow operations (> 2 s) as warnings.
  */
 
 const SLOW_THRESHOLD_MS = 2000;
@@ -102,19 +77,6 @@ export const timingExchange = mapExchange({
         { operation: label, durationMs: Math.round(durationMs) },
         "urql: slow GraphQL operation"
       );
-      try {
-        const Sentry = require("@sentry/nextjs");
-        Sentry.captureEvent({
-          type: "transaction",
-          transaction: `graphql.${label}`,
-          measurements: {
-            graphql_duration: { value: durationMs, unit: "millisecond" },
-          },
-          tags: { "urql.operation": label, "urql.slow": "true" },
-        });
-      } catch {
-        // Sentry not available.
-      }
     } else {
       logger.debug(
         { operation: label, durationMs: Math.round(durationMs) },
