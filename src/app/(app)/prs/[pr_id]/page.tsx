@@ -6,6 +6,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getFlame } from "@/lib/api";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 
 type PrDetailPageProps = {
   params: Promise<{ pr_id: string }>;
@@ -18,9 +19,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
   }
 
   const { pr_id: prId } = await params;
-  const flame = await getFlame({ entity_type: "pr", entity_id: prId }).catch(
-    () => null
-  );
+  const flame = await fetchOrNull(getFlame({ entity_type: "pr", entity_id: prId }), "pr-flame");
 
   return (
     <div className="min-h-screen bg-background text-foreground">

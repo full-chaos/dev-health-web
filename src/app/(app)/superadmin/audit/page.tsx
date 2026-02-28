@@ -25,7 +25,7 @@ export default function AuditLogPage() {
       } else if (data) {
         setLogs(data.items);
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);

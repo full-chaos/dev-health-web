@@ -39,7 +39,6 @@ describe("withResult", () => {
 
   it("catches non-Error throws and returns a fallback message", async () => {
     const result = await withResult(async () => {
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw "raw string error";
     });
     expect(result.error).toBe("An unexpected error occurred");

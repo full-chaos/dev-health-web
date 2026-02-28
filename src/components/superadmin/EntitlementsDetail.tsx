@@ -43,7 +43,7 @@ export function EntitlementsDetail({
         setOverrideReason("");
         setOverrideEnabled(true);
       }
-    } catch (err) {
+    } catch {
       toast.error("An unexpected error occurred");
     }
   };
@@ -58,7 +58,7 @@ export function EntitlementsDetail({
       } else {
         toast.success("Override deleted successfully");
       }
-    } catch (err) {
+    } catch {
       toast.error("An unexpected error occurred");
     }
   };

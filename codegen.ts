@@ -41,6 +41,17 @@ const config: CodegenConfig = {
         // Use default import from graphql-tag
         documentMode: "string",
       },
+      // Workaround: client-preset@4.8.x omits the DocumentTypeDecoration
+      // import needed by the generated TypedDocumentString class. Inject via
+      // the add plugin which the preset appends to its internal plugin chain.
+      plugins: [
+        {
+          add: {
+            content:
+              'import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";',
+          },
+        },
+      ],
     },
     // Also generate a single types file for direct import convenience
     "src/lib/graphql/__generated__/types.ts": {

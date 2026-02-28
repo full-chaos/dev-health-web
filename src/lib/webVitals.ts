@@ -45,8 +45,9 @@ function reportToEndpoint(metric: WebVitalsMetric): void {
       body,
       headers: { "Content-Type": "application/json" },
       keepalive: true,
-    }).catch(() => {
-      // Best-effort fire-and-forget; ignore failures.
+    }).catch((err: unknown) => {
+      // Best-effort fire-and-forget; log but do not crash.
+      logger.debug({ err }, "webVitals: RUM endpoint unreachable");
     });
   }
 }
@@ -83,7 +84,8 @@ export function initWebVitals(): void {
     onLCP(onVital as Parameters<typeof onLCP>[0]);
     onFCP(onVital as Parameters<typeof onFCP>[0]);
     onTTFB(onVital as Parameters<typeof onTTFB>[0]);
-  }).catch(() => {
-    // web-vitals failed to load (browser doesn't support it) — ignore.
+  }).catch((err: unknown) => {
+    // web-vitals failed to load (browser doesn't support it).
+    logger.debug({ err }, "webVitals: web-vitals library failed to load");
   });
 }

@@ -166,8 +166,6 @@ export type FilterBarClientProps = {
   resolvedScopeLock?: MetricFilter["scope"]["level"] | null;
 };
 
-/** @deprecated Use FilterBarClientProps instead */
-type FilterBarProps = FilterBarClientProps;
 
 const formatSelection = (values: string[], emptyLabel: string) => {
   if (!values.length) {

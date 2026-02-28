@@ -6,6 +6,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getFlame } from "@/lib/api";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 
 type IssueDetailPageProps = {
   params: Promise<{ issue_id: string }>;
@@ -18,9 +19,7 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
   }
 
   const { issue_id: issueId } = await params;
-  const flame = await getFlame({ entity_type: "issue", entity_id: issueId }).catch(
-    () => null
-  );
+  const flame = await fetchOrNull(getFlame({ entity_type: "issue", entity_id: issueId }), "issue-flame");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
