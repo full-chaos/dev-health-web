@@ -17,9 +17,6 @@ import {
 } from "@/lib/chartTransforms";
 import { sankeyHotspotNodes, sankeyHotspotLinks } from "@/data/devHealthOpsSample";
 import { normalizeInvestmentMix, type InvestmentMixAggregate, titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
-
-const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
 import { TreemapChart } from "@/components/charts/TreemapChart";
@@ -31,6 +28,8 @@ import {
     type TreemapSunburstType,
 } from "@/components/charts/ChartTypeToggle";
 import { formatNumber } from "@/lib/formatters";
+
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 type FlowViewProps = {
     filters: MetricFilter;
