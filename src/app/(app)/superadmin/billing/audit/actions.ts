@@ -3,7 +3,6 @@
 import { auth } from "@/lib/auth";
 import { getBackendUrl } from "@/lib/origin";
 import type { ActionResult } from "@/lib/result";
-export type { ActionResult };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

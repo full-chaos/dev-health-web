@@ -13,7 +13,7 @@ import { logger } from "@/lib/logger";
  */
 function operationLabel(operation: Operation): string {
   const name =
-    (operation.query as { definitions?: Array<{ name?: { value?: string } }> })
+    (operation.query as unknown as { definitions?: Array<{ name?: { value?: string } }> })
       .definitions?.[0]?.name?.value ?? "anonymous";
   return `${operation.kind}:${name}`;
 }

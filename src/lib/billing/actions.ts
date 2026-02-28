@@ -2,7 +2,6 @@
 
 import { auth } from "@/lib/auth";
 import type { ActionResult } from "@/lib/result";
-export type { ActionResult };
 
 export type SubscriptionDetails = {
   id: string;
