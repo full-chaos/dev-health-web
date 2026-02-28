@@ -5,6 +5,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getFlame } from "@/lib/api";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 
 type DeploymentDetailPageProps = {
@@ -20,10 +21,10 @@ export default async function DeploymentDetailPage({
   }
 
   const { deployment_id: deploymentId } = await params;
-  const flame = await getFlame({
-    entity_type: "deployment",
-    entity_id: deploymentId,
-  }).catch(() => null);
+  const flame = await fetchOrNull(
+    getFlame({ entity_type: "deployment", entity_id: deploymentId }),
+    `deployments/${deploymentId}/flame`
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { isServer } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 type TelemetryPayload = Record<string, string | number | boolean | null>;
 
@@ -25,5 +26,8 @@ export const trackTelemetryEvent = (
       body,
       keepalive: true,
     })
-    .catch(() => null);
+    .catch((err: unknown) => {
+      // Telemetry is non-critical fire-and-forget; log at debug level only.
+      logger.debug({ err, event }, "Telemetry beacon fallback failed");
+    });
 };

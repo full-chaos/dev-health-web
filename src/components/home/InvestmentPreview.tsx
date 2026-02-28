@@ -7,6 +7,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse } from "@/lib/types";
 import { apiClient } from "@/lib/apiClient";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
+import { logger } from "@/lib/logger";
 
 const InvestmentMixSunburst = dynamic(
   () => import("@/components/charts/InvestmentMixSunburst").then((mod) => mod.InvestmentMixSunburst),
@@ -74,7 +75,10 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
           setState({ data: payload, filtersKey: currentFiltersKey });
         }
       })
-      .catch(() => null);
+      .catch((err: unknown) => {
+        if ((err as { name?: string })?.name === "AbortError") return;
+        logger.warn({ err }, "InvestmentPreview: failed to fetch investment data");
+      });
 
     return () => controller.abort();
   }, [filters, currentFiltersKey]);

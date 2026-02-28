@@ -7,6 +7,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getExplainData, getHomeData } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
@@ -35,15 +36,18 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const home = await getHomeData(filters).catch(() => null);
+  const home = await fetchOrNull(getHomeData(filters), "quality/home-data");
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
 
   const changeFailureMetric = getMetric(deltas, "change_failure_rate");
   const ciMetric = getMetric(deltas, "ci_success");
   const reworkMetric = getMetric(deltas, "rework_ratio");
-  
-  const explain = await getExplainData({ metric: "change_failure_rate", filters }).catch(() => null);
+
+  const explain = await fetchOrNull(
+    getExplainData({ metric: "change_failure_rate", filters }),
+    "quality/explain-change_failure_rate"
+  );
   const drivers = (explain?.drivers ?? []).slice(0, 5);
   const contributors = (explain?.contributors ?? []).slice(0, 5);
 

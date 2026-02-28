@@ -6,6 +6,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth, getDrilldown, getExplainData, getHomeData } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { getMetricLabel } from "@/lib/metrics/catalog";
@@ -75,16 +76,22 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
   if (endpoint === "/api/v1/drilldown/prs" || endpoint === "/api/v1/drilldown/issues") {
     view = "drilldown";
-    drilldown = await getDrilldown(
-      endpoint as "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues",
-      filters
-    ).catch(() => null);
+    drilldown = await fetchOrNull(
+      getDrilldown(
+        endpoint as "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues",
+        filters
+      ),
+      `explore/drilldown-${endpoint}`
+    );
   } else if (endpoint === "/api/v1/home") {
     view = "home";
-    home = await getHomeData(filters).catch(() => null);
+    home = await fetchOrNull(getHomeData(filters), "explore/home-data");
   } else if (endpoint === "/api/v1/explain") {
     view = "explain";
-    data = await getExplainData({ metric: metricFromApi, filters }).catch(() => null);
+    data = await fetchOrNull(
+      getExplainData({ metric: metricFromApi, filters }),
+      `explore/explain-${metricFromApi}`
+    );
   } else {
     view = "unknown";
   }

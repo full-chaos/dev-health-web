@@ -14,6 +14,7 @@ import {
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import { LandscapeView } from "@/components/work/LandscapeView";
 import { HeatmapView } from "@/components/work/HeatmapView";
@@ -80,46 +81,58 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     wipThroughput,
     reviewLoadLatency,
   ] = await Promise.all([
-    getHomeData(filters).catch(() => null),
-    getInvestment(filters).catch(() => null),
-    getExplainData({ metric: "wip_saturation", filters }).catch(() => null),
-    getExplainData({ metric: "blocked_work", filters }).catch(() => null),
-    getHeatmap({
-      type: "temporal_load",
-      metric: "review_wait_density",
-      scope_type: filters.scope.level,
-      scope_id: scopeId,
-      range_days: filters.time.range_days,
-      start_date: filters.time.start_date,
-      end_date: filters.time.end_date,
-    }).catch(() => null),
-    getQuadrant({
-      type: "cycle_throughput",
-      scope_type: quadrantScope,
-      scope_id: scopeId,
-      range_days: filters.time.range_days,
-      bucket: "week",
-      start_date: filters.time.start_date,
-      end_date: filters.time.end_date,
-    }).catch(() => null),
-    getQuadrant({
-      type: "wip_throughput",
-      scope_type: quadrantScope,
-      scope_id: scopeId,
-      range_days: filters.time.range_days,
-      bucket: "week",
-      start_date: filters.time.start_date,
-      end_date: filters.time.end_date,
-    }).catch(() => null),
-    getQuadrant({
-      type: "review_load_latency",
-      scope_type: quadrantScope,
-      scope_id: scopeId,
-      range_days: filters.time.range_days,
-      bucket: "week",
-      start_date: filters.time.start_date,
-      end_date: filters.time.end_date,
-    }).catch(() => null),
+    fetchOrNull(getHomeData(filters), "work/home-data"),
+    fetchOrNull(getInvestment(filters), "work/investment"),
+    fetchOrNull(getExplainData({ metric: "wip_saturation", filters }), "work/explain-wip_saturation"),
+    fetchOrNull(getExplainData({ metric: "blocked_work", filters }), "work/explain-blocked_work"),
+    fetchOrNull(
+      getHeatmap({
+        type: "temporal_load",
+        metric: "review_wait_density",
+        scope_type: filters.scope.level,
+        scope_id: scopeId,
+        range_days: filters.time.range_days,
+        start_date: filters.time.start_date,
+        end_date: filters.time.end_date,
+      }),
+      "work/review-heatmap"
+    ),
+    fetchOrNull(
+      getQuadrant({
+        type: "cycle_throughput",
+        scope_type: quadrantScope,
+        scope_id: scopeId,
+        range_days: filters.time.range_days,
+        bucket: "week",
+        start_date: filters.time.start_date,
+        end_date: filters.time.end_date,
+      }),
+      "work/cycle-throughput-quadrant"
+    ),
+    fetchOrNull(
+      getQuadrant({
+        type: "wip_throughput",
+        scope_type: quadrantScope,
+        scope_id: scopeId,
+        range_days: filters.time.range_days,
+        bucket: "week",
+        start_date: filters.time.start_date,
+        end_date: filters.time.end_date,
+      }),
+      "work/wip-throughput-quadrant"
+    ),
+    fetchOrNull(
+      getQuadrant({
+        type: "review_load_latency",
+        scope_type: quadrantScope,
+        scope_id: scopeId,
+        range_days: filters.time.range_days,
+        bucket: "week",
+        start_date: filters.time.start_date,
+        end_date: filters.time.end_date,
+      }),
+      "work/review-load-latency-quadrant"
+    ),
   ]);
 
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
