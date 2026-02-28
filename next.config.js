@@ -59,8 +59,6 @@ if (hasSentry) {
     silent: true,
     // Automatically instrument Next.js data fetching methods.
     autoInstrumentServerFunctions: true,
-    // Hide source maps from the browser bundle but upload them to Sentry.
-    hideSourceMaps: true,
     // Disable Sentry telemetry.
     telemetry: false,
   });
