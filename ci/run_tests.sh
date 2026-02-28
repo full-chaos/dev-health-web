@@ -126,6 +126,7 @@ case "${tier}" in
     export CI=true
     echo "==> npm audit --audit-level=high"
     npm audit --audit-level=high
+    run_npm_script codegen:check
     run_npm_script lint
     run_npm_script typecheck
     run_npm_script build
