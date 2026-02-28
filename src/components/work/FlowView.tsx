@@ -18,6 +18,8 @@ import {
 import { sankeyHotspotNodes, sankeyHotspotLinks } from "@/data/devHealthOpsSample";
 import { normalizeInvestmentMix, type InvestmentMixAggregate, titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
 import { TreemapChart } from "@/components/charts/TreemapChart";
@@ -38,12 +40,15 @@ type FlowViewProps = {
 // Flow sub-tabs
 type FlowSubTab = "investment_mix" | "code_hotspots" | "investment_expense" | "state_flow";
 
-const FLOW_TABS: Array<{ id: FlowSubTab; label: string; description: string }> = [
+const ALL_FLOW_TABS: Array<{ id: FlowSubTab; label: string; description: string; demoOnly?: boolean }> = [
     { id: "investment_mix", label: "Investment Mix", description: "Where effort allocates across investment areas" },
-    { id: "code_hotspots", label: "Code Hotspots", description: "Where change concentrates in the codebase" },
-    { id: "investment_expense", label: "Investment Expense", description: "Effort shift from planned to unplanned work" },
+    { id: "code_hotspots", label: "Code Hotspots", description: "Where change concentrates in the codebase", demoOnly: true },
+    { id: "investment_expense", label: "Investment Expense", description: "Effort shift from planned to unplanned work", demoOnly: true },
     { id: "state_flow", label: "State Flow", description: "Work item state transitions and flow paths" },
 ];
+
+// Only expose demo-only tabs when NEXT_PUBLIC_DEMO_MODE=true
+const FLOW_TABS = ALL_FLOW_TABS.filter((t) => !t.demoOnly || DEMO_MODE);
 
 // Selection model for Inspect panel
 type FlowSelection = {
@@ -62,18 +67,13 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     // Refs for tab buttons (for keyboard navigation focus management)
-    const tabRefs = useRef<Record<FlowSubTab, HTMLButtonElement | null>>({
-        investment_mix: null,
-        code_hotspots: null,
-        investment_expense: null,
-        state_flow: null,
-    });
+    const tabRefs = useRef<Partial<Record<FlowSubTab, HTMLButtonElement | null>>>({});
 
-    // Sub-tab state
+    // Sub-tab state — only allow tabs visible in current mode
     const subTabParam = searchParams.get("flow_tab") as FlowSubTab | null;
     const initialSubTab: FlowSubTab = (subTabParam && FLOW_TABS.some(t => t.id === subTabParam))
         ? subTabParam
-        : "investment_mix";
+        : (FLOW_TABS[0]?.id ?? "investment_mix");
     const [subTab, setSubTab] = useState<FlowSubTab>(initialSubTab);
 
     // Chart type toggles (local state, persists during navigation within Flow page)
