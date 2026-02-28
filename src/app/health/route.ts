@@ -1,5 +1,5 @@
 /**
- * GET /api/health
+ * GET /health
  *
  * Liveness/readiness endpoint for Docker HEALTHCHECK and load-balancer probes.
  * Returns 200 OK with a JSON body when the Next.js server is running.

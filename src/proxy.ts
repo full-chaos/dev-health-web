@@ -11,7 +11,7 @@ const PUBLIC_PATHS = [
     "/auth/signup",
     "/auth/error",
     "/api/auth",
-    "/api/health",
+    "/health",
     "/api/v1/auth",
     "/_next",
     "/favicon.ico",
@@ -96,7 +96,7 @@ export async function proxy(request: NextRequest) {
 
     const shouldProxy =
         pathname === "/graphql" ||
-        (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth") && !pathname.startsWith("/api/health") && !pathname.startsWith("/api/v1/llm-proxy"));
+        (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth") && !pathname.startsWith("/api/v1/llm-proxy"));
 
     if (!shouldProxy) {
         const response = NextResponse.next({
