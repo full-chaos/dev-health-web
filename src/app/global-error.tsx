@@ -1,4 +1,5 @@
 "use client";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Global error boundary — catches errors that bubble past all route-level
@@ -16,7 +17,8 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    // Log to console — Sentry can be re-added later when compatible
+    // Capture error to Sentry and log to console as fallback
+    Sentry.captureException(error);
     console.error("[GlobalError]", error);
   }, [error]);
 
@@ -81,6 +83,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             )}
           </p>
           <button
+            type="button"
             onClick={reset}
             style={{
               padding: "0.625rem 1.5rem",
