@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
+
 import "./globals.css";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 
@@ -43,8 +43,10 @@ export default function RootLayout({
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
-        <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
-        <Script src={themeInitSrc} strategy="beforeInteractive" />
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- must run before first paint; external src covered by CSP 'self' */}
+        <script src={runtimeConfigSrc} />
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- must run before first paint to prevent FOUC; external src covered by CSP 'self' */}
+        <script src={themeInitSrc} />
         <WebVitalsReporter />
         {children}
       </body>
