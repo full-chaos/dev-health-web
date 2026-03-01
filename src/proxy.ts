@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
     "/_next",
     "/favicon.ico",
     "/runtime-config.js",
+    "/theme-init.js",
 ];
 
 function isPublicPath(pathname: string): boolean {
