@@ -57,11 +57,11 @@ module.exports = withSentryConfig(nextConfig, {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  // Disable source map upload if auth token is not set (local dev)
-  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
-  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
-  disableLogger: true,
-  // Enables automatic instrumentation of Vercel Cron Monitors
-  automaticVercelMonitors: false,
+  // Webpack-specific options
+  webpack: {
+    // Tree-shake Sentry logger statements to reduce bundle size
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
 });
