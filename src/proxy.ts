@@ -66,7 +66,9 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/") {
         const session = await auth();
         if (session && session.access_token) {
-            const redirect = NextResponse.redirect(new URL("/dashboard", request.url));
+            // Superadmins without an org belong in the admin panel, not the dashboard
+            const target = (!session.user?.org_id && session.user?.is_superuser) ? "/superadmin" : "/dashboard";
+            const redirect = NextResponse.redirect(new URL(target, request.url));
             redirect.headers.set("x-nonce", nonce);
             redirect.headers.set("Content-Security-Policy", csp);
             return redirect;
@@ -81,6 +83,7 @@ export async function proxy(request: NextRequest) {
 
     let accessToken: string | undefined;
     let orgId: string | undefined;
+    let isSuperuser = false;
 
     if (!isTestMode && !isPublicPath(pathname)) {
         const session = await auth();
@@ -93,6 +96,19 @@ export async function proxy(request: NextRequest) {
         }
         accessToken = session.access_token;
         orgId = session.user?.org_id;
+        isSuperuser = session.user?.is_superuser ?? false;
+    }
+
+    // Org-scoped route guard: routes outside /superadmin and /demo require an org.
+    // Superadmins without an org are sent to the admin panel; regular users to onboarding.
+    const ORG_EXEMPT_PATHS = ["/superadmin", "/demo"];
+    const needsOrg = !isTestMode && !isPublicPath(pathname) && !ORG_EXEMPT_PATHS.some(p => pathname.startsWith(p));
+
+    if (needsOrg && !orgId) {
+        const target = isSuperuser ? "/superadmin" : "/auth/onboard";
+        const redirect = NextResponse.redirect(new URL(target, request.url));
+        redirect.headers.set("Content-Security-Policy", csp);
+        return redirect;
     }
 
     const shouldProxy =
