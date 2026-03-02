@@ -78,7 +78,7 @@ test.describe("onboarding journey", () => {
 
     const res = await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
       headers: authHeaders(token),
-      data: { org_name: "Journey Corp" },
+      data: { action: "create_org", org_name: "Journey Corp" },
     });
     expect(res.status()).toBe(200);
 
@@ -108,7 +108,7 @@ test.describe("onboarding journey", () => {
 
     const res = await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
       headers: authHeaders(token),
-      data: { org_name: "Duplicate Corp" },
+      data: { action: "create_org", org_name: "Duplicate Corp" },
     });
     expect(res.status()).toBe(400);
   });
@@ -140,7 +140,7 @@ test.describe("credentials journey", () => {
     // Onboard first so admin endpoints are accessible
     await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
       headers: authHeaders(token),
-      data: { org_name: "Creds Org" },
+      data: { action: "create_org", org_name: "Creds Org" },
     });
 
     // Re-login to get updated token after onboarding
@@ -246,7 +246,7 @@ test.describe("sync journey", () => {
     // Onboard first so admin endpoints are accessible
     await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
       headers: authHeaders(token),
-      data: { org_name: "Sync Org" },
+      data: { action: "create_org", org_name: "Sync Org" },
     });
 
     // Re-login to get updated token after onboarding

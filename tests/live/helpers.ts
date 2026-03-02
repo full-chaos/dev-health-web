@@ -8,7 +8,7 @@ export const liveBackendUrl =
 
 /** Generate a unique test email to avoid collisions across parallel runs. */
 export function testEmail(prefix = "test"): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@test.local`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
 }
 
 /** Register a new user. Returns the parsed response body. */
