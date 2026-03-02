@@ -1,3 +1,4 @@
+import { SessionProvider } from "@/components/auth/SessionProvider";
 import { Toaster } from "sonner";
 
 export default function AuthLayout({
@@ -6,9 +7,9 @@ export default function AuthLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
+    <SessionProvider>
       {children}
       <Toaster richColors position="top-right" theme="dark" />
-    </>
+    </SessionProvider>
   );
 }
