@@ -17,7 +17,7 @@ vi.mock("next-auth/react", () => ({
 }))
 
 vi.mock("@/lib/origin", () => ({
-  getBackendUrl: () => "http://localhost:8000",
+  resolveOrigin: () => "http://localhost:8000",
 }))
 
 import { OnboardForm } from "./OnboardForm"
