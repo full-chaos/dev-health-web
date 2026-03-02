@@ -9,6 +9,18 @@
 
 import { http, HttpResponse } from "msw";
 
+import type {
+  LoginResponseBody,
+  TokenValidateResponseBody,
+  TokenRefreshResponseBody,
+  OnboardResponseBody,
+  MockBillingPlan,
+  MockCredential,
+  MockSyncConfig,
+  MockTeam,
+  MockIdentity,
+} from "./types";
+
 import {
   investmentMixSample,
   reviewHeatmapSample,
@@ -137,35 +149,6 @@ const SAMPLE_INVOICE = {
   ],
 };
 
-type MockBillingPrice = {
-  id: string;
-  plan_id: string;
-  interval: string;
-  amount: number;
-  currency: string;
-  is_active: boolean;
-  stripe_price_id: string | null;
-};
-
-type MockBillingPlan = {
-  id: string;
-  key: string;
-  name: string;
-  description: string | null;
-  tier: string;
-  is_active: boolean;
-  display_order: number;
-  stripe_product_id: string | null;
-  metadata: Record<string, unknown>;
-  prices: MockBillingPrice[];
-  bundles: Array<{
-    id: string;
-    key: string;
-    name: string;
-    description: string | null;
-    features: string[];
-  }>;
-};
 
 const MOCK_BILLING_PLANS: MockBillingPlan[] = [
   {
@@ -216,35 +199,6 @@ const MOCK_BILLING_PLANS: MockBillingPlan[] = [
   },
 ];
 
-type MockCredential = {
-  id: string;
-  provider: string;
-  name: string;
-  created_at: string;
-};
-
-type MockSyncConfig = {
-  id: string;
-  provider: string;
-  name: string;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-type MockTeam = {
-  id: string;
-  team_id: string;
-  name: string;
-  source: string;
-};
-
-type MockIdentity = {
-  id: string;
-  provider: string;
-  external_id: string;
-  user_id: string;
-};
 
 const MOCK_CREDENTIALS: MockCredential[] = [
   {
@@ -311,17 +265,18 @@ export const handlers = [
       return HttpResponse.json({ detail: "Missing credentials" }, { status: 400 });
     }
     if (body.email === "newuser@example.com" && body.password === "password123") {
-      return HttpResponse.json({
+      return HttpResponse.json<LoginResponseBody>({
         user: {
           id: "e2e-user-new",
           email: "newuser@example.com",
           org_id: null,
-          role: null,
+          role: "member",
           is_superuser: false,
           permissions: ["read", "write"],
         },
         access_token: "mock-access-token-e2e",
         refresh_token: "mock-refresh-token-e2e",
+        token_type: "bearer",
         expires_in: 86400,
         needs_onboarding: true,
       });
@@ -329,7 +284,7 @@ export const handlers = [
     if (body.email !== "test@example.com" || body.password !== "password123") {
       return HttpResponse.json({ detail: "Invalid email or password" }, { status: 401 });
     }
-    return HttpResponse.json({
+    return HttpResponse.json<LoginResponseBody>({
       user: {
         id: "e2e-user-1",
         email: body.email,
@@ -340,18 +295,21 @@ export const handlers = [
       },
       access_token: "mock-access-token-e2e",
       refresh_token: "mock-refresh-token-e2e",
+      token_type: "bearer",
       expires_in: 86400,
       needs_onboarding: false,
     });
   }),
 
   http.post("*/api/v1/auth/validate", () =>
-    HttpResponse.json({ valid: true }),
+    HttpResponse.json<TokenValidateResponseBody>({ valid: true }),
   ),
 
   http.post("*/api/v1/auth/refresh", () =>
-    HttpResponse.json({
+    HttpResponse.json<TokenRefreshResponseBody>({
       access_token: "mock-refreshed-token-e2e",
+      refresh_token: "mock-refreshed-refresh-token-e2e",
+      token_type: "bearer",
       expires_in: 86400,
       user: {
         id: "e2e-user-1",
@@ -471,7 +429,7 @@ export const handlers = [
   http.get("*/api/v1/billing/plans", ({ request }) => {
     const url = new URL(request.url);
     const includeInactive = url.searchParams.get("include_inactive") === "true";
-    return HttpResponse.json(
+    return HttpResponse.json<MockBillingPlan[]>(
       includeInactive ? MOCK_BILLING_PLANS : MOCK_BILLING_PLANS.filter((plan) => plan.is_active),
     );
   }),
@@ -1014,10 +972,12 @@ export const handlers = [
   }),
 
   http.post("*/api/v1/auth/onboard", () =>
-    HttpResponse.json({
+    HttpResponse.json<OnboardResponseBody>({
       access_token: "mock-onboard-token",
       refresh_token: "mock-onboard-refresh",
+      token_type: "bearer",
       org_id: "org-new",
+      org_name: "New Organization",
       role: "owner",
       expires_in: 86400,
     }),
@@ -1034,7 +994,7 @@ export const handlers = [
   ),
 
   http.get("*/api/v1/admin/credentials", () =>
-    HttpResponse.json(MOCK_CREDENTIALS),
+    HttpResponse.json<MockCredential[]>(MOCK_CREDENTIALS),
   ),
 
   http.post("*/api/v1/admin/credentials", async ({ request }) => {
@@ -1046,7 +1006,7 @@ export const handlers = [
       created_at: body?.created_at ?? new Date().toISOString(),
     };
     MOCK_CREDENTIALS.push(created);
-    return HttpResponse.json(created);
+    return HttpResponse.json<MockCredential>(created);
   }),
 
   http.delete("*/api/v1/admin/credentials/:id", ({ params }) => {
@@ -1061,7 +1021,7 @@ export const handlers = [
   ),
 
   http.get("*/api/v1/admin/sync-configs", () =>
-    HttpResponse.json(MOCK_SYNC_CONFIGS),
+    HttpResponse.json<MockSyncConfig[]>(MOCK_SYNC_CONFIGS),
   ),
 
   http.post("*/api/v1/admin/sync-configs", async ({ request }) => {
@@ -1075,7 +1035,7 @@ export const handlers = [
       updated_at: body?.updated_at ?? new Date().toISOString(),
     };
     MOCK_SYNC_CONFIGS.push(created);
-    return HttpResponse.json(created);
+    return HttpResponse.json<MockSyncConfig>(created);
   }),
 
   http.patch("*/api/v1/admin/sync-configs/:id", async ({ params, request }) => {
@@ -1095,7 +1055,7 @@ export const handlers = [
       syncConfig.enabled = body.enabled;
     }
     syncConfig.updated_at = new Date().toISOString();
-    return HttpResponse.json(syncConfig);
+    return HttpResponse.json<MockSyncConfig>(syncConfig);
   }),
 
   http.delete("*/api/v1/admin/sync-configs/:id", ({ params }) => {
