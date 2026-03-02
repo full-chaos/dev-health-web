@@ -215,6 +215,50 @@ const MOCK_BILLING_PLANS: MockBillingPlan[] = [
     bundles: [],
   },
 ];
+
+type MockCredential = {
+  id: string;
+  provider: string;
+  name: string;
+  created_at: string;
+};
+
+type MockSyncConfig = {
+  id: string;
+  provider: string;
+  name: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type MockTeam = {
+  id: string;
+  team_id: string;
+  name: string;
+  source: string;
+};
+
+type MockIdentity = {
+  id: string;
+  provider: string;
+  external_id: string;
+  user_id: string;
+};
+
+const MOCK_CREDENTIALS: MockCredential[] = [
+  {
+    id: "cred-github-1",
+    provider: "github",
+    name: "GitHub Token",
+    created_at: "2026-01-15T00:00:00.000Z",
+  },
+];
+
+const MOCK_SYNC_CONFIGS: MockSyncConfig[] = [];
+const MOCK_TEAMS: MockTeam[] = [];
+const MOCK_IDENTITIES: MockIdentity[] = [];
+
 const buildDeploymentFlameResponse = (deploymentId: string) => ({
   entity: {
     deployment_id: deploymentId,
@@ -265,6 +309,22 @@ export const handlers = [
     const body = (await request.json()) as { email?: string; password?: string } | null;
     if (!body?.email || !body?.password) {
       return HttpResponse.json({ detail: "Missing credentials" }, { status: 400 });
+    }
+    if (body.email === "newuser@example.com" && body.password === "password123") {
+      return HttpResponse.json({
+        user: {
+          id: "e2e-user-new",
+          email: "newuser@example.com",
+          org_id: null,
+          role: null,
+          is_superuser: false,
+          permissions: ["read", "write"],
+        },
+        access_token: "mock-access-token-e2e",
+        refresh_token: "mock-refresh-token-e2e",
+        expires_in: 86400,
+        needs_onboarding: true,
+      });
     }
     if (body.email !== "test@example.com" || body.password !== "password123") {
       return HttpResponse.json({ detail: "Invalid email or password" }, { status: 401 });
@@ -944,4 +1004,175 @@ export const handlers = [
     // Default: empty data
     return HttpResponse.json({ data: {} });
   }),
+
+  http.post("*/api/v1/auth/register", async ({ request }) => {
+    const body = (await request.json()) as { email?: string } | null;
+    if (body?.email === "existing@example.com") {
+      return HttpResponse.json({ detail: "Email already registered" }, { status: 409 });
+    }
+    return HttpResponse.json({ registered: true }, { status: 201 });
+  }),
+
+  http.post("*/api/v1/auth/onboard", () =>
+    HttpResponse.json({
+      access_token: "mock-onboard-token",
+      refresh_token: "mock-onboard-refresh",
+      org_id: "org-new",
+      role: "owner",
+      expires_in: 86400,
+    }),
+  ),
+
+  http.get("*/api/v1/orgs/me", () =>
+    HttpResponse.json({
+      id: "org-e2e",
+      slug: "my-organization-e2e",
+      name: "My Organization",
+      tier: "community",
+      is_active: true,
+    }),
+  ),
+
+  http.get("*/api/v1/admin/credentials", () =>
+    HttpResponse.json({ items: MOCK_CREDENTIALS, total: MOCK_CREDENTIALS.length }),
+  ),
+
+  http.post("*/api/v1/admin/credentials", async ({ request }) => {
+    const body = (await request.json()) as Partial<MockCredential> | null;
+    const created: MockCredential = {
+      id: body?.id ?? `cred-${Date.now()}`,
+      provider: body?.provider ?? "github",
+      name: body?.name ?? "Credential",
+      created_at: body?.created_at ?? new Date().toISOString(),
+    };
+    MOCK_CREDENTIALS.push(created);
+    return HttpResponse.json(created);
+  }),
+
+  http.delete("*/api/v1/admin/credentials/:id", ({ params }) => {
+    const credentialId = params.id as string;
+    const next = MOCK_CREDENTIALS.filter((item) => item.id !== credentialId);
+    MOCK_CREDENTIALS.splice(0, MOCK_CREDENTIALS.length, ...next);
+    return HttpResponse.json({ deleted: true });
+  }),
+
+  http.post("*/api/v1/admin/credentials/:id/test", () =>
+    HttpResponse.json({ status: "connected", message: "Connection successful!" }),
+  ),
+
+  http.get("*/api/v1/admin/sync-configs", () =>
+    HttpResponse.json({ items: MOCK_SYNC_CONFIGS, total: MOCK_SYNC_CONFIGS.length }),
+  ),
+
+  http.post("*/api/v1/admin/sync-configs", async ({ request }) => {
+    const body = (await request.json()) as Partial<MockSyncConfig> | null;
+    const created: MockSyncConfig = {
+      id: body?.id ?? `sync-config-${Date.now()}`,
+      provider: body?.provider ?? "github",
+      name: body?.name ?? "Sync Config",
+      enabled: body?.enabled ?? true,
+      created_at: body?.created_at ?? new Date().toISOString(),
+      updated_at: body?.updated_at ?? new Date().toISOString(),
+    };
+    MOCK_SYNC_CONFIGS.push(created);
+    return HttpResponse.json(created);
+  }),
+
+  http.patch("*/api/v1/admin/sync-configs/:id", async ({ params, request }) => {
+    const syncConfigId = params.id as string;
+    const body = (await request.json()) as Partial<MockSyncConfig> | null;
+    const syncConfig = MOCK_SYNC_CONFIGS.find((item) => item.id === syncConfigId);
+    if (!syncConfig) {
+      return HttpResponse.json({ detail: "Sync config not found" }, { status: 404 });
+    }
+    if (body?.provider) {
+      syncConfig.provider = body.provider;
+    }
+    if (body?.name) {
+      syncConfig.name = body.name;
+    }
+    if (typeof body?.enabled === "boolean") {
+      syncConfig.enabled = body.enabled;
+    }
+    syncConfig.updated_at = new Date().toISOString();
+    return HttpResponse.json(syncConfig);
+  }),
+
+  http.delete("*/api/v1/admin/sync-configs/:id", ({ params }) => {
+    const syncConfigId = params.id as string;
+    const next = MOCK_SYNC_CONFIGS.filter((item) => item.id !== syncConfigId);
+    MOCK_SYNC_CONFIGS.splice(0, MOCK_SYNC_CONFIGS.length, ...next);
+    return HttpResponse.json({ deleted: true });
+  }),
+
+  http.post("*/api/v1/admin/sync-configs/:id/trigger", () =>
+    HttpResponse.json({ status: "triggered" }),
+  ),
+
+  http.get("*/api/v1/admin/sync-configs/:id/jobs", () =>
+    HttpResponse.json({ items: [], total: 0 }),
+  ),
+
+  http.get("*/api/v1/admin/teams", () =>
+    HttpResponse.json({ items: MOCK_TEAMS, total: MOCK_TEAMS.length }),
+  ),
+
+  http.post("*/api/v1/admin/teams", async ({ request }) => {
+    const body = (await request.json()) as Partial<MockTeam> | null;
+    const teamId = body?.team_id ?? `team-${Date.now()}`;
+    const created: MockTeam = {
+      id: teamId,
+      team_id: teamId,
+      name: body?.name ?? "Team",
+      source: body?.source ?? "github",
+    };
+    MOCK_TEAMS.push(created);
+    return HttpResponse.json(created);
+  }),
+
+  http.get("*/api/v1/admin/teams/pending-changes", () =>
+    HttpResponse.json({ items: [] }),
+  ),
+
+  http.get("*/api/v1/admin/teams/discover", () =>
+    HttpResponse.json({
+      items: [{ team_id: "discovered-team", name: "Auto-discovered", source: "github" }],
+    }),
+  ),
+
+  http.get("*/api/v1/admin/identities", () =>
+    HttpResponse.json({ items: MOCK_IDENTITIES, total: MOCK_IDENTITIES.length }),
+  ),
+
+  http.post("*/api/v1/admin/identities", async ({ request }) => {
+    const body = (await request.json()) as Partial<MockIdentity> | null;
+    const created: MockIdentity = {
+      id: body?.id ?? `identity-${Date.now()}`,
+      provider: body?.provider ?? "github",
+      external_id: body?.external_id ?? `external-${Date.now()}`,
+      user_id: body?.user_id ?? "e2e-user-1",
+    };
+    MOCK_IDENTITIES.push(created);
+    return HttpResponse.json(created);
+  }),
+
+  http.get("*/api/v1/admin/users", () =>
+    HttpResponse.json({
+      items: [{ id: "e2e-user-1", email: "test@example.com", role: "owner", is_active: true }],
+      total: 1,
+    }),
+  ),
+
+  http.get("*/api/v1/admin/settings/categories", () =>
+    HttpResponse.json({
+      items: [
+        { key: "general", label: "General" },
+        { key: "security", label: "Security" },
+      ],
+    }),
+  ),
+
+  http.get("*/api/v1/admin/impersonate/status", () =>
+    HttpResponse.json({ is_impersonating: false, target_user_id: null }),
+  ),
 ];

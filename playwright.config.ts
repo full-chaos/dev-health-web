@@ -6,6 +6,7 @@ const junitOutputFile =
   process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? "test-results/playwright/junit.xml";
 
 const AUTH_FILE = "test-results/.auth/state.json";
+const ONBOARDING_AUTH_FILE = "test-results/.auth/onboarding-state.json";
 
 export default defineConfig({
   testDir: "./tests",
@@ -24,8 +25,20 @@ export default defineConfig({
       testMatch: /auth\.setup\.ts/,
     },
     {
+      name: "onboarding-setup",
+      testMatch: /onboarding\.setup\.ts/,
+    },
+    {
+      name: "onboarding-user",
+      testMatch: [/auth-onboard\.spec\.ts/],
+      dependencies: ["onboarding-setup"],
+      use: {
+        storageState: ONBOARDING_AUTH_FILE,
+      },
+    },
+    {
       name: "authenticated",
-      testIgnore: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /auth\.setup\.ts/, /live\//, /marketing-pricing\.spec\.ts/],
+      testIgnore: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /auth\.setup\.ts/, /live\//, /marketing-pricing\.spec\.ts/, /auth-signup\.spec\.ts/, /auth-onboard\.spec\.ts/, /onboarding\.setup\.ts/, /account-creation-journey\.spec\.ts/],
       dependencies: ["auth-setup"],
       use: {
         storageState: AUTH_FILE,
@@ -33,7 +46,7 @@ export default defineConfig({
     },
     {
       name: "unauthenticated",
-      testMatch: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /marketing-pricing\.spec\.ts/],
+      testMatch: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /marketing-pricing\.spec\.ts/, /auth-signup\.spec\.ts/],
     },
   ],
   use: {
