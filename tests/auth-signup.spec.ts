@@ -50,6 +50,9 @@ test("password too short shows error toast", async ({ page }) => {
   await page.getByLabel("Email").fill("test@example.com");
   await page.getByLabel("Password", { exact: true }).fill("short");
   await page.getByLabel("Confirm Password").fill("short");
+  await page.evaluate(() =>
+    document.querySelector("form")?.setAttribute("novalidate", ""),
+  );
   await page.getByRole("button", { name: "Create Account" }).click();
 
   await expect(
