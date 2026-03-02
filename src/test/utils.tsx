@@ -4,6 +4,7 @@
  */
 import { render, type RenderOptions } from "@testing-library/react";
 import { type ReactElement } from "react";
+import { Toaster } from "sonner";
 
 // Re-export everything from testing library for convenience
 export * from "@testing-library/react";
@@ -19,3 +20,20 @@ function customRender(ui: ReactElement, options?: Omit<RenderOptions, "wrapper">
 }
 
 export { customRender as render };
+
+/**
+ * Renders a component wrapped with <Toaster /> so toast assertions work.
+ * Use this instead of bare `render()` for any component that calls `toast.*`.
+ */
+export function renderWithToaster(
+  ui: ReactElement,
+  options?: Omit<RenderOptions, "wrapper">
+) {
+  return customRender(
+    <>
+      {ui}
+      <Toaster />
+    </>,
+    options
+  );
+}

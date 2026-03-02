@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
-import { getBackendUrl } from "@/lib/origin"
+import { resolveOrigin } from "@/lib/origin"
 
 export function OnboardForm() {
   const router = useRouter()
@@ -17,7 +17,7 @@ export function OnboardForm() {
     setLoading(true)
 
     try {
-      const backendUrl = getBackendUrl()
+      const backendUrl = resolveOrigin()
       const res = await fetch(`${backendUrl}/api/v1/auth/onboard`, {
         method: "POST",
         headers: {
