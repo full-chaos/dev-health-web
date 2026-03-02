@@ -29,14 +29,11 @@ export function renderWithToaster(
   ui: ReactElement,
   options?: Omit<RenderOptions, "wrapper">
 ) {
-  function ToasterWrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <>
-        {children}
-        <Toaster />
-      </>
-    );
-  }
-
-  return render(ui, { wrapper: ToasterWrapper, ...options });
+  return customRender(
+    <>
+      {ui}
+      <Toaster />
+    </>,
+    options
+  );
 }
