@@ -7,8 +7,8 @@ test("settings page renders all sections", async ({ page }) => {
     page.getByRole("heading", { name: "Organization Settings" }),
   ).toBeVisible();
   await expect(page.getByText("General")).toBeVisible();
-  await expect(page.getByText("Billing")).toBeVisible();
-  await expect(page.getByText("Security")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
   await expect(page.getByText("Danger Zone")).toBeVisible();
 });
 
@@ -33,7 +33,7 @@ test("billing section is visible", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /Upgrade|Change Plan/i }).or(page.getByText(/plan/i).first()),
+    page.getByRole("button", { name: /Upgrade|Change Plan/i }),
   ).toBeVisible();
 });
 
