@@ -8,7 +8,7 @@ test("signup page renders registration form", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByLabel("Full Name")).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
-  await expect(page.getByLabel("Password")).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Confirm Password")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Create Account" }),
@@ -23,7 +23,7 @@ test("successful registration redirects to signin with banner", async ({
 
   await page.getByLabel("Full Name").fill("Test User");
   await page.getByLabel("Email").fill("brand-new@example.com");
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password", { exact: true }).fill("password123");
   await page.getByLabel("Confirm Password").fill("password123");
   await page.getByRole("button", { name: "Create Account" }).click();
 
@@ -35,7 +35,7 @@ test("password mismatch shows error toast", async ({ page }) => {
   await page.goto("/auth/signup");
 
   await page.getByLabel("Email").fill("test@example.com");
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password", { exact: true }).fill("password123");
   await page.getByLabel("Confirm Password").fill("different123");
   await page.getByRole("button", { name: "Create Account" }).click();
 
@@ -48,7 +48,7 @@ test("password too short shows error toast", async ({ page }) => {
   await page.goto("/auth/signup");
 
   await page.getByLabel("Email").fill("test@example.com");
-  await page.getByLabel("Password").fill("short");
+  await page.getByLabel("Password", { exact: true }).fill("short");
   await page.getByLabel("Confirm Password").fill("short");
   await page.getByRole("button", { name: "Create Account" }).click();
 
@@ -61,7 +61,7 @@ test("duplicate email shows server error toast", async ({ page }) => {
   await page.goto("/auth/signup");
 
   await page.getByLabel("Email").fill("existing@example.com");
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password", { exact: true }).fill("password123");
   await page.getByLabel("Confirm Password").fill("password123");
   await page.getByRole("button", { name: "Create Account" }).click();
 

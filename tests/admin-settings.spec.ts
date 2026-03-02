@@ -4,7 +4,7 @@ test("settings page renders all sections", async ({ page }) => {
   await page.goto("/admin/settings");
 
   await expect(
-    page.getByRole("heading", { name: /Organization Settings|Settings/i }),
+    page.getByRole("heading", { name: "Organization Settings" }),
   ).toBeVisible();
   await expect(page.getByText("General")).toBeVisible();
   await expect(page.getByText("Billing")).toBeVisible();
@@ -31,7 +31,7 @@ test("slug field is disabled", async ({ page }) => {
 test("billing section is visible", async ({ page }) => {
   await page.goto("/admin/settings");
 
-  await expect(page.getByText("Billing")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Upgrade|Change Plan/i }).or(page.getByText(/plan/i).first()),
   ).toBeVisible();

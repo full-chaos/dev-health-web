@@ -4,10 +4,10 @@ test("integrations page renders provider cards", async ({ page }) => {
   await page.goto("/admin/integrations");
 
   await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
-  await expect(page.getByText("GitHub")).toBeVisible();
-  await expect(page.getByText("GitLab")).toBeVisible();
-  await expect(page.getByText("Jira")).toBeVisible();
-  await expect(page.getByText("Linear")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "GitHub" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "GitLab" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jira" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Linear" })).toBeVisible();
 });
 
 test("GitHub integration form renders all fields", async ({ page }) => {
@@ -66,5 +66,5 @@ test("Linear integration form renders fields", async ({ page }) => {
 test("unknown provider returns 404", async ({ page }) => {
   await page.goto("/admin/integrations/unknown");
 
-  await expect(page.getByText(/not found/i)).toBeVisible();
+  await expect(page.getByText(/this page could not be found/i)).toBeVisible();
 });
