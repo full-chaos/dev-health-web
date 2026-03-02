@@ -67,6 +67,15 @@ jobs:
           pip install -r requirements.txt
         working-directory: dev-health-ops
 
+      - name: Check GraphQL schema drift
+        run: |
+          PYTHONPATH=dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema \
+            --out /tmp/backend-schema.graphql
+          diff src/lib/graphql/schema.graphql /tmp/backend-schema.graphql || {
+            echo "::error::GraphQL schema drift detected! Run codegen and commit updated schema."
+            exit 1
+          }
+
       - name: Run dev-health-ops migrations
         env:
           DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
@@ -113,6 +122,10 @@ jobs:
       - name: Run live backend e2e tier
         env:
           PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8000
+          TEST_SUPERUSER_EMAIL: ${{ secrets.TEST_SUPERUSER_EMAIL }}
+          TEST_SUPERUSER_PASSWORD: ${{ secrets.TEST_SUPERUSER_PASSWORD }}
+          TEST_TARGET_USER_ID: ${{ secrets.TEST_TARGET_USER_ID }}
+          TEST_SUPERUSER_TARGET_USER_ID: ${{ secrets.TEST_SUPERUSER_TARGET_USER_ID }}
         run: bash ci/run_tests.sh live-e2e
 
       - name: Upload Playwright report
