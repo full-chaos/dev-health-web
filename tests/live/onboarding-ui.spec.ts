@@ -44,7 +44,8 @@ test("login with new user redirects to onboard page", async ({ page, request }) 
 
   // Register via API so we start fresh
   const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-    data: { email, password, name: "UI Login User" },
+    data: { email, password, full_name: "UI Login User" },
+    headers: { Origin: liveBackendUrl },
   });
   if (!regRes.ok()) {
     test.skip(true, "Registration failed — backend may be unavailable");
@@ -72,7 +73,8 @@ test("onboard creates workspace and redirects to dashboard", async ({ page, requ
 
   // Register via API
   const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-    data: { email, password, name: "UI Onboard User" },
+    data: { email, password, full_name: "UI Onboard User" },
+    headers: { Origin: liveBackendUrl },
   });
   if (!regRes.ok()) {
     test.skip(true, "Registration failed — backend may be unavailable");

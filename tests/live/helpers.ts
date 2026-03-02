@@ -16,10 +16,11 @@ export async function registerUser(
   request: APIRequestContext,
   email: string,
   password: string,
-  name = "Test User"
+  fullName = "Test User"
 ): Promise<Record<string, unknown>> {
   const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-    data: { email, password, name },
+    data: { email, password, full_name: fullName },
+    headers: { Origin: liveBackendUrl },
   });
   return (await res.json()) as Record<string, unknown>;
 }

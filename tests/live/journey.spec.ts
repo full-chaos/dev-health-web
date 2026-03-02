@@ -20,7 +20,8 @@ import {
 test("POST /register → 201 with user_id and org_id", async ({ request }) => {
   const email = testEmail("reg");
   const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-    data: { email, password: "TestPass123!", name: "Reg User" },
+    data: { email, password: "TestPass123!", full_name: "Reg User" },
+    headers: { Origin: liveBackendUrl },
   });
   expect(res.status()).toBe(201);
 
@@ -31,7 +32,8 @@ test("POST /register → 201 with user_id and org_id", async ({ request }) => {
 test("POST /login after fresh registration → needs_onboarding true", async ({ request }) => {
   const email = testEmail("login");
   const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-    data: { email, password: "TestPass123!", name: "Login User" },
+    data: { email, password: "TestPass123!", full_name: "Login User" },
+    headers: { Origin: liveBackendUrl },
   });
   if (!regRes.ok()) {
     test.skip(true, "Registration failed — backend may be unavailable");
@@ -59,7 +61,8 @@ test.describe("onboarding journey", () => {
 
   test.beforeAll(async ({ request }) => {
     const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-      data: { email, password, name: "Onboard User" },
+      data: { email, password, full_name: "Onboard User" },
+      headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) return;
 
@@ -125,7 +128,8 @@ test.describe("credentials journey", () => {
 
   test.beforeAll(async ({ request }) => {
     const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-      data: { email, password, name: "Creds User" },
+      data: { email, password, full_name: "Creds User" },
+      headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) return;
 
@@ -230,7 +234,8 @@ test.describe("sync journey", () => {
 
   test.beforeAll(async ({ request }) => {
     const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-      data: { email, password, name: "Sync User" },
+      data: { email, password, full_name: "Sync User" },
+      headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) return;
 
