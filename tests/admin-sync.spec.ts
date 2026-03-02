@@ -13,8 +13,8 @@ test("new sync config form renders all fields", async ({ page }) => {
   await expect(page.locator("#name")).toBeVisible();
   await expect(page.locator("#provider")).toBeVisible();
   await expect(page.locator("#credential_id")).toBeVisible();
-  await expect(page.getByText("git")).toBeVisible();
-  await expect(page.getByText("prs")).toBeVisible();
+  await expect(page.getByText(/Git Data/i)).toBeVisible();
+  await expect(page.getByText(/Pull Requests/i)).toBeVisible();
 });
 
 test("creating sync config navigates back to list", async ({ page }) => {
@@ -31,13 +31,13 @@ test("provider selection filters sync targets", async ({ page }) => {
   await page.goto("/admin/sync/new");
 
   await page.locator("#provider").selectOption("github");
-  await expect(page.getByText("git")).toBeVisible();
-  await expect(page.getByText("prs")).toBeVisible();
-  await expect(page.getByText("cicd")).toBeVisible();
-  await expect(page.getByText("deployments")).toBeVisible();
+  await expect(page.getByText(/Git Data/i)).toBeVisible();
+  await expect(page.getByText(/Pull Requests/i)).toBeVisible();
+  await expect(page.getByText(/CI\/CD/i)).toBeVisible();
+  await expect(page.getByText(/Deployments/i)).toBeVisible();
 
   await page.locator("#provider").selectOption("jira");
-  await expect(page.getByText("work-items")).toBeVisible();
+  await expect(page.getByText(/Work Items/i)).toBeVisible();
 });
 
 test("sync target checkboxes toggle", async ({ page }) => {

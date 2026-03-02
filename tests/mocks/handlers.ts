@@ -1034,7 +1034,7 @@ export const handlers = [
   ),
 
   http.get("*/api/v1/admin/credentials", () =>
-    HttpResponse.json({ items: MOCK_CREDENTIALS, total: MOCK_CREDENTIALS.length }),
+    HttpResponse.json(MOCK_CREDENTIALS),
   ),
 
   http.post("*/api/v1/admin/credentials", async ({ request }) => {
@@ -1056,12 +1056,12 @@ export const handlers = [
     return HttpResponse.json({ deleted: true });
   }),
 
-  http.post("*/api/v1/admin/credentials/:id/test", () =>
-    HttpResponse.json({ status: "connected", message: "Connection successful!" }),
+  http.post("*/api/v1/admin/credentials/test", () =>
+    HttpResponse.json({ success: true, error: null, details: null }),
   ),
 
   http.get("*/api/v1/admin/sync-configs", () =>
-    HttpResponse.json({ items: MOCK_SYNC_CONFIGS, total: MOCK_SYNC_CONFIGS.length }),
+    HttpResponse.json(MOCK_SYNC_CONFIGS),
   ),
 
   http.post("*/api/v1/admin/sync-configs", async ({ request }) => {
@@ -1110,11 +1110,11 @@ export const handlers = [
   ),
 
   http.get("*/api/v1/admin/sync-configs/:id/jobs", () =>
-    HttpResponse.json({ items: [], total: 0 }),
+    HttpResponse.json([]),
   ),
 
   http.get("*/api/v1/admin/teams", () =>
-    HttpResponse.json({ items: MOCK_TEAMS, total: MOCK_TEAMS.length }),
+    HttpResponse.json(MOCK_TEAMS),
   ),
 
   http.post("*/api/v1/admin/teams", async ({ request }) => {
@@ -1131,7 +1131,7 @@ export const handlers = [
   }),
 
   http.get("*/api/v1/admin/teams/pending-changes", () =>
-    HttpResponse.json({ items: [] }),
+    HttpResponse.json({ changes: [], total: 0 }),
   ),
 
   http.get("*/api/v1/admin/teams/discover", () =>
@@ -1141,7 +1141,7 @@ export const handlers = [
   ),
 
   http.get("*/api/v1/admin/identities", () =>
-    HttpResponse.json({ items: MOCK_IDENTITIES, total: MOCK_IDENTITIES.length }),
+    HttpResponse.json(MOCK_IDENTITIES),
   ),
 
   http.post("*/api/v1/admin/identities", async ({ request }) => {
@@ -1164,12 +1164,7 @@ export const handlers = [
   ),
 
   http.get("*/api/v1/admin/settings/categories", () =>
-    HttpResponse.json({
-      items: [
-        { key: "general", label: "General" },
-        { key: "security", label: "Security" },
-      ],
-    }),
+    HttpResponse.json(["general", "security"]),
   ),
 
   http.get("*/api/v1/admin/impersonate/status", () =>

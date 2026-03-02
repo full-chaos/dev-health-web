@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.describe.serial("Account creation journey", () => {
+test.describe("Account creation journey", () => {
   test("1. user signs up and sees post-registration banner", async ({ page }) => {
     await page.goto("/auth/signup");
     await page.getByLabel("Full Name").fill("Journey User");

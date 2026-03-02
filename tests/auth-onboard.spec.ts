@@ -31,10 +31,12 @@ test("submitting blank org name still creates workspace", async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
 });
 
-test("unauthenticated access redirects to signin", async ({ page }) => {
+test.describe("unauthenticated", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  await page.goto("/auth/onboard");
+  test("unauthenticated access redirects to signin", async ({ page }) => {
+    await page.goto("/auth/onboard");
 
-  await expect(page).toHaveURL(/\/auth\/signin/);
+    await expect(page).toHaveURL(/\/auth\/signin/);
+  });
 });
