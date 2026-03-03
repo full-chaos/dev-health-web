@@ -46,7 +46,7 @@ export default defineConfig({
     },
     {
       name: "unauthenticated",
-      testMatch: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /marketing-pricing\.spec\.ts/, /auth-signup\.spec\.ts/],
+      testMatch: [/auth-signin\.spec\.ts/, /(?:^|\/)admin\.spec\.ts$/, /marketing-pricing\.spec\.ts/, /auth-signup\.spec\.ts/],
     },
   ],
   use: {
