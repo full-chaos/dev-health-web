@@ -48,10 +48,11 @@ test("signup form submits successfully and redirects with registered banner", as
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 2. Login with new user redirects to /auth/onboard (needs_onboarding=true)
+// 2. Login with verified user redirects to dashboard
+//    (Registration auto-creates an org + membership, so needs_onboarding=false)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("login with new user redirects to onboard page", async ({ page, request }) => {
+  test("login with verified user redirects to dashboard", async ({ page, request }) => {
   const email = testEmail("ui-login");
   const password = "TestPass123!";
 
@@ -77,22 +78,21 @@ test("login with new user redirects to onboard page", async ({ page, request }) 
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
 
-  // New user should land on the onboard page
-  await expect(page).toHaveURL(/\/auth\/onboard/, { timeout: 15_000 });
-  await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
+  // Registration auto-creates an org, so the user lands on the dashboard
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 3. Onboard creates workspace and redirects to dashboard
+// 3. Full browser signup → login → dashboard journey
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("onboard creates workspace and redirects to dashboard", async ({ page, request }) => {
-  const email = testEmail("ui-onboard");
+test("full signup then login reaches dashboard", async ({ page, request }) => {
+  const email = testEmail("ui-journey");
   const password = "TestPass123!";
 
-  // Register via API
+  // Register via API (browser signup already covered by test 1)
   const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-    data: { email, password, full_name: "UI Onboard User" },
+    data: { email, password, full_name: "UI Journey User" },
     headers: { Origin: liveBackendUrl },
   });
   if (!regRes.ok()) {
@@ -112,13 +112,8 @@ test("onboard creates workspace and redirects to dashboard", async ({ page, requ
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
 
-  // Should land on onboard
-  await expect(page).toHaveURL(/\/auth\/onboard/, { timeout: 15_000 });
-
-  // Fill org name and submit
-  await page.getByLabel("Organization Name").fill("Live UI Org");
-  await page.getByRole("button", { name: "Create Workspace" }).click();
-
-  // Should redirect to dashboard
+  // Should reach dashboard and see main navigation
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+  // Verify the page has rendered (not just a redirect)
+  await expect(page.locator("main")).toBeVisible({ timeout: 10_000 });
 });
