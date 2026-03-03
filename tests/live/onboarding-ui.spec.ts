@@ -20,6 +20,11 @@ test("signup form submits successfully and redirects with registered banner", as
 }) => {
   const email = testEmail("ui-signup");
 
+  // Capture the register API response to diagnose failures
+  const registerResponsePromise = page.waitForResponse(
+    (resp) => resp.url().includes("/api/v1/auth/register"),
+  );
+
   await page.goto("/auth/signup");
   await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
 
@@ -28,6 +33,14 @@ test("signup form submits successfully and redirects with registered banner", as
   await page.getByLabel("Password", { exact: true }).fill("TestPass123!");
   await page.getByLabel("Confirm Password").fill("TestPass123!");
   await page.getByRole("button", { name: "Create Account" }).click();
+
+  // Wait for the register API response and log it for debugging
+  const registerResponse = await registerResponsePromise;
+  const status = registerResponse.status();
+  const body = await registerResponse.text();
+  // eslint-disable-next-line no-console
+  console.log(`[signup-debug] POST /register status=${status} body=${body}`);
+  expect(status, `Register API returned ${status}: ${body}`).toBe(201);
 
   // Should redirect to signin with registered=true banner
   await expect(page).toHaveURL(/\/auth\/signin\?registered=true/, { timeout: 15_000 });
