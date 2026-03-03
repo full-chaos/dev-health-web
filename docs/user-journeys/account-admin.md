@@ -1,0 +1,272 @@
+# Account Admin Journeys
+
+## Integration Setup
+
+Purpose
+- Covers provider credential setup and connection testing from admin integration pages.
+- Confirms route handling for known and unknown providers.
+
+Primary test files
+- `tests/admin-integrations.spec.ts`
+- `src/components/admin/integrations/IntegrationForm.test.tsx`
+
+Core routes
+- `/admin/integrations`
+- `/admin/integrations/[provider]`
+
+Supported provider route examples
+- `/admin/integrations/github`
+- `/admin/integrations/gitlab`
+- `/admin/integrations/jira`
+- `/admin/integrations/linear`
+
+Form fields by provider
+- GitHub: `#github-token`, `#github-org`, `#github-repos`
+- GitLab: `#gitlab-token`, `#gitlab-group`
+- Jira: `#jira-url`, `#jira-email`, `#jira-token`, `#jira-projects`
+- Linear: `#linear-key`, `#linear-teams`
+
+Server actions
+- `createCredential` in `src/lib/admin/server.ts`
+- `testConnection` in `src/lib/admin/server.ts`
+
+Decision and routing flow
+
+```mermaid
+flowchart TD
+    U[User opens /admin/integrations] --> C[Select provider card]
+    C --> P{Provider known}
+    P -- Yes --> F[Load /admin/integrations/[provider] form]
+    P -- No --> N[Return 404]
+    F --> I[Enter provider-specific fields]
+    I --> S[Click Save Changes]
+    S --> SC[createCredential server action]
+    SC --> T1[Show success toast]
+    I --> T[Click Test Connection]
+    T --> TC[testConnection server action]
+    TC --> T2[Show Connection successful]
+```
+
+Test coverage
+
+| Layer | Coverage | Tests | Notes |
+|---|---|---|---|
+| Backend Unit | ✅ | `test_admin_credentials.py` | Backend credential handling and related logic are unit-covered. |
+| Frontend Unit | ✅ | `src/components/admin/integrations/IntegrationForm.test.tsx` | Validates form rendering and interaction behavior by provider. |
+| Frontend E2E | ✅ | `tests/admin-integrations.spec.ts`, `tests/account-creation-journey.spec.ts` (step 4) | Confirms UI flow and inclusion in full setup journey. |
+| Live E2E | ✅ | `tests/live/journey.spec.ts` | Validates integration step in live journey context. |
+
+## Sync Configuration
+
+Purpose
+- Covers create/edit/list lifecycle for sync configuration records.
+- Verifies provider-aware sync target toggles and manual trigger action.
+
+Primary test files
+- `tests/admin-sync.spec.ts`
+- `src/components/admin/sync/SyncConfigForm.test.tsx`
+
+Routes
+- `/admin/sync`
+- `/admin/sync/new`
+- `/admin/sync/[configId]`
+
+Required fields
+- `#name`
+- `#provider` (select)
+- `#credential_id` (select)
+
+Provider target toggles
+- GitHub: Git Data, PRs, CI/CD, Deployments
+- Jira: Work Items
+
+Trigger action
+- `triggerSync(configId)` server action
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant L as Sync List UI
+    participant F as Sync Form UI
+    participant SA as Admin Server Actions
+    U->>L: Open /admin/sync
+    L-->>U: Existing sync config list
+    U->>F: Open /admin/sync/new
+    F-->>U: Empty config form
+    U->>F: Enter #name
+    U->>F: Select #provider and #credential_id
+    F-->>U: Show provider target toggles
+    U->>F: Toggle targets
+    U->>F: Submit form
+    F-->>U: Redirect to /admin/sync
+    U->>L: Click Sync Now
+    L->>SA: triggerSync(configId)
+    SA-->>L: Trigger accepted
+```
+
+Test coverage
+
+| Layer | Coverage | Tests | Notes |
+|---|---|---|---|
+| Backend Unit | ✅ | `test_sync_configs.py` | Covers backend sync config lifecycle semantics. |
+| Frontend Unit | ✅ | `src/components/admin/sync/SyncConfigForm.test.tsx` | Covers provider-target toggles and form-level behavior. |
+| Frontend E2E | ✅ | `tests/admin-sync.spec.ts`, `tests/account-creation-journey.spec.ts` (step 5) | Covers dedicated sync flow and onboarding integration. |
+| Live E2E | ✅ | `tests/live/journey.spec.ts` | Covers sync path in live account setup journey. |
+
+## Team Management
+
+Purpose
+- Covers team create/edit/list operations and validation behavior.
+- Ensures cancel and create navigation paths are deterministic.
+
+Primary test files
+- `tests/admin-teams.spec.ts`
+- `src/components/admin/teams/TeamForm.test.tsx`
+
+Routes
+- `/admin/teams`
+- `/admin/teams/new`
+- `/admin/teams/[teamId]`
+
+Team form fields
+- `#team_id` (slug, disabled in edit)
+- `#name`
+- `#description`
+- `#repo_patterns`
+- `#project_keys`
+
+Validation constraints
+- `team_id` required.
+- `name` required.
+- Native browser validation path is used.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant TL as Team List UI
+    participant TF as Team Form UI
+    U->>TL: Open /admin/teams
+    TL-->>U: Team list view
+    U->>TF: Open /admin/teams/new
+    TF-->>U: Empty team form
+    U->>TF: Enter #team_id and #name
+    U->>TF: Optional #description, #repo_patterns, #project_keys
+    U->>TF: Submit create
+    TF-->>U: Redirect to /admin/teams
+    U->>TF: Open /admin/teams/[teamId]
+    TF-->>U: #team_id disabled in edit mode
+    U->>TF: Click Cancel
+    TF-->>U: Redirect to /admin/teams
+```
+
+Test coverage
+
+| Layer | Coverage | Tests | Notes |
+|---|---|---|---|
+| Backend Unit | ✅ | `test_teams.py` | Backend team model and CRUD behavior are covered. |
+| Frontend Unit | ✅ | `src/components/admin/teams/TeamForm.test.tsx` | Validates field constraints and edit-mode behavior. |
+| Frontend E2E | ✅ | `tests/admin-teams.spec.ts`, `tests/account-creation-journey.spec.ts` (step 6) | Confirms route and flow behavior through browser path. |
+| Live E2E | — | — | No live e2e source listed for standalone team management. |
+
+## Identity Mapping
+
+Purpose
+- Covers canonical identity creation and provider identity attachment.
+- Validates add-row behavior for multi-provider identity mapping.
+
+Primary test files
+- `tests/admin-identities.spec.ts`
+- `src/components/admin/identities/IdentityForm.test.tsx`
+
+Routes
+- `/admin/identities`
+- `/admin/identities/new`
+
+Form fields
+- `#canonical_id`
+- `#display_name`
+- `#email`
+- Team selector
+
+Dynamic row behavior
+- `+ Add Identity` adds provider identity row.
+- Each added row includes provider select and username input.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant IL as Identity List UI
+    participant IF as Identity Form UI
+    U->>IL: Open /admin/identities
+    IL-->>U: Existing mapped identities
+    U->>IF: Open /admin/identities/new
+    IF-->>U: Empty identity form
+    U->>IF: Enter #canonical_id, #display_name, #email
+    U->>IF: Select team
+    U->>IF: Click + Add Identity
+    IF-->>U: New provider identity row appears
+    U->>IF: Select provider and enter username
+    U->>IF: Submit create
+    IF-->>U: Redirect to /admin/identities
+    U->>IF: Click Cancel
+    IF-->>U: Redirect to /admin/identities
+```
+
+Test coverage
+
+| Layer | Coverage | Tests | Notes |
+|---|---|---|---|
+| Backend Unit | ✅ | `test_identities.py` | Covers identity persistence and relationship semantics. |
+| Frontend Unit | ✅ | `src/components/admin/identities/IdentityForm.test.tsx` | Covers dynamic row behavior and form interactions. |
+| Frontend E2E | ✅ | `tests/admin-identities.spec.ts`, `tests/account-creation-journey.spec.ts` (step 7) | Confirms identity flow and inclusion in account setup journey. |
+| Live E2E | — | — | No dedicated live e2e listed for standalone identity management. |
+
+## Organization Settings
+
+Purpose
+- Covers organization-level settings with emphasis on general info updates.
+- Documents available sections and billing/security/danger controls presence.
+
+Primary test file
+- `tests/admin-settings.spec.ts`
+
+Route
+- `/admin/settings`
+
+Sections on page
+- General section (org name, slug disabled)
+- Billing section (Upgrade/Change Plan button)
+- Security section
+- Danger Zone (Delete Organization)
+
+Primary update action
+- Update org name.
+- Click `Save Changes`.
+- Success toast confirms update.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant S as Settings UI
+    U->>S: Open /admin/settings
+    S-->>U: Render General/Billing/Security/Danger Zone
+    U->>S: Edit organization name in General section
+    U->>S: Click Save Changes
+    S-->>U: Show success toast
+    U->>S: Review Billing section and Change Plan control
+    U->>S: Review Security section
+    U->>S: Review Danger Zone delete action presence
+```
+
+Test coverage
+
+| Layer | Coverage | Tests | Notes |
+|---|---|---|---|
+| Backend Unit | — | — | No backend settings CRUD unit coverage listed in provided sources. |
+| Frontend Unit | — | — | No unit test file listed for this page component path. |
+| Frontend E2E | ✅ | `tests/admin-settings.spec.ts` | Covers UI sections and update feedback behavior. |
+| Live E2E | — | — | No live e2e source listed for settings page. |

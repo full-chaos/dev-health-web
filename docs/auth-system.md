@@ -27,7 +27,7 @@ The system uses **NextAuth.js v5 (beta)** with the `CredentialsProvider`.
 
 All supported **authentication** journeys documented below. Each includes a Mermaid diagram and test coverage annotations showing where the journey is verified.
 
-> For non-auth journeys (onboarding, admin, user, platform admin), see [user-journeys.md](user-journeys.md).
+> For non-auth journeys (onboarding, admin, user, platform admin), see [User Journeys](user-journeys/README.md).
 
 ### Authentication
 
