@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn().mockResolvedValue({
+    user: { id: "test-user-1", email: "test@example.com" },
+    access_token: "test-token",
+  }),
+}));
 describe("POST /api/feedback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
