@@ -1,11 +1,20 @@
+import { createHash } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import type { FeedbackPayload, FeedbackResponse } from "@/components/feedback/types";
+import { auth } from "@/lib/auth";
 
 const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
 
+/**
+ * In-memory rate limiter. Limitations:
+ * - Resets on every server restart / cold start / redeploy
+ * - Each serverless instance maintains its own state (not shared)
+ * - For production hardening, replace with Redis or similar distributed store
+ */
 const requestLog = new Map<string, number[]>();
 
 const ISSUE_CREATE_MUTATION = `
@@ -22,13 +31,33 @@ const ISSUE_CREATE_MUTATION = `
 `;
 
 function getClientIp(request: Request): string {
-  const forwardedFor = request.headers.get("x-forwarded-for");
+  // In production behind a reverse proxy, X-Forwarded-For is set by the proxy.
+  // WARNING: This header is spoofable if the app is not behind a trusted proxy.
+  // For stronger guarantees, use the platform's native IP detection (e.g., Vercel's
+  // x-real-ip header) or move rate limiting to an edge middleware / WAF.
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp;
 
-  if (!forwardedFor) {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const trustedProxyHeader = request.headers.get("x-forwarded-proto") || request.headers.get("via");
+
+  if (forwardedFor && trustedProxyHeader) {
+    return forwardedFor.split(",")[0]?.trim() || "unknown";
+  }
+
+  const fallbackIdentifier = [
+    request.headers.get("user-agent") ?? "",
+    request.headers.get("accept-language") ?? "",
+    request.headers.get("sec-ch-ua") ?? "",
+    request.headers.get("x-vercel-id") ?? "",
+    request.headers.get("cf-ray") ?? "",
+  ].join("|");
+
+  if (!fallbackIdentifier.replaceAll("|", "")) {
     return "unknown";
   }
 
-  return forwardedFor.split(",")[0]?.trim() || "unknown";
+  return `anon:${createHash("sha256").update(fallbackIdentifier).digest("hex")}`;
 }
 
 function isRateLimited(ip: string): boolean {
@@ -85,9 +114,18 @@ export async function POST(request: Request) {
     return NextResponse.json(response, { status: 503 });
   }
 
-  const ip = getClientIp(request);
+  const session = await auth();
+  if (!session?.access_token) {
+    return NextResponse.json(
+      { success: false, error: "Authentication required" } satisfies FeedbackResponse,
+      { status: 401 }
+    );
+  }
 
-  if (isRateLimited(ip)) {
+  const ip = getClientIp(request);
+  const rateLimitKey = session.user?.id ?? ip;
+
+  if (isRateLimited(rateLimitKey)) {
     const response: FeedbackResponse = {
       success: false,
       error: "Rate limit exceeded. Please try again later.",
