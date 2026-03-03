@@ -58,8 +58,6 @@ jobs:
               - 'codegen.ts'
               - 'instrumentation.ts'
               - 'sentry.*.config.ts'
-              - '.github/workflows/build-static.yml'
-              - '.github/scripts/**'
 
   build:
     name: Build Static Assets

@@ -58,8 +58,6 @@ jobs:
                           - 'docker-compose.yml'
                           - 'compose.dev.yml'
                           - '.dockerignore'
-                          - '.github/workflows/build-docker.yml'
-                          - '.github/scripts/**'
 
     build:
         name: Build Image

@@ -40,8 +40,6 @@ jobs:
               - 'codegen.ts'
               - 'instrumentation.ts'
               - 'sentry.*.config.ts'
-              - '.github/workflows/tests.yml'
-              - '.github/scripts/**'
 
   test:
     needs: [changes]

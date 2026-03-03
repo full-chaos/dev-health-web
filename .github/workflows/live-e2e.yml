@@ -41,8 +41,6 @@ jobs:
               - 'codegen.ts'
               - 'instrumentation.ts'
               - 'sentry.*.config.ts'
-              - '.github/workflows/live-e2e.yml'
-              - '.github/scripts/**'
 
   live-e2e:
     needs: [changes]
