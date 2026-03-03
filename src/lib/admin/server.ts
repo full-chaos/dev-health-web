@@ -72,6 +72,17 @@ async function getToken(): Promise<string> {
   return ctx.token;
 }
 
+async function requireSuperuserToken(): Promise<string> {
+  const session = await auth();
+  if (!session?.access_token) {
+    throw new AdminApiError(401, "Unauthorized", "No access token");
+  }
+  if (!session.user?.is_superuser) {
+    throw new AdminApiError(403, "Forbidden", "Superuser access required");
+  }
+  return session.access_token;
+}
+
 async function withErrorHandling<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   try {
     const data = await fn();
@@ -522,14 +533,14 @@ export async function startImpersonation(targetUserId: string): Promise<ActionRe
   expires_at: string;
 }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.impersonation.start(targetUserId, token);
   });
 }
 
 export async function stopImpersonation(): Promise<ActionResult<{ status: string }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.impersonation.stop(token);
   });
 }
@@ -542,7 +553,7 @@ export async function getImpersonationStatus(): Promise<ActionResult<{
   expires_at: string | null;
 }>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.impersonation.status(token);
   });
 }
@@ -551,70 +562,70 @@ export async function getImpersonationStatus(): Promise<ActionResult<{
 
 export async function listOrganizations(): Promise<ActionResult<Organization[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.orgs.list(token);
   });
 }
 
 export async function getOrganization(orgId: string): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.orgs.get(orgId, token);
   });
 }
 
 export async function createOrganization(data: OrganizationCreate): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.orgs.create(data, token);
   });
 }
 
 export async function updateOrganization(orgId: string, data: OrganizationUpdate): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.orgs.update(orgId, data, token);
   });
 }
 
 export async function deleteOrganization(orgId: string): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.orgs.delete(orgId, token);
   });
 }
 
 export async function listOrgMembers(orgId: string): Promise<ActionResult<Membership[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.orgs.members.list(orgId, token);
   });
 }
 
 export async function getPlatformStats(): Promise<ActionResult<PlatformStats>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.platform.stats(token);
   });
 }
 
 export async function getOrgEntitlements(orgId: string): Promise<ActionResult<OrgEntitlements>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.licensing.entitlements(orgId, token);
   });
 }
 
 export async function listFeatureFlags(): Promise<ActionResult<FeatureFlag[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.licensing.featureFlags(token);
   });
 }
 
 export async function listFeatureOverrides(orgId: string): Promise<ActionResult<FeatureOverride[]>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.licensing.overrides.list(orgId, token);
   });
 }
@@ -624,7 +635,7 @@ export async function createFeatureOverride(
   data: FeatureOverrideCreate
 ): Promise<ActionResult<FeatureOverride>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     const result = await adminApi.licensing.overrides.create(orgId, data, token);
     revalidatePath(`/superadmin/licensing/${orgId}`);
     return result;
@@ -636,7 +647,7 @@ export async function deleteFeatureOverride(
   overrideId: string
 ): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     const result = await adminApi.licensing.overrides.delete(orgId, overrideId, token);
     revalidatePath(`/superadmin/licensing/${orgId}`);
     return result;
@@ -649,7 +660,7 @@ export async function listPlatformAuditLogs(
   offset?: number
 ): Promise<ActionResult<AuditLogListResponse>> {
   return withErrorHandling(async () => {
-    const token = await getToken();
+    const token = await requireSuperuserToken();
     return adminApi.platformAudit.list(filters, limit, offset, token);
   });
 }
