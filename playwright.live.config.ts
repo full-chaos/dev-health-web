@@ -8,10 +8,21 @@ const liveBackendUrl =
 export default defineConfig({
   testDir: "./tests/live",
   reporter: [["html"], ["list"]],
-  use: {
-    baseURL: "http://127.0.0.1:3002",
-    headless: true,
-  },
+  /* Run onboarding-ui first — it exercises the browser signup form and is
+     sensitive to the backend's 3-per-hour register rate limit. */
+  projects: [
+    {
+      name: "onboarding-ui",
+      testMatch: /onboarding-ui\.spec\.ts/,
+      use: { baseURL: "http://127.0.0.1:3002", headless: true },
+    },
+    {
+      name: "live-api",
+      testIgnore: /onboarding-ui\.spec\.ts/,
+      dependencies: ["onboarding-ui"],
+      use: { baseURL: "http://127.0.0.1:3002", headless: true },
+    },
+  ],
   webServer: [
     {
       command: "npm run dev -- --hostname 127.0.0.1 --port 3002",

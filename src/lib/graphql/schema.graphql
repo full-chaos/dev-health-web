@@ -1,30 +1,140 @@
-"""
-Dev Health GraphQL Schema — local SDL copy.
+input AnalyticsRequestInput {
+  timeseries: [TimeseriesRequestInput!]! = []
+  breakdowns: [BreakdownRequestInput!]! = []
+  sankey: SankeyRequestInput = null
+  useInvestment: Boolean = null
+  filters: FilterInput = null
+}
 
-This file is the canonical schema used by GraphQL Code Generator to produce
-TypeScript types for the frontend.  It must be kept in sync with the backend
-Strawberry schema in dev-health-ops.
+type AnalyticsResult {
+  timeseries: [TimeseriesResult!]!
+  breakdowns: [BreakdownResult!]!
+  sankey: SankeyResult
+}
 
-Sync procedure:
-  1. Start the dev-health-ops API (or point to staging).
-  2. Run: npx graphql-codegen introspect \
-           --endpoint http://localhost:8000/graphql \
-           --output src/lib/graphql/schema.graphql
-  3. Commit the updated schema file together with any type changes.
+type BreakdownItem {
+  key: String!
+  value: Float!
+}
 
-CI validation (npm run codegen:check) confirms that the generated types in
-src/lib/graphql/__generated__/ are up-to-date with this schema file.
-"""
+input BreakdownRequestInput {
+  dimension: DimensionInput!
+  measure: MeasureInput!
+  dateRange: DateRangeInput!
+  topN: Int! = 10
+}
 
-# ===========================================================================
-# Scalars
-# ===========================================================================
+type BreakdownResult {
+  dimension: String!
+  measure: String!
+  items: [BreakdownItem!]!
+}
 
+enum BucketIntervalInput {
+  DAY
+  WEEK
+  MONTH
+}
+
+type CapacityForecast {
+  forecastId: String!
+  computedAt: String!
+  teamId: String
+  workScopeId: String
+  backlogSize: Int!
+  targetItems: Int
+  targetDate: Date
+  p50Date: Date
+  p85Date: Date
+  p95Date: Date
+  p50Days: Int
+  p85Days: Int
+  p95Days: Int
+  p50Items: Int
+  p85Items: Int
+  p95Items: Int
+  throughputMean: Float!
+  throughputStddev: Float!
+  historyDays: Int!
+  insufficientHistory: Boolean!
+  highVariance: Boolean!
+}
+
+type CapacityForecastConnection {
+  edges: [CapacityForecastEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type CapacityForecastEdge {
+  node: CapacityForecast!
+  cursor: String!
+}
+
+input CapacityForecastFilterInput {
+  teamId: String = null
+  workScopeId: String = null
+  fromDate: Date = null
+  toDate: Date = null
+  limit: Int! = 10
+}
+
+input CapacityForecastInput {
+  teamId: String = null
+  workScopeId: String = null
+  targetItems: Int = null
+  targetDate: Date = null
+  historyDays: Int! = 90
+  simulations: Int! = 10000
+}
+
+type CatalogDimension {
+  name: String!
+  description: String!
+}
+
+type CatalogLimits {
+  maxDays: Int!
+  maxBuckets: Int!
+  maxTopN: Int!
+  maxSankeyNodes: Int!
+  maxSankeyEdges: Int!
+  maxSubRequests: Int!
+}
+
+type CatalogMeasure {
+  name: String!
+  description: String!
+}
+
+type CatalogResult {
+  dimensions: [CatalogDimension!]!
+  measures: [CatalogMeasure!]!
+  limits: CatalogLimits!
+  values: [CatalogValueItem!]
+}
+
+type CatalogValueItem {
+  value: String!
+  count: Int!
+}
+
+type Coverage {
+  reposCoveredPct: Float!
+  prsLinkedToIssuesPct: Float!
+  issuesWithCycleStatesPct: Float!
+}
+
+"""Date (isoformat)"""
+scalar Date
+
+input DateRangeInput {
+  startDate: Date!
+  endDate: Date!
+}
+
+"""Date with time (isoformat)"""
 scalar DateTime
-
-# ===========================================================================
-# Enums
-# ===========================================================================
 
 enum DimensionInput {
   TEAM
@@ -35,6 +145,28 @@ enum DimensionInput {
   SUBCATEGORY
 }
 
+input FilterInput {
+  scope: ScopeFilterInput = null
+  who: WhoFilterInput = null
+  what: WhatFilterInput = null
+  why: WhyFilterInput = null
+  how: HowFilterInput = null
+}
+
+type Freshness {
+  lastIngestedAt: String
+  coverage: Coverage
+}
+
+type HomeResult {
+  freshness: Freshness!
+  deltas: [MetricDelta!]!
+}
+
+input HowFilterInput {
+  flowStage: [String!] = null
+}
+
 enum MeasureInput {
   COUNT
   CHURN_LOC
@@ -42,10 +174,85 @@ enum MeasureInput {
   THROUGHPUT
 }
 
-enum BucketIntervalInput {
-  DAY
-  WEEK
-  MONTH
+type MetricDelta {
+  metric: String!
+  label: String!
+  value: Float!
+  unit: String!
+  deltaPct: Float!
+  spark: [SparkPoint!]!
+}
+
+type MetricsUpdate {
+  orgId: String!
+  day: String!
+  updatedAt: DateTime!
+  message: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type Query {
+  """Get catalog of available dimensions, measures, and limits"""
+  catalog(orgId: String!, dimension: DimensionInput = null, filters: FilterInput = null): CatalogResult!
+
+  """Run batch analytics queries"""
+  analytics(orgId: String!, batch: AnalyticsRequestInput!): AnalyticsResult!
+
+  """Get home dashboard metrics"""
+  home(orgId: String!, filters: FilterInput = null): HomeResult!
+
+  """Query work graph edges with optional filters"""
+  workGraphEdges(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphEdgesResult!
+
+  """Compute capacity forecast on-demand"""
+  capacityForecast(orgId: String!, input: CapacityForecastInput = null): CapacityForecast
+
+  """List persisted capacity forecasts"""
+  capacityForecasts(orgId: String!, filters: CapacityForecastFilterInput = null): CapacityForecastConnection!
+}
+
+type SankeyCoverage {
+  teamCoverage: Float!
+  repoCoverage: Float!
+}
+
+type SankeyEdge {
+  source: String!
+  target: String!
+  value: Float!
+}
+
+type SankeyNode {
+  id: String!
+  label: String!
+  dimension: String!
+  value: Float!
+}
+
+input SankeyRequestInput {
+  path: [DimensionInput!]!
+  measure: MeasureInput!
+  dateRange: DateRangeInput!
+  maxNodes: Int! = 100
+  maxEdges: Int! = 500
+  useInvestment: Boolean = null
+}
+
+type SankeyResult {
+  nodes: [SankeyNode!]!
+  edges: [SankeyEdge!]!
+  coverage: SankeyCoverage
+}
+
+input ScopeFilterInput {
+  level: ScopeLevelInput! = ORG
+  ids: [String!]! = []
 }
 
 enum ScopeLevelInput {
@@ -56,11 +263,96 @@ enum ScopeLevelInput {
   DEVELOPER
 }
 
-enum WorkGraphNodeType {
-  ISSUE
-  PR
-  COMMIT
-  FILE
+type SparkPoint {
+  ts: String!
+  value: Float!
+}
+
+type Subscription {
+  """Subscribe to metrics updates for an organization"""
+  metricsUpdated(orgId: String!): MetricsUpdate!
+
+  """Subscribe to task status updates"""
+  taskStatus(taskId: String!): TaskStatus!
+
+  """Subscribe to data sync progress"""
+  syncProgress(orgId: String!): SyncProgress!
+}
+
+type SyncProgress {
+  orgId: String!
+  provider: String!
+  status: String!
+  itemsProcessed: Int!
+  itemsTotal: Int!
+  message: String
+  updatedAt: DateTime!
+}
+
+type TaskStatus {
+  taskId: String!
+  status: String!
+  progress: Float!
+  message: String
+  result: String
+  updatedAt: DateTime!
+}
+
+type TimeseriesBucket {
+  date: Date!
+  value: Float!
+}
+
+input TimeseriesRequestInput {
+  dimension: DimensionInput!
+  measure: MeasureInput!
+  interval: BucketIntervalInput!
+  dateRange: DateRangeInput!
+}
+
+type TimeseriesResult {
+  dimension: String!
+  dimensionValue: String!
+  measure: String!
+  buckets: [TimeseriesBucket!]!
+}
+
+input WhatFilterInput {
+  repos: [String!] = null
+  services: [String!] = null
+}
+
+input WhoFilterInput {
+  developers: [String!] = null
+  roles: [String!] = null
+}
+
+input WhyFilterInput {
+  workCategory: [String!] = null
+  issueType: [String!] = null
+}
+
+input WorkGraphEdgeFilterInput {
+  repoIds: [String!] = null
+  sourceType: WorkGraphNodeTypeInput = null
+  targetType: WorkGraphNodeTypeInput = null
+  edgeType: WorkGraphEdgeTypeInput = null
+  nodeId: String = null
+  limit: Int! = 1000
+}
+
+type WorkGraphEdgeResult {
+  edgeId: String!
+  sourceType: WorkGraphNodeType!
+  sourceId: String!
+  targetType: WorkGraphNodeType!
+  targetId: String!
+  edgeType: WorkGraphEdgeType!
+  provenance: WorkGraphProvenance!
+  confidence: Float!
+  evidence: String!
+  repoId: String
+  provider: String
 }
 
 enum WorkGraphEdgeType {
@@ -79,268 +371,44 @@ enum WorkGraphEdgeType {
   TOUCHES
 }
 
+enum WorkGraphEdgeTypeInput {
+  BLOCKS
+  RELATES
+  DUPLICATES
+  IS_BLOCKED_BY
+  IS_RELATED_TO
+  IS_DUPLICATE_OF
+  PARENT_OF
+  CHILD_OF
+  REFERENCES
+  IMPLEMENTS
+  FIXES
+  CONTAINS
+  TOUCHES
+}
+
+type WorkGraphEdgesResult {
+  edges: [WorkGraphEdgeResult!]!
+  totalCount: Int!
+  pageInfo: PageInfo!
+}
+
+enum WorkGraphNodeType {
+  ISSUE
+  PR
+  COMMIT
+  FILE
+}
+
+enum WorkGraphNodeTypeInput {
+  ISSUE
+  PR
+  COMMIT
+  FILE
+}
+
 enum WorkGraphProvenance {
   NATIVE
   EXPLICIT_TEXT
   HEURISTIC
-}
-
-# ===========================================================================
-# Input types
-# ===========================================================================
-
-input DateRangeInput {
-  startDate: String!
-  endDate: String!
-}
-
-input ScopeFilterInput {
-  level: ScopeLevelInput
-  ids: [String!]
-}
-
-input WhoFilterInput {
-  developers: [String!]
-  roles: [String!]
-}
-
-input WhatFilterInput {
-  repos: [String!]
-  services: [String!]
-}
-
-input WhyFilterInput {
-  workCategory: [String!]
-  issueType: [String!]
-}
-
-input HowFilterInput {
-  flowStage: [String!]
-}
-
-input FilterInput {
-  scope: ScopeFilterInput
-  who: WhoFilterInput
-  what: WhatFilterInput
-  why: WhyFilterInput
-  how: HowFilterInput
-}
-
-input TimeseriesRequestInput {
-  dimension: DimensionInput!
-  measure: MeasureInput!
-  interval: BucketIntervalInput!
-  dateRange: DateRangeInput!
-}
-
-input BreakdownRequestInput {
-  dimension: DimensionInput!
-  measure: MeasureInput!
-  dateRange: DateRangeInput!
-  topN: Int
-}
-
-input SankeyRequestInput {
-  path: [DimensionInput!]!
-  measure: MeasureInput!
-  dateRange: DateRangeInput!
-  maxNodes: Int
-  maxEdges: Int
-  useInvestment: Boolean
-}
-
-input AnalyticsRequestInput {
-  timeseries: [TimeseriesRequestInput!]
-  breakdowns: [BreakdownRequestInput!]
-  sankey: SankeyRequestInput
-  useInvestment: Boolean
-  filters: FilterInput
-}
-
-input CapacityForecastInput {
-  teamId: String
-  workScopeId: String
-  targetItems: Int
-  targetDate: String
-  historyDays: Int
-  simulations: Int
-}
-
-input CapacityForecastFilterInput {
-  teamId: String
-  workScopeId: String
-  fromDate: String
-  toDate: String
-  limit: Int
-}
-
-input WorkGraphEdgeFilterInput {
-  repoIds: [String!]
-  sourceType: WorkGraphNodeType
-  targetType: WorkGraphNodeType
-  edgeType: WorkGraphEdgeType
-  nodeId: String
-  limit: Int
-}
-
-# ===========================================================================
-# Result types
-# ===========================================================================
-
-type TimeseriesBucket {
-  date: String!
-  value: Float!
-}
-
-type TimeseriesResult {
-  dimension: String!
-  dimensionValue: String!
-  measure: String!
-  buckets: [TimeseriesBucket!]!
-}
-
-type BreakdownItem {
-  key: String!
-  value: Float!
-}
-
-type BreakdownResult {
-  dimension: String!
-  measure: String!
-  items: [BreakdownItem!]!
-}
-
-type SankeyNode {
-  id: String!
-  label: String!
-  dimension: String!
-  value: Float!
-}
-
-type SankeyEdge {
-  source: String!
-  target: String!
-  value: Float!
-}
-
-type SankeyCoverage {
-  teamCoverage: Float!
-  repoCoverage: Float!
-}
-
-type SankeyResult {
-  nodes: [SankeyNode!]!
-  edges: [SankeyEdge!]!
-  coverage: SankeyCoverage
-}
-
-type AnalyticsResult {
-  timeseries: [TimeseriesResult!]!
-  breakdowns: [BreakdownResult!]!
-  sankey: SankeyResult
-}
-
-type CatalogDimension {
-  name: String!
-  description: String!
-}
-
-type CatalogMeasure {
-  name: String!
-  description: String!
-}
-
-type CatalogLimits {
-  maxDays: Int!
-  maxBuckets: Int!
-  maxTopN: Int!
-  maxSankeyNodes: Int
-  maxSankeyEdges: Int
-  maxSubRequests: Int
-}
-
-type CatalogValueItem {
-  value: String!
-  count: Int!
-}
-
-type CatalogResult {
-  dimensions: [CatalogDimension!]!
-  measures: [CatalogMeasure!]!
-  limits: CatalogLimits!
-  values: [CatalogValueItem!]
-}
-
-type PageInfo {
-  hasNextPage: Boolean!
-  hasPreviousPage: Boolean!
-  startCursor: String
-  endCursor: String
-}
-
-type CapacityForecast {
-  forecastId: String!
-  computedAt: String!
-  teamId: String
-  workScopeId: String
-  backlogSize: Int!
-  targetItems: Int
-  targetDate: String
-  p50Date: String
-  p85Date: String
-  p95Date: String
-  p50Days: Int
-  p85Days: Int
-  p95Days: Int
-  p50Items: Int
-  p85Items: Int
-  p95Items: Int
-  throughputMean: Float!
-  throughputStddev: Float!
-  historyDays: Int!
-  insufficientHistory: Boolean!
-  highVariance: Boolean!
-}
-
-type CapacityForecastEdge {
-  node: CapacityForecast!
-  cursor: String!
-}
-
-type CapacityForecastConnection {
-  edges: [CapacityForecastEdge!]!
-  pageInfo: PageInfo!
-  totalCount: Int!
-}
-
-type WorkGraphEdge {
-  edgeId: String!
-  sourceType: WorkGraphNodeType!
-  sourceId: String!
-  targetType: WorkGraphNodeType!
-  targetId: String!
-  edgeType: WorkGraphEdgeType!
-  provenance: WorkGraphProvenance!
-  confidence: Float!
-  evidence: String!
-  repoId: String
-  provider: String
-}
-
-type WorkGraphEdgesResult {
-  edges: [WorkGraphEdge!]!
-  totalCount: Int!
-  pageInfo: PageInfo!
-}
-
-# ===========================================================================
-# Root query type
-# ===========================================================================
-
-type Query {
-  analytics(orgId: String!, batch: AnalyticsRequestInput!): AnalyticsResult!
-  catalog(orgId: String!, dimension: DimensionInput): CatalogResult!
-  capacityForecast(orgId: String!, input: CapacityForecastInput): CapacityForecast
-  capacityForecasts(orgId: String!, filters: CapacityForecastFilterInput): CapacityForecastConnection!
-  workGraphEdges(orgId: String!, filters: WorkGraphEdgeFilterInput): WorkGraphEdgesResult!
 }

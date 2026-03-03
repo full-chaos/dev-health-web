@@ -34,6 +34,7 @@ const config: CodegenConfig = {
         // Use TypeScript strict types
         strictScalars: true,
         scalars: {
+          Date: "string",
           DateTime: "string",
         },
         // Emit enum values as TypeScript const enums for tree-shaking
@@ -59,6 +60,7 @@ const config: CodegenConfig = {
       config: {
         strictScalars: true,
         scalars: {
+          Date: "string",
           DateTime: "string",
         },
         enumsAsTypes: true,

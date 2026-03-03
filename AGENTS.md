@@ -22,14 +22,18 @@ This document is the authoritative guide for any automated coding agent (Copilot
 
 - Page rendering: `src/app` pages may use server or client components depending on interactivity. Keep data-fetching colocated with the page when possible.
 - Charting/data transforms: `src/lib` contains transforms, mappers and helpers used by chart components.
-- Tests: Unit tests live next to their modules under `src` or `src/lib/__tests__`; e2e tests live in `tests/`.
+- Tests: Unit tests live in `src/lib/__tests__`; component tests live alongside components at `src/components/**/*.test.tsx`; E2E tests live in `tests/`; live backend E2E tests live in `tests/live/`.
 
 ## Testing contract references
 
 - Tier entrypoint and contract: `README.md` ("Test Tiers (Phase 0 Contract)") and `ci/run_tests.sh`.
-- Default Playwright suite (mock/sample-data e2e): `playwright.config.ts` with `testIgnore: ["live/**"]`.
+- Default Playwright suite (mock/sample-data E2E): `playwright.config.ts` with `testIgnore: ["live/**"]`.
 - Live backend suite (real API required): `playwright.live.config.ts` with `testDir: "./tests/live"`.
 - CI workflow mapping: `.github/workflows/tests.yml` and `.github/workflows/live-e2e.yml`.
+- Component tests: `src/components/**/*.test.tsx` — Vitest `components` project (jsdom). Uses `src/test/utils.tsx` for `renderWithToaster()`.
+- MSW mock types: `tests/mocks/types.ts` — REST response interfaces. `tests/mocks/handlers.ts` uses `HttpResponse.json<T>()` for compile-time shape checking.
+- Live E2E helpers: `tests/live/helpers.ts` — `testEmail()`, `registerUser()`, `loginUser()`, `authHeaders()`. All live tests self-bootstrap (no SQL seeding).
+- Schema drift: `live-e2e.yml` runs `export_schema.py` from dev-health-ops and diffs against `src/lib/graphql/schema.graphql`.
 
 ## Diagram types to use
 

@@ -12,31 +12,17 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
-  /**
-   * Dev Health GraphQL Schema — local SDL copy.
-   *
-   * This file is the canonical schema used by GraphQL Code Generator to produce
-   * TypeScript types for the frontend.  It must be kept in sync with the backend
-   * Strawberry schema in dev-health-ops.
-   *
-   * Sync procedure:
-   *   1. Start the dev-health-ops API (or point to staging).
-   *   2. Run: npx graphql-codegen introspect \
-   *            --endpoint http://localhost:8000/graphql \
-   *            --output src/lib/graphql/schema.graphql
-   *   3. Commit the updated schema file together with any type changes.
-   *
-   * CI validation (npm run codegen:check) confirms that the generated types in
-   * src/lib/graphql/__generated__/ are up-to-date with this schema file.
-   */
+  /** Date (isoformat) */
+  Date: { input: string; output: string; }
+  /** Date with time (isoformat) */
   DateTime: { input: string; output: string; }
 };
 
 export type AnalyticsRequestInput = {
-  breakdowns?: InputMaybe<Array<BreakdownRequestInput>>;
+  breakdowns?: Array<BreakdownRequestInput>;
   filters?: InputMaybe<FilterInput>;
   sankey?: InputMaybe<SankeyRequestInput>;
-  timeseries?: InputMaybe<Array<TimeseriesRequestInput>>;
+  timeseries?: Array<TimeseriesRequestInput>;
   useInvestment?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
@@ -57,7 +43,7 @@ export type BreakdownRequestInput = {
   dateRange: DateRangeInput;
   dimension: DimensionInput;
   measure: MeasureInput;
-  topN?: InputMaybe<Scalars['Int']['input']>;
+  topN?: Scalars['Int']['input'];
 };
 
 export type BreakdownResult = {
@@ -80,16 +66,16 @@ export type CapacityForecast = {
   highVariance: Scalars['Boolean']['output'];
   historyDays: Scalars['Int']['output'];
   insufficientHistory: Scalars['Boolean']['output'];
-  p50Date?: Maybe<Scalars['String']['output']>;
+  p50Date?: Maybe<Scalars['Date']['output']>;
   p50Days?: Maybe<Scalars['Int']['output']>;
   p50Items?: Maybe<Scalars['Int']['output']>;
-  p85Date?: Maybe<Scalars['String']['output']>;
+  p85Date?: Maybe<Scalars['Date']['output']>;
   p85Days?: Maybe<Scalars['Int']['output']>;
   p85Items?: Maybe<Scalars['Int']['output']>;
-  p95Date?: Maybe<Scalars['String']['output']>;
+  p95Date?: Maybe<Scalars['Date']['output']>;
   p95Days?: Maybe<Scalars['Int']['output']>;
   p95Items?: Maybe<Scalars['Int']['output']>;
-  targetDate?: Maybe<Scalars['String']['output']>;
+  targetDate?: Maybe<Scalars['Date']['output']>;
   targetItems?: Maybe<Scalars['Int']['output']>;
   teamId?: Maybe<Scalars['String']['output']>;
   throughputMean: Scalars['Float']['output'];
@@ -111,17 +97,17 @@ export type CapacityForecastEdge = {
 };
 
 export type CapacityForecastFilterInput = {
-  fromDate?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  fromDate?: InputMaybe<Scalars['Date']['input']>;
+  limit?: Scalars['Int']['input'];
   teamId?: InputMaybe<Scalars['String']['input']>;
-  toDate?: InputMaybe<Scalars['String']['input']>;
+  toDate?: InputMaybe<Scalars['Date']['input']>;
   workScopeId?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CapacityForecastInput = {
-  historyDays?: InputMaybe<Scalars['Int']['input']>;
-  simulations?: InputMaybe<Scalars['Int']['input']>;
-  targetDate?: InputMaybe<Scalars['String']['input']>;
+  historyDays?: Scalars['Int']['input'];
+  simulations?: Scalars['Int']['input'];
+  targetDate?: InputMaybe<Scalars['Date']['input']>;
   targetItems?: InputMaybe<Scalars['Int']['input']>;
   teamId?: InputMaybe<Scalars['String']['input']>;
   workScopeId?: InputMaybe<Scalars['String']['input']>;
@@ -137,9 +123,9 @@ export type CatalogLimits = {
   __typename?: 'CatalogLimits';
   maxBuckets: Scalars['Int']['output'];
   maxDays: Scalars['Int']['output'];
-  maxSankeyEdges?: Maybe<Scalars['Int']['output']>;
-  maxSankeyNodes?: Maybe<Scalars['Int']['output']>;
-  maxSubRequests?: Maybe<Scalars['Int']['output']>;
+  maxSankeyEdges: Scalars['Int']['output'];
+  maxSankeyNodes: Scalars['Int']['output'];
+  maxSubRequests: Scalars['Int']['output'];
   maxTopN: Scalars['Int']['output'];
 };
 
@@ -163,9 +149,16 @@ export type CatalogValueItem = {
   value: Scalars['String']['output'];
 };
 
+export type Coverage = {
+  __typename?: 'Coverage';
+  issuesWithCycleStatesPct: Scalars['Float']['output'];
+  prsLinkedToIssuesPct: Scalars['Float']['output'];
+  reposCoveredPct: Scalars['Float']['output'];
+};
+
 export type DateRangeInput = {
-  endDate: Scalars['String']['input'];
-  startDate: Scalars['String']['input'];
+  endDate: Scalars['Date']['input'];
+  startDate: Scalars['Date']['input'];
 };
 
 export type DimensionInput =
@@ -184,6 +177,18 @@ export type FilterInput = {
   why?: InputMaybe<WhyFilterInput>;
 };
 
+export type Freshness = {
+  __typename?: 'Freshness';
+  coverage?: Maybe<Coverage>;
+  lastIngestedAt?: Maybe<Scalars['String']['output']>;
+};
+
+export type HomeResult = {
+  __typename?: 'HomeResult';
+  deltas: Array<MetricDelta>;
+  freshness: Freshness;
+};
+
 export type HowFilterInput = {
   flowStage?: InputMaybe<Array<Scalars['String']['input']>>;
 };
@@ -193,6 +198,24 @@ export type MeasureInput =
   | 'COUNT'
   | 'CYCLE_TIME_HOURS'
   | 'THROUGHPUT';
+
+export type MetricDelta = {
+  __typename?: 'MetricDelta';
+  deltaPct: Scalars['Float']['output'];
+  label: Scalars['String']['output'];
+  metric: Scalars['String']['output'];
+  spark: Array<SparkPoint>;
+  unit: Scalars['String']['output'];
+  value: Scalars['Float']['output'];
+};
+
+export type MetricsUpdate = {
+  __typename?: 'MetricsUpdate';
+  day: Scalars['String']['output'];
+  message: Scalars['String']['output'];
+  orgId: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
 
 export type PageInfo = {
   __typename?: 'PageInfo';
@@ -204,10 +227,17 @@ export type PageInfo = {
 
 export type Query = {
   __typename?: 'Query';
+  /** Run batch analytics queries */
   analytics: AnalyticsResult;
+  /** Compute capacity forecast on-demand */
   capacityForecast?: Maybe<CapacityForecast>;
+  /** List persisted capacity forecasts */
   capacityForecasts: CapacityForecastConnection;
+  /** Get catalog of available dimensions, measures, and limits */
   catalog: CatalogResult;
+  /** Get home dashboard metrics */
+  home: HomeResult;
+  /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
 };
 
@@ -232,6 +262,13 @@ export type QueryCapacityForecastsArgs = {
 
 export type QueryCatalogArgs = {
   dimension?: InputMaybe<DimensionInput>;
+  filters?: InputMaybe<FilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryHomeArgs = {
+  filters?: InputMaybe<FilterInput>;
   orgId: Scalars['String']['input'];
 };
 
@@ -264,8 +301,8 @@ export type SankeyNode = {
 
 export type SankeyRequestInput = {
   dateRange: DateRangeInput;
-  maxEdges?: InputMaybe<Scalars['Int']['input']>;
-  maxNodes?: InputMaybe<Scalars['Int']['input']>;
+  maxEdges?: Scalars['Int']['input'];
+  maxNodes?: Scalars['Int']['input'];
   measure: MeasureInput;
   path: Array<DimensionInput>;
   useInvestment?: InputMaybe<Scalars['Boolean']['input']>;
@@ -279,8 +316,8 @@ export type SankeyResult = {
 };
 
 export type ScopeFilterInput = {
-  ids?: InputMaybe<Array<Scalars['String']['input']>>;
-  level?: InputMaybe<ScopeLevelInput>;
+  ids?: Array<Scalars['String']['input']>;
+  level?: ScopeLevelInput;
 };
 
 export type ScopeLevelInput =
@@ -290,9 +327,61 @@ export type ScopeLevelInput =
   | 'SERVICE'
   | 'TEAM';
 
+export type SparkPoint = {
+  __typename?: 'SparkPoint';
+  ts: Scalars['String']['output'];
+  value: Scalars['Float']['output'];
+};
+
+export type Subscription = {
+  __typename?: 'Subscription';
+  /** Subscribe to metrics updates for an organization */
+  metricsUpdated: MetricsUpdate;
+  /** Subscribe to data sync progress */
+  syncProgress: SyncProgress;
+  /** Subscribe to task status updates */
+  taskStatus: TaskStatus;
+};
+
+
+export type SubscriptionMetricsUpdatedArgs = {
+  orgId: Scalars['String']['input'];
+};
+
+
+export type SubscriptionSyncProgressArgs = {
+  orgId: Scalars['String']['input'];
+};
+
+
+export type SubscriptionTaskStatusArgs = {
+  taskId: Scalars['String']['input'];
+};
+
+export type SyncProgress = {
+  __typename?: 'SyncProgress';
+  itemsProcessed: Scalars['Int']['output'];
+  itemsTotal: Scalars['Int']['output'];
+  message?: Maybe<Scalars['String']['output']>;
+  orgId: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type TaskStatus = {
+  __typename?: 'TaskStatus';
+  message?: Maybe<Scalars['String']['output']>;
+  progress: Scalars['Float']['output'];
+  result?: Maybe<Scalars['String']['output']>;
+  status: Scalars['String']['output'];
+  taskId: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
 export type TimeseriesBucket = {
   __typename?: 'TimeseriesBucket';
-  date: Scalars['String']['output'];
+  date: Scalars['Date']['output'];
   value: Scalars['Float']['output'];
 };
 
@@ -326,8 +415,17 @@ export type WhyFilterInput = {
   workCategory?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
-export type WorkGraphEdge = {
-  __typename?: 'WorkGraphEdge';
+export type WorkGraphEdgeFilterInput = {
+  edgeType?: InputMaybe<WorkGraphEdgeTypeInput>;
+  limit?: Scalars['Int']['input'];
+  nodeId?: InputMaybe<Scalars['String']['input']>;
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  sourceType?: InputMaybe<WorkGraphNodeTypeInput>;
+  targetType?: InputMaybe<WorkGraphNodeTypeInput>;
+};
+
+export type WorkGraphEdgeResult = {
+  __typename?: 'WorkGraphEdgeResult';
   confidence: Scalars['Float']['output'];
   edgeId: Scalars['String']['output'];
   edgeType: WorkGraphEdgeType;
@@ -339,15 +437,6 @@ export type WorkGraphEdge = {
   sourceType: WorkGraphNodeType;
   targetId: Scalars['String']['output'];
   targetType: WorkGraphNodeType;
-};
-
-export type WorkGraphEdgeFilterInput = {
-  edgeType?: InputMaybe<WorkGraphEdgeType>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  nodeId?: InputMaybe<Scalars['String']['input']>;
-  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
-  sourceType?: InputMaybe<WorkGraphNodeType>;
-  targetType?: InputMaybe<WorkGraphNodeType>;
 };
 
 export type WorkGraphEdgeType =
@@ -365,14 +454,35 @@ export type WorkGraphEdgeType =
   | 'RELATES'
   | 'TOUCHES';
 
+export type WorkGraphEdgeTypeInput =
+  | 'BLOCKS'
+  | 'CHILD_OF'
+  | 'CONTAINS'
+  | 'DUPLICATES'
+  | 'FIXES'
+  | 'IMPLEMENTS'
+  | 'IS_BLOCKED_BY'
+  | 'IS_DUPLICATE_OF'
+  | 'IS_RELATED_TO'
+  | 'PARENT_OF'
+  | 'REFERENCES'
+  | 'RELATES'
+  | 'TOUCHES';
+
 export type WorkGraphEdgesResult = {
   __typename?: 'WorkGraphEdgesResult';
-  edges: Array<WorkGraphEdge>;
+  edges: Array<WorkGraphEdgeResult>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
 };
 
 export type WorkGraphNodeType =
+  | 'COMMIT'
+  | 'FILE'
+  | 'ISSUE'
+  | 'PR';
+
+export type WorkGraphNodeTypeInput =
   | 'COMMIT'
   | 'FILE'
   | 'ISSUE'
