@@ -174,7 +174,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
       toast.success(`Pull complete: ${parts.join(", ") || "no changes"}`);
 
       const refreshResult = await listBillingPlans(true);
-      if ("data" in refreshResult) {
+      if ("data" in refreshResult && refreshResult.data) {
         setPlans(refreshResult.data);
       }
     });
