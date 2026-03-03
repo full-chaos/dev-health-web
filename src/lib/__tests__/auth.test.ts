@@ -137,11 +137,8 @@ describe("requireSession", () => {
 
 describe("auth secret configuration", () => {
   it("throws at module load when secrets are missing in production", async () => {
-    const originalNodeEnv = process.env.NODE_ENV;
-    const originalAuthSecret = process.env.AUTH_SECRET;
-    const originalNextAuthSecret = process.env.NEXTAUTH_SECRET;
-
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PHASE", "");
     delete process.env.AUTH_SECRET;
     delete process.env.NEXTAUTH_SECRET;
 
@@ -151,17 +148,22 @@ describe("auth secret configuration", () => {
       "AUTH_SECRET or NEXTAUTH_SECRET must be set in production"
     );
 
-    process.env.NODE_ENV = originalNodeEnv;
-    if (originalAuthSecret === undefined) {
-      delete process.env.AUTH_SECRET;
-    } else {
-      process.env.AUTH_SECRET = originalAuthSecret;
-    }
-    if (originalNextAuthSecret === undefined) {
-      delete process.env.NEXTAUTH_SECRET;
-    } else {
-      process.env.NEXTAUTH_SECRET = originalNextAuthSecret;
-    }
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("does not throw during next build phase even without secrets", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+
+    vi.resetModules();
+
+    // Should resolve without throwing — build phase uses fallback
+    await expect(import("@/lib/auth")).resolves.toBeDefined();
+
+    vi.unstubAllEnvs();
     vi.resetModules();
   });
 });
