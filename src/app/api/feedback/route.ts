@@ -4,18 +4,9 @@ import { NextResponse } from "next/server";
 
 import type { FeedbackPayload, FeedbackResponse } from "@/components/feedback/types";
 import { auth } from "@/lib/auth";
+import { isRateLimited } from "@/lib/rate-limit";
 
 const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 5;
-
-/**
- * In-memory rate limiter. Limitations:
- * - Resets on every server restart / cold start / redeploy
- * - Each serverless instance maintains its own state (not shared)
- * - For production hardening, replace with Redis or similar distributed store
- */
-const requestLog = new Map<string, number[]>();
 
 const ISSUE_CREATE_MUTATION = `
   mutation IssueCreate($input: IssueCreateInput!) {
@@ -58,21 +49,6 @@ function getClientIp(request: Request): string {
   }
 
   return `anon:${createHash("sha256").update(fallbackIdentifier).digest("hex")}`;
-}
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const requests = requestLog.get(ip) ?? [];
-  const recentRequests = requests.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
-
-  if (recentRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
-    requestLog.set(ip, recentRequests);
-    return true;
-  }
-
-  recentRequests.push(now);
-  requestLog.set(ip, recentRequests);
-  return false;
 }
 
 function getPriority(type: FeedbackPayload["type"]): number {
@@ -125,7 +101,7 @@ export async function POST(request: Request) {
   const ip = getClientIp(request);
   const rateLimitKey = session.user?.id ?? ip;
 
-  if (isRateLimited(rateLimitKey)) {
+  if (await isRateLimited(rateLimitKey)) {
     const response: FeedbackResponse = {
       success: false,
       error: "Rate limit exceeded. Please try again later.",

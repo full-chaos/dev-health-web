@@ -6,6 +6,12 @@ vi.mock("@/lib/auth", () => ({
     access_token: "test-token",
   }),
 }));
+
+// Mock Redis to null (forces in-memory fallback in rate-limit module)
+vi.mock("@/lib/redis", () => ({
+  getRedis: vi.fn().mockReturnValue(null),
+  _resetRedisClient: vi.fn(),
+}));
 describe("POST /api/feedback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
