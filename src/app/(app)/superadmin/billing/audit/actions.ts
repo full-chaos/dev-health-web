@@ -87,13 +87,16 @@ export async function getAuditLog(
     }
 
     const session = await auth();
-    const orgId = session?.user?.org_id;
-    if (!orgId) {
+    const isSuperuser = Boolean(session?.user?.is_superuser);
+    const resolvedOrgId = filters.org_id ?? (isSuperuser ? undefined : session?.user?.org_id);
+    if (!isSuperuser && !resolvedOrgId) {
       return { error: "No organization found" };
     }
 
     const params = new URLSearchParams();
-    params.set("org_id", orgId);
+    if (resolvedOrgId) {
+      params.set("org_id", resolvedOrgId);
+    }
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "" && key !== "org_id") {
         params.set(key, String(value));
@@ -170,12 +173,17 @@ export async function triggerReconciliation(
     }
 
     const session = await auth();
+    const isSuperuser = Boolean(session?.user?.is_superuser);
     const resolvedOrgId = orgId ?? session?.user?.org_id;
-    if (!resolvedOrgId) {
+    if (!isSuperuser && !resolvedOrgId) {
       return { error: "No organization found" };
     }
 
-    const query = `?org_id=${encodeURIComponent(resolvedOrgId)}`;
+    const params = new URLSearchParams();
+    if (resolvedOrgId) {
+      params.set("org_id", resolvedOrgId);
+    }
+    const query = params.size > 0 ? `?${params.toString()}` : "";
     const response = await fetch(`${getBackendUrl()}/api/v1/billing/reconcile${query}`, {
       method: "POST",
       headers,

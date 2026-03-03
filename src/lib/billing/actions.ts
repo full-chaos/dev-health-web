@@ -5,6 +5,7 @@ import type { ActionResult } from "@/lib/result";
 
 export type SubscriptionDetails = {
   id: string;
+  org_id?: string;
   status: "active" | "past_due" | "canceled" | "trialing" | "incomplete";
   stripe_subscription_id: string;
   stripe_customer_id: string;
@@ -34,6 +35,23 @@ type SubscriptionHistoryResponse = {
   limit: number;
   offset: number;
 };
+
+export type SubscriptionRecord = SubscriptionDetails & {
+  org_id: string;
+};
+
+export type SubscriptionListResponse = {
+  items: SubscriptionRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+function isSubscriptionListResponse(
+  value: SubscriptionListResponse | SubscriptionDetails,
+): value is SubscriptionListResponse {
+  return "items" in value && Array.isArray(value.items);
+}
 
 export type RefundStatus = "pending" | "succeeded" | "failed" | "canceled";
 
@@ -221,20 +239,65 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function getSubscription(): Promise<ActionResult<SubscriptionDetails>> {
+export async function getSubscription(orgId?: string): Promise<ActionResult<SubscriptionDetails>> {
   return withErrorHandling(async () => {
-    return apiRequest<SubscriptionDetails>("/api/v1/billing/subscriptions");
+    const params = new URLSearchParams();
+    if (orgId) {
+      params.set("org_id", orgId);
+    }
+    const query = params.size > 0 ? `?${params.toString()}` : "";
+    return apiRequest<SubscriptionDetails>(`/api/v1/billing/subscriptions${query}`);
+  });
+}
+
+export async function getSubscriptions(
+  limit = 20,
+  offset = 0,
+  orgId?: string,
+): Promise<ActionResult<SubscriptionListResponse>> {
+  return withErrorHandling(async () => {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+    if (orgId) {
+      params.set("org_id", orgId);
+    }
+    const response = await apiRequest<SubscriptionListResponse | SubscriptionDetails>(
+      `/api/v1/billing/subscriptions?${params.toString()}`,
+    );
+    if (isSubscriptionListResponse(response)) {
+      return response;
+    }
+
+    const fallbackItem: SubscriptionRecord = {
+      ...response,
+      org_id: response.org_id ?? orgId ?? "",
+    };
+
+    return {
+      items: [fallbackItem],
+      total: 1,
+      limit,
+      offset,
+    };
   });
 }
 
 export async function getSubscriptionHistory(
   limit = 20,
   offset = 0,
+  orgId?: string,
 ): Promise<ActionResult<SubscriptionHistoryResponse>> {
   return withErrorHandling(async () => {
-    return apiRequest<SubscriptionHistoryResponse>(
-      `/api/v1/billing/subscriptions/history?limit=${limit}&offset=${offset}`,
-    );
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+    if (orgId) {
+      params.set("org_id", orgId);
+    }
+    return apiRequest<SubscriptionHistoryResponse>(`/api/v1/billing/subscriptions/history?${params.toString()}`);
   });
 }
 
@@ -271,6 +334,7 @@ export async function getInvoices(
   limit = 20,
   offset = 0,
   status?: string,
+  orgId?: string,
 ): Promise<ActionResult<InvoiceListResponse>> {
   const headersResult = await getAuthHeaders();
   if (headersResult.error) {
@@ -284,6 +348,9 @@ export async function getInvoices(
     });
     if (status) {
       params.set("status", status);
+    }
+    if (orgId) {
+      params.set("org_id", orgId);
     }
 
     const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices?${params.toString()}`, {
@@ -304,14 +371,19 @@ export async function getInvoices(
   }
 }
 
-export async function getInvoice(invoiceId: string): Promise<ActionResult<InvoiceRecord>> {
+export async function getInvoice(invoiceId: string, orgId?: string): Promise<ActionResult<InvoiceRecord>> {
   const headersResult = await getAuthHeaders();
   if (headersResult.error) {
     return headersResult;
   }
 
   try {
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}`, {
+    const params = new URLSearchParams();
+    if (orgId) {
+      params.set("org_id", orgId);
+    }
+    const query = params.size > 0 ? `?${params.toString()}` : "";
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}${query}`, {
       method: "GET",
       headers: headersResult.data,
       cache: "no-store",
@@ -329,14 +401,19 @@ export async function getInvoice(invoiceId: string): Promise<ActionResult<Invoic
   }
 }
 
-export async function voidInvoice(invoiceId: string): Promise<ActionResult<InvoiceRecord>> {
+export async function voidInvoice(invoiceId: string, orgId?: string): Promise<ActionResult<InvoiceRecord>> {
   const headersResult = await getAuthHeaders();
   if (headersResult.error) {
     return headersResult;
   }
 
   try {
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}/void`, {
+    const params = new URLSearchParams();
+    if (orgId) {
+      params.set("org_id", orgId);
+    }
+    const query = params.size > 0 ? `?${params.toString()}` : "";
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}/void${query}`, {
       method: "POST",
       headers: headersResult.data,
     });
@@ -358,7 +435,7 @@ export async function createRefund(input: {
   amount?: number;
   reason?: "duplicate" | "fraudulent" | "requested_by_customer";
   description?: string;
-}): Promise<ActionResult<RefundRecord>> {
+}, orgId?: string): Promise<ActionResult<RefundRecord>> {
   try {
     const session = await auth();
     if (!session?.access_token) {
@@ -374,7 +451,12 @@ export async function createRefund(input: {
       payload.amount = input.amount;
     }
 
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/refunds`, {
+    const params = new URLSearchParams();
+    if (orgId) {
+      params.set("org_id", orgId);
+    }
+    const query = params.size > 0 ? `?${params.toString()}` : "";
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/refunds${query}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -398,7 +480,7 @@ export async function createRefund(input: {
 export async function getRefunds(input?: {
   limit?: number;
   offset?: number;
-}): Promise<ActionResult<RefundListResponse>> {
+}, orgId?: string): Promise<ActionResult<RefundListResponse>> {
   try {
     const session = await auth();
     if (!session?.access_token) {
@@ -411,6 +493,9 @@ export async function getRefunds(input?: {
     }
     if (typeof input?.offset === "number") {
       params.set("offset", String(input.offset));
+    }
+    if (orgId) {
+      params.set("org_id", orgId);
     }
 
     const query = params.toString();
