@@ -43,8 +43,8 @@ export function authHeaders(token: string): Record<string, string> {
 }
 
 // Superuser credentials — set in CI secrets or use defaults for local dev
-const superuserEmail = process.env.TEST_SUPERUSER_EMAIL ?? "admin@test.com";
-const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD ?? "secret";
+const superuserEmail = process.env.TEST_SUPERUSER_EMAIL || "admin@devhealth.example";
+const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD || "devhealth123";
 
 /** Authenticate as superuser and return the access token, or null on failure. */
 export async function getSuperuserToken(request: APIRequestContext): Promise<string | null> {
