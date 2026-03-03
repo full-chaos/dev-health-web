@@ -39,36 +39,6 @@ type BillingPlan = {
   bundles: FeatureBundle[];
 };
 
-const FALLBACK_PLANS: BillingPlan[] = [
-  {
-    id: "fallback-team",
-    key: "team",
-    name: "Team",
-    description: "For growing teams that need advanced delivery insights.",
-    tier: "team",
-    is_active: true,
-    display_order: 1,
-    prices: [
-      { id: "team-monthly", interval: "monthly", amount: 1200, currency: "usd", is_active: true },
-      { id: "team-yearly", interval: "yearly", amount: 11500, currency: "usd", is_active: true },
-    ],
-    bundles: [],
-  },
-  {
-    id: "fallback-enterprise",
-    key: "enterprise",
-    name: "Enterprise",
-    description: "For organizations that need governance, controls, and priority support.",
-    tier: "enterprise",
-    is_active: true,
-    display_order: 2,
-    prices: [
-      { id: "enterprise-monthly", interval: "monthly", amount: 12900, currency: "usd", is_active: true },
-      { id: "enterprise-yearly", interval: "yearly", amount: 124000, currency: "usd", is_active: true },
-    ],
-    bundles: [],
-  },
-];
 
 function resolveBillingApiUrl(): string {
   const configured = process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
@@ -83,17 +53,17 @@ async function fetchPlans(): Promise<BillingPlan[]> {
     });
 
     if (!response.ok) {
-      return FALLBACK_PLANS;
+      return [];
     }
 
     const plans = (await response.json()) as BillingPlan[];
     if (!Array.isArray(plans) || plans.length === 0) {
-      return FALLBACK_PLANS;
+      return [];
     }
 
     return plans.sort((a, b) => a.display_order - b.display_order);
   } catch {
-    return FALLBACK_PLANS;
+    return [];
   }
 }
 
@@ -149,8 +119,8 @@ const TIERS: Tier[] = [
   },
   {
     name: "Team",
-    price: "$12",
-    period: "per contributor / month",
+    price: "Contact us",
+    period: "for pricing",
     description: "For growing teams that need full visibility into delivery health and investment patterns.",
     features: [
       "Unlimited repos",
