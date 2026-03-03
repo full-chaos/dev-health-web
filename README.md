@@ -114,13 +114,45 @@ Requirements:
 - A running `dev-health-ops` API with healthy `/health` and seeded data (fixtures recommended).
 - `PLAYWRIGHT_LIVE_BACKEND_URL` pointing at that API (defaults to `BACKEND_URL`, then `http://127.0.0.1:8000`).
 
+Test suites in `tests/live/`:
+- `journey.spec.ts` — 10 API-level tests: registration, login, onboarding, credentials CRUD, sync config CRUD. Self-bootstrapping (creates users via POST /register).
+- `onboarding-ui.spec.ts` — 3 browser-level tests: signup form, login→onboard redirect, onboard→dashboard.
+- `impersonation.spec.ts` — superuser impersonation flows (requires `TEST_SUPERUSER_*` env vars).
+- `backend-api.spec.ts` / `pages.spec.ts` — API health and page-level smoke tests.
+
+Shared utilities in `tests/live/helpers.ts`: `testEmail()`, `registerUser()`, `loginUser()`, `authHeaders()`.
+
 Example:
 
 ```bash
 PLAYWRIGHT_LIVE_BACKEND_URL="http://127.0.0.1:8000" bash ci/run_tests.sh live-e2e
 ```
 
-In GitHub Actions, workflows should call `bash ci/run_tests.sh <tier>` so Playwright browser install and tier behavior stay consistent across runners.
+In GitHub Actions, the `live-e2e.yml` workflow starts a real `dev-health-ops` API, runs Alembic migrations, seeds fixtures, and validates GraphQL schema drift before executing tests.
+
+### Component Tests (Vitest + React Testing Library)
+
+Component tests run under the Vitest `components` project (jsdom environment). Files live alongside components at `src/components/**/*.test.tsx`.
+
+```bash
+npm run test:unit   # runs both unit and component Vitest projects
+```
+
+Key patterns:
+- `src/test/utils.tsx` provides `renderWithToaster()` for components that emit toasts.
+- Server actions (`"use server"`) are mocked at module level via `vi.mock()`.
+- Common mocks: `next/navigation`, `next-auth/react`, `global.fetch`.
+
+### Schema Contract Enforcement
+
+The `live-e2e.yml` CI workflow includes a GraphQL schema drift detection step that exports the backend Strawberry schema and diffs it against `src/lib/graphql/schema.graphql`. If the schemas diverge:
+
+1. Start the `dev-health-ops` API locally.
+2. Re-export: `PYTHONPATH=../dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema --out src/lib/graphql/schema.graphql`
+3. Regenerate types: `npm run codegen`
+4. Commit `schema.graphql` + `__generated__/` together.
+
+MSW mock handlers in `tests/mocks/handlers.ts` are typed with interfaces from `tests/mocks/types.ts` and generated GraphQL types, so TypeScript catches response shape mismatches at compile time.
 
 ### E2E Reliability Hardening (Phase 3)
 
@@ -150,6 +182,6 @@ PLAYWRIGHT_REPORT_DIR=<dir> PLAYWRIGHT_RESULTS_DIR=<dir> PLAYWRIGHT_JUNIT_PATH=<
 - **Components:** React Server Components + Client Components
 - **Styling:** Tailwind CSS
 - **Data:** urql GraphQL client, static sample data for demos
-- **Testing:** Vitest (unit), Playwright (e2e)
+- **Testing:** Vitest (unit + component), Playwright (E2E + live backend), MSW v2 (API mocking)
 
 ![Screenshot](https://github.com/user-attachments/assets/8e823e44-2388-477a-bba5-3bd64efde538)
