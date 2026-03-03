@@ -683,7 +683,7 @@ describe("POST /api/feedback", () => {
     expect(data.error).toBe("Rate limit exceeded. Please try again later.");
   });
 
-  it("allows requests from different IPs independently", async () => {
+  it("allows requests from different users independently", async () => {
     process.env.LINEAR_API_KEY = "key-123";
     process.env.LINEAR_TEAM_ID = "team-123";
 
@@ -709,9 +709,11 @@ describe("POST /api/feedback", () => {
 
     global.fetch = mockFetch;
 
+    const { auth } = await import("@/lib/auth");
+    const mockedAuth = vi.mocked(auth);
     const { POST } = await import("@/app/api/feedback/route");
 
-    // Make 5 requests from IP1
+    // Make 5 requests as user-1 (default mock)
     for (let i = 0; i < 5; i++) {
       const request = new Request("http://localhost/api/feedback", {
         method: "POST",
@@ -732,7 +734,12 @@ describe("POST /api/feedback", () => {
       await POST(request);
     }
 
-    // Make 5 requests from IP2 - should all succeed
+    // Switch to user-2 — should get its own independent rate limit
+    mockedAuth.mockResolvedValue({
+      user: { id: "test-user-2", email: "test2@example.com" },
+      access_token: "test-token-2",
+    } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+
     for (let i = 0; i < 5; i++) {
       const request = new Request("http://localhost/api/feedback", {
         method: "POST",
