@@ -565,3 +565,16 @@ export async function syncBillingPlanToStripe(planId: string): Promise<ActionRes
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
 }
+
+export type PullStripeResult = {
+  created: string[];
+  updated: string[];
+  skipped: string[];
+  errors: string[];
+};
+
+export async function pullPlansFromStripe(): Promise<ActionResult<PullStripeResult>> {
+  return withErrorHandling(() =>
+    apiRequest<PullStripeResult>("/api/v1/billing/plans/pull-stripe", { method: "POST" })
+  );
+}
