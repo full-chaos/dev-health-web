@@ -47,12 +47,6 @@ export type SubscriptionListResponse = {
   offset: number;
 };
 
-function isSubscriptionListResponse(
-  value: SubscriptionListResponse | SubscriptionDetails,
-): value is SubscriptionListResponse {
-  return "items" in value && Array.isArray(value.items);
-}
-
 export type RefundStatus = "pending" | "succeeded" | "failed" | "canceled";
 
 export type RefundRecord = {
@@ -263,24 +257,9 @@ export async function getSubscriptions(
     if (orgId) {
       params.set("org_id", orgId);
     }
-    const response = await apiRequest<SubscriptionListResponse | SubscriptionDetails>(
-      `/api/v1/billing/subscriptions?${params.toString()}`,
+    return apiRequest<SubscriptionListResponse>(
+      `/api/v1/billing/subscriptions/list?${params.toString()}`,
     );
-    if (isSubscriptionListResponse(response)) {
-      return response;
-    }
-
-    const fallbackItem: SubscriptionRecord = {
-      ...response,
-      org_id: response.org_id ?? orgId ?? "",
-    };
-
-    return {
-      items: [fallbackItem],
-      total: 1,
-      limit,
-      offset,
-    };
   });
 }
 

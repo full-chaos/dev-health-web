@@ -172,7 +172,7 @@ describe("getSubscription", () => {
 
     await getSubscriptions(20, 0, "org-alt");
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://test-ops:8000/api/v1/billing/subscriptions?limit=20&offset=0&org_id=org-alt",
+      "http://test-ops:8000/api/v1/billing/subscriptions/list?limit=20&offset=0&org_id=org-alt",
       expect.any(Object),
     );
 

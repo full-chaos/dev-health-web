@@ -423,20 +423,17 @@ export const handlers = [
   }),
 
   // ---- Subscriptions ----
-  http.get("*/api/v1/billing/subscriptions", ({ request }) => {
+  http.get("*/api/v1/billing/subscriptions/list", ({ request }) => {
     const url = new URL(request.url);
-    const limit = url.searchParams.get("limit");
-    const offset = url.searchParams.get("offset");
+    return HttpResponse.json({
+      items: [SAMPLE_SUBSCRIPTION],
+      total: 1,
+      limit: Number(url.searchParams.get("limit") ?? "20"),
+      offset: Number(url.searchParams.get("offset") ?? "0"),
+    });
+  }),
 
-    if (limit !== null || offset !== null) {
-      return HttpResponse.json({
-        items: [SAMPLE_SUBSCRIPTION],
-        total: 1,
-        limit: Number(limit ?? "20"),
-        offset: Number(offset ?? "0"),
-      });
-    }
-
+  http.get("*/api/v1/billing/subscriptions", () => {
     return HttpResponse.json(SAMPLE_SUBSCRIPTION);
   }),
 
