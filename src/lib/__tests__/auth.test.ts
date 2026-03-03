@@ -134,3 +134,34 @@ describe("requireSession", () => {
     expect(result.user.needs_onboarding).toBe(false);
   });
 });
+
+describe("auth secret configuration", () => {
+  it("throws at module load when secrets are missing in production", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalAuthSecret = process.env.AUTH_SECRET;
+    const originalNextAuthSecret = process.env.NEXTAUTH_SECRET;
+
+    process.env.NODE_ENV = "production";
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+
+    vi.resetModules();
+
+    await expect(import("@/lib/auth")).rejects.toThrow(
+      "AUTH_SECRET or NEXTAUTH_SECRET must be set in production"
+    );
+
+    process.env.NODE_ENV = originalNodeEnv;
+    if (originalAuthSecret === undefined) {
+      delete process.env.AUTH_SECRET;
+    } else {
+      process.env.AUTH_SECRET = originalAuthSecret;
+    }
+    if (originalNextAuthSecret === undefined) {
+      delete process.env.NEXTAUTH_SECRET;
+    } else {
+      process.env.NEXTAUTH_SECRET = originalNextAuthSecret;
+    }
+    vi.resetModules();
+  });
+});
