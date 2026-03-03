@@ -6,7 +6,7 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { getSubscription, createRefund, getRefunds } from "../actions";
+import { getSubscription, getSubscriptions, createRefund, getRefunds, getInvoices } from "../actions";
 import { auth } from "@/lib/auth";
 
 function mockSession(overrides: Partial<Session> & { user?: Partial<Session["user"]> } = {}): Session {
@@ -123,6 +123,61 @@ describe("getSubscription", () => {
 
     fetchSpy.mockRestore();
   });
+
+  it("passes org_id when provided", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession());
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "sub-2",
+          org_id: "org-alt",
+          status: "active",
+          stripe_subscription_id: "sub_stripe_789",
+          stripe_customer_id: "cus_stripe_456",
+          current_period_start: "2026-01-01T00:00:00Z",
+          current_period_end: "2026-02-01T00:00:00Z",
+          cancel_at_period_end: false,
+          canceled_at: null,
+          trial_start: null,
+          trial_end: null,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await getSubscription("org-alt");
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-ops:8000/api/v1/billing/subscriptions?org_id=org-alt",
+      expect.any(Object),
+    );
+
+    fetchSpy.mockRestore();
+  });
+
+  it("loads subscription list with optional org filter", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession());
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+          total: 0,
+          limit: 20,
+          offset: 0,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await getSubscriptions(20, 0, "org-alt");
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-ops:8000/api/v1/billing/subscriptions/list?limit=20&offset=0&org_id=org-alt",
+      expect.any(Object),
+    );
+
+    fetchSpy.mockRestore();
+  });
 });
 
 describe("refund actions", () => {
@@ -200,6 +255,38 @@ describe("refund actions", () => {
     const result = await getRefunds({ limit: 20, offset: 0 });
 
     expect(result.data?.total).toBe(0);
+    fetchSpy.mockRestore();
+  });
+
+  it("passes org_id to refunds and invoices queries for superadmin filtering", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession());
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+          total: 0,
+          limit: 20,
+          offset: 0,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await getRefunds({ limit: 20, offset: 0 }, "org-alt");
+    await getInvoices(20, 0, "open", "org-alt");
+
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      1,
+      "http://test-ops:8000/api/v1/billing/refunds?limit=20&offset=0&org_id=org-alt",
+      expect.any(Object),
+    );
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      "http://test-ops:8000/api/v1/billing/invoices?limit=20&offset=0&status=open&org_id=org-alt",
+      expect.any(Object),
+    );
+
     fetchSpy.mockRestore();
   });
 });

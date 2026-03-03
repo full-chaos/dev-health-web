@@ -12,6 +12,8 @@ const navItems = [
   { id: "settings", label: "Settings", href: "/superadmin/settings", description: "Platform" },
   { id: "billing-plans", label: "Billing Plans", href: "/superadmin/billing/plans", description: "Pricing" },
   { id: "invoices", label: "Invoices", href: "/superadmin/billing/invoices", description: "Billing" },
+  { id: "subscriptions", label: "Subscriptions", href: "/superadmin/billing/subscriptions", description: "Plans" },
+  { id: "refunds", label: "Refunds", href: "/superadmin/billing/refunds", description: "Returns" },
   { id: "billing-audit", label: "Billing Audit", href: "/superadmin/billing/audit", description: "Finance" },
 ];
 

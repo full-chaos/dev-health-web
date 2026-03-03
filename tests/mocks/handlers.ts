@@ -149,6 +149,57 @@ const SAMPLE_INVOICE = {
   ],
 };
 
+const SAMPLE_SUBSCRIPTION = {
+  id: "sub-e2e-1",
+  org_id: "org-e2e",
+  status: "active",
+  stripe_subscription_id: "sub_e2e_001",
+  stripe_customer_id: "cus_e2e_001",
+  current_period_start: "2026-02-01T00:00:00.000Z",
+  current_period_end: "2026-02-28T23:59:59.000Z",
+  cancel_at_period_end: false,
+  canceled_at: null,
+  trial_start: null,
+  trial_end: null,
+  plan: { name: "Team", key: "team" },
+  price: { interval: "monthly", display_amount: "$49", amount: "4900" },
+};
+
+const SAMPLE_REFUND = {
+  id: "refund-e2e-1",
+  org_id: "org-e2e",
+  invoice_id: "inv-e2e-1",
+  subscription_id: "sub-e2e-1",
+  stripe_refund_id: "re_e2e_001",
+  stripe_charge_id: "ch_e2e_001",
+  stripe_payment_intent_id: "pi_e2e_001",
+  amount: 12000,
+  currency: "usd",
+  status: "succeeded",
+  reason: "requested_by_customer",
+  description: "Customer requested refund",
+  failure_reason: null,
+  initiated_by: "e2e-user-1",
+  metadata: {},
+  created_at: "2026-02-02T10:00:00.000Z",
+  updated_at: "2026-02-02T10:05:00.000Z",
+};
+
+const SAMPLE_BILLING_AUDIT = {
+  id: "11111111-1111-1111-1111-111111111111",
+  org_id: "org-e2e",
+  actor_id: "e2e-user-1",
+  action: "invoice.void",
+  resource_type: "invoice",
+  resource_id: "inv-e2e-1",
+  description: "Invoice voided",
+  stripe_event_id: "evt_e2e_001",
+  local_state: {},
+  stripe_state: {},
+  reconciliation_status: "matched",
+  created_at: "2026-02-02T09:00:00.000Z",
+};
+
 
 const MOCK_BILLING_PLANS: MockBillingPlan[] = [
   {
@@ -372,22 +423,19 @@ export const handlers = [
   }),
 
   // ---- Subscriptions ----
-  http.get("*/api/v1/billing/subscriptions", () =>
-    HttpResponse.json({
-      id: "sub-e2e-1",
-      status: "active",
-      stripe_subscription_id: "sub_e2e_001",
-      stripe_customer_id: "cus_e2e_001",
-      current_period_start: "2026-02-01T00:00:00.000Z",
-      current_period_end: "2026-02-28T23:59:59.000Z",
-      cancel_at_period_end: false,
-      canceled_at: null,
-      trial_start: null,
-      trial_end: null,
-      plan: { name: "Team", key: "team" },
-      price: { interval: "monthly", display_amount: "$49", amount: "4900" },
-    }),
-  ),
+  http.get("*/api/v1/billing/subscriptions/list", ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json({
+      items: [SAMPLE_SUBSCRIPTION],
+      total: 1,
+      limit: Number(url.searchParams.get("limit") ?? "20"),
+      offset: Number(url.searchParams.get("offset") ?? "0"),
+    });
+  }),
+
+  http.get("*/api/v1/billing/subscriptions", () => {
+    return HttpResponse.json(SAMPLE_SUBSCRIPTION);
+  }),
 
   http.get("*/api/v1/billing/subscriptions/history", () =>
     HttpResponse.json({
@@ -408,6 +456,60 @@ export const handlers = [
 
   http.post("*/api/v1/billing/subscriptions/reactivate", () =>
     HttpResponse.json({ status: "reactivated" }),
+  ),
+
+  http.get("*/api/v1/billing/refunds", ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json({
+      items: [SAMPLE_REFUND],
+      total: 1,
+      limit: Number(url.searchParams.get("limit") ?? "20"),
+      offset: Number(url.searchParams.get("offset") ?? "0"),
+    });
+  }),
+
+  http.post("*/api/v1/billing/refunds", () =>
+    HttpResponse.json(SAMPLE_REFUND),
+  ),
+
+  http.get("*/api/v1/billing/audit", ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json({
+      items: [SAMPLE_BILLING_AUDIT],
+      total: 1,
+      limit: Number(url.searchParams.get("limit") ?? "50"),
+      offset: Number(url.searchParams.get("offset") ?? "0"),
+    });
+  }),
+
+  http.get("*/api/v1/billing/audit/:id", ({ params }) => {
+    if (params.id !== SAMPLE_BILLING_AUDIT.id) {
+      return HttpResponse.json({ detail: "Audit entry not found" }, { status: 404 });
+    }
+    return HttpResponse.json(SAMPLE_BILLING_AUDIT);
+  }),
+
+  http.post("*/api/v1/billing/audit/:id/resolve", ({ params }) => {
+    if (params.id !== SAMPLE_BILLING_AUDIT.id) {
+      return HttpResponse.json({ detail: "Audit entry not found" }, { status: 404 });
+    }
+    return HttpResponse.json({
+      ...SAMPLE_BILLING_AUDIT,
+      reconciliation_status: "matched",
+    });
+  }),
+
+  http.post("*/api/v1/billing/reconcile", () =>
+    HttpResponse.json({
+      started_at: "2026-02-02T10:00:00.000Z",
+      completed_at: "2026-02-02T10:00:05.000Z",
+      subscriptions_checked: 1,
+      invoices_checked: 1,
+      refunds_checked: 1,
+      mismatches: [],
+      missing_local: [],
+      missing_stripe: [],
+    }),
   ),
 
   // ---- Health & Meta ----

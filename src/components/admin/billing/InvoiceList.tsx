@@ -14,6 +14,8 @@ import { VoidConfirmDialog } from "./VoidConfirmDialog";
 
 type InvoiceListProps = {
   initialData: InvoiceListResponse;
+  initialOrgFilter?: string;
+  showOrgColumn?: boolean;
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -32,9 +34,14 @@ function formatMoney(amount: number, currency: string): string {
   }).format(amount / 100);
 }
 
-export function InvoiceList({ initialData }: InvoiceListProps) {
+export function InvoiceList({
+  initialData,
+  initialOrgFilter = "",
+  showOrgColumn = false,
+}: InvoiceListProps) {
   const [isPending, startTransition] = useTransition();
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [orgFilter, setOrgFilter] = useState<string>(initialOrgFilter);
   const [data, setData] = useState<InvoiceListResponse>(initialData);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -54,9 +61,18 @@ export function InvoiceList({ initialData }: InvoiceListProps) {
     return Math.floor(data.offset / data.limit) + 1;
   }, [data.limit, data.offset]);
 
-  const refreshList = (nextOffset = 0, nextStatus = statusFilter) => {
+  const refreshList = (
+    nextOffset = 0,
+    nextStatus = statusFilter,
+    nextOrgId = orgFilter,
+  ) => {
     startTransition(async () => {
-      const result = await getInvoices(data.limit, nextOffset, nextStatus || undefined);
+      const result = await getInvoices(
+        data.limit,
+        nextOffset,
+        nextStatus || undefined,
+        nextOrgId.trim() || undefined,
+      );
       if (result.error) {
         toast.error(result.error);
         return;
@@ -69,7 +85,7 @@ export function InvoiceList({ initialData }: InvoiceListProps) {
 
   const handleOpenDetail = (invoiceId: string) => {
     startTransition(async () => {
-      const result = await getInvoice(invoiceId);
+      const result = await getInvoice(invoiceId, orgFilter.trim() || undefined);
       if (result.error) {
         toast.error(result.error);
         return;
@@ -87,7 +103,7 @@ export function InvoiceList({ initialData }: InvoiceListProps) {
     }
 
     startTransition(async () => {
-      const result = await voidInvoice(voidingInvoice.id);
+      const result = await voidInvoice(voidingInvoice.id, orgFilter.trim() || undefined);
       if (result.error) {
         toast.error(result.error);
         return;
@@ -114,25 +130,51 @@ export function InvoiceList({ initialData }: InvoiceListProps) {
   return (
     <>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <label className="flex items-center gap-2 text-sm text-(--ink-muted)">
-          <span>Status</span>
-          <select
-            className="rounded-md border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-sm text-foreground"
-            value={statusFilter}
-            onChange={(event) => {
-              const nextStatus = event.target.value;
-              setStatusFilter(nextStatus);
-              refreshList(0, nextStatus);
-            }}
-          >
-            <option value="">All</option>
-            <option value="draft">Draft</option>
-            <option value="open">Open</option>
-            <option value="paid">Paid</option>
-            <option value="payment_failed">Payment Failed</option>
-            <option value="void">Void</option>
-          </select>
-        </label>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="flex items-center gap-2 text-sm text-(--ink-muted)">
+            <span>Status</span>
+            <select
+              className="rounded-md border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-sm text-foreground"
+              value={statusFilter}
+              onChange={(event) => {
+                const nextStatus = event.target.value;
+                setStatusFilter(nextStatus);
+                refreshList(0, nextStatus, orgFilter);
+              }}
+            >
+              <option value="">All</option>
+              <option value="draft">Draft</option>
+              <option value="open">Open</option>
+              <option value="paid">Paid</option>
+              <option value="payment_failed">Payment Failed</option>
+              <option value="void">Void</option>
+            </select>
+          </label>
+
+          {showOrgColumn && (
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                refreshList(0, statusFilter, orgFilter);
+              }}
+            >
+              <input
+                type="search"
+                value={orgFilter}
+                onChange={(event) => setOrgFilter(event.target.value)}
+                placeholder="Org ID"
+                className="rounded-md border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-sm text-foreground"
+              />
+              <button
+                type="submit"
+                className="rounded-md border border-(--card-stroke) px-2.5 py-1 text-xs font-medium text-foreground hover:bg-(--card-70)"
+              >
+                Filter
+              </button>
+            </form>
+          )}
+        </div>
 
         <p className="text-sm text-(--ink-muted)">
           Page {currentPage} of {totalPages} ({data.total} invoices)
@@ -143,6 +185,7 @@ export function InvoiceList({ initialData }: InvoiceListProps) {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
             <tr>
+              {showOrgColumn && <th className="px-4 py-3 font-medium">Org</th>}
               <th className="px-4 py-3 font-medium">Invoice</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Amount Due</th>
@@ -156,6 +199,9 @@ export function InvoiceList({ initialData }: InvoiceListProps) {
               const canVoid = !["paid", "void", "voided"].includes(invoice.status);
               return (
                 <tr key={invoice.id} className="hover:bg-(--card-70)/50">
+                  {showOrgColumn && (
+                    <td className="px-4 py-3 text-xs text-(--ink-muted)">{invoice.org_id}</td>
+                  )}
                   <td className="px-4 py-3">
                     <p className="font-medium text-foreground">{invoice.stripe_invoice_id}</p>
                     <p className="text-xs text-(--ink-muted)">{invoice.stripe_customer_id}</p>
@@ -195,7 +241,7 @@ export function InvoiceList({ initialData }: InvoiceListProps) {
             })}
             {data.items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-(--ink-muted)">
+                <td colSpan={showOrgColumn ? 7 : 6} className="px-4 py-12 text-center text-(--ink-muted)">
                   No invoices found for this filter.
                 </td>
               </tr>

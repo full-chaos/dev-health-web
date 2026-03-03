@@ -38,7 +38,7 @@ export default defineConfig({
     },
     {
       name: "authenticated",
-      testIgnore: [/auth-signin\.spec\.ts/, /admin\.spec\.ts/, /auth\.setup\.ts/, /live\//, /marketing-pricing\.spec\.ts/, /auth-signup\.spec\.ts/, /auth-onboard\.spec\.ts/, /onboarding\.setup\.ts/, /account-creation-journey\.spec\.ts/],
+      testIgnore: [/auth-signin\.spec\.ts/, /(?:^|\/)admin\.spec\.ts$/, /auth\.setup\.ts/, /live\//, /marketing-pricing\.spec\.ts/, /auth-signup\.spec\.ts/, /auth-onboard\.spec\.ts/, /onboarding\.setup\.ts/, /account-creation-journey\.spec\.ts/],
       dependencies: ["auth-setup"],
       use: {
         storageState: AUTH_FILE,
