@@ -12,9 +12,13 @@ class EmailVerificationRequired extends CredentialsSignin {
   code = "email_verification_required"
 }
 
-const authSecret = process.env.AUTH_SECRET 
-  || process.env.NEXTAUTH_SECRET 
-  || "dev-secret-change-in-production"
+const authSecret = process.env.AUTH_SECRET
+  || process.env.NEXTAUTH_SECRET
+  || (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
+    ? (() => {
+      throw new Error("AUTH_SECRET or NEXTAUTH_SECRET must be set in production")
+    })()
+    : "dev-secret-change-in-production")
 
 const nextAuth = NextAuth({
   trustHost: true,

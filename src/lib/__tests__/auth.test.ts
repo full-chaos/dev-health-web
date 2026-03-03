@@ -134,3 +134,36 @@ describe("requireSession", () => {
     expect(result.user.needs_onboarding).toBe(false);
   });
 });
+
+describe("auth secret configuration", () => {
+  it("throws at module load when secrets are missing in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PHASE", "");
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+
+    vi.resetModules();
+
+    await expect(import("@/lib/auth")).rejects.toThrow(
+      "AUTH_SECRET or NEXTAUTH_SECRET must be set in production"
+    );
+
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("does not throw during next build phase even without secrets", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PHASE", "phase-production-build");
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+
+    vi.resetModules();
+
+    // Should resolve without throwing — build phase uses fallback
+    await expect(import("@/lib/auth")).resolves.toBeDefined();
+
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+});
