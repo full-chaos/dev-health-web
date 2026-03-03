@@ -8,7 +8,7 @@
  * Run with playwright.live.config.ts (baseURL = http://127.0.0.1:3002).
  */
 import { expect, test } from "@playwright/test";
-import { liveBackendUrl, testEmail } from "./helpers";
+import { getSuperuserToken, liveBackendUrl, testEmail, verifyUser, authHeaders } from "./helpers";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 1. Signup form submits successfully
@@ -48,9 +48,15 @@ test("login with new user redirects to onboard page", async ({ page, request }) 
     headers: { Origin: liveBackendUrl },
   });
   if (!regRes.ok()) {
-    test.skip(true, "Registration failed — backend may be unavailable");
+    test.skip(true, "Registration failed \u2014 backend may be unavailable");
     return;
   }
+
+  // Verify the user's email so login succeeds
+  const regData = (await regRes.json()) as Record<string, unknown>;
+  const userId = (regData.user_id ?? regData.id ?? "") as string;
+  const suToken = await getSuperuserToken(request);
+  if (suToken && userId) await verifyUser(request, userId, suToken);
 
   // Now sign in through the browser
   await page.goto("/auth/signin");
@@ -77,9 +83,15 @@ test("onboard creates workspace and redirects to dashboard", async ({ page, requ
     headers: { Origin: liveBackendUrl },
   });
   if (!regRes.ok()) {
-    test.skip(true, "Registration failed — backend may be unavailable");
+    test.skip(true, "Registration failed \u2014 backend may be unavailable");
     return;
   }
+
+  // Verify the user's email so login succeeds
+  const regData = (await regRes.json()) as Record<string, unknown>;
+  const userId = (regData.user_id ?? regData.id ?? "") as string;
+  const suToken = await getSuperuserToken(request);
+  if (suToken && userId) await verifyUser(request, userId, suToken);
 
   // Sign in through the browser
   await page.goto("/auth/signin");

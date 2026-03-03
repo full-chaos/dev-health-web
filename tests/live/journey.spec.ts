@@ -7,10 +7,12 @@
 import { expect, test } from "@playwright/test";
 import {
   authHeaders,
+  getSuperuserToken,
   liveBackendUrl,
   loginUser,
   registerUser,
   testEmail,
+  verifyUser,
 } from "./helpers";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -29,16 +31,26 @@ test("POST /register → 201 with user_id and org_id", async ({ request }) => {
   expect(typeof data.user_id === "string" || typeof data.id === "string").toBe(true);
 });
 
-test("POST /login after fresh registration → needs_onboarding true", async ({ request }) => {
+test("POST /login after fresh registration \u2192 needs_onboarding true", async ({ request }) => {
   const email = testEmail("login");
   const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
     data: { email, password: "TestPass123!", full_name: "Login User" },
     headers: { Origin: liveBackendUrl },
   });
   if (!regRes.ok()) {
-    test.skip(true, "Registration failed — backend may be unavailable");
+    test.skip(true, "Registration failed \u2014 backend may be unavailable");
     return;
   }
+
+  // Verify the user's email via superuser so login returns tokens
+  const regData = (await regRes.json()) as Record<string, unknown>;
+  const userId = (regData.user_id ?? regData.id ?? "") as string;
+  const suToken = await getSuperuserToken(request);
+  if (!suToken || !userId) {
+    test.skip(true, "Cannot verify user \u2014 superuser unavailable");
+    return;
+  }
+  await verifyUser(request, userId, suToken);
 
   const data = (await loginUser(request, email, "TestPass123!")) as {
     access_token?: string;
@@ -65,6 +77,12 @@ test.describe("onboarding journey", () => {
       headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) return;
+
+    // Verify the user's email so login returns tokens
+    const regData = (await regRes.json()) as Record<string, unknown>;
+    const userId = (regData.user_id ?? regData.id ?? "") as string;
+    const suToken = await getSuperuserToken(request);
+    if (suToken && userId) await verifyUser(request, userId, suToken);
 
     const loginData = (await loginUser(request, email, password)) as { access_token?: string };
     token = loginData.access_token ?? "";
@@ -132,6 +150,12 @@ test.describe("credentials journey", () => {
       headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) return;
+
+    // Verify the user's email so login returns tokens
+    const regData = (await regRes.json()) as Record<string, unknown>;
+    const userId = (regData.user_id ?? regData.id ?? "") as string;
+    const suToken = await getSuperuserToken(request);
+    if (suToken && userId) await verifyUser(request, userId, suToken);
 
     const loginData = (await loginUser(request, email, password)) as { access_token?: string };
     token = loginData.access_token ?? "";
@@ -238,6 +262,12 @@ test.describe("sync journey", () => {
       headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) return;
+
+    // Verify the user's email so login returns tokens
+    const regData = (await regRes.json()) as Record<string, unknown>;
+    const userId = (regData.user_id ?? regData.id ?? "") as string;
+    const suToken = await getSuperuserToken(request);
+    if (suToken && userId) await verifyUser(request, userId, suToken);
 
     const loginData = (await loginUser(request, email, password)) as { access_token?: string };
     token = loginData.access_token ?? "";
