@@ -10,7 +10,6 @@ import {
   getSuperuserToken,
   liveBackendUrl,
   loginUser,
-  registerUser,
   testEmail,
   verifyUser,
 } from "./helpers";
@@ -19,12 +18,16 @@ import {
 // Registration & Login (2 tests — independent, no serial needed)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("POST /register → 201 with user_id and org_id", async ({ request }) => {
+test("POST /register \u2192 201 with user_id and org_id", async ({ request }) => {
   const email = testEmail("reg");
   const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
     data: { email, password: "TestPass123!", full_name: "Reg User" },
     headers: { Origin: liveBackendUrl },
   });
+  if (res.status() === 429) {
+    test.skip(true, "Register rate-limited (429)");
+    return;
+  }
   expect(res.status()).toBe(201);
 
   const data = (await res.json()) as Record<string, unknown>;
