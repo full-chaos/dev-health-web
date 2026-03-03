@@ -1,7 +1,16 @@
-import NextAuth from "next-auth"
+import NextAuth, { CredentialsSignin } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { redirect } from "next/navigation"
 import { getBackendUrl } from "@/lib/origin"
+
+/**
+ * Custom error thrown when login fails because the user's email
+ * has not been verified yet.  NextAuth surfaces the `code` property
+ * in the `SignInResponse` returned by `signIn({ redirect: false })`.
+ */
+class EmailVerificationRequired extends CredentialsSignin {
+  code = "email_verification_required"
+}
 
 const authSecret = process.env.AUTH_SECRET 
   || process.env.NEXTAUTH_SECRET 
@@ -36,7 +45,13 @@ const nextAuth = NextAuth({
 
           const data = await res.json()
 
-          if (res.ok && data) {
+          // Backend returns { status: "email_verification_required" }
+          // when the user's email has not been verified yet.
+          if (data?.status === "email_verification_required") {
+            throw new EmailVerificationRequired()
+          }
+
+          if (res.ok && data?.user) {
             // Return user object with tokens
             return {
               id: data.user.id,
@@ -52,6 +67,8 @@ const nextAuth = NextAuth({
             }
           }
         } catch (error) {
+          // Re-throw our custom error so NextAuth surfaces the code
+          if (error instanceof EmailVerificationRequired) throw error
           console.error("Auth error:", error)
         }
 

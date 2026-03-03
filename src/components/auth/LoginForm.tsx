@@ -10,6 +10,7 @@ export function LoginForm() {
    const [email, setEmail] = useState("")
    const [password, setPassword] = useState("")
    const [loading, setLoading] = useState(false)
+   const [verifyEmail, setVerifyEmail] = useState(false)
 
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault()
@@ -23,7 +24,11 @@ export function LoginForm() {
        })
 
         if (result?.error) {
-          toast.error("Invalid email or password")
+          if (result.code === "email_verification_required") {
+            setVerifyEmail(true)
+          } else {
+            toast.error("Invalid email or password")
+          }
         } else {
           const session = await getSession()
           if (session?.user?.needs_onboarding) {
@@ -41,43 +46,53 @@ export function LoginForm() {
    }
 
    return (
-     <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
-       <div className="space-y-2">
-        <label htmlFor="email" className="block text-sm font-medium text-[var(--foreground)]">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          placeholder="name@example.com"
-        />
-      </div>
+     <>
+       {verifyEmail && (
+         <div className="mb-4 p-3 text-sm text-amber-400 bg-amber-950/50 rounded-md border border-amber-800">
+           <p className="font-medium">Please verify your email</p>
+           <p className="mt-1 text-amber-400/80">
+             Check your inbox for a verification link before signing in.
+           </p>
+         </div>
+       )}
+       <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
+         <div className="space-y-2">
+           <label htmlFor="email" className="block text-sm font-medium text-[var(--foreground)]">
+             Email
+           </label>
+           <input
+             id="email"
+             type="email"
+             value={email}
+             onChange={(e) => setEmail(e.target.value)}
+             required
+             className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+             placeholder="name@example.com"
+           />
+         </div>
 
-      <div className="space-y-2">
-        <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)]">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        />
-      </div>
+         <div className="space-y-2">
+           <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)]">
+             Password
+           </label>
+           <input
+             id="password"
+             type="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+             className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+           />
+         </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-2 px-4 bg-[var(--accent)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
-      >
-        {loading ? "Signing in..." : "Sign In"}
-      </button>
-    </form>
-  )
+         <button
+           type="submit"
+           disabled={loading}
+           className="w-full py-2 px-4 bg-[var(--accent)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
+         >
+           {loading ? "Signing in..." : "Sign In"}
+         </button>
+       </form>
+     </>
+   )
 }
