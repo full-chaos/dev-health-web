@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import {
   createBillingPlan,
   deleteBillingPlan,
+  listBillingPlans,
+  pullPlansFromStripe,
   syncBillingPlanToStripe,
   updateBillingPlan,
   type BillingPlanRecord,
@@ -156,6 +158,28 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
     });
   };
 
+  const onPullStripe = () => {
+    startTransition(async () => {
+      const result = await pullPlansFromStripe();
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      const { created, updated, skipped, errors } = result.data;
+      const parts: string[] = [];
+      if (created.length) parts.push(`${created.length} created`);
+      if (updated.length) parts.push(`${updated.length} updated`);
+      if (skipped.length) parts.push(`${skipped.length} skipped`);
+      if (errors.length) parts.push(`${errors.length} errors`);
+      toast.success(`Pull complete: ${parts.join(", ") || "no changes"}`);
+
+      const refreshResult = await listBillingPlans(true);
+      if ("data" in refreshResult && refreshResult.data) {
+        setPlans(refreshResult.data);
+      }
+    });
+  };
+
   return (
     <div className="space-y-8">
       <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
@@ -240,7 +264,17 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
       </section>
 
       <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
-        <h2 className="mb-4 font-(--font-display) text-xl">Plans</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-(--font-display) text-xl">Plans</h2>
+          <button
+            type="button"
+            onClick={onPullStripe}
+            disabled={isPending}
+            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          >
+            Pull from Stripe
+          </button>
+        </div>
         <div className="space-y-4">
           {sortedPlans.map((plan) => (
             <article key={plan.id} className="rounded-xl border border-(--card-stroke) bg-(--card) p-4">
