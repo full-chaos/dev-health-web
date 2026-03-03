@@ -30,8 +30,42 @@ env:
   CLOUDFLARE_PROJECT_NAME: "${{ secrets.CLOUDFLARE_PROJECT_NAME || 'dev-health-web' }}"
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
+        id: filter
+        # Always run on workflow_dispatch and tag pushes
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'tests/**'
+              - 'ci/**'
+              - 'public/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.json'
+              - 'next.config.*'
+              - 'vitest.config.*'
+              - 'playwright.config.*'
+              - 'eslint.config.*'
+              - 'postcss.config.*'
+              - 'codegen.ts'
+              - 'instrumentation.ts'
+              - 'sentry.*.config.ts'
+
   build:
     name: Build Static Assets
+    needs: [changes]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/') ||
+      needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.meta.outputs.version }}
@@ -54,7 +88,7 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
-          echo "### Build Info 📦" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Info" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "- **Artifact**: ${ARTIFACT_NAME}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
@@ -115,7 +149,7 @@ jobs:
 
       - name: Output build results
         run: |
-          echo "### Build Complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Artifact: \`${{ steps.meta.outputs.artifact_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
