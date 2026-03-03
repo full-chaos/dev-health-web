@@ -23,6 +23,164 @@ The system uses **NextAuth.js v5 (beta)** with the `CredentialsProvider`.
 - `is_superuser`: Boolean flag for global access
 - `permissions`: Array of specific permission strings
 
+## User Journeys
+
+### Journey 1: New User Registration
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant SF as SignupForm
+    participant R as Backend /register
+    participant DB as User+Org+Membership
+    participant M as Email Service
+    participant SI as /auth/signin
+
+    U->>SF: Submit registration form
+    SF->>R: POST /register
+    R->>DB: Create user, org, membership (is_verified=false)
+    R->>M: Send verification email
+    R-->>SF: 201 Created
+    SF->>SI: Redirect to /auth/signin?registered=true
+    SI-->>U: Show "Account created" banner
+```
+
+### Journey 2: Email Verification
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant E as Verification Email
+    participant V as Backend /verify?token=xxx
+    participant DB as User Record
+    participant SI as /auth/signin
+
+    U->>E: Click verification link
+    E->>V: GET /verify?token=xxx
+    V->>DB: Set is_verified=true
+    V->>SI: Redirect to /auth/signin
+    SI-->>U: Sign-in page loads
+```
+
+### Journey 3: Login (Happy Path - verified user)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant LF as LoginForm
+    participant NA as NextAuth authorize
+    participant L as Backend /login
+    participant S as NextAuth session
+    participant D as /dashboard
+    participant O as /auth/onboard
+
+    U->>LF: Submit credentials
+    LF->>NA: signIn("credentials")
+    NA->>L: POST /login
+    L-->>NA: LoginResponse {user, tokens, needs_onboarding}
+    NA->>S: Create session/JWT
+    alt needs_onboarding is false
+        S->>D: Redirect to /dashboard
+    else needs_onboarding is true
+        S->>O: Redirect to /auth/onboard
+    end
+```
+
+### Journey 4: Login (Unverified Email)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant LF as LoginForm
+    participant SI as signIn("credentials")
+    participant NA as NextAuth authorize
+    participant L as Backend /login
+    participant ERR as EmailVerificationRequired
+
+    U->>LF: Submit credentials
+    LF->>SI: signIn("credentials")
+    SI->>NA: Invoke credentials provider
+    NA->>L: POST /login
+    L-->>NA: EmailVerificationRequiredResponse {status="email_verification_required"}
+    NA-->>ERR: Throw EmailVerificationRequired
+    ERR-->>SI: Return {code:"email_verification_required"}
+    SI-->>LF: Result with verification code
+    LF-->>U: Show amber "Please verify your email" banner
+```
+
+### Journey 5: Login (Invalid Credentials)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant LF as LoginForm
+    participant SI as signIn("credentials")
+    participant NA as NextAuth authorize
+    participant L as Backend /login
+
+    U->>LF: Submit credentials
+    LF->>SI: signIn("credentials")
+    SI->>NA: Invoke credentials provider
+    NA->>L: POST /login
+    L-->>NA: 401 Unauthorized
+    NA-->>SI: Return null
+    SI-->>LF: Return {error:"CredentialsSignin"}
+    LF-->>U: Show "Invalid email or password" toast
+```
+
+### Journey 6: Onboarding (for invited users without org)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant RS as requireSession
+    participant O as /auth/onboard
+    participant OF as OnboardForm
+    participant B as Backend /auth/onboard
+    participant S as NextAuth session
+    participant D as /dashboard
+
+    U->>RS: Log in
+    RS-->>U: needs_onboarding=true
+    RS->>O: Redirect to /auth/onboard
+    U->>OF: Submit org details
+    OF->>B: POST /auth/onboard {action="create_org"}
+    B-->>OF: Return new tokens
+    OF->>S: session.update() clears needs_onboarding
+    S->>D: Redirect to /dashboard
+```
+
+### Journey 7: Password Reset
+
+```mermaid
+flowchart TD
+    U[User] --> FP[/forgot-password]
+    FP --> B1[Backend sends reset email]
+    B1 --> E[User clicks reset link]
+    E --> RP[/reset-password?token=xxx]
+    RP --> B2[New password set]
+    B2 --> SI[/auth/signin]
+```
+
+### Journey 8: SSO / Invite Accept
+
+```mermaid
+flowchart TD
+    A[Admin creates invite] --> E[User receives email]
+    E --> AI[/accept-invite?token=xxx]
+    AI --> M[Creates membership]
+    M --> L[Login]
+```
+
+## Email Verification Banner
+
+The email verification banner is shown when a user attempts to sign in with valid credentials but an unverified email.
+
+- **When it appears**: During login, when the backend indicates the account must be verified first.
+- **What the user sees**: An amber banner with the message "Please verify your email".
+- **Technical implementation**: `EmailVerificationRequired` extends `CredentialsSignin` with `code = "email_verification_required"`. It is thrown in the `authorize` callback when the backend responds with `{ status: "email_verification_required" }`.
+- **Login form behavior**: `LoginForm` checks `result.code === "email_verification_required"` and renders the verification banner.
+
 ## Session Shape
 
 The `session.user` object is extended beyond standard NextAuth fields:
