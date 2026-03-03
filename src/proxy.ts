@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
 
-const isTestMode = process.env.PLAYWRIGHT_TEST === "true";
+// SECURITY: Test mode MUST NEVER be active in production — it bypasses all auth checks.
+const isTestMode = process.env.NODE_ENV !== "production" && process.env.PLAYWRIGHT_TEST === "true";
 
 const PUBLIC_PATHS = [
     "/",
