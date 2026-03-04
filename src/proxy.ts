@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ module: "proxy" });
 
 // SECURITY: Test mode MUST NEVER be active in production — it bypasses all auth checks.
 const isTestMode = process.env.NODE_ENV !== "production" && process.env.PLAYWRIGHT_TEST === "true";
@@ -58,6 +61,18 @@ function buildCspHeader(nonce: string): string {
 }
 
 export async function proxy(request: NextRequest) {
+    const start = Date.now();
+    const { method } = request;
+    const { pathname } = request.nextUrl;
+
+    const response = await handleRequest(request);
+
+    log.info({ method, path: pathname, status: response.status, duration_ms: Date.now() - start }, "request");
+
+    return response;
+}
+
+async function handleRequest(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Generate a per-request nonce and attach it so the layout can read it.
