@@ -4,6 +4,14 @@
  * Uses pino on the server and a lightweight console shim on the client.
  * Import and use `logger` everywhere instead of `console.log` / `console.error`.
  *
+ * Configuration:
+ *   LOG_LEVEL  — minimum severity (trace|debug|info|warn|error|fatal).
+ *               Defaults to "debug" in development, "info" in production.
+ *   LOG_FORMAT — output format ("json" | "pretty").
+ *               Defaults to "pretty" in development, "json" in production.
+ *               Set LOG_FORMAT=json in dev to test structured output locally.
+ *               Set LOG_FORMAT=pretty in prod to get human-readable logs.
+ *
  * Usage:
  *   import { logger } from "@/lib/logger";
  *   logger.info({ userId }, "User signed in");
@@ -12,6 +20,7 @@
 
 import { isServer } from "@/lib/env";
 
+type LogFormat = "json" | "pretty";
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
 
 interface LogFn {
@@ -33,6 +42,14 @@ interface Logger {
 const LOG_LEVEL: LogLevel =
   (process.env.LOG_LEVEL as LogLevel | undefined) ??
   (process.env.NODE_ENV === "production" ? "info" : "debug");
+
+/**
+ * Output format from env. When unset, defaults to "pretty" in development
+ * and "json" in production. Explicit values override the NODE_ENV-based default.
+ */
+const LOG_FORMAT: LogFormat =
+  (process.env.LOG_FORMAT as LogFormat | undefined) ??
+  (process.env.NODE_ENV === "production" ? "json" : "pretty");
 
 /**
  * Browser-side shim — pino cannot run in the browser.
@@ -71,7 +88,7 @@ function createServerLogger(): Logger {
   const pino = require("pino");
   return pino({
     level: LOG_LEVEL,
-    ...(process.env.NODE_ENV !== "production"
+    ...(LOG_FORMAT === "pretty"
       ? {
           transport: {
             target: "pino-pretty",
