@@ -46,11 +46,6 @@ type ExplorePageProps = {
 };
 
 export default async function Explore({ searchParams }: ExplorePageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
@@ -69,14 +64,17 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
   const metricFromApi = apiUrl.searchParams.get("metric") ?? metric;
   const sourceLabel = apiParam || `/api/v1/explain?metric=${metricFromApi}`;
 
+  // Build the view-specific data promise so it runs in parallel with the health check.
+  type ExplainResult = Awaited<ReturnType<typeof getExplainData>> | null;
+  type DrilldownResult = Awaited<ReturnType<typeof getDrilldown>> | null;
+  type HomeResult = Awaited<ReturnType<typeof getHomeData>> | null;
+
   let view: "explain" | "drilldown" | "home" | "unknown" = "explain";
-  let data: Awaited<ReturnType<typeof getExplainData>> | null = null;
-  let drilldown: Awaited<ReturnType<typeof getDrilldown>> | null = null;
-  let home: Awaited<ReturnType<typeof getHomeData>> | null = null;
+  let dataPromise: Promise<ExplainResult | DrilldownResult | HomeResult | null>;
 
   if (endpoint === "/api/v1/drilldown/prs" || endpoint === "/api/v1/drilldown/issues") {
     view = "drilldown";
-    drilldown = await fetchOrNull(
+    dataPromise = fetchOrNull(
       getDrilldown(
         endpoint as "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues",
         filters
@@ -85,16 +83,28 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     );
   } else if (endpoint === "/api/v1/home") {
     view = "home";
-    home = await fetchOrNull(getHomeData(filters), "explore/home-data");
+    dataPromise = fetchOrNull(getHomeData(filters), "explore/home-data");
   } else if (endpoint === "/api/v1/explain") {
     view = "explain";
-    data = await fetchOrNull(
+    dataPromise = fetchOrNull(
       getExplainData({ metric: metricFromApi, filters }),
       `explore/explain-${metricFromApi}`
     );
   } else {
     view = "unknown";
+    dataPromise = Promise.resolve(null);
   }
+
+  // Run health check and data fetch in parallel.
+  const [health, rawResult] = await Promise.all([checkApiHealth(), dataPromise]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
+  const data = view === "explain" ? (rawResult as ExplainResult) : null;
+  const drilldown = view === "drilldown" ? (rawResult as DrilldownResult) : null;
+  const home = view === "home" ? (rawResult as HomeResult) : null;
 
   const metricLabel = data?.label ?? getMetricLabel(metricFromApi);
   const scopeDetail = filters.scope.ids.length

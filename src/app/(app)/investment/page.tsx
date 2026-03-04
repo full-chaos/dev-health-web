@@ -19,18 +19,6 @@ type InvestmentPageProps = {
 };
 
 export default async function InvestmentPage({ searchParams }: InvestmentPageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
-
-  const orgResult = await getCurrentOrg().catch(() => ({ data: undefined }));
-  const org = orgResult.data;
-  const entitlements = org?.id
-    ? await fetchOrNull(getOrgEntitlements(org.id), "investment/entitlements")
-    : null;
-  const features = entitlements?.data?.features ?? {};
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
@@ -40,7 +28,22 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const data = await fetchOrNull(getInvestment(filters), "investment/data");
+  // Run health check, org entitlements, and investment data in parallel.
+  const [health, orgResult, data] = await Promise.all([
+    checkApiHealth(),
+    getCurrentOrg().catch(() => ({ data: undefined })),
+    fetchOrNull(getInvestment(filters), "investment/data"),
+  ]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
+  const org = orgResult.data;
+  const entitlements = org?.id
+    ? await fetchOrNull(getOrgEntitlements(org.id), "investment/entitlements")
+    : null;
+  const features = entitlements?.data?.features ?? {};
   const mix = data ? normalizeInvestmentMix(data) : null;
   const themes = mix ? getSortedThemes(mix) : [];
   const subcategories = mix ? getSortedSubcategories(mix) : [];

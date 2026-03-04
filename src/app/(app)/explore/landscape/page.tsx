@@ -50,11 +50,6 @@ const scopeTypeMap: Record<string, "org" | "team" | "repo" | "person"> = {
 };
 
 export default async function LandscapePage({ searchParams }: LandscapePageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const filters = encodedFilter
@@ -73,9 +68,12 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
   const scopeId = filters.scope.ids[0] ?? "";
 
   const canQuery = scopeType !== "person" || Boolean(scopeId);
-  const quadrantData = canQuery
-    ? await Promise.all(
-      QUADRANT_CARDS.map((card) =>
+
+  // Run health check in parallel with data fetches to eliminate the waterfall.
+  // If health fails we still show ServiceUnavailable; if it succeeds we already
+  // have quadrant data ready — saving one full round-trip of latency.
+  const quadrantPromises = canQuery
+    ? QUADRANT_CARDS.map((card) =>
         fetchOrNull(
           getQuadrant({
             type: card.type,
@@ -89,8 +87,16 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
           `landscape/quadrant-${card.type}`
         )
       )
-    )
-    : QUADRANT_CARDS.map(() => null);
+    : QUADRANT_CARDS.map(() => Promise.resolve(null));
+
+  const [health, ...quadrantData] = await Promise.all([
+    checkApiHealth(),
+    ...quadrantPromises,
+  ]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
 
   const primaryCardIndex = QUADRANT_CARDS.findIndex(
     (card) => card.type === primaryType

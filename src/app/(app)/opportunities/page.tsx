@@ -13,11 +13,6 @@ type OpportunitiesPageProps = {
 };
 
 export default async function OpportunitiesPage({ searchParams }: OpportunitiesPageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
@@ -27,7 +22,15 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const data = await fetchOrNull(getOpportunities(filters), "opportunities/data");
+  // Run health check and data fetch in parallel to eliminate the waterfall.
+  const [health, data] = await Promise.all([
+    checkApiHealth(),
+    fetchOrNull(getOpportunities(filters), "opportunities/data"),
+  ]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">

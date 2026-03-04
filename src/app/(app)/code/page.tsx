@@ -30,11 +30,6 @@ const getMetric = (deltas: MetricDelta[], metric: string) =>
   FALLBACK_DELTAS.find((item) => item.metric === metric);
 
 export default async function CodePage({ searchParams }: CodePageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
@@ -51,40 +46,49 @@ export default async function CodePage({ searchParams }: CodePageProps) {
         ? filters.scope.level
         : "org";
 
-  const home = await fetchOrNull(getHomeData(filters), "code/home-data");
+  // Run health check in parallel with all data fetches to eliminate the waterfall.
+  const [health, home, churnExplain, hotspotHeatmap, churnThroughput] = await Promise.all([
+    checkApiHealth(),
+    fetchOrNull(getHomeData(filters), "code/home-data"),
+    fetchOrNull(
+      getExplainData({ metric: "churn", filters }),
+      "code/explain-churn"
+    ),
+    fetchOrNull(
+      getHeatmap({
+        type: "risk",
+        metric: "hotspot_risk",
+        scope_type: filters.scope.level,
+        scope_id: scopeId,
+        range_days: filters.time.range_days,
+        start_date: filters.time.start_date,
+        end_date: filters.time.end_date,
+      }),
+      "code/hotspot-heatmap"
+    ),
+    fetchOrNull(
+      getQuadrant({
+        type: "churn_throughput",
+        scope_type: quadrantScope,
+        scope_id: scopeId,
+        range_days: filters.time.range_days,
+        bucket: "week",
+        start_date: filters.time.start_date,
+        end_date: filters.time.end_date,
+      }),
+      "code/churn-throughput-quadrant"
+    ),
+  ]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
 
   const churnMetric = getMetric(deltas, "churn");
-  const churnExplain = await fetchOrNull(
-    getExplainData({ metric: "churn", filters }),
-    "code/explain-churn"
-  );
   const hotspots = (churnExplain?.contributors ?? []).slice(0, 6);
-  const hotspotHeatmap = await fetchOrNull(
-    getHeatmap({
-      type: "risk",
-      metric: "hotspot_risk",
-      scope_type: filters.scope.level,
-      scope_id: scopeId,
-      range_days: filters.time.range_days,
-      start_date: filters.time.start_date,
-      end_date: filters.time.end_date,
-    }),
-    "code/hotspot-heatmap"
-  );
-  const churnThroughput = await fetchOrNull(
-    getQuadrant({
-      type: "churn_throughput",
-      scope_type: quadrantScope,
-      scope_id: scopeId,
-      range_days: filters.time.range_days,
-      bucket: "week",
-      start_date: filters.time.start_date,
-      end_date: filters.time.end_date,
-    }),
-    "code/churn-throughput-quadrant"
-  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">

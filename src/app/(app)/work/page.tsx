@@ -43,10 +43,6 @@ const findCategory = (
   );
 
 export default async function WorkPage({ searchParams }: WorkPageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
@@ -71,7 +67,9 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
         ? filters.scope.level
         : "org";
 
+  // Run health check in parallel with all data fetches to eliminate the waterfall.
   const [
+    health,
     home,
     investment,
     wipExplain,
@@ -81,6 +79,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     wipThroughput,
     reviewLoadLatency,
   ] = await Promise.all([
+    checkApiHealth(),
     fetchOrNull(getHomeData(filters), "work/home-data"),
     fetchOrNull(getInvestment(filters), "work/investment"),
     fetchOrNull(getExplainData({ metric: "wip_saturation", filters }), "work/explain-wip_saturation"),
@@ -134,6 +133,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
       "work/review-load-latency-quadrant"
     ),
   ]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
 
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
