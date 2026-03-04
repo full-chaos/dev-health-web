@@ -2,6 +2,9 @@ import NextAuth, { CredentialsSignin } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { redirect } from "next/navigation"
 import { getBackendUrl } from "@/lib/origin"
+import { logger } from "@/lib/logger"
+
+const authLogger = logger.child({ module: "auth" })
 
 /**
  * Custom error thrown when login fails because the user's email
@@ -22,6 +25,11 @@ const authSecret = process.env.AUTH_SECRET
 
 const nextAuth = NextAuth({
   trustHost: true,
+  logger: {
+    error: (error: Error) => { authLogger.error({ err: error }, "next-auth error") },
+    warn: (code: string) => { authLogger.warn({ code }, "next-auth warning") },
+    debug: (message: string, metadata?: unknown) => { authLogger.debug({ metadata }, message) },
+  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -73,7 +81,7 @@ const nextAuth = NextAuth({
         } catch (error) {
           // Re-throw our custom error so NextAuth surfaces the code
           if (error instanceof EmailVerificationRequired) throw error
-          console.error("Auth error:", error)
+          authLogger.error({ err: error }, "credentials authorize failed")
         }
 
         return null
