@@ -82,11 +82,6 @@ const getMetric = (deltas: MetricDelta[], metric: string) =>
   FALLBACK_DELTAS.find((item) => item.metric === metric);
 
 export default async function MetricsPage({ searchParams }: MetricsPageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const filters = encodedFilter
@@ -100,34 +95,43 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
   const activeTab =
     METRIC_TABS.find((tab) => tab.id === tabParam) ?? METRIC_TABS[0];
 
-  const home = await fetchOrNull(getHomeData(filters), "metrics/home-data");
-  const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
-  const placeholderDeltas = !home?.deltas?.length;
-  const highlightMetric = getMetric(deltas, activeTab.highlight);
-  const highlightLabel = highlightMetric?.label ?? activeTab.highlight;
-
-  const highlight = await fetchOrNull(
-    getExplainData({ metric: activeTab.highlight, filters }),
-    `metrics/explain-${activeTab.highlight}`
-  );
   const quadrantScope: "org" | "team" | "repo" | "developer" =
     filters.scope.level === "developer"
       ? "developer"
       : filters.scope.level === "team" || filters.scope.level === "repo"
         ? filters.scope.level
         : "org";
-  const quadrant = await fetchOrNull(
-    getQuadrant({
-      type: "churn_throughput",
-      scope_type: quadrantScope,
-      scope_id: filters.scope.ids[0] ?? "",
-      range_days: filters.time.range_days,
-      bucket: "week",
-      start_date: filters.time.start_date,
-      end_date: filters.time.end_date,
-    }),
-    "metrics/quadrant"
-  );
+
+  // Run health check in parallel with all data fetches to eliminate the waterfall.
+  const [health, home, highlight, quadrant] = await Promise.all([
+    checkApiHealth(),
+    fetchOrNull(getHomeData(filters), "metrics/home-data"),
+    fetchOrNull(
+      getExplainData({ metric: activeTab.highlight, filters }),
+      `metrics/explain-${activeTab.highlight}`
+    ),
+    fetchOrNull(
+      getQuadrant({
+        type: "churn_throughput",
+        scope_type: quadrantScope,
+        scope_id: filters.scope.ids[0] ?? "",
+        range_days: filters.time.range_days,
+        bucket: "week",
+        start_date: filters.time.start_date,
+        end_date: filters.time.end_date,
+      }),
+      "metrics/quadrant"
+    ),
+  ]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
+  const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
+  const placeholderDeltas = !home?.deltas?.length;
+  const highlightMetric = getMetric(deltas, activeTab.highlight);
+  const highlightLabel = highlightMetric?.label ?? activeTab.highlight;
 
   const drivers = (highlight?.drivers ?? []).slice(0, 5);
   const contributors = (highlight?.contributors ?? []).slice(0, 5);

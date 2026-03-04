@@ -59,11 +59,6 @@ type HomePageProps = {
 };
 
 export default async function Home({ searchParams }: HomePageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const filters = encodedFilter
@@ -74,7 +69,16 @@ export default async function Home({ searchParams }: HomePageProps) {
   const activeRole = isValidRole(roleParam) ? roleParam : DEFAULT_ROLE;
   const roleConfig = getRoleConfig(activeRole);
 
-  const [home, meta] = await Promise.all([loadHome(filters), getApiMeta()]);
+  // Run health check in parallel with data fetches to eliminate the waterfall.
+  const [health, home, meta] = await Promise.all([
+    checkApiHealth(),
+    loadHome(filters),
+    getApiMeta(),
+  ]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
   const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
   const rawDeltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;

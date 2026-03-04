@@ -209,6 +209,7 @@ export function FilterBarClient({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const barRef = useRef<HTMLElement | null>(null);
+  const didSetDefaultRef = useRef(false);
   const queryParam = searchParams.get("q") ?? "";
   const [peopleQuery, setPeopleQuery] = useState(queryParam);
   const [options, setOptions] = useState<FilterOptions>({
@@ -226,7 +227,8 @@ export function FilterBarClient({
   }, [initialFilters]);
 
   useEffect(() => {
-    if (!encoded) {
+    if (!encoded && !didSetDefaultRef.current) {
+      didSetDefaultRef.current = true;
       const params = new URLSearchParams(searchParams.toString());
       params.set("f", encodeFilterParam(defaultMetricFilter));
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });

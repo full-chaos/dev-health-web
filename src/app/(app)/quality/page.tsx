@@ -22,11 +22,6 @@ const getMetric = (deltas: MetricDelta[], metric: string) =>
   FALLBACK_DELTAS.find((item) => item.metric === metric);
 
 export default async function QualityPage({ searchParams }: QualityPageProps) {
-  const health = await checkApiHealth();
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
@@ -36,7 +31,20 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const home = await fetchOrNull(getHomeData(filters), "quality/home-data");
+  // Run health check in parallel with all data fetches to eliminate the waterfall.
+  const [health, home, explain] = await Promise.all([
+    checkApiHealth(),
+    fetchOrNull(getHomeData(filters), "quality/home-data"),
+    fetchOrNull(
+      getExplainData({ metric: "change_failure_rate", filters }),
+      "quality/explain-change_failure_rate"
+    ),
+  ]);
+
+  if (!health.ok) {
+    return <ServiceUnavailable />;
+  }
+
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
 
@@ -44,10 +52,6 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
   const ciMetric = getMetric(deltas, "ci_success");
   const reworkMetric = getMetric(deltas, "rework_ratio");
 
-  const explain = await fetchOrNull(
-    getExplainData({ metric: "change_failure_rate", filters }),
-    "quality/explain-change_failure_rate"
-  );
   const drivers = (explain?.drivers ?? []).slice(0, 5);
   const contributors = (explain?.contributors ?? []).slice(0, 5);
 

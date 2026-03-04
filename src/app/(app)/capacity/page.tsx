@@ -17,12 +17,16 @@ type CapacityPageProps = {
 };
 
 export default async function CapacityPage({ searchParams }: CapacityPageProps) {
-  const health = await checkApiHealth();
+  // Run health check and org fetch in parallel to eliminate the waterfall.
+  const [health, orgResult] = await Promise.all([
+    checkApiHealth(),
+    fetchOrNull(getCurrentOrg(), "capacity/org"),
+  ]);
+
   if (!health.ok) {
     return <ServiceUnavailable />;
   }
 
-  const orgResult = await fetchOrNull(getCurrentOrg(), "capacity/org");
   const org = orgResult?.data;
   const entitlements = org?.id
     ? await fetchOrNull(getOrgEntitlements(org.id), "capacity/entitlements")
