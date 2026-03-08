@@ -1,16 +1,19 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SyncConfig, IntegrationCredential, Provider, PROVIDERS, PROVIDER_LABELS, PROVIDER_SYNC_TARGETS } from "@/lib/admin/types";
 import { createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
+import { UpgradeGate } from "@/components/billing/UpgradeGate";
+import { CreateCredentialModal } from "./CreateCredentialModal";
+import { SchedulePicker } from "./SchedulePicker";
 
 type SyncConfigFormProps = {
   initialData?: SyncConfig;
   credentials: IntegrationCredential[];
-  onSuccess?: () => void;
+  onSuccessAction?: () => void;
 };
 
 const ALL_SYNC_TARGETS = [
@@ -27,9 +30,11 @@ function getSyncTargetsForProvider(provider: string) {
   return ALL_SYNC_TARGETS.filter((t) => allowed.includes(t.id));
 }
 
-export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConfigFormProps) {
+export function SyncConfigForm({ initialData, credentials, onSuccessAction }: SyncConfigFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [showCredentialModal, setShowCredentialModal] = useState(false);
+  const [localCredentials, setLocalCredentials] = useState(credentials);
 
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
@@ -37,12 +42,18 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
     credential_id: initialData?.credential_id || "",
     sync_targets: initialData?.sync_targets || [],
     is_active: initialData?.is_active ?? true,
+    schedule_cron: initialData?.schedule_cron ?? null,
+    timezone: initialData?.timezone ?? null,
     owner: (initialData?.sync_options?.owner as string) || "",
     repo: (initialData?.sync_options?.repo as string) || "",
     gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
   });
 
-  const filteredCredentials = credentials.filter((c) => c.provider === formData.provider);
+  useEffect(() => {
+    setLocalCredentials(credentials);
+  }, [credentials]);
+
+  const filteredCredentials = localCredentials.filter((c) => c.provider === formData.provider);
 
   const availableTargets = getSyncTargetsForProvider(formData.provider);
 
@@ -88,7 +99,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
     return opts;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     startTransition(async () => {
@@ -99,6 +110,8 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
           result = await updateSyncConfig(initialData.id, {
             sync_targets: formData.sync_targets,
             is_active: formData.is_active,
+            schedule_cron: formData.schedule_cron,
+            timezone: formData.timezone,
             sync_options: syncOptions,
           });
         } else {
@@ -107,6 +120,8 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
             provider: formData.provider,
             credential_id: formData.credential_id || null,
             sync_targets: formData.sync_targets,
+            schedule_cron: formData.schedule_cron,
+            timezone: formData.timezone,
             sync_options: syncOptions,
           });
         }
@@ -115,8 +130,8 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
           toast.error(result.error);
         } else {
           toast.success(initialData ? "Config updated" : "Config created");
-          if (onSuccess) {
-            onSuccess();
+          if (onSuccessAction) {
+            onSuccessAction();
           } else {
             router.push("/admin/sync");
           }
@@ -128,8 +143,9 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
-      <div className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+    <>
+      <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
+        <div className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
         
         {/* Name */}
         <div>
@@ -170,11 +186,20 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
           </select>
         </div>
 
-        {/* Credential */}
-        <div>
-          <label htmlFor="credential_id" className="mb-1.5 block text-sm font-medium">
-            Credential
-          </label>
+          {/* Credential */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label htmlFor="credential_id" className="block text-sm font-medium">
+                Credential
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowCredentialModal(true)}
+                className="rounded-md border border-(--card-stroke) px-2 py-1 text-xs font-medium text-(--foreground) hover:bg-(--card-70)"
+              >
+                + New
+              </button>
+            </div>
           <select
             id="credential_id"
             name="credential_id"
@@ -191,11 +216,23 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
             ))}
           </select>
           {filteredCredentials.length === 0 && !initialData && (
-            <p className="mt-1 text-xs text-amber-500">
-              No credentials found for this provider. <Link href="/admin/integrations" className="underline">Add one first</Link>.
-            </p>
+            <div className="mt-1 flex items-center gap-1 text-xs text-amber-500">
+              <span>No credentials found for this provider.</span>
+              <Link href="/admin/integrations" className="underline">
+                Add one first
+              </Link>
+              <span>or</span>
+              <button
+                type="button"
+                onClick={() => setShowCredentialModal(true)}
+                className="underline"
+              >
+                Create One Now
+              </button>
+              <span>.</span>
+            </div>
           )}
-        </div>
+          </div>
 
         {/* Repository Settings */}
         {(formData.provider === "github" || formData.provider === "gitlab") && (
@@ -289,24 +326,46 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
           </label>
         </div>
 
-      </div>
+        <UpgradeGate feature="custom_scheduling" requiredTier="enterprise">
+          <SchedulePicker
+            value={formData.schedule_cron}
+            timezone={formData.timezone}
+            onChange={(cron, tz) =>
+              setFormData((prev) => ({ ...prev, schedule_cron: cron, timezone: tz }))
+            }
+          />
+        </UpgradeGate>
 
-      {/* Actions */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/admin/sync"
-          className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
-        >
-          Cancel
-        </Link>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
-        >
-          {isPending ? "Saving..." : initialData ? "Update Configuration" : "Create Configuration"}
-        </button>
-      </div>
-    </form>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin/sync"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
+          >
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
+          >
+            {isPending ? "Saving..." : initialData ? "Update Configuration" : "Create Configuration"}
+          </button>
+        </div>
+      </form>
+
+      <CreateCredentialModal
+        isOpen={showCredentialModal}
+        onCloseAction={() => setShowCredentialModal(false)}
+        provider={formData.provider as Provider}
+        onCreatedAction={(credential) => {
+          setLocalCredentials((prev) => [...prev, credential]);
+          setFormData((prev) => ({ ...prev, credential_id: credential.id }));
+          setShowCredentialModal(false);
+        }}
+      />
+    </>
   );
 }
