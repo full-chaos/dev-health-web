@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createCredential, testConnection } from "@/lib/admin/server";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
@@ -60,14 +60,6 @@ export function CreateCredentialModal({
     null,
   );
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    setName("");
-    setCredentials(getInitialCredentials(provider));
-    setTestResult(null);
-  }, [isOpen, provider]);
 
   const canRunTest = useMemo(() => {
     const fields = PROVIDER_FIELDS[provider];

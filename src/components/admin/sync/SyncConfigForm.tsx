@@ -356,16 +356,18 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         </div>
       </form>
 
-      <CreateCredentialModal
-        isOpen={showCredentialModal}
-        onCloseAction={() => setShowCredentialModal(false)}
-        provider={formData.provider as Provider}
-        onCreatedAction={(credential) => {
-          setLocalCredentials((prev) => [...prev, credential]);
-          setFormData((prev) => ({ ...prev, credential_id: credential.id }));
-          setShowCredentialModal(false);
-        }}
-      />
+      {showCredentialModal && (
+        <CreateCredentialModal
+          isOpen={showCredentialModal}
+          onCloseAction={() => setShowCredentialModal(false)}
+          provider={formData.provider as Provider}
+          onCreatedAction={(credential) => {
+            setLocalCredentials((prev) => [...prev, credential]);
+            setFormData((prev) => ({ ...prev, credential_id: credential.id }));
+            setShowCredentialModal(false);
+          }}
+        />
+      )}
     </>
   );
 }

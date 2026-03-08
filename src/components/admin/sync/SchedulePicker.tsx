@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 
 type SchedulePickerProps = {
   value: string | null;
@@ -38,20 +38,14 @@ export function SchedulePicker({ value, timezone, onChange }: SchedulePickerProp
   const browserTimezone = useMemo(() => getBrowserTimezone(), []);
   const effectiveTimezone = timezone ?? browserTimezone;
 
-  const [mode, setMode] = useState(getMode(value));
+  const [mode, setMode] = useState(() => getMode(value));
   const [customCron, setCustomCron] = useState(getMode(value) === "custom" ? value ?? "" : "");
-
-  useEffect(() => {
-    const nextMode = getMode(value);
-    setMode(nextMode);
-    setCustomCron(nextMode === "custom" ? value ?? "" : "");
-  }, [value]);
 
   const selectedTimezone = timezones.includes(effectiveTimezone)
     ? effectiveTimezone
     : (timezones[0] ?? "UTC");
 
-  const handleModeChange = (nextMode: string) => {
+  const handleModeChange = useCallback((nextMode: string) => {
     setMode(nextMode);
     if (nextMode === "manual") {
       onChange(null, selectedTimezone);
@@ -62,9 +56,9 @@ export function SchedulePicker({ value, timezone, onChange }: SchedulePickerProp
       return;
     }
     onChange(nextMode, selectedTimezone);
-  };
+  }, [customCron, onChange, selectedTimezone]);
 
-  const handleTimezoneChange = (nextTimezone: string) => {
+  const handleTimezoneChange = useCallback((nextTimezone: string) => {
     if (mode === "manual") {
       onChange(null, nextTimezone);
       return;
@@ -74,7 +68,7 @@ export function SchedulePicker({ value, timezone, onChange }: SchedulePickerProp
       return;
     }
     onChange(mode, nextTimezone);
-  };
+  }, [mode, customCron, onChange]);
 
   return (
     <div className="space-y-4">
