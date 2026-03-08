@@ -37,6 +37,9 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
     credential_id: initialData?.credential_id || "",
     sync_targets: initialData?.sync_targets || [],
     is_active: initialData?.is_active ?? true,
+    owner: (initialData?.sync_options?.owner as string) || "",
+    repo: (initialData?.sync_options?.repo as string) || "",
+    gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
   });
 
   const filteredCredentials = credentials.filter((c) => c.provider === formData.provider);
@@ -57,6 +60,9 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
         provider: value,
         sync_targets: prev.sync_targets.filter((t) => newAllowed.includes(t)),
         credential_id: "",
+        owner: "",
+        repo: "",
+        gitlab_url: "",
       }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -72,16 +78,28 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
     });
   };
 
+  const buildSyncOptions = (): Record<string, unknown> => {
+    const opts: Record<string, unknown> = {};
+    if (formData.owner) opts.owner = formData.owner;
+    if (formData.repo) opts.repo = formData.repo;
+    if (formData.provider === "gitlab" && formData.gitlab_url) {
+      opts.gitlab_url = formData.gitlab_url;
+    }
+    return opts;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     startTransition(async () => {
       try {
         let result: { error?: string } | undefined;
+        const syncOptions = buildSyncOptions();
         if (initialData) {
           result = await updateSyncConfig(initialData.id, {
             sync_targets: formData.sync_targets,
             is_active: formData.is_active,
+            sync_options: syncOptions,
           });
         } else {
           result = await createSyncConfig({
@@ -89,6 +107,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
             provider: formData.provider,
             credential_id: formData.credential_id || null,
             sync_targets: formData.sync_targets,
+            sync_options: syncOptions,
           });
         }
 
@@ -177,6 +196,62 @@ export function SyncConfigForm({ initialData, credentials, onSuccess }: SyncConf
             </p>
           )}
         </div>
+
+        {/* Repository Settings */}
+        {(formData.provider === "github" || formData.provider === "gitlab") && (
+          <div className="space-y-4">
+            <span className="mb-2 block text-sm font-medium">Repository</span>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="owner" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
+                  Owner / Organization
+                </label>
+                <input
+                  type="text"
+                  id="owner"
+                  name="owner"
+                  value={formData.owner}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                  placeholder="e.g., myorg"
+                />
+              </div>
+              <div>
+                <label htmlFor="repo" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
+                  Repository
+                </label>
+                <input
+                  type="text"
+                  id="repo"
+                  name="repo"
+                  value={formData.repo}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                  placeholder="e.g., my-repo or * for all"
+                />
+              </div>
+            </div>
+            {formData.provider === "gitlab" && (
+              <div>
+                <label htmlFor="gitlab_url" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
+                  GitLab URL
+                </label>
+                <input
+                  type="text"
+                  id="gitlab_url"
+                  name="gitlab_url"
+                  value={formData.gitlab_url}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                  placeholder="https://gitlab.com"
+                />
+              </div>
+            )}
+            <p className="text-xs text-(--ink-muted)">
+              Leave empty to use the config name as owner/repo. Use * for repo to sync all repositories.
+            </p>
+          </div>
+        )}
 
         {/* Sync Targets */}
         <div>

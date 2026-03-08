@@ -207,13 +207,7 @@ export async function createSyncConfig(
 export async function getSyncConfig(id: string): Promise<ActionResult<SyncConfig>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
-    // syncConfigs API doesn't have a get-by-id endpoint; filter from list
-    const configs = await adminApi.syncConfigs.list(token, orgId);
-    const config = configs.find((c) => c.id === id);
-    if (!config) {
-      throw new AdminApiError(404, "Not Found", "Sync configuration not found");
-    }
-    return config;
+    return adminApi.syncConfigs.get(id, token, orgId);
   });
 }
 
