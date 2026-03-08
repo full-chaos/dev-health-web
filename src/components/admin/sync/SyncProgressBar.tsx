@@ -29,6 +29,12 @@ export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
       // This assumes one active sync per provider per org, which is a reasonable simplification for now.
       if (data.provider === provider) {
         const update = data as typeof data & { stage?: string; current_step?: string };
+        const newStatus = data.status;
+        if (newStatus === "RUNNING") {
+          setStartedAt((prev) => prev ?? Date.now());
+        } else if (newStatus !== "RUNNING" && newStatus !== "PENDING") {
+          setStartedAt(null);
+        }
         setProgress({
           itemsProcessed: data.itemsProcessed,
           itemsTotal: data.itemsTotal,
@@ -41,15 +47,6 @@ export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
     },
   });
 
-  useEffect(() => {
-    if (progress?.status === "RUNNING" && startedAt === null) {
-      setStartedAt(Date.now());
-    }
-
-    if (progress && progress.status !== "RUNNING" && progress.status !== "PENDING") {
-      setStartedAt(null);
-    }
-  }, [progress, startedAt]);
 
   useEffect(() => {
     if (progress?.status !== "RUNNING") {
