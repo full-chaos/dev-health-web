@@ -11,9 +11,18 @@ vi.mock("next/navigation", () => ({
 
 const mockCreateSyncConfig = vi.fn();
 const mockUpdateSyncConfig = vi.fn();
+const mockTestConnection = vi.fn();
+const mockCreateCredential = vi.fn();
 vi.mock("@/lib/admin/server", () => ({
   createSyncConfig: (...args: unknown[]) => mockCreateSyncConfig(...args),
   updateSyncConfig: (...args: unknown[]) => mockUpdateSyncConfig(...args),
+  testConnection: (...args: unknown[]) => mockTestConnection(...args),
+  createCredential: (...args: unknown[]) => mockCreateCredential(...args),
+}));
+
+const mockUseAdminTier = vi.fn(() => ({ tier: "community", features: {} }));
+vi.mock("@/components/admin/AdminTierContext", () => ({
+  useAdminTier: () => mockUseAdminTier(),
 }));
 
 vi.mock("next/link", () => ({
@@ -58,6 +67,10 @@ describe("SyncConfigForm", () => {
     mockPush.mockReset();
     mockCreateSyncConfig.mockReset();
     mockUpdateSyncConfig.mockReset();
+    mockTestConnection.mockReset();
+    mockCreateCredential.mockReset();
+    mockUseAdminTier.mockReset();
+    mockUseAdminTier.mockReturnValue({ tier: "community", features: {} });
   });
 
   it("renders all form fields for create mode", () => {
@@ -134,6 +147,8 @@ describe("SyncConfigForm", () => {
         provider: "github",
         credential_id: "cred-1",
         sync_targets: [],
+        schedule_cron: null,
+        timezone: null,
         sync_options: {},
       });
       expect(screen.getByText("Config created")).toBeInTheDocument();
@@ -209,6 +224,8 @@ describe("SyncConfigForm", () => {
           provider: "github",
           credential_id: "cred-1",
           sync_targets: [],
+          schedule_cron: null,
+          timezone: null,
           sync_options: { owner: "myorg", repo: "myrepo" },
         });
       });
@@ -232,6 +249,8 @@ describe("SyncConfigForm", () => {
           provider: "gitlab",
           credential_id: "cred-2",
           sync_targets: [],
+          schedule_cron: null,
+          timezone: null,
           sync_options: { owner: "glorg", repo: "glrepo", gitlab_url: "https://gitlab.example.com" },
         });
       });
@@ -263,6 +282,8 @@ describe("SyncConfigForm", () => {
         sync_targets: ["git"],
         sync_options: { owner: "existingorg", repo: "existingrepo" },
         is_active: true,
+        schedule_cron: null,
+        timezone: null,
         last_sync_at: null,
         last_sync_success: null,
         last_sync_error: null,
@@ -286,6 +307,8 @@ describe("SyncConfigForm", () => {
         sync_targets: ["git"],
         sync_options: { owner: "oldorg", repo: "oldrepo" },
         is_active: true,
+        schedule_cron: null,
+        timezone: null,
         last_sync_at: null,
         last_sync_success: null,
         last_sync_error: null,
@@ -304,9 +327,37 @@ describe("SyncConfigForm", () => {
         expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-1", {
           sync_targets: ["git"],
           is_active: true,
+          schedule_cron: null,
+          timezone: null,
           sync_options: { owner: "neworg", repo: "oldrepo" },
         });
       });
     });
+
+  it("shows Create Credential button when no credentials for provider", async () => {
+    render(<SyncConfigForm credentials={mockCredentials} />);
+
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "jira");
+
+    expect(screen.getByRole("button", { name: "Create One Now" })).toBeInTheDocument();
+  });
+
+  it("schedule picker hidden behind UpgradeGate for non-enterprise", () => {
+    mockUseAdminTier.mockReturnValue({ tier: "community", features: {} });
+    render(<SyncConfigForm credentials={mockCredentials} />);
+
+    expect(screen.getByText("Enterprise Plan Feature")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Manual only (no schedule)" })).not.toBeInTheDocument();
+  });
+
+  it("shows schedule picker for enterprise tier", () => {
+    mockUseAdminTier.mockReturnValue({
+      tier: "enterprise",
+      features: { custom_scheduling: true },
+    });
+    render(<SyncConfigForm credentials={mockCredentials} />);
+
+    expect(screen.getByText("Manual only (no schedule)")).toBeInTheDocument();
+  });
   });
 });
