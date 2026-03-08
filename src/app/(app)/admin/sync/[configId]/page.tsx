@@ -6,6 +6,7 @@ import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
 import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
 import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
 import { SyncNowButton } from "@/components/admin/sync/SyncNowButton";
+import { TestConnectionButton } from "@/components/admin/sync/TestConnectionButton";
 import { getSyncConfig, getSyncJobs, getCurrentOrg } from "@/lib/admin/server";
 
 interface PageProps {
@@ -41,6 +42,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
           description={`Provider: ${config.provider}`}
         >
           <div className="flex items-center gap-3">
+            <TestConnectionButton provider={config.provider} credentialId={config.credential_id} />
             <Link
               href={`/admin/sync/${config.id}/edit`}
               className="rounded-md bg-(--card-70) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-60) hover:text-foreground"

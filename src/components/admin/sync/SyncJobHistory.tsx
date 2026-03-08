@@ -1,11 +1,20 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import { SyncJob } from "@/lib/admin/types";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 
 interface SyncJobHistoryProps {
   jobs: SyncJob[];
+  totalJobs?: number;
 }
 
-export function SyncJobHistory({ jobs }: SyncJobHistoryProps) {
+export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
+  const [offset, setOffset] = useState(0);
+  const limit = 10;
+  const total = totalJobs ?? jobs.length;
+  const paginatedJobs = useMemo(() => jobs.slice(offset, offset + limit), [jobs, offset]);
+
   if (jobs.length === 0) {
     return (
       <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
@@ -52,7 +61,7 @@ export function SyncJobHistory({ jobs }: SyncJobHistoryProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-(--card-stroke) bg-(--card-80)">
-          {jobs.map((job) => {
+          {paginatedJobs.map((job) => {
             const duration = job.duration_seconds
               ? `${Math.round(job.duration_seconds)}s`
               : job.completed_at
@@ -87,6 +96,30 @@ export function SyncJobHistory({ jobs }: SyncJobHistoryProps) {
           })}
         </tbody>
       </table>
+
+      <div className="flex items-center justify-between border-t border-(--card-stroke) px-6 py-4">
+        <span className="text-sm text-(--ink-muted)">
+          Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
+            disabled={offset === 0}
+            className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => setOffset((prev) => prev + limit)}
+            disabled={offset + limit >= total}
+            className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
