@@ -115,4 +115,30 @@ describe('LoginForm', () => {
       expect(screen.getByText(/An error occurred/i)).toBeInTheDocument()
     })
   })
+
+  test('shows account locked message when result.code is "account_locked"', async () => {
+    mockSignIn.mockResolvedValue({ error: 'CredentialsSignin', code: 'account_locked', status: 401, ok: false, url: null })
+    renderWithToaster(<LoginForm />)
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'tester@example.com')
+    await userEvent.type(screen.getByLabelText(/password/i), 'password')
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Too many failed login attempts/i)).toBeInTheDocument()
+    })
+  })
+
+  test('shows rate limit message when result.code is "rate_limited"', async () => {
+    mockSignIn.mockResolvedValue({ error: 'CredentialsSignin', code: 'rate_limited', status: 401, ok: false, url: null })
+    renderWithToaster(<LoginForm />)
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'tester@example.com')
+    await userEvent.type(screen.getByLabelText(/password/i), 'password')
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Too many login attempts/i)).toBeInTheDocument()
+    })
+  })
 })

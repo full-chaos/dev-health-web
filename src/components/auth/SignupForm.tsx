@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { resolveOrigin } from "@/lib/origin"
+import { extractErrorMessage } from "@/lib/errorMessages"
 
 export function SignupForm() {
    const router = useRouter()
@@ -22,8 +23,8 @@ export function SignupForm() {
        return
      }
 
-     if (password.length < 8) {
-       toast.error("Password must be at least 8 characters")
+     if (password.length < 12) {
+       toast.error("Password must be at least 12 characters")
        return
      }
 
@@ -42,15 +43,13 @@ export function SignupForm() {
        })
 
        if (!res.ok) {
-         // Rate limit responses from slowapi may be text/plain, not JSON.
-         // Check status before parsing to avoid SyntaxError on non-JSON body.
          if (res.status === 429) {
            toast.error("Too many registration attempts. Please try again later.")
            return
          }
          try {
            const data = await res.json()
-           toast.error(data.detail || "Registration failed")
+           toast.error(extractErrorMessage(data.detail, "Registration failed"))
          } catch {
            toast.error("Registration failed")
          }
@@ -106,7 +105,7 @@ export function SignupForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          minLength={8}
+          minLength={12}
           className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         />
       </div>
@@ -121,7 +120,7 @@ export function SignupForm() {
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
-          minLength={8}
+          minLength={12}
           className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         />
       </div>

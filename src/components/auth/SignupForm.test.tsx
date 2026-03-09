@@ -45,8 +45,8 @@ describe("SignupForm", () => {
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password123")
-    await user.type(screen.getByLabelText("Confirm Password"), "different123")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "different12345")
     await user.click(screen.getByRole("button", { name: "Create Account" }))
 
     await waitFor(() => {
@@ -66,7 +66,7 @@ describe("SignupForm", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Password must be at least 8 characters"),
+        screen.getByText("Password must be at least 12 characters"),
       ).toBeInTheDocument()
     })
   })
@@ -85,8 +85,8 @@ describe("SignupForm", () => {
 
     await user.type(screen.getByLabelText("Full Name"), "Test User")
     await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password123")
-    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
     await user.click(screen.getByRole("button", { name: "Create Account" }))
 
     await waitFor(() => {
@@ -107,8 +107,8 @@ describe("SignupForm", () => {
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password123")
-    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
     await user.click(screen.getByRole("button", { name: "Create Account" }))
 
     await waitFor(() => {
@@ -129,8 +129,8 @@ describe("SignupForm", () => {
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password123")
-    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
     await user.click(screen.getByRole("button", { name: "Create Account" }))
 
     await waitFor(() => {
@@ -153,8 +153,8 @@ describe("SignupForm", () => {
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password123")
-    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
     await user.click(screen.getByRole("button", { name: "Create Account" }))
 
     await waitFor(() => {
@@ -177,8 +177,8 @@ describe("SignupForm", () => {
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password123")
-    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
     await user.click(screen.getByRole("button", { name: "Create Account" }))
 
     await waitFor(() => {
@@ -194,12 +194,77 @@ describe("SignupForm", () => {
     const user = userEvent.setup()
 
     await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password123")
-    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
     await user.click(screen.getByRole("button", { name: "Create Account" }))
 
     await waitFor(() => {
       expect(screen.getByText("An error occurred. Please try again.")).toBeInTheDocument()
+    })
+  })
+
+  it("shows password policy violations from backend", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          detail: {
+            violations: [
+              "Password must be at least 12 characters long",
+              "Password must contain at least one uppercase letter",
+            ],
+          },
+        }),
+        {
+          status: 422,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    )
+
+    renderWithToaster(<SignupForm />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
+    await user.click(screen.getByRole("button", { name: "Create Account" }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Password must be at least 12 characters long/),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it("shows Pydantic validation errors from backend", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          detail: [
+            { loc: ["body", "email"], msg: "value is not a valid email address", type: "value_error" },
+          ],
+        }),
+        {
+          status: 422,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    )
+
+    renderWithToaster(<SignupForm />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
+    await user.click(screen.getByRole("button", { name: "Create Account" }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("value is not a valid email address"),
+      ).toBeInTheDocument()
     })
   })
 })

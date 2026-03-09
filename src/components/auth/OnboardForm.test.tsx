@@ -153,4 +153,44 @@ describe("OnboardForm", () => {
       expect(screen.getByText("An error occurred. Please try again.")).toBeInTheDocument()
     })
   })
+
+  it("shows rate limit message on 429", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response("Rate limit exceeded", {
+        status: 429,
+        headers: { "Content-Type": "text/plain" },
+      }),
+    )
+
+    renderWithToaster(<OnboardForm />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole("button", { name: "Create Workspace" }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Too many requests. Please try again later."),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it("handles non-JSON error body", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response("Internal Server Error", {
+        status: 500,
+        headers: { "Content-Type": "text/plain" },
+      }),
+    )
+
+    renderWithToaster(<OnboardForm />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole("button", { name: "Create Workspace" }))
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to create workspace")).toBeInTheDocument()
+    })
+  })
 })
