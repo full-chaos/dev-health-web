@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { toast } from "sonner"
 
 export function LoginForm() {
@@ -76,20 +77,26 @@ export function LoginForm() {
          </div>
 
          <div className="space-y-2">
-           <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)]">
-             Password
-           </label>
-           <input
-             id="password"
-             type="password"
-             value={password}
-             onChange={(e) => setPassword(e.target.value)}
-             required
-             className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-           />
-         </div>
+          <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)]">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          />
+        </div>
 
-         <button
+        <div className="text-right">
+          <Link href="/auth/forgot-password" className="text-xs text-[var(--accent)] hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+
+        <button
            type="submit"
            disabled={loading}
            className="w-full py-2 px-4 bg-[var(--accent)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
