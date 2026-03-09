@@ -39,6 +39,13 @@ BACKEND_URL="http://127.0.0.1:8000" npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
+> **First checkout?** The GraphQL schema file (`src/lib/graphql/schema.graphql`) is exported from the `dev-health-ops` backend and is not generated locally. If it is missing, `npm run codegen` will fail. To obtain it, start the backend API and run:
+> ```bash
+> PYTHONPATH=../dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema --out src/lib/graphql/schema.graphql
+> npm run codegen
+> ```
+> See [Schema Contract Enforcement](#schema-contract-enforcement) for details.
+
 ### Frontend Only (Demo Mode)
 
 You can run the frontend with sample data (no backend required):
@@ -62,6 +69,7 @@ This will serve the app at [http://localhost:3000](http://localhost:3000) using 
 | `USE_GRAPHQL_ANALYTICS` | No | Server-side runtime fallback for GraphQL toggle | Used when the public flag is absent |
 | `NEXT_PUBLIC_DOCS_URL` | No | Docs/help link URL in UI | `/docs` |
 | `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` | No | Use sample data in test/demo paths | `false` |
+| `NEXT_PUBLIC_DEMO_MODE` | No | Show demo-only UI tabs and sample-data panels (e.g., Code Hotspots, Investment Expense in the Flow view). Backed by static data, not live APIs | `false` |
 | `DEMO_EXPORT` | No | Enable static export build mode | `false` |
 | `BASE_PATH` | No | Subpath hosting prefix (example: `/app`) | Empty (root) |
 
