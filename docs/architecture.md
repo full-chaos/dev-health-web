@@ -40,6 +40,212 @@
 - **ContextStrip**: Secondary navigation.
 - **Settings Sidebars**: `AdminSidebar` and `SuperadminSidebar` for administrative contexts.
 
+## Route Map
+
+### `(app)` — Authenticated Routes
+
+All routes below require an active session. The `(app)` layout wraps them in `SessionProvider` + `GraphQLProvider`.
+
+#### Core Views
+
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/dashboard` | `dashboard/page.tsx` | Main cockpit — summary metrics, deltas, and sparklines |
+| `/metrics` | `metrics/page.tsx` | Detailed metrics explorer with filter bar |
+| `/code` | `code/page.tsx` | Code churn, hotspot heatmaps, ownership concentration, and churn × throughput quadrant |
+| `/work` | `work/page.tsx` | Work-in-progress flow, cycle time, and throughput views |
+| `/quality` | `quality/page.tsx` | Quality signals and reliability metrics |
+| `/capacity` | `capacity/page.tsx` | Team capacity and load analysis |
+| `/investment` | `investment/page.tsx` | Investment allocation view (GraphQL-backed) |
+| `/opportunities` | `opportunities/page.tsx` | Improvement opportunities and recommendations |
+| `/demo` | `demo/page.tsx` | Demo/sample-data showcase |
+
+#### Explore & Evidence
+
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/explore` | `explore/page.tsx` | Metric evidence drill-down — supports explain, drilldown (PRs/issues), and home snapshot views via `?metric=` and `?api=` query params |
+| `/explore/landscape` | `explore/landscape/page.tsx` | Quadrant landscape view — plots paired pressures (churn × throughput, cycle × throughput, WIP × throughput, review load × latency) with role-based lens |
+
+#### Entity Detail (Flame Diagrams)
+
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/prs/[pr_id]` | `prs/[pr_id]/page.tsx` | PR flame diagram — visualises lifecycle phases of a single pull request |
+| `/issues/[issue_id]` | `issues/[issue_id]/page.tsx` | Issue flame diagram — tracks backlog wait time vs active work time for a work item |
+| `/deployments/[deployment_id]` | `deployments/[deployment_id]/page.tsx` | Deployment flame diagram — shows pipeline runtime and deploy handoffs |
+
+#### People
+
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/people` | `people/page.tsx` | People directory and activity overview |
+| `/people/[person_id]` | `people/[person_id]/page.tsx` | Individual developer profile |
+| `/people/[person_id]/metrics/[metric]` | `people/[person_id]/metrics/[metric]/page.tsx` | Per-developer metric detail |
+
+#### Admin (`admin/` sub-group, requires `admin` or `owner` role)
+
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/admin` | `admin/page.tsx` | Admin overview |
+| `/admin/settings` | `admin/settings/page.tsx` | Organisation settings |
+| `/admin/users` | `admin/users/page.tsx` | User management (list, create, edit) |
+| `/admin/teams` | `admin/teams/page.tsx` | Team management (list, create, edit) |
+| `/admin/identities` | `admin/identities/page.tsx` | Developer identity mapping (list, create, edit) |
+| `/admin/integrations` | `admin/integrations/page.tsx` | Integration provider configuration |
+| `/admin/sync` | `admin/sync/page.tsx` | Sync config management (list, create, view, edit) |
+| `/admin/audit-logs` | `admin/audit-logs/page.tsx` | Organisation audit log viewer |
+| `/admin/retention` | `admin/retention/page.tsx` | Data retention policy settings |
+| `/admin/ip-allowlist` | `admin/ip-allowlist/page.tsx` | IP allowlist management |
+
+#### Superadmin (`superadmin/` sub-group, requires superuser)
+
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/superadmin` | `superadmin/page.tsx` | Superadmin overview |
+| `/superadmin/settings` | `superadmin/settings/page.tsx` | Platform-wide settings |
+| `/superadmin/orgs` | `superadmin/orgs/page.tsx` | Organisation management (list, create, detail) |
+| `/superadmin/users` | `superadmin/users/page.tsx` | Global user management |
+| `/superadmin/audit` | `superadmin/audit/page.tsx` | Platform audit log |
+| `/superadmin/licensing` | `superadmin/licensing/page.tsx` | Licence management per org |
+| `/superadmin/billing/*` | `superadmin/billing/*/page.tsx` | Billing views — subscriptions, invoices, plans, refunds, audit |
+
+### `(auth)` — Public Auth Flows
+
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/auth/signin` | `auth/signin/page.tsx` | Sign-in form |
+| `/auth/signup` | `auth/signup/page.tsx` | Sign-up / registration form |
+| `/auth/onboard` | `auth/onboard/page.tsx` | Post-registration onboarding |
+| `/auth/error` | `auth/error/page.tsx` | Auth error display |
+
+### `(marketing)` — Public Marketing
+
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/` | `page.tsx` | Marketing landing page (authenticated users are redirected to `/dashboard`) |
+| `/pricing` | `pricing/page.tsx` | Pricing page |
+
+## API Routes
+
+### Internal (handled by Next.js)
+
+| Route | Method | Description |
+| :--- | :--- | :--- |
+| `/api/auth/[...nextauth]` | GET/POST | Auth.js (NextAuth) authentication endpoints — sign-in, sign-out, session, CSRF |
+| `/api/feedback` | POST | Creates a Linear issue from user feedback. Requires authentication. Rate limited (5 req/hour per user). Returns `503` when `LINEAR_API_KEY` / `LINEAR_TEAM_ID` are not configured |
+| `/health` | GET | Liveness/readiness probe for Docker HEALTHCHECK and load balancers. Returns `200 OK` with `{ status, ts }`. Independent of backend availability |
+
+### Proxied to Backend
+
+The proxy (`src/proxy.ts`) rewrites all `/api/*` paths (except `/api/auth` and `/api/v1/llm-proxy`) and `/graphql` to the backend at `BACKEND_URL`, injecting the `Authorization` bearer token and `X-Org-Id` header.
+
+| Route Pattern | Description |
+| :--- | :--- |
+| `/api/v1/*` | Backend REST API — home, explain, drilldown, heatmap, quadrant, flame, etc. |
+| `/graphql` | Backend GraphQL API (urql client target) |
+
+### Not Proxied (Client-Side Only)
+
+| Route | Description |
+| :--- | :--- |
+| `/api/v1/llm-proxy` | Explicitly excluded from backend proxy in `src/proxy.ts`. Intended for LLM-related requests handled separately |
+| `/api/v1/rum` | Real User Monitoring endpoint. Web Vitals are POSTed here when `NEXT_PUBLIC_RUM_ENDPOINT` is set. Uses `navigator.sendBeacon` for fire-and-forget delivery. This route is proxied to the backend (not excluded from proxy rules) |
+
+## Rate Limiting
+
+The `/api/feedback` endpoint is rate limited to **5 requests per hour** per user (or per IP for anonymous clients).
+
+- **Redis mode** (`REDIS_URL` is set): Uses a fixed-window counter via `INCR` + `EXPIRE`. Shared across all instances — required for distributed deployments with multiple replicas.
+- **In-memory mode** (no `REDIS_URL`): Uses a per-process sliding-window timestamp array. Sufficient for single-instance deployments but resets on restart and is not shared across replicas.
+- **Graceful fallback**: If Redis is configured but unreachable, the limiter silently falls back to in-memory mode and logs a warning.
+
+Configuration:
+- `REDIS_URL` — Redis connection string (e.g., `redis://localhost:6379/0`). Optional; omit for in-memory mode.
+
+Implementation: `src/lib/rate-limit.ts` (limiter logic), `src/lib/redis.ts` (lazy singleton Redis client).
+
+## Security Headers
+
+The application sets security headers at two layers:
+
+### Static Headers (`next.config.js`)
+
+Applied to all routes via Next.js `headers()`:
+
+| Header | Value | Purpose |
+| :--- | :--- | :--- |
+| `X-Content-Type-Options` | `nosniff` | Prevents MIME-type sniffing |
+| `X-Frame-Options` | `DENY` | Blocks all iframe embedding |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Limits referrer leakage to cross-origin requests |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | Disables browser APIs not used by the app |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Enforces HTTPS for ~2 years with HSTS preload |
+| `Content-Security-Policy` | (fallback — allows `unsafe-inline` for scripts) | Static-export / CDN fallback when middleware is unavailable |
+
+### Per-Request CSP with Nonce (`src/proxy.ts`)
+
+For server-rendered routes, the proxy middleware replaces the static CSP with a stricter nonce-based policy:
+
+- **Nonce generation**: `generateNonce()` creates a base64url-encoded 16-byte random value using `crypto.getRandomValues()`.
+- **CSP directives**: `script-src 'self' 'nonce-<value>'` — removes `unsafe-inline` from scripts. `style-src` retains `unsafe-inline` (required for Tailwind's runtime styles). `connect-src` includes `https://*.sentry.io` for error reporting.
+- **Nonce propagation**: The nonce is attached via the `x-nonce` response header so that `layout.tsx` can read it and apply it to inline `<script>` tags (theme init, runtime-config).
+
+### Modifying Headers for New Inline Scripts/Styles
+
+1. **Inline scripts**: Add the nonce attribute (`nonce={nonce}`) to any new inline `<script>` tag in the layout. The nonce is available from the `x-nonce` request header. Do **not** add `unsafe-inline` to `script-src`.
+2. **Inline styles**: Currently allowed via `unsafe-inline` in `style-src`. No additional changes needed for new inline styles.
+3. **New external origins**: Add the origin to the relevant directive in `buildCspHeader()` in `src/proxy.ts` and in the static fallback CSP in `next.config.js`.
+
+## Observability
+
+### Sentry Error & Performance Monitoring
+
+The application uses `@sentry/nextjs` for error tracking and performance monitoring across all runtime environments.
+
+**Configuration files:**
+
+| File | Runtime | Key Settings |
+| :--- | :--- | :--- |
+| `sentry.client.config.ts` | Browser | Traces (10% prod / 100% dev), Session Replay (10% prod / 100% dev, 100% on error) |
+| `sentry.server.config.ts` | Node.js server | Traces (10% prod / 100% dev) |
+| `sentry.edge.config.ts` | Edge runtime | Traces (10% prod / 100% dev) |
+| `instrumentation.ts` | Server bootstrap | Dynamically imports server or edge config; exports `onRequestError` to capture Server Component and middleware errors |
+| `next.config.js` | Build time | Wraps config with `withSentryConfig` — source map upload (when `SENTRY_AUTH_TOKEN` is set), debug log tree-shaking |
+
+**Environment variables:**
+
+| Variable | Required | Description |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_SENTRY_DSN` | Yes | Sentry Data Source Name — used by all three configs |
+| `SENTRY_AUTH_TOKEN` | No (CI only) | Enables source map upload during builds |
+| `SENTRY_ORG` | No (CI only) | Sentry organisation slug |
+| `SENTRY_PROJECT` | No (CI only) | Sentry project slug |
+
+**What's instrumented:**
+- **Client**: Unhandled exceptions, unhandled promise rejections, performance traces, and Session Replay (with full error-session capture).
+- **Server**: Unhandled exceptions in API routes and Server Components via `Sentry.captureRequestError` (registered in `instrumentation.ts`).
+- **Edge**: Unhandled exceptions in edge middleware/routes.
+
+**Adding custom instrumentation:**
+
+```ts
+import * as Sentry from "@sentry/nextjs";
+
+// Capture a custom error
+Sentry.captureException(new Error("Something went wrong"));
+
+// Capture a custom message
+Sentry.captureMessage("User hit edge case X");
+
+// Add a performance span
+Sentry.startSpan({ name: "my-operation" }, () => {
+  // ... code to measure ...
+});
+
+// Set user context (e.g., after sign-in)
+Sentry.setUser({ id: userId, email });
+```
+
 ## Key Files Quick Reference
 | Path | Description |
 | :--- | :--- |
@@ -49,4 +255,6 @@
 | `src/lib/apiClient.ts` | REST fetch wrapper |
 | `src/lib/api.ts` | Domain API functions and fallbacks |
 | `src/lib/graphql/urqlClient.ts` | GraphQL client config |
+| `src/lib/rate-limit.ts` | Rate limiter (Redis + in-memory fallback) |
+| `src/lib/redis.ts` | Lazy singleton Redis client |
 | `src/components/navigation/PrimaryNav.tsx` | Main sidebar navigation |

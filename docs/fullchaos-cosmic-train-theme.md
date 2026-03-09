@@ -1,5 +1,7 @@
 # Fullchaos Cosmic Train Theme
 
+> This document describes the `fullchaos-cosmic-train` palette variant. For the general design system (theming mechanism, CSS variables, Tailwind v4 configuration), see [`design-system.md`](./design-system.md).
+
 Inspired by the meteoric train art, this theme mixes combustion whites, blazing comet tails, and galactic blues so every artifact feels like it’s charging through a starry tunnel.
 
 ## Palette

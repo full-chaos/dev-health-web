@@ -67,6 +67,8 @@ sequenceDiagram
 | Backend unit | `tests/api/auth/test_register.py` | 201 response, DB records, duplicate rejection, password policy, email send |
 | Backend unit | `tests/api/auth/test_email_normalization.py` | Case-insensitive duplicate detection |
 | Backend integration | `tests/api/test_new_user_journey.py` | Register creates user+org+membership |
+
+> **Note:** Backend test references (Python/pytest paths like `tests/api/...`) are in the [`dev-health-ops`](https://github.com/chrisgeo/dev-health-ops) repository, not this repo.
 | Frontend unit | `src/components/auth/SignupForm.test.tsx` | Form rendering, validation, redirect, error handling |
 | Frontend E2E | `tests/auth-signup.spec.ts` | Full form submission, mismatch/short password, duplicate email |
 | Frontend E2E | `tests/account-creation-journey.spec.ts` (step 1) | Signup redirects with banner |
