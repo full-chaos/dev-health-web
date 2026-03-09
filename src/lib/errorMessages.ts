@@ -1,16 +1,13 @@
 /**
  * Extract a human-readable error message from backend API error responses.
  *
- * The backend returns `detail` in several shapes:
+ * The backend returns `detail` in the normalized shape:
+ * `{ message: string, errors?: string[] }` — all auth errors
  *
- * 1. **String**: `"Email already registered"` — most auth errors
- * 2. **Object with `violations`**: `{ violations: ["Password must be …"] }` — password policy
- * 3. **Object with `message`**: `{ message: "Too many failed…", retry_after_seconds: 60 }` — login lockout
- * 4. **Pydantic validation array**: `[{ loc: [...], msg: "…", type: "…" }]` — FastAPI auto-validation
- *
- * @param detail - The `detail` field from a backend JSON error response
- * @param fallback - Default message when detail is missing or unparseable
- * @returns A user-friendly error string
+ * Legacy shapes are also supported for backward compatibility:
+ * - String: `"Email already registered"`
+ * - Object with `violations`: `{ violations: ["..."] }`
+ * - Pydantic validation array: `[{ loc: [...], msg: "...", type: "..." }]`
  */
 export function extractErrorMessage(
   detail: unknown,
@@ -41,17 +38,23 @@ export function extractErrorMessage(
 
     const obj = detail as Record<string, unknown>
 
-    // Shape 2: password policy violations — { violations: string[] }
+    // Normalized shape: { message: string, errors?: string[] }
+    if ("message" in obj && typeof obj.message === "string") {
+      if ("errors" in obj && Array.isArray(obj.errors)) {
+        const errors = obj.errors.filter(
+          (v): v is string => typeof v === "string",
+        )
+        if (errors.length > 0) return errors.join(". ")
+      }
+      return obj.message
+    }
+
+    // Legacy: password policy violations — { violations: string[] }
     if ("violations" in obj && Array.isArray(obj.violations)) {
       const violations = obj.violations.filter(
         (v): v is string => typeof v === "string",
       )
       return violations.length > 0 ? violations.join(". ") : fallback
-    }
-
-    // Shape 3: lockout/rate-limit — { message: string, retry_after_seconds?: number }
-    if ("message" in obj && typeof obj.message === "string") {
-      return obj.message
     }
   }
 

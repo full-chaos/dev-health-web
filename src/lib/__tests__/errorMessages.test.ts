@@ -78,4 +78,27 @@ describe("extractErrorMessage", () => {
     const detail = { violations: ["Valid error", 123, null, "Another error"] }
     expect(extractErrorMessage(detail)).toBe("Valid error. Another error")
   })
+
+  it("extracts errors array from normalized shape", () => {
+    const detail = {
+      message: "Password validation failed",
+      errors: [
+        "Password must be at least 12 characters long",
+        "Password must contain at least one uppercase letter",
+      ],
+    }
+    expect(extractErrorMessage(detail)).toBe(
+      "Password must be at least 12 characters long. Password must contain at least one uppercase letter",
+    )
+  })
+
+  it("falls back to message when errors array is empty", () => {
+    const detail = { message: "Something failed", errors: [] }
+    expect(extractErrorMessage(detail)).toBe("Something failed")
+  })
+
+  it("returns message when no errors array present", () => {
+    const detail = { message: "Email already registered" }
+    expect(extractErrorMessage(detail)).toBe("Email already registered")
+  })
 })

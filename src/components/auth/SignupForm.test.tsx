@@ -267,4 +267,39 @@ describe("SignupForm", () => {
       ).toBeInTheDocument()
     })
   })
+
+  it("shows normalized error with message and errors array", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          detail: {
+            message: "Password validation failed",
+            errors: [
+              "Password must be at least 12 characters long",
+              "Password must include at least one number",
+            ],
+          },
+        }),
+        {
+          status: 422,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    )
+
+    renderWithToaster(<SignupForm />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
+    await user.click(screen.getByRole("button", { name: "Create Account" }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Password must be at least 12 characters long/),
+      ).toBeInTheDocument()
+    })
+  })
 })
