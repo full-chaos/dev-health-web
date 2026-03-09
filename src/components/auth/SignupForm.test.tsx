@@ -116,7 +116,7 @@ describe("SignupForm", () => {
     })
   })
 
-  it("shows please-wait message on 429 rate limit", async () => {
+  it("shows rate limit message on 429 (JSON body)", async () => {
     const fetchSpy = vi.spyOn(global, "fetch")
     fetchSpy.mockResolvedValue(
       new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
@@ -135,8 +135,54 @@ describe("SignupForm", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Please wait a moment before trying again."),
+        screen.getByText("Too many registration attempts. Please try again later."),
       ).toBeInTheDocument()
+    })
+  })
+
+  it("shows rate limit message on 429 (text/plain body from slowapi)", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response("Rate limit exceeded: 3 per 1 hour", {
+        status: 429,
+        headers: { "Content-Type": "text/plain" },
+      }),
+    )
+
+    renderWithToaster(<SignupForm />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com")
+    await user.type(screen.getByLabelText("Password"), "password123")
+    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.click(screen.getByRole("button", { name: "Create Account" }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Too many registration attempts. Please try again later."),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it("handles non-JSON error body on non-429 failure", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response("Internal Server Error", {
+        status: 500,
+        headers: { "Content-Type": "text/plain" },
+      }),
+    )
+
+    renderWithToaster(<SignupForm />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com")
+    await user.type(screen.getByLabelText("Password"), "password123")
+    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.click(screen.getByRole("button", { name: "Create Account" }))
+
+    await waitFor(() => {
+      expect(screen.getByText("Registration failed")).toBeInTheDocument()
     })
   })
 

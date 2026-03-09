@@ -103,6 +103,9 @@ const fetchJson = async <T>(
 ): Promise<T> => {
   const response = await request(path, init, params);
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error("Rate limit exceeded. Please try again later.");
+    }
     throw new Error(`API error: ${response.status}`);
   }
   // Use text() and trim() to handle keep-alive pings (leading/trailing whitespace)
@@ -194,6 +197,9 @@ const fetchWithFallback = async <T, C>(
   }
 
   if (lastError instanceof Response) {
+    if (lastError.status === 429) {
+      throw new Error("Rate limit exceeded. Please try again later.");
+    }
     throw new Error(`API error: ${lastError.status}`);
   }
   throw lastError ?? new Error("API error");
