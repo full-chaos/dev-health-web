@@ -58,7 +58,7 @@ This will serve the app at [http://localhost:3000](http://localhost:3000) using 
 | `AUTH_SECRET` | Prod: Yes, Dev: No | Auth.js signing/encryption secret | Falls back to a dev-only in-code value |
 | `LINEAR_API_KEY` | Optional feature | Enables `POST /api/feedback` Linear issue creation | Must be set with `LINEAR_TEAM_ID`; route returns `503` if missing |
 | `LINEAR_TEAM_ID` | Optional feature | Linear team target for feedback issues | Must be set with `LINEAR_API_KEY` |
-| `NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS` | No | Client/runtime GraphQL analytics toggle | Enabled unless set to `false` |
+| `NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS` | No | GraphQL analytics toggle (**default: enabled**). GraphQL is the default data layer; set to `false` to fall back to REST. | `true` |
 | `USE_GRAPHQL_ANALYTICS` | No | Server-side runtime fallback for GraphQL toggle | Used when the public flag is absent |
 | `NEXT_PUBLIC_DOCS_URL` | No | Docs/help link URL in UI | `/docs` |
 | `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` | No | Use sample data in test/demo paths | `false` |
@@ -178,10 +178,10 @@ PLAYWRIGHT_REPORT_DIR=<dir> PLAYWRIGHT_RESULTS_DIR=<dir> PLAYWRIGHT_JUNIT_PATH=<
 
 ## Architecture
 
-- **Framework:** Next.js 14+ with App Router
+- **Framework:** Next.js 16+ with App Router
 - **Components:** React Server Components + Client Components
-- **Styling:** Tailwind CSS
-- **Data:** urql GraphQL client, static sample data for demos
+- **Styling:** Tailwind CSS v4
+- **Data:** urql GraphQL client (default), REST fallback, static sample data for demos
 - **Testing:** Vitest (unit + component), Playwright (E2E + live backend), MSW v2 (API mocking)
 
 ![Screenshot](https://github.com/user-attachments/assets/8e823e44-2388-477a-bba5-3bd64efde538)
