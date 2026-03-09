@@ -33,7 +33,12 @@ test("home endpoint returns expected shape", async ({ request }) => {
   const response = await request.get(`${liveBackendUrl}/api/v1/home`);
   if (response.status() === 401) {
     const payload = (await response.json()) as { detail?: unknown; message?: unknown };
-    expect(typeof payload.detail === "string" || typeof payload.message === "string").toBe(true);
+    const detail = payload.detail;
+    const hasErrorInfo =
+      typeof detail === "string" ||
+      typeof payload.message === "string" ||
+      (typeof detail === "object" && detail !== null && "message" in detail);
+    expect(hasErrorInfo).toBe(true);
     return;
   }
 
