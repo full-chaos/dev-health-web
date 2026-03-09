@@ -41,17 +41,21 @@ export function SignupForm() {
          }),
        })
 
-       const data = await res.json()
-
-      if (res.status === 429) {
-        toast.error("Please wait a moment before trying again.")
-        return
-      }
-
-      if (!res.ok) {
-        toast.error(data.detail || "Registration failed")
-        return
-      }
+       if (!res.ok) {
+         // Rate limit responses from slowapi may be text/plain, not JSON.
+         // Check status before parsing to avoid SyntaxError on non-JSON body.
+         if (res.status === 429) {
+           toast.error("Too many registration attempts. Please try again later.")
+           return
+         }
+         try {
+           const data = await res.json()
+           toast.error(data.detail || "Registration failed")
+         } catch {
+           toast.error("Registration failed")
+         }
+         return
+       }
 
        router.push("/auth/signin?registered=true")
      } catch {

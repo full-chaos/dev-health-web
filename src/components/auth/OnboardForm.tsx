@@ -30,12 +30,21 @@ export function OnboardForm() {
         }),
       })
 
-      const data = await res.json()
-
       if (!res.ok) {
-        toast.error(data.detail || "Failed to create workspace")
+        if (res.status === 429) {
+          toast.error("Too many requests. Please try again later.")
+          return
+        }
+        try {
+          const data = await res.json()
+          toast.error(data.detail || "Failed to create workspace")
+        } catch {
+          toast.error("Failed to create workspace")
+        }
         return
       }
+
+      const data = await res.json()
 
       await update({
         onboardComplete: {
