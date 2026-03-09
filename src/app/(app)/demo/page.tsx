@@ -10,6 +10,11 @@ import { SankeyChart } from "@/components/charts/SankeyChart";
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
 import {
+  WorkGraphExplorer,
+  WorkGraphLegend,
+} from "@/components/charts/WorkGraphExplorer";
+import type { WorkGraphEdge } from "@/lib/graphql/types";
+import {
   sankeyStateTransitionSample,
   workItemFlowEfficiencyDailySample,
   workItemMetricsDailySample,
@@ -255,6 +260,17 @@ export default function Home() {
     },
   };
   const icFocusIds = ["ic-1"];
+  const sampleWorkGraphEdges: WorkGraphEdge[] = [
+    { edgeId: "e1", sourceType: "ISSUE", sourceId: "PROJ-101", targetType: "PR", targetId: "PR-201", edgeType: "FIXES", provenance: "NATIVE", confidence: 1.0, evidence: "Fixes #101" },
+    { edgeId: "e2", sourceType: "ISSUE", sourceId: "PROJ-102", targetType: "ISSUE", targetId: "PROJ-101", edgeType: "BLOCKS", provenance: "EXPLICIT_TEXT", confidence: 0.9, evidence: "is blocked by PROJ-102" },
+    { edgeId: "e3", sourceType: "PR", sourceId: "PR-201", targetType: "COMMIT", targetId: "abc123", edgeType: "CONTAINS", provenance: "NATIVE", confidence: 1.0, evidence: "" },
+    { edgeId: "e4", sourceType: "COMMIT", sourceId: "abc123", targetType: "FILE", targetId: "src/api/handler.ts", edgeType: "TOUCHES", provenance: "NATIVE", confidence: 1.0, evidence: "" },
+    { edgeId: "e5", sourceType: "ISSUE", sourceId: "PROJ-103", targetType: "ISSUE", targetId: "PROJ-101", edgeType: "RELATES", provenance: "HEURISTIC", confidence: 0.7, evidence: "similar labels" },
+    { edgeId: "e6", sourceType: "ISSUE", sourceId: "PROJ-104", targetType: "PR", targetId: "PR-202", edgeType: "IMPLEMENTS", provenance: "EXPLICIT_TEXT", confidence: 0.95, evidence: "Implements PROJ-104" },
+    { edgeId: "e7", sourceType: "PR", sourceId: "PR-202", targetType: "COMMIT", targetId: "def456", edgeType: "CONTAINS", provenance: "NATIVE", confidence: 1.0, evidence: "" },
+    { edgeId: "e8", sourceType: "COMMIT", sourceId: "def456", targetType: "FILE", targetId: "src/components/Button.tsx", edgeType: "TOUCHES", provenance: "NATIVE", confidence: 1.0, evidence: "" },
+    { edgeId: "e9", sourceType: "COMMIT", sourceId: "def456", targetType: "FILE", targetId: "src/api/handler.ts", edgeType: "TOUCHES", provenance: "NATIVE", confidence: 1.0, evidence: "" },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -496,6 +512,22 @@ export default function Home() {
             </span>
           </div>
           <SankeyChart nodes={sankey.nodes} links={sankey.links} />
+        </section>
+
+        <section
+          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+          data-testid="chart-work-graph"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Work Graph Explorer</h2>
+            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+              Relationships
+            </span>
+          </div>
+          <WorkGraphExplorer edges={sampleWorkGraphEdges} height={500} />
+          <div className="mt-4">
+            <WorkGraphLegend />
+          </div>
         </section>
       </main>
     </div>
