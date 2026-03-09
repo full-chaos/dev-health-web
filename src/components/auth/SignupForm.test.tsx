@@ -116,6 +116,30 @@ describe("SignupForm", () => {
     })
   })
 
+  it("shows please-wait message on 429 rate limit", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    renderWithToaster(<SignupForm />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com")
+    await user.type(screen.getByLabelText("Password"), "password123")
+    await user.type(screen.getByLabelText("Confirm Password"), "password123")
+    await user.click(screen.getByRole("button", { name: "Create Account" }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Please wait a moment before trying again."),
+      ).toBeInTheDocument()
+    })
+  })
+
   it("shows generic error on network failure", async () => {
     const fetchSpy = vi.spyOn(global, "fetch")
     fetchSpy.mockRejectedValue(new Error("Network error"))

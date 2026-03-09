@@ -32,7 +32,7 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
     pause: !orgId,
   });
 
-  const displayEdges = edges.length === 0 ? sampleWorkGraphEdges : edges;
+  const displayEdges = edges;
 
   const handleNodeClick = useCallback((nodeId: string, nodeType: WorkGraphNodeType) => {
     setSelectedNode((prev) =>
@@ -77,12 +77,18 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
           </div>
         )}
 
-        <WorkGraphExplorer
-          edges={displayEdges}
-          height={500}
-          onNodeClick={handleNodeClick}
-          selectedNodeId={selectedNode ? `${selectedNode.type}:${selectedNode.id}` : undefined}
-        />
+        {!loading && !error && edges.length === 0 ? (
+          <div className="flex items-center justify-center h-[500px] text-sm text-(--ink-muted)">
+            No work graph data available for this scope and window.
+          </div>
+        ) : (
+          <WorkGraphExplorer
+            edges={displayEdges}
+            height={500}
+            onNodeClick={handleNodeClick}
+            selectedNodeId={selectedNode ? `${selectedNode.type}:${selectedNode.id}` : undefined}
+          />
+        )}
       </div>
 
       {selectedNode && nodeDetails && (
@@ -206,104 +212,3 @@ function EdgeList({ title, subtitle, edges, getLabel, getRelation }: EdgeListPro
   );
 }
 
-export const sampleWorkGraphEdges: WorkGraphEdge[] = [
-  {
-    edgeId: "e1",
-    sourceType: "ISSUE",
-    sourceId: "PROJ-101",
-    targetType: "PR",
-    targetId: "PR-201",
-    edgeType: "FIXES",
-    provenance: "NATIVE",
-    confidence: 1.0,
-    evidence: "Fixes #101",
-  },
-  {
-    edgeId: "e2",
-    sourceType: "ISSUE",
-    sourceId: "PROJ-102",
-    targetType: "ISSUE",
-    targetId: "PROJ-101",
-    edgeType: "BLOCKS",
-    provenance: "EXPLICIT_TEXT",
-    confidence: 0.9,
-    evidence: "is blocked by PROJ-102",
-  },
-  {
-    edgeId: "e3",
-    sourceType: "PR",
-    sourceId: "PR-201",
-    targetType: "COMMIT",
-    targetId: "abc123",
-    edgeType: "CONTAINS",
-    provenance: "NATIVE",
-    confidence: 1.0,
-    evidence: "",
-  },
-  {
-    edgeId: "e4",
-    sourceType: "COMMIT",
-    sourceId: "abc123",
-    targetType: "FILE",
-    targetId: "src/api/handler.ts",
-    edgeType: "TOUCHES",
-    provenance: "NATIVE",
-    confidence: 1.0,
-    evidence: "",
-  },
-  {
-    edgeId: "e5",
-    sourceType: "ISSUE",
-    sourceId: "PROJ-103",
-    targetType: "ISSUE",
-    targetId: "PROJ-101",
-    edgeType: "RELATES",
-    provenance: "HEURISTIC",
-    confidence: 0.7,
-    evidence: "similar labels",
-  },
-  {
-    edgeId: "e6",
-    sourceType: "ISSUE",
-    sourceId: "PROJ-104",
-    targetType: "PR",
-    targetId: "PR-202",
-    edgeType: "IMPLEMENTS",
-    provenance: "EXPLICIT_TEXT",
-    confidence: 0.95,
-    evidence: "Implements PROJ-104",
-  },
-  {
-    edgeId: "e7",
-    sourceType: "PR",
-    sourceId: "PR-202",
-    targetType: "COMMIT",
-    targetId: "def456",
-    edgeType: "CONTAINS",
-    provenance: "NATIVE",
-    confidence: 1.0,
-    evidence: "",
-  },
-  {
-    edgeId: "e8",
-    sourceType: "COMMIT",
-    sourceId: "def456",
-    targetType: "FILE",
-    targetId: "src/components/Button.tsx",
-    edgeType: "TOUCHES",
-    provenance: "NATIVE",
-    confidence: 1.0,
-    evidence: "",
-  },
-  {
-    edgeId: "e9",
-    sourceType: "COMMIT",
-    sourceId: "def456",
-    targetType: "FILE",
-    targetId: "src/api/handler.ts",
-    edgeType: "TOUCHES",
-    provenance: "NATIVE",
-    confidence: 1.0,
-    evidence: "",
-  },
-];
