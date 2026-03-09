@@ -1,6 +1,7 @@
 import { render, screen } from "@/test/utils";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
+import type { MetricFilter } from "@/lib/filters/types";
 
 const { mockUseWorkGraphEdges, mockUseOrgId } = vi.hoisted(() => ({
   mockUseWorkGraphEdges: vi.fn(),
@@ -24,7 +25,7 @@ describe("GraphView", () => {
   const filters = {
     scope: { level: "org" as const, ids: ["org-1"] },
     dateRange: { start: "2024-01-01", end: "2024-12-31" },
-  };
+  } as unknown as MetricFilter;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,7 +40,7 @@ describe("GraphView", () => {
       refetch: vi.fn(),
     });
 
-    render(<GraphView filters={filters as any} />);
+    render(<GraphView filters={filters} />);
 
     expect(screen.getByText(/No work graph data available/i)).toBeInTheDocument();
     expect(screen.getByText(/0 edges/i)).toBeInTheDocument();
@@ -66,7 +67,7 @@ describe("GraphView", () => {
       refetch: vi.fn(),
     });
 
-    render(<GraphView filters={filters as any} />);
+    render(<GraphView filters={filters} />);
 
     expect(screen.getByTestId("work-graph-explorer")).toBeInTheDocument();
     expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
@@ -81,7 +82,7 @@ describe("GraphView", () => {
       refetch: vi.fn(),
     });
 
-    render(<GraphView filters={filters as any} />);
+    render(<GraphView filters={filters} />);
 
     expect(screen.queryByText("PROJ-101")).not.toBeInTheDocument();
   });
