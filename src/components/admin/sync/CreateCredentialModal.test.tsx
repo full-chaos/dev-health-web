@@ -87,8 +87,9 @@ describe("CreateCredentialModal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Test Connection" }));
 
     await waitFor(() => {
-      expect(mockTestConnection).toHaveBeenCalledWith("github", "Primary", {
-        token: "ghp_123",
+      expect(mockTestConnection).toHaveBeenCalledWith("github", {
+        name: "Primary",
+        credentials: { token: "ghp_123" },
       });
     });
 

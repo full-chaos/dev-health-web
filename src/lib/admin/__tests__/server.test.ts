@@ -113,7 +113,7 @@ describe("admin/server credential actions", () => {
         .spyOn(global, "fetch")
         .mockResolvedValue(new Response(JSON.stringify(resp), { status: 200 }));
 
-      const result = await testConnection("github", "default", { token: "tok" });
+      const result = await testConnection("github", { name: "default", credentials: { token: "tok" } });
       expect(result.data?.success).toBe(true);
       expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
       fetchSpy.mockRestore();

@@ -100,7 +100,7 @@ export function CreateCredentialModal({
     }
 
     startTesting(async () => {
-      const result = await testConnection(provider, name.trim(), credentials);
+      const result = await testConnection(provider, { name: name.trim(), credentials });
       if (result.error || !result.data?.success) {
         setTestResult({
           success: false,

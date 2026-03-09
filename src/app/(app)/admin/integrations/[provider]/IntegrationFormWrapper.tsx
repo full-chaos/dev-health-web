@@ -55,7 +55,7 @@ export function IntegrationFormWrapper({
       }
     });
 
-    const result = await testConnection(provider, "default", credentials);
+    const result = await testConnection(provider, { name: "default", credentials });
 
     if (result.error) {
       throw new Error(result.error);

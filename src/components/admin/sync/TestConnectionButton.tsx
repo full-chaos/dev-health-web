@@ -18,7 +18,7 @@ export function TestConnectionButton({ provider, credentialId }: TestConnectionB
     }
 
     startTransition(async () => {
-      const result = await testConnection(provider, credentialId, undefined);
+      const result = await testConnection(provider, { credentialId: credentialId });
 
       if (result.error || !result.data?.success) {
         toast.error(result.error || result.data?.error || "Connection test failed");

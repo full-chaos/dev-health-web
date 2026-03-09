@@ -165,12 +165,11 @@ export async function createCredential(
 
 export async function testConnection(
   provider: string,
-  name = "default",
-  credentials?: Record<string, unknown>
+  options: { name?: string; credentialId?: string; credentials?: Record<string, unknown> } = {},
 ): Promise<ActionResult<TestConnectionResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
-    const result = await adminApi.credentials.test(provider, name, credentials, token, orgId);
+    const result = await adminApi.credentials.test(provider, options, token, orgId);
     revalidatePath("/admin/integrations", "page");
     return result;
   });

@@ -219,10 +219,10 @@ export const adminApi = {
     delete: (provider: string, name: string, token?: string, orgId?: string) =>
       request<void>(`/credentials/${provider}/${name}`, { method: "DELETE" }, token, orgId),
 
-    test: (provider: string, name: string = "default", credentials?: Record<string, unknown>, token?: string, orgId?: string) =>
+    test: (provider: string, options?: { name?: string; credentialId?: string; credentials?: Record<string, unknown> }, token?: string, orgId?: string) =>
       request<TestConnectionResponse>(
         "/credentials/test",
-        { method: "POST", body: JSON.stringify({ provider, name, credentials }) },
+        { method: "POST", body: JSON.stringify({ provider, name: options?.name ?? "default", credential_id: options?.credentialId, credentials: options?.credentials }) },
         token,
         orgId
       ),
