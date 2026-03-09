@@ -1073,6 +1073,18 @@ export const handlers = [
     return HttpResponse.json({ registered: true }, { status: 201 });
   }),
 
+  http.get("*/api/v1/auth/verify", ({ request }) => {
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token");
+    if (token === "valid-token") {
+      return HttpResponse.json({ message: "Email verified successfully", verified: true });
+    }
+    return HttpResponse.json(
+      { detail: { message: "Invalid or expired verification token" } },
+      { status: 400 },
+    );
+  }),
+
   http.post("*/api/v1/auth/onboard", () =>
     HttpResponse.json<OnboardResponseBody>({
       access_token: "mock-onboard-token",
