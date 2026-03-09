@@ -26,6 +26,10 @@ export function LoginForm() {
         if (result?.error) {
           if (result.code === "email_verification_required") {
             setVerifyEmail(true)
+          } else if (result.code === "account_locked") {
+            toast.error("Too many failed login attempts. Your account is temporarily locked. Please try again later.")
+          } else if (result.code === "rate_limited") {
+            toast.error("Too many login attempts. Please try again later.")
           } else {
             toast.error("Invalid email or password")
           }

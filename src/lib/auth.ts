@@ -15,6 +15,14 @@ class EmailVerificationRequired extends CredentialsSignin {
   code = "email_verification_required"
 }
 
+class AccountLocked extends CredentialsSignin {
+  code = "account_locked"
+}
+
+class RateLimited extends CredentialsSignin {
+  code = "rate_limited"
+}
+
 const authSecret = process.env.AUTH_SECRET
   || process.env.NEXTAUTH_SECRET
   || (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
@@ -55,16 +63,28 @@ const nextAuth = NextAuth({
             }),
           })
 
+          if (res.status === 429) {
+            const contentType = res.headers.get("content-type") || ""
+            if (contentType.includes("application/json")) {
+              try {
+                const data = await res.json()
+                if (data?.detail?.retry_after_seconds) {
+                  throw new AccountLocked()
+                }
+              } catch (e) {
+                if (e instanceof AccountLocked) throw e
+              }
+            }
+            throw new RateLimited()
+          }
+
           const data = await res.json()
 
-          // Backend returns { status: "email_verification_required" }
-          // when the user's email has not been verified yet.
           if (data?.status === "email_verification_required") {
             throw new EmailVerificationRequired()
           }
 
           if (res.ok && data?.user) {
-            // Return user object with tokens
             return {
               id: data.user.id,
               email: data.user.email,
@@ -79,8 +99,11 @@ const nextAuth = NextAuth({
             }
           }
         } catch (error) {
-          // Re-throw our custom error so NextAuth surfaces the code
-          if (error instanceof EmailVerificationRequired) throw error
+          if (
+            error instanceof EmailVerificationRequired ||
+            error instanceof AccountLocked ||
+            error instanceof RateLimited
+          ) throw error
           authLogger.error({ err: error }, "credentials authorize failed")
         }
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { resolveOrigin } from "@/lib/origin"
+import { extractErrorMessage } from "@/lib/errorMessages"
 
 export function OnboardForm() {
   const router = useRouter()
@@ -37,7 +38,7 @@ export function OnboardForm() {
         }
         try {
           const data = await res.json()
-          toast.error(data.detail || "Failed to create workspace")
+          toast.error(extractErrorMessage(data.detail, "Failed to create workspace"))
         } catch {
           toast.error("Failed to create workspace")
         }
