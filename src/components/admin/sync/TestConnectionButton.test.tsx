@@ -54,7 +54,7 @@ describe("TestConnectionButton", () => {
     await userEvent.click(screen.getByRole("button", { name: "Test Connection" }));
 
     await waitFor(() => {
-      expect(mockTestConnection).toHaveBeenCalledWith("github", "cred-123", undefined);
+      expect(mockTestConnection).toHaveBeenCalledWith("github", { credentialId: "cred-123" });
     });
   });
 
