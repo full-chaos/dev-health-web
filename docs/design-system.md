@@ -91,3 +91,7 @@ The system relies on CSS custom properties (variables) defined in `globals.css`.
 | `src/app/globals.css` | Canonical source for theme variables and Tailwind v4 configuration. |
 | `src/app/layout.tsx` | Applies default attributes and contains the FOUC-prevention script. |
 | `postcss.config.mjs` | Configures the PostCSS pipeline for Tailwind v4. |
+
+## Theme Variants
+
+For the Cosmic Train palette specifically, see [`fullchaos-cosmic-train-theme.md`](./fullchaos-cosmic-train-theme.md) — it documents the colour rationale, typography choices, and sample CSS for the `fullchaos-cosmic-train` palette variant.

@@ -165,6 +165,87 @@ Configuration:
 
 Implementation: `src/lib/rate-limit.ts` (limiter logic), `src/lib/redis.ts` (lazy singleton Redis client).
 
+## Security Headers
+
+The application sets security headers at two layers:
+
+### Static Headers (`next.config.js`)
+
+Applied to all routes via Next.js `headers()`:
+
+| Header | Value | Purpose |
+| :--- | :--- | :--- |
+| `X-Content-Type-Options` | `nosniff` | Prevents MIME-type sniffing |
+| `X-Frame-Options` | `DENY` | Blocks all iframe embedding |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Limits referrer leakage to cross-origin requests |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | Disables browser APIs not used by the app |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Enforces HTTPS for ~2 years with HSTS preload |
+| `Content-Security-Policy` | (fallback — allows `unsafe-inline` for scripts) | Static-export / CDN fallback when middleware is unavailable |
+
+### Per-Request CSP with Nonce (`src/proxy.ts`)
+
+For server-rendered routes, the proxy middleware replaces the static CSP with a stricter nonce-based policy:
+
+- **Nonce generation**: `generateNonce()` creates a base64url-encoded 16-byte random value using `crypto.getRandomValues()`.
+- **CSP directives**: `script-src 'self' 'nonce-<value>'` — removes `unsafe-inline` from scripts. `style-src` retains `unsafe-inline` (required for Tailwind's runtime styles). `connect-src` includes `https://*.sentry.io` for error reporting.
+- **Nonce propagation**: The nonce is attached via the `x-nonce` response header so that `layout.tsx` can read it and apply it to inline `<script>` tags (theme init, runtime-config).
+
+### Modifying Headers for New Inline Scripts/Styles
+
+1. **Inline scripts**: Add the nonce attribute (`nonce={nonce}`) to any new inline `<script>` tag in the layout. The nonce is available from the `x-nonce` request header. Do **not** add `unsafe-inline` to `script-src`.
+2. **Inline styles**: Currently allowed via `unsafe-inline` in `style-src`. No additional changes needed for new inline styles.
+3. **New external origins**: Add the origin to the relevant directive in `buildCspHeader()` in `src/proxy.ts` and in the static fallback CSP in `next.config.js`.
+
+## Observability
+
+### Sentry Error & Performance Monitoring
+
+The application uses `@sentry/nextjs` for error tracking and performance monitoring across all runtime environments.
+
+**Configuration files:**
+
+| File | Runtime | Key Settings |
+| :--- | :--- | :--- |
+| `sentry.client.config.ts` | Browser | Traces (10% prod / 100% dev), Session Replay (10% prod / 100% dev, 100% on error) |
+| `sentry.server.config.ts` | Node.js server | Traces (10% prod / 100% dev) |
+| `sentry.edge.config.ts` | Edge runtime | Traces (10% prod / 100% dev) |
+| `instrumentation.ts` | Server bootstrap | Dynamically imports server or edge config; exports `onRequestError` to capture Server Component and middleware errors |
+| `next.config.js` | Build time | Wraps config with `withSentryConfig` — source map upload (when `SENTRY_AUTH_TOKEN` is set), debug log tree-shaking |
+
+**Environment variables:**
+
+| Variable | Required | Description |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_SENTRY_DSN` | Yes | Sentry Data Source Name — used by all three configs |
+| `SENTRY_AUTH_TOKEN` | No (CI only) | Enables source map upload during builds |
+| `SENTRY_ORG` | No (CI only) | Sentry organisation slug |
+| `SENTRY_PROJECT` | No (CI only) | Sentry project slug |
+
+**What's instrumented:**
+- **Client**: Unhandled exceptions, unhandled promise rejections, performance traces, and Session Replay (with full error-session capture).
+- **Server**: Unhandled exceptions in API routes and Server Components via `Sentry.captureRequestError` (registered in `instrumentation.ts`).
+- **Edge**: Unhandled exceptions in edge middleware/routes.
+
+**Adding custom instrumentation:**
+
+```ts
+import * as Sentry from "@sentry/nextjs";
+
+// Capture a custom error
+Sentry.captureException(new Error("Something went wrong"));
+
+// Capture a custom message
+Sentry.captureMessage("User hit edge case X");
+
+// Add a performance span
+Sentry.startSpan({ name: "my-operation" }, () => {
+  // ... code to measure ...
+});
+
+// Set user context (e.g., after sign-in)
+Sentry.setUser({ id: userId, email });
+```
+
 ## Key Files Quick Reference
 | Path | Description |
 | :--- | :--- |

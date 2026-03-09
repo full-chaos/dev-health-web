@@ -1,3 +1,5 @@
+> **Status:** GraphQL is now the default data layer. This guide is retained for reference but the migration is complete.
+
 # REST to GraphQL Migration Guide
 
 This guide covers migrating dev-health-web components from REST API to GraphQL.
