@@ -24,6 +24,11 @@ const PROVIDERS = [
     name: "Jira",
     description: "Import projects as team units with project keys",
   },
+  {
+    id: "linear",
+    name: "Linear",
+    description: "Discover teams from your Linear workspace",
+  },
 ];
 
 export function ImportTeamsDialog() {
