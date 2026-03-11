@@ -12,6 +12,7 @@ import type {
   SyncConfigCreate,
   SyncConfigUpdate,
   SyncJob,
+  BackfillResponse,
   IdentityMapping,
   IdentityMappingCreate,
   IdentityMappingUpdate,
@@ -256,6 +257,14 @@ export const adminApi = {
 
     trigger: (id: string, token?: string, orgId?: string) =>
       request<void>(`/sync-configs/${id}/trigger`, { method: "POST" }, token, orgId),
+
+    backfill: (id: string, data: { since: string; before: string }, token?: string, orgId?: string) =>
+      request<BackfillResponse>(
+        `/sync-configs/${id}/backfill`,
+        { method: "POST", body: JSON.stringify(data) },
+        token,
+        orgId
+      ),
 
     jobs: (id: string, token?: string, orgId?: string) =>
       request<SyncJob[]>(`/sync-configs/${id}/jobs`, {}, token, orgId),

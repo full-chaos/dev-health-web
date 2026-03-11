@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { SyncConfig, IntegrationCredential, Provider, PROVIDERS, PROVIDER_LABELS, PROVIDER_SYNC_TARGETS } from "@/lib/admin/types";
 import { createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
+import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { CreateCredentialModal } from "./CreateCredentialModal";
 import { SchedulePicker } from "./SchedulePicker";
 
@@ -35,6 +36,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
   const [isPending, startTransition] = useTransition();
   const [showCredentialModal, setShowCredentialModal] = useState(false);
   const [localCredentials, setLocalCredentials] = useState(credentials);
+  const { features } = useAdminTier();
 
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
@@ -44,6 +46,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     is_active: initialData?.is_active ?? true,
     schedule_cron: initialData?.schedule_cron ?? null,
     timezone: initialData?.timezone ?? null,
+    initial_sync_depth: (initialData?.initial_sync_depth ?? 30) as number | null,
     owner: (initialData?.sync_options?.owner as string) || "",
     repo: (initialData?.sync_options?.repo as string) || "",
     gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
@@ -112,6 +115,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             is_active: formData.is_active,
             schedule_cron: formData.schedule_cron,
             timezone: formData.timezone,
+            initial_sync_depth: formData.initial_sync_depth,
             sync_options: syncOptions,
           });
         } else {
@@ -122,6 +126,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             sync_targets: formData.sync_targets,
             schedule_cron: formData.schedule_cron,
             timezone: formData.timezone,
+            initial_sync_depth: formData.initial_sync_depth,
             sync_options: syncOptions,
           });
         }
@@ -308,6 +313,46 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                 <span className="text-sm">{target.label}</span>
               </label>
             ))}
+          </div>
+        </div>
+
+        {/* Initial Sync Depth */}
+        <div className="space-y-3">
+          <label className="text-sm font-medium text-[var(--text-primary)]">
+            Initial Sync Depth
+          </label>
+          <p className="text-xs text-[var(--text-secondary)]">
+            How far back to pull historical data when first connecting.
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {[
+              { label: "30 days", value: 30, tier: null },
+              { label: "90 days", value: 90, tier: "team" },
+              { label: "6 months", value: 180, tier: "team" },
+              { label: "1 year", value: 365, tier: "enterprise" },
+              { label: "All time", value: 0, tier: "enterprise" },
+            ].map((opt) => {
+              const isSelected = (formData.initial_sync_depth ?? 30) === opt.value;
+              const isGated = !!opt.tier && !features[`initial_sync_depth`];
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={isGated}
+                  onClick={() => setFormData(prev => ({ ...prev, initial_sync_depth: opt.value }))}
+                  className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                    isSelected
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
+                      : isGated
+                      ? "cursor-not-allowed border-[var(--card-stroke)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-50"
+                      : "border-[var(--card-stroke)] hover:border-[var(--accent)]/50"
+                  }`}
+                >
+                  {opt.label}
+                  {isGated && <span className="ml-1 text-[10px]">🔒</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
 
