@@ -123,6 +123,23 @@ export interface BackfillRequest {
 export interface BackfillResponse {
   task_id: string;
   status: string;
+  backfill_job_id: string;
+}
+
+export interface BackfillJob {
+  id: string;
+  sync_config_id: string;
+  status: string;
+  since_date: string;
+  before_date: string;
+  total_chunks: number;
+  completed_chunks: number;
+  failed_chunks: number;
+  progress_pct: number;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
 }
 
 export interface SyncConfigUpdate {

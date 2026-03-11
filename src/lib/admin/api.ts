@@ -13,7 +13,8 @@ import type {
   SyncConfigUpdate,
   SyncJob,
   BackfillResponse,
-  IdentityMapping,
+  BackfillJob,
+IdentityMapping,
   IdentityMappingCreate,
   IdentityMappingUpdate,
   TeamMapping,
@@ -262,6 +263,14 @@ export const adminApi = {
       request<BackfillResponse>(
         `/sync-configs/${id}/backfill`,
         { method: "POST", body: JSON.stringify(data) },
+        token,
+        orgId
+      ),
+
+    getBackfillJob: (jobId: string, token?: string, orgId?: string) =>
+      request<BackfillJob>(
+        `/backfill-jobs/${jobId}`,
+        { method: "GET" },
         token,
         orgId
       ),
