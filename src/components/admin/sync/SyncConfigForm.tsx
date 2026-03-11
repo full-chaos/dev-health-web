@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { SyncConfig, IntegrationCredential, Provider, PROVIDERS, PROVIDER_LABELS, PROVIDER_SYNC_TARGETS } from "@/lib/admin/types";
 import { createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
+import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { CreateCredentialModal } from "./CreateCredentialModal";
 import { SchedulePicker } from "./SchedulePicker";
 
@@ -35,6 +36,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
   const [isPending, startTransition] = useTransition();
   const [showCredentialModal, setShowCredentialModal] = useState(false);
   const [localCredentials, setLocalCredentials] = useState(credentials);
+  const { features } = useAdminTier();
 
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
@@ -331,7 +333,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
               { label: "All time", value: 0, tier: "enterprise" },
             ].map((opt) => {
               const isSelected = (formData.initial_sync_depth ?? 30) === opt.value;
-              const isGated = opt.tier && !features[`initial_sync_depth`];
+              const isGated = !!opt.tier && !features[`initial_sync_depth`];
               return (
                 <button
                   key={opt.value}
