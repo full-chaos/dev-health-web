@@ -85,6 +85,7 @@ export interface SyncConfig {
   is_active: boolean;
   schedule_cron: string | null;
   timezone: string | null;
+  initial_sync_depth?: number | null;
   last_sync_at: string | null;
   last_sync_success: boolean | null;
   last_sync_error: string | null;
@@ -111,6 +112,17 @@ export interface SyncConfigCreate {
   sync_options?: Record<string, unknown>;
   schedule_cron?: string | null;
   timezone?: string | null;
+  initial_sync_depth?: number | null;
+}
+
+export interface BackfillRequest {
+  since: string;
+  before: string;
+}
+
+export interface BackfillResponse {
+  task_id: string;
+  status: string;
 }
 
 export interface SyncConfigUpdate {
@@ -119,6 +131,7 @@ export interface SyncConfigUpdate {
   is_active?: boolean | null;
   schedule_cron?: string | null;
   timezone?: string | null;
+  initial_sync_depth?: number | null;
 }
 
 // ---- Identity Mappings ----
