@@ -16,7 +16,8 @@ import type {
   SyncConfigUpdate,
   SyncJob,
   BackfillResponse,
-  IdentityMapping,
+  BackfillJob,
+IdentityMapping,
   IdentityMappingCreate,
   IdentityMappingUpdate,
   TeamMapping,
@@ -225,15 +226,24 @@ export async function updateSyncConfig(
 }
 
 export async function triggerBackfill(
-  configId: string,
-  since: string,
-  before: string
+configId: string,
+since: string,
+before: string
 ): Promise<ActionResult<BackfillResponse>> {
+return withErrorHandling(async () => {
+const { token, orgId } = await getSessionContext();
+const res = await adminApi.syncConfigs.backfill(configId, { since, before }, token, orgId);
+revalidatePath("/admin/sync");
+return res;
+});
+}
+
+export async function getBackfillJobStatus(
+  jobId: string
+): Promise<ActionResult<BackfillJob>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
-    const res = await adminApi.syncConfigs.backfill(configId, { since, before }, token, orgId);
-    revalidatePath("/admin/sync");
-    return res;
+    return await adminApi.syncConfigs.getBackfillJob(jobId, token, orgId);
   });
 }
 export async function deleteSyncConfig(id: string): Promise<ActionResult<void>> {
