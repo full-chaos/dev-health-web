@@ -114,6 +114,77 @@ Test coverage
 | Frontend E2E | ✅ | `tests/admin-sync.spec.ts`, `tests/account-creation-journey.spec.ts` (step 5) | Covers dedicated sync flow and onboarding integration. |
 | Live E2E | ✅ | `tests/live/journey.spec.ts` | Covers sync path in live account setup journey. |
 
+## Historical Backfill
+
+Purpose
+- Covers historical data backfill triggered from a sync configuration detail page.
+- Validates date range input, backfill trigger, and real-time progress polling.
+- Initial Sync Depth selector in SyncConfigForm is tier-gated by organization billing tier.
+
+Primary components
+- `src/components/admin/sync/RunBackfill.tsx`
+- `src/components/admin/sync/SyncConfigForm.tsx` (Initial Sync Depth section)
+
+Routes
+- `/admin/sync/[configId]` (backfill controls are embedded in the sync config detail page)
+
+Tier-gated sync depth options
+
+| Tier | Max Initial Sync Depth |
+|------|----------------------|
+| Community | 30 days |
+| Team | 90 days |
+| Enterprise | Unlimited |
+
+The Initial Sync Depth selector in SyncConfigForm displays radio buttons for 30, 60, and 90-day options. Options beyond the organization's tier limit are disabled with an upgrade prompt.
+
+Backfill controls
+- Date range inputs: "From" and "To" date pickers
+- "Run Backfill" button triggers `triggerBackfill` server action
+- Progress bar polls `getBackfillJobStatus` every 3 seconds
+- Auto-stops polling on terminal states (completed or failed)
+
+Server actions
+- `triggerBackfill(configId, since, before)` in `src/lib/admin/server.ts`
+- `getBackfillJobStatus(jobId)` in `src/lib/admin/server.ts`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant F as Sync Config Detail UI
+    participant RB as RunBackfill Component
+    participant SA as Admin Server Actions
+    participant API as Backend API
+    U->>F: Open /admin/sync/[configId]
+    F-->>U: Show sync config with backfill controls
+    U->>RB: Select "From" and "To" dates
+    U->>RB: Click "Run Backfill"
+    RB->>SA: triggerBackfill(configId, since, before)
+    SA->>API: POST /admin/sync-configs/{id}/backfill
+    API-->>SA: { backfill_job_id }
+    SA-->>RB: Return backfill_job_id
+    RB->>RB: Start polling (every 3s)
+    loop Every 3 seconds
+        RB->>SA: getBackfillJobStatus(jobId)
+        SA->>API: GET /admin/backfill-jobs/{id}
+        API-->>SA: BackfillJob status
+        SA-->>RB: { status, progress_pct, completed_chunks, total_chunks }
+        RB-->>U: Update progress bar
+    end
+    Note over RB: Stops polling on completed/failed
+    RB-->>U: Show completion toast
+```
+
+Test coverage
+
+| Layer | Coverage | Tests | Notes |
+|---|---|---|---|
+| Backend Unit | ✅ | `test_backfill_integration.py`, `test_backfill_observability.py` | Covers Celery task wiring and BackfillJob service. |
+| Frontend Unit | ✅ | `src/components/admin/sync/SyncConfigForm.test.tsx` | Covers Initial Sync Depth selector and tier-gated options. |
+| Frontend E2E | — | — | No dedicated E2E test for backfill flow yet. |
+| Live E2E | — | — | Requires running Celery worker with backfill queue. |
+
 ## Team Management
 
 Purpose
