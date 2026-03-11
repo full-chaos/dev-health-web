@@ -149,6 +149,7 @@ describe("SyncConfigForm", () => {
         sync_targets: [],
         schedule_cron: null,
         timezone: null,
+        initial_sync_depth: 30,
         sync_options: {},
       });
       expect(screen.getByText("Config created")).toBeInTheDocument();
@@ -226,6 +227,7 @@ describe("SyncConfigForm", () => {
           sync_targets: [],
           schedule_cron: null,
           timezone: null,
+          initial_sync_depth: 30,
           sync_options: { owner: "myorg", repo: "myrepo" },
         });
       });
@@ -251,6 +253,7 @@ describe("SyncConfigForm", () => {
           sync_targets: [],
           schedule_cron: null,
           timezone: null,
+          initial_sync_depth: 30,
           sync_options: { owner: "glorg", repo: "glrepo", gitlab_url: "https://gitlab.example.com" },
         });
       });
@@ -329,6 +332,7 @@ describe("SyncConfigForm", () => {
           is_active: true,
           schedule_cron: null,
           timezone: null,
+          initial_sync_depth: 30,
           sync_options: { owner: "neworg", repo: "oldrepo" },
         });
       });
