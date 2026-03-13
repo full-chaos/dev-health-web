@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ChangeEvent, type SyntheticEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition, type ChangeEvent, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -57,11 +57,17 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     setLocalCredentials(credentials);
   }, [credentials]);
 
-  const filteredCredentials = localCredentials.filter((c) => c.provider === formData.provider);
+  const filteredCredentials = useMemo(
+    () => localCredentials.filter((c) => c.provider === formData.provider),
+    [localCredentials, formData.provider]
+  );
 
-  const availableTargets = getSyncTargetsForProvider(formData.provider);
+  const availableTargets = useMemo(
+    () => getSyncTargetsForProvider(formData.provider),
+    [formData.provider]
+  );
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
     if (type === "checkbox" && name === "is_active") {
@@ -80,18 +86,18 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     } else {
       handleBaseChange(e);
     }
-  };
+  }, []);
 
-  const handleTargetChange = (targetId: string, checked: boolean) => {
+  const handleTargetChange = useCallback((targetId: string, checked: boolean) => {
     setFormData((prev) => {
       const newTargets = checked
         ? [...prev.sync_targets, targetId]
         : prev.sync_targets.filter((t) => t !== targetId);
       return { ...prev, sync_targets: newTargets };
     });
-  };
+  }, []);
 
-  const buildSyncOptions = (): Record<string, unknown> => {
+  const buildSyncOptions = useCallback((): Record<string, unknown> => {
     const opts: Record<string, unknown> = {};
     if (formData.owner) opts.owner = formData.owner;
     if (formData.repo) opts.repo = formData.repo;
@@ -99,9 +105,9 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
       opts.gitlab_url = formData.gitlab_url;
     }
     return opts;
-  };
+  }, [formData.owner, formData.repo, formData.provider, formData.gitlab_url]);
 
-  const handleSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
+  const handleSubmit = useCallback((e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     startTransition(async () => {
@@ -144,7 +150,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         toast.error("An unexpected error occurred");
       }
     });
-  };
+  }, [initialData, formData, buildSyncOptions, onSuccessAction, router]);
 
   return (
     <>

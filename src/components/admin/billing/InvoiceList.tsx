@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   getInvoice,
@@ -48,7 +48,21 @@ export function InvoiceList({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [voidingInvoice, setVoidingInvoice] = useState<InvoiceRecord | null>(null);
 
-  const refreshList = (
+  const totalPages = useMemo(() => {
+    if (data.limit <= 0) {
+      return 1;
+    }
+    return Math.max(1, Math.ceil(data.total / data.limit));
+  }, [data.limit, data.total]);
+
+  const currentPage = useMemo(() => {
+    if (data.limit <= 0) {
+      return 1;
+    }
+    return Math.floor(data.offset / data.limit) + 1;
+  }, [data.limit, data.offset]);
+
+  const refreshList = useCallback((
     nextOffset = 0,
     nextStatus = statusFilter,
     nextOrgId = orgFilter,
@@ -68,9 +82,9 @@ export function InvoiceList({
         setData(result.data);
       }
     });
-  };
+  }, [data.limit, orgFilter, statusFilter]);
 
-  const handleOpenDetail = (invoiceId: string) => {
+  const handleOpenDetail = useCallback((invoiceId: string) => {
     startTransition(async () => {
       const result = await getInvoice(invoiceId, orgFilter.trim() || undefined);
       if (result.error) {
@@ -82,9 +96,9 @@ export function InvoiceList({
         setIsDetailOpen(true);
       }
     });
-  };
+  }, [orgFilter]);
 
-  const handleVoidConfirm = () => {
+  const handleVoidConfirm = useCallback(() => {
     if (!voidingInvoice) {
       return;
     }
@@ -112,7 +126,7 @@ export function InvoiceList({
       setVoidingInvoice(null);
       toast.success("Invoice voided");
     });
-  };
+  }, [orgFilter, selectedInvoice?.id, voidingInvoice]);
 
   const columns: DataTableColumn<InvoiceRecord>[] = (() => {
     const nextColumns: DataTableColumn<InvoiceRecord>[] = [];
