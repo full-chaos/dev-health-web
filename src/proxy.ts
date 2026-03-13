@@ -123,7 +123,7 @@ async function handleRequest(request: NextRequest) {
 
     // Org-scoped route guard: routes outside /superadmin and /demo require an org.
     // Superadmins without an org are sent to the admin panel; regular users to onboarding.
-    const ORG_EXEMPT_PATHS = ["/superadmin", "/demo"];
+    const ORG_EXEMPT_PATHS = ["/superadmin", "/demo", "/auth/onboard"];
     const needsOrg = !isPublicPath(pathname) && !ORG_EXEMPT_PATHS.some(p => pathname.startsWith(p));
 
     if (needsOrg && !orgId) {
