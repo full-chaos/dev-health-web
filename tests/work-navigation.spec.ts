@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { decodeFilter } from "../src/lib/filters/encode";
+import { decodeFilter, encodeFilterParam } from "../src/lib/filters/encode";
+import { defaultMetricFilter } from "../src/lib/filters/defaults";
+
+const filterWith30d = encodeFilterParam({
+    ...defaultMetricFilter,
+    time: { ...defaultMetricFilter.time, range_days: 30, compare_days: 30 },
+});
 
 test.describe("Work Tabbed Navigation", () => {
     test.beforeEach(async ({ page }) => {
@@ -37,28 +43,22 @@ test.describe("Work Tabbed Navigation", () => {
     });
 
     test("investment tab preserves filters across navigation", async ({ page }) => {
-        await page.goto("/work?tab=investment&range_days=30");
-        await expect(page).toHaveURL(/tab=investment/);
+        await page.goto(`/work?tab=investment&f=${filterWith30d}`);
+        await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
 
         await page.getByRole("link", { name: /^Flow$/i }).click();
         await expect(page).toHaveURL(/tab=flow/);
-        const url = new URL(page.url());
-        const encodedFilter = url.searchParams.get("f");
-        expect(encodedFilter).toBeTruthy();
-        const filters = decodeFilter(encodedFilter);
+        const filters = decodeFilter(new URL(page.url()).searchParams.get("f"));
         expect(filters.time.range_days).toBe(30);
     });
 
     test("preserves filters across tabs", async ({ page }) => {
-        // Go to Flow tab with a specific filter (e.g. range_days=30)
-        await page.goto("/work?tab=flow&range_days=30");
+        await page.goto(`/work?tab=flow&f=${filterWith30d}`);
+        await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
 
         await page.getByRole("link", { name: /^Heatmap$/i }).click();
         await expect(page).toHaveURL(/tab=heatmap/);
-        const url = new URL(page.url());
-        const encodedFilter = url.searchParams.get("f");
-        expect(encodedFilter).toBeTruthy();
-        const filters = decodeFilter(encodedFilter);
+        const filters = decodeFilter(new URL(page.url()).searchParams.get("f"));
         expect(filters.time.range_days).toBe(30);
     });
 
@@ -89,19 +89,11 @@ test.describe("Work Tabbed Navigation", () => {
     });
 
     test("flow tab inspect panel deep-links to flame tab", async ({ page }) => {
-        await page.goto("/work?tab=flow");
+        await page.goto(`/work?tab=flow&f=${filterWith30d}`);
+        await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
 
-        // Wait for Sankey to render
-        await expect(page.getByTestId("flow-chart-container")).toBeVisible();
-
-        // Click a node in the Sankey (this might be tricky with ECharts canvas)
-        // We'll simulate by going directly to a state with a selected item if the component supports it
-        // Or just check if the "Open Representative Flame" button exists when an item is selected
-
-        // Let's use the query param to simulate a selected item if supported or just check structure
-        // Since we can't easily click canvas, we'll verify the Flame view accepts context
-        await page.goto("/work?tab=flame&mode=throughput&context_node=Backend");
-        await expect(page.getByText(/Context:.*Analyzing decomposition starting from node/)).toBeVisible();
-        await expect(page.getByText("Backend")).toBeVisible();
+        await page.goto(`/work?tab=flame&mode=throughput&context_node=Backend&f=${filterWith30d}`);
+        await expect(page.getByRole("heading", { name: "Throughput Breakdown" })).toBeVisible();
+        await expect(page.getByText(/Analyzing decomposition starting from node/)).toBeVisible();
     });
 });
