@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { logger } from "@/lib/logger";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -262,7 +263,7 @@ export function FilterBarClient({
       })
       .catch((err) => {
         if (active) {
-          console.warn("FilterBarClient: failed to load filter options", err);
+          logger.warn({ err }, "FilterBarClient: failed to load filter options");
           setOptions((prev) => ({ ...prev }));
         }
       });
