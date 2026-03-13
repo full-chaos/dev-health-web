@@ -84,6 +84,7 @@ export function CockpitClient({
                 <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
                     {prioritizedDeltas.map((delta) => (
                         <button
+                            type="button"
                             key={delta.metric}
                             onClick={() => openPanel(delta.label, { metric: delta.metric })}
                             data-testid="delta-tile"
@@ -114,8 +115,8 @@ export function CockpitClient({
                     </p>
                     <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
                         {(home?.summary ?? []).map((sentence, idx) => (
-                            <button
-                                key={sentence.id ?? idx}
+                            <button type="button"
+                                key={sentence.id ?? sentence.text ?? idx}
                                 onClick={() => openPanel("Notable Shift", { apiUrl: sentence.evidence_link })}
                                 className="block w-full text-left rounded-2xl border border-transparent bg-(--card-60) px-4 py-3 transition hover:border-(--card-stroke)"
                             >
@@ -142,8 +143,8 @@ export function CockpitClient({
                     </div>
                     <div className="mt-4 grid gap-3">
                         {home?.tiles
-                            ? Object.entries(home.tiles).map(([key, tile]) => (
-                                <button
+                        ? Object.entries(home.tiles).map(([key, tile]) => (
+                                <button type="button"
                                     key={key}
                                     onClick={() => openPanel(tile.title, { apiUrl: tile.link })}
                                     className="group w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
@@ -183,6 +184,7 @@ export function CockpitClient({
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-xl">Limiting factor</h3>
                         <button
+                            type="button"
                             onClick={() => openPanel("Limiting Factor", { metric: "review_latency" })}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
@@ -194,7 +196,7 @@ export function CockpitClient({
                     </p>
                     <div className="mt-4 space-y-3 text-sm">
                         {(home?.constraint.evidence ?? []).map((item, idx) => (
-                            <button
+                            <button type="button"
                                 key={`${item.label}-${idx}`}
                                 onClick={() => openPanel(item.label, { apiUrl: item.link })}
                                 className="block w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3 hover:bg-(--card-60) transition-colors"
@@ -227,7 +229,7 @@ export function CockpitClient({
                     </div>
                     <div className="mt-4 space-y-4 text-sm">
                         {(home?.events ?? []).map((event, idx) => (
-                            <button
+                            <button type="button"
                                 key={`${event.type}-${idx}`}
                                 onClick={() => openPanel(event.type, { apiUrl: event.link })}
                                 className="block w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 hover:border-(--card-stroke)/80 transition-colors"

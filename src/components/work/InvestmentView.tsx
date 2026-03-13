@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix } from "@/lib/investmentMix";
 import { formatNumber } from "@/lib/formatters";
+import { logger } from "@/lib/logger";
 import { computeSankeyMetrics, limitRepoNodes, filterSankeyToTeam } from "@/lib/sankey";
 import {
     titleCase,
@@ -294,7 +295,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                     setExplanation(data);
                 }
             } catch (err) {
-                console.error("Failed to fetch explanation:", err);
+                logger.error({ err }, "Failed to fetch explanation");
                 if (active) {
                     setExplanation(null);
                 }
@@ -1180,7 +1181,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                         {mixExplanation.data.top_findings.slice(0, 3).map((finding, idx) => (
                                             <div
-                                                key={idx}
+                                                key={`finding-${finding.finding.slice(0, 40)}-${idx}`}
                                                 className="rounded-lg border border-(--card-stroke) bg-background/50 p-3"
                                             >
                                                 <p className="text-sm">{finding.finding}</p>
@@ -1227,9 +1228,9 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 </div>
                                 {(mixExplanation.data.confidence?.drivers?.length ?? 0) > 0 && (
                                     <div className="mt-2 flex flex-wrap gap-1">
-                                        {(mixExplanation.data.confidence?.drivers ?? []).map((driver, idx) => (
+                                        {(mixExplanation.data.confidence?.drivers ?? []).map((driver) => (
                                             <span
-                                                key={idx}
+                                                key={driver}
                                                 className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5 text-[10px] text-(--ink-muted)"
                                                 title={
                                                     driver === "low_text_signal"
@@ -1255,8 +1256,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">What to check next</p>
                                     <ul className="mt-2 space-y-2">
-                                        {mixExplanation.data.what_to_check_next.slice(0, 3).map((action, idx) => (
-                                            <li key={idx} className="text-sm">
+                                        {mixExplanation.data.what_to_check_next.slice(0, 3).map((action) => (
+                                            <li key={action.action} className="text-sm">
                                                 <span className="font-medium">{action.action}</span>
                                                 <span className="text-(--ink-muted)"> — {action.why}</span>
                                                 <span className="block text-[11px] text-(--ink-muted) opacity-70">
@@ -1273,8 +1274,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                 <details className="text-xs text-(--ink-muted)">
                                     <summary className="cursor-pointer">What this does NOT say</summary>
                                     <ul className="mt-2 list-disc space-y-1 pl-5">
-                                        {mixExplanation.data.anti_claims.map((claim, idx) => (
-                                            <li key={idx}>{claim}</li>
+                                        {mixExplanation.data.anti_claims.map((claim) => (
+                                            <li key={claim}>{claim}</li>
                                         ))}
                                     </ul>
                                 </details>
@@ -1829,7 +1830,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                     <p className="text-(--ink-muted)">No structural evidence reported.</p>
                                 )}
                                 {(selectedUnit.evidence?.structural ?? []).map((entry, index) => (
-                                    <div key={`structural-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                                    <div key={`structural-${JSON.stringify(entry).slice(0, 80)}-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
                                         {JSON.stringify(entry)}
                                     </div>
                                 ))}
@@ -1843,7 +1844,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                     <p className="text-(--ink-muted)">No contextual evidence reported.</p>
                                 )}
                                 {(selectedUnit.evidence?.contextual ?? []).map((entry, index) => (
-                                    <div key={`contextual-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                                    <div key={`contextual-${JSON.stringify(entry).slice(0, 80)}-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
                                         {JSON.stringify(entry)}
                                     </div>
                                 ))}
@@ -1857,7 +1858,7 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                     <p className="text-(--ink-muted)">No textual evidence reported.</p>
                                 )}
                                 {(selectedUnit.evidence?.textual ?? []).map((entry, index) => (
-                                    <div key={`textual-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                                    <div key={`textual-${JSON.stringify(entry).slice(0, 80)}-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
                                         {JSON.stringify(entry)}
                                     </div>
                                 ))}
@@ -1900,8 +1901,8 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
                                                         ))}
                                                         {explanation.evidence_highlights.length > 0 && (
                                                             <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-(--ink-muted)">
-                                                                {explanation.evidence_highlights.map((highlight, i) => (
-                                                                    <li key={i}>{highlight}</li>
+                                                                {explanation.evidence_highlights.map((highlight) => (
+                                                                     <li key={highlight}>{highlight}</li>
                                                                 ))}
                                                             </ul>
                                                         )}
