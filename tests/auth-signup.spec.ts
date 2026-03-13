@@ -13,7 +13,7 @@ test("signup page renders registration form", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Create Account" }),
   ).toBeVisible();
-  await expect(page.getByText("Sign in")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Sign in")).toBeVisible();
 });
 
 test("successful registration redirects to signin with banner", async ({
@@ -76,7 +76,7 @@ test("duplicate email shows server error toast", async ({ page }) => {
 test("sign in link navigates to signin page", async ({ page }) => {
   await page.goto("/auth/signup");
 
-  await page.getByRole("link", { name: "Sign in" }).click();
+  await page.getByRole("main").getByRole("link", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/auth\/signin/);
 });
