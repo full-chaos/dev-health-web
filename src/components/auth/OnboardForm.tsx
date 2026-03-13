@@ -11,6 +11,28 @@ export function OnboardForm() {
   const [orgName, setOrgName] = useState("")
   const [loading, setLoading] = useState(false)
 
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  const sessionHasOrg = async () => {
+    try {
+      const res = await fetch("/api/auth/session", { cache: "no-store" })
+      if (!res.ok) return false
+
+      const data = await res.json()
+      return Boolean(data?.user?.org_id)
+    } catch {
+      return false
+    }
+  }
+
+  const waitForSessionOrg = async () => {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if (await sessionHasOrg()) return true
+      await delay(150)
+    }
+    return false
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -45,15 +67,29 @@ export function OnboardForm() {
 
       const data = await res.json()
 
-      await update({
-        onboardComplete: {
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-          org_id: data.org_id,
-          role: data.role,
-          expires_in: data.expires_in,
-        },
-      })
+      const onboardingSession = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        org_id: data.org_id,
+        role: data.role,
+        expires_in: data.expires_in,
+      }
+
+      let sessionReady = false
+
+      for (let attempt = 0; attempt < 3 && !sessionReady; attempt += 1) {
+        try {
+          await update({ onboardComplete: onboardingSession })
+          sessionReady = await waitForSessionOrg()
+        } catch {
+          await delay(200 * (attempt + 1))
+        }
+      }
+
+      if (!sessionReady) {
+        toast.error("Failed to finalize session. Please try again.")
+        return
+      }
 
       // Hard navigation ensures the middleware reads the freshly-updated session
       // cookie. A soft router.push() can race with the Set-Cookie from the
