@@ -41,7 +41,7 @@ export default function AuthLayout({
           </Link>
         </div>
       </nav>
-      {children}
+      <main>{children}</main>
       <Toaster richColors position="top-right" theme="dark" />
     </SessionProvider>
   );
