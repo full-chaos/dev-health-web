@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getExplainData } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";
 import { Contributor } from "@/lib/types";
 import { EvidenceContext } from "./EvidenceContext";
@@ -126,7 +127,7 @@ export function EvidencePanel({
                         });
                     }
                 } catch (err) {
-                    console.error(err);
+                    logger.error({ err }, "Failed to load evidence data");
                     setError("Failed to load evidence data");
                 } finally {
                     setLoading(false);

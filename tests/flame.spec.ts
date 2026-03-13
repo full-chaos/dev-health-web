@@ -29,6 +29,12 @@ test("flame page loads throughput mode", async ({ page }) => {
 test("flame page mode selector switches modes", async ({ page }) => {
   await page.goto("/work?tab=flame&mode=cycle_breakdown");
 
+  // Wait for page to fully hydrate (heading visible = past loading skeleton)
+  await expect(page.getByRole("heading", { name: "Elapsed Time Breakdown" })).toBeVisible();
+
+  // Wait for filter sync to complete (FilterBarClient adds &f= param on mount)
+  await expect(page).toHaveURL(/f=/, { timeout: 5000 });
+
   // Click code hotspots mode
   await page.getByRole("button", { name: /code hotspots/i }).click();
 

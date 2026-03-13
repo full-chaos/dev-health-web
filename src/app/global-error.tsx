@@ -1,5 +1,6 @@
 "use client";
 import * as Sentry from "@sentry/nextjs";
+import { logger } from "@/lib/logger";
 
 /**
  * Global error boundary — catches errors that bubble past all route-level
@@ -19,7 +20,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
     // Capture error to Sentry and log to console as fallback
     Sentry.captureException(error);
-    console.error("[GlobalError]", error);
+    logger.error({ err: error }, "[GlobalError] Unhandled global error");
   }, [error]);
 
   return (
