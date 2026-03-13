@@ -30,7 +30,11 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-(--card-stroke)">
-          {identities.map((identity) => (
+          {identities.map((identity) => {
+            const teamIds = identity.team_ids ?? [];
+            const providerIdentities = identity.provider_identities ?? {};
+
+            return (
             <tr key={identity.canonical_id} className="hover:bg-(--card-70)/50">
               <td className="px-6 py-4 font-medium text-foreground">
                 <Link
@@ -43,9 +47,9 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
               <td className="px-6 py-4 text-(--ink-muted)">{identity.display_name ?? "—"}</td>
               <td className="px-6 py-4 text-(--ink-muted)">{identity.email ?? "—"}</td>
               <td className="px-6 py-4 text-(--ink-muted)">
-                {identity.team_ids.length > 0 ? (
+                {teamIds.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
-                    {identity.team_ids.map((teamId) => (
+                    {teamIds.map((teamId) => (
                       <Link
                         key={teamId}
                         href={`/admin/teams/${teamId}/edit`}
@@ -61,9 +65,13 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
               </td>
               <td className="px-6 py-4">
                 <div className="flex flex-wrap gap-2">
-                  {Object.entries(identity.provider_identities).map(([provider, usernames]) =>
-                    usernames.map((username, i) => (
-                      <ProviderBadge key={`${provider}-${i}`} provider={provider} username={username} />
+                  {Object.entries(providerIdentities).map(([provider, usernames]) =>
+                    usernames.map((username) => (
+                      <ProviderBadge
+                        key={`${identity.canonical_id}-${provider}-${username}`}
+                        provider={provider}
+                        username={username}
+                      />
                     ))
                   )}
                 </div>
@@ -78,6 +86,7 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
                   </Link>
                   {onDelete && (
                     <button
+                      type="button"
                       onClick={() => onDelete(identity.canonical_id)}
                       className="text-red-500 hover:underline"
                     >
@@ -87,7 +96,8 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
           {identities.length === 0 && (
             <tr>
               <td colSpan={6} className="px-6 py-8 text-center text-(--ink-muted)">
