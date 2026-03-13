@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ChangeEvent, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { SyncConfig, IntegrationCredential, Provider, PROVIDERS, PROVIDER_LABELS
 import { createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
+import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
 import { CreateCredentialModal } from "./CreateCredentialModal";
 import { SchedulePicker } from "./SchedulePicker";
 
@@ -38,7 +39,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
   const [localCredentials, setLocalCredentials] = useState(credentials);
   const { features } = useAdminTier();
 
-  const [formData, setFormData] = useState({
+  const { formData, setFormData, handleChange: handleBaseChange } = useBaseFormState({
     name: initialData?.name || "",
     provider: initialData?.provider || "github",
     credential_id: initialData?.credential_id || "",
@@ -60,9 +61,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
 
   const availableTargets = getSyncTargetsForProvider(formData.provider);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
     if (type === "checkbox" && name === "is_active") {
@@ -79,7 +78,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         gitlab_url: "",
       }));
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      handleBaseChange(e);
     }
   };
 
@@ -102,7 +101,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     return opts;
   };
 
-  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     startTransition(async () => {
@@ -149,8 +148,22 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
-        <div className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+      <BaseForm
+        onSubmitAction={handleSubmit}
+        isLoading={isPending}
+        submitLabel={isPending ? "Saving..." : initialData ? "Update Configuration" : "Create Configuration"}
+        className="max-w-2xl space-y-6"
+        contentClassName="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
+        actionsClassName="flex items-center gap-4"
+        actionsStart={
+          <Link
+            href="/admin/sync"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
+          >
+            Cancel
+          </Link>
+        }
+      >
         
         {/* Name */}
         <div>
@@ -165,7 +178,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             onChange={handleChange}
             disabled={!!initialData} // Name often immutable or just disabled for simplicity in edit
             required
-            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+            className={`${inputClass} text-sm disabled:opacity-50`}
             placeholder="e.g., GitHub Main Org Sync"
           />
         </div>
@@ -181,7 +194,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             value={formData.provider}
             onChange={handleChange}
             disabled={!!initialData}
-            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+            className={`${inputClass} text-sm disabled:opacity-50`}
           >
             {PROVIDERS.map((p) => (
               <option key={p} value={p}>
@@ -211,7 +224,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             value={formData.credential_id}
             onChange={handleChange}
             disabled={!!initialData} // Changing credential might require re-auth flow, keep simple for now
-            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+            className={`${inputClass} text-sm disabled:opacity-50`}
           >
             <option value="">Select a credential...</option>
             {filteredCredentials.map((c) => (
@@ -254,7 +267,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                   name="owner"
                   value={formData.owner}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                  className={`${inputClass} text-sm disabled:opacity-50`}
                   placeholder="e.g., myorg"
                 />
               </div>
@@ -268,7 +281,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                   name="repo"
                   value={formData.repo}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                  className={`${inputClass} text-sm disabled:opacity-50`}
                   placeholder="e.g., my-repo or * for all"
                 />
               </div>
@@ -284,7 +297,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                   name="gitlab_url"
                   value={formData.gitlab_url}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                  className={`${inputClass} text-sm disabled:opacity-50`}
                   placeholder="https://gitlab.com"
                 />
               </div>
@@ -318,9 +331,9 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
 
         {/* Initial Sync Depth */}
         <div className="space-y-3">
-          <label className="text-sm font-medium text-[var(--text-primary)]">
+          <span className="text-sm font-medium text-[var(--text-primary)]">
             Initial Sync Depth
-          </label>
+          </span>
           <p className="text-xs text-[var(--text-secondary)]">
             How far back to pull historical data when first connecting.
           </p>
@@ -381,25 +394,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
           />
         </UpgradeGate>
 
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-4">
-          <Link
-            href="/admin/sync"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
-          >
-            {isPending ? "Saving..." : initialData ? "Update Configuration" : "Create Configuration"}
-          </button>
-        </div>
-      </form>
+      </BaseForm>
 
       {showCredentialModal && (
         <CreateCredentialModal
