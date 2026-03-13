@@ -1,6 +1,4 @@
-"use client";
-
-import React from "react";
+import type { SyntheticEvent } from "react";
 import type { UserCreate, User } from "@/lib/admin/types";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
 
@@ -29,7 +27,7 @@ export function UserForm({
     is_active: initialData?.is_active ?? true,
   });
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     await onSubmit(formData);
   };

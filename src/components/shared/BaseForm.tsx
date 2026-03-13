@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useState, type ChangeEvent, type ReactNode, type SyntheticEvent } from "react";
 
 export const inputClass =
   "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)";
@@ -20,7 +20,7 @@ export function useBaseFormState<T>(initialState: T) {
 }
 
 type BaseFormProps = {
-  onSubmitAction: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmitAction: (event: SyntheticEvent<HTMLFormElement>) => void;
   onCancelAction?: () => void;
   isLoading?: boolean;
   submitLabel: string;

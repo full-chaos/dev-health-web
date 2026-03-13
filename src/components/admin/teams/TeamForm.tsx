@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { Team } from "./TeamTable";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
@@ -24,7 +24,7 @@ export function TeamForm({ initialData, onSubmit, isEditing = false, isLoading =
   const [repoPatternsInput, setRepoPatternsInput] = useState(initialData?.repo_patterns.join(", ") || "");
   const [projectKeysInput, setProjectKeysInput] = useState(initialData?.project_keys.join(", ") || "");
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     const repo_patterns = repoPatternsInput
       .split(",")
@@ -46,7 +46,7 @@ export function TeamForm({ initialData, onSubmit, isEditing = false, isLoading =
     <BaseForm
       onSubmitAction={handleSubmit}
       isLoading={isLoading}
-      submitLabel={isLoading ? "Saving..." : isEditing ? "Update Team" : "Create Team"}
+      submitLabel={isLoading ? "Saving…" : isEditing ? "Update Team" : "Create Team"}
       className="max-w-2xl space-y-6"
       contentClassName="space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
       actionsClassName="flex items-center gap-4"

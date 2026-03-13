@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ChangeEvent, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -61,7 +61,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
 
   const availableTargets = getSyncTargetsForProvider(formData.provider);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
     if (type === "checkbox" && name === "is_active") {
@@ -101,7 +101,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     return opts;
   };
 
-  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     startTransition(async () => {

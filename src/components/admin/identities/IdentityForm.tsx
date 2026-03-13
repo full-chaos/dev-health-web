@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState, type ChangeEvent, type SyntheticEvent } from "react";
 import Link from "next/link";
 import { Identity } from "./IdentityTable";
 import { Team } from "../teams/TeamTable";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
 
-type ProviderEntry = { provider: string; username: string };
+type ProviderEntry = { id: string; provider: string; username: string };
 
 type IdentityFormProps = {
   initialData?: Identity;
@@ -18,7 +18,11 @@ const PROVIDERS = ["github", "gitlab", "jira", "email"];
 
 function recordToArray(record: Record<string, string[]>): ProviderEntry[] {
   return Object.entries(record).flatMap(([provider, usernames]) =>
-    usernames.map((username) => ({ provider, username }))
+    usernames.map((username, index) => ({
+      id: `${provider}-${username}-${index}`,
+      provider,
+      username,
+    }))
   );
 }
 
@@ -49,7 +53,7 @@ export function IdentityForm({
     initialData ? recordToArray(initialData.provider_identities) : []
   );
 
-  const handleFormChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleFormChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (event.target.name === "team_ids") {
       setFormData((prev) => ({ ...prev, team_ids: event.target.value ? [event.target.value] : [] }));
       return;
@@ -64,14 +68,17 @@ export function IdentityForm({
   };
 
   const addProvider = () => {
-    setProviderEntries((prev) => [...prev, { provider: "github", username: "" }]);
+    setProviderEntries((prev) => [
+      ...prev,
+      { id: `provider-${Date.now()}-${Math.random().toString(36).slice(2)}`, provider: "github", username: "" },
+    ]);
   };
 
   const removeProvider = (index: number) => {
     setProviderEntries((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     onSubmit({
       ...formData,
@@ -170,7 +177,7 @@ export function IdentityForm({
         </div>
         <div className="space-y-3">
           {providerEntries.map((entry, index) => (
-            <div key={`${entry.provider}-${entry.username}-${index}`} className="flex gap-3">
+            <div key={entry.id} className="flex gap-3">
               <select
                 value={entry.provider}
                 onChange={(event) => handleProviderChange(index, "provider", event.target.value)}
