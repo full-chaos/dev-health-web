@@ -253,13 +253,10 @@ export function WorkGraphExplorer({
   if (edges.length === 0) {
     return (
       <div
-        className={className}
+        className={`flex items-center justify-center ${className || ""}`}
         style={{
           height,
           width,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
           ...style,
         }}
       >
@@ -288,15 +285,20 @@ export function WorkGraphLegend() {
         </p>
         <div className="flex flex-wrap gap-3">
           {(Object.entries(NODE_TYPE_COLORS) as [WorkGraphNodeType, string][]).map(
-            ([type, color]) => (
-              <div key={type} className="flex items-center gap-1">
-                <span
-                  className="w-3 h-3 rounded-sm"
-                  style={{ backgroundColor: color }}
-                />
-                <span>{type}</span>
-              </div>
-            )
+            ([type]) => {
+              const bgClass = {
+                ISSUE: "bg-[#f59e0b]",
+                PR: "bg-[#10b981]",
+                COMMIT: "bg-[#6366f1]",
+                FILE: "bg-[#8b5cf6]",
+              }[type];
+              return (
+                <div key={type} className="flex items-center gap-1">
+                  <span className={`w-3 h-3 rounded-sm ${bgClass}`} />
+                  <span>{type}</span>
+                </div>
+              );
+            }
           )}
         </div>
       </div>
@@ -307,15 +309,22 @@ export function WorkGraphLegend() {
         <div className="flex flex-wrap gap-3">
           {Object.entries(EDGE_TYPE_STYLES)
             .slice(0, 6)
-            .map(([type, { color }]) => (
-              <div key={type} className="flex items-center gap-1">
-                <span
-                  className="w-4 h-0.5"
-                  style={{ backgroundColor: color }}
-                />
-                <span>{type.toLowerCase().replace(/_/g, " ")}</span>
-              </div>
-            ))}
+            .map(([type]) => {
+              const bgClass = {
+                BLOCKS: "bg-[#ef4444]",
+                IS_BLOCKED_BY: "bg-[#ef4444]",
+                FIXES: "bg-[#22c55e]",
+                IMPLEMENTS: "bg-[#3b82f6]",
+                REFERENCES: "bg-[#a855f7]",
+                RELATES: "bg-[#6b7280]",
+              }[type] || "bg-gray-500";
+              return (
+                <div key={type} className="flex items-center gap-1">
+                  <span className={`w-4 h-0.5 ${bgClass}`} />
+                  <span>{type.toLowerCase().replace(/_/g, " ")}</span>
+                </div>
+              );
+            })}
         </div>
       </div>
     </div>

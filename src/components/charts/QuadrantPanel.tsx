@@ -384,8 +384,7 @@ export function QuadrantPanel({
               <QuadrantChart
                 data={scopedData}
                 height={chartHeight}
-                className="w-full"
-                style={{ minWidth: 0 }}
+                className="w-full min-w-0"
                 onPointSelect={handlePointSelect}
                 focusEntityIds={focusEntityIds}
                 scopeType={scopeType}

@@ -88,7 +88,7 @@ export function Chart({
       <ReactECharts
         option={mergedOption}
         notMerge={true}
-        style={{ width: "100%", height: "100%" }}
+        className="w-full h-full"
         opts={{ renderer: "canvas" }}
         onEvents={onEvents}
         onChartReady={(instance) => {
