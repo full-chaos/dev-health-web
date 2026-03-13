@@ -1,14 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { resolveOrigin } from "@/lib/origin"
 import { extractErrorMessage } from "@/lib/errorMessages"
 
 export function OnboardForm() {
-  const router = useRouter()
   const { data: session, update } = useSession()
   const [orgName, setOrgName] = useState("")
   const [loading, setLoading] = useState(false)
@@ -57,8 +55,10 @@ export function OnboardForm() {
         },
       })
 
-      router.push("/dashboard")
-      router.refresh()
+      // Hard navigation ensures the middleware reads the freshly-updated session
+      // cookie. A soft router.push() can race with the Set-Cookie from the
+      // session update, causing the org-scoped guard to redirect back here.
+      window.location.href = "/dashboard"
     } catch {
       toast.error("An error occurred. Please try again.")
     } finally {
