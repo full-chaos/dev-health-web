@@ -78,6 +78,21 @@ function badRequest(error: string) {
 }
 
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+  const nextAuthUrl = process.env.NEXTAUTH_URL;
+
+  if (origin && nextAuthUrl) {
+    try {
+      const allowedOrigin = new URL(nextAuthUrl).origin;
+      if (origin !== allowedOrigin) {
+        return NextResponse.json(
+          { success: false, error: "Forbidden" } satisfies FeedbackResponse,
+          { status: 403 }
+        );
+      }
+    } catch {}
+  }
+
   const linearApiKey = process.env.LINEAR_API_KEY;
   const linearTeamId = process.env.LINEAR_TEAM_ID;
 

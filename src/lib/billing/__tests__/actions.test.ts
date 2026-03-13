@@ -9,16 +9,25 @@ vi.mock("@/lib/auth", () => ({
 import { getSubscription, getSubscriptions, createRefund, getRefunds, getInvoices } from "../actions";
 import { auth } from "@/lib/auth";
 
-function mockSession(overrides: Partial<Session> & { user?: Partial<Session["user"]> } = {}): Session {
+function mockSession(overrides: Omit<Partial<Session>, "user"> & { user?: Partial<Session["user"]> } = {}): Session {
+  const { user: _ignoredUser, ...sessionOverrides } = overrides;
+
+  const user: Session["user"] = {
+    id: overrides.user?.id ?? "user-1",
+    org_id: overrides.user?.org_id ?? "org-123",
+    role: overrides.user?.role,
+    is_superuser: overrides.user?.is_superuser,
+    permissions: overrides.user?.permissions,
+    needs_onboarding: overrides.user?.needs_onboarding,
+    is_impersonating: overrides.user?.is_impersonating,
+    impersonated_user_id: overrides.user?.impersonated_user_id,
+  };
+
   return {
     access_token: "test-token",
-    user: {
-      id: "user-1",
-      org_id: "org-123",
-      ...overrides.user,
-    },
+    user,
     expires: new Date(Date.now() + 86400000).toISOString(),
-    ...overrides,
+    ...sessionOverrides,
   };
 }
 
@@ -125,7 +134,9 @@ describe("getSubscription", () => {
   });
 
   it("passes org_id when provided", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    vi.mocked(auth).mockResolvedValue(
+      mockSession({ user: { is_superuser: true } }),
+    );
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -156,7 +167,9 @@ describe("getSubscription", () => {
   });
 
   it("loads subscription list with optional org filter", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    vi.mocked(auth).mockResolvedValue(
+      mockSession({ user: { is_superuser: true } }),
+    );
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -173,6 +186,124 @@ describe("getSubscription", () => {
     await getSubscriptions(20, 0, "org-alt");
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://test-ops:8000/api/v1/billing/subscriptions/list?limit=20&offset=0&org_id=org-alt",
+      expect.any(Object),
+    );
+
+    fetchSpy.mockRestore();
+  });
+});
+
+describe("org scoping authorization", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+  });
+
+  it("uses session org_id when no orgId is provided", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession({ user: { org_id: "org-session" } }));
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "sub-1",
+          org_id: "org-session",
+          status: "active",
+          stripe_subscription_id: "sub_stripe_123",
+          stripe_customer_id: "cus_stripe_456",
+          current_period_start: "2026-02-01T00:00:00Z",
+          current_period_end: "2026-03-01T00:00:00Z",
+          cancel_at_period_end: false,
+          canceled_at: null,
+          trial_start: null,
+          trial_end: null,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await getSubscription();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-ops:8000/api/v1/billing/subscriptions?org_id=org-session",
+      expect.any(Object),
+    );
+
+    fetchSpy.mockRestore();
+  });
+
+  it("allows superuser access to another org", async () => {
+    vi.mocked(auth).mockResolvedValue(
+      mockSession({ user: { org_id: "org-session", is_superuser: true } }),
+    );
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "sub-1",
+          org_id: "org-alt",
+          status: "active",
+          stripe_subscription_id: "sub_stripe_123",
+          stripe_customer_id: "cus_stripe_456",
+          current_period_start: "2026-02-01T00:00:00Z",
+          current_period_end: "2026-03-01T00:00:00Z",
+          cancel_at_period_end: false,
+          canceled_at: null,
+          trial_start: null,
+          trial_end: null,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await getSubscription("org-alt");
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-ops:8000/api/v1/billing/subscriptions?org_id=org-alt",
+      expect.any(Object),
+    );
+
+    fetchSpy.mockRestore();
+  });
+
+  it("rejects non-superuser access to another org", async () => {
+    vi.mocked(auth).mockResolvedValue(
+      mockSession({ user: { org_id: "org-session", is_superuser: false } }),
+    );
+
+    const fetchSpy = vi.spyOn(global, "fetch");
+
+    const result = await getSubscription("org-alt");
+    expect(result.error).toBe("Access denied: cannot access resources for another organization");
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+  });
+
+  it("allows non-superuser access to matching org", async () => {
+    vi.mocked(auth).mockResolvedValue(
+      mockSession({ user: { org_id: "org-session", is_superuser: false } }),
+    );
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "sub-1",
+          org_id: "org-session",
+          status: "active",
+          stripe_subscription_id: "sub_stripe_123",
+          stripe_customer_id: "cus_stripe_456",
+          current_period_start: "2026-02-01T00:00:00Z",
+          current_period_end: "2026-03-01T00:00:00Z",
+          cancel_at_period_end: false,
+          canceled_at: null,
+          trial_start: null,
+          trial_end: null,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await getSubscription("org-session");
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://test-ops:8000/api/v1/billing/subscriptions?org_id=org-session",
       expect.any(Object),
     );
 
@@ -259,7 +390,9 @@ describe("refund actions", () => {
   });
 
   it("passes org_id to refunds and invoices queries for superadmin filtering", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    vi.mocked(auth).mockResolvedValue(
+      mockSession({ user: { is_superuser: true } }),
+    );
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
