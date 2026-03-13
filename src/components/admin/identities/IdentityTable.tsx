@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import { ProviderBadge } from "./ProviderBadge";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";

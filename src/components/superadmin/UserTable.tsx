@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import type { User } from "@/lib/admin/types";
 import { useSession } from "next-auth/react";
 import { startImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { DataTable } from "@/components/shared/DataTable";
 
 type UserTableProps = {
   users: User[];
