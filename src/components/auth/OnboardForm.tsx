@@ -13,25 +13,6 @@ export function OnboardForm() {
 
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-  const sessionHasOrg = async () => {
-    try {
-      const res = await fetch("/api/auth/session", { cache: "no-store" })
-      if (!res.ok) return false
-
-      const data = await res.json()
-      return Boolean(data?.user?.org_id)
-    } catch {
-      return false
-    }
-  }
-
-  const waitForSessionOrg = async () => {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      if (await sessionHasOrg()) return true
-      await delay(150)
-    }
-    return false
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,7 +61,7 @@ export function OnboardForm() {
       for (let attempt = 0; attempt < 3 && !sessionReady; attempt += 1) {
         try {
           await update({ onboardComplete: onboardingSession })
-          sessionReady = await waitForSessionOrg()
+          sessionReady = true
         } catch {
           await delay(200 * (attempt + 1))
         }
