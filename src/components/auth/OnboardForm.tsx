@@ -1,17 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { resolveOrigin } from "@/lib/origin"
 import { extractErrorMessage } from "@/lib/errorMessages"
 
 export function OnboardForm() {
-  const router = useRouter()
   const { data: session, update } = useSession()
   const [orgName, setOrgName] = useState("")
   const [loading, setLoading] = useState(false)
+
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,18 +48,34 @@ export function OnboardForm() {
 
       const data = await res.json()
 
-      await update({
-        onboardComplete: {
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-          org_id: data.org_id,
-          role: data.role,
-          expires_in: data.expires_in,
-        },
-      })
+      const onboardingSession = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        org_id: data.org_id,
+        role: data.role,
+        expires_in: data.expires_in,
+      }
 
-      router.push("/dashboard")
-      router.refresh()
+      let sessionReady = false
+
+      for (let attempt = 0; attempt < 3 && !sessionReady; attempt += 1) {
+        try {
+          await update({ onboardComplete: onboardingSession })
+          sessionReady = true
+        } catch {
+          await delay(200 * (attempt + 1))
+        }
+      }
+
+      if (!sessionReady) {
+        toast.error("Failed to finalize session. Please try again.")
+        return
+      }
+
+      // Hard navigation ensures the middleware reads the freshly-updated session
+      // cookie. A soft router.push() can race with the Set-Cookie from the
+      // session update, causing the org-scoped guard to redirect back here.
+      window.location.href = "/dashboard"
     } catch {
       toast.error("An error occurred. Please try again.")
     } finally {

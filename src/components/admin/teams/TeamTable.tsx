@@ -28,7 +28,11 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-(--card-stroke)">
-          {teams.map((team) => (
+          {teams.map((team) => {
+            const repoPatterns = team.repo_patterns ?? [];
+            const projectKeys = team.project_keys ?? [];
+
+            return (
             <tr key={team.team_id} className="hover:bg-(--card-70)/50">
               <td className="px-6 py-4 font-medium text-foreground">
                 <Link href={`/admin/teams/${team.team_id}/edit`} className="hover:underline">
@@ -38,8 +42,8 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
               <td className="px-6 py-4 text-(--ink-muted)">{team.description ?? "—"}</td>
               <td className="px-6 py-4 text-(--ink-muted)">
                 <div className="flex flex-wrap gap-1">
-                  {team.repo_patterns.map((pattern, i) => (
-                    <span key={i} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
+                  {repoPatterns.map((pattern) => (
+                    <span key={pattern} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
                       {pattern}
                     </span>
                   ))}
@@ -47,8 +51,8 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
               </td>
               <td className="px-6 py-4 text-(--ink-muted)">
                 <div className="flex flex-wrap gap-1">
-                  {team.project_keys.map((key, i) => (
-                    <span key={i} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
+                  {projectKeys.map((key) => (
+                    <span key={key} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
                       {key}
                     </span>
                   ))}
@@ -64,6 +68,7 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
                   </Link>
                   {onDelete && (
                     <button
+                      type="button"
                       onClick={() => onDelete(team.team_id)}
                       className="text-red-500 hover:underline"
                     >
@@ -73,7 +78,8 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
           {teams.length === 0 && (
             <tr>
               <td colSpan={5} className="px-6 py-8 text-center text-(--ink-muted)">

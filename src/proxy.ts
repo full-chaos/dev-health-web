@@ -5,29 +5,33 @@ import { logger } from "@/lib/logger";
 
 const log = logger.child({ module: "proxy" });
 
-// SECURITY: Test mode MUST NEVER be active in production — it bypasses all auth checks.
-const isTestMode = process.env.NODE_ENV !== "production" && process.env.PLAYWRIGHT_TEST === "true";
-
-const PUBLIC_PATHS = [
-    "/",
+const EXACT_PUBLIC_PATHS = [
     "/pricing",
     "/auth/signin",
     "/auth/signup",
     "/auth/error",
     "/auth/forgot-password",
     "/auth/reset-password",
-    "/api/auth",
     "/health",
-    "/api/v1/auth",
-    "/_next",
     "/favicon.ico",
     "/runtime-config.js",
     "/theme-init.js",
 ];
 
-function isPublicPath(pathname: string): boolean {
+const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/_next"];
+
+export function isPublicPath(pathname: string): boolean {
     if (pathname === "/") return true;
-    return PUBLIC_PATHS.some(path => path !== "/" && pathname.startsWith(path));
+    if (EXACT_PUBLIC_PATHS.includes(pathname)) return true;
+    return PREFIX_PUBLIC_PATHS.some(prefix => pathname.startsWith(prefix));
+}
+
+/** Ensure callback URLs are local-only to prevent open redirects. */
+export function sanitizeCallbackUrl(url: string): string {
+    if (url.startsWith("/") && !url.startsWith("//")) {
+        return url;
+    }
+    return "/dashboard";
 }
 
 /**
@@ -103,11 +107,11 @@ async function handleRequest(request: NextRequest) {
     let orgId: string | undefined;
     let isSuperuser = false;
 
-    if (!isTestMode && !isPublicPath(pathname)) {
+    if (!isPublicPath(pathname)) {
         const session = await auth();
         if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
-            signInUrl.searchParams.set("callbackUrl", pathname);
+            signInUrl.searchParams.set("callbackUrl", sanitizeCallbackUrl(pathname));
             const redirect = NextResponse.redirect(signInUrl, 303);
             redirect.headers.set("Content-Security-Policy", csp);
             return redirect;
@@ -119,8 +123,8 @@ async function handleRequest(request: NextRequest) {
 
     // Org-scoped route guard: routes outside /superadmin and /demo require an org.
     // Superadmins without an org are sent to the admin panel; regular users to onboarding.
-    const ORG_EXEMPT_PATHS = ["/superadmin", "/demo"];
-    const needsOrg = !isTestMode && !isPublicPath(pathname) && !ORG_EXEMPT_PATHS.some(p => pathname.startsWith(p));
+    const ORG_EXEMPT_PATHS = ["/superadmin", "/demo", "/auth/onboard"];
+    const needsOrg = !isPublicPath(pathname) && !ORG_EXEMPT_PATHS.some(p => pathname.startsWith(p));
 
     if (needsOrg && !orgId) {
         const target = isSuperuser ? "/superadmin" : "/auth/onboard";

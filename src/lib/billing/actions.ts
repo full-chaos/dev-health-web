@@ -191,6 +191,30 @@ async function getAuthHeaders(): Promise<ActionResult<HeadersInit>> {
   };
 }
 
+async function resolveOrgId(orgId?: string): Promise<ActionResult<string | undefined>> {
+  const session = await auth();
+  if (!session?.access_token) {
+    return { error: "Unauthorized" };
+  }
+
+  const sessionOrgId = session.user?.org_id;
+  const isSuperuser = session.user?.is_superuser ?? false;
+
+  if (!orgId) {
+    return { data: sessionOrgId };
+  }
+
+  if (isSuperuser) {
+    return { data: orgId };
+  }
+
+  if (orgId !== sessionOrgId) {
+    return { error: "Access denied: cannot access resources for another organization" };
+  }
+
+  return { data: orgId };
+}
+
 function getBackendUrl(): string {
   return process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 }
@@ -234,10 +258,15 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getSubscription(orgId?: string): Promise<ActionResult<SubscriptionDetails>> {
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
+
   return withErrorHandling(async () => {
     const params = new URLSearchParams();
-    if (orgId) {
-      params.set("org_id", orgId);
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
     }
     const query = params.size > 0 ? `?${params.toString()}` : "";
     return apiRequest<SubscriptionDetails>(`/api/v1/billing/subscriptions${query}`);
@@ -249,13 +278,18 @@ export async function getSubscriptions(
   offset = 0,
   orgId?: string,
 ): Promise<ActionResult<SubscriptionListResponse>> {
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
+
   return withErrorHandling(async () => {
     const params = new URLSearchParams({
       limit: String(limit),
       offset: String(offset),
     });
-    if (orgId) {
-      params.set("org_id", orgId);
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
     }
     return apiRequest<SubscriptionListResponse>(
       `/api/v1/billing/subscriptions/list?${params.toString()}`,
@@ -268,13 +302,18 @@ export async function getSubscriptionHistory(
   offset = 0,
   orgId?: string,
 ): Promise<ActionResult<SubscriptionHistoryResponse>> {
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
+
   return withErrorHandling(async () => {
     const params = new URLSearchParams({
       limit: String(limit),
       offset: String(offset),
     });
-    if (orgId) {
-      params.set("org_id", orgId);
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
     }
     return apiRequest<SubscriptionHistoryResponse>(`/api/v1/billing/subscriptions/history?${params.toString()}`);
   });
@@ -315,6 +354,11 @@ export async function getInvoices(
   status?: string,
   orgId?: string,
 ): Promise<ActionResult<InvoiceListResponse>> {
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
+
   const headersResult = await getAuthHeaders();
   if (headersResult.error) {
     return headersResult;
@@ -328,8 +372,8 @@ export async function getInvoices(
     if (status) {
       params.set("status", status);
     }
-    if (orgId) {
-      params.set("org_id", orgId);
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
     }
 
     const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices?${params.toString()}`, {
@@ -351,6 +395,11 @@ export async function getInvoices(
 }
 
 export async function getInvoice(invoiceId: string, orgId?: string): Promise<ActionResult<InvoiceRecord>> {
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
+
   const headersResult = await getAuthHeaders();
   if (headersResult.error) {
     return headersResult;
@@ -358,8 +407,8 @@ export async function getInvoice(invoiceId: string, orgId?: string): Promise<Act
 
   try {
     const params = new URLSearchParams();
-    if (orgId) {
-      params.set("org_id", orgId);
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
     }
     const query = params.size > 0 ? `?${params.toString()}` : "";
     const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}${query}`, {
@@ -381,6 +430,11 @@ export async function getInvoice(invoiceId: string, orgId?: string): Promise<Act
 }
 
 export async function voidInvoice(invoiceId: string, orgId?: string): Promise<ActionResult<InvoiceRecord>> {
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
+
   const headersResult = await getAuthHeaders();
   if (headersResult.error) {
     return headersResult;
@@ -388,8 +442,8 @@ export async function voidInvoice(invoiceId: string, orgId?: string): Promise<Ac
 
   try {
     const params = new URLSearchParams();
-    if (orgId) {
-      params.set("org_id", orgId);
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
     }
     const query = params.size > 0 ? `?${params.toString()}` : "";
     const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}/void${query}`, {
@@ -415,12 +469,17 @@ export async function createRefund(input: {
   reason?: "duplicate" | "fraudulent" | "requested_by_customer";
   description?: string;
 }, orgId?: string): Promise<ActionResult<RefundRecord>> {
-  try {
-    const session = await auth();
-    if (!session?.access_token) {
-      return { error: "Unauthorized" };
-    }
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
 
+  const headersResult = await getAuthHeaders();
+  if (headersResult.error) {
+    return headersResult;
+  }
+
+  try {
     const payload: Record<string, unknown> = {
       invoice_id: input.invoiceId,
       reason: input.reason,
@@ -431,16 +490,13 @@ export async function createRefund(input: {
     }
 
     const params = new URLSearchParams();
-    if (orgId) {
-      params.set("org_id", orgId);
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
     }
     const query = params.size > 0 ? `?${params.toString()}` : "";
     const res = await fetch(`${getBackendUrl()}/api/v1/billing/refunds${query}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: headersResult.data,
       body: JSON.stringify(payload),
     });
 
@@ -460,12 +516,17 @@ export async function getRefunds(input?: {
   limit?: number;
   offset?: number;
 }, orgId?: string): Promise<ActionResult<RefundListResponse>> {
-  try {
-    const session = await auth();
-    if (!session?.access_token) {
-      return { error: "Unauthorized" };
-    }
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
 
+  const headersResult = await getAuthHeaders();
+  if (headersResult.error) {
+    return headersResult;
+  }
+
+  try {
     const params = new URLSearchParams();
     if (typeof input?.limit === "number") {
       params.set("limit", String(input.limit));
@@ -473,8 +534,8 @@ export async function getRefunds(input?: {
     if (typeof input?.offset === "number") {
       params.set("offset", String(input.offset));
     }
-    if (orgId) {
-      params.set("org_id", orgId);
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
     }
 
     const query = params.toString();
@@ -482,9 +543,7 @@ export async function getRefunds(input?: {
       `${getBackendUrl()}/api/v1/billing/refunds${query ? `?${query}` : ""}`,
       {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: headersResult.data,
         cache: "no-store",
       },
     );
