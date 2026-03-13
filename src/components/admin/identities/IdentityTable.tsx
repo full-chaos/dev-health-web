@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { ProviderBadge } from "./ProviderBadge";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";

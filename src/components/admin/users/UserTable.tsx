@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import type { User } from "@/lib/admin/types";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
