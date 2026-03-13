@@ -86,7 +86,7 @@ async function handleRequest(request: NextRequest) {
         if (session && session.access_token) {
             // Superadmins without an org belong in the admin panel, not the dashboard
             const target = (!session.user?.org_id && session.user?.is_superuser) ? "/superadmin" : "/dashboard";
-            const redirect = NextResponse.redirect(new URL(target, request.url));
+            const redirect = NextResponse.redirect(new URL(target, request.url), 303);
             redirect.headers.set("x-nonce", nonce);
             redirect.headers.set("Content-Security-Policy", csp);
             return redirect;
@@ -108,7 +108,7 @@ async function handleRequest(request: NextRequest) {
         if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
             signInUrl.searchParams.set("callbackUrl", pathname);
-            const redirect = NextResponse.redirect(signInUrl);
+            const redirect = NextResponse.redirect(signInUrl, 303);
             redirect.headers.set("Content-Security-Policy", csp);
             return redirect;
         }
@@ -124,7 +124,7 @@ async function handleRequest(request: NextRequest) {
 
     if (needsOrg && !orgId) {
         const target = isSuperuser ? "/superadmin" : "/auth/onboard";
-        const redirect = NextResponse.redirect(new URL(target, request.url));
+        const redirect = NextResponse.redirect(new URL(target, request.url), 303);
         redirect.headers.set("Content-Security-Policy", csp);
         return redirect;
     }
