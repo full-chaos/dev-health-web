@@ -1,13 +1,22 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils"
 
-const mockPush = vi.fn()
-const mockRefresh = vi.fn()
 const mockUpdate = vi.fn()
+let locationHref = ""
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
-}))
+beforeEach(() => {
+  locationHref = ""
+  Object.defineProperty(window, "location", {
+    value: { ...window.location, href: "" },
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(window.location, "href", {
+    set: (v: string) => { locationHref = v },
+    get: () => locationHref || "http://localhost:3000/",
+    configurable: true,
+  })
+})
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
@@ -25,8 +34,6 @@ import { OnboardForm } from "./OnboardForm"
 describe("OnboardForm", () => {
   afterEach(() => {
     vi.restoreAllMocks()
-    mockPush.mockReset()
-    mockRefresh.mockReset()
     mockUpdate.mockReset()
   })
 
@@ -81,7 +88,7 @@ describe("OnboardForm", () => {
           expires_in: 3600,
         },
       })
-      expect(mockPush).toHaveBeenCalledWith("/dashboard")
+      expect(locationHref).toBe("/dashboard")
     })
   })
 
