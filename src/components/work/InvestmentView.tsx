@@ -10,7 +10,6 @@ import {
   formatQuality,
   formatSubcategoryLabel,
   formatWorkUnitLabel,
-  formatWorkUnitTypeLabel,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CATEGORIZATION_OPTIONS, type EvidenceUnit } from "./investment/types";

@@ -359,10 +359,32 @@ export function InvestmentCharts({
     return { name: "Investment", value: mixTotalValue, children };
   }, [investmentMix, mixTotalValue, themeColorMap, chartTheme.grid]);
 
-  const rawSankeyFlow = useMemo(() => filterSankeyToTeam(teamCategoryFlow ?? null, focusedTeam), [teamCategoryFlow, focusedTeam]);
-  const rawBaselineFlow = useMemo(() => filterSankeyToTeam(baselineSankeyFlow ?? null, focusedTeam), [baselineSankeyFlow, focusedTeam]);
-  const sankeyFlow = useMemo(() => prepareSankeyFlow(rawSankeyFlow, TOP_N_REPOS), [rawSankeyFlow, prepareSankeyFlow]);
-  const baselineFlow = useMemo(() => prepareSankeyFlow(rawBaselineFlow, TOP_N_REPOS), [rawBaselineFlow, prepareSankeyFlow]);
+  const rawSankeyFlow = useMemo(
+    () => filterSankeyToTeam(teamCategoryFlow ?? null, focusedTeam),
+    [teamCategoryFlow, focusedTeam]
+  );
+  const rawBaselineFlow = useMemo(
+    () => filterSankeyToTeam(baselineSankeyFlow ?? null, focusedTeam),
+    [baselineSankeyFlow, focusedTeam]
+  );
+  const sankeyFlow = useMemo(() => {
+    if (!rawSankeyFlow) {
+      return null;
+    }
+    return prepareSankeyFlow(
+      { ...rawSankeyFlow, mode: teamCategoryFlow?.mode ?? "team_category_repo" } as SankeyResponse,
+      TOP_N_REPOS
+    );
+  }, [prepareSankeyFlow, rawSankeyFlow, teamCategoryFlow?.mode]);
+  const baselineFlow = useMemo(() => {
+    if (!rawBaselineFlow) {
+      return null;
+    }
+    return prepareSankeyFlow(
+      { ...rawBaselineFlow, mode: baselineSankeyFlow?.mode ?? "team_category_repo" } as SankeyResponse,
+      TOP_N_REPOS
+    );
+  }, [baselineSankeyFlow?.mode, prepareSankeyFlow, rawBaselineFlow]);
   const isSankeyLoading = isCategoryFlowLoading;
 
   const sankeyMetrics = useMemo(() => (sankeyFlow ? computeSankeyMetrics(sankeyFlow.nodes, sankeyFlow.links) : null), [sankeyFlow]);
