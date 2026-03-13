@@ -24,13 +24,12 @@ type InvestmentPreviewProps = {
 function LoadingState() {
   return (
     <div
-      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60)"
-      style={{ height: CHART_HEIGHT }}
+      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) h-[320px]"
     >
       <div className="mb-4 flex gap-1">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent)" style={{ animationDelay: "0ms" }} />
-        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent)" style={{ animationDelay: "150ms" }} />
-        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent)" style={{ animationDelay: "300ms" }} />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:0ms]" />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:150ms]" />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:300ms]" />
       </div>
       <span className="text-sm text-(--ink-muted)">Loading investment mix…</span>
     </div>

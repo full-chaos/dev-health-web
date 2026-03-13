@@ -140,8 +140,8 @@ export function HierarchicalFlameGraph({
         return (
             <div
                 key={`${depth}-${index}-${node.name}`}
-                className="relative"
-                style={{ width: `${widthPercent}%`, minWidth: 0 }}
+                className="relative min-w-0"
+                style={{ width: `${widthPercent}%` }}
             >
                 <button
                     type="button"
@@ -153,14 +153,12 @@ export function HierarchicalFlameGraph({
                     className={`
             flex items-center w-full text-left px-2 text-xs truncate
             border border-(--card-stroke) rounded-sm mb-0.5
-            transition-all duration-150
+            transition-all duration-150 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]
             ${hasChildren ? "cursor-pointer hover:brightness-110" : "cursor-default"}
             ${isSearchMatch ? "ring-2 ring-(--accent-2)" : ""}
           `}
                     style={{
                         backgroundColor: getColor(depth, index),
-                        color: "white",
-                        textShadow: "0 1px 2px rgba(0,0,0,0.3)",
                         height: rowHeight,
                         minHeight: rowHeight,
                     }}
@@ -269,11 +267,10 @@ export function HierarchicalFlameGraph({
             {/* Tooltip */}
             {hoveredNode && (
                 <div
-                    className="fixed z-50 px-3 py-2 text-xs rounded-lg border border-(--card-stroke) bg-card shadow-lg pointer-events-none"
+                    className="fixed z-50 px-3 py-2 text-xs rounded-lg border border-(--card-stroke) bg-card shadow-lg pointer-events-none max-w-[280px]"
                     style={{
                         left: tooltipPos.x + 12,
                         top: tooltipPos.y + 12,
-                        maxWidth: 280,
                     }}
                 >
                     <p className="font-semibold text-foreground truncate">{hoveredNode.name}</p>

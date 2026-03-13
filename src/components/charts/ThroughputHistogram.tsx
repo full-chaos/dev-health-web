@@ -170,7 +170,7 @@ export function ThroughputHistogram({
 
   return (
     <div className={className} style={mergedStyle} data-testid="chart-throughput-histogram">
-      <Chart option={option} style={{ height: "100%", width: "100%" }} chartTheme={chartTheme} />
+      <Chart option={option} className="h-full w-full" chartTheme={chartTheme} />
     </div>
   );
 }
