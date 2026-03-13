@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 
 export type Team = {
   team_id: string;
@@ -15,80 +16,82 @@ type TeamTableProps = {
 };
 
 export function TeamTable({ teams, onDelete }: TeamTableProps) {
-  return (
-    <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
-          <tr>
-            <th className="px-6 py-4 font-medium">Name</th>
-            <th className="px-6 py-4 font-medium">Description</th>
-            <th className="px-6 py-4 font-medium">Repo Patterns</th>
-            <th className="px-6 py-4 font-medium">Project Keys</th>
-            <th className="px-6 py-4 font-medium text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-(--card-stroke)">
-          {teams.map((team) => {
-            const repoPatterns = team.repo_patterns ?? [];
-            const projectKeys = team.project_keys ?? [];
-
-            return (
-            <tr key={team.team_id} className="hover:bg-(--card-70)/50">
-              <td className="px-6 py-4 font-medium text-foreground">
-                <Link href={`/admin/teams/${team.team_id}/edit`} className="hover:underline">
-                  {team.name}
-                </Link>
-              </td>
-              <td className="px-6 py-4 text-(--ink-muted)">{team.description ?? "—"}</td>
-              <td className="px-6 py-4 text-(--ink-muted)">
-                <div className="flex flex-wrap gap-1">
-                  {repoPatterns.map((pattern) => (
-                    <span key={pattern} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
-                      {pattern}
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="px-6 py-4 text-(--ink-muted)">
-                <div className="flex flex-wrap gap-1">
-                  {projectKeys.map((key) => (
-                    <span key={key} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
-                      {key}
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="px-6 py-4 text-right">
-                <div className="flex justify-end gap-3">
-                  <Link
-                    href={`/admin/teams/${team.team_id}/edit`}
-                    className="text-(--accent) hover:underline"
-                  >
-                    Edit
-                  </Link>
-                  {onDelete && (
-                    <button
-                      type="button"
-                      onClick={() => onDelete(team.team_id)}
-                      className="text-red-500 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-            );
-          })}
-          {teams.length === 0 && (
-            <tr>
-              <td colSpan={5} className="px-6 py-8 text-center text-(--ink-muted)">
-                No teams found.
-              </td>
-            </tr>
+  const columns: DataTableColumn<Team>[] = [
+    {
+      key: "name",
+      header: "Name",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4 font-medium text-foreground",
+      render: (team) => (
+        <Link href={`/admin/teams/${team.team_id}/edit`} className="hover:underline">
+          {team.name}
+        </Link>
+      ),
+    },
+    {
+      key: "description",
+      header: "Description",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4 text-(--ink-muted)",
+      render: (team) => team.description ?? "-",
+    },
+    {
+      key: "repo_patterns",
+      header: "Repo Patterns",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4 text-(--ink-muted)",
+      render: (team) => (
+        <div className="flex flex-wrap gap-1">
+          {(team.repo_patterns ?? []).map((pattern) => (
+            <span key={pattern} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
+              {pattern}
+            </span>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: "project_keys",
+      header: "Project Keys",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4 text-(--ink-muted)",
+      render: (team) => (
+        <div className="flex flex-wrap gap-1">
+          {(team.project_keys ?? []).map((key) => (
+            <span key={key} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
+              {key}
+            </span>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      headerClassName: "px-6 py-4 text-right font-medium",
+      className: "px-6 py-4 text-right",
+      render: (team) => (
+        <div className="flex justify-end gap-3">
+          <Link href={`/admin/teams/${team.team_id}/edit`} className="text-(--accent) hover:underline">
+            Edit
+          </Link>
+          {onDelete && (
+            <button type="button" onClick={() => onDelete(team.team_id)} className="text-red-500 hover:underline">
+              Delete
+            </button>
           )}
-        </tbody>
-      </table>
-    </div>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <DataTable
+      columns={columns}
+      data={teams}
+      rowKeyAction={(team) => team.team_id}
+      emptyColSpan={5}
+      emptyMessage="No teams found."
+    />
   );
 }

@@ -1,1938 +1,357 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-
-import { ChartTypeToggle, TREEMAP_SUNBURST_OPTIONS, type TreemapSunburstType } from "@/components/charts/ChartTypeToggle";
-import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
-import { SankeyChart } from "@/components/charts/SankeyChart";
-import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
-import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
-import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
-import { useInvestmentMix, useInvestmentFlow, useInvestmentRepoTeamFlow } from "@/lib/graphql/hooks";
-import {
-    explainInvestmentMix,
-    getWorkUnits,
-    getWorkUnitExplanation,
-} from "@/lib/api";
-import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix } from "@/lib/investmentMix";
+import { useMemo } from "react";
+import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
 import { formatNumber } from "@/lib/formatters";
-import { logger } from "@/lib/logger";
-import { computeSankeyMetrics, limitRepoNodes, filterSankeyToTeam } from "@/lib/sankey";
 import {
-    titleCase,
-    UNASSIGNED_TEAM_LABEL,
-    UNASSIGNED_REPO_LABEL,
-    TOP_N_REPOS,
-    normalizeThemeKey,
-    formatSubcategoryLabel,
-    normalizeUnassignedLabel,
-    stripSankeyPrefix,
-    isUnassignedLabel,
-    buildOptionalTimeRangeLabel,
-    buildTimeRangeLabel,
-    formatBandLabel,
-    formatQuality,
-    formatEffortUnit,
-    formatWorkUnitLabel,
-    formatWorkUnitTypeLabel,
-    formatWorkUnitIdToken,
-    clamp,
-    adjustHex,
-    buildRepoTeamSankey,
-    getBaselineFilters,
+  buildTimeRangeLabel,
+  formatBandLabel,
+  formatEffortUnit,
+  formatQuality,
+  formatSubcategoryLabel,
+  formatWorkUnitLabel,
+  formatWorkUnitTypeLabel,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { InvestmentMixExplanation, WorkUnitInvestment, WorkUnitExplanation, SankeyNode, SankeyResponse } from "@/lib/types";
+import { CATEGORIZATION_OPTIONS, type EvidenceUnit } from "./investment/types";
+import { useInvestmentData } from "./investment/useInvestmentData";
+import { InvestmentExplainer } from "./investment/InvestmentExplainer";
+import { InvestmentCharts } from "./investment/InvestmentCharts";
+import { InvestmentWorkUnitList } from "./investment/InvestmentWorkUnitList";
 
 type InvestmentViewProps = {
-    filters: MetricFilter;
+  filters: MetricFilter;
 };
-
-type CategorizationMode = "text_metadata" | "metadata_only";
-
-type TreemapSelection = {
-    key: string;
-    type: "theme" | "subcategory";
-    themeLabel: string;
-    themeKey: string | null;
-    subcategoryLabel?: string;
-    subcategoryId?: string | null;
-};
-
-type EvidenceUnit = {
-    unit: WorkUnitInvestment;
-    weightedEffort: number;
-    weight: number;
-};
-
-const CATEGORIZATION_OPTIONS: Array<{ id: CategorizationMode; label: string }> = [
-    { id: "text_metadata", label: "Text + metadata" },
-    { id: "metadata_only", label: "Metadata only" },
-];
-
-const EVIDENCE_QUALITY_BANDS = [
-    { id: "high", label: "High (0.80–1.00)", opacityClass: "opacity-100" },
-    { id: "moderate", label: "Moderate (0.60–0.79)", opacityClass: "opacity-75" },
-    { id: "low", label: "Low (0.40–0.59)", opacityClass: "opacity-50" },
-    { id: "very_low", label: "Very low (<0.40)", opacityClass: "opacity-30" },
-] as const;
-
 
 export function InvestmentView({ filters }: InvestmentViewProps) {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const chartTheme = useChartTheme();
-    const chartColors = useChartColors();
-    const [categorizationMode, setCategorizationMode] = useState<CategorizationMode>("text_metadata");
-    const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+  const data = useInvestmentData({ filters });
 
-    const { data: mixData, loading: mixLoading } = useInvestmentMix({ filters });
+  const effortUnit = useMemo(() => {
+    const metrics = new Set(data.workUnits.map((unit) => unit.effort.metric));
+    if (metrics.size === 1) {
+      const metric = metrics.values().next().value ?? "churn_loc";
+      return formatEffortUnit(metric);
+    }
+    return "effort";
+  }, [data.workUnits]);
 
-    const investmentMix = useMemo(() => mixData ? normalizeInvestmentMix(mixData) : null, [mixData]);
-
-    const isMixLoading = mixLoading;
-
-    const [mixChartType, setMixChartType] = useState<TreemapSunburstType>("treemap");
-    const [treemapSelection, setTreemapSelection] = useState<TreemapSelection | null>(null);
-    const [mixExplanation, setMixExplanation] = useState<{
-        data: InvestmentMixExplanation | null;
-        filtersKey: string;
-        focus: { theme: string | null; subcategory: string | null };
-    }>({
-        data: null,
-        filtersKey: "",
-        focus: { theme: null, subcategory: null },
-    });
-    const [focusTheme, setFocusTheme] = useState<string | null>(null);
-    const [focusSubcategory, setFocusSubcategory] = useState<string | null>(null);
-    const [explanation, setExplanation] = useState<WorkUnitExplanation | null>(null);
-    const [isExplaining, setIsExplaining] = useState(false);
-    const [isExplainingMix, setIsExplainingMix] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [focusedTeam, setFocusedTeam] = useState<string | null>(null);
-    const showSubcategories = Boolean(selectedCategory);
-    const selectedThemeKey = useMemo(
-        () => normalizeThemeKey(selectedCategory),
-        [selectedCategory]
-    );
-
-    const baselineFilters = useMemo(() => getBaselineFilters(filters), [filters]);
-
-    const { data: currentFlow, loading: currentFlowLoading } = useInvestmentFlow({
-        filters,
-        flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
-        theme: selectedThemeKey,
-        topNRepos: TOP_N_REPOS,
-    });
-
-    const { data: baselineFlowData, loading: baselineFlowLoading } = useInvestmentFlow({
-        filters: baselineFilters,
-        flowMode: showSubcategories ? "team_category_subcategory_repo" : "team_category_repo",
-        theme: selectedThemeKey,
-        topNRepos: TOP_N_REPOS,
-    });
-
-    const teamCategoryFlow = currentFlow;
-    const baselineSankeyFlow = baselineFlowData;
-    const isCategoryFlowLoading = currentFlowLoading || baselineFlowLoading;
-
-    const { data: repoFlowData, loading: repoFlowLoading, error: repoFlowError } = useInvestmentRepoTeamFlow({
-        filters,
-    });
-
-    const repoTeamFlow = repoFlowData;
-    const isRepoTeamLoading = repoFlowLoading;
-    const repoTeamFlowFailed = !!repoFlowError;
-
-    const includeTextual = categorizationMode === "text_metadata";
-    const selectedId = searchParams.get("work_unit_id");
-
-    useEffect(() => {
-        if (!focusTheme) {
-            setFocusSubcategory(null);
+  const evidenceUnits = useMemo<EvidenceUnit[]>(() => {
+    if (!data.focusSubcategory) return [];
+    return data.workUnits
+      .map((unit) => {
+        const weight = unit.investment?.subcategories?.[data.focusSubcategory ?? ""] ?? 0;
+        if (weight <= 0) {
+          return null;
         }
-    }, [focusTheme]);
-
-    const requestKey = useMemo(
-        () => JSON.stringify({ filters, includeTextual }),
-        [filters, includeTextual]
-    );
-
-    const mixRequestKey = useMemo(() => JSON.stringify({ filters }), [filters]);
-    const mixExplainKey = useMemo(() => JSON.stringify({ filters }), [filters]);
-
-    useEffect(() => {
-        setTreemapSelection(null);
-    }, [mixRequestKey]);
-
-    const regenerateMixExplanation = useCallback(async () => {
-        setIsExplainingMix(true);
-        try {
-            const payload = await explainInvestmentMix({
-                filters,
-                theme: focusTheme,
-                subcategory: focusSubcategory,
-            });
-            setMixExplanation({
-                data: payload,
-                filtersKey: mixExplainKey,
-                focus: { theme: focusTheme, subcategory: focusSubcategory },
-            });
-        } catch {
-            setMixExplanation((current) => ({
-                ...current,
-                data: null,
-                filtersKey: mixExplainKey,
-                focus: { theme: focusTheme, subcategory: focusSubcategory },
-            }));
-        } finally {
-            setIsExplainingMix(false);
-        }
-    }, [filters, focusSubcategory, focusTheme, mixExplainKey]);
-
-    useEffect(() => {
-        let active = true;
-
-        const fetchExplanation = async () => {
-            try {
-                const payload = await explainInvestmentMix({
-                    filters,
-                    theme: null,
-                    subcategory: null,
-                });
-                if (active) {
-                    setMixExplanation({
-                        data: payload,
-                        filtersKey: mixExplainKey,
-                        focus: { theme: null, subcategory: null },
-                    });
-                }
-            } catch {
-                if (active) {
-                    setMixExplanation({
-                        data: null,
-                        filtersKey: mixExplainKey,
-                        focus: { theme: null, subcategory: null },
-                    });
-                }
-            }
-        };
-
-        if (mixExplanation.filtersKey === mixExplainKey) {
-            return;
-        }
-
-        fetchExplanation();
-        return () => {
-            active = false;
-        };
-    }, [filters, mixExplainKey, mixExplanation.filtersKey]);
-
-    useEffect(() => {
-        let active = true;
-
-        const fetchUnits = async () => {
-            setIsLoading(true);
-            try {
-                const data = await getWorkUnits({
-                    filters,
-                    include_textual: includeTextual,
-                    limit: 200,
-                });
-                if (active) {
-                    setWorkUnits(Array.isArray(data) ? data : []);
-                }
-            } catch {
-                if (active) {
-                    setWorkUnits([]);
-                }
-            } finally {
-                if (active) {
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        fetchUnits();
-        return () => {
-            active = false;
-        };
-    }, [filters, includeTextual, requestKey]);
-
-
-
-
-
-
-
-    const selectedUnit = useMemo(() => {
-        if (!selectedId) return null;
-        return workUnits.find((unit) => unit.work_unit_id === selectedId) ?? null;
-    }, [selectedId, workUnits]);
-
-    const selectedUnitTypeLabel = useMemo(() => {
-        if (!selectedUnit) return "";
-        return formatWorkUnitTypeLabel(selectedUnit);
-    }, [selectedUnit]);
-
-    useEffect(() => {
-        if (!selectedId || !selectedUnit) {
-            setExplanation(null);
-            return;
-        }
-
-        let active = true;
-        const fetchExplanation = async () => {
-            setIsExplaining(true);
-            try {
-                const data = await getWorkUnitExplanation({
-                    workUnitId: selectedId,
-                    filters,
-                });
-                if (active) {
-                    setExplanation(data);
-                }
-            } catch (err) {
-                logger.error({ err }, "Failed to fetch explanation");
-                if (active) {
-                    setExplanation(null);
-                }
-            } finally {
-                if (active) {
-                    setIsExplaining(false);
-                }
-            }
-        };
-
-        fetchExplanation();
-        return () => {
-            active = false;
-        };
-    }, [selectedId, selectedUnit, filters]);
-
-    const allSubcategoryIds = useMemo(() => {
-        const ids = new Set<string>();
-        workUnits.forEach((unit) => {
-            Object.keys(unit.investment?.subcategories ?? {}).forEach((key) => ids.add(key));
-        });
-        return Array.from(ids).sort();
-    }, [workUnits]);
-
-    const themeColorMap = useMemo(() => {
-        const map = new Map<string, string>();
-        if (!investmentMix) return map;
-        const themes = getSortedThemes(investmentMix);
-        themes.forEach((theme, index) => {
-            map.set(theme.key, chartColors[index % chartColors.length]);
-        });
-        return map;
-    }, [investmentMix, chartColors]);
-
-    const categoryColorMap = useMemo(() => {
-        const map = new Map<string, string>();
-        if (!investmentMix) return map;
-        const themes = getSortedThemes(investmentMix);
-        const subcategories = getSortedSubcategories(investmentMix);
-
-        themes.forEach((theme, index) => {
-            const baseColor = chartColors[index % chartColors.length];
-            map.set(theme.key, baseColor);
-
-            const subs = subcategories.filter((s) => s.themeKey === theme.key);
-            subs.forEach((sub, subIdx) => {
-                map.set(sub.key, adjustHex(baseColor, 18 + (subIdx % 3) * 10));
-            });
-        });
-        return map;
-    }, [investmentMix, chartColors]);
-
-    const resolveSubcategoryIdForColor = useCallback(
-        (label: string) => {
-            const normalized = label.trim().toLowerCase();
-            if (!normalized) {
-                return null;
-            }
-            return (
-                allSubcategoryIds.find((id) => {
-                    const [themeKey] = id.split(".", 1);
-                    if (selectedThemeKey && themeKey !== selectedThemeKey) {
-                        return false;
-                    }
-                    const withTheme = formatSubcategoryLabel(id, true).toLowerCase();
-                    const withoutTheme = formatSubcategoryLabel(id, false).toLowerCase();
-                    return withTheme === normalized || withoutTheme === normalized;
-                }) ?? null
-            );
-        },
-        [allSubcategoryIds, selectedThemeKey]
-    );
-
-    const applySankeyNodeColor = useCallback(
-        (node: SankeyNode) => {
-            if (node.itemStyle?.color) {
-                return node;
-            }
-            if (node.group === "category") {
-                const themeKey = normalizeThemeKey(node.name);
-                const color = themeKey ? themeColorMap.get(themeKey) : undefined;
-                if (color) {
-                    return { ...node, itemStyle: { ...node.itemStyle, color } };
-                }
-            }
-            if (node.group === "subcategory") {
-                const subId = resolveSubcategoryIdForColor(node.name);
-                const color = subId ? categoryColorMap.get(subId) : undefined;
-                if (color) {
-                    return { ...node, itemStyle: { ...node.itemStyle, color } };
-                }
-            }
-            return node;
-        },
-        [categoryColorMap, resolveSubcategoryIdForColor, themeColorMap]
-    );
-
-    const prepareSankeyFlow = useCallback(
-        (flow: SankeyResponse | null, topN: number) => {
-            if (!flow) {
-                return null;
-            }
-
-            const groupByOriginalName = new Map<string, string | undefined>();
-            flow.nodes.forEach((node) => {
-                groupByOriginalName.set(node.name, node.group);
-            });
-            const normalizeName = (name: string, group?: string) =>
-                normalizeUnassignedLabel(name, group ?? groupByOriginalName.get(name));
-
-            const nodeMap = new Map<string, SankeyNode>();
-            flow.nodes.forEach((node) => {
-                const normalizedName = normalizeName(node.name, node.group);
-                const coloredNode = applySankeyNodeColor({ ...node, name: normalizedName });
-                const existing = nodeMap.get(normalizedName);
-                if (!existing) {
-                    nodeMap.set(normalizedName, coloredNode);
-                    return;
-                }
-                nodeMap.set(normalizedName, {
-                    ...existing,
-                    group: existing.group ?? coloredNode.group,
-                    itemStyle: existing.itemStyle?.color ? existing.itemStyle : coloredNode.itemStyle,
-                });
-            });
-
-            const linkTotals = new Map<string, number>();
-            flow.links.forEach((link) => {
-                if (!Number.isFinite(link.value) || link.value <= 0) {
-                    return;
-                }
-                const source = normalizeName(link.source, groupByOriginalName.get(link.source));
-                const target = normalizeName(link.target, groupByOriginalName.get(link.target));
-                const key = `${source}|||${target}`;
-                linkTotals.set(key, (linkTotals.get(key) ?? 0) + link.value);
-                if (!nodeMap.has(source)) {
-                    nodeMap.set(source, {
-                        name: source,
-                        group: groupByOriginalName.get(link.source),
-                    });
-                }
-                if (!nodeMap.has(target)) {
-                    nodeMap.set(target, {
-                        name: target,
-                        group: groupByOriginalName.get(link.target),
-                    });
-                }
-            });
-
-            let nodes = Array.from(nodeMap.values());
-            let links = Array.from(linkTotals, ([key, value]) => {
-                const [source, target] = key.split("|||");
-                return { source, target, value };
-            });
-
-            if (topN > 0) {
-                const limited = limitRepoNodes({ nodes, links }, topN);
-                nodes = limited.nodes;
-                links = limited.links;
-            }
-
-            const metrics = computeSankeyMetrics(nodes, links);
-            nodes = nodes.map((node) => ({
-                ...node,
-                value: metrics.nodeValueByName.get(node.name) ?? node.value,
-            }));
-
-            return { ...flow, nodes, links };
-        },
-        [applySankeyNodeColor]
-    );
-
-    const mixThemes = useMemo(() => (investmentMix ? getSortedThemes(investmentMix) : []), [investmentMix]);
-    const mixSubcategories = useMemo(
-        () => (investmentMix ? getSortedSubcategories(investmentMix) : []),
-        [investmentMix]
-    );
-    const mixTotalValue = useMemo(
-        () => mixThemes.reduce((sum, entry) => sum + entry.value, 0),
-        [mixThemes]
-    );
-    const focusedThemeTotalValue = useMemo(() => {
-        if (!focusTheme || !investmentMix) return 0;
-        return investmentMix.theme_distribution[focusTheme] ?? 0;
-    }, [focusTheme, investmentMix]);
-    const focusedThemeSubcategories = useMemo(() => {
-        if (!focusTheme) return [];
-        return mixSubcategories.filter((entry) => entry.themeKey === focusTheme);
-    }, [focusTheme, mixSubcategories]);
-
-    const handleThemeClick = useCallback((themeKey: string) => {
-        setFocusTheme((current) => (current === themeKey ? null : themeKey));
-    }, []);
-
-    const handleSubcategoryClick = useCallback((subcategoryKey: string) => {
-        const [themeKey] = subcategoryKey.split(".", 1);
-        setFocusTheme(themeKey || null);
-        setFocusSubcategory(subcategoryKey);
-    }, []);
-
-    const handleTreemapSelection = useCallback((node: {
-        name: string;
-        value: number;
-        path: string[];
-        percent: number;
-        data?: TreemapNode;
-    }) => {
-        const nodeData = node.data as (TreemapNode & {
-            nodeType?: "theme" | "subcategory";
-            themeKey?: string;
-            categoryId?: string;
-            categoryLabel?: string;
-        }) | undefined;
-
-        const nodeType = nodeData?.nodeType === "subcategory" ? "subcategory" : "theme";
-        const categoryId = nodeData?.categoryId ?? null;
-        const themeKey = nodeData?.themeKey ?? (categoryId ? categoryId.split(".", 1)[0] : null);
-        const themeLabel = themeKey ? titleCase(themeKey) : (node.path[0] ?? node.name);
-        const subcategoryLabel = nodeType === "subcategory"
-            ? (nodeData?.categoryLabel ?? node.name)
-            : undefined;
-        const selectionKey = nodeType === "subcategory"
-            ? `subcategory:${categoryId ?? node.name}`
-            : `theme:${themeKey ?? node.name}`;
-
-        setTreemapSelection((current) => {
-            if (current?.key === selectionKey) {
-                return null;
-            }
-            return {
-                key: selectionKey,
-                type: nodeType,
-                themeLabel,
-                themeKey,
-                subcategoryLabel,
-                subcategoryId: categoryId,
-            };
-        });
-    }, []);
-
-    const clearTreemapSelection = useCallback(() => {
-        setTreemapSelection(null);
-    }, []);
-
-    const focusTreemapTheme = useCallback(() => {
-        setTreemapSelection((current) => {
-            if (!current || current.type !== "subcategory") {
-                return current;
-            }
-            const themeKey = current.themeKey ?? current.themeLabel;
-            return {
-                key: `theme:${themeKey}`,
-                type: "theme",
-                themeLabel: current.themeLabel,
-                themeKey: current.themeKey,
-            };
-        });
-    }, []);
-    const treemapData = useMemo<TreemapNode>(() => {
-        if (!investmentMix) {
-            return { name: "Investment", value: 0, children: [] };
-        }
-
-        const themes = getSortedThemes(investmentMix);
-        const subcategories = getSortedSubcategories(investmentMix);
-        const qualityDist = investmentMix.evidence_quality_distribution ?? {};
-
-        const children = themes.map((theme) => {
-            const themeLabel = titleCase(theme.key);
-            const baseColor = themeColorMap.get(theme.key) ?? chartTheme.grid;
-            const themeOpacity = qualityDist[theme.key];
-
-            const themeSubcategories = subcategories
-                .filter((sub) => sub.themeKey === theme.key)
-                .map((sub, idx) => {
-                    const subLabel = formatSubcategoryLabel(sub.key, false);
-                    const subFullLabel = formatSubcategoryLabel(sub.key, true);
-                    const subOpacity = qualityDist[sub.key];
-
-                    return {
-                        name: subLabel,
-                        value: sub.value,
-                        itemStyle: {
-                            color: adjustHex(baseColor, 18 + (idx % 3) * 10),
-                            opacity: typeof subOpacity === "number" ? clamp(subOpacity) : undefined,
-                        },
-                        nodeType: "subcategory",
-                        categoryId: sub.key,
-                        categoryLabel: subLabel,
-                        categoryFullLabel: subFullLabel,
-                        qualityValue: subOpacity,
-                    } as TreemapNode;
-                });
-
-            return {
-                name: themeLabel,
-                value: theme.value,
-                itemStyle: {
-                    color: baseColor,
-                    opacity: typeof themeOpacity === "number" ? clamp(themeOpacity) : undefined,
-                },
-                nodeType: "theme",
-                themeKey: theme.key,
-                children: themeSubcategories.length ? themeSubcategories : undefined,
-            } as TreemapNode;
-        });
-
         return {
-            name: "Investment",
-            value: mixTotalValue,
-            children,
+          unit,
+          weight,
+          weightedEffort: unit.effort.value * weight,
         };
-    }, [
-        investmentMix,
-        mixTotalValue,
-        themeColorMap,
-        chartTheme.grid,
-    ]);
+      })
+      .filter((entry): entry is EvidenceUnit => Boolean(entry))
+      .sort((a, b) => b.weightedEffort - a.weightedEffort);
+  }, [data.focusSubcategory, data.workUnits]);
 
-    const rawSankeyFlow = useMemo(
-        () => filterSankeyToTeam(teamCategoryFlow, focusedTeam),
-        [teamCategoryFlow, focusedTeam]
-    );
-    const rawBaselineFlow = useMemo(
-        () => filterSankeyToTeam(baselineSankeyFlow, focusedTeam),
-        [baselineSankeyFlow, focusedTeam]
-    );
-    const sankeyFlow = useMemo(
-        () => prepareSankeyFlow(rawSankeyFlow, TOP_N_REPOS),
-        [rawSankeyFlow, prepareSankeyFlow]
-    );
-    const baselineFlow = useMemo(
-        () => prepareSankeyFlow(rawBaselineFlow, TOP_N_REPOS),
-        [rawBaselineFlow, prepareSankeyFlow]
-    );
-    const isSankeyLoading = isCategoryFlowLoading;
+  const selectableUnits = useMemo(
+    () => (data.focusSubcategory ? evidenceUnits.map((entry) => entry.unit) : data.workUnits),
+    [data.focusSubcategory, data.workUnits, evidenceUnits]
+  );
 
-    const sankeyMetrics = useMemo(
-        () => (sankeyFlow ? computeSankeyMetrics(sankeyFlow.nodes, sankeyFlow.links) : null),
-        [sankeyFlow]
-    );
-    const baselineMetrics = useMemo(
-        () => (baselineFlow ? computeSankeyMetrics(baselineFlow.nodes, baselineFlow.links) : null),
-        [baselineFlow]
-    );
+  const focusSubcategoryLabel = data.focusSubcategory ? formatSubcategoryLabel(data.focusSubcategory, true) : "";
 
-    const baselineSankeyTotal = baselineMetrics?.totalFlow ?? 0;
+  const selectedUnitId = useMemo(() => {
+    if (!data.selectedUnit) return "";
+    return selectableUnits.some((unit) => unit.work_unit_id === data.selectedUnit?.work_unit_id)
+      ? data.selectedUnit.work_unit_id
+      : "";
+  }, [data.selectedUnit, selectableUnits]);
 
-    const sankeyNodeMap = useMemo(() => {
-        const map = new Map<string, SankeyNode>();
-        (sankeyFlow?.nodes ?? []).forEach((node) => map.set(node.name, node));
-        return map;
-    }, [sankeyFlow]);
+  return (
+    <section className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="font-(--font-display) text-xl">Work Unit Investment</h2>
+          <p className="mt-2 text-sm text-(--ink-muted)">
+            These views surface probabilistic investment themes and subcategories inferred from connected work units.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <ChartTypeToggle
+            options={CATEGORIZATION_OPTIONS}
+            value={data.categorizationMode}
+            onChange={data.setCategorizationMode}
+            className="flex-wrap"
+          />
+          <a href="#work-unit-calculation" className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
+            How this was calculated
+          </a>
+        </div>
+      </div>
 
-    const showBaselineDelta = !selectedCategory && baselineSankeyTotal > 0;
+      <div className="grid gap-4 lg:grid-cols-2">
+        <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
+          <summary className="cursor-pointer list-none font-(--font-display) text-base">What this investment view represents</summary>
+          <div className="mt-2">
+            <p className="text-sm text-(--ink-muted)">
+              These views show investment intent inferred from connected work activity across issues, pull requests,
+              commits, and files.
+            </p>
+            <p className="mt-2 text-sm text-(--ink-muted)">
+              Investment reflects how work appears to be aimed, based on text-first intent plus structural and
+              contextual corroboration. It is not a label, a verdict, or an assessment of people.
+            </p>
+            <p className="mt-2 text-sm text-(--ink-muted)">
+              Because real work is messy, investment views are shown with evidence quality and uncertainty rather than
+              as fixed categories.
+            </p>
+            <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
+              <li>Investment describes effort allocation, not individual performance.</li>
+              <li>Categories are probabilistic, not exclusive. Work can span multiple categories at once.</li>
+              <li>Evidence quality reflects corroboration strength, not correctness.</li>
+              <li>Low evidence quality indicates mixed or incomplete evidence, not bad data.</li>
+            </ul>
+            <p className="mt-3 text-xs text-(--ink-muted)">
+              These views do not assign intent, measure productivity, or evaluate individuals.
+            </p>
+          </div>
+        </details>
+        <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
+          <summary className="cursor-pointer list-none font-(--font-display) text-base">How to read the visuals</summary>
+          <div className="mt-2">
+            <ul className="space-y-2 text-sm text-(--ink-muted)">
+              <li>Size represents effort associated with a theme or subcategory.</li>
+              <li>Color indicates which theme or subcategory the work leans toward.</li>
+              <li>Opacity represents evidence quality for the interpretation.</li>
+              <li>Flows show how effort appears to move from teams into themes and repos.</li>
+              <li>Use the investment mix chart to drill from themes into subcategories and evidence.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
 
-    const sankeyCoverage = useMemo(() => {
-        const coverage = sankeyFlow?.coverage;
-        return {
-            team: coverage?.team ?? sankeyFlow?.team_coverage ?? 0,
-            repo: coverage?.repo ?? sankeyFlow?.repo_coverage ?? 0,
-        };
-    }, [sankeyFlow]);
+      <InvestmentExplainer
+        mixExplanation={data.mixExplanation}
+        mixExplainKey={data.mixExplainKey}
+        isExplainingMix={data.isExplainingMix}
+        onRegenerate={data.regenerateMixExplanation}
+      />
 
-    const categoryShareSummary = useMemo(() => {
-        if (!sankeyFlow || !sankeyFlow.links.length) return [];
-        const targetGroup = showSubcategories ? "subcategory" : "category";
-        const groupNames = new Set(
-            sankeyFlow.nodes
-                .filter((node) => node.group === targetGroup)
-                .map((node) => node.name)
-        );
-        if (!groupNames.size) return [];
-        const totals = new Map<string, number>();
-        let total = 0;
-        sankeyFlow.links.forEach((link) => {
-            if (!groupNames.has(link.target)) return;
-            totals.set(link.target, (totals.get(link.target) ?? 0) + link.value);
-            total += link.value;
-        });
-        if (total === 0) {
-            sankeyFlow.links.forEach((link) => {
-                if (!groupNames.has(link.source)) return;
-                totals.set(link.source, (totals.get(link.source) ?? 0) + link.value);
-                total += link.value;
-            });
-        }
-        return Array.from(totals.entries())
-            .map(([name, value]) => ({
-                name,
-                value,
-                share: total > 0 ? (value / total) * 100 : 0,
-            }))
-            .sort((a, b) => b.value - a.value);
-    }, [sankeyFlow, showSubcategories]);
+      <InvestmentCharts
+        filters={data.filters}
+        workUnits={data.workUnits}
+        isLoading={data.isLoading}
+        investmentMix={data.investmentMix}
+        isMixLoading={data.isMixLoading}
+        focusTheme={data.focusTheme}
+        setFocusTheme={data.setFocusTheme}
+        setFocusSubcategory={data.setFocusSubcategory}
+        selectedCategory={data.selectedCategory}
+        setSelectedCategory={data.setSelectedCategory}
+        focusedTeam={data.focusedTeam}
+        setFocusedTeam={data.setFocusedTeam}
+        teamCategoryFlow={data.teamCategoryFlow}
+        baselineSankeyFlow={data.baselineSankeyFlow}
+        isCategoryFlowLoading={data.isCategoryFlowLoading}
+        repoTeamFlow={data.repoTeamFlow}
+        isRepoTeamLoading={data.isRepoTeamLoading}
+        repoTeamFlowFailed={data.repoTeamFlowFailed}
+        selectedThemeKey={data.selectedThemeKey}
+        showSubcategories={data.showSubcategories}
+      />
 
-    const isSingleTeamScope = filters.scope.level === "team" && filters.scope.ids.length === 1;
-    const summaryLimit = showSubcategories ? 3 : isSingleTeamScope ? 1 : 3;
-    const topCategorySummary = useMemo(
-        () => categoryShareSummary.slice(0, summaryLimit),
-        [categoryShareSummary, summaryLimit]
-    );
-    const topSummaryLabel = showSubcategories
-        ? "Top subcategories:"
-        : isSingleTeamScope
-            ? "Top theme:"
-            : "Top themes:";
+      <InvestmentWorkUnitList
+        focusSubcategory={data.focusSubcategory}
+        focusSubcategoryLabel={focusSubcategoryLabel}
+        evidenceUnits={evidenceUnits}
+        effortUnit={effortUnit}
+        onClearSubcategory={() => data.setFocusSubcategory(null)}
+        onSelectWorkUnit={data.handleSelect}
+      />
 
-    const rawRepoTeamSankey = useMemo<(SankeyResponse & { hasTeamAssociations: boolean }) | null>(() => {
-        if (repoTeamFlow) {
-            const hasTeams = repoTeamFlow.nodes.some((node) => node.group === "team");
-            return { ...repoTeamFlow, hasTeamAssociations: hasTeams };
-        }
-        if (!repoTeamFlowFailed) {
-            return null;
-        }
-        const units = workUnits;
-        if (!units.length) {
-            return null;
-        }
-        return buildRepoTeamSankey(units, {}, categoryColorMap);
-    }, [repoTeamFlow, repoTeamFlowFailed, workUnits, categoryColorMap]);
-    const repoTeamSankey = useMemo(
-        () => prepareSankeyFlow(rawRepoTeamSankey, TOP_N_REPOS),
-        [prepareSankeyFlow, rawRepoTeamSankey]
-    );
-    const repoTeamLinks = repoTeamSankey?.links ?? [];
-    const repoTeamNodes = repoTeamSankey?.nodes ?? [];
-    const repoTeamHasTeams = rawRepoTeamSankey?.hasTeamAssociations ?? false;
-
-    const evidenceUnits = useMemo<EvidenceUnit[]>(() => {
-        if (!focusSubcategory) return [];
-        return workUnits
-            .map((unit) => {
-                const weight = unit.investment?.subcategories?.[focusSubcategory] ?? 0;
-                if (weight <= 0) {
-                    return null;
+      <div id="work-unit-calculation" className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-(--font-display) text-lg">How this was calculated</h3>
+            <p className="mt-1 text-sm text-(--ink-muted)">
+              This interpretation is text-first, with provider metadata and contextual structure used to corroborate
+              the investment mix. Evidence quality reflects how strongly those inputs align.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)" htmlFor="work-unit-select">
+              Work unit
+            </label>
+            <select
+              id="work-unit-select"
+              className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs"
+              value={selectedUnitId}
+              onChange={(event) => {
+                if (event.target.value) {
+                  data.handleSelect(event.target.value);
                 }
-                return {
-                    unit,
-                    weight,
-                    weightedEffort: unit.effort.value * weight,
-                };
-            })
-            .filter((entry): entry is EvidenceUnit => Boolean(entry))
-            .sort((a, b) => b.weightedEffort - a.weightedEffort);
-    }, [workUnits, focusSubcategory]);
-
-    const selectableUnits = useMemo(
-        () => (focusSubcategory ? evidenceUnits.map((entry) => entry.unit) : workUnits),
-        [evidenceUnits, focusSubcategory, workUnits]
-    );
-
-
-    const handleSelect = useCallback(
-        (workUnitId: string) => {
-            const params = new URLSearchParams(searchParams.toString());
-            params.set("work_unit_id", workUnitId);
-            router.replace(`/work?${params.toString()}`);
-        },
-        [router, searchParams]
-    );
-
-    const handleTeamFocus = useCallback(
-        (teamName: string) => {
-            if (!teamName || teamName === UNASSIGNED_TEAM_LABEL) {
-                return;
-            }
-            setSelectedCategory(null);
-            setFocusSubcategory(null);
-            setFocusedTeam(teamName);
-        },
-        []
-    );
-
-    const handleCategoryFocus = useCallback((categoryName: string) => {
-        if (!categoryName || isUnassignedLabel(categoryName)) {
-            return;
-        }
-        setFocusSubcategory(null);
-        setSelectedCategory((current) => (current === categoryName ? null : categoryName));
-    }, []);
-
-    const resolveSubcategoryIdFromLabel = useCallback(
-        (label: string) => {
-            const normalized = stripSankeyPrefix(label).trim().toLowerCase();
-            if (!normalized) {
-                return null;
-            }
-            const includeTheme = !selectedThemeKey;
-            return (
-                allSubcategoryIds.find((id) => {
-                    const [themeKey] = id.split(".", 1);
-                    if (selectedThemeKey && themeKey !== selectedThemeKey) {
-                        return false;
-                    }
-                    const formatted = formatSubcategoryLabel(id, includeTheme).toLowerCase();
-                    const formattedWithTheme = formatSubcategoryLabel(id, true).toLowerCase();
-                    const formattedWithoutTheme = formatSubcategoryLabel(id, false).toLowerCase();
-                    return (
-                        formatted === normalized ||
-                        formattedWithTheme === normalized ||
-                        formattedWithoutTheme === normalized
-                    );
-                }) ?? null
-            );
-        },
-        [allSubcategoryIds, selectedThemeKey]
-    );
-
-    const treemapLabelFormatter = useCallback(
-        (params: unknown, totalValue: number) => {
-            if (!params || typeof params !== "object") return "";
-            const entry = params as { data?: { name?: string; value?: number; nodeType?: string } };
-            const nodeData = entry.data ?? {};
-            const name = typeof nodeData.name === "string" ? nodeData.name : "";
-            const value = typeof nodeData.value === "number" ? nodeData.value : 0;
-            const pct = totalValue > 0 ? (value / totalValue) * 100 : 0;
-            if (!name || pct < 2) return "";
-            return `${name}\n${pct.toFixed(0)}%`;
-        },
-        []
-    );
-
-
-    const buildSankeyTooltipFormatter = useCallback(
-        (context: {
-            nodeMap: Map<string, SankeyNode>;
-            metrics: ReturnType<typeof computeSankeyMetrics> | null;
-            baselineFlow?: SankeyResponse | null;
-            baselineMetrics?: ReturnType<typeof computeSankeyMetrics> | null;
-            timeRange: MetricFilter["time"];
-            showBaselineDelta?: boolean;
-        }) => {
-            return (params: unknown, unit: string) => {
-                if (!params || typeof params !== "object" || !context.metrics) return "";
-                const entry = params as {
-                    dataType?: string;
-                    data?: {
-                        name?: string;
-                        value?: number;
-                        source?: string;
-                        target?: string;
-                    };
-                    name?: string;
-                };
-                const data = entry.data ?? {};
-                const isEdge = entry.dataType === "edge";
-                const nodeName = data.name ?? entry.name ?? "";
-                const currentValue = typeof data.value === "number" ? data.value : 0;
-                const nodeValue = context.metrics.nodeValueByName.get(nodeName) ?? currentValue;
-                const resolvedValue = isEdge ? currentValue : nodeValue;
-                const shareRatio =
-                    context.metrics.totalFlow > 0 ? resolvedValue / context.metrics.totalFlow : null;
-                const clampedShare =
-                    shareRatio === null
-                        ? null
-                        : Math.min(1, Math.max(0, shareRatio));
-                const timeLabel = buildOptionalTimeRangeLabel(
-                    context.timeRange.start_date,
-                    context.timeRange.end_date
-                );
-
-                const groupLabel = (name?: string) => {
-                    const group = name ? context.nodeMap.get(name)?.group : undefined;
-                    if (group === "team") return "Team";
-                    if (group === "category") return "Theme";
-                    if (group === "subcategory") return "Subcategory";
-                    if (group === "repo") return "Repo";
-                    return "";
-                };
-
-                const typeBadge = (name: string) => {
-                    const type = groupLabel(name);
-                    if (!type) return "";
-                    return `<span style="margin-left: 6px; padding: 2px 6px; border-radius: 999px; background: ${chartTheme.grid}; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: ${chartTheme.text};">${type}</span>`;
-                };
-
-                const unassignedLine = (name: string) => {
-                    if (name === UNASSIGNED_TEAM_LABEL) {
-                        return "Missing team attribution in source data";
-                    }
-                    if (name === UNASSIGNED_REPO_LABEL) {
-                        return "Missing repo association in source data";
-                    }
-                    return "";
-                };
-
-                let deltaHtml = "";
-                if (
-                    context.showBaselineDelta &&
-                    context.baselineFlow &&
-                    context.baselineMetrics &&
-                    clampedShare !== null
-                ) {
-                    let baselineValue = 0;
-                    if (isEdge) {
-                        const baseLink = context.baselineFlow.links.find(
-                            (l) => l.source === data.source && l.target === data.target
-                        );
-                        baselineValue = baseLink?.value ?? 0;
-                    } else {
-                        baselineValue = context.baselineMetrics.nodeValueByName.get(nodeName) ?? 0;
-                    }
-                    const baselineRatio =
-                        context.baselineMetrics.totalFlow > 0
-                            ? baselineValue / context.baselineMetrics.totalFlow
-                            : null;
-                    const baselineShare = baselineRatio === null
-                        ? null
-                        : Math.min(1, Math.max(0, baselineRatio));
-                    if (baselineShare !== null) {
-                        const delta = clampedShare - baselineShare;
-                        const deltaSign = delta > 0 ? "↑ +" : delta < 0 ? "↓ " : "";
-                        const deltaColor =
-                            delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
-
-                        deltaHtml = `
-                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 11px;">
-                                <div><span style="color: ${chartTheme.muted}">Current allocation share:</span> ${(clampedShare * 100).toFixed(1)}%</div>
-                                <div><span style="color: ${chartTheme.muted}">Baseline allocation share:</span> ${(baselineShare * 100).toFixed(1)}%</div>
-                                <div style="font-weight: 600; color: ${deltaColor};">
-                                    Delta: ${deltaSign}${(delta * 100).toFixed(1)}%
-                                </div>
-                                <div style="margin-top: 6px; font-size: 10px; color: ${chartTheme.muted}; font-style: italic; line-height: 1.3;">
-                                    Delta reflects change in allocation share vs the prior window. It does not indicate cause, impact, or priority.
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-
-                if (isEdge) {
-                    const lines = [
-                        `<strong>Allocated:</strong> ${formatNumber(currentValue)} ${unit}`,
-                        `<strong>From:</strong> ${data.source ?? ""}${groupLabel(data.source) ? ` (${groupLabel(data.source)})` : ""}`,
-                        `<strong>To:</strong> ${data.target ?? ""}${groupLabel(data.target) ? ` (${groupLabel(data.target)})` : ""}`,
-                    ];
-                    if (timeLabel) {
-                        lines.push(`<strong>Window:</strong> ${timeLabel}`);
-                    }
-                    const edgeUnassigned = unassignedLine(data.source ?? "") || unassignedLine(data.target ?? "");
-                    if (edgeUnassigned) {
-                        lines.push(`<span style="color: ${chartTheme.muted}; font-size: 10px;">${edgeUnassigned}</span>`);
-                    }
-                    const meaning = `<div style="margin-top: 8px; font-size: 10px; color: ${chartTheme.muted};">
-                        Attribution under current filters (not dependency or causation).
-                    </div>`;
-                    return `<div style="padding: 4px;">${lines.join("<br/>")}${deltaHtml}${meaning}</div>`;
-                }
-
-                const lines = [`<strong>Total allocated:</strong> ${formatNumber(nodeValue)} ${unit}`];
-                if (clampedShare !== null) {
-                    lines.push(`<strong>Share:</strong> ${(clampedShare * 100).toFixed(1)}%`);
-                }
-                if (timeLabel) {
-                    lines.push(`<strong>Window:</strong> ${timeLabel}`);
-                }
-                const nodeUnassigned = unassignedLine(nodeName);
-                if (nodeUnassigned) {
-                    lines.push(`<span style="color: ${chartTheme.muted}; font-size: 10px;">${nodeUnassigned}</span>`);
-                }
-                const meaning = `<div style="margin-top: 8px; font-size: 10px; color: ${chartTheme.muted};">
-                    Attribution under current filters (not dependency or causation).
-                </div>`;
-                return `<div style="padding: 4px;"><div style="font-weight: 600;">${nodeName}${typeBadge(
-                    nodeName
-                )}</div><div style="margin-top: 6px;">${lines.join("<br/>")}</div>${deltaHtml}${meaning}</div>`;
-            };
-        },
-        [chartTheme.accent1, chartTheme.accent2, chartTheme.grid, chartTheme.muted, chartTheme.text]
-    );
-
-    const repoTeamNodeMap = useMemo(() => {
-        const map = new Map<string, SankeyNode>();
-        (repoTeamSankey?.nodes ?? []).forEach((node) => map.set(node.name, node));
-        return map;
-    }, [repoTeamSankey]);
-    const repoTeamMetrics = useMemo(
-        () => (repoTeamSankey ? computeSankeyMetrics(repoTeamSankey.nodes, repoTeamSankey.links) : null),
-        [repoTeamSankey]
-    );
-    const sankeyTooltipFormatter = useMemo(
-        () =>
-            buildSankeyTooltipFormatter({
-                nodeMap: sankeyNodeMap,
-                metrics: sankeyMetrics,
-                baselineFlow,
-                baselineMetrics,
-                timeRange: filters.time,
-                showBaselineDelta,
-            }),
-        [
-            baselineFlow,
-            baselineMetrics,
-            buildSankeyTooltipFormatter,
-            filters.time,
-            sankeyMetrics,
-            sankeyNodeMap,
-            showBaselineDelta,
-        ]
-    );
-    const repoTeamTooltipFormatter = useMemo(
-        () =>
-            buildSankeyTooltipFormatter({
-                nodeMap: repoTeamNodeMap,
-                metrics: repoTeamMetrics,
-                timeRange: filters.time,
-            }),
-        [buildSankeyTooltipFormatter, filters.time, repoTeamMetrics, repoTeamNodeMap]
-    );
-
-    const formatTreemapTooltip = useCallback(
-        (params: unknown, _totalValue: number, unitLabel: string) => {
-            if (!params || typeof params !== "object") return "";
-            const entry = params as {
-                data?: Record<string, unknown>;
-                treePathInfo?: Array<{ name: string }>;
-            };
-            const data = entry.data ?? {};
-            const treePath = entry.treePathInfo ?? [];
-
-            // Path: Investment -> Theme -> Subcategory
-            const pathSegments = treePath.slice(1).map(p => p.name);
-            const title = pathSegments.join(" · ");
-            if (!title) return "";
-
-            const value = typeof data.value === "number" ? data.value : 0;
-            const qualityValue = typeof data.qualityValue === "number" ? data.qualityValue : null;
-            const qualityLabel = qualityValue !== null ? formatQuality(qualityValue) : "Unknown";
-            const effortUnitLabel = unitLabel;
-
-            const qualityExtra = qualityValue !== null
-                ? `Avg evidence quality: ${qualityLabel}<br/><div style="margin-top: 6px; font-size: 11px; opacity: 0.8;">Evidence quality reflects average across contributing units.</div>`
-                : `<div style="opacity: 0.7;">Evidence quality: Unknown<br/>Insufficient evidence to compute quality.</div>`;
-
-            return buildTooltipHtml({
-                title,
-                value,
-                unit: effortUnitLabel,
-                percent: calcPercent(value, mixTotalValue),
-                mutedColor: chartTheme.muted,
-                accentColor: chartTheme.accent2,
-                extra: qualityExtra
-            });
-        },
-        [chartTheme.muted, chartTheme.accent2, mixTotalValue]
-    );
-
-
-    const effortUnit = useMemo(() => {
-        const metrics = new Set(workUnits.map((unit) => unit.effort.metric));
-        if (metrics.size === 1) {
-            const metric = metrics.values().next().value ?? "churn_loc";
-            return formatEffortUnit(metric);
-        }
-        return "effort";
-    }, [workUnits]);
-
-    const categoryScopeLabel = focusTheme ? "Subcategory" : "Theme";
-    const focusSubcategoryLabel = focusSubcategory
-        ? formatSubcategoryLabel(focusSubcategory, true)
-        : "";
-
-    const selectedUnitId = useMemo(() => {
-        if (!selectedUnit) return "";
-        return selectableUnits.some((unit) => unit.work_unit_id === selectedUnit.work_unit_id)
-            ? selectedUnit.work_unit_id
-            : "";
-    }, [selectableUnits, selectedUnit]);
-
-    return (
-        <section className="flex flex-col gap-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 className="font-(--font-display) text-xl">Work Unit Investment</h2>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        These views surface probabilistic investment themes and subcategories inferred from connected work units.
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <ChartTypeToggle
-                        options={CATEGORIZATION_OPTIONS}
-                        value={categorizationMode}
-                        onChange={setCategorizationMode}
-                        className="flex-wrap"
-                    />
-                    <a
-                        href="#work-unit-calculation"
-                        className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                    >
-                        How this was calculated
-                    </a>
-                </div>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-                <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
-                    <summary className="cursor-pointer list-none font-(--font-display) text-base">
-                        What this investment view represents
-                    </summary>
-                    <div className="mt-2">
-                        <p className="text-sm text-(--ink-muted)">
-                            These views show investment intent inferred from connected work activity across issues, pull requests, commits, and files.
-                        </p>
-                        <p className="mt-2 text-sm text-(--ink-muted)">
-                            Investment reflects how work appears to be aimed, based on text-first intent plus structural and contextual corroboration.
-                            It is not a label, a verdict, or an assessment of people.
-                        </p>
-                        <p className="mt-2 text-sm text-(--ink-muted)">
-                            Because real work is messy, investment views are shown with evidence quality and uncertainty rather than as fixed categories.
-                        </p>
-                        <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
-                            <li>Investment describes effort allocation, not individual performance.</li>
-                            <li>Categories are probabilistic, not exclusive. Work can span multiple categories at once.</li>
-                            <li>Evidence quality reflects corroboration strength, not correctness.</li>
-                            <li>Low evidence quality indicates mixed or incomplete evidence, not bad data.</li>
-                        </ul>
-                        <p className="mt-3 text-xs text-(--ink-muted)">
-                            These views do not assign intent, measure productivity, or evaluate individuals.
-                        </p>
-                    </div>
-                </details>
-                <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
-                    <summary className="cursor-pointer list-none font-(--font-display) text-base">
-                        How to read the visuals
-                    </summary>
-                    <div className="mt-2">
-                        <ul className="space-y-2 text-sm text-(--ink-muted)">
-                            <li>Size represents effort associated with a theme or subcategory.</li>
-                            <li>Color indicates which theme or subcategory the work leans toward.</li>
-                            <li>Opacity represents evidence quality for the interpretation.</li>
-                            <li>Flows show how effort appears to move from teams into themes and repos.</li>
-                            <li>Use the investment mix chart to drill from themes into subcategories and evidence.</li>
-                        </ul>
-                    </div>
-                </details>
-            </div>
-
-            <details open className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <summary className="cursor-pointer list-none font-(--font-display) text-lg">
-                    What this investment mix indicates
-                </summary>
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-xs text-(--ink-muted)">
-                        {mixExplanation.focus.subcategory
-                            ? `Focused: ${formatSubcategoryLabel(mixExplanation.focus.subcategory, true)}`
-                            : mixExplanation.focus.theme
-                                ? `Focused: ${titleCase(mixExplanation.focus.theme)}`
-                                : "Focused: All themes"}
-                    </div>
-                    {(!mixExplanation.data || mixExplanation.data.status !== "llm_unavailable") && (
-                    <button
-                        type="button"
-                        onClick={regenerateMixExplanation}
-                        disabled={isExplainingMix}
-                        className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted) disabled:opacity-50"
-                    >
-                        {isExplainingMix ? "Generating…" : "Regenerate explanation"}
-                    </button>
-                    )}
-                </div>
-                <div className="mt-4 space-y-4">
-                    {mixExplanation.data?.status === "llm_unavailable" ? (
-                        <p className="text-sm text-(--ink-muted)">
-                            Investment distribution uses metadata-based categorization. Connect an LLM provider in settings to enable AI-generated explanations.
-                        </p>
-                    ) : !mixExplanation.data || mixExplanation.filtersKey !== mixExplainKey ? (
-                        <p className="text-sm text-(--ink-muted)">
-                            {mixExplanation.filtersKey === mixExplainKey
-                                ? "Explanation unavailable for this window."
-                                : "Generating investment explanation…"}
-                        </p>
-                    ) : (
-                        <>
-                            {/* Summary */}
-                            <p className="text-sm text-foreground">{mixExplanation.data.summary}</p>
-
-                            {/* Top Findings */}
-                            {(mixExplanation.data.top_findings?.length ?? 0) > 0 && (
-                                <div className="space-y-2">
-                                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Findings</p>
-                                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                                        {mixExplanation.data.top_findings.slice(0, 3).map((finding, idx) => (
-                                            <div
-                                                key={`finding-${finding.finding.slice(0, 40)}-${idx}`}
-                                                className="rounded-lg border border-(--card-stroke) bg-background/50 p-3"
-                                            >
-                                                <p className="text-sm">{finding.finding}</p>
-                                                <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-(--ink-muted)">
-                                                    <span className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5">
-                                                        {finding.evidence.theme}
-                                                    </span>
-                                                    <span>{finding.evidence.share_pct}%</span>
-                                                    {finding.evidence.evidence_quality_band && (
-                                                        <span className="opacity-70">
-                                                            Quality: {finding.evidence.evidence_quality_band}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Confidence Block */}
-                            <div className="rounded-lg border border-(--card-stroke) bg-background/30 p-3">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Confidence</span>
-                                    <span
-                                        className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${mixExplanation.data.confidence?.level === "high"
-                                            ? "bg-emerald-500/20 text-emerald-600"
-                                            : mixExplanation.data.confidence?.level === "moderate"
-                                                ? "bg-amber-500/20 text-amber-600"
-                                                : mixExplanation.data.confidence?.level === "low"
-                                                    ? "bg-red-500/20 text-red-600"
-                                                    : "bg-gray-500/20 text-gray-500"
-                                            }`}
-                                    >
-                                        {mixExplanation.data.confidence?.level ?? "unknown"}
-                                    </span>
-                                    {mixExplanation.data.confidence?.quality_mean != null && (
-                                        <span className="text-[10px] text-(--ink-muted)">
-                                            Mean: {(mixExplanation.data.confidence.quality_mean * 100).toFixed(0)}%
-                                            {mixExplanation.data.confidence.quality_stddev != null &&
-                                                ` ± ${(mixExplanation.data.confidence.quality_stddev * 100).toFixed(0)}%`}
-                                        </span>
-                                    )}
-                                </div>
-                                {(mixExplanation.data.confidence?.drivers?.length ?? 0) > 0 && (
-                                    <div className="mt-2 flex flex-wrap gap-1">
-                                        {(mixExplanation.data.confidence?.drivers ?? []).map((driver) => (
-                                            <span
-                                                key={driver}
-                                                className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5 text-[10px] text-(--ink-muted)"
-                                                title={
-                                                    driver === "low_text_signal"
-                                                        ? "Short descriptions lack categorization signals"
-                                                        : driver === "weak_cross_links"
-                                                            ? "Few issue↔PR↔commit links detected"
-                                                            : driver === "missing_evidence_metadata"
-                                                                ? "Over 30% of units have unknown quality"
-                                                                : driver === "high_uncertainty_spread"
-                                                                    ? "Quality varies significantly across units"
-                                                                    : driver
-                                                }
-                                            >
-                                                {driver.replace(/_/g, " ")}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* What to check next */}
-                            {(mixExplanation.data.what_to_check_next?.length ?? 0) > 0 && (
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">What to check next</p>
-                                    <ul className="mt-2 space-y-2">
-                                        {mixExplanation.data.what_to_check_next.slice(0, 3).map((action) => (
-                                            <li key={action.action} className="text-sm">
-                                                <span className="font-medium">{action.action}</span>
-                                                <span className="text-(--ink-muted)"> — {action.why}</span>
-                                                <span className="block text-[11px] text-(--ink-muted) opacity-70">
-                                                    {action.where}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-
-                            {/* Anti-claims (collapsible) */}
-                            {(mixExplanation.data.anti_claims?.length ?? 0) > 0 && (
-                                <details className="text-xs text-(--ink-muted)">
-                                    <summary className="cursor-pointer">What this does NOT say</summary>
-                                    <ul className="mt-2 list-disc space-y-1 pl-5">
-                                        {mixExplanation.data.anti_claims.map((claim) => (
-                                            <li key={claim}>{claim}</li>
-                                        ))}
-                                    </ul>
-                                </details>
-                            )}
-
-                            {/* Status indicator for invalid outputs */}
-                            {mixExplanation.data.status && mixExplanation.data.status !== "valid" && (
-                                <p className="text-[10px] italic text-(--ink-muted)">
-                                    ⚠ Fallback explanation shown ({mixExplanation.data.status})
-                                </p>
-                            )}
-                        </>
-                    )}
-                </div>
-            </details>
-
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
-                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Evidence quality bands</span>
-                {EVIDENCE_QUALITY_BANDS.map((band) => (
-                    <div key={band.id} className="flex items-center gap-2 text-xs text-(--ink-muted)">
-                        <span
-                            className={`h-2.5 w-2.5 rounded-full bg-(--accent-2) ${band.opacityClass}`}
-                        />
-                        <span>{band.label}</span>
-                    </div>
-                ))}
-            </div>
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <h3 className="font-(--font-display) text-lg">
-                            {mixChartType === "treemap" ? "Treemap" : "Investment mix"}
-                        </h3>
-                        <span className="text-xs text-(--ink-muted)">
-                            {mixChartType === "treemap"
-                                ? `Effort size · Evidence quality opacity · ${categoryScopeLabel} view`
-                                : "Theme → Subcategory (depth 2)"}
-                        </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        {mixChartType === "sunburst" && focusTheme && (
-                            <button
-                                type="button"
-                                onClick={() => setFocusTheme(null)}
-                                className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                            >
-                                Clear theme
-                            </button>
-                        )}
-                        <ChartTypeToggle
-                            options={TREEMAP_SUNBURST_OPTIONS}
-                            value={mixChartType}
-                            onChange={setMixChartType}
-                        />
-                    </div>
-                </div>
-                <div className="mt-4">
-                    {mixChartType === "treemap" ? (
-                        <>
-                            <div className="mb-3 flex flex-wrap items-center gap-1 text-xs">
-                                <button
-                                    type="button"
-                                    onClick={treemapSelection ? clearTreemapSelection : undefined}
-                                    className={`rounded-full px-2 py-0.5 text-[11px] ${treemapSelection
-                                        ? "text-(--accent-2) hover:underline"
-                                        : "bg-(--card-stroke) text-foreground"
-                                        }`}
-                                >
-                                    All themes
-                                </button>
-                                {treemapSelection && (
-                                    <>
-                                        <span className="text-(--ink-muted)">/</span>
-                                        {treemapSelection.type === "subcategory" ? (
-                                            <button
-                                                type="button"
-                                                onClick={focusTreemapTheme}
-                                                className="rounded-full px-2 py-0.5 text-[11px] text-(--accent-2) hover:underline"
-                                            >
-                                                {treemapSelection.themeLabel}
-                                            </button>
-                                        ) : (
-                                            <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[11px] text-foreground">
-                                                {treemapSelection.themeLabel}
-                                            </span>
-                                        )}
-                                        {treemapSelection.type === "subcategory" && treemapSelection.subcategoryLabel && (
-                                            <>
-                                                <span className="text-(--ink-muted)">/</span>
-                                                <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[11px] text-foreground">
-                                                    {treemapSelection.subcategoryLabel}
-                                                </span>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                            {isLoading ? (
-                                <p className="text-sm text-(--ink-muted)">Loading work units…</p>
-                            ) : workUnits.length === 0 ? (
-                                <p className="text-sm text-(--ink-muted)">No work unit investments available.</p>
-                            ) : (
-                                <TreemapChart
-                                    data={treemapData}
-                                    unit={effortUnit}
-                                    height={360}
-                                    useInputColors
-                                    showBreadcrumb={false}
-                                    tooltipFormatter={formatTreemapTooltip}
-                                    labelFormatter={treemapLabelFormatter}
-                                    onNodeClick={handleTreemapSelection}
-                                />
-                            )}
-                        </>
-                    ) : isMixLoading ? (
-                        <p className="text-sm text-(--ink-muted)">Loading investment mix…</p>
-                    ) : !investmentMix || mixThemes.length === 0 ? (
-                        <p className="text-sm text-(--ink-muted)">No investment mix available.</p>
-                    ) : (
-                        <div className="grid gap-4 md:grid-cols-[1.15fr_0.85fr] md:items-start">
-                            <InvestmentMixSunburst
-                                themeDistribution={investmentMix.theme_distribution}
-                                subcategoryDistribution={investmentMix.subcategory_distribution}
-                                evidenceQualityDistribution={investmentMix.evidence_quality_distribution}
-                                unit={investmentMix.unit ?? effortUnit}
-                                height={360}
-                                focusedTheme={focusTheme}
-                                onThemeClick={handleThemeClick}
-                                onSubcategoryClick={handleSubcategoryClick}
-                            />
-                            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                        {focusTheme ? "Subcategory breakdown" : "Themes"}
-                                    </p>
-                                    {focusTheme && (
-                                        <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                                            {titleCase(focusTheme)}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="mt-3 space-y-2 text-sm">
-                                    {focusTheme ? (
-                                        focusedThemeSubcategories.length ? (
-                                            focusedThemeSubcategories.map((entry) => {
-                                                const pctOfTheme = focusedThemeTotalValue
-                                                    ? (entry.value / focusedThemeTotalValue) * 100
-                                                    : 0;
-                                                return (
-                                                    <button
-                                                        key={entry.key}
-                                                        type="button"
-                                                        onClick={() => handleSubcategoryClick(entry.key)}
-                                                        className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <div className="truncate text-sm text-foreground">
-                                                                {formatSubcategoryLabel(entry.key, false)}
-                                                            </div>
-                                                            <div className="mt-1 text-xs text-(--ink-muted)">
-                                                                {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
-                                                            </div>
-                                                            <div className="text-xs text-(--accent-2)">
-                                                                {formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}% of theme
-                                                            </div>
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })
-                                        ) : (
-                                            <p className="text-sm text-(--ink-muted)">
-                                                No subcategories observed for this theme.
-                                            </p>
-                                        )
-                                    ) : (
-                                        mixThemes.slice(0, 8).map((entry) => {
-                                            const pct = mixTotalValue ? (entry.value / mixTotalValue) * 100 : 0;
-                                            return (
-                                                <button
-                                                    key={entry.key}
-                                                    type="button"
-                                                    onClick={() => handleThemeClick(entry.key)}
-                                                    className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="truncate text-sm text-foreground">{titleCase(entry.key)}</div>
-                                                        <div className="mt-1 text-xs text-(--ink-muted)">
-                                                            {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
-                                                        </div>
-                                                        <div className="text-xs text-(--accent-2)">
-                                                            {formatNumber(pct, { maximumFractionDigits: 1 })}% of total
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
-                            <div className="flex flex-wrap items-center gap-3 text-[11px] text-(--ink-muted)">
-                                <span>Team coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.team * 100)}%</strong></span>
-                                <span>Repo coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.repo * 100)}%</strong></span>
-                            </div>
-                        </div>
-                        <p className="mt-1 text-xs text-(--ink-muted)">
-                            {showSubcategories
-                                ? "Team → Theme → Subcategory → Repo"
-                                : "Team → Theme → Repo"
-                            }
-                        </p>
-
-                        {(focusedTeam || selectedCategory) && (
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                                {focusedTeam && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setFocusedTeam(null)}
-                                        className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                                    >
-                                        Drilldown: Team = {focusedTeam}
-                                        <span className="text-xs">×</span>
-                                    </button>
-                                )}
-                                {selectedCategory && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSelectedCategory(null);
-                                            setFocusSubcategory(null);
-                                        }}
-                                        className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                                    >
-                                        Drilldown: Theme = {selectedCategory}
-                                        <span className="text-xs">×</span>
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex flex-col items-start gap-2 text-xs text-(--ink-muted)">
-                        {selectedCategory && (
-                            <span>Theme focus: <strong className="text-(--ink)">{selectedCategory}</strong></span>
-                        )}
-                        {topCategorySummary.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span>{topSummaryLabel}</span>
-                                {topCategorySummary.map((entry) => (
-                                    <span key={entry.name} className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px]">
-                                        {entry.name} {entry.share.toFixed(0)}%
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-                <div className="mt-2 mb-4 text-[11px] text-(--ink-muted) leading-relaxed border-l-2 border-(--card-stroke) pl-3 py-1">
-                    This view shows where effort appears to land across teams, themes, and repos for the selected window.
-                    Allocation reflects attribution, not dependency or impact.
-                </div>
-                <div className="mt-0">
-                    {isSankeyLoading ? (
-                        <p className="text-sm text-(--ink-muted)">Loading flow data…</p>
-                    ) : !sankeyFlow || !sankeyFlow.links.length ? (
-                        <div className="flex h-[220px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
-                            No team burden flow available for this scope and window.
-                        </div>
-                    ) : (
-                        <SankeyChart
-                            nodes={sankeyFlow.nodes}
-                            links={sankeyFlow.links}
-                            unit={effortUnit}
-                            height={320}
-                            tooltipFormatter={sankeyTooltipFormatter}
-                            onItemClick={(item) => {
-                                if (!sankeyFlow) return;
-                                if (item.type === "node") {
-                                    const node = sankeyFlow.nodes.find((n) => n.name === item.name);
-                                    if (node?.group === "team") {
-                                        handleTeamFocus(stripSankeyPrefix(node.name));
-                                        return;
-                                    }
-                                    if (node?.group === "category") {
-                                        handleCategoryFocus(node.name);
-                                        return;
-                                    }
-                                    if (node?.group === "subcategory") {
-                                        const subId = resolveSubcategoryIdFromLabel(node.name);
-                                        if (subId) {
-                                            setFocusSubcategory(subId);
-                                        }
-                                    }
-                                } else if (item.type === "link" && selectedCategory) {
-                                    const subId = resolveSubcategoryIdFromLabel(item.source ?? "");
-                                    if (subId) {
-                                        setFocusSubcategory(subId);
-                                    }
-                                }
-                            }}
-                        />
-                    )}
-                </div>
-            </div>
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                        <h3 className="font-(--font-display) text-lg">Where effort lands</h3>
-                        <p className="mt-1 text-xs text-(--ink-muted)">Subcategory → Repo → Team</p>
-                    </div>
-                    <span className="text-xs text-(--ink-muted)">Two-hop allocation to highlight team ownership behind repos.</span>
-                </div>
-                <div className="mt-2 mb-4 text-[11px] text-(--ink-muted) leading-relaxed border-l-2 border-(--card-stroke) pl-3 py-1">
-                    This view uses repo-to-team mapping when available. Missing repo associations flow through an unassigned repo node.
-                </div>
-                <div className="mt-0">
-                    {isRepoTeamLoading ? (
-                        <p className="text-sm text-(--ink-muted)">Loading destination view…</p>
-                    ) : repoTeamHasTeams && repoTeamLinks.length ? (
-                        <SankeyChart
-                            nodes={repoTeamNodes}
-                            links={repoTeamLinks}
-                            unit={effortUnit}
-                            height={320}
-                            tooltipFormatter={repoTeamTooltipFormatter}
-                            onItemClick={(item) => {
-                                if (item.type === "node") {
-                                    const normalized = stripSankeyPrefix(item.name ?? "");
-                                    const node = repoTeamNodes.find(
-                                        (entry) => stripSankeyPrefix(entry.name) === normalized
-                                    );
-                                    if (node?.group === "subcategory") {
-                                        const subId = resolveSubcategoryIdFromLabel(node.name);
-                                        if (subId) setFocusSubcategory(subId);
-                                    }
-                                } else if (item.type === "link") {
-                                    const subId = resolveSubcategoryIdFromLabel(item.source ?? "");
-                                    if (subId) setFocusSubcategory(subId);
-                                }
-                            }}
-                        />
-                    ) : (
-                        <div className="flex h-[220px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
-                            <div>
-                                <p>We currently have no teams associated with work items.</p>
-                                <p className="mt-2 text-[11px] text-(--ink-muted)">Investment categories still compute from evidence.</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h3 className="font-(--font-display) text-lg">Evidence drill-down</h3>
-                        <span className="text-xs text-(--ink-muted)">
-                            {focusSubcategory
-                                ? `Work units that contributed to: ${focusSubcategoryLabel}.`
-                                : "Select a subcategory to inspect supporting work units."}
-                        </span>
-                    </div>
-                    {focusSubcategory && (
-                        <button
-                            type="button"
-                            onClick={() => setFocusSubcategory(null)}
-                            className="rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-                        >
-                            Clear subcategory
-                        </button>
-                    )}
-                </div>
-                <div className="mt-4">
-                    {!focusSubcategory ? (
-                        <p className="text-sm text-(--ink-muted)">
-                            Drill down into a theme and choose a subcategory to see the work units that support it.
-                        </p>
-                    ) : evidenceUnits.length === 0 ? (
-                        <p className="text-sm text-(--ink-muted)">
-                            No work units are currently linked to {focusSubcategoryLabel}.
-                        </p>
-                    ) : (
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            {evidenceUnits.slice(0, 6).map((entry) => {
-                                const hasTextual = (entry.unit.evidence?.textual ?? []).length > 0;
-                                const hasContextual = (entry.unit.evidence?.contextual ?? []).length > 0;
-                                const hasStructural = (entry.unit.evidence?.structural ?? []).length > 0;
-                                const signals: string[] = [];
-                                if (hasTextual) signals.push("text");
-                                if (hasContextual || hasStructural) signals.push("metadata");
-                                const signalsLabel = signals.length
-                                    ? `Evidence signals: ${signals.join(" + ")}`
-                                    : "Evidence signals: inferred from available inputs";
-                                const workUnitLabel = formatWorkUnitLabel(entry.unit);
-                                const workUnitTypeLabel = formatWorkUnitTypeLabel(entry.unit);
-                                const workUnitIdToken = formatWorkUnitIdToken(entry.unit.work_unit_id);
-                                return (
-                                    <div
-                                        key={entry.unit.work_unit_id}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => handleSelect(entry.unit.work_unit_id)}
-                                        onKeyDown={(event) => {
-                                            if (event.key === "Enter" || event.key === " ") {
-                                                event.preventDefault();
-                                                handleSelect(entry.unit.work_unit_id);
-                                            }
-                                        }}
-                                        className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 text-left transition hover:border-(--accent-2)"
-                                    >
-                                        <div className="min-w-0">
-                                            <div className="truncate text-sm font-medium text-foreground">{workUnitLabel}</div>
-                                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                                                {workUnitTypeLabel ? (
-                                                    <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
-                                                        {workUnitTypeLabel}
-                                                    </span>
-                                                ) : null}
-                                                <span>ID: <span className="font-mono text-[11px] tracking-normal text-(--ink)">{workUnitIdToken}</span></span>
-                                                <button
-                                                    type="button"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        void navigator.clipboard?.writeText(entry.unit.work_unit_id);
-                                                    }}
-                                                    className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]"
-                                                >
-                                                    Copy ID
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="mt-3 text-sm">
-                                            <span className="text-(--ink-muted)">Weighted effort:</span>{" "}
-                                            {formatNumber(entry.weightedEffort)} {effortUnit}
-                                        </div>
-                                        <div className="mt-1 text-xs text-(--ink-muted)">
-                                            Evidence quality: {entry.unit.evidence_quality.value !== null
-                                                ? `${formatQuality(entry.unit.evidence_quality.value)} (${formatBandLabel(entry.unit.evidence_quality.band ?? "unknown")})`
-                                                : "Unknown"}
-                                        </div>
-                                        <div className="mt-2 text-[11px] text-(--ink-muted)">
-                                            {signalsLabel}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div
-                id="work-unit-calculation"
-                className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+              }}
             >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h3 className="font-(--font-display) text-lg">How this was calculated</h3>
-                        <p className="mt-1 text-sm text-(--ink-muted)">
-                            This interpretation is text-first, with provider metadata and contextual structure used
-                            to corroborate the investment mix. Evidence quality reflects how strongly those inputs
-                            align.
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)" htmlFor="work-unit-select">
-                            Work unit
-                        </label>
-                        <select
-                            id="work-unit-select"
-                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs"
-                            value={selectedUnitId}
-                            onChange={(event) => {
-                                if (event.target.value) {
-                                    handleSelect(event.target.value);
-                                }
-                            }}
-                        >
-                            <option value="" disabled>
-                                Select a work unit
-                            </option>
-                            {selectableUnits.map((unit) => {
-                                const label = formatWorkUnitLabel(unit);
-                                return (
-                                    <option key={unit.work_unit_id} value={unit.work_unit_id}>
-                                        {label} — {unit.work_unit_id}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    </div>
+              <option value="" disabled>
+                Select a work unit
+              </option>
+              {selectableUnits.map((unit) => (
+                <option key={unit.work_unit_id} value={unit.work_unit_id}>
+                  {formatWorkUnitLabel(unit)} - {unit.work_unit_id}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {data.selectedUnit ? (
+          <div className="mt-6 grid gap-6 lg:grid-cols-3">
+            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Overview</p>
+              <div className="mt-3 space-y-2 text-sm">
+                <div>
+                  <span className="text-(--ink-muted)">Work unit:</span> {formatWorkUnitLabel(data.selectedUnit)}
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-(--ink-muted)">
+                    {data.selectedUnitTypeLabel ? (
+                      <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
+                        {data.selectedUnitTypeLabel}
+                      </span>
+                    ) : null}
+                    <span>
+                      ID: <span className="font-mono text-(--ink)">{data.selectedUnit.work_unit_id}</span>
+                    </span>
+                  </div>
                 </div>
-
-                {selectedUnit ? (
-                    <div className="mt-6 grid gap-6 lg:grid-cols-3">
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Overview</p>
-                            <div className="mt-3 space-y-2 text-sm">
-                                <div>
-                                    <span className="text-(--ink-muted)">Work unit:</span>{" "}
-                                    {formatWorkUnitLabel(selectedUnit)}
-                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-(--ink-muted)">
-                                        {selectedUnitTypeLabel ? (
-                                            <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
-                                                {selectedUnitTypeLabel}
-                                            </span>
-                                        ) : null}
-                                        <span>
-                                            ID: <span className="font-mono text-(--ink)">{selectedUnit.work_unit_id}</span>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <span className="text-(--ink-muted)">Time range:</span>{" "}
-                                    {buildTimeRangeLabel(
-                                        selectedUnit.time_range?.start,
-                                        selectedUnit.time_range?.end
-                                    )}
-                                </div>
-                                <div>
-                                    <span className="text-(--ink-muted)">Effort:</span>{" "}
-                                    {formatNumber(selectedUnit.effort.value)} {formatEffortUnit(selectedUnit.effort.metric)}
-                                </div>
-                                <div>
-                                    <span className="text-(--ink-muted)">Evidence quality:</span>{" "}
-                                    {selectedUnit.evidence_quality.value !== null
-                                        ? `${formatQuality(selectedUnit.evidence_quality.value)} (${formatBandLabel(selectedUnit.evidence_quality.band ?? "unknown")})`
-                                        : "Unknown"}
-                                </div>
-                                {(selectedUnit.evidence?.textual ?? []).length > 0 && (
-                                    <div className="text-xs text-(--ink-muted)">
-                                        Textual phrases informed the categorization.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Structural evidence</p>
-                            <div className="mt-3 space-y-2 text-xs">
-                                {(selectedUnit.evidence?.structural ?? []).length === 0 && (
-                                    <p className="text-(--ink-muted)">No structural evidence reported.</p>
-                                )}
-                                {(selectedUnit.evidence?.structural ?? []).map((entry, index) => (
-                                    <div key={`structural-${JSON.stringify(entry).slice(0, 80)}-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
-                                        {JSON.stringify(entry)}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Contextual evidence</p>
-                            <div className="mt-3 space-y-2 text-xs">
-                                {(selectedUnit.evidence?.contextual ?? []).length === 0 && (
-                                    <p className="text-(--ink-muted)">No contextual evidence reported.</p>
-                                )}
-                                {(selectedUnit.evidence?.contextual ?? []).map((entry, index) => (
-                                    <div key={`contextual-${JSON.stringify(entry).slice(0, 80)}-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
-                                        {JSON.stringify(entry)}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 lg:col-span-3">
-                            <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Textual evidence</p>
-                            <div className="mt-3 space-y-2 text-xs">
-                                {(selectedUnit.evidence?.textual ?? []).length === 0 && (
-                                    <p className="text-(--ink-muted)">No textual evidence reported.</p>
-                                )}
-                                {(selectedUnit.evidence?.textual ?? []).map((entry, index) => (
-                                    <div key={`textual-${JSON.stringify(entry).slice(0, 80)}-${index}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
-                                        {JSON.stringify(entry)}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {(isExplaining || explanation) && (
-                            <div className="lg:col-span-3 mt-4 overflow-hidden rounded-2xl border border-dashed border-(--accent-2) bg-(--accent-2-10)">
-                                <div className="flex items-center justify-between border-b border-dashed border-(--accent-2) bg-(--accent-2-15) px-4 py-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="rounded bg-(--accent-2) px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                                            AI-Generated
-                                        </div>
-                                        <span className="text-xs font-medium text-(--accent-2)">Investment Explanation</span>
-                                    </div>
-                                    <span className="text-[10px] text-(--ink-muted)">Phase 3 · Non-Authoritative</span>
-                                </div>
-                                <div className="p-5">
-                                    {isExplaining ? (
-                                        <div className="flex items-center gap-2 text-sm text-(--ink-muted)">
-                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-(--accent-2) border-t-transparent" />
-                                            Generating investment explanation…
-                                        </div>
-                                    ) : explanation ? (
-                                        <div className="space-y-6">
-                                            <div>
-                                                <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Summary</h4>
-                                                <p className="mt-2 text-sm leading-relaxed">{explanation.summary}</p>
-                                            </div>
-
-                                            <div className="grid gap-6 md:grid-cols-2">
-                                                <div>
-                                                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Reasons</h4>
-                                                    <div className="mt-3 space-y-3">
-                                                        {Object.entries(explanation.category_rationale).map(([cat, text]) => (
-                                                            <div key={cat} className="rounded-lg bg-(--card-70) p-3">
-                                                                <span className="text-[10px] font-bold uppercase text-(--accent-2)">{cat}</span>
-                                                                <p className="mt-1 text-xs text-(--ink-muted)">{text}</p>
-                                                            </div>
-                                                        ))}
-                                                        {explanation.evidence_highlights.length > 0 && (
-                                                            <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-(--ink-muted)">
-                                                                {explanation.evidence_highlights.map((highlight) => (
-                                                                     <li key={highlight}>{highlight}</li>
-                                                                ))}
-                                                            </ul>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Uncertainty</h4>
-                                                    <div className="mt-3 space-y-3">
-                                                        <div className="rounded-lg bg-(--card-70) p-3">
-                                                            <p className="text-xs text-(--ink-muted)">{explanation.uncertainty_disclosure}</p>
-                                                        </div>
-                                                        <div className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3">
-                                                            <p className="text-xs font-medium italic text-(--ink-muted)">{explanation.evidence_quality_limits}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : null}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <p className="mt-6 text-sm text-(--ink-muted)">
-                        Select a work unit from the dropdown to inspect evidence for the current focus.
-                    </p>
+                <div>
+                  <span className="text-(--ink-muted)">Time range:</span>{" "}
+                  {buildTimeRangeLabel(data.selectedUnit.time_range?.start, data.selectedUnit.time_range?.end)}
+                </div>
+                <div>
+                  <span className="text-(--ink-muted)">Effort:</span> {formatNumber(data.selectedUnit.effort.value)}{" "}
+                  {formatEffortUnit(data.selectedUnit.effort.metric)}
+                </div>
+                <div>
+                  <span className="text-(--ink-muted)">Evidence quality:</span>{" "}
+                  {data.selectedUnit.evidence_quality.value !== null
+                    ? `${formatQuality(data.selectedUnit.evidence_quality.value)} (${formatBandLabel(data.selectedUnit.evidence_quality.band ?? "unknown")})`
+                    : "Unknown"}
+                </div>
+                {(data.selectedUnit.evidence?.textual ?? []).length > 0 && (
+                  <div className="text-xs text-(--ink-muted)">Textual phrases informed the categorization.</div>
                 )}
+              </div>
             </div>
-        </section>
-    );
+
+            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Structural evidence</p>
+              <div className="mt-3 space-y-2 text-xs">
+                {(data.selectedUnit.evidence?.structural ?? []).length === 0 && (
+                  <p className="text-(--ink-muted)">No structural evidence reported.</p>
+                )}
+                {(data.selectedUnit.evidence?.structural ?? []).map((entry) => (
+                  <div key={`structural-${JSON.stringify(entry)}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                    {JSON.stringify(entry)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Contextual evidence</p>
+              <div className="mt-3 space-y-2 text-xs">
+                {(data.selectedUnit.evidence?.contextual ?? []).length === 0 && (
+                  <p className="text-(--ink-muted)">No contextual evidence reported.</p>
+                )}
+                {(data.selectedUnit.evidence?.contextual ?? []).map((entry) => (
+                  <div key={`contextual-${JSON.stringify(entry)}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                    {JSON.stringify(entry)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 lg:col-span-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Textual evidence</p>
+              <div className="mt-3 space-y-2 text-xs">
+                {(data.selectedUnit.evidence?.textual ?? []).length === 0 && (
+                  <p className="text-(--ink-muted)">No textual evidence reported.</p>
+                )}
+                {(data.selectedUnit.evidence?.textual ?? []).map((entry) => (
+                  <div key={`textual-${JSON.stringify(entry)}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                    {JSON.stringify(entry)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {(data.isExplaining || data.explanation) && (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-dashed border-(--accent-2) bg-(--accent-2-10) lg:col-span-3">
+                <div className="flex items-center justify-between border-b border-dashed border-(--accent-2) bg-(--accent-2-15) px-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded bg-(--accent-2) px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                      AI-Generated
+                    </div>
+                    <span className="text-xs font-medium text-(--accent-2)">Investment Explanation</span>
+                  </div>
+                  <span className="text-[10px] text-(--ink-muted)">Phase 3 - Non-Authoritative</span>
+                </div>
+                <div className="p-5">
+                  {data.isExplaining ? (
+                    <div className="flex items-center gap-2 text-sm text-(--ink-muted)">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-(--accent-2) border-t-transparent" />
+                      Generating investment explanation...
+                    </div>
+                  ) : data.explanation ? (
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Summary</h4>
+                        <p className="mt-2 text-sm leading-relaxed">{data.explanation.summary}</p>
+                      </div>
+
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div>
+                          <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Reasons</h4>
+                          <div className="mt-3 space-y-3">
+                            {Object.entries(data.explanation.category_rationale).map(([cat, text]) => (
+                              <div key={cat} className="rounded-lg bg-(--card-70) p-3">
+                                <span className="text-[10px] font-bold uppercase text-(--accent-2)">{cat}</span>
+                                <p className="mt-1 text-xs text-(--ink-muted)">{text}</p>
+                              </div>
+                            ))}
+                            {data.explanation.evidence_highlights.length > 0 && (
+                              <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-(--ink-muted)">
+                                {data.explanation.evidence_highlights.map((highlight) => (
+                                  <li key={highlight}>{highlight}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Uncertainty</h4>
+                          <div className="mt-3 space-y-3">
+                            <div className="rounded-lg bg-(--card-70) p-3">
+                              <p className="text-xs text-(--ink-muted)">{data.explanation.uncertainty_disclosure}</p>
+                            </div>
+                            <div className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3">
+                              <p className="text-xs font-medium italic text-(--ink-muted)">{data.explanation.evidence_quality_limits}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="mt-6 text-sm text-(--ink-muted)">
+            Select a work unit from the dropdown to inspect evidence for the current focus.
+          </p>
+        )}
+      </div>
+    </section>
+  );
 }

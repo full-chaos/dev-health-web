@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import type { Organization } from "@/lib/admin/types";
+import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 
 type OrgTableProps = {
   orgs: Organization[];
@@ -18,70 +19,78 @@ function getTierBadge(tier: string) {
 }
 
 export function OrgTable({ orgs }: OrgTableProps) {
+  const columns: DataTableColumn<Organization>[] = [
+    {
+      key: "name",
+      header: "Name",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4 font-medium text-foreground",
+      render: (org) => (
+        <Link href={`/superadmin/orgs/${org.id}`} className="hover:underline">
+          {org.name}
+        </Link>
+      ),
+    },
+    {
+      key: "slug",
+      header: "Slug",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4 text-(--ink-muted)",
+      render: (org) => org.slug,
+    },
+    {
+      key: "tier",
+      header: "Tier",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4",
+      render: (org) => (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTierBadge(org.tier)}`}>
+          {org.tier}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4",
+      render: (org) => (
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            org.is_active ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+          }`}
+        >
+          {org.is_active ? "active" : "inactive"}
+        </span>
+      ),
+    },
+    {
+      key: "created",
+      header: "Created",
+      headerClassName: "px-6 py-4 font-medium",
+      className: "px-6 py-4 text-(--ink-muted)",
+      render: (org) => new Date(org.created_at).toLocaleDateString(),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      headerClassName: "px-6 py-4 text-right font-medium",
+      className: "px-6 py-4 text-right",
+      render: (org) => (
+        <Link href={`/superadmin/orgs/${org.id}`} className="text-(--accent) hover:underline">
+          Edit
+        </Link>
+      ),
+    },
+  ];
+
   return (
-    <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
-          <tr>
-            <th className="px-6 py-4 font-medium">Name</th>
-            <th className="px-6 py-4 font-medium">Slug</th>
-            <th className="px-6 py-4 font-medium">Tier</th>
-            <th className="px-6 py-4 font-medium">Status</th>
-            <th className="px-6 py-4 font-medium">Created</th>
-            <th className="px-6 py-4 font-medium text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-(--card-stroke)">
-          {orgs.map((org) => (
-            <tr key={org.id} className="hover:bg-(--card-70)/50">
-              <td className="px-6 py-4 font-medium text-foreground">
-                <Link href={`/superadmin/orgs/${org.id}`} className="hover:underline">
-                  {org.name}
-                </Link>
-              </td>
-              <td className="px-6 py-4 text-(--ink-muted)">{org.slug}</td>
-              <td className="px-6 py-4">
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTierBadge(
-                    org.tier
-                  )}`}
-                >
-                  {org.tier}
-                </span>
-              </td>
-              <td className="px-6 py-4">
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    org.is_active
-                      ? "bg-green-500/10 text-green-500"
-                      : "bg-red-500/10 text-red-500"
-                  }`}
-                >
-                  {org.is_active ? "active" : "inactive"}
-                </span>
-              </td>
-              <td className="px-6 py-4 text-(--ink-muted)">
-                {new Date(org.created_at).toLocaleDateString()}
-              </td>
-              <td className="px-6 py-4 text-right">
-                <Link
-                  href={`/superadmin/orgs/${org.id}`}
-                  className="text-(--accent) hover:underline"
-                >
-                  Edit
-                </Link>
-              </td>
-            </tr>
-          ))}
-          {orgs.length === 0 && (
-            <tr>
-              <td colSpan={6} className="px-6 py-8 text-center text-(--ink-muted)">
-                No organizations found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={orgs}
+      rowKeyAction={(org) => org.id}
+      emptyColSpan={6}
+      emptyMessage="No organizations found."
+    />
   );
 }
