@@ -94,6 +94,6 @@ test.describe("Work Tabbed Navigation", () => {
 
         await page.goto(`/work?tab=flame&mode=throughput&context_node=Backend&f=${filterWith30d}`);
         await expect(page.getByRole("heading", { name: "Throughput Breakdown" })).toBeVisible();
-        await expect(page.getByText(/Analyzing decomposition starting from node/)).toBeVisible();
+        await expect(page.getByText(/Analyzing decomposition starting from node/).first()).toBeVisible();
     });
 });

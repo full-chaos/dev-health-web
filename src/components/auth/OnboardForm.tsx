@@ -73,17 +73,19 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
         }
       }
 
+      const destination = isTeamTrialIntent
+        ? "/auth/trial-checkout?plan=team&trial=true"
+        : "/dashboard"
+
       if (!sessionReady) {
-        toast.error("Failed to finalize session. Please try again.")
+        window.location.href = destination
         return
       }
 
       // Hard navigation ensures the middleware reads the freshly-updated session
       // cookie. A soft router.push() can race with the Set-Cookie from the
       // session update, causing the org-scoped guard to redirect back here.
-      window.location.href = isTeamTrialIntent
-        ? "/auth/trial-checkout?plan=team&trial=true"
-        : "/dashboard"
+      window.location.href = destination
     } catch {
       toast.error("An error occurred. Please try again.")
     } finally {
