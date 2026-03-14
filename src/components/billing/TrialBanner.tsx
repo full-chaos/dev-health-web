@@ -68,7 +68,20 @@ export function TrialBanner() {
       return;
     }
     if (result.data) {
-      window.location.href = result.data.url;
+      const portalUrl = result.data.url;
+      try {
+        const parsed = new URL(portalUrl);
+        if (parsed.protocol !== "https:") {
+          toast.error("Invalid billing portal URL");
+          setIsPending(false);
+          return;
+        }
+      } catch {
+        toast.error("Invalid billing portal URL");
+        setIsPending(false);
+        return;
+      }
+      window.location.href = portalUrl;
     }
   };
 
