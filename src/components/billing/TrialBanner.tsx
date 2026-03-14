@@ -68,20 +68,21 @@ export function TrialBanner() {
       return;
     }
     if (result.data) {
-      const portalUrl = result.data.url;
+      const ALLOWED_HOSTS = ["billing.stripe.com", "checkout.stripe.com"];
+      let safeUrl: string | null = null;
       try {
-        const parsed = new URL(portalUrl);
-        if (parsed.protocol !== "https:") {
-          toast.error("Invalid billing portal URL");
-          setIsPending(false);
-          return;
+        const parsed = new URL(result.data.url);
+        if (parsed.protocol === "https:" && ALLOWED_HOSTS.includes(parsed.hostname)) {
+          safeUrl = parsed.href;
         }
-      } catch {
-        toast.error("Invalid billing portal URL");
+      } catch { /* invalid URL — leave safeUrl null */ }
+
+      if (!safeUrl) {
+        toast.error("Unexpected billing portal URL");
         setIsPending(false);
         return;
       }
-      window.location.href = portalUrl;
+      window.location.href = safeUrl;
     }
   };
 
