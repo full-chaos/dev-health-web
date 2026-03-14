@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getBackendUrl } from "@/lib/origin";
+import { auth } from "@/lib/auth";
+import { getSubscription } from "@/lib/billing/actions";
 
 export const metadata: Metadata = {
   title: "Pricing — Dev Health",
@@ -83,7 +85,7 @@ const CHECK = (
 );
 
 const DASH = (
-  <span className="text-(--ink-muted)">—</span>
+  <span className="text-(--ink-muted)" aria-hidden="true" title="Not included">—</span>
 );
 
 type Tier = {
@@ -178,6 +180,23 @@ function ComparisonCell({ value }: { value: boolean | string }) {
 // ---------------------------------------------------------------------------
 
 export default async function PricingPage() {
+  const session = await auth();
+  let trialNotice: string | null = null;
+  let isTrialing = false;
+
+  if (session?.user?.org_id) {
+    const subRes = await getSubscription();
+    if (!subRes.error && subRes.data?.status === "trialing") {
+      isTrialing = true;
+      const trialEnd = new Date(subRes.data.trial_end ?? "");
+      const now = new Date();
+      const diffMs = trialEnd.getTime() - now.getTime();
+      const days = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+      trialNotice = `You're currently on a Team trial (${days} ${days === 1 ? "day" : "days"} remaining)`;
+    }
+  }
+
   const plans = await fetchPlans();
 
   // Overlay dynamic API prices onto static tiers
@@ -185,22 +204,28 @@ export default async function PricingPage() {
   const enterprisePlan = plans.find((p) => p.key === "enterprise");
 
   const displayTiers: Tier[] = TIERS.map((tier) => {
+    let tierData = { ...tier };
     if (tier.name === "Team" && teamPlan) {
       const monthly = teamPlan.prices.find((p) => p.interval === "monthly" && p.is_active);
-      return {
-        ...tier,
+      tierData = {
+        ...tierData,
         price: monthly ? formatPrice(monthly.amount, monthly.currency) : tier.price,
       };
+      
+      if (isTrialing) {
+        tierData.cta = "Manage subscription";
+        tierData.ctaHref = "/settings/billing";
+      }
     }
     if (tier.name === "Enterprise" && enterprisePlan) {
       const monthly = enterprisePlan.prices.find((p) => p.interval === "monthly" && p.is_active);
-      return {
-        ...tier,
+      tierData = {
+        ...tierData,
         price: monthly ? formatPrice(monthly.amount, monthly.currency) : tier.price,
         period: monthly ? "per contributor / month" : tier.period,
       };
     }
-    return tier;
+    return tierData;
   });
 
   return (
@@ -223,6 +248,11 @@ export default async function PricingPage() {
 
       {/* Tier Cards */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
+        {trialNotice && (
+          <div className="mx-auto mb-8 max-w-3xl rounded-xl border border-(--accent)/20 bg-(--accent)/10 p-4 text-center text-sm font-medium text-(--accent)">
+            {trialNotice}
+          </div>
+        )}
         <div className="grid items-start gap-5 sm:grid-cols-3">
           {displayTiers.map((tier) => (
             <div
