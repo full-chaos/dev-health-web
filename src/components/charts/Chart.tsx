@@ -49,9 +49,12 @@ export function Chart({
       animationDuration: 600,
     };
 
+    const baseTooltip = { appendToBody: true, ...(option.tooltip as Record<string, unknown>) };
+
     return {
       ...baseOption,
       ...option,
+      tooltip: baseTooltip,
       textStyle: { ...baseOption.textStyle, ...option.textStyle },
     } as EChartsOption;
   }, [option, chartColors, chartTheme.text]);
