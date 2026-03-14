@@ -183,6 +183,7 @@ export default async function PricingPage() {
   const session = await auth();
   let trialNotice: string | null = null;
   let isTrialing = false;
+  let isLoggedInCommunity = false;
 
   if (session?.user?.org_id) {
     const subRes = await getSubscription();
@@ -194,6 +195,8 @@ export default async function PricingPage() {
       const days = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
       trialNotice = `You're currently on a Team trial (${days} ${days === 1 ? "day" : "days"} remaining)`;
+    } else if (!subRes.data || subRes.data.status === "canceled") {
+      isLoggedInCommunity = true;
     }
   }
 
@@ -215,6 +218,9 @@ export default async function PricingPage() {
       if (isTrialing) {
         tierData.cta = "Manage subscription";
         tierData.ctaHref = "/settings/billing";
+      } else if (isLoggedInCommunity) {
+        tierData.cta = "Start free trial";
+        tierData.ctaHref = "/auth/trial-checkout?plan=team&trial=true";
       }
     }
     if (tier.name === "Enterprise" && enterprisePlan) {

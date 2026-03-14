@@ -10,6 +10,7 @@ import {
   getSubscriptionHistory,
   listBillingPlans,
   reactivateSubscription,
+  startTrialCheckout,
   type BillingPlanRecord,
   type SubscriptionDetails,
   type SubscriptionHistoryItem,
@@ -261,11 +262,22 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={openPlanModal}
+              onClick={isFree ? () => {
+                startTransition(async () => {
+                  const result = await startTrialCheckout();
+                  if (result.error) {
+                    toast.error(result.error);
+                    return;
+                  }
+                  if (result.data?.url) {
+                    window.location.href = result.data.url;
+                  }
+                });
+              } : openPlanModal}
               disabled={isPending}
               className="rounded-md border border-(--card-stroke) px-3 py-2 text-sm hover:bg-(--card) disabled:opacity-50"
             >
-              {isFree ? "Upgrade" : "Change Plan"}
+              {isFree ? "Start free trial" : "Change Plan"}
             </button>
             {hasSubscription && (
               <button
