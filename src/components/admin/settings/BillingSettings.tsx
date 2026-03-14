@@ -73,7 +73,24 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
   const hasSubscription = subscription !== null;
   const isFree = !hasSubscription;
+  const isTrialing = subscription?.status === "trialing";
+  const [now] = useState(() => Date.now());
 
+  let trialDaysRemaining = 0;
+  let trialProgress = 0;
+  let isTrialWarning = false;
+
+  if (isTrialing && subscription?.trial_end && subscription?.trial_start) {
+    const trialEnd = new Date(subscription.trial_end).getTime();
+    const trialStart = new Date(subscription.trial_start).getTime();
+    
+    trialDaysRemaining = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
+    isTrialWarning = trialDaysRemaining <= 3;
+    
+    const totalMs = Math.max(1, trialEnd - trialStart);
+    const elapsedMs = Math.max(0, now - trialStart);
+    trialProgress = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100));
+  }
 
   const statusClass = hasSubscription
     ? STATUS_COLORS[subscription.status] ?? "bg-zinc-500/15 text-zinc-700"
@@ -206,6 +223,36 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                 <p className="text-sm text-(--ink-muted)">
                   Period: {formatDate(subscription.current_period_start ?? null)} - {formatDate(subscription.current_period_end ?? null)}
                 </p>
+
+                {isTrialing && subscription.trial_end && (
+                  <div className={`mt-4 max-w-sm rounded-lg border p-4 ${
+                    isTrialWarning
+                      ? "border-amber-500/30 bg-amber-500/10"
+                      : "border-(--card-stroke) bg-(--card-80)"
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-(--ink-muted)">Trial Status</span>
+                      <span className={`text-xl font-bold ${
+                        isTrialWarning ? "text-amber-600 dark:text-amber-500" : "text-(--foreground)"
+                      }`}>
+                        {trialDaysRemaining} days left
+                      </span>
+                    </div>
+                    
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isTrialWarning ? "bg-amber-500" : "bg-(--accent)"
+                        }`}
+                        style={{ width: `${trialProgress}%` }}
+                      />
+                    </div>
+                    
+                    <p className="mt-2 text-xs text-(--ink-muted)">
+                      Ends on {formatDate(subscription.trial_end)}
+                    </p>
+                  </div>
+                )}
               </>
             ) : loaded ? (
               <p className="text-sm text-(--ink-muted)">No billing — upgrade to unlock paid features.</p>

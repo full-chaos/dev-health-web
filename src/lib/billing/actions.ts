@@ -740,3 +740,22 @@ export async function pullPlansFromStripe(): Promise<ActionResult<PullStripeResu
     apiRequest<PullStripeResult>("/api/v1/billing/plans/pull-stripe", { method: "POST" })
   );
 }
+
+export async function getBillingPortalUrl(orgId?: string): Promise<ActionResult<{ url: string }>> {
+  const orgResult = await resolveOrgId(orgId);
+  if (orgResult.error) {
+    return orgResult;
+  }
+
+  return withErrorHandling(async () => {
+    const params = new URLSearchParams();
+    if (orgResult.data) {
+      params.set("org_id", orgResult.data);
+    }
+    const query = params.size > 0 ? `?${params.toString()}` : "";
+    return apiRequest<{ url: string }>(`/api/v1/billing/portal${query}`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  });
+}
