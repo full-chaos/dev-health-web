@@ -9,6 +9,7 @@ const EXACT_PUBLIC_PATHS = [
     "/pricing",
     "/auth/signin",
     "/auth/signup",
+    "/auth/verify",
     "/auth/error",
     "/auth/forgot-password",
     "/auth/reset-password",
