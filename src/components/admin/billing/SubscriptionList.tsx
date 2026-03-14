@@ -96,7 +96,16 @@ export function SubscriptionList({
         key: "period",
         header: "Current Period",
         className: "px-4 py-3 text-(--ink-muted)",
-        render: (subscription) => `${formatDate(subscription.current_period_start)} - ${formatDate(subscription.current_period_end)}`,
+        render: (subscription) => {
+          if (subscription.trial_start && subscription.trial_end) {
+            const dStart = new Date(subscription.trial_start);
+            const dEnd = new Date(subscription.trial_end);
+            const startStr = dStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            const endStr = dEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            return `Trial: ${startStr} – ${endStr}`;
+          }
+          return `${formatDate(subscription.current_period_start)} - ${formatDate(subscription.current_period_end)}`;
+        },
       },
       {
         key: "cancel",
