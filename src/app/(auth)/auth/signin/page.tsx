@@ -3,22 +3,26 @@ import Link from "next/link"
 import { auth } from "@/lib/auth"
 import { LoginForm } from "@/components/auth/LoginForm"
 
-type SearchParams = Promise<{ registered?: string }>
+type SearchParams = Promise<{ registered?: string; plan?: string; trial?: string }>
 
 export default async function SignInPage({
   searchParams,
 }: {
   searchParams: SearchParams
 }) {
+  const params = await searchParams
+  const plan = params.plan?.toLowerCase()
+  const trialIntent = plan === "team" && params.trial === "true"
+  const signupHref = trialIntent ? "/auth/signup?plan=team&trial=true" : "/auth/signup"
+
   const session = await auth()
   if (session?.user) {
     if (session.user.needs_onboarding) {
-      redirect("/auth/onboard")
+      redirect(trialIntent ? "/auth/onboard?plan=team&trial=true" : "/auth/onboard")
     }
     redirect("/dashboard")
   }
 
-  const params = await searchParams
   const justRegistered = params.registered === "true"
 
   return (
@@ -38,10 +42,10 @@ export default async function SignInPage({
           </div>
         )}
         <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
-          <LoginForm />
+          <LoginForm plan={plan} trialIntent={trialIntent} />
           <p className="mt-4 text-center text-sm text-[var(--ink-muted)]">
             Don&apos;t have an account?{" "}
-            <Link href="/auth/signup" className="text-[var(--accent)] hover:underline">
+            <Link href={signupHref} className="text-[var(--accent)] hover:underline">
               Sign up
             </Link>
           </p>

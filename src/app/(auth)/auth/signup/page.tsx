@@ -1,6 +1,16 @@
 import { SignupForm } from "@/components/auth/SignupForm"
 
-export default function SignUpPage() {
+type SearchParams = Promise<{ plan?: string; trial?: string }>
+
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  const params = await searchParams
+  const plan = params.plan?.toLowerCase()
+  const trialIntent = plan === "team" && params.trial === "true"
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[var(--background)]">
       <div className="w-full max-w-md space-y-8">
@@ -13,7 +23,7 @@ export default function SignUpPage() {
           </p>
         </div>
         <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
-          <SignupForm />
+          <SignupForm plan={plan} trialIntent={trialIntent} />
         </div>
       </div>
     </div>

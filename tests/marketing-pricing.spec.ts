@@ -71,7 +71,7 @@ test.describe("Pricing page", () => {
   test("CTA buttons link to signup", async ({ page }) => {
     await page.goto("/pricing");
     const startTrial = page.getByRole("link", { name: /start free trial/i });
-    await expect(startTrial).toHaveAttribute("href", "/auth/signup");
+    await expect(startTrial).toHaveAttribute("href", "/auth/signup?plan=team&trial=true");
   });
 
   test("bottom CTA section is visible", async ({ page }) => {

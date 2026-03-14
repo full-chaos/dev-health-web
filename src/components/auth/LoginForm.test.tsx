@@ -103,6 +103,20 @@ describe('LoginForm', () => {
     })
   })
 
+  test('preserves team trial intent when redirecting to onboarding', async () => {
+    mockSignIn.mockResolvedValue({ error: undefined, code: undefined, status: 200, ok: true, url: null })
+    mockGetSession.mockResolvedValue({ user: { needs_onboarding: true } })
+    renderWithToaster(<LoginForm plan="team" trialIntent />)
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'tester@example.com')
+    await userEvent.type(screen.getByLabelText(/password/i), 'password')
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/auth/onboard?plan=team&trial=true')
+    })
+  })
+
   test('shows generic error toast on network failure', async () => {
     mockSignIn.mockRejectedValue(new Error('Network error'))
     renderWithToaster(<LoginForm />)
