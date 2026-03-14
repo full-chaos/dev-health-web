@@ -36,6 +36,11 @@ type SubscriptionHistoryResponse = {
   offset: number;
 };
 
+type CheckoutSessionResponse = {
+  session_id: string;
+  url: string;
+};
+
 export type SubscriptionRecord = SubscriptionDetails & {
   org_id: string;
 };
@@ -271,6 +276,40 @@ export async function getSubscription(orgId?: string): Promise<ActionResult<Subs
     const query = params.size > 0 ? `?${params.toString()}` : "";
     return apiRequest<SubscriptionDetails>(`/api/v1/billing/subscriptions${query}`);
   });
+}
+
+export async function startTrialCheckout(): Promise<ActionResult<{ url: string }>> {
+  const headersResult = await getAuthHeaders();
+  if (headersResult.error) {
+    return headersResult;
+  }
+
+  try {
+    const res = await fetch(`${getBackendUrl()}/api/v1/billing/checkout`, {
+      method: "POST",
+      headers: headersResult.data,
+      body: JSON.stringify({
+        tier: "team",
+        success_url: "/dashboard?trial=started",
+        cancel_url: "/dashboard?trial=setup_incomplete",
+      }),
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({ detail: res.statusText }));
+      return { error: detail.detail || `Failed to create checkout session (${res.status})` };
+    }
+
+    const data = (await res.json()) as CheckoutSessionResponse;
+    if (!data.url) {
+      return { error: "Checkout session did not return a redirect URL" };
+    }
+
+    return { data: { url: data.url } };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Unknown error" };
+  }
 }
 
 export async function getSubscriptions(

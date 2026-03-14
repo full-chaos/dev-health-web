@@ -94,6 +94,36 @@ describe("SignupForm", () => {
     })
   })
 
+  it("preserves team trial intent when redirecting to signin", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    renderWithToaster(<SignupForm plan="team" trialIntent />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Full Name"), "Trial User")
+    await user.type(screen.getByLabelText("Email"), "trial@example.com")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
+    await user.click(screen.getByRole("button", { name: "Create Account" }))
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith(
+        "/auth/signin?registered=true&plan=team&trial=true",
+      )
+    })
+
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/auth/signin?plan=team&trial=true",
+    )
+  })
+
   it("shows server error on failed registration", async () => {
     const fetchSpy = vi.spyOn(global, "fetch")
     fetchSpy.mockResolvedValue(

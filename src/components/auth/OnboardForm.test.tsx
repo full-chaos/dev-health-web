@@ -92,6 +92,36 @@ describe("OnboardForm", () => {
     })
   })
 
+  it("redirects to trial checkout when team trial intent is present", async () => {
+    mockUpdate.mockResolvedValue(undefined)
+    const fetchSpy = vi.spyOn(global, "fetch")
+    fetchSpy.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          access_token: "new-access-token",
+          refresh_token: "new-refresh-token",
+          org_id: "org-123",
+          role: "owner",
+          expires_in: 3600,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    )
+
+    renderWithToaster(<OnboardForm plan="team" trialIntent />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Organization Name"), "Trial Org")
+    await user.click(screen.getByRole("button", { name: "Create Workspace" }))
+
+    await waitFor(() => {
+      expect(locationHref).toBe("/auth/trial-checkout?plan=team&trial=true")
+    })
+  })
+
   it("submits blank name (uses default)", async () => {
     mockUpdate.mockResolvedValue(undefined)
     const fetchSpy = vi.spyOn(global, "fetch")

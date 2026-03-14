@@ -83,7 +83,7 @@ const CHECK = (
 );
 
 const DASH = (
-  <span className="text-(--ink-muted)" aria-label="Not included">—</span>
+  <span className="text-(--ink-muted)">—</span>
 );
 
 type Tier = {
@@ -129,7 +129,7 @@ const TIERS: Tier[] = [
       "Cloud or self-hosted",
     ],
     cta: "Start free trial",
-    ctaHref: "/auth/signup",
+    ctaHref: "/auth/signup?plan=team&trial=true",
     highlighted: true,
   },
   {

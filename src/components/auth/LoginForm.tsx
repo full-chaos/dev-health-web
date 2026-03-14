@@ -6,12 +6,18 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 
-export function LoginForm() {
+type LoginFormProps = {
+  plan?: string
+  trialIntent?: boolean
+}
+
+export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
    const router = useRouter()
    const [email, setEmail] = useState("")
    const [password, setPassword] = useState("")
    const [loading, setLoading] = useState(false)
    const [verifyEmail, setVerifyEmail] = useState(false)
+   const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team"
 
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault()
@@ -37,7 +43,11 @@ export function LoginForm() {
         } else {
           const session = await getSession()
           if (session?.user?.needs_onboarding) {
-            router.push("/auth/onboard")
+            router.push(
+              isTeamTrialIntent
+                ? "/auth/onboard?plan=team&trial=true"
+                : "/auth/onboard",
+            )
           } else {
             router.push("/dashboard")
             router.refresh()

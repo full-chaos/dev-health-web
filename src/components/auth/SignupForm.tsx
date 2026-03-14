@@ -7,13 +7,22 @@ import { toast } from "sonner"
 import { resolveOrigin } from "@/lib/origin"
 import { extractErrorMessage } from "@/lib/errorMessages"
 
-export function SignupForm() {
+type SignupFormProps = {
+  plan?: string
+  trialIntent?: boolean
+}
+
+export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
    const router = useRouter()
    const [email, setEmail] = useState("")
    const [password, setPassword] = useState("")
    const [confirmPassword, setConfirmPassword] = useState("")
    const [fullName, setFullName] = useState("")
    const [loading, setLoading] = useState(false)
+
+   const normalizedPlan = plan?.toLowerCase()
+   const isTeamTrialIntent = trialIntent && normalizedPlan === "team"
+   const signInQuery = isTeamTrialIntent ? "?plan=team&trial=true" : ""
 
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault()
@@ -56,7 +65,11 @@ export function SignupForm() {
          return
        }
 
-       router.push("/auth/signin?registered=true")
+        router.push(
+          isTeamTrialIntent
+            ? "/auth/signin?registered=true&plan=team&trial=true"
+            : "/auth/signin?registered=true",
+        )
      } catch {
        toast.error("An error occurred. Please try again.")
      } finally {
@@ -135,7 +148,7 @@ export function SignupForm() {
 
       <p className="text-center text-sm text-[var(--ink-muted)]">
         Already have an account?{" "}
-        <Link href="/auth/signin" className="text-[var(--accent)] hover:underline">
+        <Link href={`/auth/signin${signInQuery}`} className="text-[var(--accent)] hover:underline">
           Sign in
         </Link>
       </p>

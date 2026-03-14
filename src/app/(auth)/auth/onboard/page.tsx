@@ -2,7 +2,17 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { OnboardForm } from "@/components/auth/OnboardForm"
 
-export default async function OnboardPage() {
+type SearchParams = Promise<{ plan?: string; trial?: string }>
+
+export default async function OnboardPage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  const params = await searchParams
+  const plan = params.plan?.toLowerCase()
+  const trialIntent = plan === "team" && params.trial === "true"
+
   const session = await auth()
 
   if (!session?.user) {
@@ -10,7 +20,7 @@ export default async function OnboardPage() {
   }
 
   if (session.user.org_id && !session.user.needs_onboarding) {
-    redirect("/dashboard")
+    redirect(trialIntent ? "/auth/trial-checkout?plan=team&trial=true" : "/dashboard")
   }
 
   return (
@@ -25,7 +35,7 @@ export default async function OnboardPage() {
           </p>
         </div>
         <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
-          <OnboardForm />
+          <OnboardForm plan={plan} trialIntent={trialIntent} />
         </div>
       </div>
     </div>
