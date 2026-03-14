@@ -34,8 +34,15 @@ export function MetricCard({
   spark,
   caption,
 }: MetricCardProps) {
-  const sparkValues = spark?.map((point) => point.value) ?? [];
-  const sparkLabels = spark?.map((point) => point.ts) ?? [];
+  const sparkPoints = (spark ?? []).filter((point) =>
+    Number.isFinite(point.value)
+  );
+  const sparkValues = sparkPoints.map((point) => point.value);
+  const sparkLabels = sparkPoints.map((point) => point.ts);
+  const sparklineValues =
+    sparkValues.length === 1 ? [sparkValues[0], sparkValues[0]] : sparkValues;
+  const sparklineLabels =
+    sparkLabels.length === 1 ? [sparkLabels[0], sparkLabels[0]] : sparkLabels;
 
   return (
     <Link
@@ -60,10 +67,10 @@ export function MetricCard({
           </p>
         </div>
         <div className="h-16 w-28">
-          {sparkValues.length > 1 ? (
+          {sparklineValues.length > 1 ? (
             <SparklineChart
-              data={sparkValues}
-              categories={sparkLabels}
+              data={sparklineValues}
+              categories={sparklineLabels}
               height={64}
             />
           ) : (

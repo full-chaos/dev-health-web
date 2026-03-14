@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 // Type-only import from full echarts package (types are erased at runtime — no bundle impact).
@@ -31,6 +32,7 @@ export function Chart({
   chartColors: colorsProp,
 }: ChartProps) {
   const [isReady, setIsReady] = useState(false);
+  const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartInstanceRef = useRef<{ resize?: () => void } | null>(null);
   // Use provided theme/colors if available to avoid duplicate subscriptions
@@ -77,6 +79,45 @@ export function Chart({
       observer.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    void pathname;
+
+    let frameA: number | null = null;
+    let frameB: number | null = null;
+    let timeoutId: number | null = null;
+
+    const resize = () => {
+      chartInstanceRef.current?.resize?.();
+    };
+
+    frameA = requestAnimationFrame(() => {
+      resize();
+      frameB = requestAnimationFrame(() => {
+        resize();
+      });
+    });
+
+    timeoutId = window.setTimeout(() => {
+      resize();
+    }, 180);
+
+    return () => {
+      if (frameA !== null) {
+        cancelAnimationFrame(frameA);
+      }
+      if (frameB !== null) {
+        cancelAnimationFrame(frameB);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [isReady, pathname]);
 
   return (
     <div
