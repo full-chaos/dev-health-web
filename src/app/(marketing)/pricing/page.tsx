@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getBackendUrl } from "@/lib/origin";
 
 export const metadata: Metadata = {
   title: "Pricing — Dev Health",
@@ -40,15 +41,11 @@ type BillingPlan = {
 };
 
 
-function resolveBillingApiUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
-  return configured.endsWith("/") ? configured.slice(0, -1) : configured;
-}
-
 async function fetchPlans(): Promise<BillingPlan[]> {
   try {
-    const baseUrl = resolveBillingApiUrl();
+    const baseUrl = getBackendUrl();
     const response = await fetch(`${baseUrl}/api/v1/billing/plans`, {
+      signal: AbortSignal.timeout(5_000),
       next: { revalidate: 300 },
     });
 
