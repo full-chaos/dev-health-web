@@ -25,13 +25,6 @@ export function SparklineChart({
   const chartTheme = useChartTheme();
   const xCategories = categories ?? data.map((_, index) => index + 1);
 
-  const formatLabel = (value: string | number) => {
-    if (typeof value !== "string") return String(value);
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
   const mergedStyle: CSSProperties = {
     height,
     width,
@@ -48,17 +41,8 @@ export function SparklineChart({
           borderColor: chartTheme.stroke,
           textStyle: {
             color: chartTheme.text,
-            fontSize: 11,
           },
           axisPointer: { type: "line" },
-          formatter: (params: unknown) => {
-            const list = Array.isArray(params) ? params : [params];
-            const first = list[0] as { name?: string; value?: number } | undefined;
-            if (!first) return "";
-            const label = formatLabel(first.name ?? "");
-            const val = first.value ?? "";
-            return `${label}<br/>${val}`;
-          },
         },
         grid: { left: 8, right: 8, top: 10, bottom: 10 },
         xAxis: {
