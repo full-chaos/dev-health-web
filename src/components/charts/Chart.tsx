@@ -82,13 +82,13 @@ export function Chart({
     <div
       ref={containerRef}
       className={className}
-      style={style}
+      style={{ overflow: "hidden", ...style }}
       data-chart-ready={isReady ? "true" : "false"}
     >
       <ReactECharts
         option={mergedOption}
         notMerge={true}
-        className="w-full h-full"
+        style={{ width: "100%", height: "100%" }}
         opts={{ renderer: "canvas" }}
         onEvents={onEvents}
         onChartReady={(instance) => {
