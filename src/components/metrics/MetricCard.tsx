@@ -59,7 +59,7 @@ export function MetricCard({
             {caption ?? "Open in Explore"}
           </p>
         </div>
-        <div className="h-16 w-28">
+        <div className="h-16 w-full">
           {sparkValues.length > 1 ? (
             <SparklineChart
               data={sparkValues}
