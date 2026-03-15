@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import type { ActionResult } from "@/lib/result";
 
@@ -642,7 +643,9 @@ export async function createBillingPlan(data: BillingPlanUpsert): Promise<Action
       return { error: error.detail || `Failed to create plan (${res.status})` };
     }
 
-    return { data: (await res.json()) as BillingPlanRecord };
+    const plan = (await res.json()) as BillingPlanRecord;
+    revalidatePath("/pricing");
+    return { data: plan };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
@@ -672,7 +675,9 @@ export async function updateBillingPlan(
       return { error: error.detail || `Failed to update plan (${res.status})` };
     }
 
-    return { data: (await res.json()) as BillingPlanRecord };
+    const plan = (await res.json()) as BillingPlanRecord;
+    revalidatePath("/pricing");
+    return { data: plan };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
@@ -697,7 +702,9 @@ export async function deleteBillingPlan(planId: string): Promise<ActionResult<{ 
       return { error: error.detail || `Failed to delete plan (${res.status})` };
     }
 
-    return { data: (await res.json()) as { deleted: boolean } };
+    const result = (await res.json()) as { deleted: boolean };
+    revalidatePath("/pricing");
+    return { data: result };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
@@ -722,7 +729,9 @@ export async function syncBillingPlanToStripe(planId: string): Promise<ActionRes
       return { error: error.detail || `Failed to sync plan (${res.status})` };
     }
 
-    return { data: (await res.json()) as BillingPlanRecord };
+    const plan = (await res.json()) as BillingPlanRecord;
+    revalidatePath("/pricing");
+    return { data: plan };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
   }
@@ -736,9 +745,13 @@ export type PullStripeResult = {
 };
 
 export async function pullPlansFromStripe(): Promise<ActionResult<PullStripeResult>> {
-  return withErrorHandling(() =>
+  const result = await withErrorHandling(() =>
     apiRequest<PullStripeResult>("/api/v1/billing/plans/pull-stripe", { method: "POST" })
   );
+  if (!result.error) {
+    revalidatePath("/pricing");
+  }
+  return result;
 }
 
 export async function getBillingPortalUrl(orgId?: string): Promise<ActionResult<{ url: string }>> {
