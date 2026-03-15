@@ -12,7 +12,7 @@ type OnboardFormProps = {
 }
 
 export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
-  const { data: session, update } = useSession()
+  const { data: session, update, status } = useSession()
   const [orgName, setOrgName] = useState("")
   const [loading, setLoading] = useState(false)
   const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team"
@@ -64,12 +64,16 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
 
       let sessionReady = false
 
-      for (let attempt = 0; attempt < 3 && !sessionReady; attempt += 1) {
+      for (let attempt = 0; attempt < 5 && !sessionReady; attempt += 1) {
         try {
-          await update({ onboardComplete: onboardingSession })
-          sessionReady = true
+          const result = await update({ onboardComplete: onboardingSession })
+          if (result) {
+            sessionReady = true
+          } else {
+            await delay(300 * (attempt + 1))
+          }
         } catch {
-          await delay(200 * (attempt + 1))
+          await delay(300 * (attempt + 1))
         }
       }
 
@@ -117,7 +121,7 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || status !== "authenticated"}
         className="w-full py-2 px-4 bg-[var(--accent)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
       >
         {loading ? "Creating workspace..." : "Create Workspace"}

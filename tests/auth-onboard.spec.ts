@@ -17,36 +17,22 @@ test("submitting org name creates workspace and redirects to dashboard", async (
 }) => {
   test.slow();
   await page.goto("/auth/onboard");
+  await expect(page.getByRole("button", { name: "Create Workspace" })).toBeEnabled({ timeout: 10_000 });
 
   await page.getByLabel("Organization Name").fill("My Test Org");
   await page.getByRole("button", { name: "Create Workspace" }).click();
 
-  await page.waitForURL(/\/(dashboard|auth\/onboard)/, { timeout: 30_000 });
-
-  if (page.url().includes("/auth/onboard")) {
-    await page.waitForTimeout(1_000);
-    await page.reload();
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
-  }
-
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
 });
 
 test("submitting blank org name still creates workspace", async ({ page }) => {
   test.slow();
   await page.goto("/auth/onboard");
+  await expect(page.getByRole("button", { name: "Create Workspace" })).toBeEnabled({ timeout: 10_000 });
 
   await page.getByRole("button", { name: "Create Workspace" }).click();
 
-  await page.waitForURL(/\/(dashboard|auth\/onboard)/, { timeout: 30_000 });
-
-  if (page.url().includes("/auth/onboard")) {
-    await page.waitForTimeout(1_000);
-    await page.reload();
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
-  }
-
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
 });
 
 test.describe("unauthenticated", () => {
