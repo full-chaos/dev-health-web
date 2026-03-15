@@ -21,6 +21,7 @@ beforeEach(() => {
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
     data: { access_token: "test-token" },
+    status: "authenticated",
     update: mockUpdate,
   }),
 }))
@@ -54,7 +55,7 @@ describe("OnboardForm", () => {
   })
 
   it("submits with org name and redirects", async () => {
-    mockUpdate.mockResolvedValue(undefined)
+    mockUpdate.mockResolvedValue({ user: { org_id: "org-123" } })
     const fetchSpy = vi.spyOn(global, "fetch")
     fetchSpy.mockResolvedValue(
       new Response(
@@ -93,7 +94,7 @@ describe("OnboardForm", () => {
   })
 
   it("redirects to trial checkout when team trial intent is present", async () => {
-    mockUpdate.mockResolvedValue(undefined)
+    mockUpdate.mockResolvedValue({ user: { org_id: "org-123" } })
     const fetchSpy = vi.spyOn(global, "fetch")
     fetchSpy.mockResolvedValue(
       new Response(
@@ -123,7 +124,7 @@ describe("OnboardForm", () => {
   })
 
   it("submits blank name (uses default)", async () => {
-    mockUpdate.mockResolvedValue(undefined)
+    mockUpdate.mockResolvedValue({ user: { org_id: "org-123" } })
     const fetchSpy = vi.spyOn(global, "fetch")
     fetchSpy.mockResolvedValue(
       new Response(
