@@ -1,16 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-test("/auth/signin renders login form", async ({ page }) => {
+test("/auth/signin renders login form with tabs", async ({ page }) => {
   await page.goto("/auth/signin");
 
   await expect(page).toHaveURL(/\/auth\/signin(?:\?|$)/);
-  await expect(
-    page.getByRole("heading", { name: "Sign in to your account" }),
-  ).toBeVisible();
-  await expect(page.getByText("Access your Dev Health dashboard")).toBeVisible();
+  // Tab toggle should show Sign in as active
+  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create account" })).toBeVisible();
+  await expect(page.getByText("continue with email")).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByLabel("Password")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 });
 
 test("/auth/signin shows post-registration banner", async ({ page }) => {
@@ -27,10 +27,18 @@ test("/auth/signin shows error toast on failed login", async ({ page }) => {
   // Fill in credentials that will fail (mock backend rejects all logins)
   await page.getByLabel("Email").fill("bad@example.com");
   await page.getByLabel("Password").fill("wrongpassword");
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
 
   // The Toaster component must be mounted in the (auth) layout for this to appear
   await expect(
     page.getByText("Invalid email or password"),
   ).toBeVisible({ timeout: 10_000 });
+});
+
+test("/auth/signin tab navigates to signup", async ({ page }) => {
+  await page.goto("/auth/signin");
+
+  await page.getByRole("link", { name: "Create account" }).click();
+
+  await expect(page).toHaveURL(/\/auth\/signup/);
 });

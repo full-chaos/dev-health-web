@@ -60,6 +60,9 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
      }
    }
 
+   const inputClass =
+     "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow"
+
    return (
      <>
        {verifyEmail && (
@@ -70,9 +73,9 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
            </p>
          </div>
        )}
-       <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
+       <form onSubmit={handleSubmit} className="space-y-5">
          <div className="space-y-2">
-           <label htmlFor="email" className="block text-sm font-medium text-[var(--foreground)]">
+           <label htmlFor="email" className="block text-base font-medium text-[var(--foreground)]">
              Email
            </label>
            <input
@@ -81,13 +84,13 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
              value={email}
              onChange={(e) => setEmail(e.target.value)}
              required
-             className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+             className={inputClass}
              placeholder="name@example.com"
            />
          </div>
 
          <div className="space-y-2">
-          <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)]">
+          <label htmlFor="password" className="block text-base font-medium text-[var(--foreground)]">
             Password
           </label>
           <input
@@ -96,12 +99,12 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className={inputClass}
           />
         </div>
 
         <div className="text-right">
-          <Link href="/auth/forgot-password" className="text-xs text-[var(--accent)] hover:underline">
+          <Link href="/auth/forgot-password" className="text-sm text-[var(--accent)] hover:underline">
             Forgot password?
           </Link>
         </div>
@@ -109,9 +112,9 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
         <button
            type="submit"
            disabled={loading}
-           className="w-full py-2 px-4 bg-[var(--accent)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
+           className="w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
          >
-           {loading ? "Signing in..." : "Sign In"}
+           {loading ? "Signing in..." : "Sign in"}
          </button>
        </form>
      </>

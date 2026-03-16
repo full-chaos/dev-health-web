@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { toast } from "sonner"
 import { resolveOrigin } from "@/lib/origin"
 import { extractErrorMessage } from "@/lib/errorMessages"
+import { PasswordStrength } from "./PasswordStrength"
 
 type SignupFormProps = {
   plan?: string
@@ -16,24 +16,23 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
    const router = useRouter()
    const [email, setEmail] = useState("")
    const [password, setPassword] = useState("")
-   const [confirmPassword, setConfirmPassword] = useState("")
    const [fullName, setFullName] = useState("")
+   const [agreedToTerms, setAgreedToTerms] = useState(false)
    const [loading, setLoading] = useState(false)
 
    const normalizedPlan = plan?.toLowerCase()
    const isTeamTrialIntent = trialIntent && normalizedPlan === "team"
-   const signInQuery = isTeamTrialIntent ? "?plan=team&trial=true" : ""
 
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault()
 
-     if (password !== confirmPassword) {
-       toast.error("Passwords do not match")
+     if (password.length < 12) {
+       toast.error("Password must be at least 12 characters")
        return
      }
 
-     if (password.length < 12) {
-       toast.error("Password must be at least 12 characters")
+     if (!agreedToTerms) {
+       toast.error("Please agree to the Terms of Service and Privacy Policy")
        return
      }
 
@@ -77,24 +76,27 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
      }
    }
 
+   const inputClass =
+     "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow"
+
    return (
-     <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
+     <form onSubmit={handleSubmit} className="space-y-5">
        <div className="space-y-2">
-        <label htmlFor="fullName" className="block text-sm font-medium text-[var(--foreground)]">
-          Full Name
+        <label htmlFor="fullName" className="block text-base font-medium text-[var(--foreground)]">
+          Display name
         </label>
         <input
           id="fullName"
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          className={inputClass}
           placeholder="John Doe"
         />
       </div>
-      
+
       <div className="space-y-2">
-        <label htmlFor="email" className="block text-sm font-medium text-[var(--foreground)]">
+        <label htmlFor="email" className="block text-base font-medium text-[var(--foreground)]">
           Email
         </label>
         <input
@@ -103,13 +105,13 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          className={inputClass}
           placeholder="name@example.com"
         />
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)]">
+        <label htmlFor="password" className="block text-base font-medium text-[var(--foreground)]">
           Password
         </label>
         <input
@@ -119,39 +121,38 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={12}
-          className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          className={inputClass}
         />
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-[var(--foreground)]">
-          Confirm Password
-        </label>
+      <PasswordStrength password={password} />
+
+      <label className="flex items-start gap-3 cursor-pointer">
         <input
-          id="confirmPassword"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          minLength={12}
-          className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          type="checkbox"
+          checked={agreedToTerms}
+          onChange={(e) => setAgreedToTerms(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-[var(--card-stroke)] accent-[var(--accent)]"
         />
-      </div>
+        <span className="text-sm text-[var(--foreground)]">
+          I agree to the{" "}
+          <a href="/terms" className="text-[var(--accent)] hover:underline">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" className="text-[var(--accent)] hover:underline">
+            Privacy Policy
+          </a>
+        </span>
+      </label>
 
       <button
         type="submit"
-        disabled={loading}
-        className="w-full py-2 px-4 bg-[var(--accent)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
+        disabled={loading || !agreedToTerms}
+        className="w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
       >
-        {loading ? "Creating account..." : "Create Account"}
+        {loading ? "Creating account..." : "Create account"}
       </button>
-
-      <p className="text-center text-sm text-[var(--ink-muted)]">
-        Already have an account?{" "}
-        <Link href={`/auth/signin${signInQuery}`} className="text-[var(--accent)] hover:underline">
-          Sign in
-        </Link>
-      </p>
     </form>
   )
 }
