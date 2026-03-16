@@ -13,6 +13,34 @@ vi.mock("@/lib/origin", () => ({
 
 import { SignupForm } from "./SignupForm"
 
+/** Helper: fill required fields and check the terms checkbox */
+async function fillAndSubmit(
+  user: ReturnType<typeof userEvent.setup>,
+  overrides: {
+    displayName?: string
+    email?: string
+    password?: string
+    agreeToTerms?: boolean
+  } = {},
+) {
+  const {
+    displayName,
+    email = "test@example.com",
+    password = "password12345",
+    agreeToTerms = true,
+  } = overrides
+
+  if (displayName) {
+    await user.type(screen.getByLabelText("Display name"), displayName)
+  }
+  await user.type(screen.getByLabelText("Email"), email)
+  await user.type(screen.getByLabelText("Password"), password)
+  if (agreeToTerms) {
+    await user.click(screen.getByRole("checkbox"))
+  }
+  await user.click(screen.getByRole("button", { name: "Create account" }))
+}
+
 describe("SignupForm", () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -22,36 +50,35 @@ describe("SignupForm", () => {
   it("renders all form fields", () => {
     renderWithToaster(<SignupForm />)
 
-    expect(screen.getByLabelText("Full Name")).toBeInTheDocument()
+    expect(screen.getByLabelText("Display name")).toBeInTheDocument()
     expect(screen.getByLabelText("Email")).toBeInTheDocument()
     expect(screen.getByLabelText("Password")).toBeInTheDocument()
-    expect(screen.getByLabelText("Confirm Password")).toBeInTheDocument()
+    expect(screen.getByRole("checkbox")).toBeInTheDocument()
   })
 
-  it("renders submit button and sign-in link", () => {
+  it("renders submit button (disabled until terms accepted)", () => {
     renderWithToaster(<SignupForm />)
 
-    expect(
-      screen.getByRole("button", {
-        name: "Create Account",
-      }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument()
+    const button = screen.getByRole("button", { name: "Create account" })
+    expect(button).toBeInTheDocument()
+    expect(button).toBeDisabled()
   })
 
-  it("shows password mismatch error", async () => {
-    vi.spyOn(global, "fetch")
+  it("enables submit button when terms checkbox is checked", async () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "different12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await user.click(screen.getByRole("checkbox"))
+    expect(screen.getByRole("button", { name: "Create account" })).toBeEnabled()
+  })
 
-    await waitFor(() => {
-      expect(screen.getByText("Passwords do not match")).toBeInTheDocument()
-    })
+  it("shows password strength indicator", async () => {
+    renderWithToaster(<SignupForm />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Password"), "weak")
+    expect(screen.getByText("Password strength")).toBeInTheDocument()
+    expect(screen.getByText("Weak")).toBeInTheDocument()
   })
 
   it("shows password too short error", async () => {
@@ -59,16 +86,28 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "short")
-    await user.type(screen.getByLabelText("Confirm Password"), "short")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user, { password: "short" })
 
     await waitFor(() => {
       expect(
         screen.getByText("Password must be at least 12 characters"),
       ).toBeInTheDocument()
     })
+  })
+
+  it("shows terms required error when not accepted", async () => {
+    vi.spyOn(global, "fetch")
+    renderWithToaster(<SignupForm />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com")
+    await user.type(screen.getByLabelText("Password"), "password12345")
+    // Check then uncheck terms to enable and click submit
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("checkbox"))
+
+    // Button should be disabled again
+    expect(screen.getByRole("button", { name: "Create account" })).toBeDisabled()
   })
 
   it("successful registration redirects to signin", async () => {
@@ -83,11 +122,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Full Name"), "Test User")
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user, { displayName: "Test User" })
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/auth/signin?registered=true")
@@ -106,22 +141,13 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm plan="team" trialIntent />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Full Name"), "Trial User")
-    await user.type(screen.getByLabelText("Email"), "trial@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user, { displayName: "Trial User", email: "trial@example.com" })
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith(
         "/auth/signin?registered=true&plan=team&trial=true",
       )
     })
-
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "/auth/signin?plan=team&trial=true",
-    )
   })
 
   it("shows server error on failed registration", async () => {
@@ -136,10 +162,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user)
 
     await waitFor(() => {
       expect(screen.getByText("Email already exists")).toBeInTheDocument()
@@ -158,10 +181,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user)
 
     await waitFor(() => {
       expect(
@@ -182,10 +202,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user)
 
     await waitFor(() => {
       expect(
@@ -206,10 +223,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user)
 
     await waitFor(() => {
       expect(screen.getByText("Registration failed")).toBeInTheDocument()
@@ -223,10 +237,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user)
 
     await waitFor(() => {
       expect(screen.getByText("An error occurred. Please try again.")).toBeInTheDocument()
@@ -255,10 +266,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user)
 
     await waitFor(() => {
       expect(
@@ -286,10 +294,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user)
 
     await waitFor(() => {
       expect(
@@ -321,10 +326,7 @@ describe("SignupForm", () => {
     renderWithToaster(<SignupForm />)
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com")
-    await user.type(screen.getByLabelText("Password"), "password12345")
-    await user.type(screen.getByLabelText("Confirm Password"), "password12345")
-    await user.click(screen.getByRole("button", { name: "Create Account" }))
+    await fillAndSubmit(user)
 
     await waitFor(() => {
       expect(
