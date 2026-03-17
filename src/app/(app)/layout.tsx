@@ -17,14 +17,16 @@ export default async function AppLayout({
   return (
     <SessionProvider>
       <GraphQLProvider orgId={session.user.org_id}>
-        <div className="fixed right-6 top-6 z-50">
-          <UserMenu />
+        <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
+          <div className="fixed right-6 top-6 z-50">
+            <UserMenu />
+          </div>
+          <ImpersonationBanner />
+          <TrialBanner />
+          {children}
+          <BugReportButton />
+          <Toaster richColors position="top-right" theme="dark" />
         </div>
-        <ImpersonationBanner />
-        <TrialBanner />
-        {children}
-        <BugReportButton />
-        <Toaster richColors position="top-right" theme="dark" />
       </GraphQLProvider>
     </SessionProvider>
   );
