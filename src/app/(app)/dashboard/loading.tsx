@@ -1,8 +1,23 @@
 import { SkeletonLine, SkeletonCard } from "@/components/ui/Skeleton";
 
+function NavSkeleton() {
+  return (
+    <aside className="w-full md:max-w-[220px] md:shrink-0 animate-pulse">
+      <div className="sticky top-10 space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="h-10 bg-(--card-70) rounded-2xl" />
+        ))}
+      </div>
+    </aside>
+  );
+}
+
 export default function Loading() {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-10">
+    <div className="min-h-screen text-foreground">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-20 pt-10 md:flex-row">
+        <NavSkeleton />
+        <main className="flex min-w-0 flex-1 flex-col gap-10">
       {/* Header card */}
       <div className="rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse">
         <div className="flex flex-col gap-6">
@@ -84,6 +99,8 @@ export default function Loading() {
         </div>
         <SkeletonCard lines={4} />
       </div>
-    </div>
+    </main>
+   </div>
+  </div>
   );
 }
