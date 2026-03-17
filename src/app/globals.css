@@ -19,6 +19,7 @@
   --accent-2: #625b71;
   --accent-3: #7d5260;
   --accent-negative: #b3261e;
+  --accent-highlight: #fb8c00;
   --card: #ffffff;
   --card-90: color-mix(in srgb, var(--card) 90%, transparent);
   --card-80: color-mix(in srgb, var(--card) 80%, transparent);
@@ -59,6 +60,7 @@
     --accent-2: #ccc2dc;
     --accent-3: #efb8c8;
     --accent-negative: #f2b8b5;
+    --accent-highlight: #ffcc80;
     --card: #211f26;
     --card-stroke: #49454f;
     --chart-color-1: #90caf9;
@@ -92,6 +94,7 @@
   --accent-2: #625b71;
   --accent-3: #7d5260;
   --accent-negative: #b3261e;
+  --accent-highlight: #fb8c00;
   --card: #ffffff;
   --card-stroke: #e7e0ec;
   --chart-color-1: #1e88e5;
@@ -121,6 +124,7 @@
   --accent-2: #ccc2dc;
   --accent-3: #efb8c8;
   --accent-negative: #f2b8b5;
+  --accent-highlight: #ffcc80;
   --card: #211f26;
   --card-stroke: #49454f;
   --chart-color-1: #90caf9;
@@ -153,6 +157,7 @@
   --accent-2: #06b6d4;
   --accent-3: #f59e0b;
   --accent-negative: #ef4444;
+  --accent-highlight: #f59e0b;
   --card: #ffffff;
   --card-stroke: #e2e8f0;
   --chart-muted: #64748b;
@@ -183,6 +188,7 @@
   --accent-2: #22d3ee;
   --accent-3: #fbbf24;
   --accent-negative: #f87171;
+  --accent-highlight: #f59e0b;
   --card: #111827;
   --card-stroke: #334155;
   --chart-color-1: #38bdf8;
@@ -215,6 +221,7 @@
   --accent-2: #06b6d4;
   --accent-3: #f59e0b;
   --accent-negative: #ef4444;
+  --accent-highlight: #ff7f0e;
   --card: #ffffff;
   --card-stroke: #e2e8f0;
   --chart-grid: #e5e7eb;
@@ -247,6 +254,7 @@
   --accent-2: #22d3ee;
   --accent-3: #fbbf24;
   --accent-negative: #f87171;
+  --accent-highlight: #ff7f0e;
   --card: #111827;
   --card-stroke: #334155;
   --chart-color-1: #1f77b4;
@@ -279,6 +287,7 @@
   --accent-2: #ff5f1f;
   --accent-3: #63d7ff;
   --accent-negative: #e53e3e;
+  --accent-highlight: #ff5f1f;
   --card: #fffdf9;
   --card-stroke: #f5dfc7;
   --chart-muted: #7a5f4f;
@@ -310,6 +319,7 @@
   --accent-2: #ff5f1f;
   --accent-3: #63d7ff;
   --accent-negative: #ff6f6f;
+  --accent-highlight: #ff5f1f;
   --card: #0f1126;
   --card-stroke: #1f2247;
   --chart-color-1: #ffb035;
@@ -343,6 +353,7 @@
   --accent-2: #3498db;
   --accent-3: #f39c12;
   --accent-negative: #e74c3c;
+  --accent-highlight: #e67e22;
   --card: #ffffff;
   --card-stroke: #d5dadd;
   --chart-color-1: #1abc9c;
@@ -372,6 +383,7 @@
   --accent-2: #5dade2;
   --accent-3: #f5c542;
   --accent-negative: #f1948a;
+  --accent-highlight: #e67e22;
   --card: #34495e;
   --card-stroke: #3d566e;
   --chart-color-1: #1abc9c;

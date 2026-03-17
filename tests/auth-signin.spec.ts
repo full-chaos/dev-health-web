@@ -4,9 +4,9 @@ test("/auth/signin renders login form with tabs", async ({ page }) => {
   await page.goto("/auth/signin");
 
   await expect(page).toHaveURL(/\/auth\/signin(?:\?|$)/);
-  // Tab toggle should show Sign in as active
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Create account" })).toBeVisible();
+  // Tab toggle should show Sign in as active (scope to main to avoid nav "Sign in" link)
+  await expect(page.getByRole("main").getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Create account" })).toBeVisible();
   await expect(page.getByText("continue with email")).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByLabel("Password")).toBeVisible();
