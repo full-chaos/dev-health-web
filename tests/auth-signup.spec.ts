@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 test("signup page renders registration form with tabs", async ({ page }) => {
   await page.goto("/auth/signup");
 
-  // Tab toggle should show Create account as active
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Create account" })).toBeVisible();
+  // Tab toggle should show Create account as active (scope to main to avoid nav "Sign in" link)
+  await expect(page.getByRole("main").getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Create account" })).toBeVisible();
   await expect(page.getByText("continue with email")).toBeVisible();
   await expect(page.getByLabel("Display name")).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
@@ -83,7 +83,7 @@ test("duplicate email shows server error toast", async ({ page }) => {
 test("sign in tab navigates to signin page", async ({ page }) => {
   await page.goto("/auth/signup");
 
-  await page.getByRole("link", { name: "Sign in" }).click();
+  await page.getByRole("main").getByRole("link", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/auth\/signin/);
 });

@@ -20,19 +20,19 @@ test("signup form submits successfully and redirects with registered banner", as
   const email = testEmail("ui-signup");
 
   await page.goto("/auth/signup");
-  await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Create account" })).toBeVisible();
 
-  await page.getByLabel("Full Name").fill("UI Signup User");
+  await page.getByLabel("Display name").fill("UI Signup User");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("TestPass123!");
-  await page.getByLabel("Confirm Password").fill("TestPass123!");
+  await page.getByLabel("Password").fill("TestPass123!TestPass123!");
+  await page.getByRole("checkbox").check();
 
   // Capture the register API response so we can assert status and diagnose
   // failures caused by rate-limiting (429) or CSRF (403).
   const registerResponsePromise = page.waitForResponse(
     (resp) => resp.url().includes("/api/v1/auth/register"),
   );
-  await page.getByRole("button", { name: "Create Account" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   const registerResponse = await registerResponsePromise;
 
   // Skip if the backend rate-limits this IP (3 registrations / hour).
