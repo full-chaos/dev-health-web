@@ -486,7 +486,7 @@ export function FilterBarClient({
                           Scope level
                         </span>
                         <select
-                          className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
+                          className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
                           value={scopeLevel}
                           onChange={(event) =>
                             updateFilters({
@@ -558,7 +558,7 @@ export function FilterBarClient({
                             Start date
                           </span>
                           <input
-                            className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
+                            className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
                             type="date"
                             value={formatDateInput(startDate)}
                             onChange={(event) => {
@@ -590,7 +590,7 @@ export function FilterBarClient({
                             End date
                           </span>
                           <input
-                            className="rounded-xl border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm"
+                            className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
                             type="date"
                             value={formatDateInput(endDate)}
                             onChange={(event) => {
@@ -904,7 +904,7 @@ export function FilterBarClient({
                 <label className="flex flex-col gap-2">
                   <span className="text-xs text-(--ink-muted)">Developers</span>
                   <input
-                    className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                    className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2"
                     placeholder="alice, bob"
                     value={toValue(developers)}
                     onChange={(event) =>
@@ -918,7 +918,7 @@ export function FilterBarClient({
                 <label className="flex flex-col gap-2">
                   <span className="text-xs text-(--ink-muted)">Roles</span>
                   <input
-                    className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                    className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2"
                     placeholder="maintainer, reviewer"
                     value={toValue(roles)}
                     onChange={(event) =>

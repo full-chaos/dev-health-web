@@ -86,7 +86,7 @@ export function DataTable<T>({
                   value={search.value}
                   onChange={(event) => onSearchChangeAction?.(event.target.value)}
                   placeholder={search.placeholder ?? "Search"}
-                  className="rounded-md border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-sm text-foreground"
+                  className="rounded-md border border-(--card-stroke) bg-(--card-60) px-2 py-1 text-sm text-foreground"
                 />
                 <button
                   type="submit"
