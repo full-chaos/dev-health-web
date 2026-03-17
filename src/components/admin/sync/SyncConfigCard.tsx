@@ -115,7 +115,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isPending}
-                className="rounded-md bg-(--card-70) px-2 py-1 text-xs font-medium text-(--ink-muted) hover:bg-(--card-60)"
+                className="rounded-md border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-xs font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
               >
                 Cancel
               </button>
@@ -126,7 +126,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                 type="button"
                 onClick={handleToggleActive}
                 disabled={isPending}
-                className="rounded-md bg-(--card-70) px-3 py-1.5 text-xs font-medium text-(--ink-muted) hover:bg-(--card-60) disabled:opacity-50"
+                className="rounded-md border border-(--card-stroke) bg-(--card-70) px-3 py-1.5 text-xs font-medium text-foreground hover:border-(--accent) hover:text-(--accent) disabled:opacity-50"
               >
                 {config.is_active ? "Pause" : "Resume"}
               </button>
