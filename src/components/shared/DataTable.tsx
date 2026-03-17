@@ -86,7 +86,7 @@ export function DataTable<T>({
                   value={search.value}
                   onChange={(event) => onSearchChangeAction?.(event.target.value)}
                   placeholder={search.placeholder ?? "Search"}
-                  className="rounded-md border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-sm text-foreground"
+                  className="rounded-md border border-(--card-stroke) bg-(--card-60) px-2 py-1 text-sm text-foreground"
                 />
                 <button
                   type="submit"
@@ -120,7 +120,7 @@ export function DataTable<T>({
           </thead>
           <tbody className="divide-y divide-(--card-stroke)">
             {data.map((row) => (
-              <tr key={rowKeyAction(row)} className="hover:bg-(--card-70)/50">
+              <tr key={rowKeyAction(row)} className="transition-colors hover:bg-(--card-70)">
                 {columns.map((column) => (
                   <td key={column.key} className={column.className ?? "px-4 py-3"}>
                     {column.render(row)}

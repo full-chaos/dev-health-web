@@ -24,7 +24,7 @@ type InvestmentPreviewProps = {
 function LoadingState() {
   return (
     <div
-      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) h-[320px]"
+      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]"
     >
       <div className="mb-4 flex gap-1">
         <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:0ms]" />

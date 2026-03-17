@@ -291,7 +291,7 @@ export default function Home() {
 
         <section className="grid gap-6 md:grid-cols-2">
           <div
-            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
             data-testid="chart-sparkline"
           >
             <div className="mb-4 flex items-center justify-between">
@@ -304,7 +304,7 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
             data-testid="chart-vertical-bar"
           >
             <div className="mb-4 flex items-center justify-between">
@@ -323,7 +323,7 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
             data-testid="chart-horizontal-bar"
           >
             <div className="mb-4 flex items-center justify-between">
@@ -339,7 +339,7 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
             data-testid="chart-donut"
           >
             <div className="mb-4 flex items-center justify-between">
@@ -352,7 +352,7 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
             data-testid="chart-nested-pie-2d"
           >
             <div className="mb-4 flex items-center justify-between">
@@ -368,7 +368,7 @@ export default function Home() {
           </div>
 
           <div
-            className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+            className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
             data-testid="chart-nested-pie-3d"
           >
             <div className="mb-4 flex items-center justify-between">
@@ -385,7 +385,7 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
           data-testid="chart-heatmap"
         >
           <div className="mb-4 flex items-center justify-between">
@@ -398,7 +398,7 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
           data-testid="chart-flame"
         >
           <div className="mb-4 flex items-center justify-between">
@@ -411,7 +411,7 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
           data-testid="chart-quadrant"
         >
           <div className="mb-4 flex items-center justify-between">
@@ -438,7 +438,7 @@ export default function Home() {
           />
         </section>
 
-        <section className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm">
+        <section className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -500,7 +500,7 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
           data-testid="chart-sankey"
         >
           <div className="mb-4 flex items-center justify-between">
@@ -515,7 +515,7 @@ export default function Home() {
         </section>
 
         <section
-          className="rounded-2xl border border-(--card-stroke) bg-card p-6 shadow-sm"
+          className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
           data-testid="chart-work-graph"
         >
           <div className="mb-4 flex items-center justify-between">

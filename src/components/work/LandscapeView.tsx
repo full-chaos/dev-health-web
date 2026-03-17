@@ -119,7 +119,7 @@ export function LandscapeView({
             </section>
 
             <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <h2 className="font-(--font-display) text-xl">Investment Mix</h2>
                         <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
@@ -140,14 +140,14 @@ export function LandscapeView({
                                 unit={investmentMix.unit ?? "units"}
                             />
                         ) : (
-                            <div className="flex h-[280px] items-center justify-center rounded-3xl border border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                            <div className="flex h-[280px] items-center justify-center rounded-3xl border border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
                                 Investment data unavailable.
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
                     <div className="flex items-center justify-between">
                         <h2 className="font-(--font-display) text-xl">Planned vs Unplanned</h2>
                         <Link
