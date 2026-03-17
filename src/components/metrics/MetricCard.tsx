@@ -50,7 +50,7 @@ export function MetricCard({
       </div>
       <div className="mt-3 flex items-center justify-between gap-4">
         <div>
-          <p className="text-2xl font-semibold">
+          <p className="text-2xl font-semibold metric-hero">
             {value === undefined || value === null
               ? "--"
               : formatMetricValue(value, unit ?? "")}

@@ -468,3 +468,10 @@ body {
   outline-offset: 2px;
   border-radius: inherit;
 }
+
+.metric-hero {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
