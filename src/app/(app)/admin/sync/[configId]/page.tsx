@@ -45,7 +45,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
             <TestConnectionButton provider={config.provider} credentialId={config.credential_id} />
             <Link
               href={`/admin/sync/${config.id}/edit`}
-              className="rounded-md bg-(--card-70) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-60) hover:text-foreground"
+              className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
             >
               Edit Config
             </Link>
