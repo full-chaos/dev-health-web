@@ -96,7 +96,7 @@ export function CockpitClient({
                                     {formatDelta(delta.delta_pct)}
                                 </span>
                             </div>
-                            <p className="mt-4 text-2xl font-semibold">
+                            <p className="mt-4 text-2xl font-semibold metric-hero">
                                 {placeholderDeltas ? "--" : formatMetricValue(delta.value, delta.unit)}
                             </p>
                             <p className="mt-3 text-xs text-(--ink-muted)">
@@ -108,7 +108,7 @@ export function CockpitClient({
             </section>
 
             <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <h2 className="font-(--font-display) text-2xl">Notable shifts</h2>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         Short shifts from the selected window.
@@ -180,7 +180,7 @@ export function CockpitClient({
             </section>
 
             <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-xl">Limiting factor</h3>
                         <button
@@ -217,7 +217,7 @@ export function CockpitClient({
                     </div>
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-xl">Recent events</h3>
                         <Link

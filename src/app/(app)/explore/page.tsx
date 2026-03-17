@@ -249,7 +249,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
               <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Debug filters
               </summary>
-              <pre className="mt-3 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 text-xs text-(--ink-muted)">
+              <pre className="mt-3 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card-60) px-4 py-3 text-xs text-(--ink-muted)">
                 {JSON.stringify(filters, null, 2)}
               </pre>
             </details>
@@ -257,12 +257,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
           {view === "explain" && (
             <section id="evidence" className="grid gap-6 lg:grid-cols-3">
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   Snapshot
                 </p>
                 <div className="mt-3 flex flex-wrap items-baseline gap-3">
-                  <span className="text-3xl font-semibold">
+                  <span className="text-3xl font-semibold metric-hero">
                     {data ? formatMetricValue(data.value, data.unit) : "--"}
                   </span>
                   <span className="text-sm text-(--ink-muted)">
@@ -274,7 +274,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
                 <div className="flex items-center justify-between">
                   <h2 className="font-(--font-display) text-xl">Top Associations</h2>
                   <Link
@@ -312,7 +312,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 )}
               </div>
 
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
                 <div className="flex items-center justify-between">
                   <h2 className="font-(--font-display) text-xl">Contributors</h2>
                   <Link
@@ -434,7 +434,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
               <p className="mt-3 text-sm text-(--ink-muted)">
                 This endpoint powers the cockpit. Open Home for the curated summary.
               </p>
-              <pre className="mt-4 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 text-xs text-(--ink-muted)">
+              <pre className="mt-4 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card-60) px-4 py-3 text-xs text-(--ink-muted)">
                 {JSON.stringify(home ?? {}, null, 2)}
               </pre>
             </section>

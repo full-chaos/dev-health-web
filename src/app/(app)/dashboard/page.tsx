@@ -158,7 +158,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
           {/* Minimal freshness indicator only — no integration status UI */}
 
-          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">

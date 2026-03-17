@@ -249,7 +249,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Likely associations</h2>
                 <Link
@@ -290,7 +290,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               )}
             </div>
 
-            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Primary contributors</h2>
                 <Link
