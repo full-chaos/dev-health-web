@@ -101,7 +101,7 @@ export function BugReportButton() {
     <>
       <button
         type="button"
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-(--card-stroke) bg-(--card-80) text-foreground shadow-xl transition hover:border-(--accent) hover:text-(--accent)"
+        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-(--accent-highlight) bg-(--card-80) text-foreground shadow-xl transition hover:border-(--accent) hover:text-(--accent)"
         onClick={() => setIsOpen(true)}
         aria-label="Report an issue"
       >
