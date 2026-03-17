@@ -459,7 +459,7 @@ export function FilterBarClient({
   return (
     <section
       ref={barRef}
-      className={`w-full border-b border-(--card-stroke) bg-(--card-90) p-4 transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
+      className={`w-full border-b border-(--card-stroke) bg-(--card-90)/80 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
     >
       <div className="flex w-full flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
