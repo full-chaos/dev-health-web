@@ -7,15 +7,15 @@ import { SyncStatusBadge } from "./SyncStatusBadge";
 
 type SyncConfigGroupProps = {
   parent: SyncConfig;
-  children: SyncConfig[];
+  childConfigs: SyncConfig[];
 };
 
-export function SyncConfigGroup({ parent, children }: SyncConfigGroupProps) {
+export function SyncConfigGroup({ parent, childConfigs }: SyncConfigGroupProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const successCount = children.filter((c) => c.last_sync_success === true).length;
-  const failedCount = children.filter((c) => c.last_sync_success === false).length;
-  const pendingCount = children.filter((c) => c.last_sync_at === null).length;
+  const successCount = childConfigs.filter((c) => c.last_sync_success === true).length;
+  const failedCount = childConfigs.filter((c) => c.last_sync_success === false).length;
+  const pendingCount = childConfigs.filter((c) => c.last_sync_at === null).length;
 
   const groupStatus = failedCount > 0 ? "failed" : successCount > 0 ? "success" : "never";
 
@@ -31,7 +31,7 @@ export function SyncConfigGroup({ parent, children }: SyncConfigGroupProps) {
           <div className="flex items-center gap-2">
             <h3 className="font-medium text-foreground">{parent.name}</h3>
             <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2 py-0.5 text-xs text-(--ink-muted)">
-              {children.length} repo{children.length !== 1 ? "s" : ""}
+              {childConfigs.length} repo{childConfigs.length !== 1 ? "s" : ""}
             </span>
           </div>
           <div className="flex items-center gap-3 text-xs text-(--ink-muted)">
@@ -71,7 +71,7 @@ export function SyncConfigGroup({ parent, children }: SyncConfigGroupProps) {
       {/* Children */}
       {expanded && (
         <div className="border-t border-(--card-stroke) p-4 grid gap-4 md:grid-cols-2">
-          {children.map((child) => (
+          {childConfigs.map((child) => (
             <SyncConfigCard key={child.id} config={child} />
           ))}
         </div>

@@ -64,7 +64,7 @@ export default async function SyncStatusPage() {
             <SyncConfigGroup
               key={parent.id}
               parent={parent}
-              children={childrenByParent.get(parent.id) ?? []}
+              childConfigs={childrenByParent.get(parent.id) ?? []}
             />
           ))}
         </div>
