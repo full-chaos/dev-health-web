@@ -13,21 +13,25 @@ type AdminTierContextValue = {
   tier: string;
   features: Record<string, boolean>;
   minSyncIntervalHours: number;
+  limits: Record<string, number | null>;
 };
 
 const AdminTierContext = createContext<AdminTierContextValue>({
   tier: "community",
   features: {},
   minSyncIntervalHours: 24,
+  limits: {},
 });
 
 export function AdminTierProvider({
   tier,
   features: backendFeatures,
+  limits: backendLimits,
   children,
 }: {
   tier: string;
   features: Record<string, boolean>;
+  limits?: Record<string, number | null>;
   children: React.ReactNode;
     }) {
   const features = {
@@ -37,9 +41,10 @@ export function AdminTierProvider({
   };
 
   const minSyncIntervalHours = TIER_MIN_SYNC_INTERVAL_HOURS[tier] ?? 24;
+  const limits = backendLimits ?? {};
 
   return (
-    <AdminTierContext.Provider value={{ tier, features, minSyncIntervalHours }}>
+    <AdminTierContext.Provider value={{ tier, features, minSyncIntervalHours, limits }}>
       {children}
     </AdminTierContext.Provider>
   );

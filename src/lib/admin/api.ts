@@ -14,6 +14,9 @@ import type {
   SyncJob,
   BackfillResponse,
   BackfillJob,
+  DiscoveredReposResponse,
+  SyncConfigBatchCreate,
+  SyncConfigBatchResponse,
 IdentityMapping,
   IdentityMappingCreate,
   IdentityMappingUpdate,
@@ -228,6 +231,14 @@ export const adminApi = {
         token,
         orgId
       ),
+
+    listRepos: (credentialId: string, owner: string, token?: string, orgId?: string) =>
+      request<DiscoveredReposResponse>(
+        `/credentials/${credentialId}/repos?owner=${encodeURIComponent(owner)}`,
+        {},
+        token,
+        orgId
+      ),
   },
 
   syncConfigs: {
@@ -277,6 +288,14 @@ export const adminApi = {
 
     jobs: (id: string, token?: string, orgId?: string) =>
       request<SyncJob[]>(`/sync-configs/${id}/jobs`, {}, token, orgId),
+
+    batchCreate: (data: SyncConfigBatchCreate, token?: string, orgId?: string) =>
+      request<SyncConfigBatchResponse>(
+        "/sync-configs/batch",
+        { method: "POST", body: JSON.stringify(data) },
+        token,
+        orgId
+      ),
   },
 
   identities: {

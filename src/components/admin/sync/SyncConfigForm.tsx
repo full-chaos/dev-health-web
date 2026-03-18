@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SyncConfig, IntegrationCredential, Provider, PROVIDERS, PROVIDER_LABELS, PROVIDER_SYNC_TARGETS } from "@/lib/admin/types";
-import { createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
+import { batchCreateSyncConfigs, createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
 import { CreateCredentialModal } from "./CreateCredentialModal";
+import { RepoSelector } from "./RepoSelector";
 import { SchedulePicker } from "./SchedulePicker";
 
 type SyncConfigFormProps = {
@@ -37,7 +38,8 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
   const [isPending, startTransition] = useTransition();
   const [showCredentialModal, setShowCredentialModal] = useState(false);
   const [localCredentials, setLocalCredentials] = useState(credentials);
-  const { features, minSyncIntervalHours } = useAdminTier();
+  const { features, minSyncIntervalHours, limits } = useAdminTier();
+  const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
 
   const { formData, setFormData, handleChange: handleBaseChange } = useBaseFormState({
     name: initialData?.name || "",
@@ -49,7 +51,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     timezone: initialData?.timezone ?? null,
     initial_sync_depth: (initialData?.initial_sync_depth ?? 30) as number | null,
     owner: (initialData?.sync_options?.owner as string) || "",
-    repo: (initialData?.sync_options?.repo as string) || "",
+    repos: [] as string[],
     gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
   });
 
@@ -80,7 +82,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         sync_targets: prev.sync_targets.filter((t) => newAllowed.includes(t)),
         credential_id: "",
         owner: "",
-        repo: "",
+        repos: [],
         gitlab_url: "",
       }));
     } else {
@@ -100,12 +102,11 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
   const buildSyncOptions = useCallback((): Record<string, unknown> => {
     const opts: Record<string, unknown> = {};
     if (formData.owner) opts.owner = formData.owner;
-    if (formData.repo) opts.repo = formData.repo;
     if (formData.provider === "gitlab" && formData.gitlab_url) {
       opts.gitlab_url = formData.gitlab_url;
     }
     return opts;
-  }, [formData.owner, formData.repo, formData.provider, formData.gitlab_url]);
+  }, [formData.owner, formData.provider, formData.gitlab_url]);
 
   const handleSubmit = useCallback((e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -123,8 +124,18 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             initial_sync_depth: formData.initial_sync_depth,
             sync_options: syncOptions,
           });
+          if (result?.error) {
+            toast.error(result.error);
+          } else {
+            toast.success("Config updated");
+            if (onSuccessAction) {
+              onSuccessAction();
+            } else {
+              router.push("/admin/sync");
+            }
+          }
         } else {
-          result = await createSyncConfig({
+          const base = {
             name: formData.name,
             provider: formData.provider,
             credential_id: formData.credential_id || null,
@@ -133,17 +144,33 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             timezone: formData.timezone,
             initial_sync_depth: formData.initial_sync_depth,
             sync_options: syncOptions,
-          });
-        }
+          };
 
-        if (result?.error) {
-          toast.error(result.error);
-        } else {
-          toast.success(initialData ? "Config updated" : "Config created");
-          if (onSuccessAction) {
-            onSuccessAction();
+          if (formData.repos.length > 0) {
+            result = await batchCreateSyncConfigs({ base, repos: formData.repos });
+            if (result?.error) {
+              toast.error(result.error);
+            } else {
+              const count = (result as { data?: { count?: number } })?.data?.count ?? formData.repos.length;
+              toast.success(`Created config with ${count} repos`);
+              if (onSuccessAction) {
+                onSuccessAction();
+              } else {
+                router.push("/admin/sync");
+              }
+            }
           } else {
-            router.push("/admin/sync");
+            result = await createSyncConfig(base);
+            if (result?.error) {
+              toast.error(result.error);
+            } else {
+              toast.success("Config created");
+              if (onSuccessAction) {
+                onSuccessAction();
+              } else {
+                router.push("/admin/sync");
+              }
+            }
           }
         }
       } catch {
@@ -262,35 +289,19 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         {(formData.provider === "github" || formData.provider === "gitlab") && (
           <div className="space-y-4">
             <span className="mb-2 block text-sm font-medium">Repository</span>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="owner" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
-                  Owner / Organization
-                </label>
-                <input
-                  type="text"
-                  id="owner"
-                  name="owner"
-                  value={formData.owner}
-                  onChange={handleChange}
-                  className={`${inputClass} text-sm disabled:opacity-50`}
-                  placeholder="e.g., myorg"
-                />
-              </div>
-              <div>
-                <label htmlFor="repo" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
-                  Repository
-                </label>
-                <input
-                  type="text"
-                  id="repo"
-                  name="repo"
-                  value={formData.repo}
-                  onChange={handleChange}
-                  className={`${inputClass} text-sm disabled:opacity-50`}
-                  placeholder="e.g., my-repo or * for all"
-                />
-              </div>
+            <div>
+              <label htmlFor="owner" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
+                Owner / Organization
+              </label>
+              <input
+                type="text"
+                id="owner"
+                name="owner"
+                value={formData.owner}
+                onChange={handleChange}
+                className={`${inputClass} text-sm disabled:opacity-50`}
+                placeholder="e.g., myorg"
+              />
             </div>
             {formData.provider === "gitlab" && (
               <div>
@@ -308,9 +319,29 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                 />
               </div>
             )}
-            <p className="text-xs text-(--ink-muted)">
-              Leave empty to use the config name as owner/repo. Use * for repo to sync all repositories.
-            </p>
+            {!initialData && formData.credential_id && formData.owner ? (
+              <div>
+                <span className="mb-2 block text-sm font-medium text-(--ink-muted)">
+                  Select Repositories
+                </span>
+                <RepoSelector
+                  credentialId={formData.credential_id}
+                  provider={formData.provider}
+                  owner={formData.owner}
+                  selectedRepos={formData.repos}
+                  onSelectionChange={(repos) =>
+                    setFormData((prev) => ({ ...prev, repos }))
+                  }
+                  maxRepos={maxRepos}
+                />
+              </div>
+            ) : (
+              !initialData && (
+                <p className="text-xs text-(--ink-muted)">
+                  Select a credential and enter an owner above to browse and select repositories.
+                </p>
+              )
+            )}
           </div>
         )}
 
