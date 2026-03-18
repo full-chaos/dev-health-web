@@ -1,5 +1,3 @@
-import React from "react";
-
 export function GitHubForm() {
   return (
     <>
@@ -36,23 +34,9 @@ export function GitHubForm() {
         </div>
       </div>
 
-      <div>
-        <label htmlFor="github-repos" className="block text-sm font-medium text-(--ink-base)">
-          Repositories (Optional)
-        </label>
-        <div className="mt-1">
-          <input
-            type="text"
-            name="repos"
-            id="github-repos"
-            className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
-            placeholder="repo1, repo2 (leave empty for all)"
-          />
-        </div>
-        <p className="mt-2 text-sm text-(--ink-muted)">
-          Comma-separated list of repositories to sync. If empty, all repositories in the organization will be synced.
-        </p>
-      </div>
+      <p className="text-sm text-(--ink-muted)">
+        Repositories are selected when creating a sync configuration.
+      </p>
     </>
   );
 }
