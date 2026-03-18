@@ -7,7 +7,6 @@ import type { DiscoveredRepo } from "@/lib/admin/types";
 
 export type RepoSelectorProps = {
   credentialId: string;
-  provider: string;
   owner: string;
   selectedRepos: string[];
   onSelectionChange: (repos: string[]) => void;
@@ -16,23 +15,19 @@ export type RepoSelectorProps = {
 
 export function RepoSelector({
   credentialId,
-  provider,
   owner,
   selectedRepos,
   onSelectionChange,
   maxRepos,
 }: RepoSelectorProps) {
+  const shouldFetch = Boolean(credentialId && owner);
   const [repos, setRepos] = useState<DiscoveredRepo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (!credentialId || !owner) {
-      setRepos([]);
-      setError(null);
-      return;
-    }
+    if (!shouldFetch) return;
 
     let cancelled = false;
     setLoading(true);
@@ -51,7 +46,7 @@ export function RepoSelector({
     return () => {
       cancelled = true;
     };
-  }, [credentialId, owner]);
+  }, [shouldFetch, credentialId, owner]);
 
   const filteredRepos = repos.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())

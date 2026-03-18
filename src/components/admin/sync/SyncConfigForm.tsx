@@ -326,7 +326,6 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                 </span>
                 <RepoSelector
                   credentialId={formData.credential_id}
-                  provider={formData.provider}
                   owner={formData.owner}
                   selectedRepos={formData.repos}
                   onSelectionChange={(repos) =>

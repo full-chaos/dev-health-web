@@ -55,7 +55,6 @@ function renderSelector(overrides: Partial<React.ComponentProps<typeof RepoSelec
   render(
     <RepoSelector
       credentialId="cred-123"
-      provider="github"
       owner="myorg"
       selectedRepos={[]}
       onSelectionChange={onSelectionChange}
@@ -75,8 +74,7 @@ describe("RepoSelector", () => {
       render(
         <RepoSelector
           credentialId=""
-          provider="github"
-          owner="myorg"
+              owner="myorg"
           selectedRepos={[]}
           onSelectionChange={vi.fn()}
         />
@@ -88,8 +86,7 @@ describe("RepoSelector", () => {
       render(
         <RepoSelector
           credentialId="cred-123"
-          provider="github"
-          owner=""
+              owner=""
           selectedRepos={[]}
           onSelectionChange={vi.fn()}
         />
@@ -276,8 +273,7 @@ describe("RepoSelector", () => {
       const { rerender } = render(
         <RepoSelector
           credentialId="cred-123"
-          provider="github"
-          owner="myorg"
+              owner="myorg"
           selectedRepos={[]}
           onSelectionChange={vi.fn()}
         />
@@ -293,8 +289,7 @@ describe("RepoSelector", () => {
       rerender(
         <RepoSelector
           credentialId="cred-123"
-          provider="github"
-          owner="otherorg"
+              owner="otherorg"
           selectedRepos={[]}
           onSelectionChange={vi.fn()}
         />
