@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import { listReposForCredential } from "@/lib/admin/server";
 import type { DiscoveredRepo } from "@/lib/admin/types";
@@ -13,40 +13,29 @@ export type RepoSelectorProps = {
   maxRepos?: number;
 };
 
-/** Fetches repos without calling setState synchronously inside an effect. */
-function useRepoFetch(credentialId: string, owner: string) {
-  const [repos, setRepos] = useState<DiscoveredRepo[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+type FetchState = {
+  repos: DiscoveredRepo[];
+  loading: boolean;
+  error: string | null;
+};
 
-  // Track the last fetched key to avoid duplicate requests
-  const lastKeyRef = useRef("");
+type FetchAction =
+  | { type: "start" }
+  | { type: "success"; repos: DiscoveredRepo[] }
+  | { type: "error"; error: string }
+  | { type: "reset" };
 
-  const fetchKey = credentialId && owner ? `${credentialId}:${owner}` : "";
-
-  // Trigger fetch when key changes — via an event callback, not an effect
-  if (fetchKey && fetchKey !== lastKeyRef.current) {
-    lastKeyRef.current = fetchKey;
-    setLoading(true);
-    setError(null);
-    setRepos([]);
-
-    listReposForCredential(credentialId, owner).then((result) => {
-      // Guard against stale responses
-      if (lastKeyRef.current !== fetchKey) return;
-      setLoading(false);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setRepos(result.data?.repos ?? []);
-      }
-    });
-  } else if (!fetchKey && lastKeyRef.current) {
-    lastKeyRef.current = "";
-    // Reset handled by parent re-render (no setState needed)
+function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case "start":
+      return { repos: [], loading: true, error: null };
+    case "success":
+      return { repos: action.repos, loading: false, error: null };
+    case "error":
+      return { repos: [], loading: false, error: action.error };
+    case "reset":
+      return { repos: [], loading: false, error: null };
   }
-
-  return { repos: fetchKey ? repos : [], loading, error };
 }
 
 export function RepoSelector({
@@ -56,8 +45,37 @@ export function RepoSelector({
   onSelectionChange,
   maxRepos,
 }: RepoSelectorProps) {
-  const { repos, loading, error } = useRepoFetch(credentialId, owner);
+  const [state, dispatch] = useReducer(fetchReducer, {
+    repos: [],
+    loading: false,
+    error: null,
+  });
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!credentialId || !owner) {
+      dispatch({ type: "reset" });
+      return;
+    }
+
+    let cancelled = false;
+    dispatch({ type: "start" });
+
+    listReposForCredential(credentialId, owner).then((result) => {
+      if (cancelled) return;
+      if (result.error) {
+        dispatch({ type: "error", error: result.error });
+      } else {
+        dispatch({ type: "success", repos: result.data?.repos ?? [] });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [credentialId, owner]);
+
+  const { repos, loading, error } = state;
 
   const filteredRepos = repos.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())
