@@ -37,7 +37,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
   const [isPending, startTransition] = useTransition();
   const [showCredentialModal, setShowCredentialModal] = useState(false);
   const [localCredentials, setLocalCredentials] = useState(credentials);
-  const { features } = useAdminTier();
+  const { features, minSyncIntervalHours } = useAdminTier();
 
   const { formData, setFormData, handleChange: handleBaseChange } = useBaseFormState({
     name: initialData?.name || "",
@@ -397,6 +397,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             onChange={(cron, tz) =>
               setFormData((prev) => ({ ...prev, schedule_cron: cron, timezone: tz }))
             }
+            minIntervalHours={minSyncIntervalHours}
           />
         </UpgradeGate>
 

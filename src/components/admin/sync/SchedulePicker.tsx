@@ -4,15 +4,22 @@ type SchedulePickerProps = {
   value: string | null;
   timezone: string | null;
   onChange: (cron: string | null, tz: string | null) => void;
+  minIntervalHours?: number;
 };
 
-const SCHEDULE_PRESETS = [
-  { value: null, label: "Manual only (no schedule)" },
-  { value: "0 * * * *", label: "Every hour" },
-  { value: "0 */6 * * *", label: "Every 6 hours" },
-  { value: "0 0 * * *", label: "Daily at midnight" },
-  { value: "0 0 * * 1", label: "Weekly on Monday" },
-] as const;
+type SchedulePreset = {
+  value: string | null;
+  label: string;
+  intervalHours: number | null;
+};
+
+const SCHEDULE_PRESETS: SchedulePreset[] = [
+  { value: null, label: "Manual only (no schedule)", intervalHours: null },
+  { value: "0 * * * *", label: "Every hour", intervalHours: 1 },
+  { value: "0 */6 * * *", label: "Every 6 hours", intervalHours: 6 },
+  { value: "0 0 * * *", label: "Daily at midnight", intervalHours: 24 },
+  { value: "0 0 * * 1", label: "Weekly on Monday", intervalHours: 168 },
+];
 
 function getSupportedTimezones(): string[] {
   if (typeof Intl.supportedValuesOf === "function") {
@@ -29,14 +36,21 @@ function getMode(value: string | null): string {
   if (value === null) {
     return "manual";
   }
-  const isPreset = SCHEDULE_PRESETS.some((preset) => preset.value === value);
+  const isPreset = SCHEDULE_PRESETS.some((p) => p.value === value);
   return isPreset ? value : "custom";
 }
 
-export function SchedulePicker({ value, timezone, onChange }: SchedulePickerProps) {
+export function SchedulePicker({ value, timezone, onChange, minIntervalHours }: SchedulePickerProps) {
   const timezones = useMemo(() => getSupportedTimezones(), []);
   const browserTimezone = useMemo(() => getBrowserTimezone(), []);
   const effectiveTimezone = timezone ?? browserTimezone;
+
+  const visiblePresets = useMemo(() => {
+    if (minIntervalHours === undefined) return SCHEDULE_PRESETS;
+    return SCHEDULE_PRESETS.filter(
+      (p) => p.intervalHours === null || p.intervalHours >= minIntervalHours
+    );
+  }, [minIntervalHours]);
 
   const [mode, setMode] = useState(() => getMode(value));
   const [customCron, setCustomCron] = useState(getMode(value) === "custom" ? value ?? "" : "");
@@ -75,7 +89,7 @@ export function SchedulePicker({ value, timezone, onChange }: SchedulePickerProp
       <h3 className="text-sm font-medium">Schedule</h3>
 
       <div className="space-y-2">
-        {SCHEDULE_PRESETS.map((preset) => {
+        {visiblePresets.map((preset) => {
           const modeValue = preset.value ?? "manual";
           return (
             <label
@@ -122,6 +136,17 @@ export function SchedulePicker({ value, timezone, onChange }: SchedulePickerProp
             placeholder="e.g., 15 3 * * *"
             className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
           />
+          {minIntervalHours !== undefined && minIntervalHours > 0 && (
+            <p className="mt-1.5 text-xs text-(--ink-muted)">
+              Your plan requires a minimum interval of{" "}
+              {minIntervalHours < 1
+                ? `${Math.round(minIntervalHours * 60)} minutes`
+                : minIntervalHours === 1
+                ? "1 hour"
+                : `${minIntervalHours} hours`}{" "}
+              between syncs.
+            </p>
+          )}
         </div>
       )}
 
