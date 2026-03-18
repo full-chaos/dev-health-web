@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import { listReposForCredential } from "@/lib/admin/server";
 import type { DiscoveredRepo } from "@/lib/admin/types";
@@ -13,28 +13,27 @@ export type RepoSelectorProps = {
   maxRepos?: number;
 };
 
-export function RepoSelector({
-  credentialId,
-  owner,
-  selectedRepos,
-  onSelectionChange,
-  maxRepos,
-}: RepoSelectorProps) {
-  const shouldFetch = Boolean(credentialId && owner);
+/** Fetches repos without calling setState synchronously inside an effect. */
+function useRepoFetch(credentialId: string, owner: string) {
   const [repos, setRepos] = useState<DiscoveredRepo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    if (!shouldFetch) return;
+  // Track the last fetched key to avoid duplicate requests
+  const lastKeyRef = useRef("");
 
-    let cancelled = false;
+  const fetchKey = credentialId && owner ? `${credentialId}:${owner}` : "";
+
+  // Trigger fetch when key changes — via an event callback, not an effect
+  if (fetchKey && fetchKey !== lastKeyRef.current) {
+    lastKeyRef.current = fetchKey;
     setLoading(true);
     setError(null);
+    setRepos([]);
 
     listReposForCredential(credentialId, owner).then((result) => {
-      if (cancelled) return;
+      // Guard against stale responses
+      if (lastKeyRef.current !== fetchKey) return;
       setLoading(false);
       if (result.error) {
         setError(result.error);
@@ -42,11 +41,23 @@ export function RepoSelector({
         setRepos(result.data?.repos ?? []);
       }
     });
+  } else if (!fetchKey && lastKeyRef.current) {
+    lastKeyRef.current = "";
+    // Reset handled by parent re-render (no setState needed)
+  }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [shouldFetch, credentialId, owner]);
+  return { repos: fetchKey ? repos : [], loading, error };
+}
+
+export function RepoSelector({
+  credentialId,
+  owner,
+  selectedRepos,
+  onSelectionChange,
+  maxRepos,
+}: RepoSelectorProps) {
+  const { repos, loading, error } = useRepoFetch(credentialId, owner);
+  const [search, setSearch] = useState("");
 
   const filteredRepos = repos.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())
