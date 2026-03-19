@@ -118,8 +118,7 @@ export interface DiscoveredReposResponse {
 
 // ---- Batch Sync Config Create ----
 
-export interface SyncConfigBatchCreate {
-  base: SyncConfigCreate;
+export interface SyncConfigBatchCreate extends SyncConfigCreate {
   repos: string[];
 }
 

@@ -88,7 +88,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     } else {
       handleBaseChange(e);
     }
-  }, []);
+  }, [handleBaseChange, setFormData]);
 
   const handleTargetChange = useCallback((targetId: string, checked: boolean) => {
     setFormData((prev) => {
@@ -97,7 +97,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         : prev.sync_targets.filter((t) => t !== targetId);
       return { ...prev, sync_targets: newTargets };
     });
-  }, []);
+  }, [setFormData]);
 
   const buildSyncOptions = useCallback((): Record<string, unknown> => {
     const opts: Record<string, unknown> = {};
@@ -147,7 +147,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
           };
 
           if (formData.repos.length > 0) {
-            result = await batchCreateSyncConfigs({ base, repos: formData.repos });
+            result = await batchCreateSyncConfigs({ ...base, repos: formData.repos });
             if (result?.error) {
               toast.error(result.error);
             } else {
