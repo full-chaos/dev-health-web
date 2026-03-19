@@ -147,7 +147,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
           };
 
           if (formData.repos.length > 0) {
-            result = await batchCreateSyncConfigs({ base, repos: formData.repos });
+            result = await batchCreateSyncConfigs({ ...base, repos: formData.repos });
             if (result?.error) {
               toast.error(result.error);
             } else {
