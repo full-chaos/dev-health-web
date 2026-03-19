@@ -219,11 +219,14 @@ export async function listReposForCredential(
 }
 
 export async function batchCreateSyncConfigs(
-  data: SyncConfigBatchCreate
+  data: SyncConfigBatchCreate | { base: Omit<SyncConfigBatchCreate, "repos">; repos: string[] }
 ): Promise<ActionResult<SyncConfigBatchResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
-    const result = await adminApi.syncConfigs.batchCreate(data, token, orgId);
+    // Normalize: accept both flat { name, provider, repos } and nested { base: {...}, repos }
+    const normalized: SyncConfigBatchCreate =
+      "base" in data ? { ...data.base, repos: data.repos } : data;
+    const result = await adminApi.syncConfigs.batchCreate(normalized, token, orgId);
     revalidatePath("/admin/sync");
     return result;
   });
