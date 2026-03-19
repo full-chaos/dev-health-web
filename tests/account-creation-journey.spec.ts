@@ -47,7 +47,6 @@ test.describe("Account creation journey", () => {
     await page.goto("/admin/integrations/github");
     await page.locator("#github-token").fill("ghp_journey_token");
     await page.locator("#github-org").fill("journey-org");
-    await page.locator("#github-repos").fill("repo1,repo2");
     await page.getByRole("button", { name: "Save Changes" }).click();
     await expect(page.getByText("Settings saved successfully")).toBeVisible({ timeout: 10_000 });
   });

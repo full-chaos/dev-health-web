@@ -17,6 +17,9 @@ import type {
   SyncJob,
   BackfillResponse,
   BackfillJob,
+  DiscoveredReposResponse,
+  SyncConfigBatchCreate,
+  SyncConfigBatchResponse,
 IdentityMapping,
   IdentityMappingCreate,
   IdentityMappingUpdate,
@@ -202,6 +205,27 @@ export async function createSyncConfig(
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     return adminApi.syncConfigs.create(data, token, orgId);
+  });
+}
+
+export async function listReposForCredential(
+  credentialId: string,
+  owner: string
+): Promise<ActionResult<DiscoveredReposResponse>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    return adminApi.credentials.listRepos(credentialId, owner, token, orgId);
+  });
+}
+
+export async function batchCreateSyncConfigs(
+  data: SyncConfigBatchCreate
+): Promise<ActionResult<SyncConfigBatchResponse>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    const result = await adminApi.syncConfigs.batchCreate(data, token, orgId);
+    revalidatePath("/admin/sync");
+    return result;
   });
 }
 

@@ -91,6 +91,42 @@ export interface SyncConfig {
   last_sync_error: string | null;
   created_at: string;
   updated_at: string;
+  parent_id: string | null;
+}
+
+// ---- Discovered Repos ----
+
+export interface DiscoveredRepo {
+  name: string;
+  full_name: string;
+  description: string | null;
+  is_private: boolean;
+  is_archived: boolean;
+  default_branch: string | null;
+  language: string | null;
+  stargazers_count: number | null;
+  forks_count: number | null;
+  updated_at: string | null;
+}
+
+export interface DiscoveredReposResponse {
+  provider: string;
+  owner: string;
+  repos: DiscoveredRepo[];
+  total: number;
+}
+
+// ---- Batch Sync Config Create ----
+
+export interface SyncConfigBatchCreate {
+  base: SyncConfigCreate;
+  repos: string[];
+}
+
+export interface SyncConfigBatchResponse {
+  created: SyncConfig[];
+  parent: SyncConfig;
+  count: number;
 }
 
 export interface SyncJob {
