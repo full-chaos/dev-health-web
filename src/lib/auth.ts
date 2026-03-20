@@ -1,5 +1,8 @@
 import NextAuth, { CredentialsSignin } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import GitHub from "next-auth/providers/github"
+import Google from "next-auth/providers/google"
+import GitLab from "next-auth/providers/gitlab"
 import { redirect } from "next/navigation"
 import { getBackendUrl } from "@/lib/origin"
 import { logger } from "@/lib/logger"
@@ -110,9 +113,12 @@ const nextAuth = NextAuth({
         return null
       },
     }),
+    ...(process.env.AUTH_GITHUB_ID ? [GitHub({ clientId: process.env.AUTH_GITHUB_ID, clientSecret: process.env.AUTH_GITHUB_SECRET! })] : []),
+    ...(process.env.AUTH_GOOGLE_ID ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET! })] : []),
+    ...(process.env.AUTH_GITLAB_ID ? [GitLab({ clientId: process.env.AUTH_GITLAB_ID, clientSecret: process.env.AUTH_GITLAB_SECRET! })] : []),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (user) {
         token.id = user.id
         token.org_id = user.org_id
@@ -124,6 +130,41 @@ const nextAuth = NextAuth({
         token.refresh_token = user.refresh_token
         token.expires_at = Date.now() + (user.expires_in || 3600) * 1000
         token.last_validated = Date.now()
+      }
+
+      // Social login: exchange OAuth token for backend JWT
+      if (account && account.provider !== "credentials" && account.access_token) {
+        try {
+          const backendUrl = getBackendUrl()
+          const res = await fetch(`${backendUrl}/api/v1/auth/social-login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              provider: account.provider,
+              provider_access_token: account.access_token,
+            }),
+          })
+
+          if (res.ok) {
+            const data = await res.json()
+            token.id = data.user.id
+            token.org_id = data.user.org_id || undefined
+            token.role = data.user.role || undefined
+            token.is_superuser = data.user.is_superuser || false
+            token.permissions = []
+            token.needs_onboarding = data.needs_onboarding ?? false
+            token.access_token = data.access_token
+            token.refresh_token = data.refresh_token
+            token.expires_at = Date.now() + (data.expires_in || 3600) * 1000
+            token.last_validated = Date.now()
+          } else {
+            const errorData = await res.json().catch(() => null)
+            token.error = errorData?.detail?.message || errorData?.detail || "social_login_failed"
+          }
+        } catch (error) {
+          authLogger.error({ err: error }, "social login backend call failed")
+          token.error = "social_login_failed"
+        }
       }
 
       // Handle onboarding completion
@@ -249,6 +290,9 @@ const nextAuth = NextAuth({
         session.access_token = token.access_token as string
         session.user.is_impersonating = !!token.is_impersonating
         session.user.impersonated_user_id = token.impersonated_user_id as string | undefined
+        if (token.error) {
+          session.error = token.error as string
+        }
       }
       return session
     },
@@ -268,6 +312,7 @@ export async function auth(): Promise<Session | null> {
   try {
     const session = await nextAuth.auth()
     if (!session?.access_token) return null
+    if (session.error) return null
     return session
   } catch {
     return null
@@ -275,6 +320,11 @@ export async function auth(): Promise<Session | null> {
 }
 
 export async function requireSession(callbackUrl?: string): Promise<Session> {
+  // Check raw session for social login errors before auth() filters them out
+  const rawSession = await nextAuth.auth()
+  if (rawSession?.error) {
+    redirect(`/auth/signin?error=${encodeURIComponent(rawSession.error)}`)
+  }
   const session = await auth()
   if (!session?.user) {
     redirect(callbackUrl ? `/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/auth/signin")
@@ -300,4 +350,12 @@ export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
     redirect("/dashboard")
   }
   return session
+}
+
+export function getAvailableSocialProviders(): string[] {
+  const providers: string[] = []
+  if (process.env.AUTH_GITHUB_ID) providers.push("github")
+  if (process.env.AUTH_GOOGLE_ID) providers.push("google")
+  if (process.env.AUTH_GITLAB_ID) providers.push("gitlab")
+  return providers
 }
