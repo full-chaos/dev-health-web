@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import { auth, getAvailableSocialProviders } from "@/lib/auth"
 import { LoginForm } from "@/components/auth/LoginForm"
 import { AuthCard } from "@/components/auth/AuthCard"
+import { SocialLoginError } from "@/components/auth/SocialLoginError"
 
-type SearchParams = Promise<{ registered?: string; plan?: string; trial?: string }>
+type SearchParams = Promise<{ registered?: string; plan?: string; trial?: string; error?: string }>
 
 export default async function SignInPage({
   searchParams,
@@ -24,6 +25,8 @@ export default async function SignInPage({
   }
 
   const justRegistered = params.registered === "true"
+  const socialError = params.error
+  const providers = getAvailableSocialProviders()
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[var(--background)]">
@@ -32,7 +35,12 @@ export default async function SignInPage({
           Account created successfully. Please sign in.
         </div>
       )}
-      <AuthCard signUpHref={signupHref}>
+      {socialError && (
+        <div className="mb-4 w-full max-w-md p-3 text-sm text-red-400 bg-red-950/50 rounded-md border border-red-800 text-center">
+          <SocialLoginError error={socialError} />
+        </div>
+      )}
+      <AuthCard signUpHref={signupHref} providers={providers}>
         <LoginForm plan={plan} trialIntent={trialIntent} />
       </AuthCard>
     </div>
