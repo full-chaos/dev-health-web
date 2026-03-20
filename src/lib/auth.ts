@@ -320,13 +320,17 @@ export async function auth(): Promise<Session | null> {
 }
 
 export async function requireSession(callbackUrl?: string): Promise<Session> {
-  // Check raw session for social login errors before auth() filters them out
-  const rawSession = await nextAuth.auth()
-  if (rawSession?.error) {
-    redirect(`/auth/signin?error=${encodeURIComponent(rawSession.error)}`)
+  let session: Session | null = null
+  try {
+    session = await nextAuth.auth()
+  } catch {
+    session = null
   }
-  const session = await auth()
-  if (!session?.user) {
+  // Surface social login errors (e.g. 409 account conflict) before dropping the session
+  if (session?.error) {
+    redirect(`/auth/signin?error=${encodeURIComponent(session.error)}`)
+  }
+  if (!session?.access_token || !session?.user) {
     redirect(callbackUrl ? `/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/auth/signin")
   }
   if (session.user.needs_onboarding) {

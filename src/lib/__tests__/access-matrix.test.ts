@@ -54,6 +54,18 @@ vi.mock("next-auth/providers/credentials", () => ({
   default: vi.fn(),
 }));
 
+vi.mock("next-auth/providers/github", () => ({
+  default: vi.fn(),
+}));
+
+vi.mock("next-auth/providers/google", () => ({
+  default: vi.fn(),
+}));
+
+vi.mock("next-auth/providers/gitlab", () => ({
+  default: vi.fn(),
+}));
+
 import { requireSession, requireRole, requireSuperuser } from "@/lib/auth";
 
 // ─── Session factories ──────────────────────────────────────────────
