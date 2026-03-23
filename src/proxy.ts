@@ -62,7 +62,7 @@ function buildCspHeader(nonce: string): string {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
-        "connect-src 'self' https://*.vercel.app https://*.sentry.io",
+        "connect-src 'self' https://*.vercel.app https://*.sentry.io https://bugs.fullchaos.dev http://localhost:8800",
         "frame-ancestors 'none'",
     ].join("; ");
 }
