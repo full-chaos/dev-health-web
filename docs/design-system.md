@@ -15,7 +15,7 @@ The platform uses **Tailwind CSS v4** via `@tailwindcss/postcss`.
 Appearance is controlled by two HTML attributes on the `<html>` element:
 
 1.  **`data-theme`**: Controls the color mode (`light` or `dark`).
-2.  **`data-palette`**: Controls the color scheme (`fullchaos`, `material`, `echarts`, `fullchaos-cosmic-train`, `flat`).
+2.  **`data-palette`**: Controls the color scheme (`fullchaos`, `material`, `echarts`, `fullchaos-cosmic-train`, `fullchaos-infinity-knot`, `flat`).
 
 ### Default State
 The default configuration is:
@@ -94,4 +94,4 @@ The system relies on CSS custom properties (variables) defined in `globals.css`.
 
 ## Theme Variants
 
-For the Cosmic Train palette specifically, see [`fullchaos-cosmic-train-theme.md`](./fullchaos-cosmic-train-theme.md) — it documents the colour rationale, typography choices, and sample CSS for the `fullchaos-cosmic-train` palette variant.
+For palette-specific guidance, see [`fullchaos-cosmic-train-theme.md`](./fullchaos-cosmic-train-theme.md) for the `fullchaos-cosmic-train` variant and [`fullchaos-infinity-knot-theme.md`](./fullchaos-infinity-knot-theme.md) for the image-inspired `fullchaos-infinity-knot` palette.

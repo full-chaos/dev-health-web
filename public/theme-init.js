@@ -11,6 +11,7 @@
       normalizedPalette === "echarts" ||
       normalizedPalette === "fullchaos" ||
       normalizedPalette === "fullchaos-cosmic-train" ||
+      normalizedPalette === "fullchaos-infinity-knot" ||
       normalizedPalette === "flat"
     ) {
       document.documentElement.dataset.palette = normalizedPalette;

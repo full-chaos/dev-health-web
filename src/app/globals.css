@@ -352,6 +352,75 @@
 }
 
 /* ============================================================
+ * PALETTE: fullchaos-infinity-knot
+ * ============================================================ */
+:root[data-palette="fullchaos-infinity-knot"][data-theme="light"] {
+  color-scheme: light;
+  --background: #f7f5f2;
+  --foreground: #131722;
+  --ink-muted: #5f6c79;
+  --accent: #f89d28;
+  --accent-2: #14bdd6;
+  --accent-3: #f05a1a;
+  --accent-negative: #dc4c3f;
+  --accent-highlight: #f05a1a;
+  --card: #ffffff;
+  --card-stroke: #d9dfe6;
+  --chart-muted: #6b7785;
+  --chart-color-1: #f89d28;
+  --chart-color-2: #f05a1a;
+  --chart-color-3: #14bdd6;
+  --chart-color-4: #0f89a8;
+  --chart-color-5: #1c2433;
+  --chart-color-6: #6f7d8d;
+  --chart-color-7: #ffc857;
+  --chart-color-8: #83e8f5;
+  --chart-color-9: #4b5b74;
+  --chart-color-10: #aeb9c4;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #fffaf5 0%,
+    #ffc857 22%,
+    #f05a1a 42%,
+    #14bdd6 70%,
+    #131722 100%
+  );
+  --app-gradient: radial-gradient(ellipse at 14% 0%, color-mix(in srgb, var(--accent) 8%, var(--background)) 0%, color-mix(in srgb, var(--accent-2) 4%, var(--background)) 38%, var(--background) 72%);
+}
+
+:root[data-palette="fullchaos-infinity-knot"][data-theme="dark"] {
+  color-scheme: dark;
+  --background: #101722;
+  --foreground: #f5f7fb;
+  --ink-muted: #aab7c4;
+  --accent: #ffb347;
+  --accent-2: #22d3ee;
+  --accent-3: #ff6a2f;
+  --accent-negative: #ff7b72;
+  --accent-highlight: #f05a1a;
+  --card: #151d2a;
+  --card-stroke: #2a3848;
+  --chart-color-1: #ffb347;
+  --chart-color-2: #ff6a2f;
+  --chart-color-3: #22d3ee;
+  --chart-color-4: #38bdf8;
+  --chart-color-5: #8fd7ff;
+  --chart-color-6: #95a7b8;
+  --chart-color-7: #ffd166;
+  --chart-color-8: #0f89a8;
+  --chart-color-9: #f97316;
+  --chart-color-10: #e5eef7;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #ff6a2f 0%,
+    #ffb347 28%,
+    #22d3ee 58%,
+    #101722 100%
+  );
+  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 10%, var(--background)) 0%, color-mix(in srgb, var(--accent-2) 6%, var(--background)) 36%, var(--background) 68%);
+}
+
+/* ============================================================
  * PALETTE: flat
  * ============================================================ */
 :root[data-palette="flat"][data-theme="light"] {

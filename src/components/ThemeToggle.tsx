@@ -10,6 +10,7 @@ type Palette =
   | "echarts"
   | "fullchaos"
   | "fullchaos-cosmic-train"
+  | "fullchaos-infinity-knot"
   | "flat";
 type Listener = () => void;
 
@@ -37,6 +38,7 @@ const normalizePalette = (value: string | null): Palette | null => {
     value === "echarts" ||
     value === "fullchaos" ||
     value === "fullchaos-cosmic-train" ||
+    value === "fullchaos-infinity-knot" ||
     value === "flat"
     ? value
     : null;
@@ -157,6 +159,7 @@ export function ThemeToggle() {
             <option value="echarts">ECharts</option>
             <option value="fullchaos">Full Chaos</option>
             <option value="fullchaos-cosmic-train">Fullchaos Cosmic Train</option>
+            <option value="fullchaos-infinity-knot">Fullchaos Infinity Knot</option>
             <option value="flat">Flat UI</option>
           </select>
           <button
