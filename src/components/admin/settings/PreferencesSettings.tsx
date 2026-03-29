@@ -5,7 +5,13 @@ import { SettingsSection } from "./SettingsSection";
 import { isServer, getLocalStorage, getWindow } from "@/lib/env";
 
 type Theme = "light" | "dark";
-type Palette = "material" | "echarts" | "fullchaos" | "fullchaos-cosmic-train" | "flat";
+type Palette =
+  | "material"
+  | "echarts"
+  | "fullchaos"
+  | "fullchaos-cosmic-train"
+  | "fullchaos-infinity-knot"
+  | "flat";
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
@@ -26,7 +32,14 @@ const getStoredTheme = (): Theme | null => {
 
 const normalizePalette = (value: string | null): Palette | null => {
   if (value === "tailwind") return "echarts";
-  const valid: Palette[] = ["material", "echarts", "fullchaos", "fullchaos-cosmic-train", "flat"];
+  const valid: Palette[] = [
+    "material",
+    "echarts",
+    "fullchaos",
+    "fullchaos-cosmic-train",
+    "fullchaos-infinity-knot",
+    "flat",
+  ];
   return valid.includes(value as Palette) ? (value as Palette) : null;
 };
 
@@ -78,6 +91,7 @@ const getPaletteServerSnapshot = (): Palette => "fullchaos";
 const PALETTES: { value: Palette; label: string }[] = [
   { value: "fullchaos", label: "Full Chaos" },
   { value: "fullchaos-cosmic-train", label: "Cosmic Train" },
+  { value: "fullchaos-infinity-knot", label: "Infinity Knot" },
   { value: "material", label: "Material" },
   { value: "echarts", label: "ECharts" },
   { value: "flat", label: "Flat UI" },
