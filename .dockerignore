@@ -5,4 +5,5 @@ node_modules
 test-results
 coverage
 npm-debug.log
+pnpm-debug.log
 .DS_Store

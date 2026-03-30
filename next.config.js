@@ -18,6 +18,7 @@ const nextConfig = {
           : {}),
       }
     : {
+        output: "standalone",
         pageExtensions: ["tsx", "ts", "jsx", "js"],
       }),
   async headers() {
