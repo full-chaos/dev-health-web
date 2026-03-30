@@ -68,18 +68,18 @@ export function UserMenu() {
               </Link>
             )}
             <Link
+              href="/settings"
+              className="cursor-pointer block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+              onClick={() => setIsOpen(false)}
+            >
+              Preferences
+            </Link>
+            <Link
               href="/admin"
               className="cursor-pointer block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
               onClick={() => setIsOpen(false)}
             >
               Admin Panel
-            </Link>
-            <Link
-              href="/admin/settings"
-              className="cursor-pointer block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
-              onClick={() => setIsOpen(false)}
-            >
-              Settings
             </Link>
             <div className="border-t border-[var(--card-stroke)]">
               <button
