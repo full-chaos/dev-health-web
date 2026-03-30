@@ -19,6 +19,8 @@ FROM node:25-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Bind to all interfaces (IPv4 + IPv6) so the container port is reachable from the host
+ENV HOSTNAME="::"
 # Runtime API base URL (override at container start)
 ENV BACKEND_URL=http://127.0.0.1:8000
 
