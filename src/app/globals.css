@@ -421,6 +421,82 @@
 }
 
 /* ============================================================
+ * PALETTE: fullchaos-infinity-knot-redux
+ *
+ * Derived from the Infinity Knot logo — emphasises the deep
+ * crimson-to-amber warm lobe and the dark-teal-to-cyan cool
+ * lobe, with a charcoal-black core.  "Redux" leans darker and
+ * more saturated than the original Infinity Knot palette.
+ * ============================================================ */
+:root[data-palette="fullchaos-infinity-knot-redux"][data-theme="light"] {
+  color-scheme: light;
+  --background: #f5f3f0;
+  --foreground: #0d1117;
+  --ink-muted: #4a5568;
+  --accent: #e04520;
+  --accent-2: #0ea5c9;
+  --accent-3: #f49d1a;
+  --accent-negative: #b91c1c;
+  --accent-highlight: #f47b20;
+  --card: #ffffff;
+  --card-stroke: #d4d8e0;
+  --chart-muted: #5e6b7a;
+  --chart-color-1: #e04520;
+  --chart-color-2: #0ea5c9;
+  --chart-color-3: #f49d1a;
+  --chart-color-4: #1c2433;
+  --chart-color-5: #ffba35;
+  --chart-color-6: #14bdd6;
+  --chart-color-7: #8b1a1a;
+  --chart-color-8: #7a8a9a;
+  --chart-color-9: #f47b20;
+  --chart-color-10: #3a4b5c;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #fff8f2 0%,
+    #f49d1a 18%,
+    #e04520 36%,
+    #8b1a1a 50%,
+    #0ea5c9 72%,
+    #0d1117 100%
+  );
+  --app-gradient: radial-gradient(ellipse at 14% 0%, color-mix(in srgb, var(--accent) 8%, var(--background)) 0%, color-mix(in srgb, var(--accent-2) 4%, var(--background)) 38%, var(--background) 72%);
+}
+
+:root[data-palette="fullchaos-infinity-knot-redux"][data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0d1117;
+  --foreground: #f0f2f6;
+  --ink-muted: #9ca3b0;
+  --accent: #f47b20;
+  --accent-2: #22d3ee;
+  --accent-3: #ff6a2f;
+  --accent-negative: #ef4444;
+  --accent-highlight: #e04520;
+  --card: #131a24;
+  --card-stroke: #243040;
+  --chart-color-1: #f47b20;
+  --chart-color-2: #22d3ee;
+  --chart-color-3: #ffba35;
+  --chart-color-4: #e04520;
+  --chart-color-5: #38bdf8;
+  --chart-color-6: #8b1a1a;
+  --chart-color-7: #ffd95c;
+  --chart-color-8: #7a8a9a;
+  --chart-color-9: #0ea5c9;
+  --chart-color-10: #3a4b5c;
+  --hero-gradient: radial-gradient(
+    circle_at_top,
+    #e04520 0%,
+    #f47b20 22%,
+    #ffba35 40%,
+    #22d3ee 65%,
+    #0d1117 100%
+  );
+  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 10%, var(--background)) 0%, color-mix(in srgb, var(--accent-2) 6%, var(--background)) 36%, var(--background) 68%);
+}
+
+/* ============================================================
  * PALETTE: flat
  * ============================================================ */
 :root[data-palette="flat"][data-theme="light"] {

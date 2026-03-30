@@ -33,7 +33,7 @@ describe("PreferencesSettings", () => {
     document.documentElement.style.colorScheme = "dark";
   });
 
-  it("shows the infinity knot palette in admin preferences", () => {
+  it("shows the infinity knot palette in preferences", () => {
     render(<PreferencesSettings />);
 
     expect(
@@ -41,7 +41,15 @@ describe("PreferencesSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("applies the infinity knot palette from admin preferences", async () => {
+  it("shows the infinity knot redux palette in preferences", () => {
+    render(<PreferencesSettings />);
+
+    expect(
+      screen.getByRole("button", { name: "Infinity Knot Redux" })
+    ).toBeInTheDocument();
+  });
+
+  it("applies the infinity knot palette from preferences", async () => {
     const user = userEvent.setup();
     render(<PreferencesSettings />);
 
@@ -49,5 +57,15 @@ describe("PreferencesSettings", () => {
 
     expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot");
     expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot");
+  });
+
+  it("applies the infinity knot redux palette from preferences", async () => {
+    const user = userEvent.setup();
+    render(<PreferencesSettings />);
+
+    await user.click(screen.getByRole("button", { name: "Infinity Knot Redux" }));
+
+    expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot-redux");
+    expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot-redux");
   });
 });

@@ -12,6 +12,7 @@
       normalizedPalette === "fullchaos" ||
       normalizedPalette === "fullchaos-cosmic-train" ||
       normalizedPalette === "fullchaos-infinity-knot" ||
+      normalizedPalette === "fullchaos-infinity-knot-redux" ||
       normalizedPalette === "flat"
     ) {
       document.documentElement.dataset.palette = normalizedPalette;
