@@ -26,8 +26,31 @@ const monoFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dev Health Ops",
-  description: "Developer Health Ops cockpit.",
+  metadataBase: new URL("https://www.fullchaos.dev"),
+  title: {
+    default: "Dev Health — Engineering Effort Analytics",
+    template: "%s | Dev Health",
+  },
+  description:
+    "Open-source analytics platform for team operating modes and developer health. See where effort is invested and what it costs your people.",
+  openGraph: {
+    title: "Dev Health — Engineering Effort Analytics",
+    description:
+      "Understand where human effort is actually being invested, and the cost to people when certain work dominates.",
+    siteName: "Dev Health",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Dev Health — Engineering Effort Analytics",
+    description:
+      "Open-source analytics for team operating modes and developer health.",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
 };
 
 const runtimeConfigSrc = `${process.env.BASE_PATH ?? ""}/runtime-config.js`;
