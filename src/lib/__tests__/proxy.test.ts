@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import type { Session } from "next-auth";
 
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
@@ -59,60 +60,66 @@ describe("org-scoped route guard", () => {
   const makeRequest = (path: string) =>
     new NextRequest(new URL(path, "http://localhost:3000"));
 
-  const superuserNoOrg = {
+  const baseUser = { id: "u-1", name: "Test", email: "t@t.com" } as const;
+
+  const superuserNoOrg: Session = {
     access_token: "test-token",
-    user: { is_superuser: true, org_id: undefined, needs_onboarding: false },
+    user: { ...baseUser, is_superuser: true },
+    expires: "2099-01-01T00:00:00.000Z",
   };
 
-  const superuserWithOrg = {
+  const superuserWithOrg: Session = {
     access_token: "test-token",
-    user: { is_superuser: true, org_id: "org-123", needs_onboarding: false },
+    user: { ...baseUser, is_superuser: true, org_id: "org-123" },
+    expires: "2099-01-01T00:00:00.000Z",
   };
 
-  const regularUserNoOrg = {
+  const regularUserNoOrg: Session = {
     access_token: "test-token",
-    user: { is_superuser: false, org_id: undefined, needs_onboarding: false },
+    user: { ...baseUser, is_superuser: false },
+    expires: "2099-01-01T00:00:00.000Z",
   };
 
-  const regularUserWithOrg = {
+  const regularUserWithOrg: Session = {
     access_token: "test-token",
-    user: { is_superuser: false, org_id: "org-123", needs_onboarding: false },
+    user: { ...baseUser, is_superuser: false, org_id: "org-123" },
+    expires: "2099-01-01T00:00:00.000Z",
   };
 
   it("allows superuser without org to access /settings", async () => {
-    mockAuth.mockResolvedValue(superuserNoOrg as any);
+    mockAuth.mockResolvedValue(superuserNoOrg);
     const res = await proxy(makeRequest("/settings"));
     expect(res.status).not.toBe(303);
   });
 
   it("allows regular user without org to access /settings", async () => {
-    mockAuth.mockResolvedValue(regularUserNoOrg as any);
+    mockAuth.mockResolvedValue(regularUserNoOrg);
     const res = await proxy(makeRequest("/settings"));
     expect(res.status).not.toBe(303);
   });
 
   it("allows user with org to access /settings", async () => {
-    mockAuth.mockResolvedValue(regularUserWithOrg as any);
+    mockAuth.mockResolvedValue(regularUserWithOrg);
     const res = await proxy(makeRequest("/settings"));
     expect(res.status).not.toBe(303);
   });
 
   it("redirects superuser without org from non-exempt path to /superadmin", async () => {
-    mockAuth.mockResolvedValue(superuserNoOrg as any);
+    mockAuth.mockResolvedValue(superuserNoOrg);
     const res = await proxy(makeRequest("/dashboard"));
     expect(res.status).toBe(303);
     expect(new URL(res.headers.get("Location")!).pathname).toBe("/superadmin");
   });
 
   it("redirects regular user without org from non-exempt path to /auth/onboard", async () => {
-    mockAuth.mockResolvedValue(regularUserNoOrg as any);
+    mockAuth.mockResolvedValue(regularUserNoOrg);
     const res = await proxy(makeRequest("/dashboard"));
     expect(res.status).toBe(303);
     expect(new URL(res.headers.get("Location")!).pathname).toBe("/auth/onboard");
   });
 
   it("allows superuser without org to access other exempt paths", async () => {
-    mockAuth.mockResolvedValue(superuserNoOrg as any);
+    mockAuth.mockResolvedValue(superuserNoOrg);
     for (const path of ["/superadmin", "/demo", "/auth/onboard"]) {
       const res = await proxy(makeRequest(path));
       expect(res.status).not.toBe(303);
@@ -120,7 +127,7 @@ describe("org-scoped route guard", () => {
   });
 
   it("does not redirect users with org from any path", async () => {
-    mockAuth.mockResolvedValue(superuserWithOrg as any);
+    mockAuth.mockResolvedValue(superuserWithOrg);
     const res = await proxy(makeRequest("/dashboard"));
     expect(res.status).not.toBe(303);
   });
