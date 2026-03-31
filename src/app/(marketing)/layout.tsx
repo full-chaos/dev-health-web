@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     title: "Dev Health (Beta) — Engineering Effort Analytics",
     description:
       "Understand where human effort is actually being invested, and the cost to people when certain work dominates.",
+    url: "https://www.fullchaos.dev",
     type: "website",
     siteName: "Dev Health",
   },
