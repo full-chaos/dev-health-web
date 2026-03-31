@@ -15,6 +15,8 @@ const EXACT_PUBLIC_PATHS = [
     "/auth/reset-password",
     "/health",
     "/favicon.ico",
+    "/apple-icon.png",
+    "/opengraph-image.png",
     "/runtime-config.js",
     "/theme-init.js",
     "/robots.txt",
