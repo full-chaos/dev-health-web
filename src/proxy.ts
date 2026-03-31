@@ -17,6 +17,8 @@ const EXACT_PUBLIC_PATHS = [
     "/favicon.ico",
     "/runtime-config.js",
     "/theme-init.js",
+    "/robots.txt",
+    "/sitemap.xml",
 ];
 
 const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/_next"];
