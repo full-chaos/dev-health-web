@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "Dev Health — Engineering Effort Analytics",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     title: "Dev Health — Engineering Effort Analytics",
     description:
       "Open-source analytics for team operating modes and developer health.",
-    images: ["/opengraph-image"],
+    images: ["/og-image.png"],
   },
   icons: {
     icon: "/favicon.ico",
