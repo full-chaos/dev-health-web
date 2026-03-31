@@ -15,12 +15,21 @@ export const metadata: Metadata = {
     url: "https://www.fullchaos.dev",
     type: "website",
     siteName: "Dev Health",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Dev Health — Engineering Effort Analytics",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Dev Health (Beta) — Engineering Effort Analytics",
     description:
       "Open-source analytics for team operating modes and developer health.",
+    images: ["/og-image.png"],
   },
 };
 
