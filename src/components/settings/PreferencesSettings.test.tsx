@@ -29,7 +29,7 @@ describe("PreferencesSettings", () => {
 
     storage.clear();
     document.documentElement.dataset.theme = "dark";
-    document.documentElement.dataset.palette = "fullchaos";
+    document.documentElement.dataset.palette = "fullchaos-infinity-knot-redux";
     document.documentElement.style.colorScheme = "dark";
   });
 

@@ -89,7 +89,7 @@ const getThemeSnapshot = (): Theme => {
 
 const getPaletteSnapshot = (): Palette => {
   if (isServer) {
-    return "fullchaos";
+    return "fullchaos-infinity-knot-redux";
   }
   const stored = getStoredPalette();
   if (stored) {
@@ -100,11 +100,11 @@ const getPaletteSnapshot = (): Palette => {
   if (normalized) {
     return normalized;
   }
-  return "fullchaos";
+  return "fullchaos-infinity-knot-redux";
 };
 
 const getThemeServerSnapshot = (): Theme => "light";
-const getPaletteServerSnapshot = (): Palette => "fullchaos";
+const getPaletteServerSnapshot = (): Palette => "fullchaos-infinity-knot-redux";
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);

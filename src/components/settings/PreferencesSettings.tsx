@@ -79,16 +79,16 @@ const getThemeSnapshot = (): Theme => {
 };
 
 const getPaletteSnapshot = (): Palette => {
-  if (isServer) return "fullchaos";
+  if (isServer) return "fullchaos-infinity-knot-redux";
   const stored = getStoredPalette();
   if (stored) return stored;
   const fromDataset = document.documentElement.dataset.palette ?? null;
   const normalized = normalizePalette(fromDataset);
-  return normalized ?? "fullchaos";
+  return normalized ?? "fullchaos-infinity-knot-redux";
 };
 
 const getThemeServerSnapshot = (): Theme => "light";
-const getPaletteServerSnapshot = (): Palette => "fullchaos";
+const getPaletteServerSnapshot = (): Palette => "fullchaos-infinity-knot-redux";
 
 const PALETTES: { value: Palette; label: string }[] = [
   { value: "fullchaos", label: "Full Chaos" },
