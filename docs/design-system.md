@@ -1,6 +1,6 @@
 # Design System
 
-This document outlines the design system and theming architecture for the Dev Health web platform. It is intended for agents and developers to ensure consistency across the codebase.
+This document outlines the design system and theming architecture for the Full Chaos Dev Health web platform. It is intended for agents and developers to ensure consistency across the codebase.
 
 ## Overview
 

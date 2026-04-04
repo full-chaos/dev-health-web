@@ -6,7 +6,7 @@ Chris George / Full Chaos Studio
 
 ## Licensed Work
 
-Dev Health Platform (dev-health-ops, dev-health-web, dev-health-panels)
+Full Chaos Dev Health Platform (dev-health-ops, dev-health-web, dev-health-panels)
 Copyright (c) 2025 Chris George
 
 The Licensed Work is (c) 2025 Chris George.

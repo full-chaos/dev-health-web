@@ -4,7 +4,7 @@ import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 type SearchParams = Promise<{ token?: string }>;
 
 export const metadata = {
-  title: "Reset Password | Dev Health",
+  title: "Reset Password | Full Chaos Dev Health",
   description: "Set a new dev-health password",
 };
 

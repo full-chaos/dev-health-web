@@ -277,7 +277,7 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
         <header className="flex flex-col gap-3">
           <p className="text-sm font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
-            Dev Health Ops
+            Full Chaos Dev Health Ops
           </p>
           <h1 className="text-4xl font-semibold leading-tight tracking-tight">
             Chart prototypes powered by ECharts

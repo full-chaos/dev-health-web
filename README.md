@@ -1,4 +1,4 @@
-# Dev Health Web
+# Full Chaos Dev Health Web
 
 [Demo](https://demo.fullchaos.studio)
 

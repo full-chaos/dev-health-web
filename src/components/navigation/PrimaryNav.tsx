@@ -98,7 +98,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
           <div>
             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-              Dev Health Ops
+              Full Chaos Dev Health Ops
             </p>
             <p className="mt-2 font-(--font-display) text-lg font-semibold flex items-center gap-2">
               Cockpit <BetaBadge />

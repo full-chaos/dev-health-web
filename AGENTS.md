@@ -1,10 +1,10 @@
 # AGENTS.md — dev-health-web
 
-> **Canonical Reference:** See [`/AGENTS.md`](../AGENTS.md) for the unified Dev Health platform agent briefing.
+> **Canonical Reference:** See [`/AGENTS.md`](../AGENTS.md) for the unified Full Chaos Dev Health platform agent briefing.
 >
 > **Docs:** See [`docs/`](docs/) for dev-health-web-specific documentation (architecture, auth system, design system, GraphQL, testing, visualizations).
 
-This document contains **dev-health-web specific** guidance for the Next.js frontend.
+This document contains **dev-health-web specific** guidance for the Full Chaos Dev Health Next.js frontend.
 
 ## Purpose
 

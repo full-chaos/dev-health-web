@@ -17,9 +17,9 @@ export default function AuthLayout({
           <Link
             href="/"
             className="flex items-center"
-            aria-label="Dev Health home"
+            aria-label="Full Chaos Dev Health home"
           >
-            <Image src={fcLogo} alt="Dev Health logo" className="mr-2 h-10 w-auto" />
+            <Image src={fcLogo} alt="Full Chaos Dev Health logo" className="mr-2 h-10 w-auto" />
             <div className="flex flex-col">
               <span className="text-lg font-semibold leading-tight tracking-tight">
                 Full Chaos
