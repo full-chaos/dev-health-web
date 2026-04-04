@@ -25,6 +25,8 @@ describe("isPublicPath", () => {
   it("returns true for exact public paths", () => {
     expect(isPublicPath("/")).toBe(true);
     expect(isPublicPath("/pricing")).toBe(true);
+    expect(isPublicPath("/privacy")).toBe(true);
+    expect(isPublicPath("/terms")).toBe(true);
     expect(isPublicPath("/auth/signin")).toBe(true);
     expect(isPublicPath("/favicon.ico")).toBe(true);
   });
@@ -32,6 +34,8 @@ describe("isPublicPath", () => {
   it("returns false for public paths with appended suffixes", () => {
     expect(isPublicPath("/auth/signin.evil")).toBe(false);
     expect(isPublicPath("/pricing-evil")).toBe(false);
+    expect(isPublicPath("/privacy-policy")).toBe(false);
+    expect(isPublicPath("/terms-and-conditions")).toBe(false);
     expect(isPublicPath("/healthcheck")).toBe(false);
   });
 
