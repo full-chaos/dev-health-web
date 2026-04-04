@@ -6,7 +6,7 @@ export function ServiceUnavailable() {
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto flex w-full max-w-3xl flex-col items-start gap-6 px-6 pb-20 pt-16">
         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-          Dev Health Ops
+          Full Chaos Dev Health Ops
         </p>
         <h1 className="font-(--font-display) text-3xl">
           Data service unavailable

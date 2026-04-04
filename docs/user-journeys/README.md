@@ -1,6 +1,6 @@
 # User Journeys
 
-> Comprehensive documentation of all user-facing flows across the Dev Health platform.
+> Comprehensive documentation of all user-facing flows across the Full Chaos Dev Health platform.
 > For authentication journeys (registration, login, verification, SSO, RBAC), see [auth-system.md](../auth-system.md).
 
 ## Table of Contents

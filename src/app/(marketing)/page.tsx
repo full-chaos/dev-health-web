@@ -67,7 +67,7 @@ const STEPS = [
     number: "01",
     title: "Connect your tools",
     description:
-      "Point Dev Health at your GitHub, GitLab, or Jira instance. Connectors pull commits, PRs, deployments, and work items automatically.",
+        "Point Full Chaos Dev Health at your GitHub, GitLab, or Jira instance. Connectors pull commits, PRs, deployments, and work items automatically.",
   },
   {
     number: "02",
@@ -128,7 +128,7 @@ export default function MarketingPage() {
             <span className="text-(--accent)">actually</span> going?
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
-            Dev Health is an open-source analytics platform for team operating
+            Full Chaos Dev Health is an open-source analytics platform for team operating
             modes and developer health. See where effort is invested and what
             it costs your people.
           </p>
@@ -157,7 +157,7 @@ export default function MarketingPage() {
                 <div className="size-3 rounded-full bg-(--card-stroke)" />
                 <div className="size-3 rounded-full bg-(--card-stroke)" />
                 <span className="ml-3 text-xs text-(--ink-muted)">
-                  Dev Health Ops Cockpit
+                  Full Chaos Dev Health Ops Cockpit
                 </span>
               </div>
             </div>
@@ -312,7 +312,7 @@ export default function MarketingPage() {
             Built in the open, for everyone
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
-            Dev Health is fully open source. Deploy it on your infrastructure,
+            Full Chaos Dev Health is fully open source. Deploy it on your infrastructure,
             audit every metric computation, and contribute to the roadmap.
             Accessibility over extraction.
           </p>

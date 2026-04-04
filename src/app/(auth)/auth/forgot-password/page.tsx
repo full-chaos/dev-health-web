@@ -1,7 +1,7 @@
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 export const metadata = {
-  title: "Forgot Password | Dev Health",
+  title: "Forgot Password | Full Chaos Dev Health",
   description: "Reset your dev-health password",
 };
 

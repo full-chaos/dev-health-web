@@ -28,16 +28,16 @@ const monoFont = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.fullchaos.dev"),
   title: {
-    default: "Dev Health — Engineering Effort Analytics",
-    template: "%s | Dev Health",
+    default: "Full Chaos Dev Health — Engineering Effort Analytics",
+    template: "%s | Full Chaos Dev Health",
   },
   description:
     "Open-source analytics platform for team operating modes and developer health. See where effort is invested and what it costs your people.",
   openGraph: {
-    title: "Dev Health — Engineering Effort Analytics",
+    title: "Full Chaos Dev Health — Engineering Effort Analytics",
     description:
       "Understand where human effort is actually being invested, and the cost to people when certain work dominates.",
-    siteName: "Dev Health",
+    siteName: "Full Chaos Dev Health",
     locale: "en_US",
     type: "website",
     images: [
@@ -45,13 +45,13 @@ export const metadata: Metadata = {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "Dev Health — Engineering Effort Analytics",
+        alt: "Full Chaos Dev Health — Engineering Effort Analytics",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Dev Health — Engineering Effort Analytics",
+    title: "Full Chaos Dev Health — Engineering Effort Analytics",
     description:
       "Open-source analytics for team operating modes and developer health.",
     images: ["/opengraph-image.png"],

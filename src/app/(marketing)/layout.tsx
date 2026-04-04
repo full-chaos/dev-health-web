@@ -5,28 +5,29 @@ import { BetaBadge } from "@/components/BetaBadge";
 import fcLogo from "@/assets/fc-logo.png";
 
 export const metadata: Metadata = {
-  title: "Dev Health (Beta) — Where is your engineering effort going?",
+  title:
+    "Full Chaos Dev Health (Beta) — Where is your engineering effort going?",
   description:
-    "Dev Health is an open-source analytics platform for team operating modes and developer health. See where effort is invested and what it costs your people.",
+    "Full Chaos Dev Health is an open-source analytics platform for team operating modes and developer health. See where effort is invested and what it costs your people.",
   openGraph: {
-    title: "Dev Health (Beta) — Engineering Effort Analytics",
+    title: "Full Chaos Dev Health (Beta) — Engineering Effort Analytics",
     description:
       "Understand where human effort is actually being invested, and the cost to people when certain work dominates.",
     url: "/",
     type: "website",
-    siteName: "Dev Health",
+    siteName: "Full Chaos Dev Health",
     images: [
       {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "Dev Health — Engineering Effort Analytics",
+        alt: "Full Chaos Dev Health — Engineering Effort Analytics",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Dev Health (Beta) — Engineering Effort Analytics",
+    title: "Full Chaos Dev Health (Beta) — Engineering Effort Analytics",
     description:
       "Open-source analytics for team operating modes and developer health.",
     images: ["/opengraph-image.png"],
@@ -53,8 +54,8 @@ const FOOTER_LINKS = {
     },
   ],
   Legal: [
-    { label: "Privacy", href: "#" },
-    { label: "Terms", href: "#" },
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
   ],
 };
 
@@ -70,9 +71,13 @@ export default function MarketingLayout({
           <Link
             href="/"
             className="flex items-center"
-            aria-label="Dev Health home"
+            aria-label="Full Chaos Dev Health home"
           >
-            <Image src={fcLogo} alt="Dev Health logo" className="mr-2 h-10 w-auto" />
+            <Image
+              src={fcLogo}
+              alt="Full Chaos Dev Health logo"
+              className="mr-2 h-10 w-auto"
+            />
             <div className="flex flex-col">
               <span className="text-lg font-semibold leading-tight tracking-tight">
                 Full Chaos
@@ -116,7 +121,7 @@ export default function MarketingLayout({
       <footer className="border-t border-(--card-stroke)">
         <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <p className="text-lg font-semibold">Dev Health</p>
+            <p className="text-lg font-semibold">Full Chaos Dev Health</p>
             <p className="mt-2 text-sm text-(--ink-muted)">
               Open-source analytics for team operating modes and developer
               health.
@@ -156,7 +161,8 @@ export default function MarketingLayout({
         <div className="border-t border-(--card-stroke)">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
             <p className="text-xs text-(--ink-muted)">
-              &copy; {new Date().getFullYear()} Dev Health. All rights reserved.
+              &copy; {new Date().getFullYear()} Full Chaos Studios. All rights
+              reserved.
             </p>
             <p className="text-xs text-(--ink-muted)">
               Learning, not judgment.

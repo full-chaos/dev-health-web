@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { getSubscription } from "@/lib/billing/actions";
 
 export const metadata: Metadata = {
-  title: "Pricing — Dev Health",
+  title: "Pricing — Full Chaos Dev Health",
   description:
     "Simple, transparent pricing. Start free, scale as you grow.",
 };

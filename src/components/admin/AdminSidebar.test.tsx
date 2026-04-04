@@ -26,7 +26,7 @@ describe("AdminSidebar", () => {
   it("renders without crashing and highlights the current route", () => {
     render(<AdminSidebar />);
 
-    expect(screen.getByText("Dev Health Ops")).toBeInTheDocument();
+    expect(screen.getByText("Full Chaos Dev Health Ops")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /dashboardoverview/i })).toHaveAttribute(
       "aria-current",
       "page"

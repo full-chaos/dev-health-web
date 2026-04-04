@@ -7,6 +7,8 @@ const log = logger.child({ module: "proxy" });
 
 const EXACT_PUBLIC_PATHS = [
     "/pricing",
+    "/privacy",
+    "/terms",
     "/auth/signin",
     "/auth/signup",
     "/auth/verify",

@@ -1,4 +1,4 @@
-# Dev Health Web: UX Improvement Plan
+# Full Chaos Dev Health Web: UX Improvement Plan
 
 > **Status**: Archived — plan created 2026-02-01, no phases marked as completed. Retained as historical context for UX direction.
 > **Last reviewed**: 2026-03-09

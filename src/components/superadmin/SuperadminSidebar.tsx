@@ -26,7 +26,7 @@ export function SuperadminSidebar() {
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
           <div>
             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-              Dev Health Ops
+              Full Chaos Dev Health Ops
             </p>
             <p className="mt-3 font-(--font-display) text-lg">
               Superadmin
