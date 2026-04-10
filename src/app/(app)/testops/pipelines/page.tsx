@@ -11,21 +11,22 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
+import { TimeseriesResult, TimeseriesBucket, BreakdownResult, BreakdownItem } from "@/lib/graphql/schemas/analytics";
 
 type PipelinesPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-function getLatestValue(timeseries: any[], measureId: string) {
+function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
   const series = timeseries.find((s) => s.measure === measureId);
   if (!series || !series.buckets || series.buckets.length === 0) return undefined;
   return series.buckets[series.buckets.length - 1].value;
 }
 
-function getSparkline(timeseries: any[], measureId: string) {
+function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
   const series = timeseries.find((s) => s.measure === measureId);
   if (!series || !series.buckets) return undefined;
-  return series.buckets.map((b: any) => b.value);
+  return series.buckets.map((b: TimeseriesBucket) => ({ ts: b.date, value: b.value }));
 }
 
 export default async function PipelinesPage({ searchParams }: PipelinesPageProps) {
@@ -71,17 +72,17 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
     { id: "PIPELINE_RERUN_RATE", ts: pipelineTimeseries },
   ];
 
-  const successRateSeries = pipelineTimeseries.find(s => s.measure === "PIPELINE_SUCCESS_RATE");
-  const failureBreakdown = pipelineBreakdowns.find(b => b.measure === "PIPELINE_FAILURE_RATE");
+  const successRateSeries = pipelineTimeseries.find((s: TimeseriesResult) => s.measure === "PIPELINE_SUCCESS_RATE");
+  const failureBreakdown = pipelineBreakdowns.find((b: BreakdownResult) => b.measure === "PIPELINE_FAILURE_RATE");
 
-  const timeseriesData = successRateSeries ? successRateSeries.buckets.map(b => ({ day: b.date, value: b.value })) : [];
+  const timeseriesData = successRateSeries ? successRateSeries.buckets.map((b: TimeseriesBucket) => ({ day: b.date, value: b.value })) : [];
 
   const heatmapData = {
     axes: {
-      x: failureBreakdown ? failureBreakdown.items.map(item => item.key) : [],
+      x: failureBreakdown ? failureBreakdown.items.map((item: BreakdownItem) => item.key) : [],
       y: ["Failure Rate"]
     },
-    cells: failureBreakdown ? failureBreakdown.items.map(item => ({
+    cells: failureBreakdown ? failureBreakdown.items.map((item: BreakdownItem) => ({
       x: item.key,
       y: "Failure Rate",
       value: item.value

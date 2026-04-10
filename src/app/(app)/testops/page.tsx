@@ -9,21 +9,22 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
+import { TimeseriesResult, TimeseriesBucket } from "@/lib/graphql/schemas/analytics";
 
 type TestOpsPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-function getLatestValue(timeseries: any[], measureId: string) {
+function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
   const series = timeseries.find((s) => s.measure === measureId);
   if (!series || !series.buckets || series.buckets.length === 0) return undefined;
   return series.buckets[series.buckets.length - 1].value;
 }
 
-function getSparkline(timeseries: any[], measureId: string) {
+function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
   const series = timeseries.find((s) => s.measure === measureId);
   if (!series || !series.buckets) return undefined;
-  return series.buckets.map((b: any) => b.value);
+  return series.buckets.map((b: TimeseriesBucket) => ({ ts: b.date, value: b.value }));
 }
 
 export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {

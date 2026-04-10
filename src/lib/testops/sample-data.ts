@@ -176,6 +176,91 @@ export const SAMPLE_COVERAGE_DATA: AnalyticsResult = {
         { date: "2024-01-07", value: 82.1 },
       ],
     },
+    {
+      dimension: "TEAM",
+      dimensionValue: "all",
+      measure: "COVERAGE_BRANCH_PCT",
+      buckets: [
+        { date: "2024-01-01", value: 75 },
+        { date: "2024-01-02", value: 75.5 },
+        { date: "2024-01-03", value: 76 },
+        { date: "2024-01-04", value: 76.2 },
+        { date: "2024-01-05", value: 76.5 },
+        { date: "2024-01-06", value: 77 },
+        { date: "2024-01-07", value: 77.1 },
+      ],
+    },
+    {
+      dimension: "TEAM",
+      dimensionValue: "all",
+      measure: "COVERAGE_DELTA_PCT",
+      buckets: [
+        { date: "2024-01-01", value: 0.1 },
+        { date: "2024-01-02", value: 0.5 },
+        { date: "2024-01-03", value: 0.5 },
+        { date: "2024-01-04", value: 0.2 },
+        { date: "2024-01-05", value: 0.3 },
+        { date: "2024-01-06", value: 0.5 },
+        { date: "2024-01-07", value: 0.1 },
+      ],
+    },
   ],
-  breakdowns: [],
+  breakdowns: [
+    {
+      dimension: "REPO",
+      measure: "COVERAGE_LINE_PCT",
+      items: [
+        { key: "frontend-web", value: 85.2 },
+        { key: "backend-api", value: 92.1 },
+        { key: "mobile-app", value: 68.5 },
+        { key: "data-pipeline", value: 74.3 },
+        { key: "auth-service", value: 98.0 },
+      ],
+    },
+  ],
+};
+
+export const SAMPLE_RISK_DATA = {
+  release_confidence: 0.82,
+  quality_drag_hours: 14.5,
+  pipeline_stability: 0.88,
+  timeseries: [
+    { date: "2024-01-01", riskScore: 0.4 },
+    { date: "2024-01-02", riskScore: 0.35 },
+    { date: "2024-01-03", riskScore: 0.45 },
+    { date: "2024-01-04", riskScore: 0.3 },
+    { date: "2024-01-05", riskScore: 0.25 },
+    { date: "2024-01-06", riskScore: 0.2 },
+    { date: "2024-01-07", riskScore: 0.18 },
+  ],
+  quality_drag_breakdown: [
+    { category: "Failure Rework", hours: 6.5 },
+    { category: "Flake Investigation", hours: 4.0 },
+    { category: "Queue Wait", hours: 2.5 },
+    { category: "Retry Overhead", hours: 1.5 },
+  ],
+  quadrant_data: [
+    { id: "frontend-web", pipeline_success_rate: 85, test_pass_rate: 98 },
+    { id: "backend-api", pipeline_success_rate: 95, test_pass_rate: 99 },
+    { id: "mobile-app", pipeline_success_rate: 70, test_pass_rate: 92 },
+    { id: "data-pipeline", pipeline_success_rate: 60, test_pass_rate: 85 },
+    { id: "auth-service", pipeline_success_rate: 98, test_pass_rate: 100 },
+  ]
+};
+
+export const SAMPLE_PR_TESTOPS_DATA = {
+  prId: "PR-1234",
+  repoId: "frontend-web",
+  pipelineStatus: {
+    status: "success" as const,
+    duration: "4m 12s",
+  },
+  testResults: {
+    passed: 142,
+    failed: 0,
+    skipped: 3,
+    flaky: 1,
+  },
+  coverageDelta: 0.4,
+  releaseConfidence: 0.92,
 };

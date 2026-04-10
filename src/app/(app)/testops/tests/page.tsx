@@ -11,21 +11,22 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
+import { TimeseriesResult, TimeseriesBucket, BreakdownResult, BreakdownItem } from "@/lib/graphql/schemas/analytics";
 
 type TestsPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-function getLatestValue(timeseries: any[], measureId: string) {
+function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
   const series = timeseries.find((s) => s.measure === measureId);
   if (!series || !series.buckets || series.buckets.length === 0) return undefined;
   return series.buckets[series.buckets.length - 1].value;
 }
 
-function getSparkline(timeseries: any[], measureId: string) {
+function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
   const series = timeseries.find((s) => s.measure === measureId);
   if (!series || !series.buckets) return undefined;
-  return series.buckets.map((b: any) => b.value);
+  return series.buckets.map((b: TimeseriesBucket) => ({ ts: b.date, value: b.value }));
 }
 
 export default async function TestsPage({ searchParams }: TestsPageProps) {
@@ -69,17 +70,17 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     { id: "TEST_SUITE_DURATION_P95", ts: testTimeseries },
   ];
 
-  const passRateSeries = testTimeseries.find(s => s.measure === "TEST_PASS_RATE");
-  const flakeBreakdown = testBreakdowns.find(b => b.measure === "TEST_FLAKE_RATE");
+  const passRateSeries = testTimeseries.find((s: TimeseriesResult) => s.measure === "TEST_PASS_RATE");
+  const flakeBreakdown = testBreakdowns.find((b: BreakdownResult) => b.measure === "TEST_FLAKE_RATE");
 
-  const timeseriesData = passRateSeries ? passRateSeries.buckets.map(b => ({ day: b.date, value: b.value })) : [];
+  const timeseriesData = passRateSeries ? passRateSeries.buckets.map((b: TimeseriesBucket) => ({ day: b.date, value: b.value })) : [];
 
   const heatmapData = {
     axes: {
-      x: flakeBreakdown ? flakeBreakdown.items.map(item => item.key) : [],
+      x: flakeBreakdown ? flakeBreakdown.items.map((item: BreakdownItem) => item.key) : [],
       y: ["Flake Rate"]
     },
-    cells: flakeBreakdown ? flakeBreakdown.items.map(item => ({
+    cells: flakeBreakdown ? flakeBreakdown.items.map((item: BreakdownItem) => ({
       x: item.key,
       y: "Flake Rate",
       value: item.value
