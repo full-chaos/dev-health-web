@@ -30,7 +30,7 @@ importers:
         specifier: ^5.10.0
         version: 5.10.1
       next:
-        specifier: ^16.2.3
+        specifier: ^16
         version: 16.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       next-auth:
         specifier: ^5.0.0-beta.30
@@ -76,7 +76,7 @@ importers:
         specifier: ^0.10.3
         version: 0.10.3(msw@2.13.0(@types/node@25.5.2)(typescript@6.0.2))
       '@next/eslint-plugin-next':
-        specifier: ^16.2.3
+        specifier: ^16.2.2
         version: 16.2.3
       '@playwright/test':
         specifier: ^1.59.1
@@ -109,7 +109,7 @@ importers:
         specifier: ^9
         version: 9.39.4(jiti@2.6.1)
       eslint-config-next:
-        specifier: ^16.2.3
+        specifier: ^16
         version: 16.2.3(@typescript-eslint/parser@8.58.0(eslint@9.39.4(jiti@2.6.1))(typescript@6.0.2))(eslint@9.39.4(jiti@2.6.1))(typescript@6.0.2)
       express:
         specifier: ^5.2.1
@@ -6881,7 +6881,7 @@ snapshots:
       debug: 4.4.3
       minimatch: 10.2.5
       semver: 7.7.4
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.16
       ts-api-utils: 2.5.0(typescript@6.0.2)
       typescript: 6.0.2
     transitivePeerDependencies:
@@ -7806,7 +7806,7 @@ snapshots:
       get-tsconfig: 4.13.7
       is-bun-module: 2.0.0
       stable-hash: 0.0.5
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.16
       unrs-resolver: 1.11.1
     optionalDependencies:
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.58.0(eslint@9.39.4(jiti@2.6.1))(typescript@6.0.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
