@@ -14,6 +14,8 @@ import {
   SAMPLE_RISK_DATA,
 } from "./sample-data";
 
+const EMPTY_ANALYTICS: AnalyticsResult = { timeseries: [], breakdowns: [] };
+
 export async function fetchTestOpsData(
   orgId: string,
   batch: AnalyticsRequestInput,
@@ -42,9 +44,9 @@ export async function fetchTestOpsData(
   } catch (error) {
     console.error("Failed to fetch TestOps data:", error);
     return {
-      pipelines: SAMPLE_PIPELINES_DATA,
-      tests: SAMPLE_TESTS_DATA,
-      coverage: SAMPLE_COVERAGE_DATA,
+      pipelines: EMPTY_ANALYTICS,
+      tests: EMPTY_ANALYTICS,
+      coverage: EMPTY_ANALYTICS,
     };
   }
 }
@@ -53,7 +55,7 @@ export async function fetchCoverageMetrics(
   orgId: string,
   batch: AnalyticsRequestInput,
   isTestMode: boolean = false
-) {
+): Promise<AnalyticsResult> {
   if (isTestMode) {
     return SAMPLE_COVERAGE_DATA;
   }
@@ -63,7 +65,7 @@ export async function fetchCoverageMetrics(
     return res.analytics;
   } catch (error) {
     console.error("Failed to fetch coverage metrics:", error);
-    return SAMPLE_COVERAGE_DATA;
+    return EMPTY_ANALYTICS;
   }
 }
 
@@ -90,7 +92,7 @@ export async function fetchRiskMetrics(
 
     const testPassRateImplied = Math.max(0, 100 - latestTestFlake);
     const releaseConfidence = (latestPipelineSuccess / 100) * (testPassRateImplied / 100) * (latestCoverage / 100);
-    
+
     const failureRate = Math.max(0, 100 - latestPipelineSuccess);
     const qualityDragHours = (latestTestFlake * 2) + (failureRate * 1.5);
 
@@ -117,19 +119,18 @@ export async function fetchRiskMetrics(
       id: item.key,
       pipeline_success_rate: item.value,
       test_pass_rate: 100 - latestTestFlake
-    })) || SAMPLE_RISK_DATA.quadrant_data;
+    })) || [];
 
     return {
       release_confidence: releaseConfidence,
       quality_drag_hours: qualityDragHours,
       pipeline_stability: latestPipelineSuccess / 100,
-      timeseries: timeseries.length > 0 ? timeseries : SAMPLE_RISK_DATA.timeseries,
+      timeseries,
       quality_drag_breakdown: qualityDragBreakdown,
       quadrant_data: quadrantData
     };
   } catch (error) {
     console.error("Failed to fetch risk metrics:", error);
-    return SAMPLE_RISK_DATA;
+    return null;
   }
 }
-
