@@ -36,6 +36,7 @@ const config: CodegenConfig = {
         scalars: {
           Date: "string",
           DateTime: "string",
+          JSON: "Record<string, unknown>",
         },
         // Emit enum values as TypeScript const enums for tree-shaking
         enumsAsTypes: true,
@@ -62,6 +63,7 @@ const config: CodegenConfig = {
         scalars: {
           Date: "string",
           DateTime: "string",
+          JSON: "Record<string, unknown>",
         },
         enumsAsTypes: true,
         avoidOptionals: false,
