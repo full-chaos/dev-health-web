@@ -42,7 +42,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
     }, isTestMode),
   ]);
 
-  if (!health.ok && !isTestMode) {
+  if ((!health.ok && !isTestMode) || !riskData) {
     return <ServiceUnavailable />;
   }
 
