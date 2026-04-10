@@ -18,6 +18,7 @@ import {
   type TypedDocumentNode,
 } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
+import { isServer } from "@/lib/env";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 import type { GraphQLResponse } from "./types";
@@ -142,8 +143,22 @@ export async function graphqlFetch<T>(
 ): Promise<T> {
   const client = getUrqlClient(options.orgId);
 
+  const authHeaders: Record<string, string> = {};
+  if (isServer) {
+    try {
+      const { auth } = await import("@/lib/auth");
+      const session = await auth();
+      if (session?.access_token) {
+        authHeaders["Authorization"] = `Bearer ${session.access_token}`;
+      }
+    } catch {}
+  }
+
   const result = await client
-    .query<T>(query, variables, { requestPolicy: "network-only" })
+    .query<T>(query, variables, {
+      requestPolicy: "network-only",
+      fetchOptions: { headers: authHeaders },
+    })
     .toPromise();
 
   if (result.error) {
