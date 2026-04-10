@@ -16,6 +16,8 @@ export type Scalars = {
   Date: { input: string; output: string; }
   /** Date with time (isoformat) */
   DateTime: { input: string; output: string; }
+  /** The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf). */
+  JSON: { input: Record<string, unknown>; output: Record<string, unknown>; }
 };
 
 export type AnalyticsRequestInput = {
@@ -149,11 +151,27 @@ export type CatalogValueItem = {
   value: Scalars['String']['output'];
 };
 
+export type CloneSavedReportInput = {
+  newName?: InputMaybe<Scalars['String']['input']>;
+  parameterOverrides?: InputMaybe<Scalars['JSON']['input']>;
+  sourceReportId: Scalars['String']['input'];
+};
+
 export type Coverage = {
   __typename?: 'Coverage';
   issuesWithCycleStatesPct: Scalars['Float']['output'];
   prsLinkedToIssuesPct: Scalars['Float']['output'];
   reposCoveredPct: Scalars['Float']['output'];
+};
+
+export type CreateSavedReportInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
+  isTemplate?: Scalars['Boolean']['input'];
+  name: Scalars['String']['input'];
+  parameters?: InputMaybe<Scalars['JSON']['input']>;
+  reportPlan?: InputMaybe<Scalars['JSON']['input']>;
+  scheduleCron?: InputMaybe<Scalars['String']['input']>;
+  scheduleTimezone?: Scalars['String']['input'];
 };
 
 export type DateRangeInput = {
@@ -196,7 +214,19 @@ export type HowFilterInput = {
 export type MeasureInput =
   | 'CHURN_LOC'
   | 'COUNT'
+  | 'COVERAGE_BRANCH_PCT'
+  | 'COVERAGE_DELTA_PCT'
+  | 'COVERAGE_LINE_PCT'
   | 'CYCLE_TIME_HOURS'
+  | 'PIPELINE_DURATION_P95'
+  | 'PIPELINE_FAILURE_RATE'
+  | 'PIPELINE_QUEUE_TIME'
+  | 'PIPELINE_RERUN_RATE'
+  | 'PIPELINE_SUCCESS_RATE'
+  | 'TEST_FAILURE_RATE'
+  | 'TEST_FLAKE_RATE'
+  | 'TEST_PASS_RATE'
+  | 'TEST_SUITE_DURATION_P95'
   | 'THROUGHPUT';
 
 export type MetricDelta = {
@@ -215,6 +245,51 @@ export type MetricsUpdate = {
   message: Scalars['String']['output'];
   orgId: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+};
+
+export type Mutation = {
+  __typename?: 'Mutation';
+  /** Clone a saved report with optional overrides */
+  cloneSavedReport?: Maybe<SavedReportType>;
+  /** Create a new saved report */
+  createSavedReport: SavedReportType;
+  /** Delete a saved report */
+  deleteSavedReport: Scalars['Boolean']['output'];
+  /** Trigger a manual report execution */
+  triggerReport?: Maybe<ReportRunType>;
+  /** Update an existing saved report */
+  updateSavedReport?: Maybe<SavedReportType>;
+};
+
+
+export type MutationCloneSavedReportArgs = {
+  input: CloneSavedReportInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type MutationCreateSavedReportArgs = {
+  input: CreateSavedReportInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteSavedReportArgs = {
+  orgId: Scalars['String']['input'];
+  reportId: Scalars['String']['input'];
+};
+
+
+export type MutationTriggerReportArgs = {
+  orgId: Scalars['String']['input'];
+  reportId: Scalars['String']['input'];
+};
+
+
+export type MutationUpdateSavedReportArgs = {
+  input: UpdateSavedReportInput;
+  orgId: Scalars['String']['input'];
+  reportId: Scalars['String']['input'];
 };
 
 export type PageInfo = {
@@ -237,6 +312,12 @@ export type Query = {
   catalog: CatalogResult;
   /** Get home dashboard metrics */
   home: HomeResult;
+  /** List report runs for a saved report */
+  reportRuns: ReportRunConnection;
+  /** Get a saved report by ID */
+  savedReport?: Maybe<SavedReportType>;
+  /** List saved reports for an organization */
+  savedReports: SavedReportConnection;
   /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
 };
@@ -273,9 +354,51 @@ export type QueryHomeArgs = {
 };
 
 
+export type QueryReportRunsArgs = {
+  limit?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+  reportId: Scalars['String']['input'];
+};
+
+
+export type QuerySavedReportArgs = {
+  orgId: Scalars['String']['input'];
+  reportId: Scalars['String']['input'];
+};
+
+
+export type QuerySavedReportsArgs = {
+  limit?: Scalars['Int']['input'];
+  offset?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+};
+
+
 export type QueryWorkGraphEdgesArgs = {
   filters?: InputMaybe<WorkGraphEdgeFilterInput>;
   orgId: Scalars['String']['input'];
+};
+
+export type ReportRunConnection = {
+  __typename?: 'ReportRunConnection';
+  items: Array<ReportRunType>;
+  total: Scalars['Int']['output'];
+};
+
+export type ReportRunType = {
+  __typename?: 'ReportRunType';
+  artifactUrl?: Maybe<Scalars['String']['output']>;
+  completedAt?: Maybe<Scalars['DateTime']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  durationSeconds?: Maybe<Scalars['Float']['output']>;
+  error?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  provenanceRecords?: Maybe<Scalars['JSON']['output']>;
+  renderedMarkdown?: Maybe<Scalars['String']['output']>;
+  reportId: Scalars['String']['output'];
+  startedAt?: Maybe<Scalars['DateTime']['output']>;
+  status: Scalars['String']['output'];
+  triggeredBy: Scalars['String']['output'];
 };
 
 export type SankeyCoverage = {
@@ -313,6 +436,31 @@ export type SankeyResult = {
   coverage?: Maybe<SankeyCoverage>;
   edges: Array<SankeyEdge>;
   nodes: Array<SankeyNode>;
+};
+
+export type SavedReportConnection = {
+  __typename?: 'SavedReportConnection';
+  items: Array<SavedReportType>;
+  total: Scalars['Int']['output'];
+};
+
+export type SavedReportType = {
+  __typename?: 'SavedReportType';
+  createdAt: Scalars['DateTime']['output'];
+  createdBy?: Maybe<Scalars['String']['output']>;
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  isActive: Scalars['Boolean']['output'];
+  isTemplate: Scalars['Boolean']['output'];
+  lastRunAt?: Maybe<Scalars['DateTime']['output']>;
+  lastRunStatus?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  orgId: Scalars['String']['output'];
+  parameters?: Maybe<Scalars['JSON']['output']>;
+  reportPlan: Scalars['JSON']['output'];
+  scheduleId?: Maybe<Scalars['String']['output']>;
+  templateSourceId?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type ScopeFilterInput = {
@@ -398,6 +546,17 @@ export type TimeseriesResult = {
   dimension: Scalars['String']['output'];
   dimensionValue: Scalars['String']['output'];
   measure: Scalars['String']['output'];
+};
+
+export type UpdateSavedReportInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  isTemplate?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  parameters?: InputMaybe<Scalars['JSON']['input']>;
+  reportPlan?: InputMaybe<Scalars['JSON']['input']>;
+  scheduleCron?: InputMaybe<Scalars['String']['input']>;
+  scheduleTimezone?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type WhatFilterInput = {

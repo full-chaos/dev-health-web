@@ -8,26 +8,31 @@ export type ReportRun = {
   id: string;
   reportId: string;
   status: ReportStatus;
-  durationMs: number;
-  trigger: "manual" | "scheduled";
   startedAt: string;
   completedAt?: string;
-  renderedContent?: string;
   error?: string;
+  resultUrl?: string;
+  durationMs?: number;
+  trigger?: "manual" | "scheduled";
+  renderedContent?: string;
 };
 
 export type SavedReport = {
   id: string;
   name: string;
   description: string;
-  scope: {
+  isTemplate?: boolean;
+  isActive?: boolean;
+  lastRunAt?: string;
+  lastRunStatus?: ReportStatus;
+  createdAt: string;
+  updatedAt: string;
+  scope?: {
     level: "team" | "repo" | "org";
     id: string;
   };
-  dateRange: string;
-  metrics: string[];
-  schedule: "none" | "weekly" | "monthly";
-  createdAt: string;
-  updatedAt: string;
+  dateRange?: string;
+  metrics?: string[];
+  schedule?: "none" | "weekly" | "monthly";
   lastRun?: ReportRun;
 };

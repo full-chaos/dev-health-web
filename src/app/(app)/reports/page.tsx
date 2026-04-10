@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { StatusBadge } from "@/components/reports/StatusBadge";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { sampleReports } from "@/lib/reports/sample-data";
+import { fetchSavedReports } from "@/lib/reports/fetchers";
 
 type ReportsPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -19,7 +19,9 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const reports = sampleReports;
+  const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+  const reportsData = await fetchSavedReports("default-org", undefined, undefined, isTestMode);
+  const reports = reportsData.items;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -71,7 +73,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                         <h3 className="font-(--font-display) text-lg font-medium group-hover:text-(--accent) transition-colors">
                           {report.name}
                         </h3>
-                        <StatusBadge status={report.lastRun?.status} />
+                        <StatusBadge status={report.lastRunStatus || report.lastRun?.status} />
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm text-(--ink-muted)">
                         {report.description}
@@ -79,11 +81,11 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                     </div>
                     <div className="mt-6 flex items-center justify-between text-xs text-(--ink-muted)">
                       <span className="uppercase tracking-wider">
-                        {report.schedule === "none" ? "Manual" : report.schedule}
+                        {report.schedule === "none" ? "Manual" : report.schedule || "Manual"}
                       </span>
                       <span>
-                        {report.lastRun?.startedAt
-                          ? new Date(report.lastRun.startedAt).toLocaleDateString()
+                        {report.lastRunAt || report.lastRun?.startedAt
+                          ? new Date(report.lastRunAt || report.lastRun?.startedAt || "").toLocaleDateString()
                           : "Never"}
                       </span>
                     </div>

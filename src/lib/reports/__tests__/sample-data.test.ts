@@ -9,8 +9,8 @@ describe("Report Sample Data", () => {
     const report = sampleReports[0];
     expect(report.id).toBeDefined();
     expect(report.name).toBeDefined();
-    expect(report.scope.level).toBeDefined();
-    expect(report.metrics.length).toBeGreaterThan(0);
+    expect(report.scope?.level).toBeDefined();
+    expect(report.metrics?.length).toBeGreaterThan(0);
   });
 
   it("should have valid sample runs linked to reports", () => {

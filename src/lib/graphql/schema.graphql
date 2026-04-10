@@ -119,10 +119,26 @@ type CatalogValueItem {
   count: Int!
 }
 
+input CloneSavedReportInput {
+  sourceReportId: String!
+  newName: String = null
+  parameterOverrides: JSON = null
+}
+
 type Coverage {
   reposCoveredPct: Float!
   prsLinkedToIssuesPct: Float!
   issuesWithCycleStatesPct: Float!
+}
+
+input CreateSavedReportInput {
+  name: String!
+  description: String = null
+  reportPlan: JSON = null
+  isTemplate: Boolean! = false
+  parameters: JSON = null
+  scheduleCron: String = null
+  scheduleTimezone: String! = "UTC"
 }
 
 """Date (isoformat)"""
@@ -167,11 +183,28 @@ input HowFilterInput {
   flowStage: [String!] = null
 }
 
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
+"""
+scalar JSON @specifiedBy(url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf")
+
 enum MeasureInput {
   COUNT
   CHURN_LOC
   CYCLE_TIME_HOURS
   THROUGHPUT
+  PIPELINE_SUCCESS_RATE
+  PIPELINE_FAILURE_RATE
+  PIPELINE_DURATION_P95
+  PIPELINE_QUEUE_TIME
+  PIPELINE_RERUN_RATE
+  TEST_PASS_RATE
+  TEST_FAILURE_RATE
+  TEST_FLAKE_RATE
+  TEST_SUITE_DURATION_P95
+  COVERAGE_LINE_PCT
+  COVERAGE_BRANCH_PCT
+  COVERAGE_DELTA_PCT
 }
 
 type MetricDelta {
@@ -188,6 +221,23 @@ type MetricsUpdate {
   day: String!
   updatedAt: DateTime!
   message: String!
+}
+
+type Mutation {
+  """Create a new saved report"""
+  createSavedReport(orgId: String!, input: CreateSavedReportInput!): SavedReportType!
+
+  """Update an existing saved report"""
+  updateSavedReport(orgId: String!, reportId: String!, input: UpdateSavedReportInput!): SavedReportType
+
+  """Delete a saved report"""
+  deleteSavedReport(orgId: String!, reportId: String!): Boolean!
+
+  """Clone a saved report with optional overrides"""
+  cloneSavedReport(orgId: String!, input: CloneSavedReportInput!): SavedReportType
+
+  """Trigger a manual report execution"""
+  triggerReport(orgId: String!, reportId: String!): ReportRunType
 }
 
 type PageInfo {
@@ -210,11 +260,40 @@ type Query {
   """Query work graph edges with optional filters"""
   workGraphEdges(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphEdgesResult!
 
+  """List saved reports for an organization"""
+  savedReports(orgId: String!, limit: Int! = 50, offset: Int! = 0): SavedReportConnection!
+
+  """Get a saved report by ID"""
+  savedReport(orgId: String!, reportId: String!): SavedReportType
+
+  """List report runs for a saved report"""
+  reportRuns(orgId: String!, reportId: String!, limit: Int! = 50): ReportRunConnection!
+
   """Compute capacity forecast on-demand"""
   capacityForecast(orgId: String!, input: CapacityForecastInput = null): CapacityForecast
 
   """List persisted capacity forecasts"""
   capacityForecasts(orgId: String!, filters: CapacityForecastFilterInput = null): CapacityForecastConnection!
+}
+
+type ReportRunConnection {
+  items: [ReportRunType!]!
+  total: Int!
+}
+
+type ReportRunType {
+  id: String!
+  reportId: String!
+  status: String!
+  startedAt: DateTime
+  completedAt: DateTime
+  durationSeconds: Float
+  renderedMarkdown: String
+  artifactUrl: String
+  provenanceRecords: JSON
+  error: String
+  triggeredBy: String!
+  createdAt: DateTime!
 }
 
 type SankeyCoverage {
@@ -248,6 +327,29 @@ type SankeyResult {
   nodes: [SankeyNode!]!
   edges: [SankeyEdge!]!
   coverage: SankeyCoverage
+}
+
+type SavedReportConnection {
+  items: [SavedReportType!]!
+  total: Int!
+}
+
+type SavedReportType {
+  id: String!
+  orgId: String!
+  name: String!
+  description: String
+  reportPlan: JSON!
+  isTemplate: Boolean!
+  templateSourceId: String
+  parameters: JSON
+  scheduleId: String
+  isActive: Boolean!
+  lastRunAt: DateTime
+  lastRunStatus: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: String
 }
 
 input ScopeFilterInput {
@@ -315,6 +417,17 @@ type TimeseriesResult {
   dimensionValue: String!
   measure: String!
   buckets: [TimeseriesBucket!]!
+}
+
+input UpdateSavedReportInput {
+  name: String = null
+  description: String = null
+  reportPlan: JSON = null
+  isTemplate: Boolean = null
+  parameters: JSON = null
+  isActive: Boolean = null
+  scheduleCron: String = null
+  scheduleTimezone: String = null
 }
 
 input WhatFilterInput {

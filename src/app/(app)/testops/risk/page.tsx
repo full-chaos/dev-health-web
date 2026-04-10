@@ -30,7 +30,16 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 
   const [health, riskData] = await Promise.all([
     checkApiHealth(),
-    fetchRiskMetrics("default-org", isTestMode),
+    fetchRiskMetrics("default-org", {
+      timeseries: [
+        { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
+        { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
+        { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
+      ],
+      breakdowns: [
+        { dimension: "REPO", measure: "PIPELINE_SUCCESS_RATE", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" }, topN: 10 }
+      ],
+    }, isTestMode),
   ]);
 
   if (!health.ok && !isTestMode) {
