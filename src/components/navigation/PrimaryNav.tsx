@@ -80,6 +80,13 @@ const navGroups: NavGroup[] = [
       { id: "risk", label: "Risk", href: "/testops/risk", description: "Confidence" },
     ],
   },
+  {
+    id: "reports",
+    label: "Reports",
+    items: [
+      { id: "reports", label: "Report Center", href: "/reports", description: "AI Reports" },
+    ],
+  },
 ];
 
 type PrimaryNavProps = {
