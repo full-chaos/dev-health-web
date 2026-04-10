@@ -69,3 +69,28 @@ query TestOpsCoverage($orgId: String!, $batch: AnalyticsRequestInput!) {
   }
 }
 `;
+
+export const TESTOPS_RISK_QUERY = `
+query TestOpsRisk($orgId: String!, $batch: AnalyticsRequestInput!) {
+  analytics(orgId: $orgId, batch: $batch) {
+    timeseries {
+      dimension
+      dimensionValue
+      measure
+      buckets {
+        date
+        value
+      }
+    }
+    breakdowns {
+      dimension
+      measure
+      items {
+        key
+        value
+      }
+    }
+  }
+}
+`;
+

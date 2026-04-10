@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, use } from "react";
+import { useState, useEffect } from "react";
 
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
-import { sampleReports, sampleRuns } from "@/lib/reports/sample-data";
-import { ReportStatus } from "@/lib/reports/types";
+import { ReportStatus, SavedReport, ReportRun } from "@/lib/reports/types";
+import { fetchSavedReport, fetchReportRuns, triggerReport } from "@/lib/reports/fetchers";
 
 function StatusBadge({ status }: { status?: ReportStatus }) {
   if (!status) return <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-wider text-(--ink-muted)">Never run</span>;
@@ -28,10 +28,39 @@ export default function SingleReportPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
   
-  const report = sampleReports.find((r) => r.id === id);
-  const runs = sampleRuns[id] || [];
-  
+  const [report, setReport] = useState<SavedReport | null>(null);
+  const [runs, setRuns] = useState<ReportRun[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+      const [reportData, runsData] = await Promise.all([
+        fetchSavedReport("default-org", id, isTestMode),
+        fetchReportRuns("default-org", id, undefined, isTestMode)
+      ]);
+      setReport(reportData);
+      setRuns(runsData.items);
+      setIsLoading(false);
+    }
+    loadData();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+          <PrimaryNav filters={defaultMetricFilter} active="reports" />
+          <main className="flex min-w-0 flex-1 flex-col gap-8">
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
+              <p className="text-(--ink-muted)">Loading report...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   if (!report) {
     return (
@@ -54,9 +83,18 @@ export default function SingleReportPage() {
     );
   }
 
-  const handleRunNow = () => {
+  const handleRunNow = async () => {
     setIsRunning(true);
-    setTimeout(() => setIsRunning(false), 2000);
+    try {
+      await triggerReport("default-org", id);
+      const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+      const runsData = await fetchReportRuns("default-org", id, undefined, isTestMode);
+      setRuns(runsData.items);
+    } catch (error) {
+      console.error("Failed to trigger report:", error);
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   return (
@@ -126,21 +164,21 @@ export default function SingleReportPage() {
                 <dl className="space-y-4 text-sm">
                   <div>
                     <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Scope</dt>
-                    <dd className="mt-1 font-medium">{report.scope.level}: {report.scope.id}</dd>
+                    <dd className="mt-1 font-medium">{report.scope?.level || "Unknown"}: {report.scope?.id || "Unknown"}</dd>
                   </div>
                   <div>
                     <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Date Range</dt>
-                    <dd className="mt-1 font-medium">{report.dateRange}</dd>
+                    <dd className="mt-1 font-medium">{report.dateRange || "Unknown"}</dd>
                   </div>
                   <div>
                     <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Schedule</dt>
-                    <dd className="mt-1 font-medium capitalize">{report.schedule}</dd>
+                    <dd className="mt-1 font-medium capitalize">{report.schedule || "Unknown"}</dd>
                   </div>
                   <div>
                     <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Metrics</dt>
                     <dd className="mt-1 font-medium">
                       <div className="flex flex-wrap gap-2">
-                        {report.metrics.map(m => (
+                        {(report.metrics || []).map(m => (
                           <span key={m} className="rounded-md bg-(--card-70) px-2 py-1 text-xs">{m}</span>
                         ))}
                       </div>
@@ -168,7 +206,7 @@ export default function SingleReportPage() {
                             <td className="py-3">{new Date(run.startedAt).toLocaleDateString()}</td>
                             <td className="py-3"><StatusBadge status={run.status} /></td>
                             <td className="py-3">{run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "-"}</td>
-                            <td className="py-3 capitalize">{run.trigger}</td>
+                            <td className="py-3 capitalize">{run.trigger || "manual"}</td>
                           </tr>
                         ))}
                       </tbody>
