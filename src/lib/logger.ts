@@ -88,6 +88,9 @@ function createServerLogger(): Logger {
   const pino = require("pino");
   return pino({
     level: LOG_LEVEL,
+    formatters: {
+      level: (label: string) => ({ level: label }),
+    },
     ...(LOG_FORMAT === "pretty"
       ? {
           transport: {
