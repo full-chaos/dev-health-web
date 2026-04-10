@@ -39,17 +39,21 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
 
   const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
+  const startDate = filters?.time?.start_date ?? "2024-01-01";
+  const endDate = filters?.time?.end_date ?? "2024-01-07";
+  const dateRange = { startDate, endDate };
+
   const [health, testOpsData] = await Promise.all([
     checkApiHealth(),
     fetchTestOpsData("default-org", {
       timeseries: [
-        { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
-        { dimension: "TEAM", measure: "PIPELINE_FAILURE_RATE", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
-        { dimension: "TEAM", measure: "PIPELINE_DURATION_P95", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
-        { dimension: "TEAM", measure: "PIPELINE_QUEUE_TIME", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
-        { dimension: "TEAM", measure: "PIPELINE_RERUN_RATE", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
-        { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
-        { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange: { startDate: "2024-01-01", endDate: "2024-01-07" } },
+        { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange },
+        { dimension: "TEAM", measure: "PIPELINE_FAILURE_RATE", interval: "DAY", dateRange },
+        { dimension: "TEAM", measure: "PIPELINE_DURATION_P95", interval: "DAY", dateRange },
+        { dimension: "TEAM", measure: "PIPELINE_QUEUE_TIME", interval: "DAY", dateRange },
+        { dimension: "TEAM", measure: "PIPELINE_RERUN_RATE", interval: "DAY", dateRange },
+        { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange },
+        { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange },
       ],
       breakdowns: [],
     }, isTestMode),
