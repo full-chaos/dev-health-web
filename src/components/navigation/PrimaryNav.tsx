@@ -69,6 +69,17 @@ const navGroups: NavGroup[] = [
       { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
     ],
   },
+  {
+    id: "testops",
+    label: "TestOps",
+    items: [
+      { id: "testops", label: "Overview", href: "/testops", description: "Health" },
+      { id: "pipelines", label: "Pipelines", href: "/testops/pipelines", description: "CI/CD" },
+      { id: "tests", label: "Tests", href: "/testops/tests", description: "Reliability" },
+      { id: "coverage", label: "Coverage", href: "/testops/coverage", description: "Quality" },
+      { id: "risk", label: "Risk", href: "/testops/risk", description: "Confidence" },
+    ],
+  },
 ];
 
 type PrimaryNavProps = {

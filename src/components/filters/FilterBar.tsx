@@ -24,7 +24,8 @@ type FilterBarView =
   | "code"
   | "quality"
   | "opportunities"
-  | "explore";
+  | "explore"
+  | "testops";
 
 type FilterVisibility = {
   scope?: boolean;
@@ -105,7 +106,7 @@ function resolveVisibility(view?: FilterBarView, tab?: string): FilterVisibility
   if (view === "work" || view === "investment") return WORK_VISIBILITY;
   if (view === "people") return PEOPLE_VISIBILITY;
   if (view === "code") return CODE_VISIBILITY;
-  if (view === "quality") return METRICS_DEFAULT_VISIBILITY;
+  if (view === "quality" || view === "testops") return METRICS_DEFAULT_VISIBILITY;
   if (view === "opportunities") return WORK_VISIBILITY;
   if (view === "explore") return EXPLORE_VISIBILITY;
   return DEFAULT_VISIBILITY;
@@ -115,6 +116,7 @@ function resolveScopeLock(view?: FilterBarView): "team" | null {
   const lockedViews: FilterBarView[] = [
     "metrics",
     "quality",
+    "testops",
     "work",
     "investment",
     "opportunities",

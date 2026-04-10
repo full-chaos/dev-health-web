@@ -52,7 +52,8 @@ type FilterBarView =
   | "code"
   | "quality"
   | "opportunities"
-  | "explore";
+  | "explore"
+  | "testops";
 
 type FilterVisibility = {
   scope?: boolean;
@@ -145,7 +146,7 @@ const resolveVisibility = (
   if (view === "code") {
     return CODE_VISIBILITY;
   }
-  if (view === "quality") {
+  if (view === "quality" || view === "testops") {
     return METRICS_DEFAULT_VISIBILITY;
   }
   if (view === "opportunities") {
@@ -356,6 +357,7 @@ export function FilterBarClient({
       ? resolvedScopeLock
       : (view === "metrics" ||
           view === "quality" ||
+          view === "testops" ||
           view === "work" ||
           view === "investment" ||
           view === "opportunities" ||
