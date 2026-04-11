@@ -24,6 +24,11 @@ type MetricTab = {
   description: string;
   metrics: string[];
   highlight: string;
+  quadrant: {
+    type: string;
+    title: string;
+    description: string;
+  };
 };
 
 const METRIC_TABS: MetricTab[] = [
@@ -38,6 +43,11 @@ const METRIC_TABS: MetricTab[] = [
       "review_latency",
     ],
     highlight: "deploy_freq",
+    quadrant: {
+      type: "churn_throughput",
+      title: "Churn × Throughput landscape",
+      description: "Operating modes under change volume and delivery pace.",
+    },
   },
   {
     id: "flow",
@@ -50,6 +60,11 @@ const METRIC_TABS: MetricTab[] = [
       "wip_saturation",
     ],
     highlight: "cycle_time",
+    quadrant: {
+      type: "cycle_throughput",
+      title: "Cycle Time × Throughput landscape",
+      description: "Coordination debt and delivery efficiency.",
+    },
   },
   {
     id: "quality",
@@ -62,6 +77,11 @@ const METRIC_TABS: MetricTab[] = [
       "review_latency",
     ],
     highlight: "change_failure_rate",
+    quadrant: {
+      type: "review_load_latency",
+      title: "Review Load × Review Latency landscape",
+      description: "Review bottlenecks and quality gate pressure.",
+    },
   },
   {
     id: "throughput",
@@ -74,6 +94,11 @@ const METRIC_TABS: MetricTab[] = [
       "blocked_work",
     ],
     highlight: "throughput",
+    quadrant: {
+      type: "wip_throughput",
+      title: "WIP × Throughput landscape",
+      description: "Work-in-progress saturation and delivery capacity.",
+    },
   },
 ];
 
@@ -112,7 +137,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     ),
     fetchOrNull(
       getQuadrant({
-        type: "churn_throughput",
+        type: activeTab.quadrant.type,
         scope_type: quadrantScope,
         scope_id: filters.scope.ids[0] ?? "",
         range_days: filters.time.range_days,
@@ -237,8 +262,8 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
 
           <section>
             <QuadrantPanel
-              title="Churn × Throughput landscape"
-              description="Operating modes under change volume and delivery pace."
+              title={activeTab.quadrant.title}
+              description={activeTab.quadrant.description}
               data={quadrant}
               filters={filters}
               relatedLinks={[
