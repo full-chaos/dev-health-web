@@ -41,8 +41,10 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
 
   const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
-  const startDate = filters?.time?.start_date ?? "2024-01-01";
-  const endDate = filters?.time?.end_date ?? "2024-01-07";
+  const rangeDays = filters?.time?.range_days ?? 14;
+  const today = new Date();
+  const endDate = filters?.time?.end_date ?? today.toISOString().slice(0, 10);
+  const startDate = filters?.time?.start_date ?? new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
   const dateRange = { startDate, endDate };
 
   const [health, testOpsData] = await Promise.all([
