@@ -20,7 +20,7 @@ const tabs = [
     { id: "capacity", label: "Capacity" },
     { id: "flame", label: "Flame" },
     { id: "evidence", label: "Evidence" },
-    { id: "graph", label: "Graph" },
+    { id: "graph", label: "Connections" },
 ] as const;
 
 export function WorkTabNav({ activeTab, filters, role }: WorkTabNavProps) {

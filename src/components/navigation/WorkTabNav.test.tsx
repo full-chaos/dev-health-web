@@ -25,7 +25,7 @@ const filters: MetricFilter = {
 describe("WorkTabNav", () => {
   it("renders all tab labels", () => {
     render(<WorkTabNav activeTab="landscape" filters={filters} />);
-    for (const label of ["Landscape", "Heatmap", "Flow", "Investment", "Capacity", "Flame", "Evidence", "Graph"]) {
+    for (const label of ["Landscape", "Heatmap", "Flow", "Investment", "Capacity", "Flame", "Evidence", "Connections"]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });
