@@ -18,6 +18,8 @@ type MetricsPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
+type QuadrantType = "churn_throughput" | "cycle_throughput" | "wip_throughput" | "review_load_latency";
+
 type MetricTab = {
   id: string;
   label: string;
@@ -25,7 +27,7 @@ type MetricTab = {
   metrics: string[];
   highlight: string;
   quadrant: {
-    type: string;
+    type: QuadrantType;
     title: string;
     description: string;
   };
