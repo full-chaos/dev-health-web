@@ -88,6 +88,20 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
 
   const mix = normalizeInvestmentMix(data);
 
+  const hasData = Object.values(mix.theme_distribution).some((v) => v > 0);
+
+  if (!hasData) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]"
+      >
+        <span className="text-sm text-(--ink-muted)">
+          Investment data not yet available for this window.
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-3xl border border-(--card-stroke) bg-card p-4">
       <InvestmentMixSunburst
