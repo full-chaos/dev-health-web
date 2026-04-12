@@ -1,10 +1,78 @@
-import { describe, it, expect } from "vitest";
-import { fetchRiskMetrics } from "../fetchers";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Session } from "next-auth";
+
+// Must mock auth and graphqlFetch before importing the module under test
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(),
+}));
+
+vi.mock("@/lib/graphql/urqlClient", () => ({
+  graphqlFetch: vi.fn(),
+}));
+
+import { fetchRiskMetrics, fetchTestOpsData, fetchCoverageMetrics } from "../fetchers";
 import { SAMPLE_RISK_DATA } from "../sample-data";
+import { auth } from "@/lib/auth";
+import { graphqlFetch } from "@/lib/graphql/urqlClient";
+
+function mockSession(orgId?: string): Session {
+  return {
+    access_token: "test-token",
+    user: {
+      id: "user-1",
+      org_id: orgId,
+    } as Session["user"],
+    expires: new Date(Date.now() + 86400000).toISOString(),
+  };
+}
+
+const emptyAnalytics = { timeseries: [], breakdowns: [] };
 
 describe("fetchRiskMetrics", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
   it("returns sample data when isTestMode is true", async () => {
-    const result = await fetchRiskMetrics("default-org", { timeseries: [], breakdowns: [] }, true);
+    const result = await fetchRiskMetrics({ timeseries: [], breakdowns: [] }, true);
     expect(result).toEqual(SAMPLE_RISK_DATA);
+  });
+});
+
+describe("resolveOrgId via fetchTestOpsData", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("resolves orgId from session and passes it to graphqlFetch", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession("org-session-123"));
+    vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
+
+    await fetchTestOpsData({ timeseries: [], breakdowns: [] }, false);
+
+    expect(auth).toHaveBeenCalled();
+    expect(graphqlFetch).toHaveBeenCalled();
+    const firstCallVars = vi.mocked(graphqlFetch).mock.calls[0][1] as { orgId: string };
+    expect(firstCallVars.orgId).toBe("org-session-123");
+  });
+
+  it("falls back to 'default-org' when session has no org_id", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession(undefined));
+    vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
+
+    await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
+
+    const callVars = vi.mocked(graphqlFetch).mock.calls[0][1] as { orgId: string };
+    expect(callVars.orgId).toBe("default-org");
+  });
+
+  it("uses orgIdOverride when provided, skipping auth lookup", async () => {
+    vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
+
+    await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false, "org-override");
+
+    expect(auth).not.toHaveBeenCalled();
+    const callVars = vi.mocked(graphqlFetch).mock.calls[0][1] as { orgId: string };
+    expect(callVars.orgId).toBe("org-override");
   });
 });

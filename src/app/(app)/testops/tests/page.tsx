@@ -49,7 +49,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
 
   const [health, testOpsData] = await Promise.all([
     checkApiHealth(),
-    fetchTestOpsData("default-org", {
+    fetchTestOpsData({
       timeseries: [
         { dimension: "TEAM", measure: "TEST_PASS_RATE", interval: "DAY", dateRange },
         { dimension: "TEAM", measure: "TEST_FAILURE_RATE", interval: "DAY", dateRange },

@@ -49,7 +49,7 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
 
   const [health, coverageData] = await Promise.all([
     checkApiHealth(),
-    fetchCoverageMetrics("default-org", {
+    fetchCoverageMetrics({
       timeseries: [
         { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange },
         { dimension: "TEAM", measure: "COVERAGE_BRANCH_PCT", interval: "DAY", dateRange },
