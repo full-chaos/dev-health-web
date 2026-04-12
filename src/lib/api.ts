@@ -96,7 +96,9 @@ export async function getInvestment(filters: MetricFilter) {
 
   // Feature flag: use GraphQL transport when enabled
   if (graphqlClient.isEnabled()) {
-    return getInvestmentViaGraphQL(normalized);
+    const session = await auth();
+    const orgId = session?.user?.org_id as string | undefined;
+    return getInvestmentViaGraphQL(normalized, orgId);
   }
 
   return postJson<InvestmentResponse>(
@@ -170,9 +172,12 @@ export async function getInvestmentFlow(params: {
 
   // Feature flag: use GraphQL transport when enabled
   if (graphqlClient.isEnabled()) {
+    const session = await auth();
+    const orgId = session?.user?.org_id as string | undefined;
     return getInvestmentFlowViaGraphQL({
       ...params,
       filters: normalized,
+      contextOrgId: orgId,
     });
   }
 
@@ -210,9 +215,12 @@ export async function getInvestmentRepoTeamFlow(params: {
 
   // Feature flag: use GraphQL transport when enabled
   if (graphqlClient.isEnabled()) {
+    const session = await auth();
+    const orgId = session?.user?.org_id as string | undefined;
     return getInvestmentRepoTeamFlowViaGraphQL({
       ...params,
       filters: normalized,
+      contextOrgId: orgId,
     });
   }
 

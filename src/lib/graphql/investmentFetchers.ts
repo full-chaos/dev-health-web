@@ -83,9 +83,10 @@ function translateMetricFilterToGraphQL(filters: MetricFilter): FilterInput {
  * Returns data in the same shape as the REST /api/v1/investment endpoint.
  */
 export async function getInvestmentViaGraphQL(
-    filters: MetricFilter
+    filters: MetricFilter,
+    contextOrgId?: string,
 ): Promise<InvestmentResponse> {
-    const orgId = getOrgId(filters);
+    const orgId = getOrgId(filters, contextOrgId);
     const dateRange = buildDateRange(filters);
 
     const batch: AnalyticsRequestInput = {
@@ -219,9 +220,10 @@ export async function getInvestmentFlowViaGraphQL(params: {
     flow_mode?: "team_category_repo" | "team_subcategory_repo" | "team_category_subcategory_repo";
     drill_category?: string | null;
     top_n_repos?: number;
+    contextOrgId?: string;
 }): Promise<SankeyResponse> {
     const { filters } = params;
-    const orgId = getOrgId(filters);
+    const orgId = getOrgId(filters, params.contextOrgId);
     const dateRange = buildDateRange(filters);
     const resolvedTheme = params.drill_category ?? params.theme ?? null;
     const graphqlFilters = translateMetricFilterToGraphQL(filters);
@@ -280,9 +282,10 @@ export async function getInvestmentFlowViaGraphQL(params: {
 export async function getInvestmentRepoTeamFlowViaGraphQL(params: {
     filters: MetricFilter;
     theme?: string | null;
+    contextOrgId?: string;
 }): Promise<SankeyResponse> {
     const { filters } = params;
-    const orgId = getOrgId(filters);
+    const orgId = getOrgId(filters, params.contextOrgId);
     const dateRange = buildDateRange(filters);
 
     const batch: AnalyticsRequestInput = {
