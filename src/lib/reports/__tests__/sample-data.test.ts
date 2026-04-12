@@ -9,8 +9,8 @@ describe("Report Sample Data", () => {
     const report = sampleReports[0];
     expect(report.id).toBeDefined();
     expect(report.name).toBeDefined();
-    expect(report.scope?.level).toBeDefined();
-    expect(report.metrics?.length).toBeGreaterThan(0);
+    expect(report.orgId).toBeDefined();
+    expect(report.reportPlan).toBeDefined();
   });
 
   it("should have valid sample runs linked to reports", () => {
@@ -31,7 +31,7 @@ describe("Report Sample Data", () => {
     const successfulRun = runs.find(r => r.status === ReportStatus.SUCCESS);
     
     expect(successfulRun).toBeDefined();
-    expect(successfulRun?.renderedContent).toBeDefined();
-    expect(typeof successfulRun?.renderedContent).toBe("string");
+    expect(successfulRun?.renderedMarkdown).toBeDefined();
+    expect(typeof successfulRun?.renderedMarkdown).toBe("string");
   });
 });

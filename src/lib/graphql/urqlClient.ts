@@ -154,12 +154,21 @@ export async function graphqlFetch<T>(
     } catch {}
   }
 
-  const result = await client
-    .query<T>(query, variables, {
-      requestPolicy: "network-only",
-      fetchOptions: { headers: authHeaders },
-    })
-    .toPromise();
+  const isMutation =
+    typeof query === "string" && /^\s*mutation\b/i.test(query);
+
+  const result = isMutation
+    ? await client
+        .mutation<T>(query, variables, {
+          fetchOptions: { headers: authHeaders },
+        })
+        .toPromise()
+    : await client
+        .query<T>(query, variables, {
+          requestPolicy: "network-only",
+          fetchOptions: { headers: authHeaders },
+        })
+        .toPromise();
 
   if (result.error) {
     throw new Error(`GraphQL error: ${result.error.message}`);

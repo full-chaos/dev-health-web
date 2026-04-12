@@ -1,15 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { ReportStatus, SavedReport, ReportRun } from "@/lib/reports/types";
-import { fetchSavedReport, fetchReportRuns, triggerReport } from "@/lib/reports/fetchers";
+import {
+  fetchSavedReport,
+  fetchReportRuns,
+  triggerReport,
+  updateSavedReport,
+  cloneSavedReport,
+  deleteSavedReport,
+} from "@/lib/reports/fetchers";
 
-function StatusBadge({ status }: { status?: ReportStatus }) {
+type ReportParameters = {
+  scope?: string;
+  dateRange?: string;
+  metrics?: string[];
+};
+
+function StatusBadge({ status }: { status?: string }) {
   if (!status) return <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-wider text-(--ink-muted)">Never run</span>;
   
   switch (status) {
@@ -24,14 +37,112 @@ function StatusBadge({ status }: { status?: ReportStatus }) {
   }
 }
 
+function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: ReportRun[] }) {
+  const params = (report.parameters ?? {}) as ReportParameters;
+  const latestRun = runs.find((r) => r.renderedMarkdown) ?? runs[0];
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="lg:col-span-2 space-y-6">
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+          <h2 className="font-(--font-display) text-xl mb-4">Latest Rendered Report</h2>
+          {latestRun?.renderedMarkdown ? (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="whitespace-pre-wrap font-mono text-sm text-(--ink-muted)">
+                {latestRun.renderedMarkdown}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-(--ink-muted)">No rendered content available for this report.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+          <h2 className="font-(--font-display) text-xl mb-4">Configuration</h2>
+          <dl className="space-y-4 text-sm">
+            <div>
+              <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Scope</dt>
+              <dd className="mt-1 font-medium capitalize">{params.scope || "Organization"}</dd>
+            </div>
+            <div>
+              <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Date Range</dt>
+              <dd className="mt-1 font-medium">{params.dateRange?.replace(/_/g, " ") || "Not set"}</dd>
+            </div>
+            <div>
+              <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Schedule</dt>
+              <dd className="mt-1 font-medium capitalize">{report.scheduleId ? "Scheduled" : "Manual"}</dd>
+            </div>
+            <div>
+              <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Metrics</dt>
+              <dd className="mt-1 font-medium">
+                <div className="flex flex-wrap gap-2">
+                  {(params.metrics ?? []).map((m) => (
+                    <span key={m} className="rounded-md bg-(--card-70) px-2 py-1 text-xs">{m}</span>
+                  ))}
+                </div>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+          <h2 className="font-(--font-display) text-xl mb-4">Run History</h2>
+          {runs.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-(--card-stroke) text-(--ink-muted)">
+                    <th className="pb-2 font-medium">Date</th>
+                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Duration</th>
+                    <th className="pb-2 font-medium">Trigger</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-(--card-stroke)">
+                  {runs.map((run) => (
+                    <tr key={run.id} className="hover:bg-(--card-70) transition-colors">
+                      <td className="py-3">{run.startedAt ? new Date(run.startedAt).toLocaleDateString() : "-"}</td>
+                      <td className="py-3"><StatusBadge status={run.status} /></td>
+                      <td className="py-3">{run.durationSeconds != null ? `${run.durationSeconds.toFixed(1)}s` : "-"}</td>
+                      <td className="py-3 capitalize">{run.triggeredBy}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-(--ink-muted)">No run history available.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SingleReportPage() {
   const params = useParams();
+  const router = useRouter();
   const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
-  
+
   const [report, setReport] = useState<SavedReport | null>(null);
   const [runs, setRuns] = useState<ReportRun[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [showCloneDialog, setShowCloneDialog] = useState(false);
+  const [cloneName, setCloneName] = useState("");
+  const [isCloning, setIsCloning] = useState(false);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -85,15 +196,79 @@ export default function SingleReportPage() {
 
   const handleRunNow = async () => {
     setIsRunning(true);
+    setError(null);
     try {
       await triggerReport("default-org", id);
       const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
       const runsData = await fetchReportRuns("default-org", id, undefined, isTestMode);
       setRuns(runsData.items);
-    } catch (error) {
-      console.error("Failed to trigger report:", error);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to trigger report");
     } finally {
       setIsRunning(false);
+    }
+  };
+
+  const handleEditStart = () => {
+    setEditName(report.name);
+    setEditDescription(report.description ?? "");
+    setIsEditing(true);
+    setError(null);
+  };
+
+  const handleEditSave = async () => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      const updated = await updateSavedReport("default-org", id, {
+        name: editName,
+        description: editDescription || undefined,
+      });
+      setReport(updated);
+      setIsEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update report");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
+    setError(null);
+  };
+
+  const handleCloneStart = () => {
+    setCloneName(`${report.name} (Copy)`);
+    setShowCloneDialog(true);
+    setError(null);
+  };
+
+  const handleCloneConfirm = async () => {
+    setIsCloning(true);
+    setError(null);
+    try {
+      const cloned = await cloneSavedReport("default-org", {
+        sourceReportId: id,
+        newName: cloneName || undefined,
+      });
+      router.push(`/reports/${cloned.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clone report");
+      setIsCloning(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await deleteSavedReport("default-org", id);
+      router.push("/reports");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete report");
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -102,8 +277,14 @@ export default function SingleReportPage() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={defaultMetricFilter} active="reports" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
+          {error && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+              {error}
+            </div>
+          )}
+
           <header className="flex flex-wrap items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3">
                 <Link href="/reports" className="text-(--ink-muted) hover:text-foreground transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -114,110 +295,137 @@ export default function SingleReportPage() {
                   Report Details
                 </p>
               </div>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                {report.name}
-              </h1>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                {report.description}
-              </p>
+              {isEditing ? (
+                <div className="mt-2 space-y-3">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 font-(--font-display) text-2xl focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                  />
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={2}
+                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                    placeholder="Description"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleEditSave}
+                      disabled={isSaving || !editName.trim()}
+                      className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      onClick={handleEditCancel}
+                      disabled={isSaving}
+                      className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h1 className="mt-2 font-(--font-display) text-3xl">
+                    {report.name}
+                  </h1>
+                  <p className="mt-2 text-sm text-(--ink-muted)">
+                    {report.description}
+                  </p>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
-              >
-                Clone
-              </button>
-              <button
-                onClick={handleRunNow}
-                disabled={isRunning}
-                className="rounded-full bg-(--accent) px-4 py-2 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
-              >
-                {isRunning ? "Running..." : "Run Now"}
-              </button>
-            </div>
+            {!isEditing && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleEditStart}
+                  className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={handleCloneStart}
+                  className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                >
+                  Clone
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="rounded-full border border-red-500/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/10 transition-colors"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={handleRunNow}
+                  disabled={isRunning}
+                  className="rounded-full bg-(--accent) px-4 py-2 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
+                >
+                  {isRunning ? "Running..." : "Run Now"}
+                </button>
+              </div>
+            )}
           </header>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                <h2 className="font-(--font-display) text-xl mb-4">Latest Rendered Report</h2>
-                {report.lastRun?.renderedContent ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <div className="whitespace-pre-wrap font-mono text-sm text-(--ink-muted)">
-                      {report.lastRun.renderedContent}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-(--ink-muted)">No rendered content available for this report.</p>
-                )}
+          {showCloneDialog && (
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
+              <h2 className="font-(--font-display) text-lg mb-3">Clone Report</h2>
+              <div className="space-y-3 max-w-md">
+                <input
+                  type="text"
+                  value={cloneName}
+                  onChange={(e) => setCloneName(e.target.value)}
+                  className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                  placeholder="Name for cloned report"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCloneConfirm}
+                    disabled={isCloning}
+                    className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
+                  >
+                    {isCloning ? "Cloning..." : "Clone"}
+                  </button>
+                  <button
+                    onClick={() => setShowCloneDialog(false)}
+                    disabled={isCloning}
+                    className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="space-y-6">
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                <h2 className="font-(--font-display) text-xl mb-4">Configuration</h2>
-                <dl className="space-y-4 text-sm">
-                  <div>
-                    <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Scope</dt>
-                    <dd className="mt-1 font-medium">{report.scope?.level || "Unknown"}: {report.scope?.id || "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Date Range</dt>
-                    <dd className="mt-1 font-medium">{report.dateRange || "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Schedule</dt>
-                    <dd className="mt-1 font-medium capitalize">{report.schedule || "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Metrics</dt>
-                    <dd className="mt-1 font-medium">
-                      <div className="flex flex-wrap gap-2">
-                        {(report.metrics || []).map(m => (
-                          <span key={m} className="rounded-md bg-(--card-70) px-2 py-1 text-xs">{m}</span>
-                        ))}
-                      </div>
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                <h2 className="font-(--font-display) text-xl mb-4">Run History</h2>
-                {runs.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead>
-                        <tr className="border-b border-(--card-stroke) text-(--ink-muted)">
-                          <th className="pb-2 font-medium">Date</th>
-                          <th className="pb-2 font-medium">Status</th>
-                          <th className="pb-2 font-medium">Duration</th>
-                          <th className="pb-2 font-medium">Trigger</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-(--card-stroke)">
-                        {runs.map((run) => (
-                          <tr key={run.id} className="hover:bg-(--card-70) transition-colors">
-                            <td className="py-3">{new Date(run.startedAt).toLocaleDateString()}</td>
-                            <td className="py-3"><StatusBadge status={run.status} /></td>
-                            <td className="py-3">{run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "-"}</td>
-                            <td className="py-3 capitalize">{run.trigger || "manual"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-sm text-(--ink-muted)">No run history available.</p>
-                )}
+          {showDeleteConfirm && (
+            <div className="rounded-3xl border border-red-500/30 bg-red-500/5 p-6">
+              <h2 className="font-(--font-display) text-lg text-red-500 mb-2">Delete Report</h2>
+              <p className="text-sm text-(--ink-muted) mb-4">
+                Are you sure you want to delete &ldquo;{report.name}&rdquo;? This action cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="rounded-full bg-red-500 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
-          </div>
+          )}
+
+          <RenderedReportAndConfig report={report} runs={runs} />
         </main>
       </div>
     </div>

@@ -3,8 +3,10 @@ query savedReports($orgId: String!, $limit: Int, $offset: Int) {
   savedReports(orgId: $orgId, limit: $limit, offset: $offset) {
     items {
       id
+      orgId
       name
       description
+      reportPlan
       isTemplate
       isActive
       lastRunAt
@@ -21,14 +23,20 @@ export const SAVED_REPORT_QUERY = `
 query savedReport($orgId: String!, $reportId: String!) {
   savedReport(orgId: $orgId, reportId: $reportId) {
     id
+    orgId
     name
     description
+    reportPlan
     isTemplate
+    templateSourceId
+    parameters
+    scheduleId
     isActive
     lastRunAt
     lastRunStatus
     createdAt
     updatedAt
+    createdBy
   }
 }
 `;
@@ -42,8 +50,13 @@ query reportRuns($orgId: String!, $reportId: String!, $limit: Int) {
       status
       startedAt
       completedAt
+      durationSeconds
+      renderedMarkdown
+      artifactUrl
+      provenanceRecords
       error
-      resultUrl
+      triggeredBy
+      createdAt
     }
     total
   }
@@ -51,16 +64,58 @@ query reportRuns($orgId: String!, $reportId: String!, $limit: Int) {
 `;
 
 export const CREATE_REPORT_MUTATION = `
-mutation createSavedReport($orgId: String!, $name: String!, $description: String, $isTemplate: Boolean) {
-  createSavedReport(orgId: $orgId, name: $name, description: $description, isTemplate: $isTemplate) {
+mutation createSavedReport($orgId: String!, $input: CreateSavedReportInput!) {
+  createSavedReport(orgId: $orgId, input: $input) {
     id
+    orgId
     name
     description
+    reportPlan
     isTemplate
     isActive
     createdAt
     updatedAt
   }
+}
+`;
+
+export const UPDATE_REPORT_MUTATION = `
+mutation updateSavedReport($orgId: String!, $reportId: String!, $input: UpdateSavedReportInput!) {
+  updateSavedReport(orgId: $orgId, reportId: $reportId, input: $input) {
+    id
+    orgId
+    name
+    description
+    reportPlan
+    isTemplate
+    parameters
+    scheduleId
+    isActive
+    lastRunAt
+    lastRunStatus
+    createdAt
+    updatedAt
+  }
+}
+`;
+
+export const CLONE_REPORT_MUTATION = `
+mutation cloneSavedReport($orgId: String!, $input: CloneSavedReportInput!) {
+  cloneSavedReport(orgId: $orgId, input: $input) {
+    id
+    orgId
+    name
+    description
+    isActive
+    createdAt
+    updatedAt
+  }
+}
+`;
+
+export const DELETE_REPORT_MUTATION = `
+mutation deleteSavedReport($orgId: String!, $reportId: String!) {
+  deleteSavedReport(orgId: $orgId, reportId: $reportId)
 }
 `;
 
@@ -71,6 +126,7 @@ mutation triggerReport($orgId: String!, $reportId: String!) {
     reportId
     status
     startedAt
+    triggeredBy
   }
 }
 `;
