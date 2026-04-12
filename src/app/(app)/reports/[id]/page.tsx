@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { ReportStatus, SavedReport, ReportRun } from "@/lib/reports/types";
 import {
@@ -32,6 +33,8 @@ function StatusBadge({ status }: { status?: string }) {
       return <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-500">Failed</span>;
     case ReportStatus.RUNNING:
       return <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-blue-500">Running</span>;
+    case ReportStatus.PENDING:
+      return <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-500">Pending</span>;
     default:
       return null;
   }
@@ -47,11 +50,7 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
           <h2 className="font-(--font-display) text-xl mb-4">Latest Rendered Report</h2>
           {latestRun?.renderedMarkdown ? (
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <div className="whitespace-pre-wrap font-mono text-sm text-(--ink-muted)">
-                {latestRun.renderedMarkdown}
-              </div>
-            </div>
+            <MarkdownRenderer content={latestRun.renderedMarkdown} />
           ) : (
             <p className="text-sm text-(--ink-muted)">No rendered content available for this report.</p>
           )}
@@ -144,6 +143,19 @@ export default function SingleReportPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => stopPolling();
+  }, [stopPolling]);
+
   useEffect(() => {
     async function loadData() {
       const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
@@ -197,14 +209,34 @@ export default function SingleReportPage() {
   const handleRunNow = async () => {
     setIsRunning(true);
     setError(null);
+    stopPolling();
+
     try {
       await triggerReport("default-org", id);
+
       const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
-      const runsData = await fetchReportRuns("default-org", id, undefined, isTestMode);
-      setRuns(runsData.items);
+
+      const pollRuns = async () => {
+        try {
+          const runsData = await fetchReportRuns("default-org", id, undefined, isTestMode);
+          setRuns(runsData.items);
+
+          const latest = runsData.items[0];
+          if (latest && latest.status !== ReportStatus.RUNNING && latest.status !== ReportStatus.PENDING) {
+            stopPolling();
+            setIsRunning(false);
+          }
+        } catch (pollErr) {
+          console.error("Report run polling failed:", pollErr);
+          stopPolling();
+          setIsRunning(false);
+        }
+      };
+
+      await pollRuns();
+      pollRef.current = setInterval(pollRuns, 4000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to trigger report");
-    } finally {
       setIsRunning(false);
     }
   };

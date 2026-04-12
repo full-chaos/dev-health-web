@@ -1,7 +1,8 @@
 export enum ReportStatus {
+  PENDING = "pending",
+  RUNNING = "running",
   SUCCESS = "success",
   FAILED = "failed",
-  RUNNING = "running",
 }
 
 export type ReportRun = {

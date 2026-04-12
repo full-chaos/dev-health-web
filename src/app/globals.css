@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* ============================================================
  * BASE TOKENS — default (Material Light)
