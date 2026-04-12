@@ -1,3 +1,4 @@
+import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import { AnalyticsRequestInput, AnalyticsResult } from "@/lib/graphql/schemas/analytics";
 import {
@@ -16,11 +17,19 @@ import {
 
 const EMPTY_ANALYTICS: AnalyticsResult = { timeseries: [], breakdowns: [] };
 
+/** Resolve orgId from the auth session, falling back to "default-org". */
+async function resolveOrgId(orgId?: string): Promise<string> {
+  if (orgId) return orgId;
+  const session = await auth();
+  return (session?.user?.org_id as string | undefined) ?? "default-org";
+}
+
 export async function fetchTestOpsData(
-  orgId: string,
   batch: AnalyticsRequestInput,
-  isTestMode: boolean = false
+  isTestMode: boolean = false,
+  orgIdOverride?: string,
 ): Promise<TestOpsData> {
+  const orgId = await resolveOrgId(orgIdOverride);
   if (isTestMode) {
     return {
       pipelines: SAMPLE_PIPELINES_DATA,
@@ -52,14 +61,15 @@ export async function fetchTestOpsData(
 }
 
 export async function fetchCoverageMetrics(
-  orgId: string,
   batch: AnalyticsRequestInput,
-  isTestMode: boolean = false
+  isTestMode: boolean = false,
+  orgIdOverride?: string,
 ): Promise<AnalyticsResult> {
   if (isTestMode) {
     return SAMPLE_COVERAGE_DATA;
   }
 
+  const orgId = await resolveOrgId(orgIdOverride);
   try {
     const res = await graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_COVERAGE_QUERY, { orgId, batch });
     return res.analytics;
@@ -70,14 +80,15 @@ export async function fetchCoverageMetrics(
 }
 
 export async function fetchRiskMetrics(
-  orgId: string,
   batch: AnalyticsRequestInput,
-  isTestMode: boolean = false
+  isTestMode: boolean = false,
+  orgIdOverride?: string,
 ) {
   if (isTestMode) {
     return SAMPLE_RISK_DATA;
   }
 
+  const orgId = await resolveOrgId(orgIdOverride);
   try {
     const res = await graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_RISK_QUERY, { orgId, batch });
     const analytics = res.analytics;

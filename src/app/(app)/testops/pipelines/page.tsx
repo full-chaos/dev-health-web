@@ -49,7 +49,7 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
 
   const [health, testOpsData] = await Promise.all([
     checkApiHealth(),
-    fetchTestOpsData("default-org", {
+    fetchTestOpsData({
       timeseries: [
         { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange },
         { dimension: "TEAM", measure: "PIPELINE_FAILURE_RATE", interval: "DAY", dateRange },
