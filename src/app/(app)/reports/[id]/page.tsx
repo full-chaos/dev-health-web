@@ -33,6 +33,8 @@ function StatusBadge({ status }: { status?: string }) {
       return <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-500">Failed</span>;
     case ReportStatus.RUNNING:
       return <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-blue-500">Running</span>;
+    case ReportStatus.PENDING:
+      return <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-500">Pending</span>;
     default:
       return null;
   }
@@ -220,11 +222,12 @@ export default function SingleReportPage() {
           setRuns(runsData.items);
 
           const latest = runsData.items[0];
-          if (latest && latest.status !== ReportStatus.RUNNING && latest.status !== "pending") {
+          if (latest && latest.status !== ReportStatus.RUNNING && latest.status !== ReportStatus.PENDING) {
             stopPolling();
             setIsRunning(false);
           }
-        } catch {
+        } catch (pollErr) {
+          console.error("Report run polling failed:", pollErr);
           stopPolling();
           setIsRunning(false);
         }
