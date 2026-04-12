@@ -1,6 +1,6 @@
 import { ReportStatus } from "@/lib/reports/types";
 
-export function StatusBadge({ status }: { status?: ReportStatus }) {
+export function StatusBadge({ status }: { status?: ReportStatus | string }) {
   if (!status) return <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-wider text-(--ink-muted)">Never run</span>;
   
   switch (status) {

@@ -73,7 +73,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                         <h3 className="font-(--font-display) text-lg font-medium group-hover:text-(--accent) transition-colors">
                           {report.name}
                         </h3>
-                        <StatusBadge status={report.lastRunStatus || report.lastRun?.status} />
+                        <StatusBadge status={report.lastRunStatus} />
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm text-(--ink-muted)">
                         {report.description}
@@ -81,11 +81,11 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                     </div>
                     <div className="mt-6 flex items-center justify-between text-xs text-(--ink-muted)">
                       <span className="uppercase tracking-wider">
-                        {report.schedule === "none" ? "Manual" : report.schedule || "Manual"}
+                        {report.scheduleId ? "Scheduled" : "Manual"}
                       </span>
                       <span>
-                        {report.lastRunAt || report.lastRun?.startedAt
-                          ? new Date(report.lastRunAt || report.lastRun?.startedAt || "").toLocaleDateString()
+                        {report.lastRunAt
+                          ? new Date(report.lastRunAt).toLocaleDateString()
                           : "Never"}
                       </span>
                     </div>

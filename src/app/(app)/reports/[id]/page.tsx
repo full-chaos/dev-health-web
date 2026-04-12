@@ -9,7 +9,13 @@ import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { ReportStatus, SavedReport, ReportRun } from "@/lib/reports/types";
 import { fetchSavedReport, fetchReportRuns, triggerReport } from "@/lib/reports/fetchers";
 
-function StatusBadge({ status }: { status?: ReportStatus }) {
+type ReportParameters = {
+  scope?: string;
+  dateRange?: string;
+  metrics?: string[];
+};
+
+function StatusBadge({ status }: { status?: string }) {
   if (!status) return <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-wider text-(--ink-muted)">Never run</span>;
   
   switch (status) {
@@ -22,6 +28,90 @@ function StatusBadge({ status }: { status?: ReportStatus }) {
     default:
       return null;
   }
+}
+
+function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: ReportRun[] }) {
+  const params = (report.parameters ?? {}) as ReportParameters;
+  const latestRun = runs.find((r) => r.renderedMarkdown) ?? runs[0];
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="lg:col-span-2 space-y-6">
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+          <h2 className="font-(--font-display) text-xl mb-4">Latest Rendered Report</h2>
+          {latestRun?.renderedMarkdown ? (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="whitespace-pre-wrap font-mono text-sm text-(--ink-muted)">
+                {latestRun.renderedMarkdown}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-(--ink-muted)">No rendered content available for this report.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+          <h2 className="font-(--font-display) text-xl mb-4">Configuration</h2>
+          <dl className="space-y-4 text-sm">
+            <div>
+              <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Scope</dt>
+              <dd className="mt-1 font-medium capitalize">{params.scope || "Organization"}</dd>
+            </div>
+            <div>
+              <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Date Range</dt>
+              <dd className="mt-1 font-medium">{params.dateRange?.replace(/_/g, " ") || "Not set"}</dd>
+            </div>
+            <div>
+              <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Schedule</dt>
+              <dd className="mt-1 font-medium capitalize">{report.scheduleId ? "Scheduled" : "Manual"}</dd>
+            </div>
+            <div>
+              <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Metrics</dt>
+              <dd className="mt-1 font-medium">
+                <div className="flex flex-wrap gap-2">
+                  {(params.metrics ?? []).map((m) => (
+                    <span key={m} className="rounded-md bg-(--card-70) px-2 py-1 text-xs">{m}</span>
+                  ))}
+                </div>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+          <h2 className="font-(--font-display) text-xl mb-4">Run History</h2>
+          {runs.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-(--card-stroke) text-(--ink-muted)">
+                    <th className="pb-2 font-medium">Date</th>
+                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Duration</th>
+                    <th className="pb-2 font-medium">Trigger</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-(--card-stroke)">
+                  {runs.map((run) => (
+                    <tr key={run.id} className="hover:bg-(--card-70) transition-colors">
+                      <td className="py-3">{run.startedAt ? new Date(run.startedAt).toLocaleDateString() : "-"}</td>
+                      <td className="py-3"><StatusBadge status={run.status} /></td>
+                      <td className="py-3">{run.durationSeconds != null ? `${run.durationSeconds.toFixed(1)}s` : "-"}</td>
+                      <td className="py-3 capitalize">{run.triggeredBy}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-(--ink-muted)">No run history available.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function SingleReportPage() {
@@ -142,82 +232,7 @@ export default function SingleReportPage() {
             </div>
           </header>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                <h2 className="font-(--font-display) text-xl mb-4">Latest Rendered Report</h2>
-                {report.lastRun?.renderedContent ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <div className="whitespace-pre-wrap font-mono text-sm text-(--ink-muted)">
-                      {report.lastRun.renderedContent}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-(--ink-muted)">No rendered content available for this report.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                <h2 className="font-(--font-display) text-xl mb-4">Configuration</h2>
-                <dl className="space-y-4 text-sm">
-                  <div>
-                    <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Scope</dt>
-                    <dd className="mt-1 font-medium">{report.scope?.level || "Unknown"}: {report.scope?.id || "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Date Range</dt>
-                    <dd className="mt-1 font-medium">{report.dateRange || "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Schedule</dt>
-                    <dd className="mt-1 font-medium capitalize">{report.schedule || "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Metrics</dt>
-                    <dd className="mt-1 font-medium">
-                      <div className="flex flex-wrap gap-2">
-                        {(report.metrics || []).map(m => (
-                          <span key={m} className="rounded-md bg-(--card-70) px-2 py-1 text-xs">{m}</span>
-                        ))}
-                      </div>
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                <h2 className="font-(--font-display) text-xl mb-4">Run History</h2>
-                {runs.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead>
-                        <tr className="border-b border-(--card-stroke) text-(--ink-muted)">
-                          <th className="pb-2 font-medium">Date</th>
-                          <th className="pb-2 font-medium">Status</th>
-                          <th className="pb-2 font-medium">Duration</th>
-                          <th className="pb-2 font-medium">Trigger</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-(--card-stroke)">
-                        {runs.map((run) => (
-                          <tr key={run.id} className="hover:bg-(--card-70) transition-colors">
-                            <td className="py-3">{new Date(run.startedAt).toLocaleDateString()}</td>
-                            <td className="py-3"><StatusBadge status={run.status} /></td>
-                            <td className="py-3">{run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "-"}</td>
-                            <td className="py-3 capitalize">{run.trigger || "manual"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-sm text-(--ink-muted)">No run history available.</p>
-                )}
-              </div>
-            </div>
-          </div>
+          <RenderedReportAndConfig report={report} runs={runs} />
         </main>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
-import { SavedReport, ReportRun } from "./types";
+import { SavedReport, ReportRun, CreateSavedReportInput } from "./types";
 import { sampleReports, sampleRuns } from "./sample-data";
 import {
   SAVED_REPORTS_QUERY,
@@ -77,13 +77,11 @@ export async function fetchReportRuns(
 
 export async function createSavedReport(
   orgId: string,
-  name: string,
-  description?: string,
-  isTemplate?: boolean
+  input: CreateSavedReportInput
 ): Promise<SavedReport> {
   const res = await graphqlFetch<{ createSavedReport: SavedReport }>(
     CREATE_REPORT_MUTATION,
-    { orgId, name, description, isTemplate }
+    { orgId, input }
   );
   return res.createSavedReport;
 }

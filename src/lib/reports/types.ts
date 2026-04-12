@@ -8,31 +8,41 @@ export type ReportRun = {
   id: string;
   reportId: string;
   status: ReportStatus;
-  startedAt: string;
+  startedAt?: string;
   completedAt?: string;
+  durationSeconds?: number;
+  renderedMarkdown?: string;
+  artifactUrl?: string;
+  provenanceRecords?: unknown;
   error?: string;
-  resultUrl?: string;
-  durationMs?: number;
-  trigger?: "manual" | "scheduled";
-  renderedContent?: string;
+  triggeredBy: string;
+  createdAt: string;
 };
 
 export type SavedReport = {
   id: string;
+  orgId: string;
   name: string;
-  description: string;
-  isTemplate?: boolean;
-  isActive?: boolean;
+  description?: string;
+  reportPlan: unknown;
+  isTemplate: boolean;
+  templateSourceId?: string;
+  parameters?: unknown;
+  scheduleId?: string;
+  isActive: boolean;
   lastRunAt?: string;
-  lastRunStatus?: ReportStatus;
+  lastRunStatus?: string;
   createdAt: string;
   updatedAt: string;
-  scope?: {
-    level: "team" | "repo" | "org";
-    id: string;
-  };
-  dateRange?: string;
-  metrics?: string[];
-  schedule?: "none" | "weekly" | "monthly";
-  lastRun?: ReportRun;
+  createdBy?: string;
+};
+
+export type CreateSavedReportInput = {
+  name: string;
+  description?: string;
+  reportPlan?: unknown;
+  isTemplate?: boolean;
+  parameters?: unknown;
+  scheduleCron?: string;
+  scheduleTimezone?: string;
 };
