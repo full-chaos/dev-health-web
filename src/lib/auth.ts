@@ -26,12 +26,12 @@ class RateLimited extends CredentialsSignin {
   code = "rate_limited"
 }
 
+// Lazy secret: in production, pass undefined so Auth.js validates per-request
+// instead of the old IIFE that threw at module-load and killed all exports.
 const authSecret = process.env.AUTH_SECRET
   || process.env.NEXTAUTH_SECRET
-  || (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
-    ? (() => {
-      throw new Error("AUTH_SECRET or NEXTAUTH_SECRET must be set in production")
-    })()
+  || (process.env.NODE_ENV === "production"
+    ? undefined
     : "dev-secret-change-in-production")
 
 const nextAuth = NextAuth({

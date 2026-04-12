@@ -33,7 +33,13 @@ import {
   getCapacityForecastViaGraphQL,
 } from "@/lib/graphql";
 import type { CapacityForecast, CapacityForecastInput } from "@/lib/graphql";
-import { auth } from "@/lib/auth";
+// auth is imported dynamically inside server-only functions to avoid pulling
+// @/lib/auth into the client bundle (it reads process.env.AUTH_SECRET which
+// doesn't exist in the browser).
+async function getAuth() {
+  const { auth } = await import("@/lib/auth");
+  return auth;
+}
 
 const normalizeFilters = (filters: MetricFilter): MetricFilter => {
   if (filters.scope.level === "team" && !filters.scope.ids.length) {
@@ -96,6 +102,7 @@ export async function getInvestment(filters: MetricFilter) {
 
   // Feature flag: use GraphQL transport when enabled
   if (graphqlClient.isEnabled()) {
+    const auth = await getAuth();
     const session = await auth();
     const orgId = session?.user?.org_id as string | undefined;
     return getInvestmentViaGraphQL(normalized, orgId);
@@ -172,6 +179,7 @@ export async function getInvestmentFlow(params: {
 
   // Feature flag: use GraphQL transport when enabled
   if (graphqlClient.isEnabled()) {
+    const auth = await getAuth();
     const session = await auth();
     const orgId = session?.user?.org_id as string | undefined;
     return getInvestmentFlowViaGraphQL({
@@ -215,6 +223,7 @@ export async function getInvestmentRepoTeamFlow(params: {
 
   // Feature flag: use GraphQL transport when enabled
   if (graphqlClient.isEnabled()) {
+    const auth = await getAuth();
     const session = await auth();
     const orgId = session?.user?.org_id as string | undefined;
     return getInvestmentRepoTeamFlowViaGraphQL({
@@ -493,6 +502,7 @@ export async function getCapacityForecast(params: {
 }): Promise<CapacityForecast | null> {
   let orgId = params.orgId;
   if (!orgId) {
+    const auth = await getAuth();
     const session = await auth();
     orgId = session?.user?.org_id;
   }
