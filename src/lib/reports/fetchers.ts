@@ -1,11 +1,20 @@
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
-import { SavedReport, ReportRun, CreateSavedReportInput } from "./types";
+import {
+  SavedReport,
+  ReportRun,
+  CreateSavedReportInput,
+  UpdateSavedReportInput,
+  CloneSavedReportInput,
+} from "./types";
 import { sampleReports, sampleRuns } from "./sample-data";
 import {
   SAVED_REPORTS_QUERY,
   SAVED_REPORT_QUERY,
   REPORT_RUNS_QUERY,
   CREATE_REPORT_MUTATION,
+  UPDATE_REPORT_MUTATION,
+  CLONE_REPORT_MUTATION,
+  DELETE_REPORT_MUTATION,
   TRIGGER_REPORT_MUTATION,
 } from "./queries";
 
@@ -84,6 +93,40 @@ export async function createSavedReport(
     { orgId, input }
   );
   return res.createSavedReport;
+}
+
+export async function updateSavedReport(
+  orgId: string,
+  reportId: string,
+  input: UpdateSavedReportInput
+): Promise<SavedReport> {
+  const res = await graphqlFetch<{ updateSavedReport: SavedReport }>(
+    UPDATE_REPORT_MUTATION,
+    { orgId, reportId, input }
+  );
+  return res.updateSavedReport;
+}
+
+export async function cloneSavedReport(
+  orgId: string,
+  input: CloneSavedReportInput
+): Promise<SavedReport> {
+  const res = await graphqlFetch<{ cloneSavedReport: SavedReport }>(
+    CLONE_REPORT_MUTATION,
+    { orgId, input }
+  );
+  return res.cloneSavedReport;
+}
+
+export async function deleteSavedReport(
+  orgId: string,
+  reportId: string
+): Promise<boolean> {
+  const res = await graphqlFetch<{ deleteSavedReport: boolean }>(
+    DELETE_REPORT_MUTATION,
+    { orgId, reportId }
+  );
+  return res.deleteSavedReport;
 }
 
 export async function triggerReport(

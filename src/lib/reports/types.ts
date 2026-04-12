@@ -46,3 +46,20 @@ export type CreateSavedReportInput = {
   scheduleCron?: string;
   scheduleTimezone?: string;
 };
+
+export type UpdateSavedReportInput = {
+  name?: string;
+  description?: string;
+  reportPlan?: unknown;
+  isTemplate?: boolean;
+  parameters?: unknown;
+  isActive?: boolean;
+  scheduleCron?: string;
+  scheduleTimezone?: string;
+};
+
+export type CloneSavedReportInput = {
+  sourceReportId: string;
+  newName?: string;
+  parameterOverrides?: unknown;
+};

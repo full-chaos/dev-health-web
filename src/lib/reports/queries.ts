@@ -79,6 +79,46 @@ mutation createSavedReport($orgId: String!, $input: CreateSavedReportInput!) {
 }
 `;
 
+export const UPDATE_REPORT_MUTATION = `
+mutation updateSavedReport($orgId: String!, $reportId: String!, $input: UpdateSavedReportInput!) {
+  updateSavedReport(orgId: $orgId, reportId: $reportId, input: $input) {
+    id
+    orgId
+    name
+    description
+    reportPlan
+    isTemplate
+    parameters
+    scheduleId
+    isActive
+    lastRunAt
+    lastRunStatus
+    createdAt
+    updatedAt
+  }
+}
+`;
+
+export const CLONE_REPORT_MUTATION = `
+mutation cloneSavedReport($orgId: String!, $input: CloneSavedReportInput!) {
+  cloneSavedReport(orgId: $orgId, input: $input) {
+    id
+    orgId
+    name
+    description
+    isActive
+    createdAt
+    updatedAt
+  }
+}
+`;
+
+export const DELETE_REPORT_MUTATION = `
+mutation deleteSavedReport($orgId: String!, $reportId: String!) {
+  deleteSavedReport(orgId: $orgId, reportId: $reportId)
+}
+`;
+
 export const TRIGGER_REPORT_MUTATION = `
 mutation triggerReport($orgId: String!, $reportId: String!) {
   triggerReport(orgId: $orgId, reportId: $reportId) {
