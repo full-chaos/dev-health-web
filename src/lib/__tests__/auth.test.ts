@@ -148,7 +148,7 @@ describe("requireSession", () => {
 });
 
 describe("auth secret configuration", () => {
-  it("throws at module load when secrets are missing in production", async () => {
+  it("loads without throwing when secrets are missing in production (Auth.js validates per-request)", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_PHASE", "");
     delete process.env.AUTH_SECRET;
@@ -156,9 +156,7 @@ describe("auth secret configuration", () => {
 
     vi.resetModules();
 
-    await expect(import("@/lib/auth")).rejects.toThrow(
-      "AUTH_SECRET or NEXTAUTH_SECRET must be set in production"
-    );
+    await expect(import("@/lib/auth")).resolves.toBeDefined();
 
     vi.unstubAllEnvs();
     vi.resetModules();
