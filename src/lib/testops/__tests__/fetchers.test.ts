@@ -38,6 +38,20 @@ describe("fetchRiskMetrics", () => {
     expect(result).toEqual(SAMPLE_RISK_DATA);
   });
 
+  it("returns undefined metrics when API returns empty timeseries", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession("org-1"));
+    vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
+
+    const result = await fetchRiskMetrics({ timeseries: [], breakdowns: [] }, false);
+
+    expect(result).not.toBeNull();
+    expect(result!.release_confidence).toBeUndefined();
+    expect(result!.quality_drag_hours).toBeUndefined();
+    expect(result!.pipeline_stability).toBeUndefined();
+    expect(result!.quality_drag_breakdown).toEqual([]);
+    expect(result!.timeseries).toEqual([]);
+  });
+
   it("sample data includes sparkline and delta fields for KPI cards", () => {
     expect(SAMPLE_RISK_DATA.confidence_spark.length).toBeGreaterThan(1);
     expect(SAMPLE_RISK_DATA.drag_spark.length).toBeGreaterThan(1);

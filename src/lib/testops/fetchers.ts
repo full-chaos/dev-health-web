@@ -97,15 +97,19 @@ export async function fetchRiskMetrics(
     const testFlake = analytics.timeseries.find(t => t.measure === "TEST_FLAKE_RATE")?.buckets || [];
     const coverage = analytics.timeseries.find(t => t.measure === "COVERAGE_LINE_PCT")?.buckets || [];
 
-    const latestPipelineSuccess = pipelineSuccess.length > 0 ? pipelineSuccess[pipelineSuccess.length - 1].value : 0;
-    const latestTestFlake = testFlake.length > 0 ? testFlake[testFlake.length - 1].value : 0;
-    const latestCoverage = coverage.length > 0 ? coverage[coverage.length - 1].value : 0;
+    const latestPipelineSuccess = pipelineSuccess.length > 0 ? pipelineSuccess[pipelineSuccess.length - 1].value : undefined;
+    const latestTestFlake = testFlake.length > 0 ? testFlake[testFlake.length - 1].value : undefined;
+    const latestCoverage = coverage.length > 0 ? coverage[coverage.length - 1].value : undefined;
 
-    const testPassRateImplied = Math.max(0, 100 - latestTestFlake);
-    const releaseConfidence = (latestPipelineSuccess / 100) * (testPassRateImplied / 100) * (latestCoverage / 100);
+    const testPassRateImplied = latestTestFlake != null ? Math.max(0, 100 - latestTestFlake) : undefined;
+    const releaseConfidence = (latestPipelineSuccess != null && testPassRateImplied != null && latestCoverage != null)
+      ? (latestPipelineSuccess / 100) * (testPassRateImplied / 100) * (latestCoverage / 100)
+      : undefined;
 
-    const failureRate = Math.max(0, 100 - latestPipelineSuccess);
-    const qualityDragHours = (latestTestFlake * 2) + (failureRate * 1.5);
+    const failureRate = latestPipelineSuccess != null ? Math.max(0, 100 - latestPipelineSuccess) : undefined;
+    const qualityDragHours = (latestTestFlake != null && failureRate != null)
+      ? (latestTestFlake * 2) + (failureRate * 1.5)
+      : undefined;
 
     const timeseries = pipelineSuccess.map((bucket, i) => {
       const pSuccess = bucket.value;
@@ -119,17 +123,19 @@ export async function fetchRiskMetrics(
       };
     });
 
-    const qualityDragBreakdown = [
-      { category: "Failure Rework", hours: failureRate * 1.0 },
-      { category: "Flake Investigation", hours: latestTestFlake * 1.5 },
-      { category: "Queue Wait", hours: failureRate * 0.3 },
-      { category: "Retry Overhead", hours: latestTestFlake * 0.5 },
-    ];
+    const qualityDragBreakdown = (failureRate != null && latestTestFlake != null)
+      ? [
+          { category: "Failure Rework", hours: failureRate * 1.0 },
+          { category: "Flake Investigation", hours: latestTestFlake * 1.5 },
+          { category: "Queue Wait", hours: failureRate * 0.3 },
+          { category: "Retry Overhead", hours: latestTestFlake * 0.5 },
+        ]
+      : [];
 
     const quadrantData = analytics.breakdowns.find(b => b.measure === "PIPELINE_SUCCESS_RATE")?.items.map(item => ({
       id: item.key,
       pipeline_success_rate: item.value,
-      test_pass_rate: 100 - latestTestFlake
+      test_pass_rate: latestTestFlake != null ? 100 - latestTestFlake : 0
     })) || [];
 
     const toSpark = (buckets: { date: string; value: number }[]) =>
@@ -158,7 +164,7 @@ export async function fetchRiskMetrics(
     return {
       release_confidence: releaseConfidence,
       quality_drag_hours: qualityDragHours,
-      pipeline_stability: latestPipelineSuccess / 100,
+      pipeline_stability: latestPipelineSuccess != null ? latestPipelineSuccess / 100 : undefined,
       timeseries,
       quality_drag_breakdown: qualityDragBreakdown,
       quadrant_data: quadrantData,
