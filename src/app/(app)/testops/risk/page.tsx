@@ -114,6 +114,8 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
               href="#"
               value={riskData.release_confidence ? riskData.release_confidence * 100 : undefined}
               unit="%"
+              delta={riskData.confidence_delta}
+              spark={riskData.confidence_spark}
               caption="Overall confidence score for deployments"
             />
             <MetricCard
@@ -121,6 +123,8 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
               href="#"
               value={riskData.quality_drag_hours}
               unit="h"
+              delta={riskData.drag_delta}
+              spark={riskData.drag_spark}
               caption="Hours lost to test/pipeline issues"
             />
             <MetricCard
@@ -128,6 +132,8 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
               href="#"
               value={riskData.pipeline_stability ? riskData.pipeline_stability * 100 : undefined}
               unit="%"
+              delta={riskData.stability_delta}
+              spark={riskData.stability_spark}
               caption="Stability score across all pipelines"
             />
           </section>

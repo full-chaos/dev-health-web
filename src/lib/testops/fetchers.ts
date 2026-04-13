@@ -132,13 +132,42 @@ export async function fetchRiskMetrics(
       test_pass_rate: 100 - latestTestFlake
     })) || [];
 
+    const toSpark = (buckets: { date: string; value: number }[]) =>
+      buckets.map(b => ({ ts: b.date, value: b.value }));
+
+    const delta = (buckets: { value: number }[]) => {
+      if (buckets.length < 2) return undefined;
+      const prev = buckets[0].value;
+      const curr = buckets[buckets.length - 1].value;
+      return prev === 0 ? undefined : ((curr - prev) / Math.abs(prev)) * 100;
+    };
+
+    const confidenceSpark = timeseries.map(b => ({
+      ts: b.date,
+      value: (1 - b.riskScore) * 100,
+    }));
+
+    const dragSpark = timeseries.map((b, i) => {
+      const fr = Math.max(0, 100 - (pipelineSuccess[i]?.value || 0));
+      const tf = testFlake[i]?.value || 0;
+      return { ts: b.date, value: (tf * 2) + (fr * 1.5) };
+    });
+
+    const stabilitySpark = toSpark(pipelineSuccess);
+
     return {
       release_confidence: releaseConfidence,
       quality_drag_hours: qualityDragHours,
       pipeline_stability: latestPipelineSuccess / 100,
       timeseries,
       quality_drag_breakdown: qualityDragBreakdown,
-      quadrant_data: quadrantData
+      quadrant_data: quadrantData,
+      confidence_spark: confidenceSpark,
+      confidence_delta: delta(confidenceSpark),
+      drag_spark: dragSpark,
+      drag_delta: delta(dragSpark),
+      stability_spark: stabilitySpark,
+      stability_delta: delta(pipelineSuccess),
     };
   } catch (error) {
     console.error("Failed to fetch risk metrics:", error);
