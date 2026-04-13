@@ -37,6 +37,15 @@ describe("fetchRiskMetrics", () => {
     const result = await fetchRiskMetrics({ timeseries: [], breakdowns: [] }, true);
     expect(result).toEqual(SAMPLE_RISK_DATA);
   });
+
+  it("sample data includes sparkline and delta fields for KPI cards", () => {
+    expect(SAMPLE_RISK_DATA.confidence_spark.length).toBeGreaterThan(1);
+    expect(SAMPLE_RISK_DATA.drag_spark.length).toBeGreaterThan(1);
+    expect(SAMPLE_RISK_DATA.stability_spark.length).toBeGreaterThan(1);
+    expect(typeof SAMPLE_RISK_DATA.confidence_delta).toBe("number");
+    expect(typeof SAMPLE_RISK_DATA.drag_delta).toBe("number");
+    expect(typeof SAMPLE_RISK_DATA.stability_delta).toBe("number");
+  });
 });
 
 describe("resolveOrgId via fetchTestOpsData", () => {

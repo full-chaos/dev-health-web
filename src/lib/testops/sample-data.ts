@@ -245,7 +245,37 @@ export const SAMPLE_RISK_DATA = {
     { id: "mobile-app", pipeline_success_rate: 70, test_pass_rate: 92 },
     { id: "data-pipeline", pipeline_success_rate: 60, test_pass_rate: 85 },
     { id: "auth-service", pipeline_success_rate: 98, test_pass_rate: 100 },
-  ]
+  ],
+  confidence_spark: [
+    { ts: "2024-01-01", value: 60 },
+    { ts: "2024-01-02", value: 65 },
+    { ts: "2024-01-03", value: 55 },
+    { ts: "2024-01-04", value: 70 },
+    { ts: "2024-01-05", value: 75 },
+    { ts: "2024-01-06", value: 80 },
+    { ts: "2024-01-07", value: 82 },
+  ],
+  confidence_delta: 36.7,
+  drag_spark: [
+    { ts: "2024-01-01", value: 22 },
+    { ts: "2024-01-02", value: 19 },
+    { ts: "2024-01-03", value: 24 },
+    { ts: "2024-01-04", value: 17 },
+    { ts: "2024-01-05", value: 15.5 },
+    { ts: "2024-01-06", value: 14.8 },
+    { ts: "2024-01-07", value: 14.5 },
+  ],
+  drag_delta: -34.1,
+  stability_spark: [
+    { ts: "2024-01-01", value: 80 },
+    { ts: "2024-01-02", value: 82 },
+    { ts: "2024-01-03", value: 78 },
+    { ts: "2024-01-04", value: 85 },
+    { ts: "2024-01-05", value: 86 },
+    { ts: "2024-01-06", value: 87 },
+    { ts: "2024-01-07", value: 88 },
+  ],
+  stability_delta: 10.0,
 };
 
 export const SAMPLE_PR_TESTOPS_DATA = {
