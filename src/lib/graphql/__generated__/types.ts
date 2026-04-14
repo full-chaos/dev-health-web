@@ -318,6 +318,10 @@ export type Query = {
   savedReport?: Maybe<SavedReportType>;
   /** List saved reports for an organization */
   savedReports: SavedReportConnection;
+  /** Paginated list of security alerts */
+  securityAlerts: SecurityAlertConnection;
+  /** Aggregated security posture for the dashboard */
+  securityOverview: SecurityOverview;
   /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
 };
@@ -374,9 +378,30 @@ export type QuerySavedReportsArgs = {
 };
 
 
+export type QuerySecurityAlertsArgs = {
+  filters?: InputMaybe<SecurityAlertFilterInput>;
+  orgId: Scalars['String']['input'];
+  pagination?: InputMaybe<SecurityPaginationInput>;
+};
+
+
+export type QuerySecurityOverviewArgs = {
+  filters?: InputMaybe<SecurityAlertFilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
 export type QueryWorkGraphEdgesArgs = {
   filters?: InputMaybe<WorkGraphEdgeFilterInput>;
   orgId: Scalars['String']['input'];
+};
+
+export type RepoAlertCount = {
+  __typename?: 'RepoAlertCount';
+  count: Scalars['Int']['output'];
+  repoId: Scalars['String']['output'];
+  repoName: Scalars['String']['output'];
+  repoUrl?: Maybe<Scalars['String']['output']>;
 };
 
 export type ReportRunConnection = {
@@ -475,6 +500,99 @@ export type ScopeLevelInput =
   | 'SERVICE'
   | 'TEAM';
 
+export type SecurityAlertConnection = {
+  __typename?: 'SecurityAlertConnection';
+  edges: Array<SecurityAlertEdge>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type SecurityAlertEdge = {
+  __typename?: 'SecurityAlertEdge';
+  cursor: Scalars['String']['output'];
+  node: SecurityAlertNode;
+};
+
+export type SecurityAlertFilterInput = {
+  openOnly?: Scalars['Boolean']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  severities?: InputMaybe<Array<SecuritySeverityInput>>;
+  since?: InputMaybe<Scalars['Date']['input']>;
+  sources?: InputMaybe<Array<SecuritySourceInput>>;
+  states?: InputMaybe<Array<SecurityStateInput>>;
+  until?: InputMaybe<Scalars['Date']['input']>;
+};
+
+export type SecurityAlertNode = {
+  __typename?: 'SecurityAlertNode';
+  alertId: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  cveId?: Maybe<Scalars['String']['output']>;
+  description?: Maybe<Scalars['String']['output']>;
+  dismissedAt?: Maybe<Scalars['DateTime']['output']>;
+  fixedAt?: Maybe<Scalars['DateTime']['output']>;
+  packageName?: Maybe<Scalars['String']['output']>;
+  repoId: Scalars['String']['output'];
+  repoName: Scalars['String']['output'];
+  repoUrl?: Maybe<Scalars['String']['output']>;
+  severity: Scalars['String']['output'];
+  source: Scalars['String']['output'];
+  state: Scalars['String']['output'];
+  title?: Maybe<Scalars['String']['output']>;
+  url?: Maybe<Scalars['String']['output']>;
+};
+
+export type SecurityKpis = {
+  __typename?: 'SecurityKpis';
+  critical: Scalars['Int']['output'];
+  high: Scalars['Int']['output'];
+  meanDaysToFix30d?: Maybe<Scalars['Float']['output']>;
+  openDelta30d: Scalars['Int']['output'];
+  openTotal: Scalars['Int']['output'];
+};
+
+export type SecurityOverview = {
+  __typename?: 'SecurityOverview';
+  kpis: SecurityKpis;
+  severityBreakdown: Array<SeverityBucket>;
+  topRepos: Array<RepoAlertCount>;
+  trend: Array<TrendPoint>;
+};
+
+export type SecurityPaginationInput = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: Scalars['Int']['input'];
+};
+
+export type SecuritySeverityInput =
+  | 'CRITICAL'
+  | 'HIGH'
+  | 'LOW'
+  | 'MEDIUM'
+  | 'UNKNOWN';
+
+export type SecuritySourceInput =
+  | 'ADVISORY'
+  | 'CODE_SCANNING'
+  | 'DEPENDABOT'
+  | 'GITLAB_DEPENDENCY'
+  | 'GITLAB_VULNERABILITY';
+
+export type SecurityStateInput =
+  | 'CONFIRMED'
+  | 'DETECTED'
+  | 'DISMISSED'
+  | 'FIXED'
+  | 'OPEN'
+  | 'RESOLVED';
+
+export type SeverityBucket = {
+  __typename?: 'SeverityBucket';
+  count: Scalars['Int']['output'];
+  severity: Scalars['String']['output'];
+};
+
 export type SparkPoint = {
   __typename?: 'SparkPoint';
   ts: Scalars['String']['output'];
@@ -546,6 +664,13 @@ export type TimeseriesResult = {
   dimension: Scalars['String']['output'];
   dimensionValue: Scalars['String']['output'];
   measure: Scalars['String']['output'];
+};
+
+export type TrendPoint = {
+  __typename?: 'TrendPoint';
+  day: Scalars['Date']['output'];
+  fixed: Scalars['Int']['output'];
+  opened: Scalars['Int']['output'];
 };
 
 export type UpdateSavedReportInput = {
