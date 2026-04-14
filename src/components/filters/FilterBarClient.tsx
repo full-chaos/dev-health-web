@@ -53,7 +53,8 @@ type FilterBarView =
   | "quality"
   | "opportunities"
   | "explore"
-  | "testops";
+  | "testops"
+  | "security";
 
 type FilterVisibility = {
   scope?: boolean;
@@ -154,6 +155,17 @@ const resolveVisibility = (
   }
   if (view === "explore") {
     return EXPLORE_VISIBILITY;
+  }
+  if (view === "security") {
+    // Security manages its own URL-based filter state; hide all MetricFilter chips.
+    return {
+      scope: false,
+      repo: false,
+      developer: false,
+      workType: false,
+      flowStage: false,
+      date: false,
+    };
   }
   return DEFAULT_VISIBILITY;
 };

@@ -25,7 +25,8 @@ type FilterBarView =
   | "quality"
   | "opportunities"
   | "explore"
-  | "testops";
+  | "testops"
+  | "security";
 
 type FilterVisibility = {
   scope?: boolean;
@@ -109,6 +110,18 @@ function resolveVisibility(view?: FilterBarView, tab?: string): FilterVisibility
   if (view === "quality" || view === "testops") return METRICS_DEFAULT_VISIBILITY;
   if (view === "opportunities") return WORK_VISIBILITY;
   if (view === "explore") return EXPLORE_VISIBILITY;
+  if (view === "security") {
+    // Security uses its own URL-based filter state (SecurityFilter / encodeSecurityFilter).
+    // Hide all MetricFilter chips so the legacy bar renders as an empty shell on this view.
+    return {
+      scope: false,
+      repo: false,
+      developer: false,
+      workType: false,
+      flowStage: false,
+      date: false,
+    };
+  }
   return DEFAULT_VISIBILITY;
 }
 
