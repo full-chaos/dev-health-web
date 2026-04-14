@@ -201,12 +201,6 @@ export function WorkGraphExplorer({
           return "";
         },
       },
-      legend: {
-        data: categories.map((c) => c.name),
-        orient: "horizontal",
-        bottom: 10,
-        textStyle: { color: chartTheme.text },
-      },
       series: [
         {
           type: "graph",
@@ -215,12 +209,17 @@ export function WorkGraphExplorer({
           data: echartsNodes,
           links: echartsLinks,
           categories,
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: 24,
+          center: ["50%", "54%"],
           roam: true,
           draggable: true,
           force: {
-            repulsion: 200,
-            gravity: 0.1,
-            edgeLength: [80, 200],
+            repulsion: 150,
+            gravity: 0.18,
+            edgeLength: [60, 150],
             layoutAnimation: true,
           },
           emphasis: {
@@ -278,12 +277,12 @@ export function WorkGraphExplorer({
 
 export function WorkGraphLegend() {
   return (
-    <div className="flex flex-wrap gap-4 text-xs">
-      <div className="space-y-1">
-        <p className="font-medium text-(--ink-muted) uppercase tracking-wider">
+    <div className="space-y-3 text-[11px]">
+      <div className="space-y-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-(--ink-muted)">
           Node Types
         </p>
-        <div className="flex flex-wrap gap-3">
+        <div className="space-y-2">
           {(Object.entries(NODE_TYPE_COLORS) as [WorkGraphNodeType, string][]).map(
             ([type]) => {
               const bgClass = {
@@ -293,20 +292,23 @@ export function WorkGraphLegend() {
                 FILE: "bg-[#8b5cf6]",
               }[type];
               return (
-                <div key={type} className="flex items-center gap-1">
-                  <span className={`w-3 h-3 rounded-sm ${bgClass}`} />
-                  <span>{type}</span>
+                <div
+                  key={type}
+                  className="flex items-center gap-2 rounded-xl border border-(--card-stroke) px-2 py-2"
+                >
+                  <span className={`h-3 w-3 shrink-0 rounded-sm ${bgClass}`} />
+                  <span className="leading-none">{type}</span>
                 </div>
               );
             }
           )}
         </div>
       </div>
-      <div className="space-y-1">
-        <p className="font-medium text-(--ink-muted) uppercase tracking-wider">
+      <div className="space-y-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-(--ink-muted)">
           Edge Types
         </p>
-        <div className="flex flex-wrap gap-3">
+        <div className="space-y-2">
           {Object.entries(EDGE_TYPE_STYLES)
             .slice(0, 6)
             .map(([type]) => {
@@ -319,9 +321,12 @@ export function WorkGraphLegend() {
                 RELATES: "bg-[#6b7280]",
               }[type] || "bg-gray-500";
               return (
-                <div key={type} className="flex items-center gap-1">
-                  <span className={`w-4 h-0.5 ${bgClass}`} />
-                  <span>{type.toLowerCase().replace(/_/g, " ")}</span>
+                <div
+                  key={type}
+                  className="flex items-center gap-2 rounded-xl border border-(--card-stroke) px-2 py-2"
+                >
+                  <span className={`h-0.5 w-4 shrink-0 ${bgClass}`} />
+                  <span className="leading-tight">{type.toLowerCase().replace(/_/g, " ")}</span>
                 </div>
               );
             })}
