@@ -44,6 +44,7 @@ describe("GraphView", () => {
 
     expect(screen.getByText(/No work graph data available/i)).toBeInTheDocument();
     expect(screen.getByText(/0 edges/i)).toBeInTheDocument();
+    expect(screen.getByTestId("work-graph-legend")).toBeInTheDocument();
   });
 
   it("renders WorkGraphExplorer when edges exist", () => {
@@ -70,6 +71,7 @@ describe("GraphView", () => {
     render(<GraphView filters={filters} />);
 
     expect(screen.getByTestId("work-graph-explorer")).toBeInTheDocument();
+    expect(screen.getByTestId("work-graph-legend")).toBeInTheDocument();
     expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
   });
 
