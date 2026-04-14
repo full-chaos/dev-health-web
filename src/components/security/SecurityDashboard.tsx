@@ -13,17 +13,17 @@ interface SecurityDashboardProps {
   filter: SecurityFilter;
 }
 
+/** Thin inline error placeholder rendered inside each testid wrapper in degraded mode. */
+function DegradedTile({ label }: { label: string }) {
+  return (
+    <p className="text-sm text-(--ink-muted)" aria-label={`${label} unavailable`}>
+      — Unavailable
+    </p>
+  );
+}
+
 export function SecurityDashboard({ filter }: SecurityDashboardProps) {
   const { data, fetching, error } = useSecurityOverview(filter);
-
-  if (error) {
-    return (
-      <ErrorCard
-        title="Failed to load security overview"
-        message={error.message}
-      />
-    );
-  }
 
   const kpis = data?.securityOverview?.kpis;
   const severityBreakdown = data?.securityOverview?.severityBreakdown ?? [];
@@ -41,40 +41,64 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Row 1: KPI tiles — testid wrappers for Playwright */}
+      {/* Banner-level error notice — does NOT replace the grid structure */}
+      {error && (
+        <ErrorCard
+          title="Failed to load security overview"
+          message={error.message}
+        />
+      )}
+
+      {/* Row 1: KPI tiles — testid wrappers always in the DOM (required by Playwright) */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div data-testid="kpi-open">
-          <KpiTile
-            label="Open Alerts"
-            value={fetching ? "—" : (kpis?.openTotal ?? 0)}
-            delta={fetching ? undefined : kpis?.openDelta30d}
-            tone={kpis && kpis.openTotal > 0 ? "warn" : "default"}
-            loading={fetching}
-          />
+          {error ? (
+            <DegradedTile label="Open Alerts" />
+          ) : (
+            <KpiTile
+              label="Open Alerts"
+              value={fetching ? "—" : (kpis?.openTotal ?? 0)}
+              delta={fetching ? undefined : kpis?.openDelta30d}
+              tone={kpis && kpis.openTotal > 0 ? "warn" : "default"}
+              loading={fetching}
+            />
+          )}
         </div>
         <div data-testid="kpi-critical">
-          <KpiTile
-            label="Critical"
-            value={fetching ? "—" : (kpis?.critical ?? 0)}
-            tone={kpis && kpis.critical > 0 ? "danger" : "default"}
-            loading={fetching}
-          />
+          {error ? (
+            <DegradedTile label="Critical" />
+          ) : (
+            <KpiTile
+              label="Critical"
+              value={fetching ? "—" : (kpis?.critical ?? 0)}
+              tone={kpis && kpis.critical > 0 ? "danger" : "default"}
+              loading={fetching}
+            />
+          )}
         </div>
         <div data-testid="kpi-high">
-          <KpiTile
-            label="High"
-            value={fetching ? "—" : (kpis?.high ?? 0)}
-            tone={kpis && kpis.high > 0 ? "warn" : "default"}
-            loading={fetching}
-          />
+          {error ? (
+            <DegradedTile label="High" />
+          ) : (
+            <KpiTile
+              label="High"
+              value={fetching ? "—" : (kpis?.high ?? 0)}
+              tone={kpis && kpis.high > 0 ? "warn" : "default"}
+              loading={fetching}
+            />
+          )}
         </div>
         <div data-testid="kpi-mttf">
-          <KpiTile
-            label="Mean Days to Fix (30d)"
-            value={fetching ? "—" : mttfValue}
-            tone="default"
-            loading={fetching}
-          />
+          {error ? (
+            <DegradedTile label="Mean Days to Fix (30d)" />
+          ) : (
+            <KpiTile
+              label="Mean Days to Fix (30d)"
+              value={fetching ? "—" : mttfValue}
+              tone="default"
+              loading={fetching}
+            />
+          )}
         </div>
       </div>
 
@@ -84,7 +108,11 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
           <p className="mb-3 text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
             By Severity
           </p>
-          <SeverityStackedBar buckets={buckets} loading={fetching} />
+          {error ? (
+            <DegradedTile label="Severity breakdown" />
+          ) : (
+            <SeverityStackedBar buckets={buckets} loading={fetching} />
+          )}
         </div>
         <div
           className="rounded-2xl border border-(--card-stroke) bg-card p-4"
@@ -93,7 +121,11 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
           <p className="mb-3 text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
             Top Repos by Alert Count
           </p>
-          <TopReposChart repos={repos} loading={fetching} />
+          {error ? (
+            <DegradedTile label="Top repos chart" />
+          ) : (
+            <TopReposChart repos={repos} loading={fetching} />
+          )}
         </div>
       </div>
 
@@ -102,7 +134,11 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
         <p className="mb-3 text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
           Trend (last 30 days)
         </p>
-        <TrendChart points={trendPoints} loading={fetching} />
+        {error ? (
+          <DegradedTile label="Trend chart" />
+        ) : (
+          <TrendChart points={trendPoints} loading={fetching} />
+        )}
       </div>
     </div>
   );

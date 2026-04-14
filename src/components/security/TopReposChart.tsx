@@ -2,12 +2,13 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Chart } from "@/components/charts/Chart";
 import { useChartTheme } from "@/components/charts/chartTheme";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import type { RepoAlertCountData } from "./types";
+import { buildRepoHref } from "./repoLink";
 
 type TopReposChartProps = {
   repos: RepoAlertCountData[];
@@ -17,6 +18,8 @@ type TopReposChartProps = {
 export function TopReposChart({ repos, loading }: TopReposChartProps) {
   const chartTheme = useChartTheme();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const f = searchParams.get("f") ?? undefined;
 
   // Sort descending by count.
   const sorted = useMemo(
@@ -93,7 +96,7 @@ export function TopReposChart({ repos, loading }: TopReposChartProps) {
             if (typeof dataIndex === "number") {
               const repo = sorted[dataIndex];
               if (repo?.repoId) {
-                router.push(`/security/repos/${encodeURIComponent(repo.repoId)}`);
+                router.push(buildRepoHref(repo.repoId, f));
               }
             }
           },
@@ -103,7 +106,7 @@ export function TopReposChart({ repos, loading }: TopReposChartProps) {
       <ul className="sr-only">
         {sorted.map((repo) => (
           <li key={repo.repoId}>
-            <Link href={`/security/repos/${repo.repoId}`}>
+            <Link href={buildRepoHref(repo.repoId, f)}>
               {repo.repoName} — {repo.count} alerts
             </Link>
           </li>

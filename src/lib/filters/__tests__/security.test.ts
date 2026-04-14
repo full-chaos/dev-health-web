@@ -85,6 +85,32 @@ describe("decodeSecurityFilter — forward-compat", () => {
     expect(decoded.openOnly).toBe(true);
     expect(decoded.severities).toEqual(["critical"]);
   });
+
+  it("returns defaultSecurityFilter when all keys are foreign (e.g. a MetricFilter payload)", () => {
+    // Simulate a MetricFilter-style payload that has no SecurityFilter keys
+    const foreignPayload = { someUnknownKey: "x", anotherForeignKey: 42 };
+    const encoded = btoa(JSON.stringify(foreignPayload))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    const decoded = decodeSecurityFilter(encoded);
+    expect(decoded).toEqual(defaultSecurityFilter());
+    expect(decoded.openOnly).toBe(true);
+  });
+
+  it("preserves explicit { openOnly: false } without overwriting with true", () => {
+    const encoded = encodeSecurityFilter({ openOnly: false });
+    const decoded = decodeSecurityFilter(encoded);
+    expect(decoded).toEqual({ openOnly: false });
+    expect(decoded.openOnly).toBe(false);
+  });
+
+  it("decodes { severities: ['critical'] } without forcing openOnly", () => {
+    const encoded = encodeSecurityFilter({ severities: ["critical"] });
+    const decoded = decodeSecurityFilter(encoded);
+    expect(decoded).toEqual({ severities: ["critical"] });
+    expect(decoded).not.toHaveProperty("openOnly");
+  });
 });
 
 describe("applyLockedRepoId", () => {

@@ -93,6 +93,12 @@ export function decodeSecurityFilter(encoded: string | undefined): SecurityFilte
         safe[key] = parsed[key];
       }
     }
+    // If no known keys survived (e.g. a foreign MetricFilter payload carried
+    // over by PrimaryNav), treat the param as absent and return the default
+    // so openOnly:true is not silently lost.
+    if (Object.keys(safe).length === 0) {
+      return defaultSecurityFilter();
+    }
     return safe as SecurityFilter;
   } catch {
     return defaultSecurityFilter();

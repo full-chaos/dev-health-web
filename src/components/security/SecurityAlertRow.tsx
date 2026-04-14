@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import type { MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { SeverityBadge } from "./SeverityBadge";
 import { SourceBadge } from "./SourceBadge";
 import { StateBadge } from "./StateBadge";
 import type { SecurityAlertRowData } from "./types";
+import { buildRepoHref } from "./repoLink";
 
 type SecurityAlertRowProps = {
   alert: SecurityAlertRowData;
@@ -43,6 +45,9 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
     createdAt,
   } = alert;
 
+  const searchParams = useSearchParams();
+  const f = searchParams.get("f") ?? undefined;
+
   const stopPropagation = (e: MouseEvent) => e.stopPropagation();
 
   const chip = packageName ? (
@@ -57,7 +62,7 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
 
   const repoLink = (
     <Link
-      href={`/security/repos/${repoId}`}
+      href={buildRepoHref(repoId, f)}
       onClick={stopPropagation}
       className="truncate text-xs text-[var(--ink-muted)] hover:underline max-w-[140px]"
     >
@@ -103,16 +108,26 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
   );
 
   if (url) {
+    const handleRowClick = () => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    };
+    const handleRowKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    };
     return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block"
-        aria-label={title ?? alertId}
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={handleRowClick}
+        onKeyDown={handleRowKeyDown}
+        className="block cursor-pointer"
+        aria-label={`${title ?? alertId} — opens in new tab`}
       >
         {inner}
-      </a>
+      </div>
     );
   }
 
