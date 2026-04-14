@@ -52,12 +52,12 @@
     }
   },
   "devDependencies": {
-    "@graphql-codegen/cli": "^6.2.1",
+    "@graphql-codegen/cli": "^6.3.0",
     "@graphql-codegen/client-preset": "^5.2.4",
     "@graphql-codegen/typescript": "^5.0.9",
     "@graphql-typed-document-node/core": "^3.2.0",
     "@mswjs/http-middleware": "^0.10.3",
-    "@next/eslint-plugin-next": "^16.2.2",
+    "@next/eslint-plugin-next": "^16.2.3",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -67,14 +67,14 @@
     "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "^16",
     "express": "^5.2.1",
     "jsdom": "^29.0.2",
     "lightningcss": "^1",
-    "msw": "^2.13.0",
+    "msw": "^2.13.3",
     "tailwindcss": "^4",
     "typescript": "^6",
-    "vitest": "^4.1.3"
+    "vitest": "^4.1.4"
   }
 }
