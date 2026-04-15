@@ -276,7 +276,7 @@ export interface CapacityForecastsQueryResponse {
 
 // ==== Work Graph Types ====
 
-export type WorkGraphNodeType = "ISSUE" | "PR" | "COMMIT" | "FILE";
+export type WorkGraphNodeType = "ISSUE" | "PR" | "COMMIT" | "FILE" | "RELEASE" | "FEATURE_FLAG";
 
 export type WorkGraphEdgeType =
     // Issue-to-issue relationships
@@ -295,7 +295,12 @@ export type WorkGraphEdgeType =
     // PR-to-commit relationships
     | "CONTAINS"
     // Commit-to-file relationships
-    | "TOUCHES";
+    | "TOUCHES"
+    // Release/feature-flag relationships
+    | "INTRODUCED_BY"
+    | "CONFIG_CHANGED_BY"
+    | "GUARDS"
+    | "IMPACTS";
 
 export type WorkGraphProvenance = "NATIVE" | "EXPLICIT_TEXT" | "HEURISTIC";
 

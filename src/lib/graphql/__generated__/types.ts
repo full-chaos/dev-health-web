@@ -726,10 +726,14 @@ export type WorkGraphEdgeResult = {
 export type WorkGraphEdgeType =
   | 'BLOCKS'
   | 'CHILD_OF'
+  | 'CONFIG_CHANGED_BY'
   | 'CONTAINS'
   | 'DUPLICATES'
   | 'FIXES'
+  | 'GUARDS'
+  | 'IMPACTS'
   | 'IMPLEMENTS'
+  | 'INTRODUCED_BY'
   | 'IS_BLOCKED_BY'
   | 'IS_DUPLICATE_OF'
   | 'IS_RELATED_TO'
@@ -741,10 +745,14 @@ export type WorkGraphEdgeType =
 export type WorkGraphEdgeTypeInput =
   | 'BLOCKS'
   | 'CHILD_OF'
+  | 'CONFIG_CHANGED_BY'
   | 'CONTAINS'
   | 'DUPLICATES'
   | 'FIXES'
+  | 'GUARDS'
+  | 'IMPACTS'
   | 'IMPLEMENTS'
+  | 'INTRODUCED_BY'
   | 'IS_BLOCKED_BY'
   | 'IS_DUPLICATE_OF'
   | 'IS_RELATED_TO'
@@ -762,15 +770,19 @@ export type WorkGraphEdgesResult = {
 
 export type WorkGraphNodeType =
   | 'COMMIT'
+  | 'FEATURE_FLAG'
   | 'FILE'
   | 'ISSUE'
-  | 'PR';
+  | 'PR'
+  | 'RELEASE';
 
 export type WorkGraphNodeTypeInput =
   | 'COMMIT'
+  | 'FEATURE_FLAG'
   | 'FILE'
   | 'ISSUE'
-  | 'PR';
+  | 'PR'
+  | 'RELEASE';
 
 export type WorkGraphProvenance =
   | 'EXPLICIT_TEXT'
