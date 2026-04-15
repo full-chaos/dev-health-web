@@ -23,6 +23,7 @@ type MetricCardProps = {
   delta?: number;
   spark?: SparkPoint[];
   caption?: string;
+  className?: string;
 };
 
 export function MetricCard({
@@ -33,6 +34,7 @@ export function MetricCard({
   delta,
   spark,
   caption,
+  className,
 }: MetricCardProps) {
   const sparkValues = spark?.map((point) => point.value) ?? [];
   const sparkLabels = spark?.map((point) => point.ts) ?? [];
@@ -40,7 +42,7 @@ export function MetricCard({
   return (
     <Link
       href={href}
-      className="group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg"
+      className={`group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg ${className ?? ""}`}
     >
       <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
         <span>{label}</span>

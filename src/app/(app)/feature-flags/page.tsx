@@ -89,16 +89,15 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
               caption={FF_MEASURES.ACTIVE_FLAGS.description}
             />
 
-            <div className={`border-l-4 ${severityBorder} rounded-3xl`}>
-              <MetricCard
-                label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
-                href="/feature-flags"
-                value={summary.releaseFrictionDelta}
-                unit="%"
-                spark={summary.releaseFrictionSpark}
-                caption={`Severity: ${summary.releaseFrictionSeverity}`}
-              />
-            </div>
+            <MetricCard
+              label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
+              href="/feature-flags"
+              value={summary.releaseFrictionDelta}
+              unit="%"
+              spark={summary.releaseFrictionSpark}
+              caption={`Severity: ${summary.releaseFrictionSeverity}`}
+              className={severityBorder ? `border-l-4 ${severityBorder}` : undefined}
+            />
 
             <MetricCard
               label={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.label}

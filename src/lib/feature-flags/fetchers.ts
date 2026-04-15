@@ -117,13 +117,75 @@ export async function fetchReleaseImpact(
   }
 }
 
+function classifySeverity(delta: number): "low" | "moderate" | "high" | "critical" {
+  const abs = Math.abs(delta);
+  if (abs >= 25) return "critical";
+  if (abs >= 15) return "high";
+  if (abs >= 5) return "moderate";
+  return "low";
+}
+
 export async function fetchFeatureFlagsData(
   _dateRange: { startDate: string; endDate: string },
-  _isTestMode?: boolean,
+  isTestMode?: boolean,
 ): Promise<FeatureFlagsData> {
-  // TODO(CHAOS-1198): Replace with real GraphQL aggregation once backend delivers summary endpoint
-  const { SAMPLE_FEATURE_FLAGS_DATA } = await import("./sample-data");
-  return SAMPLE_FEATURE_FLAGS_DATA;
+  if (isTestMode) {
+    const { SAMPLE_FEATURE_FLAGS_DATA } = await import("./sample-data");
+    return SAMPLE_FEATURE_FLAGS_DATA;
+  }
+
+  try {
+    const registry = await fetchFeatureFlagRegistry();
+    const impact = await fetchReleaseImpact("");
+
+    const activeFlags = registry.totalCount;
+    const frictionEdges = impact.edges.filter(e => e.evidence?.includes("friction"));
+    const errorEdges = impact.edges.filter(e => e.evidence?.includes("error"));
+
+    const avgFriction = frictionEdges.length > 0
+      ? frictionEdges.reduce((sum, e) => sum + (e.confidence ?? 0), 0) / frictionEdges.length * 100
+      : 0;
+    const avgError = errorEdges.length > 0
+      ? errorEdges.reduce((sum, e) => sum + (e.confidence ?? 0), 0) / errorEdges.length * 100
+      : 0;
+
+    const totalReleases = impact.totalCount || 1;
+    const withTelemetry = impact.edges.filter(e => e.edgeType === "IMPACTS").length;
+    const coverageRatio = Math.round((withTelemetry / totalReleases) * 100);
+
+    return {
+      summary: {
+        activeFlags,
+        activeFlagsDelta: 0,
+        activeFlagsSpark: [],
+        releaseFrictionDelta: Math.round(avgFriction * 10) / 10,
+        releaseFrictionSeverity: classifySeverity(avgFriction),
+        releaseFrictionSpark: [],
+        releaseErrorRateDelta: Math.round(-avgError * 10) / 10,
+        releaseErrorRateSpark: [],
+        coverageRatio,
+        coverageRatioDelta: 0,
+        coverageRatioSpark: [],
+      },
+    };
+  } catch (error) {
+    console.error("Failed to fetch feature flags summary:", error);
+    return {
+      summary: {
+        activeFlags: 0,
+        activeFlagsDelta: 0,
+        activeFlagsSpark: [],
+        releaseFrictionDelta: 0,
+        releaseFrictionSeverity: "low",
+        releaseFrictionSpark: [],
+        releaseErrorRateDelta: 0,
+        releaseErrorRateSpark: [],
+        coverageRatio: 0,
+        coverageRatioDelta: 0,
+        coverageRatioSpark: [],
+      },
+    };
+  }
 }
 
 export async function fetchFeatureFlagData(
