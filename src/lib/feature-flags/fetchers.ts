@@ -4,8 +4,11 @@ import type { WorkGraphEdgesResult } from "@/lib/graphql/types";
 import {
   FEATURE_FLAG_REGISTRY_QUERY,
   FEATURE_FLAG_EVENTS_QUERY,
+  FEATURE_FLAG_TIMESERIES_QUERY,
   RELEASE_IMPACT_QUERY,
 } from "./queries";
+import type { TimeseriesResult } from "@/lib/graphql/types";
+import type { SparkPoint } from "@/lib/types";
 import type {
   FeatureFlagRegistryResult,
   FeatureFlagEventsResult,
@@ -124,6 +127,57 @@ export async function fetchReleaseImpact(
   }
 }
 
+/**
+ * Merge timeseries results for a given measure into a single sparkline.
+ * When multiple dimension values exist (e.g. multiple repos), values
+ * for the same date bucket are averaged.
+ */
+function mergeToSpark(results: TimeseriesResult[], measure: string): SparkPoint[] {
+  const matching = results.filter((r) => r.measure === measure);
+  const byDate = new Map<string, number[]>();
+  for (const result of matching) {
+    for (const bucket of result.buckets) {
+      const existing = byDate.get(bucket.date) ?? [];
+      existing.push(bucket.value);
+      byDate.set(bucket.date, existing);
+    }
+  }
+  return Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([ts, values]) => ({
+      ts,
+      value: Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 100) / 100,
+    }));
+}
+
+async function fetchFeatureFlagTimeseries(
+  orgId: string,
+  dateRange: { startDate: string; endDate: string },
+): Promise<TimeseriesResult[]> {
+  const measures = [
+    "FLAG_ACTIVATION_RATE",
+    "FLAG_FRICTION_DELTA",
+    "FLAG_ERROR_RATE_DELTA",
+    "FLAG_COVERAGE_RATIO",
+  ] as const;
+
+  const timeseries = measures.map((measure) => ({
+    dimension: "REPO" as const,
+    measure,
+    interval: "DAY" as const,
+    dateRange: { startDate: dateRange.startDate, endDate: dateRange.endDate },
+  }));
+
+  try {
+    const res = await graphqlFetch<{
+      analytics: { timeseries: TimeseriesResult[] };
+    }>(FEATURE_FLAG_TIMESERIES_QUERY, { orgId, batch: { timeseries } });
+    return res.analytics.timeseries;
+  } catch {
+    return [];
+  }
+}
+
 function classifySeverity(delta: number): "low" | "moderate" | "high" | "critical" {
   const abs = Math.abs(delta);
   if (abs >= 25) return "critical";
@@ -133,7 +187,7 @@ function classifySeverity(delta: number): "low" | "moderate" | "high" | "critica
 }
 
 export async function fetchFeatureFlagsData(
-  _dateRange: { startDate: string; endDate: string },
+  dateRange: { startDate: string; endDate: string },
   isTestMode?: boolean,
 ): Promise<FeatureFlagsData> {
   if (isTestMode) {
@@ -142,8 +196,13 @@ export async function fetchFeatureFlagsData(
   }
 
   try {
-    const registry = await fetchFeatureFlagRegistry();
-    const impact = await fetchReleaseImpact("");
+    const orgId = await resolveOrgId();
+
+    const [registry, impact, timeseries] = await Promise.all([
+      fetchFeatureFlagRegistry(),
+      fetchReleaseImpact(""),
+      fetchFeatureFlagTimeseries(orgId, dateRange),
+    ]);
 
     const activeFlags = registry.totalCount;
     const impactEdges = impact.edges.filter((edge) => edge.edgeType === "IMPACTS");
@@ -165,15 +224,15 @@ export async function fetchFeatureFlagsData(
       summary: {
         activeFlags,
         activeFlagsDelta: 0,
-        activeFlagsSpark: [],
+        activeFlagsSpark: mergeToSpark(timeseries, "flag_activation_rate"),
         releaseFrictionDelta: Math.round(avgFriction * 10) / 10,
         releaseFrictionSeverity: classifySeverity(avgFriction),
-        releaseFrictionSpark: [],
+        releaseFrictionSpark: mergeToSpark(timeseries, "flag_friction_delta"),
         releaseErrorRateDelta: Math.round(-avgError * 10) / 10,
-        releaseErrorRateSpark: [],
+        releaseErrorRateSpark: mergeToSpark(timeseries, "flag_error_rate_delta"),
         coverageRatio,
         coverageRatioDelta: 0,
-        coverageRatioSpark: [],
+        coverageRatioSpark: mergeToSpark(timeseries, "flag_coverage_ratio"),
       },
     };
   } catch (error) {
