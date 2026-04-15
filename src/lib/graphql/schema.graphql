@@ -591,6 +591,10 @@ enum WorkGraphEdgeType {
   FIXES
   CONTAINS
   TOUCHES
+  INTRODUCED_BY
+  CONFIG_CHANGED_BY
+  GUARDS
+  IMPACTS
 }
 
 enum WorkGraphEdgeTypeInput {
@@ -607,6 +611,10 @@ enum WorkGraphEdgeTypeInput {
   FIXES
   CONTAINS
   TOUCHES
+  INTRODUCED_BY
+  CONFIG_CHANGED_BY
+  GUARDS
+  IMPACTS
 }
 
 type WorkGraphEdgesResult {
@@ -620,6 +628,8 @@ enum WorkGraphNodeType {
   PR
   COMMIT
   FILE
+  RELEASE
+  FEATURE_FLAG
 }
 
 enum WorkGraphNodeTypeInput {
@@ -627,6 +637,8 @@ enum WorkGraphNodeTypeInput {
   PR
   COMMIT
   FILE
+  RELEASE
+  FEATURE_FLAG
 }
 
 enum WorkGraphProvenance {

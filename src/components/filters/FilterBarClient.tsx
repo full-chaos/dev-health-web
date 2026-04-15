@@ -54,7 +54,8 @@ type FilterBarView =
   | "opportunities"
   | "explore"
   | "testops"
-  | "security";
+  | "security"
+  | "feature-flags";
 
 type FilterVisibility = {
   scope?: boolean;

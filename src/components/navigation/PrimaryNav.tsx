@@ -82,6 +82,13 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    id: "feature-flags",
+    label: "Feature Flags",
+    items: [
+      { id: "feature-flags", label: "Overview", href: "/feature-flags", description: "Flags" },
+    ],
+  },
+  {
     id: "reports",
     label: "Reports",
     items: [
