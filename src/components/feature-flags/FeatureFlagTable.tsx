@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 
 import { DataTable } from "@/components/shared/DataTable";
 import type { DataTableColumn } from "@/components/shared/DataTable";
@@ -74,11 +74,6 @@ export function FeatureFlagTable({ initialData, fetchAction }: Props) {
   const [data, setData] = useState(initialData);
   const [offset, setOffset] = useState(0);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setData(initialData);
-    setOffset(0);
-  }, [initialData]);
 
   const handlePageChange = useCallback(
     (newOffset: number) => {
