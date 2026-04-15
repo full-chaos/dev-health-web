@@ -125,6 +125,8 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
     PR: "bg-emerald-500",
     COMMIT: "bg-indigo-500",
     FILE: "bg-purple-500",
+    RELEASE: "bg-teal-600",
+    FEATURE_FLAG: "bg-amber-600",
   };
 
   const typeLabels: Record<WorkGraphNodeType, string> = {
@@ -132,6 +134,8 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
     PR: "Pull Request",
     COMMIT: "Commit",
     FILE: "File",
+    RELEASE: "Release",
+    FEATURE_FLAG: "Feature Flag",
   };
 
   return (
