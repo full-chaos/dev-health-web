@@ -15,6 +15,7 @@ import type {
   FeatureFlagData,
   FeatureFlagsData,
 } from "./types";
+import { getDistinctSourceIds, getRegistryEdges, parseToggleEvidence } from "./graph";
 
 const EMPTY_RESULT: WorkGraphEdgesResult = {
   edges: [],
@@ -41,14 +42,18 @@ export async function fetchFeatureFlagRegistry(
         orgId,
         filters: {
           sourceType: "FEATURE_FLAG",
+          targetType: "FEATURE_FLAG",
+          edgeType: "RELATES",
           limit,
         },
       },
     );
 
+    const flags = getRegistryEdges(res.workGraphEdges.edges);
+
     return {
-      flags: res.workGraphEdges.edges,
-      totalCount: res.workGraphEdges.totalCount,
+      flags,
+      totalCount: flags.length,
       pageInfo: res.workGraphEdges.pageInfo,
     };
   } catch (error) {
@@ -141,8 +146,9 @@ export async function fetchFeatureFlagsData(
     const impact = await fetchReleaseImpact("");
 
     const activeFlags = registry.totalCount;
-    const frictionEdges = impact.edges.filter(e => e.evidence?.includes("friction"));
-    const errorEdges = impact.edges.filter(e => e.evidence?.includes("error"));
+    const impactEdges = impact.edges.filter((edge) => edge.edgeType === "IMPACTS");
+    const frictionEdges = impactEdges.filter((edge) => edge.evidence?.includes("friction"));
+    const errorEdges = impactEdges.filter((edge) => edge.evidence?.includes("error"));
 
     const avgFriction = frictionEdges.length > 0
       ? frictionEdges.reduce((sum, e) => sum + (e.confidence ?? 0), 0) / frictionEdges.length * 100
@@ -151,8 +157,8 @@ export async function fetchFeatureFlagsData(
       ? errorEdges.reduce((sum, e) => sum + (e.confidence ?? 0), 0) / errorEdges.length * 100
       : 0;
 
-    const totalReleases = impact.totalCount || 1;
-    const withTelemetry = impact.edges.filter(e => e.edgeType === "IMPACTS").length;
+    const totalReleases = getDistinctSourceIds(impact.edges).size || 1;
+    const withTelemetry = getDistinctSourceIds(impactEdges).size;
     const coverageRatio = Math.round((withTelemetry / totalReleases) * 100);
 
     return {
@@ -206,12 +212,12 @@ export async function fetchFeatureFlagList(
     const togglesByFlag = new Map<string, { ts: string; active: boolean }>();
     for (const evt of events.events) {
       const existing = togglesByFlag.get(evt.sourceId);
-      const evtTs = evt.evidence ?? "";
+      const parsedToggle = parseToggleEvidence(evt.evidence);
       const isToggle = evt.edgeType === "CONFIG_CHANGED_BY";
-      if (isToggle && (!existing || evtTs > existing.ts)) {
+      if (isToggle && (!existing || parsedToggle.ts > existing.ts)) {
         togglesByFlag.set(evt.sourceId, {
-          ts: evtTs,
-          active: !evt.evidence?.includes("off"),
+          ts: parsedToggle.ts,
+          active: parsedToggle.active,
         });
       }
     }
