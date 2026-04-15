@@ -11,6 +11,7 @@ import type {
   FeatureFlagEventsResult,
   ReleaseImpactResult,
   FeatureFlagData,
+  FeatureFlagsData,
 } from "./types";
 
 const EMPTY_RESULT: WorkGraphEdgesResult = {
@@ -114,6 +115,15 @@ export async function fetchReleaseImpact(
     console.error("Failed to fetch release impact:", error);
     return { edges: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo };
   }
+}
+
+export async function fetchFeatureFlagsData(
+  _dateRange: { startDate: string; endDate: string },
+  _isTestMode?: boolean,
+): Promise<FeatureFlagsData> {
+  // TODO(CHAOS-1198): Replace with real GraphQL aggregation once backend delivers summary endpoint
+  const { SAMPLE_FEATURE_FLAGS_DATA } = await import("./sample-data");
+  return SAMPLE_FEATURE_FLAGS_DATA;
 }
 
 export async function fetchFeatureFlagData(
