@@ -10,6 +10,7 @@ const PROVIDERS: Record<string, string> = {
   gitlab: "GitLab",
   jira: "Jira",
   linear: "Linear",
+  launchdarkly: "LaunchDarkly",
 };
 
 function getStatus(credential: IntegrationCredential | undefined): ConnectionStatusType {
