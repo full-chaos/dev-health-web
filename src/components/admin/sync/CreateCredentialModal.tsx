@@ -29,6 +29,11 @@ const PROVIDER_FIELDS: Record<Provider, ProviderField[]> = {
     { key: "server_url", label: "Server URL", type: "text", required: true },
   ],
   linear: [{ key: "api_key", label: "API Key", type: "password", required: true }],
+  launchdarkly: [
+    { key: "api_key", label: "API Token", type: "password", required: true },
+    { key: "project_key", label: "Project Key", type: "text", required: true },
+    { key: "environment", label: "Environment Key", type: "text", required: true },
+  ],
 };
 
 function getInitialCredentials(provider: Provider): Record<string, string> {
@@ -40,6 +45,9 @@ function getInitialCredentials(provider: Provider): Record<string, string> {
   }
   if (provider === "linear") {
     return { api_key: "" };
+  }
+  if (provider === "launchdarkly") {
+    return { api_key: "", project_key: "", environment: "production" };
   }
   return { token: "" };
 }
