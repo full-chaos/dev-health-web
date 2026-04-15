@@ -1,13 +1,15 @@
 import Link from "next/link";
 
+import { FeatureFlagTable } from "@/components/feature-flags/FeatureFlagTable";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
-import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
+import { fetchFeatureFlagsData, fetchFeatureFlagList } from "@/lib/feature-flags/fetchers";
 import { FF_MEASURES } from "@/lib/feature-flags/constants";
+import { fetchFlagPage } from "./actions";
 
 type FeatureFlagsPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -41,9 +43,10 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
     filters?.time?.start_date ??
     new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
 
-  const [health, ffData] = await Promise.all([
+  const [health, ffData, flagList] = await Promise.all([
     checkApiHealth(),
     fetchFeatureFlagsData({ startDate, endDate }, isTestMode),
+    fetchFeatureFlagList(0, 20),
   ]);
 
   if (!health.ok && !isTestMode) {
@@ -117,6 +120,13 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
               spark={summary.coverageRatioSpark}
               caption={FF_MEASURES.COVERAGE_RATIO.description}
             />
+          </section>
+
+          <section>
+            <h2 className="mb-4 text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+              Flag Registry
+            </h2>
+            <FeatureFlagTable initialData={flagList} fetchAction={fetchFlagPage} />
           </section>
         </main>
       </div>

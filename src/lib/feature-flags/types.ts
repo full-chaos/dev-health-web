@@ -47,3 +47,19 @@ export type FeatureFlagSummary = {
 export type FeatureFlagsData = {
   summary: FeatureFlagSummary;
 };
+
+export type FeatureFlagListItem = {
+  flagId: string;
+  flagKey: string;
+  provider: string;
+  projectKey: string;
+  createdAt: string | null;
+  lastToggledAt: string | null;
+  isActive: boolean | null;
+};
+
+export type FeatureFlagListResult = {
+  items: FeatureFlagListItem[];
+  totalCount: number;
+  hasNextPage: boolean;
+};

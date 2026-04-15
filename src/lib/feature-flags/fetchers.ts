@@ -9,6 +9,8 @@ import {
 import type {
   FeatureFlagRegistryResult,
   FeatureFlagEventsResult,
+  FeatureFlagListItem,
+  FeatureFlagListResult,
   ReleaseImpactResult,
   FeatureFlagData,
   FeatureFlagsData,
@@ -185,6 +187,62 @@ export async function fetchFeatureFlagsData(
         coverageRatioSpark: [],
       },
     };
+  }
+}
+
+export async function fetchFeatureFlagList(
+  offset: number = 0,
+  limit: number = 20,
+  orgIdOverride?: string,
+): Promise<FeatureFlagListResult> {
+  const orgId = await resolveOrgId(orgIdOverride);
+
+  try {
+    const [registry, events] = await Promise.all([
+      fetchFeatureFlagRegistry(orgId, 500),
+      fetchFeatureFlagEvents("", orgId, 500),
+    ]);
+
+    const togglesByFlag = new Map<string, { ts: string; active: boolean }>();
+    for (const evt of events.events) {
+      const existing = togglesByFlag.get(evt.sourceId);
+      const evtTs = evt.evidence ?? "";
+      const isToggle = evt.edgeType === "CONFIG_CHANGED_BY";
+      if (isToggle && (!existing || evtTs > existing.ts)) {
+        togglesByFlag.set(evt.sourceId, {
+          ts: evtTs,
+          active: !evt.evidence?.includes("off"),
+        });
+      }
+    }
+
+    const items: FeatureFlagListItem[] = registry.flags.map((edge) => {
+      const parts = edge.evidence?.replace("flag:", "").split("/") ?? [];
+      const provider = parts[0] ?? edge.provider ?? "";
+      const projectKey = parts[1] ?? "";
+      const flagKey = parts[2] ?? edge.sourceId;
+      const toggle = togglesByFlag.get(edge.sourceId);
+
+      return {
+        flagId: edge.sourceId,
+        flagKey,
+        provider,
+        projectKey,
+        createdAt: null,
+        lastToggledAt: toggle?.ts ?? null,
+        isActive: toggle?.active ?? null,
+      };
+    });
+
+    const page = items.slice(offset, offset + limit);
+    return {
+      items: page,
+      totalCount: items.length,
+      hasNextPage: offset + limit < items.length,
+    };
+  } catch (error) {
+    console.error("Failed to fetch feature flag list:", error);
+    return { items: [], totalCount: 0, hasNextPage: false };
   }
 }
 
