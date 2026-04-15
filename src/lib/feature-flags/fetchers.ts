@@ -224,15 +224,15 @@ export async function fetchFeatureFlagsData(
       summary: {
         activeFlags,
         activeFlagsDelta: 0,
-        activeFlagsSpark: mergeToSpark(timeseries, "flag_activation_rate"),
+        activeFlagsSpark: mergeToSpark(timeseries, "FLAG_ACTIVATION_RATE"),
         releaseFrictionDelta: Math.round(avgFriction * 10) / 10,
         releaseFrictionSeverity: classifySeverity(avgFriction),
-        releaseFrictionSpark: mergeToSpark(timeseries, "flag_friction_delta"),
+        releaseFrictionSpark: mergeToSpark(timeseries, "FLAG_FRICTION_DELTA"),
         releaseErrorRateDelta: Math.round(-avgError * 10) / 10,
-        releaseErrorRateSpark: mergeToSpark(timeseries, "flag_error_rate_delta"),
+        releaseErrorRateSpark: mergeToSpark(timeseries, "FLAG_ERROR_RATE_DELTA"),
         coverageRatio,
         coverageRatioDelta: 0,
-        coverageRatioSpark: mergeToSpark(timeseries, "flag_coverage_ratio"),
+        coverageRatioSpark: mergeToSpark(timeseries, "FLAG_COVERAGE_RATIO"),
       },
     };
   } catch (error) {
