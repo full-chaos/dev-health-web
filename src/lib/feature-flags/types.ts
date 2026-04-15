@@ -1,4 +1,5 @@
-import type { WorkGraphEdge, WorkGraphEdgesResult, PageInfo } from "@/lib/graphql/types";
+import type { WorkGraphEdge, PageInfo } from "@/lib/graphql/types";
+import type { SparkPoint } from "@/lib/types";
 
 export type FeatureFlagEdgeType = "INTRODUCED_BY" | "CONFIG_CHANGED_BY" | "GUARDS" | "IMPACTS";
 
@@ -25,3 +26,24 @@ export interface FeatureFlagData {
   events: FeatureFlagEventsResult;
   releaseImpact: ReleaseImpactResult;
 }
+
+export type FeatureFlagSummary = {
+  activeFlags: number;
+  activeFlagsDelta: number;
+  activeFlagsSpark: SparkPoint[];
+
+  releaseFrictionDelta: number;
+  releaseFrictionSeverity: "low" | "moderate" | "high" | "critical";
+  releaseFrictionSpark: SparkPoint[];
+
+  releaseErrorRateDelta: number;
+  releaseErrorRateSpark: SparkPoint[];
+
+  coverageRatio: number;
+  coverageRatioDelta: number;
+  coverageRatioSpark: SparkPoint[];
+};
+
+export type FeatureFlagsData = {
+  summary: FeatureFlagSummary;
+};
