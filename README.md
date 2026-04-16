@@ -72,6 +72,8 @@ This will serve the app at [http://localhost:3000](http://localhost:3000) using 
 | `NEXT_PUBLIC_DEMO_MODE` | No | Show demo-only UI tabs and sample-data panels (e.g., Code Hotspots, Investment Expense in the Flow view). Backed by static data, not live APIs | `false` |
 | `DEMO_EXPORT` | No | Enable static export build mode | `false` |
 | `BASE_PATH` | No | Subpath hosting prefix (example: `/app`) | Empty (root) |
+| `NEXT_PUBLIC_SENTRY_DSN` | No | Sentry DSN for client + server + edge error reporting | Empty (Sentry still initializes but events go nowhere) |
+| `NEXT_PUBLIC_SENTRY_REPLAY_ROUTES` | No | Comma-separated path prefixes that activate Sentry Session Replay. Replay is lazy-loaded on-demand so it stays out of the initial client bundle on non-matching routes. Set to an empty string to disable Replay entirely | `/admin,/superadmin` |
 
 Deprecated (still read for compatibility):
 
