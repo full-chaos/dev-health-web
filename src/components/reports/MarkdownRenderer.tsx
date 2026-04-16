@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
+import dynamic from "next/dynamic";
 import remarkGfm from "remark-gfm";
+
+const ReactMarkdown = dynamic(() => import("react-markdown"), {
+  ssr: false,
+  loading: () => <div className="h-4 animate-pulse bg-muted/40 rounded" />,
+});
 
 function splitProvenance(md: string): {
   body: string;
