@@ -4,11 +4,25 @@
  * urql Provider component for React applications.
  *
  * Provides the urql client to child components via React context.
+ *
+ * Since CHAOS-1217 Phase B this provider uses `@urql/next` instead of plain
+ * `urql`. `@urql/next` re-exports the entire `urql`/`@urql/core` surface, so
+ * downstream `useQuery`/`useSubscription` hooks are unaffected.
  */
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { Provider as UrqlProvider } from "urql";
-import { createUrqlClient } from "./urqlClient";
+import {
+  UrqlProvider,
+  ssrExchange,
+  fetchExchange,
+  cacheExchange,
+  createClient,
+  mapExchange,
+} from "@urql/next";
+import { resolveOrigin } from "@/lib/origin";
+import { errorExchange, timingExchange } from "./urqlExchanges";
+
+const GRAPHQL_PATH = "/graphql";
 
 interface GraphQLProviderProps {
   children: ReactNode;
@@ -18,10 +32,18 @@ interface GraphQLProviderProps {
 const OrgIdContext = createContext<string | undefined>(undefined);
 
 /**
- * GraphQL Provider that configures urql client with org scoping.
+ * GraphQL provider for client components.
  *
- * Wrap your application or page with this provider to enable
- * GraphQL queries via urql hooks.
+ * Wires `@urql/next`'s `UrqlProvider` with an `ssrExchange` instance that
+ * will be used in Phase C to restore server-fetched data into the client
+ * cache. Until then, `ssrExchange` is present but no RSC results are
+ * hydrated, so client queries still trigger their own fetches (same as
+ * pre-Phase B).
+ *
+ * Org scoping: the `orgId` (from the user's session) is injected as an
+ * `X-Org-Id` header on every operation via `mapExchange`, and as the
+ * `org_id` query param on the GraphQL URL. A change in `orgId` re-creates
+ * both the client and the SSR exchange.
  *
  * @example
  * ```tsx
@@ -34,11 +56,57 @@ export function GraphQLProvider({
   children,
   orgId,
 }: GraphQLProviderProps): React.ReactNode {
-  const client = useMemo(() => createUrqlClient({ orgId }), [orgId]);
+  const [client, ssr] = useMemo(() => {
+    const ssr = ssrExchange({
+      isClient: typeof window !== "undefined",
+    });
+
+    const url = new URL(GRAPHQL_PATH, resolveOrigin());
+    if (orgId) url.searchParams.set("org_id", orgId);
+
+    const client = createClient({
+      url: url.toString(),
+      exchanges: [
+        mapExchange({
+          onOperation(operation) {
+            if (!orgId) return operation;
+            const fetchOptions =
+              typeof operation.context.fetchOptions === "object"
+                ? operation.context.fetchOptions
+                : {};
+            return {
+              ...operation,
+              context: {
+                ...operation.context,
+                fetchOptions: {
+                  ...fetchOptions,
+                  headers: {
+                    ...((fetchOptions.headers ?? {}) as Record<string, string>),
+                    "X-Org-Id": orgId,
+                  },
+                },
+              },
+            };
+          },
+        }),
+        timingExchange,
+        errorExchange,
+        cacheExchange,
+        ssr,
+        fetchExchange,
+      ],
+      requestPolicy: "cache-and-network",
+      suspense: false,
+    });
+
+    return [client, ssr] as const;
+  }, [orgId]);
 
   return (
     <OrgIdContext.Provider value={orgId}>
-      <UrqlProvider value={client}>{children}</UrqlProvider>
+      <UrqlProvider client={client} ssr={ssr}>
+        {children}
+      </UrqlProvider>
     </OrgIdContext.Provider>
   );
 }
