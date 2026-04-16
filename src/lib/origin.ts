@@ -1,4 +1,5 @@
 import { isBrowser } from "@/lib/env";
+import { getServerEnv } from "@/lib/config";
 
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:8000";
 
@@ -9,12 +10,9 @@ const DEFAULT_BACKEND_URL = "http://127.0.0.1:8000";
  */
 export function resolveOrigin(): string {
     if (isBrowser) {
-        // Browser: use relative paths, Next.js rewrites proxy to backend
         return window.location.origin;
     }
-    // Server-side SSR: must use absolute URL to reach backend directly
-    // process.env is read at runtime, not baked in at build time
-    return process.env.BACKEND_URL ?? DEFAULT_BACKEND_URL;
+    return getServerEnv().BACKEND_URL ?? DEFAULT_BACKEND_URL;
 }
 
 /**
@@ -24,5 +22,5 @@ export function resolveOrigin(): string {
  * @returns The backend URL from environment or default
  */
 export function getBackendUrl(): string {
-    return process.env.BACKEND_URL ?? DEFAULT_BACKEND_URL;
+    return getServerEnv().BACKEND_URL ?? DEFAULT_BACKEND_URL;
 }

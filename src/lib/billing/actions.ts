@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { getServerEnv } from "@/lib/config";
 import type { ActionResult } from "@/lib/result";
 
 export type SubscriptionDetails = {
@@ -222,7 +223,7 @@ async function resolveOrgId(orgId?: string): Promise<ActionResult<string | undef
 }
 
 function getBackendUrl(): string {
-  return process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
+  return getServerEnv().BACKEND_URL ?? "http://127.0.0.1:8000";
 }
 
 async function getAuthHeadersOrThrow(): Promise<Record<string, string>> {

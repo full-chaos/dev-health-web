@@ -28,6 +28,7 @@ const publicEnvSchema = z.object({
     NEXT_PUBLIC_BETA: z.string().optional(),
     NEXT_PUBLIC_RUM_ENDPOINT: z.string().optional(),
     NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
+    NODE_ENV: z.string().optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -41,6 +42,7 @@ function parsePublicEnv(): PublicEnv {
         NEXT_PUBLIC_BETA: process.env.NEXT_PUBLIC_BETA,
         NEXT_PUBLIC_RUM_ENDPOINT: process.env.NEXT_PUBLIC_RUM_ENDPOINT,
         NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+        NODE_ENV: process.env.NODE_ENV,
     });
 }
 

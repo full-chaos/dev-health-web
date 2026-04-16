@@ -11,6 +11,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { getServerEnv } from "@/lib/config";
 
 type RedisClient = import("ioredis").default;
 
@@ -26,7 +27,7 @@ let _client: RedisClient | null | undefined;
 export function getRedis(): RedisClient | null {
   if (_client !== undefined) return _client;
 
-  const url = process.env.REDIS_URL;
+  const url = getServerEnv().REDIS_URL;
   if (!url) {
     _client = null;
     return null;
