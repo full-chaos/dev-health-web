@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Session } from "next-auth";
 
 // Must mock auth and graphqlFetch before importing the module under test
 vi.mock("@/lib/auth", () => ({
@@ -14,17 +13,7 @@ import { fetchRiskMetrics, fetchTestOpsData, fetchCoverageMetrics } from "../fet
 import { SAMPLE_RISK_DATA } from "../sample-data";
 import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
-
-function mockSession(orgId?: string): Session {
-  return {
-    access_token: "test-token",
-    user: {
-      id: "user-1",
-      org_id: orgId,
-    } as Session["user"],
-    expires: new Date(Date.now() + 86400000).toISOString(),
-  };
-}
+import { mockAuth } from "@/test/mocks/auth";
 
 const emptyAnalytics = { timeseries: [], breakdowns: [] };
 
@@ -39,7 +28,7 @@ describe("fetchRiskMetrics", () => {
   });
 
   it("returns undefined metrics when API returns empty timeseries", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("org-1"));
+    mockAuth({ user: { org_id: "org-1" } });
     vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
 
     const result = await fetchRiskMetrics({ timeseries: [], breakdowns: [] }, false);
@@ -68,7 +57,7 @@ describe("resolveOrgId via fetchTestOpsData", () => {
   });
 
   it("resolves orgId from session and passes it to graphqlFetch", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession("org-session-123"));
+    mockAuth({ user: { org_id: "org-session-123" } });
     vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
 
     await fetchTestOpsData({ timeseries: [], breakdowns: [] }, false);
@@ -80,7 +69,7 @@ describe("resolveOrgId via fetchTestOpsData", () => {
   });
 
   it("falls back to 'default-org' when session has no org_id", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession(undefined));
+    mockAuth({ user: { org_id: undefined } });
     vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
 
     await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);

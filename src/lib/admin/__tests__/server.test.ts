@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Session } from "next-auth";
 
 // Mock dependencies BEFORE importing the module under test
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { mockAuth } from "@/test/mocks/auth";
 import {
   listUsers,
   listPlatformUsers,
@@ -30,13 +29,8 @@ import {
   listRetentionResourceTypes,
 } from "../server";
 
-// Helper to mock auth session
 function mockSession() {
-  vi.mocked(auth).mockResolvedValue({
-    access_token: "test-token",
-    user: { id: "u-1", org_id: "org-1" },
-    expires: "",
-  } satisfies Session);
+  mockAuth({ user: { id: "u-1", org_id: "org-1" } });
 }
 
 describe("admin/server credential actions", () => {
@@ -73,7 +67,7 @@ describe("admin/server credential actions", () => {
     });
 
     it("returns error when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue(null);
+      mockAuth(null);
       const result = await listCredentials();
       expect(result.error).toBeDefined();
     });
@@ -219,7 +213,7 @@ describe("admin/server audit log actions", () => {
     });
 
     it("returns error when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue(null);
+      mockAuth(null);
       const result = await listAuditLogs();
       expect(result.error).toBeDefined();
     });
@@ -303,7 +297,7 @@ describe("admin/server IP allowlist actions", () => {
     });
 
     it("returns error when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue(null);
+      mockAuth(null);
       const result = await listIPAllowlistEntries();
       expect(result.error).toBeDefined();
     });
@@ -426,7 +420,7 @@ describe("admin/server retention policy actions", () => {
     });
 
     it("returns error when not authenticated", async () => {
-      vi.mocked(auth).mockResolvedValue(null);
+      mockAuth(null);
       const result = await listRetentionPolicies();
       expect(result.error).toBeDefined();
     });
