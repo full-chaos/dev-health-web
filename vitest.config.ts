@@ -5,6 +5,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // `server-only` is a Next.js marker that throws at build if imported
+      // from client code. Vitest runs outside Next's bundler, so alias it to
+      // an empty module for tests.
+      "server-only": path.resolve(__dirname, "src/test/server-only-shim.ts"),
     },
   },
   test: {
