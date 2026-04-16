@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Session } from "next-auth";
 
 // Must mock auth before importing the module under test
 vi.mock("@/lib/auth", () => ({
@@ -7,29 +6,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 import { getSubscription, getSubscriptions, createRefund, getRefunds, getInvoices } from "../actions";
-import { auth } from "@/lib/auth";
-
-function mockSession(overrides: Omit<Partial<Session>, "user"> & { user?: Partial<Session["user"]> } = {}): Session {
-  const { user: _ignoredUser, ...sessionOverrides } = overrides;
-
-  const user: Session["user"] = {
-    id: overrides.user?.id ?? "user-1",
-    org_id: overrides.user?.org_id ?? "org-123",
-    role: overrides.user?.role,
-    is_superuser: overrides.user?.is_superuser,
-    permissions: overrides.user?.permissions,
-    needs_onboarding: overrides.user?.needs_onboarding,
-    is_impersonating: overrides.user?.is_impersonating,
-    impersonated_user_id: overrides.user?.impersonated_user_id,
-  };
-
-  return {
-    access_token: "test-token",
-    user,
-    expires: new Date(Date.now() + 86400000).toISOString(),
-    ...sessionOverrides,
-  };
-}
+import { mockAuth } from "@/test/mocks/auth";
 
 describe("getSubscription", () => {
   beforeEach(() => {
@@ -38,7 +15,7 @@ describe("getSubscription", () => {
   });
 
   it("returns subscription details when API succeeds", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    mockAuth();
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -68,7 +45,7 @@ describe("getSubscription", () => {
   });
 
   it("returns error when API returns non-ok", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    mockAuth();
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ detail: "Not found" }), { status: 404 }),
@@ -83,7 +60,7 @@ describe("getSubscription", () => {
   });
 
   it("returns error when not authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    mockAuth(null);
 
     const result = await getSubscription();
     expect(result.error).toBeDefined();
@@ -91,7 +68,7 @@ describe("getSubscription", () => {
   });
 
   it("returns canceled subscription details", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    mockAuth();
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -120,7 +97,7 @@ describe("getSubscription", () => {
   });
 
   it("handles fetch errors gracefully", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    mockAuth();
 
     const fetchSpy = vi.spyOn(global, "fetch").mockRejectedValue(
       new Error("Network error"),
@@ -134,9 +111,7 @@ describe("getSubscription", () => {
   });
 
   it("passes org_id when provided", async () => {
-    vi.mocked(auth).mockResolvedValue(
-      mockSession({ user: { is_superuser: true } }),
-    );
+    mockAuth({ user: { is_superuser: true } });
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -167,9 +142,7 @@ describe("getSubscription", () => {
   });
 
   it("loads subscription list with optional org filter", async () => {
-    vi.mocked(auth).mockResolvedValue(
-      mockSession({ user: { is_superuser: true } }),
-    );
+    mockAuth({ user: { is_superuser: true } });
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -200,7 +173,7 @@ describe("org scoping authorization", () => {
   });
 
   it("uses session org_id when no orgId is provided", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession({ user: { org_id: "org-session" } }));
+    mockAuth({ user: { org_id: "org-session" } });
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -231,9 +204,7 @@ describe("org scoping authorization", () => {
   });
 
   it("allows superuser access to another org", async () => {
-    vi.mocked(auth).mockResolvedValue(
-      mockSession({ user: { org_id: "org-session", is_superuser: true } }),
-    );
+    mockAuth({ user: { org_id: "org-session", is_superuser: true } });
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -264,9 +235,7 @@ describe("org scoping authorization", () => {
   });
 
   it("rejects non-superuser access to another org", async () => {
-    vi.mocked(auth).mockResolvedValue(
-      mockSession({ user: { org_id: "org-session", is_superuser: false } }),
-    );
+    mockAuth({ user: { org_id: "org-session", is_superuser: false } });
 
     const fetchSpy = vi.spyOn(global, "fetch");
 
@@ -278,9 +247,7 @@ describe("org scoping authorization", () => {
   });
 
   it("allows non-superuser access to matching org", async () => {
-    vi.mocked(auth).mockResolvedValue(
-      mockSession({ user: { org_id: "org-session", is_superuser: false } }),
-    );
+    mockAuth({ user: { org_id: "org-session", is_superuser: false } });
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -318,7 +285,7 @@ describe("refund actions", () => {
   });
 
   it("creates refund successfully", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    mockAuth();
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -356,7 +323,7 @@ describe("refund actions", () => {
   });
 
   it("returns refund creation error", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    mockAuth();
 
     const fetchSpy = vi
       .spyOn(global, "fetch")
@@ -369,7 +336,7 @@ describe("refund actions", () => {
   });
 
   it("loads refunds list", async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession());
+    mockAuth();
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
@@ -390,9 +357,7 @@ describe("refund actions", () => {
   });
 
   it("passes org_id to refunds and invoices queries for superadmin filtering", async () => {
-    vi.mocked(auth).mockResolvedValue(
-      mockSession({ user: { is_superuser: true } }),
-    );
+    mockAuth({ user: { is_superuser: true } });
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(
