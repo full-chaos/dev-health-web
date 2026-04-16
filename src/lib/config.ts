@@ -91,6 +91,13 @@ const serverEnvSchema = z.object({
     USE_GRAPHQL_ANALYTICS: z.string().optional(),
     DEV_HEALTH_TEST_MODE: z.string().optional(),
     DEMO_EXPORT: z.string().optional(),
+    NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: z.string().optional(),
+    NEXT_PUBLIC_DOCS_URL: z.string().optional(),
+    NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: z.string().optional(),
+    NEXT_PUBLIC_DEMO_MODE: z.string().optional(),
+    NEXT_PUBLIC_BETA: z.string().optional(),
+    NEXT_PUBLIC_RUM_ENDPOINT: z.string().optional(),
+    NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

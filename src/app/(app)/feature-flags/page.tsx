@@ -9,6 +9,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchFeatureFlagsData, fetchFeatureFlagList } from "@/lib/feature-flags/fetchers";
 import { FF_MEASURES } from "@/lib/feature-flags/constants";
+import { getServerEnv } from "@/lib/config";
 import { fetchFlagPage } from "./actions";
 
 type FeatureFlagsPageProps = {
@@ -32,9 +33,10 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
+  const env = getServerEnv();
   const isTestMode =
-    process.env.DEV_HEALTH_TEST_MODE === "true" ||
-    process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    env.DEV_HEALTH_TEST_MODE === "true" ||
+    env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
   const rangeDays = filters?.time?.range_days ?? 14;
   const today = new Date();

@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 
 import { RefundDialog } from "@/components/admin/billing/RefundDialog";
+import { publicEnv } from "@/lib/config";
 
 export default function BillingRefundsTestPage() {
   const isTestMode =
-    process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "1" ||
-    process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "1" ||
+    publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
   if (!isTestMode) {
     notFound();
   }
