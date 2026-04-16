@@ -10,6 +10,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { publicEnv } from "@/lib/config";
 
 export type WebVitalsMetric = {
   id: string;
@@ -61,7 +62,7 @@ export function onVital(metric: WebVitalsMetric): void {
     "web-vital"
   );
 
-  if (process.env.NEXT_PUBLIC_RUM_ENDPOINT) {
+  if (publicEnv.NEXT_PUBLIC_RUM_ENDPOINT) {
     reportToEndpoint(metric);
   }
 }

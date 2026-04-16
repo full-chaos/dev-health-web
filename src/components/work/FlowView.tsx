@@ -28,8 +28,9 @@ import {
     type TreemapSunburstType,
 } from "@/components/charts/ChartTypeToggle";
 import { formatNumber } from "@/lib/formatters";
+import { publicEnv } from "@/lib/config";
 
-const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+const DEMO_MODE = publicEnv.NEXT_PUBLIC_DEMO_MODE === "true";
 
 type FlowViewProps = {
     filters: MetricFilter;

@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
+import { getServerEnv } from "@/lib/config";
 
 const bodyFont = Inter({
   variable: "--font-body",
@@ -58,8 +59,9 @@ export const metadata: Metadata = {
   },
 };
 
-const runtimeConfigSrc = `${process.env.BASE_PATH ?? ""}/runtime-config.js`;
-const themeInitSrc = `${process.env.BASE_PATH ?? ""}/theme-init.js`;
+const basePath = getServerEnv().BASE_PATH ?? "";
+const runtimeConfigSrc = `${basePath}/runtime-config.js`;
+const themeInitSrc = `${basePath}/theme-init.js`;
 
 export default function RootLayout({
   children,

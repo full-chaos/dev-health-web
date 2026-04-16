@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import type { FeedbackPayload, FeedbackResponse } from "@/components/feedback/types";
 import { auth } from "@/lib/auth";
+import { getServerEnv } from "@/lib/config";
 import { isRateLimited } from "@/lib/rate-limit";
 
 const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
@@ -79,7 +80,8 @@ function badRequest(error: string) {
 
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
-  const nextAuthUrl = process.env.NEXTAUTH_URL;
+  const env = getServerEnv();
+  const nextAuthUrl = env.NEXTAUTH_URL;
 
   if (origin && nextAuthUrl) {
     try {
@@ -93,8 +95,8 @@ export async function POST(request: Request) {
     } catch {}
   }
 
-  const linearApiKey = process.env.LINEAR_API_KEY;
-  const linearTeamId = process.env.LINEAR_TEAM_ID;
+  const linearApiKey = env.LINEAR_API_KEY;
+  const linearTeamId = env.LINEAR_TEAM_ID;
 
   if (!linearApiKey || !linearTeamId) {
     const response: FeedbackResponse = {

@@ -4,6 +4,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { StatusBadge } from "@/components/reports/StatusBadge";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchSavedReports } from "@/lib/reports/fetchers";
+import { getServerEnv } from "@/lib/config";
 
 type ReportsPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -19,7 +20,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+  const env = getServerEnv();
+  const isTestMode = env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
   const reportsData = await fetchSavedReports("default-org", undefined, undefined, isTestMode);
   const reports = reportsData.items;
 

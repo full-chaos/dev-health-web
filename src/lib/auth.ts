@@ -6,6 +6,7 @@ import GitLab from "next-auth/providers/gitlab"
 import { redirect } from "next/navigation"
 import { getBackendUrl } from "@/lib/origin"
 import { logger } from "@/lib/logger"
+import { getServerEnv } from "@/lib/config"
 
 const authLogger = logger.child({ module: "auth" })
 
@@ -28,9 +29,10 @@ class RateLimited extends CredentialsSignin {
 
 // Lazy secret: in production, pass undefined so Auth.js validates per-request
 // instead of the old IIFE that threw at module-load and killed all exports.
-const authSecret = process.env.AUTH_SECRET
-  || process.env.NEXTAUTH_SECRET
-  || (process.env.NODE_ENV === "production"
+const authEnv = getServerEnv()
+const authSecret = authEnv.AUTH_SECRET
+  || authEnv.NEXTAUTH_SECRET
+  || (authEnv.NODE_ENV === "production"
     ? undefined
     : "dev-secret-change-in-production")
 
@@ -113,9 +115,9 @@ const nextAuth = NextAuth({
         return null
       },
     }),
-    ...(process.env.AUTH_GITHUB_ID ? [GitHub({ clientId: process.env.AUTH_GITHUB_ID, clientSecret: process.env.AUTH_GITHUB_SECRET! })] : []),
-    ...(process.env.AUTH_GOOGLE_ID ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET! })] : []),
-    ...(process.env.AUTH_GITLAB_ID ? [GitLab({ clientId: process.env.AUTH_GITLAB_ID, clientSecret: process.env.AUTH_GITLAB_SECRET! })] : []),
+    ...(authEnv.AUTH_GITHUB_ID ? [GitHub({ clientId: authEnv.AUTH_GITHUB_ID, clientSecret: authEnv.AUTH_GITHUB_SECRET! })] : []),
+    ...(authEnv.AUTH_GOOGLE_ID ? [Google({ clientId: authEnv.AUTH_GOOGLE_ID, clientSecret: authEnv.AUTH_GOOGLE_SECRET! })] : []),
+    ...(authEnv.AUTH_GITLAB_ID ? [GitLab({ clientId: authEnv.AUTH_GITLAB_ID, clientSecret: authEnv.AUTH_GITLAB_SECRET! })] : []),
   ],
   callbacks: {
     async jwt({ token, user, account, trigger, session }) {
@@ -357,9 +359,10 @@ export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
 }
 
 export function getAvailableSocialProviders(): string[] {
+  const env = getServerEnv()
   const providers: string[] = []
-  if (process.env.AUTH_GITHUB_ID) providers.push("github")
-  if (process.env.AUTH_GOOGLE_ID) providers.push("google")
-  if (process.env.AUTH_GITLAB_ID) providers.push("gitlab")
+  if (env.AUTH_GITHUB_ID) providers.push("github")
+  if (env.AUTH_GOOGLE_ID) providers.push("google")
+  if (env.AUTH_GITLAB_ID) providers.push("gitlab")
   return providers
 }

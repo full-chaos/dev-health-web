@@ -1,4 +1,6 @@
-const showBeta = process.env.NEXT_PUBLIC_BETA !== "false";
+import { publicEnv } from "@/lib/config";
+
+const showBeta = publicEnv.NEXT_PUBLIC_BETA !== "false";
 
 export function BetaBadge() {
   if (!showBeta) return null;
