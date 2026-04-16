@@ -43,7 +43,7 @@ type FilterOptions = {
   flow_stage: string[];
 };
 
-type FilterBarView =
+export type FilterBarView =
   | "people"
   | "home"
   | "metrics"
@@ -57,7 +57,7 @@ type FilterBarView =
   | "security"
   | "feature-flags";
 
-type FilterVisibility = {
+export type FilterVisibility = {
   scope?: boolean;
   repo?: boolean;
   developer?: boolean;
@@ -129,7 +129,7 @@ const EXPLORE_VISIBILITY: FilterVisibility = {
   date: true,
 };
 
-const resolveVisibility = (
+export const resolveVisibility = (
   view?: FilterBarView,
   tab?: string
 ): FilterVisibility => {
