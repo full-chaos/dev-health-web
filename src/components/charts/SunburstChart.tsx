@@ -5,7 +5,7 @@ import { useCallback, useMemo } from "react";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
-import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
 
 export type SunburstNode = {
     name: string;
@@ -63,22 +63,10 @@ export function SunburstChart({
 
         const assignColors = (node: SunburstNode, depth: number, colorIndex: number): SunburstNode => {
             const baseColor = chartColors[colorIndex % chartColors.length];
-            // Lighten colors for deeper levels
-            const lightenAmount = depth * 15;
-            const lightenColor = (hex: string, amount: number) => {
-                const normalized = hex.replace("#", "");
-                if (normalized.length !== 6) return hex;
-                const value = Number.parseInt(normalized, 16);
-                const clamp = (c: number) => Math.max(0, Math.min(255, c));
-                const r = clamp((value >> 16) + amount);
-                const g = clamp(((value >> 8) & 0xff) + amount);
-                const b = clamp((value & 0xff) + amount);
-                return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
-            };
 
             return {
                 ...node,
-                itemStyle: { color: depth === 0 ? baseColor : lightenColor(baseColor, lightenAmount) },
+                itemStyle: { color: lightenByDepth(baseColor, depth) },
                 children: node.children?.map((child, idx) =>
                     assignColors(child, depth + 1, depth === 0 ? idx : colorIndex)
                 ),
