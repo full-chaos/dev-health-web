@@ -7,7 +7,7 @@ import type { EChartsOption } from "echarts";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
-import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
 
 export type TreemapNode = {
     name: string;
@@ -71,7 +71,7 @@ export function TreemapChart({
             const baseColor = chartColors[colorIndex % chartColors.length];
             return {
                 ...node,
-                itemStyle: depth === 0 ? { color: baseColor } : node.itemStyle,
+                itemStyle: depth === 0 ? { color: lightenByDepth(baseColor, depth) } : node.itemStyle,
                 children: node.children?.map((child, idx) =>
                     assignColors(child, depth + 1, depth === 0 ? idx : colorIndex)
                 ),
