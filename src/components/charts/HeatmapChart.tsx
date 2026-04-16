@@ -4,11 +4,15 @@ import type { CSSProperties } from "react";
 
 // Type-only import from full echarts package (erased at runtime — no bundle impact).
 import type { TooltipComponentFormatterCallbackParams } from "echarts";
+import { HeatmapChart as EChartsHeatmapChart } from "echarts/charts";
 
 import type { HeatmapResponse } from "@/lib/types";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
+
+echarts.use([EChartsHeatmapChart]);
 
 type HeatmapChartProps = {
   data: HeatmapResponse;

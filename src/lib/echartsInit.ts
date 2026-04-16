@@ -2,38 +2,26 @@
  * ECharts tree-shaking entry point.
  *
  * Import from this module instead of "echarts" to avoid bundling the full
- * ~1 MB ECharts library. Only the components actually used by this app are
- * registered here.
+ * ~1 MB ECharts library. Only the cross-cutting components needed by every
+ * chart are registered here.
  *
  * Usage:
- *   import * as echarts from "@/lib/echartsInit";
- *   // then use echarts.init(), echarts.use(), etc.
+ *   import { echarts } from "@/lib/echartsInit";
+ *   import { BarChart } from "echarts/charts";
+ *   echarts.use([BarChart]);
  *
- * Registered components cover all chart types used in this codebase:
- *   - Bar (HorizontalBarChart, VerticalBarChart, StackedHorizontalBar)
- *   - Line / Area (TimeseriesChart, StackedAreaChart, ConfidenceBandChart, SparklineChart)
- *   - Scatter (QuadrantChart)
- *   - Pie / Sunburst / Treemap (DonutChart, InvestmentMixSunburst, TreemapChart,
- *                               NestedPieChart2D, NestedPieChart3D, SunburstChart)
- *   - Sankey (SankeyChart)
- *   - Heatmap (HeatmapChart, TransitionHeatmapChart)
- *   - Graph (WorkGraphExplorer)
- *   - Custom (FlameDiagram, HierarchicalFlameGraph)
- *   - Axes, grid, tooltip, legend, data-zoom, mark-area, mark-line
+ * Chart-type registrations (BarChart, LineChart, SankeyChart, etc.) live in
+ * each individual chart component so pages that use only a subset of chart
+ * types ship only those types. `echarts/core`.use(...) is idempotent, so
+ * registering the same chart type in multiple components is safe.
+ *
+ * Registered here (cross-cutting only):
+ *   - Grid, Tooltip, Legend, DataZoom
+ *   - MarkArea, MarkLine, MarkPoint, VisualMap
+ *   - CanvasRenderer
  */
 
 import * as echarts from "echarts/core";
-
-import { BarChart } from "echarts/charts";
-import { LineChart } from "echarts/charts";
-import { ScatterChart } from "echarts/charts";
-import { PieChart } from "echarts/charts";
-import { SunburstChart } from "echarts/charts";
-import { TreemapChart } from "echarts/charts";
-import { SankeyChart } from "echarts/charts";
-import { HeatmapChart } from "echarts/charts";
-import { GraphChart } from "echarts/charts";
-import { CustomChart } from "echarts/charts";
 
 import {
   GridComponent,
@@ -48,20 +36,7 @@ import {
 
 import { CanvasRenderer } from "echarts/renderers";
 
-// Register all required components once at module load time
 echarts.use([
-  // Charts
-  BarChart,
-  LineChart,
-  ScatterChart,
-  PieChart,
-  SunburstChart,
-  TreemapChart,
-  SankeyChart,
-  HeatmapChart,
-  GraphChart,
-  CustomChart,
-  // Components
   GridComponent,
   TooltipComponent,
   LegendComponent,
@@ -70,10 +45,8 @@ echarts.use([
   MarkLineComponent,
   MarkPointComponent,
   VisualMapComponent,
-  // Renderer
   CanvasRenderer,
 ]);
 
-// Re-export the echarts core so callers get the pre-initialised instance
 export * from "echarts/core";
 export { echarts };

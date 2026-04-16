@@ -3,9 +3,14 @@
 import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
 
+import { LineChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import { calcPercent, createAreaGradient } from "@/lib/chartUtils";
+
+echarts.use([LineChart]);
 
 export type StackedAreaDataPoint = {
     date: string;

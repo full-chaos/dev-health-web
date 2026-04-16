@@ -3,9 +3,13 @@
 import type { CSSProperties } from "react";
 // Type-only import from full echarts package (erased at runtime — no bundle impact).
 import type { BarSeriesOption } from "echarts";
+import { BarChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
+
+echarts.use([BarChart]);
 
 type HorizontalBarChartProps = {
   categories: string[];

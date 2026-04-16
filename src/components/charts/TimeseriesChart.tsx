@@ -2,8 +2,13 @@
 
 import type { CSSProperties } from "react";
 
+import { LineChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
+
+echarts.use([LineChart]);
 
 type TimeseriesChartProps = {
   data: Array<{ day: string; value: number }>;

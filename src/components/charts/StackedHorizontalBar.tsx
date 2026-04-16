@@ -3,9 +3,14 @@
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 
+import { BarChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
+
+echarts.use([BarChart]);
 
 type StackedBarSegment = {
   name: string;

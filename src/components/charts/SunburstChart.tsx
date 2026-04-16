@@ -3,9 +3,14 @@
 import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
 
+import { SunburstChart as EChartsSunburstChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
+
+echarts.use([EChartsSunburstChart]);
 
 export type SunburstNode = {
     name: string;

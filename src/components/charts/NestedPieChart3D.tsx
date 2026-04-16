@@ -2,8 +2,13 @@
 
 import type { CSSProperties } from "react";
 
+import { PieChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
+
+echarts.use([PieChart]);
 
 const adjustHex = (hex: string, amount: number) => {
   const normalized = hex.replace("#", "");
