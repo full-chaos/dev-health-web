@@ -217,7 +217,7 @@ export const buildQuadrantOption = ({
       ];
     })
     : [];
-  const zoneAreas = showInterpretation
+  const zoneAreas: MarkAreaComponentOption["data"] = showInterpretation
     ? (activeZoneOverlay?.zones ?? []).map((zone: import("@/lib/quadrantZones").ZoneRegion) => [
       {
         name: zone.label,
@@ -226,17 +226,17 @@ export const buildQuadrantOption = ({
         itemStyle: buildZoneSurfaceStyle(zone.color, {
           active: highlightOverlayKey === `zone:${zone.id}`,
         }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
       {
         xAxis: zone.xRange[1],
         yAxis: zone.yRange[1],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
     ])
     : [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markAreaData: any = [...annotationAreas, ...zoneAreas];
+  const markAreaData: MarkAreaComponentOption["data"] = [
+    ...(annotationAreas ?? []),
+    ...(zoneAreas ?? []),
+  ];
   const markArea: MarkAreaComponentOption | undefined = markAreaData.length
     ? {
       silent: true,
