@@ -93,9 +93,17 @@ describe("config.getServerEnv", () => {
         expect(env.LINEAR_TEAM_ID).toBe("team-abc");
     });
 
-    it("throws when called from a client bundle (window is defined)", () => {
+    it("throws when called from a genuine client bundle (window defined, not in Node test runner)", () => {
+        // Simulate a non-test browser environment by hiding the VITEST flag.
         const originalWindow = (globalThis as { window?: unknown }).window;
+        const env = process.env as Record<string, string | undefined>;
+        const originalVitest = env.VITEST;
+        const originalNodeEnv = env.NODE_ENV;
+
         (globalThis as { window?: unknown }).window = {};
+        delete env.VITEST;
+        delete env.NODE_ENV;
+
         try {
             expect(() => getServerEnv()).toThrow(
                 /called from client bundle/,
@@ -106,6 +114,8 @@ describe("config.getServerEnv", () => {
             } else {
                 (globalThis as { window?: unknown }).window = originalWindow;
             }
+            if (originalVitest !== undefined) env.VITEST = originalVitest;
+            if (originalNodeEnv !== undefined) env.NODE_ENV = originalNodeEnv;
         }
     });
 });

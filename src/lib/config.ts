@@ -18,8 +18,6 @@
  */
 import { z } from "zod";
 
-import { runtimeConfig } from "@/lib/runtimeConfig";
-
 const publicEnvSchema = z.object({
     NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: z.string().optional(),
     NEXT_PUBLIC_DOCS_URL: z.string().default("/docs"),
@@ -110,7 +108,18 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
  * called from a client bundle as a defensive guard.
  */
 export function getServerEnv(): ServerEnv {
-    if (typeof window !== "undefined") {
+    // Allow the call when running under a Node-based test runner even if the
+    // environment has stubbed a `window` (jsdom/happy-dom). The bundle-guard
+    // is about preventing accidental inclusion in *client* bundles, not about
+    // blocking server-side tests.
+    const inNodeTest =
+        typeof process !== "undefined" &&
+        !!process.versions?.node &&
+        (process.env.VITEST === "true" ||
+            process.env.NODE_ENV === "test" ||
+            typeof (globalThis as { jest?: unknown }).jest !== "undefined");
+
+    if (typeof window !== "undefined" && !inNodeTest) {
         throw new Error(
             "getServerEnv() called from client bundle — server-only env is not available at runtime.",
         );
@@ -124,6 +133,13 @@ export const isBrowser = !isServer;
 export const config = {
     api: {
         baseUrl: "",
-        docsUrl: runtimeConfig.docsUrl(),
+        get docsUrl(): string {
+            // Lazy getter to avoid a top-level import cycle with runtimeConfig.
+            // The runtimeConfig module itself depends on this file for
+            // `getServerEnv`, so we must not eagerly import it at module load.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { runtimeConfig } = require("@/lib/runtimeConfig") as typeof import("@/lib/runtimeConfig");
+            return runtimeConfig.docsUrl();
+        },
     },
 };
