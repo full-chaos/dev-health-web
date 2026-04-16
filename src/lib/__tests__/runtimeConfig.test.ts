@@ -1,19 +1,24 @@
-import { describe, expect, it, afterEach } from "vitest";
+import { describe, expect, it, afterEach, vi } from "vitest";
 import { runtimeConfig } from "../runtimeConfig";
 
-const globalWithWindow = globalThis as typeof globalThis & {
-  window?: Window;
+type RuntimeWindow = Window & {
+  __DEV_HEALTH_RUNTIME__?: {
+    publicEnv: {
+      NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS?: string;
+      NEXT_PUBLIC_DOCS_URL?: string;
+    };
+  };
 };
 
-const originalWindow = globalWithWindow.window;
-
-const restoreWindow = () => {
-  if (originalWindow === undefined) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalWithWindow as any).window = undefined;
-  } else {
-    globalWithWindow.window = originalWindow;
+const mockWindow = (overrides?: Partial<RuntimeWindow>) => {
+  if (overrides === undefined) {
+    vi.stubGlobal("window", undefined);
+    return;
   }
+
+  vi.stubGlobal("window", {
+    ...overrides,
+  } as RuntimeWindow);
 };
 
 const captureEnv = () => ({
@@ -33,7 +38,7 @@ const restoreEnv = (snapshot: ReturnType<typeof captureEnv>) => {
 };
 
 afterEach(() => {
-  restoreWindow();
+  vi.unstubAllGlobals();
 });
 
 describe("runtimeConfig", () => {
@@ -42,15 +47,14 @@ describe("runtimeConfig", () => {
     process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "false";
     process.env.NEXT_PUBLIC_DOCS_URL = "/docs";
 
-    globalWithWindow.window = {
+    mockWindow({
       __DEV_HEALTH_RUNTIME__: {
         publicEnv: {
           NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: "true",
           NEXT_PUBLIC_DOCS_URL: "https://docs.example.com",
         },
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    });
 
     try {
       expect(runtimeConfig.useGraphQLAnalytics()).toBe(true);
@@ -62,8 +66,7 @@ describe("runtimeConfig", () => {
 
   it("falls back to env values when runtime config is absent", () => {
     const originalEnv = captureEnv();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalWithWindow as any).window = undefined;
+    mockWindow();
     process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "true";
     process.env.NEXT_PUBLIC_DOCS_URL = "https://docs.local";
 
@@ -77,8 +80,7 @@ describe("runtimeConfig", () => {
 
   it("allows server runtime override for GraphQL", () => {
     const originalEnv = captureEnv();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalWithWindow as any).window = undefined;
+    mockWindow();
     process.env.USE_GRAPHQL_ANALYTICS = "true";
     delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
 
