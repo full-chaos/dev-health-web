@@ -96,7 +96,7 @@ export function mockAuth(
   return resolved;
 }
 
-function isFullSession(value: Session | MockSessionOverrides): value is Session {
+function isFullSession(value: unknown): value is Session {
   return (
     typeof value === "object" &&
     value !== null &&
