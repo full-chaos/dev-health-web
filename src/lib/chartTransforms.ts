@@ -5,7 +5,7 @@ import type {
   WorkItemTypeByScope,
   WorkItemTypeSummary,
 } from "@/data/devHealthOpsTypes";
-import { titleCase } from "@/utils/string";
+import { titleCase } from "@/lib/stringUtils";
 
 export type PieSegment = {
   name: string;
