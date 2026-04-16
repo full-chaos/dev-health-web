@@ -4,10 +4,14 @@ import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
 // Type-only import from full echarts package (erased at runtime — no bundle impact).
 import type { EChartsOption } from "echarts";
+import { TreemapChart as EChartsTreemapChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
+
+echarts.use([EChartsTreemapChart]);
 
 export type TreemapNode = {
     name: string;

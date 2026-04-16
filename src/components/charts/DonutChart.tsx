@@ -2,8 +2,13 @@
 
 import type { CSSProperties } from "react";
 
+import { PieChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
+
+echarts.use([PieChart]);
 
 type DonutChartProps = {
   data: Array<{ name: string; value: number }>;

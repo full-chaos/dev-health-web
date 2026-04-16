@@ -2,14 +2,18 @@
 
 import { type CSSProperties, useCallback, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
+import { GraphChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import type {
   WorkGraphEdge,
   WorkGraphNodeType,
   WorkGraphEdgeType,
 } from "@/lib/graphql/types";
+
+echarts.use([GraphChart]);
 
 type WorkGraphNode = {
   id: string;

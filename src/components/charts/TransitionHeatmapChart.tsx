@@ -3,9 +3,14 @@
 import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
 
+import { HeatmapChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import { calcPercent } from "@/lib/chartUtils";
+
+echarts.use([HeatmapChart]);
 
 export type TransitionData = {
     fromStatus: string;

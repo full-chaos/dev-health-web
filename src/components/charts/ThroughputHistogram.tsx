@@ -3,8 +3,13 @@
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 
+import { BarChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
+
+echarts.use([BarChart]);
 
 type ThroughputHistogramProps = {
   throughputMean: number;
