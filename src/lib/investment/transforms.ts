@@ -13,7 +13,7 @@ import type {
 } from "@/lib/types";
 import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
-import { titleCase as sharedTitleCase } from "@/utils/string";
+import { titleCase as sharedTitleCase } from "@/lib/stringUtils";
 
 // ============================================================================
 // Theme / Subcategory label utilities
