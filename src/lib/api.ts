@@ -27,9 +27,6 @@ import { encodeFilterParam } from "@/lib/filters/encode";
 import { applyWindowToFilters } from "@/lib/filters/time";
 import { apiClient } from "@/lib/apiClient";
 import {
-  graphqlClient,
-} from "@/lib/graphql/client";
-import {
   getInvestmentViaGraphQL,
   getInvestmentFlowViaGraphQL,
   getInvestmentRepoTeamFlowViaGraphQL,
@@ -39,6 +36,7 @@ import type {
   CapacityForecast,
   CapacityForecastInput,
 } from "@/lib/graphql/types";
+import { runtimeConfig } from "@/lib/runtimeConfig";
 // auth is imported dynamically inside server-only functions to avoid pulling
 // @/lib/auth into the client bundle (it reads process.env.AUTH_SECRET which
 // doesn't exist in the browser).
@@ -107,7 +105,7 @@ export async function getInvestment(filters: MetricFilter) {
   const normalized = normalizeFilters(filters);
 
   // Feature flag: use GraphQL transport when enabled
-  if (graphqlClient.isEnabled()) {
+  if (runtimeConfig.useGraphQLAnalytics()) {
     const auth = await getAuth();
     const session = await auth();
     const orgId = session?.user?.org_id as string | undefined;
@@ -184,7 +182,7 @@ export async function getInvestmentFlow(params: {
   const normalized = normalizeFilters(params.filters);
 
   // Feature flag: use GraphQL transport when enabled
-  if (graphqlClient.isEnabled()) {
+  if (runtimeConfig.useGraphQLAnalytics()) {
     const auth = await getAuth();
     const session = await auth();
     const orgId = session?.user?.org_id as string | undefined;
@@ -228,7 +226,7 @@ export async function getInvestmentRepoTeamFlow(params: {
   const normalized = normalizeFilters(params.filters);
 
   // Feature flag: use GraphQL transport when enabled
-  if (graphqlClient.isEnabled()) {
+  if (runtimeConfig.useGraphQLAnalytics()) {
     const auth = await getAuth();
     const session = await auth();
     const orgId = session?.user?.org_id as string | undefined;
