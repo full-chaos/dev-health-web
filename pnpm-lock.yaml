@@ -22,7 +22,7 @@ importers:
         version: 6.0.1(graphql@16.13.2)
       '@urql/next':
         specifier: ^2
-        version: 2.0.0(next@16.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(urql@5.0.1(@urql/core@6.0.1(graphql@16.13.2))(react@19.2.4))
+        version: 2.0.0(next@16.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(urql@5.0.1(@urql/core@6.0.1(graphql@16.13.2))(react@19.2.5))
       echarts:
         specifier: ^6
         version: 6.0.0
@@ -2152,15 +2152,15 @@ packages:
   '@urql/core@6.0.1':
     resolution: {integrity: sha512-FZDiQk6jxbj5hixf2rEPv0jI+IZz0EqqGW8mJBEug68/zHTtT+f34guZDmyjJZyiWbj0vL165LoMr/TkeDHaug==}
 
-  '@vitest/expect@4.1.4':
-    resolution: {integrity: sha512-iPBpra+VDuXmBFI3FMKHSFXp3Gx5HfmSCE8X67Dn+bwephCnQCaB7qWK2ldHa+8ncN8hJU8VTMcxjPpyMkUjww==}
-
   '@urql/next@2.0.0':
     resolution: {integrity: sha512-X7q/+MOUtX1suaDxGJdgjAqE/eyhcGr1XnTO0VpUnSPdPOkVUKm5RNDIQy4ecupTYKs++1j2YWcmAfLc9R/Gkw==}
     peerDependencies:
       next: '>=13.0.0'
       react: '>=18.0.0'
       urql: ^5.0.0
+
+  '@vitest/expect@4.1.4':
+    resolution: {integrity: sha512-iPBpra+VDuXmBFI3FMKHSFXp3Gx5HfmSCE8X67Dn+bwephCnQCaB7qWK2ldHa+8ncN8hJU8VTMcxjPpyMkUjww==}
 
   '@vitest/mocker@4.1.4':
     resolution: {integrity: sha512-R9HTZBhW6yCSGbGQnDnH3QHfJxokKN4KB+Yvk9Q1le7eQNYwiCyKxmLmurSpFy6BzJanSLuEUDrD+j97Q+ZLPg==}
@@ -7479,12 +7479,12 @@ snapshots:
     transitivePeerDependencies:
       - graphql
 
-  '@urql/next@2.0.0(next@16.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(urql@5.0.1(@urql/core@6.0.1(graphql@16.13.2))(react@19.2.4))':
+  '@urql/next@2.0.0(next@16.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(urql@5.0.1(@urql/core@6.0.1(graphql@16.13.2))(react@19.2.5))':
     dependencies:
-      next: 16.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react: 19.2.4
-      urql: 5.0.1(@urql/core@6.0.1(graphql@16.13.2))(react@19.2.4)
-      
+      next: 16.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react: 19.2.5
+      urql: 5.0.1(@urql/core@6.0.1(graphql@16.13.2))(react@19.2.5)
+
   '@vitest/expect@4.1.4':
     dependencies:
       '@standard-schema/spec': 1.1.0
