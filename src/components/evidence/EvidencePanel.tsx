@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getExplainData } from "@/lib/api";
+import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";

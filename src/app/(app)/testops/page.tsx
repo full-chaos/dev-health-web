@@ -4,7 +4,7 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { checkApiHealth } from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";

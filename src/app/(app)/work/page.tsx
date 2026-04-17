@@ -3,14 +3,10 @@ import Link from "next/link";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import {
-  checkApiHealth,
-  getExplainData,
-  getHeatmap,
-  getHomeData,
-  getInvestment,
-  getQuadrant,
-} from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
+import { getExplainData, getHomeData } from "@/lib/api/home";
+import { getInvestment } from "@/lib/api/investment";
+import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";

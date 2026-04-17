@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
-import { getHeatmap } from "@/lib/api";
+import { getHeatmap } from "@/lib/api/visuals";
 import type { HeatmapCell, HeatmapResponse } from "@/lib/types";
 import { formatNumber } from "@/lib/formatters";
 

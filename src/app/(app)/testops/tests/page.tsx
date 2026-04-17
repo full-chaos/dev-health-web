@@ -6,7 +6,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
-import { checkApiHealth } from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
