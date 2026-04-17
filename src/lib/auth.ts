@@ -4,6 +4,7 @@ import GitHub from "next-auth/providers/github"
 import Google from "next-auth/providers/google"
 import GitLab from "next-auth/providers/gitlab"
 import { redirect } from "next/navigation"
+import { cache } from "react"
 import { getBackendUrl } from "@/lib/origin"
 import { logger } from "@/lib/logger"
 import { getServerEnv } from "@/lib/config"
@@ -313,24 +314,28 @@ export const { handlers, signIn, signOut } = nextAuth
 
 import type { Session } from "next-auth"
 
-export async function auth(): Promise<Session | null> {
+// Per-request memoized session read. React.cache() dedupes calls within a
+// single RSC render tree so auth()/requireSession()/requireRole()/
+// requireSuperuser() share one next-auth read no matter how many server
+// components or layouts invoke them. Safe because the module is server-only
+// (no "use client" importers) and the getter has no side effects.
+const getServerSession = cache(async (): Promise<Session | null> => {
   try {
-    const session = await nextAuth.auth()
-    if (!session?.access_token) return null
-    if (session.error) return null
-    return session
+    return await nextAuth.auth()
   } catch {
     return null
   }
+})
+
+export async function auth(): Promise<Session | null> {
+  const session = await getServerSession()
+  if (!session?.access_token) return null
+  if (session.error) return null
+  return session
 }
 
 export async function requireSession(callbackUrl?: string): Promise<Session> {
-  let session: Session | null = null
-  try {
-    session = await nextAuth.auth()
-  } catch {
-    session = null
-  }
+  const session = await getServerSession()
   // Surface social login errors (e.g. 409 account conflict) before dropping the session
   if (session?.error) {
     redirect(`/auth/signin?error=${encodeURIComponent(session.error)}`)
