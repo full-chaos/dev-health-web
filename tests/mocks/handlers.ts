@@ -528,6 +528,18 @@ export const handlers = [
     }),
   ),
 
+  http.get("*/api/v1/filters/options", () =>
+    HttpResponse.json({
+      teams: ["core", "growth", "infra", "platform"],
+      repos: ["dev-health-web", "dev-health-ops", "frontend-web"],
+      services: ["web", "api", "analytics"],
+      developers: ["Alex Harper", "Jordan Lee", "metrics-owner", "dev-health-web"],
+      work_category: ["feature", "maintenance", "support"],
+      issue_type: ["bug", "story", "task"],
+      flow_stage: ["review", "build", "deploy"],
+    }),
+  ),
+
   http.get("*/api/v1/billing/plans", ({ request }) => {
     const url = new URL(request.url);
     const includeInactive = url.searchParams.get("include_inactive") === "true";
