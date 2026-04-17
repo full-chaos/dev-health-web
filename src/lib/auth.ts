@@ -160,7 +160,10 @@ const nextAuth = NextAuth({
             token.expires_at = Date.now() + (data.expires_in || 3600) * 1000
             token.last_validated = Date.now()
           } else {
-            const errorData = await res.json().catch(() => null)
+            const errorData = await res.json().catch((error) => {
+              authLogger.warn({ err: error }, "failed to parse social login error response")
+              return null
+            })
             token.error = errorData?.detail?.message || errorData?.detail || "social_login_failed"
           }
         } catch (error) {

@@ -27,12 +27,17 @@ import { applyWindowToFilters } from "@/lib/filters/time";
 import { apiClient } from "@/lib/apiClient";
 import {
   graphqlClient,
+} from "@/lib/graphql/client";
+import {
   getInvestmentViaGraphQL,
   getInvestmentFlowViaGraphQL,
   getInvestmentRepoTeamFlowViaGraphQL,
-  getCapacityForecastViaGraphQL,
-} from "@/lib/graphql";
-import type { CapacityForecast, CapacityForecastInput } from "@/lib/graphql";
+} from "@/lib/graphql/investmentFetchers";
+import { getCapacityForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
+import type {
+  CapacityForecast,
+  CapacityForecastInput,
+} from "@/lib/graphql/types";
 // auth is imported dynamically inside server-only functions to avoid pulling
 // @/lib/auth into the client bundle (it reads process.env.AUTH_SECRET which
 // doesn't exist in the browser).

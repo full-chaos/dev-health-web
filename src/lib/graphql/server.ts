@@ -70,6 +70,7 @@ const { getClient: _getServerClient } = registerUrql(makeServerClient);
  *   through `graphqlFetch()` today to get per-operation `X-Org-Id` injection.
  */
 export function getServerClient(_orgId?: string): Client {
+  void _orgId;
   return _getServerClient();
 }
 

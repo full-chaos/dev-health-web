@@ -124,7 +124,7 @@ export function SubscriptionList({
       rowKeyAction={(subscription) => subscription.id}
       emptyMessage="No subscriptions found for this filter."
       search={{ value: orgFilter, placeholder: "Org ID", buttonLabel: "Filter" }}
-      onSearchAction={(_value) => refreshList(0, orgFilter)}
+       onSearchAction={() => refreshList(0, orgFilter)}
       onSearchChangeAction={setOrgFilter}
       pagination={{ limit: data.limit, offset: data.offset, total: data.total }}
       summaryLabel="subscriptions"
