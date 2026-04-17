@@ -167,9 +167,12 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends postgresql-client
+          python3 -m pip install --quiet bcrypt
 
-          # Register the superuser via the public auth API. Tolerate 409
-          # (already exists) so reruns of this workflow succeed.
+          # Try to register the superuser via the public API. Tolerate
+          # 400/409 because the fixtures step may already have created
+          # this account with an unknown password — the SQL step below
+          # rewrites the password hash regardless.
           status=$(curl -s -o /tmp/reg.json -w '%{http_code}' \
             -X POST "${BACKEND_URL}/api/v1/auth/register" \
             -H 'Content-Type: application/json' \
@@ -178,18 +181,38 @@ jobs:
           echo "register status=${status}"
           cat /tmp/reg.json || true
           case "${status}" in
-            201|409) ;;
+            201|400|409) ;;
             *) echo "::error::Unexpected register status ${status}" ; exit 1 ;;
           esac
 
-          # Promote to superuser and mark verified via direct SQL. Uses
+          # Compute the bcrypt hash of our known password so we can
+          # overwrite whatever hash the fixtures / register step produced.
+          # This guarantees the smoke-test login below uses OUR password.
+          HASH=$(python3 -c "import bcrypt,os; print(bcrypt.hashpw(os.environ['SUPERUSER_PASSWORD'].encode(), bcrypt.gensalt()).decode())")
+
+          # Overwrite password, promote to superuser, mark verified. Uses
           # information_schema introspection so we tolerate column-name
-          # drift across backend versions without a hardcoded schema.
-          psql -h localhost -U postgres -d test_db <<'SQL'
+          # drift across backend versions without a hardcoded schema. The
+          # password column is probed across the three conventional names
+          # (hashed_password / password_hash / password).
+          psql -h localhost -U postgres -d test_db \
+            -v email="${SUPERUSER_EMAIL}" -v hash="${HASH}" <<'SQL'
           DO $$
           DECLARE
-            target_email text := 'admin@devhealth.example';
+            target_email text := :'email';
+            new_hash text := :'hash';
+            pwd_col text;
           BEGIN
+            SELECT column_name INTO pwd_col
+              FROM information_schema.columns
+              WHERE table_name='users'
+                AND column_name IN ('hashed_password','password_hash','password')
+              ORDER BY column_name
+              LIMIT 1;
+            IF pwd_col IS NOT NULL THEN
+              EXECUTE format('UPDATE users SET %I = $1 WHERE email = $2', pwd_col)
+                USING new_hash, target_email;
+            END IF;
             IF EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_name='users' AND column_name='is_superuser') THEN
               UPDATE users SET is_superuser = true WHERE email = target_email;
@@ -208,7 +231,7 @@ jobs:
             END IF;
           END$$;
           SELECT email, is_superuser, is_verified, is_active
-          FROM users WHERE email = 'admin@devhealth.example';
+          FROM users WHERE email = :'email';
           SQL
 
           # Smoke-test the credentials end-to-end so a failure at this step
