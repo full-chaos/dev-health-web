@@ -6,12 +6,11 @@
  * lives in `./server.ts`, which uses `registerUrql` + `react.cache` for
  * per-request isolation.
  *
- * Public API is preserved:
+ * Public API:
  *   - `createUrqlClient`    — browser client factory (used by provider.tsx).
  *   - `getUrqlClient`       — browser singleton getter.
  *   - `resetUrqlClient`     — resets the browser singleton (testing / org switch).
  *   - `graphqlFetch`        — re-exported from `./server` (server-only).
- *   - `graphqlClient`       — deprecated shim, still re-exports `graphqlFetch`.
  */
 
 import {
@@ -20,13 +19,10 @@ import {
   cacheExchange,
   mapExchange,
   type Client,
-  type TypedDocumentNode,
 } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
-import { runtimeConfig } from "@/lib/runtimeConfig";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 import { graphqlFetch } from "./server";
-import type { GraphQLResponse } from "./types";
 
 const GRAPHQL_PATH = "/graphql";
 
@@ -116,33 +112,3 @@ export function resetUrqlClient(): void {
 }
 
 export { graphqlFetch };
-
-interface GraphQLFetchOptions {
-  orgId?: string;
-}
-
-/**
- * @deprecated Use graphqlFetch() directly. This shim will be removed once all
- * callers in investmentFetchers and capacityFetchers are updated (CHAOS-1218).
- */
-export const graphqlClient = {
-  query: async <T>(
-    query: string | TypedDocumentNode<T, Record<string, unknown>>,
-    variables: Record<string, unknown>,
-    options: GraphQLFetchOptions = {}
-  ): Promise<T> => graphqlFetch<T>(query, variables, options),
-
-  isEnabled: (): boolean => {
-    return runtimeConfig.useGraphQLAnalytics();
-  },
-
-  /** @deprecated use graphqlFetch */
-  request: async <T>(
-    query: string | TypedDocumentNode<T, Record<string, unknown>>,
-    variables: Record<string, unknown>,
-    options: GraphQLFetchOptions = {}
-  ): Promise<GraphQLResponse<T>> => {
-    const data = await graphqlFetch<T>(query, variables, options);
-    return { data };
-  },
-};

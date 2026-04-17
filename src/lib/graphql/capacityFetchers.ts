@@ -1,11 +1,11 @@
 /**
  * GraphQL-based fetchers for Capacity Planning view.
  *
- * These fetchers use the lightweight graphqlClient (fetch-based)
+ * These fetchers use graphqlFetch
  * to query capacity forecast data from the backend.
  */
 
-import { graphqlClient } from "./client";
+import { graphqlFetch } from "./urqlClient";
 import { CAPACITY_FORECAST_QUERY } from "./queries";
 import type {
     CapacityForecast,
@@ -24,7 +24,7 @@ export async function getCapacityForecastViaGraphQL(
     orgId: string,
     input?: CapacityForecastInput
 ): Promise<CapacityForecast | null> {
-    const response = await graphqlClient.query<CapacityForecastQueryResponse>(
+    const response = await graphqlFetch<CapacityForecastQueryResponse>(
         CAPACITY_FORECAST_QUERY,
         { orgId, input: input ?? null },
         { orgId }
