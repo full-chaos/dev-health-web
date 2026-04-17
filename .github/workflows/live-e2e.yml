@@ -140,6 +140,13 @@ jobs:
           CLICKHOUSE_URI: clickhouse://ch:ch@localhost:8123/default
           POSTGRES_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
           CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000"
+          # Backend auth service requires a JWT signing secret; derivation
+          # from SETTINGS_ENCRYPTION_KEY was removed. Without this every
+          # /api/v1/auth/login responds 500 (the AuthService singleton
+          # fails to initialize), which is exactly what masked the
+          # onboarding-ui regression for weeks.
+          JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
+          SETTINGS_ENCRYPTION_KEY: live-e2e-test-settings-key-do-not-use
         run: |
           nohup python -m dev_health_ops.cli \
             --db "$DATABASE_URI" \
@@ -157,11 +164,93 @@ jobs:
           exit 1
         working-directory: dev-health-ops
 
+      - name: Seed test superuser
+        env:
+          BACKEND_URL: http://127.0.0.1:8000
+          SUPERUSER_EMAIL: admin@devhealth.example
+          SUPERUSER_PASSWORD: DevHealth123!Admin
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          python3 -m pip install --quiet bcrypt
+
+          # Try to register the superuser via the public API. Tolerate
+          # 400/409 because the fixtures step may already have created
+          # this account with an unknown password — the SQL step below
+          # rewrites the password hash regardless.
+          status=$(curl -s -o /tmp/reg.json -w '%{http_code}' \
+            -X POST "${BACKEND_URL}/api/v1/auth/register" \
+            -H 'Content-Type: application/json' \
+            -H "Origin: ${BACKEND_URL}" \
+            -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\",\"full_name\":\"Test Superuser\"}")
+          echo "register status=${status}"
+          cat /tmp/reg.json || true
+          case "${status}" in
+            201|400|409) ;;
+            *) echo "::error::Unexpected register status ${status}" ; exit 1 ;;
+          esac
+
+          # Compute the bcrypt hash of our known password so we can
+          # overwrite whatever hash the fixtures / register step produced.
+          # This guarantees the smoke-test login below uses OUR password.
+          HASH=$(python3 -c "import bcrypt,os; print(bcrypt.hashpw(os.environ['SUPERUSER_PASSWORD'].encode(), bcrypt.gensalt()).decode())")
+
+          # Overwrite password, promote to superuser, mark verified.
+          # `\gexec` generates one UPDATE per column that actually exists
+          # in the `users` table, so we don't hardcode a schema and we
+          # never reference a missing column (the SQL parser would choke).
+          # The password column is probed across three conventional names
+          # (hashed_password / password_hash / password); flag columns
+          # similarly across is_superuser / is_verified / email_verified /
+          # is_active.
+          psql -h localhost -U postgres -d test_db \
+            -v email="${SUPERUSER_EMAIL}" -v hash="${HASH}" <<'SQL'
+          \set ON_ERROR_STOP on
+          SELECT format(
+            'UPDATE users SET %I = %L WHERE email = %L',
+            column_name, :'hash', :'email'
+          )
+            FROM information_schema.columns
+           WHERE table_name='users'
+             AND column_name IN ('hashed_password','password_hash','password')
+          \gexec
+
+          SELECT format(
+            'UPDATE users SET %I = true WHERE email = %L',
+            column_name, :'email'
+          )
+            FROM information_schema.columns
+           WHERE table_name='users'
+             AND column_name IN ('is_superuser','is_verified','email_verified','is_active')
+          \gexec
+
+          SELECT email,
+                 (SELECT column_name FROM information_schema.columns
+                    WHERE table_name='users' AND column_name='is_superuser') IS NOT NULL AS has_is_superuser
+            FROM users WHERE email = :'email';
+          SQL
+
+          # Smoke-test the credentials end-to-end so a failure at this step
+          # surfaces loudly instead of leaving us to debug opaque 'skipped'
+          # results in Playwright.
+          login_status=$(curl -s -o /tmp/login.json -w '%{http_code}' \
+            -X POST "${BACKEND_URL}/api/v1/auth/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\"}")
+          echo "superuser login status=${login_status}"
+          cat /tmp/login.json || true
+          if [ "${login_status}" != "200" ]; then
+            echo "::error::Seeded superuser cannot authenticate; onboarding-ui tests will skip."
+            exit 1
+          fi
+
       - name: Run live backend e2e tier
         env:
           PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8000
-          TEST_SUPERUSER_EMAIL: ${{ secrets.TEST_SUPERUSER_EMAIL }}
-          TEST_SUPERUSER_PASSWORD: ${{ secrets.TEST_SUPERUSER_PASSWORD }}
+          TEST_SUPERUSER_EMAIL: admin@devhealth.example
+          TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
           TEST_TARGET_USER_ID: ${{ secrets.TEST_TARGET_USER_ID }}
           TEST_SUPERUSER_TARGET_USER_ID: ${{ secrets.TEST_SUPERUSER_TARGET_USER_ID }}
         run: bash ci/run_tests.sh live-e2e

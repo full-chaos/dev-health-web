@@ -1,15 +1,5 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { renderWithToaster, screen, userEvent, waitFor, cleanup } from '@/test/utils'
-
-const mockPush = vi.fn()
-const mockRefresh = vi.fn()
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    refresh: mockRefresh,
-  }),
-}))
 
 const { mockSignIn, mockGetSession } = vi.hoisted(() => ({
   mockSignIn: vi.fn(),
@@ -23,11 +13,20 @@ vi.mock('next-auth/react', () => ({
 
 import { LoginForm } from '@/components/auth/LoginForm'
 
+const locationAssign = vi.fn()
+
 describe('LoginForm', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      writable: true,
+      value: { ...window.location, assign: locationAssign },
+    })
+  })
+
   afterEach(() => {
     cleanup()
-    mockPush.mockReset()
-    mockRefresh.mockReset()
+    locationAssign.mockReset()
     mockSignIn.mockReset()
     mockGetSession.mockReset()
   })
@@ -59,6 +58,7 @@ describe('LoginForm', () => {
     await waitFor(() => {
       expect(screen.getByText(/Invalid email or password/i)).toBeInTheDocument()
     })
+    expect(locationAssign).not.toHaveBeenCalled()
   })
 
   test('shows verify-email banner when result.code === "email_verification_required"', async () => {
@@ -73,9 +73,10 @@ describe('LoginForm', () => {
     await waitFor(() => {
       expect(screen.getByText(/Please verify your email/i)).toBeVisible()
     })
+    expect(locationAssign).not.toHaveBeenCalled()
   })
 
-  test('redirects to /dashboard on successful login (no onboarding needed)', async () => {
+  test('hard-navigates to /dashboard on successful login (no onboarding needed)', async () => {
     mockSignIn.mockResolvedValue({ error: undefined, code: undefined, status: 200, ok: true, url: null })
     mockGetSession.mockResolvedValue({ user: { needs_onboarding: false } })
     renderWithToaster(<LoginForm />)
@@ -85,11 +86,11 @@ describe('LoginForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/dashboard')
+      expect(locationAssign).toHaveBeenCalledWith('/dashboard')
     })
   })
 
-  test('redirects to /auth/onboard when session.user.needs_onboarding is true', async () => {
+  test('hard-navigates to /auth/onboard when session.user.needs_onboarding is true', async () => {
     mockSignIn.mockResolvedValue({ error: undefined, code: undefined, status: 200, ok: true, url: null })
     mockGetSession.mockResolvedValue({ user: { needs_onboarding: true } })
     renderWithToaster(<LoginForm />)
@@ -99,7 +100,7 @@ describe('LoginForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/auth/onboard')
+      expect(locationAssign).toHaveBeenCalledWith('/auth/onboard')
     })
   })
 
@@ -113,8 +114,23 @@ describe('LoginForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/auth/onboard?plan=team&trial=true')
+      expect(locationAssign).toHaveBeenCalledWith('/auth/onboard?plan=team&trial=true')
     })
+  })
+
+  test('falls back to /dashboard when getSession returns null after retry', async () => {
+    mockSignIn.mockResolvedValue({ error: undefined, code: undefined, status: 200, ok: true, url: null })
+    mockGetSession.mockResolvedValue(null)
+    renderWithToaster(<LoginForm />)
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'tester@example.com')
+    await userEvent.type(screen.getByLabelText(/password/i), 'password')
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(locationAssign).toHaveBeenCalledWith('/dashboard')
+    })
+    expect(mockGetSession).toHaveBeenCalledTimes(2)
   })
 
   test('shows generic error toast on network failure', async () => {
@@ -128,6 +144,7 @@ describe('LoginForm', () => {
     await waitFor(() => {
       expect(screen.getByText(/An error occurred/i)).toBeInTheDocument()
     })
+    expect(locationAssign).not.toHaveBeenCalled()
   })
 
   test('shows account locked message when result.code is "account_locked"', async () => {
@@ -141,6 +158,7 @@ describe('LoginForm', () => {
     await waitFor(() => {
       expect(screen.getByText(/Too many failed login attempts/i)).toBeInTheDocument()
     })
+    expect(locationAssign).not.toHaveBeenCalled()
   })
 
   test('shows rate limit message when result.code is "rate_limited"', async () => {
@@ -154,5 +172,6 @@ describe('LoginForm', () => {
     await waitFor(() => {
       expect(screen.getByText(/Too many login attempts/i)).toBeInTheDocument()
     })
+    expect(locationAssign).not.toHaveBeenCalled()
   })
 })
