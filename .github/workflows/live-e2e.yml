@@ -157,11 +157,79 @@ jobs:
           exit 1
         working-directory: dev-health-ops
 
+      - name: Seed test superuser
+        env:
+          BACKEND_URL: http://127.0.0.1:8000
+          SUPERUSER_EMAIL: admin@devhealth.example
+          SUPERUSER_PASSWORD: DevHealth123!Admin
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+          # Register the superuser via the public auth API. Tolerate 409
+          # (already exists) so reruns of this workflow succeed.
+          status=$(curl -s -o /tmp/reg.json -w '%{http_code}' \
+            -X POST "${BACKEND_URL}/api/v1/auth/register" \
+            -H 'Content-Type: application/json' \
+            -H "Origin: ${BACKEND_URL}" \
+            -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\",\"full_name\":\"Test Superuser\"}")
+          echo "register status=${status}"
+          cat /tmp/reg.json || true
+          case "${status}" in
+            201|409) ;;
+            *) echo "::error::Unexpected register status ${status}" ; exit 1 ;;
+          esac
+
+          # Promote to superuser and mark verified via direct SQL. Uses
+          # information_schema introspection so we tolerate column-name
+          # drift across backend versions without a hardcoded schema.
+          psql -h localhost -U postgres -d test_db <<'SQL'
+          DO $$
+          DECLARE
+            target_email text := 'admin@devhealth.example';
+          BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='is_superuser') THEN
+              UPDATE users SET is_superuser = true WHERE email = target_email;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='is_verified') THEN
+              UPDATE users SET is_verified = true WHERE email = target_email;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='email_verified') THEN
+              UPDATE users SET email_verified = true WHERE email = target_email;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='is_active') THEN
+              UPDATE users SET is_active = true WHERE email = target_email;
+            END IF;
+          END$$;
+          SELECT email, is_superuser, is_verified, is_active
+          FROM users WHERE email = 'admin@devhealth.example';
+          SQL
+
+          # Smoke-test the credentials end-to-end so a failure at this step
+          # surfaces loudly instead of leaving us to debug opaque 'skipped'
+          # results in Playwright.
+          login_status=$(curl -s -o /tmp/login.json -w '%{http_code}' \
+            -X POST "${BACKEND_URL}/api/v1/auth/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"${SUPERUSER_EMAIL}\",\"password\":\"${SUPERUSER_PASSWORD}\"}")
+          echo "superuser login status=${login_status}"
+          cat /tmp/login.json || true
+          if [ "${login_status}" != "200" ]; then
+            echo "::error::Seeded superuser cannot authenticate; onboarding-ui tests will skip."
+            exit 1
+          fi
+
       - name: Run live backend e2e tier
         env:
           PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8000
-          TEST_SUPERUSER_EMAIL: ${{ secrets.TEST_SUPERUSER_EMAIL }}
-          TEST_SUPERUSER_PASSWORD: ${{ secrets.TEST_SUPERUSER_PASSWORD }}
+          TEST_SUPERUSER_EMAIL: admin@devhealth.example
+          TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
           TEST_TARGET_USER_ID: ${{ secrets.TEST_TARGET_USER_ID }}
           TEST_SUPERUSER_TARGET_USER_ID: ${{ secrets.TEST_SUPERUSER_TARGET_USER_ID }}
         run: bash ci/run_tests.sh live-e2e
