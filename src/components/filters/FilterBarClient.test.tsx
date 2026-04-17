@@ -6,6 +6,7 @@
  * per-view rendering. Refs CHAOS-1239.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { act } from "@testing-library/react";
 import { render, screen, fireEvent, cleanup } from "@/test/utils";
 import {
   FilterBarClient,
@@ -76,6 +77,18 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
 });
+
+// Flushes useFilterBarState's `apiClient.getJson().then(setOptions)` effect
+// inside an act() boundary so the async state update lands cleanly. Without
+// this, the post-mount promise resolution fires outside act() and emits
+// "An update to FilterBarClient inside a test was not wrapped in act(...)".
+async function renderFB(ui: Parameters<typeof render>[0]) {
+  let result!: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(ui);
+  });
+  return result;
+}
 
 describe("resolveVisibility (pure)", () => {
   it("returns DEFAULT visibility for unknown/undefined view", () => {
@@ -158,11 +171,11 @@ describe("resolveVisibility (pure)", () => {
 });
 
 describe("URL sync on filter change", () => {
-  it("calls router.replace with encoded `f` param when a date preset is clicked", () => {
+  it("calls router.replace with encoded `f` param when a date preset is clicked", async () => {
     // Seed URL with encoded default filter so the default-write init effect does not fire.
     setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
 
-    render(<FilterBarClient view="home" />);
+    await renderFB(<FilterBarClient view="home" />);
 
     fireEvent.click(screen.getByRole("button", { name: "30d" }));
 
@@ -174,10 +187,7 @@ describe("URL sync on filter change", () => {
 
   it("writes default `f` to URL when none is present (initialization effect)", async () => {
     setSearchParams({});
-    render(<FilterBarClient view="home" />);
-
-    // Init effect runs after mount; yield a microtask before asserting.
-    await Promise.resolve();
+    await renderFB(<FilterBarClient view="home" />);
 
     expect(mockReplace).toHaveBeenCalled();
     const arg = mockReplace.mock.calls[0][0] as string;
@@ -186,10 +196,10 @@ describe("URL sync on filter change", () => {
 });
 
 describe("Reset", () => {
-  it("calls router.replace with the default-encoded filter when Reset clicked", () => {
+  it("calls router.replace with the default-encoded filter when Reset clicked", async () => {
     setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
 
-    render(<FilterBarClient view="home" />);
+    await renderFB(<FilterBarClient view="home" />);
 
     fireEvent.click(screen.getByRole("button", { name: /reset/i }));
 
@@ -197,10 +207,10 @@ describe("Reset", () => {
     expect(lastArg).toContain(`f=${encodeFilterParam(defaultMetricFilter)}`);
   });
 
-  it("clears `q` search param on reset for view=people", () => {
+  it("clears `q` search param on reset for view=people", async () => {
     setSearchParams({ f: encodeFilterParam(defaultMetricFilter), q: "alice" });
 
-    render(<FilterBarClient view="people" />);
+    await renderFB(<FilterBarClient view="people" />);
 
     fireEvent.click(screen.getByRole("button", { name: /reset/i }));
 
@@ -211,7 +221,7 @@ describe("Reset", () => {
 });
 
 describe("Active filter pills", () => {
-  it("renders a FilterPill for each active repo/developer/work_category filter", () => {
+  it("renders a FilterPill for each active repo/developer/work_category filter", async () => {
     const filtersWithSelections: MetricFilter = {
       ...defaultMetricFilter,
       who: { developers: ["alice"] },
@@ -220,7 +230,7 @@ describe("Active filter pills", () => {
     };
     setSearchParams({ f: encodeFilterParam(filtersWithSelections) });
 
-    render(<FilterBarClient view="explore" />);
+    await renderFB(<FilterBarClient view="explore" />);
 
     expect(screen.getByText("org/api")).toBeInTheDocument();
     expect(screen.getByText("alice")).toBeInTheDocument();
@@ -237,9 +247,9 @@ describe("Active filter pills", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders no pills when filter is the default (no selections)", () => {
+  it("renders no pills when filter is the default (no selections)", async () => {
     setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
-    render(<FilterBarClient view="explore" />);
+    await renderFB(<FilterBarClient view="explore" />);
 
     expect(screen.queryByRole("button", { name: /remove repo filter/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /remove dev filter/i })).toBeNull();
@@ -262,24 +272,24 @@ describe("Per-view-type rendering smoke", () => {
     "feature-flags",
   ];
 
-  it.each(views)("renders without error for view=%s", (view) => {
+  it.each(views)("renders without error for view=%s", async (view) => {
     setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
 
-    expect(() => render(<FilterBarClient view={view} />)).not.toThrow();
+    await renderFB(<FilterBarClient view={view} />);
 
     // Reset button is a cross-view invariant — always rendered regardless of visibility config.
     expect(screen.getByRole("button", { name: /reset/i })).toBeInTheDocument();
   });
 
-  it("shows search input for view=people only", () => {
+  it("shows search input for view=people only", async () => {
     setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
-    render(<FilterBarClient view="people" />);
+    await renderFB(<FilterBarClient view="people" />);
     expect(screen.getByPlaceholderText(/name or handle/i)).toBeInTheDocument();
   });
 
-  it("hides the Filters (advanced) toggle on view=people", () => {
+  it("hides the Filters (advanced) toggle on view=people", async () => {
     setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
-    render(<FilterBarClient view="people" />);
+    await renderFB(<FilterBarClient view="people" />);
     expect(
       screen.queryByRole("button", { name: /^filters$/i })
     ).toBeNull();
