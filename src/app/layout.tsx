@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { getServerEnv } from "@/lib/config";
@@ -79,8 +78,19 @@ export default function RootLayout({
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} antialiased`}
       >
-        <Script src={runtimeConfigSrc} strategy="beforeInteractive" />
-        <Script src={themeInitSrc} strategy="beforeInteractive" />
+        {/* Plain <script src> — not next/script <Script>. With Turbopack,
+            `<Script strategy="beforeInteractive">` emits an inline bootstrap
+            tag that Next auto-decorates with a CSP nonce; browsers strip
+            that nonce attribute after validating CSP, which produces a
+            server(`nonce=""`) / client(`nonce=undefined`) hydration diff.
+            Plain external scripts have no inline content, so no nonce is
+            ever written or stripped and hydration is clean. Both must load
+            before first paint — runtime-config.js bootstraps window config,
+            theme-init.js applies persisted theme to prevent FOUC. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- external src is covered by CSP 'self'; must run pre-hydration */}
+        <script src={runtimeConfigSrc} />
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- external src is covered by CSP 'self'; must run pre-hydration to prevent FOUC */}
+        <script src={themeInitSrc} />
         <WebVitalsReporter />
         {children}
       </body>
