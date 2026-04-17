@@ -14,16 +14,10 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import {
   UrqlProvider,
   ssrExchange,
-  fetchExchange,
-  cacheExchange,
   createClient,
-  mapExchange,
 } from "@urql/next";
 import type { SSRExchange } from "@urql/core";
-import { resolveOrigin } from "@/lib/origin";
-import { errorExchange, timingExchange } from "./urqlExchanges";
-
-const GRAPHQL_PATH = "/graphql";
+import { createGraphQLClientOptions } from "./providerClient";
 
 interface GraphQLProviderProps {
   children: ReactNode;
@@ -69,43 +63,7 @@ export function GraphQLProvider({
       isClient: typeof window !== "undefined",
     });
 
-    const url = new URL(GRAPHQL_PATH, resolveOrigin());
-    if (orgId) url.searchParams.set("org_id", orgId);
-
-    const client = createClient({
-      url: url.toString(),
-      exchanges: [
-        mapExchange({
-          onOperation(operation) {
-            if (!orgId) return operation;
-            const fetchOptions =
-              typeof operation.context.fetchOptions === "object"
-                ? operation.context.fetchOptions
-                : {};
-            return {
-              ...operation,
-              context: {
-                ...operation.context,
-                fetchOptions: {
-                  ...fetchOptions,
-                  headers: {
-                    ...((fetchOptions.headers ?? {}) as Record<string, string>),
-                    "X-Org-Id": orgId,
-                  },
-                },
-              },
-            };
-          },
-        }),
-        timingExchange,
-        errorExchange,
-        cacheExchange,
-        ssr,
-        fetchExchange,
-      ],
-      requestPolicy: "cache-and-network",
-      suspense: false,
-    });
+    const client = createClient(createGraphQLClientOptions({ orgId, ssr }));
 
     return [client, ssr] as const;
   }, [orgId]);

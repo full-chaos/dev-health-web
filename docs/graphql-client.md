@@ -37,6 +37,22 @@ GraphQL is enabled by default. To disable:
 NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=false
 ```
 
+## Request policy defaults
+
+The browser `GraphQLProvider` now defaults urql queries to `requestPolicy: "cache-first"`.
+
+- On hydrated pages, the server seeds the `ssrExchange` before client hooks mount, so the first client render can resolve from cache without an immediate duplicate network request.
+- On non-hydrated pages, `cache-first` still fetches on the first cache miss.
+- Hooks that must refresh eagerly on mount (for example security or other invalidation-sensitive views) should opt in per-query with `requestPolicy: "cache-and-network"`.
+
+```tsx
+const [result] = useQuery({
+  query: SECURITY_OVERVIEW_QUERY,
+  variables: { orgId, filters },
+  requestPolicy: "cache-and-network",
+});
+```
+
 ## Hooks
 
 ### useAnalytics
