@@ -22,6 +22,7 @@ import type {
   WorkUnitExplanation,
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
+import { AuthErrors } from "@/lib/constants/errors";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { applyWindowToFilters } from "@/lib/filters/time";
 import { apiClient } from "@/lib/apiClient";
@@ -512,7 +513,7 @@ export async function getCapacityForecast(params: {
     orgId = session?.user?.org_id;
   }
   if (!orgId) {
-    throw new Error("org_id is required: not provided and not found in session");
+    throw new Error(AuthErrors.OrgIdRequiredFromSession);
   }
   return getCapacityForecastViaGraphQL(orgId, params.input);
 }

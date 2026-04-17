@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import type { WorkGraphEdgesResult } from "@/lib/graphql/types";
+import { logger } from "@/lib/logger";
 import {
   FEATURE_FLAG_REGISTRY_QUERY,
   FEATURE_FLAG_EVENTS_QUERY,
@@ -60,7 +61,7 @@ export async function fetchFeatureFlagRegistry(
       pageInfo: res.workGraphEdges.pageInfo,
     };
   } catch (error) {
-    console.error("Failed to fetch feature flag registry:", error);
+    logger.error({ err: error }, "Failed to fetch feature flag registry");
     return { flags: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo };
   }
 }
@@ -91,7 +92,7 @@ export async function fetchFeatureFlagEvents(
       pageInfo: res.workGraphEdges.pageInfo,
     };
   } catch (error) {
-    console.error("Failed to fetch feature flag events:", error);
+    logger.error({ err: error }, "Failed to fetch feature flag events");
     return { events: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo };
   }
 }
@@ -122,7 +123,7 @@ export async function fetchReleaseImpact(
       pageInfo: res.workGraphEdges.pageInfo,
     };
   } catch (error) {
-    console.error("Failed to fetch release impact:", error);
+    logger.error({ err: error }, "Failed to fetch release impact");
     return { edges: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo };
   }
 }
@@ -236,7 +237,7 @@ export async function fetchFeatureFlagsData(
       },
     };
   } catch (error) {
-    console.error("Failed to fetch feature flags summary:", error);
+    logger.error({ err: error }, "Failed to fetch feature flags summary");
     return {
       summary: {
         activeFlags: 0,
@@ -306,7 +307,7 @@ export async function fetchFeatureFlagList(
       hasNextPage: offset + limit < items.length,
     };
   } catch (error) {
-    console.error("Failed to fetch feature flag list:", error);
+    logger.error({ err: error }, "Failed to fetch feature flag list");
     return { items: [], totalCount: 0, hasNextPage: false };
   }
 }
@@ -325,7 +326,7 @@ export async function fetchFeatureFlagData(
 
     return { registry, events, releaseImpact };
   } catch (error) {
-    console.error("Failed to fetch feature flag data:", error);
+    logger.error({ err: error }, "Failed to fetch feature flag data");
     return {
       registry: { flags: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo },
       events: { events: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo },

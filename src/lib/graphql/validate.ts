@@ -5,6 +5,7 @@
  */
 
 import { type ZodSchema, ZodError } from "zod";
+import { validationFailedMessage } from "@/lib/constants/errors";
 import {
   AnalyticsResultSchema,
   CatalogResultSchema,
@@ -77,7 +78,7 @@ export function validateOrThrow<T>(schema: ZodSchema<T>, data: unknown): T {
     const issues = result.error?.issues
       .map((i) => `${i.path}: ${i.message}`)
       .join("; ");
-    throw new Error(`Validation failed: ${issues || result.error?.message}`);
+    throw new Error(validationFailedMessage(issues || result.error?.message || "Unknown validation error"));
   }
   return result.data!;
 }

@@ -17,6 +17,7 @@
  * CHAOS-1233 PR body for the full exception list.
  */
 import { z } from "zod";
+import { ValidationErrors } from "@/lib/constants/errors";
 
 const publicEnvSchema = z.object({
     NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: z.string().optional(),
@@ -121,7 +122,7 @@ export function getServerEnv(): ServerEnv {
 
     if (typeof window !== "undefined" && !inNodeTest) {
         throw new Error(
-            "getServerEnv() called from client bundle — server-only env is not available at runtime.",
+            ValidationErrors.ServerEnvCalledFromClientBundle,
         );
     }
     return serverEnvSchema.parse(process.env);

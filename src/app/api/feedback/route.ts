@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import type { FeedbackPayload, FeedbackResponse } from "@/components/feedback/types";
 import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
+import { ApiErrors, linearApiRequestFailedMessage } from "@/lib/constants/errors";
 import { isRateLimited } from "@/lib/rate-limit";
 
 const LINEAR_ENDPOINT = "https://api.linear.app/graphql";
@@ -162,7 +163,7 @@ export async function POST(request: Request) {
     });
 
     if (!linearResponse.ok) {
-      throw new Error(`Linear API request failed with status ${linearResponse.status}`);
+      throw new Error(linearApiRequestFailedMessage(linearResponse.status));
     }
 
     const linearData = (await linearResponse.json()) as {
@@ -180,7 +181,7 @@ export async function POST(request: Request) {
     };
 
     if (linearData.errors && linearData.errors.length > 0) {
-      const message = linearData.errors[0]?.message || "Failed to create issue";
+      const message = linearData.errors[0]?.message || ApiErrors.FailedToCreateIssue;
       throw new Error(message);
     }
 
@@ -188,7 +189,7 @@ export async function POST(request: Request) {
     const issue = issueCreate?.issue;
 
     if (!issueCreate?.success || !issue) {
-      throw new Error("Failed to create issue");
+      throw new Error(ApiErrors.FailedToCreateIssue);
     }
 
     const response: FeedbackResponse = {
