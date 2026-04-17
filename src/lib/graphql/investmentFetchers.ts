@@ -10,7 +10,7 @@ import { AuthErrors } from "@/lib/constants/errors";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse, SankeyNode, SankeyLink } from "@/lib/types";
 import { formatSubcategoryLabel } from "@/lib/investmentMix";
-import { graphqlClient } from "./client";
+import { graphqlFetch } from "./urqlClient";
 import { INVESTMENT_BREAKDOWN_QUERY, INVESTMENT_FULL_QUERY } from "./queries";
 import type {
     AnalyticsQueryResponse,
@@ -109,7 +109,7 @@ export async function getInvestmentViaGraphQL(
         filters: translateMetricFilterToGraphQL(filters),
     };
 
-    const response = await graphqlClient.query<AnalyticsQueryResponse>(
+    const response = await graphqlFetch<AnalyticsQueryResponse>(
         INVESTMENT_BREAKDOWN_QUERY,
         { orgId, batch },
         { orgId }
@@ -254,7 +254,7 @@ export async function getInvestmentFlowViaGraphQL(params: {
         filters: graphqlFilters,
     };
 
-    const response = await graphqlClient.query<AnalyticsQueryResponse>(
+    const response = await graphqlFetch<AnalyticsQueryResponse>(
         INVESTMENT_FULL_QUERY,
         { orgId, batch },
         { orgId }
@@ -302,7 +302,7 @@ export async function getInvestmentRepoTeamFlowViaGraphQL(params: {
         filters: translateMetricFilterToGraphQL(filters),
     };
 
-    const response = await graphqlClient.query<AnalyticsQueryResponse>(
+    const response = await graphqlFetch<AnalyticsQueryResponse>(
         INVESTMENT_FULL_QUERY,
         { orgId, batch },
         { orgId }
