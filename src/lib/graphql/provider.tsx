@@ -19,6 +19,7 @@ import {
   createClient,
   mapExchange,
 } from "@urql/next";
+import type { SSRExchange } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 
@@ -30,6 +31,13 @@ interface GraphQLProviderProps {
 }
 
 const OrgIdContext = createContext<string | undefined>(undefined);
+
+/**
+ * Exposes the client-side `ssrExchange` instance so `HydrateUrqlResults`
+ * (or any descendant) can call `restoreData(payload)` to seed the browser
+ * cache with data already fetched on the server. See CHAOS-1276 Phase C.
+ */
+const SsrContext = createContext<SSRExchange | null>(null);
 
 /**
  * GraphQL provider for client components.
@@ -104,9 +112,11 @@ export function GraphQLProvider({
 
   return (
     <OrgIdContext.Provider value={orgId}>
-      <UrqlProvider client={client} ssr={ssr}>
-        {children}
-      </UrqlProvider>
+      <SsrContext.Provider value={ssr}>
+        <UrqlProvider client={client} ssr={ssr}>
+          {children}
+        </UrqlProvider>
+      </SsrContext.Provider>
     </OrgIdContext.Provider>
   );
 }
@@ -116,6 +126,17 @@ export function GraphQLProvider({
  */
 export function useOrgId(): string | undefined {
   return useContext(OrgIdContext);
+}
+
+/**
+ * Hook to access the client-side `ssrExchange` instance (CHAOS-1276 Phase C).
+ *
+ * Used by `HydrateUrqlResults` to seed the browser urql cache with a
+ * hydration payload extracted on the server, eliminating the RSC→client
+ * double-fetch. Returns `null` if called outside a `GraphQLProvider`.
+ */
+export function useSsr(): SSRExchange | null {
+  return useContext(SsrContext);
 }
 
 /**
