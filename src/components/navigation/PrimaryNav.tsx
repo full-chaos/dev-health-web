@@ -67,6 +67,7 @@ const navGroups: NavGroup[] = [
       { id: "work", label: "Work", href: "/work", description: "Investment" },
       { id: "code", label: "Code", href: "/code", description: "Ownership" },
       { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
+      { id: "security", label: "Security", href: "/security", description: "Alerts" },
     ],
   },
   {
@@ -78,6 +79,13 @@ const navGroups: NavGroup[] = [
       { id: "tests", label: "Tests", href: "/testops/tests", description: "Reliability" },
       { id: "coverage", label: "Coverage", href: "/testops/coverage", description: "Quality" },
       { id: "risk", label: "Risk", href: "/testops/risk", description: "Confidence" },
+    ],
+  },
+  {
+    id: "feature-flags",
+    label: "Feature Flags",
+    items: [
+      { id: "feature-flags", label: "Overview", href: "/feature-flags", description: "Flags" },
     ],
   },
   {

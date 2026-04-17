@@ -12,7 +12,7 @@ export type InvestmentMixAggregate = {
  * Track removal in CHAOS-659.
  */
 
-import { titleCase } from "@/utils/string";
+import { titleCase } from "@/lib/stringUtils";
 export { titleCase };
 
 export const formatSubcategoryLabel = (key: string, skipParentPrefix = false) => {

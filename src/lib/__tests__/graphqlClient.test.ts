@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { graphqlClient } from "../graphql/client";
+import { runtimeConfig } from "../runtimeConfig";
+import { graphqlFetch } from "../graphql/urqlClient";
 import { adaptSankeyResult } from "../graphql/investmentFetchers";
 import type { SankeyResult } from "../graphql/types";
 
-describe("graphqlClient", () => {
-    describe("isEnabled", () => {
+describe("runtimeConfig.useGraphQLAnalytics", () => {
+    describe("feature flag", () => {
         it("returns true by default", () => {
             const originalUse = process.env.USE_GRAPHQL_ANALYTICS;
             const originalPublic = process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
             delete process.env.USE_GRAPHQL_ANALYTICS;
             delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
             try {
-                expect(graphqlClient.isEnabled()).toBe(true);
+                expect(runtimeConfig.useGraphQLAnalytics()).toBe(true);
             } finally {
                 if (originalUse === undefined) {
                     delete process.env.USE_GRAPHQL_ANALYTICS;
@@ -30,7 +31,7 @@ describe("graphqlClient", () => {
             const original = process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
             process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "false";
             try {
-                expect(graphqlClient.isEnabled()).toBe(false);
+                expect(runtimeConfig.useGraphQLAnalytics()).toBe(false);
             } finally {
                 if (original === undefined) {
                     delete process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS;
@@ -44,7 +45,7 @@ describe("graphqlClient", () => {
             const original = process.env.USE_GRAPHQL_ANALYTICS;
             process.env.USE_GRAPHQL_ANALYTICS = "true";
             try {
-                expect(graphqlClient.isEnabled()).toBe(true);
+                expect(runtimeConfig.useGraphQLAnalytics()).toBe(true);
             } finally {
                 if (original === undefined) {
                     delete process.env.USE_GRAPHQL_ANALYTICS;
@@ -60,7 +61,7 @@ describe("graphqlClient", () => {
             delete process.env.USE_GRAPHQL_ANALYTICS;
             process.env.NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS = "true";
             try {
-                expect(graphqlClient.isEnabled()).toBe(true);
+                expect(runtimeConfig.useGraphQLAnalytics()).toBe(true);
             } finally {
                 if (originalUse === undefined) {
                     delete process.env.USE_GRAPHQL_ANALYTICS;
@@ -76,11 +77,9 @@ describe("graphqlClient", () => {
         });
     });
 
-    describe("request interface", () => {
-        it("exports required functions", () => {
-            expect(typeof graphqlClient.request).toBe("function");
-            expect(typeof graphqlClient.query).toBe("function");
-            expect(typeof graphqlClient.isEnabled).toBe("function");
+    describe("graphqlFetch", () => {
+        it("exports the server fetch function", () => {
+            expect(typeof graphqlFetch).toBe("function");
         });
     });
 });

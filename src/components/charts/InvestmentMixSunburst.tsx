@@ -3,11 +3,16 @@
 import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
 
+import { SunburstChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import { formatNumber } from "@/lib/formatters";
 import { titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
+
+echarts.use([SunburstChart]);
 
 const adjustHex = (hex: string, amount: number) => {
   const normalized = hex.replace("#", "");

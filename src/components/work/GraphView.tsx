@@ -23,6 +23,7 @@ type GraphViewProps = {
 
 export function GraphView({ filters, activeRole }: GraphViewProps) {
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
+  const graphHeight = 580;
 
   const contextOrgId = useOrgId();
   const orgId = filters.scope.ids[0] || contextOrgId || "";
@@ -57,51 +58,55 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
   void activeRole;
 
   return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-medium">Work Graph Explorer</h3>
-            <p className="text-sm text-(--ink-muted)">
-              Visualize relationships between issues, PRs, commits, and files.
-            </p>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(10rem,20%)] xl:items-start">
+      <div className="order-2 space-y-4 xl:order-1">
+        <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-medium">Work Graph Explorer</h3>
+              <p className="text-sm text-(--ink-muted)">
+                Visualize relationships between issues, PRs, commits, and files.
+              </p>
+            </div>
+            <div className="text-xs text-(--ink-muted)">
+              {loading ? "Loading..." : `${totalCount} edges`}
+            </div>
           </div>
-          <div className="text-xs text-(--ink-muted)">
-            {loading ? "Loading..." : `${totalCount} edges`}
-          </div>
+
+          {error && (
+            <div className="mb-4 rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+              Failed to load work graph: {error.message}
+            </div>
+          )}
+
+          {!loading && !error && edges.length === 0 ? (
+            <div className="flex items-center justify-center text-sm text-(--ink-muted)" style={{ height: graphHeight }}>
+              No work graph data available for this scope and window.
+            </div>
+          ) : (
+            <WorkGraphExplorer
+              edges={displayEdges}
+              height={graphHeight}
+              onNodeClick={handleNodeClick}
+              selectedNodeId={selectedNode ? `${selectedNode.type}:${selectedNode.id}` : undefined}
+            />
+          )}
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded text-sm text-red-400">
-            Failed to load work graph: {error.message}
-          </div>
-        )}
-
-        {!loading && !error && edges.length === 0 ? (
-          <div className="flex items-center justify-center h-[500px] text-sm text-(--ink-muted)">
-            No work graph data available for this scope and window.
-          </div>
-        ) : (
-          <WorkGraphExplorer
-            edges={displayEdges}
-            height={500}
-            onNodeClick={handleNodeClick}
-            selectedNodeId={selectedNode ? `${selectedNode.type}:${selectedNode.id}` : undefined}
+        {selectedNode && nodeDetails && (
+          <NodeDetailPanel
+            node={selectedNode}
+            incomingEdges={nodeDetails.incomingEdges}
+            outgoingEdges={nodeDetails.outgoingEdges}
+            onClose={() => setSelectedNode(null)}
           />
         )}
       </div>
 
-      {selectedNode && nodeDetails && (
-        <NodeDetailPanel
-          node={selectedNode}
-          incomingEdges={nodeDetails.incomingEdges}
-          outgoingEdges={nodeDetails.outgoingEdges}
-          onClose={() => setSelectedNode(null)}
-        />
-      )}
-
-      <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
-        <WorkGraphLegend />
+      <div className="order-1 xl:order-2 xl:sticky xl:top-4">
+        <div className="bg-card rounded-2xl border border-(--card-stroke) p-3.5">
+          <WorkGraphLegend />
+        </div>
       </div>
     </div>
   );
@@ -120,6 +125,8 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
     PR: "bg-emerald-500",
     COMMIT: "bg-indigo-500",
     FILE: "bg-purple-500",
+    RELEASE: "bg-teal-600",
+    FEATURE_FLAG: "bg-amber-600",
   };
 
   const typeLabels: Record<WorkGraphNodeType, string> = {
@@ -127,6 +134,8 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
     PR: "Pull Request",
     COMMIT: "Commit",
     FILE: "File",
+    RELEASE: "Release",
+    FEATURE_FLAG: "Feature Flag",
   };
 
   return (
@@ -211,4 +220,3 @@ function EdgeList({ title, subtitle, edges, getLabel, getRelation }: EdgeListPro
     </div>
   );
 }
-

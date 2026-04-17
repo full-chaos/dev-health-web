@@ -186,3 +186,57 @@ export function LinearForm() {
     </>
   );
 }
+
+export function LaunchDarklyForm() {
+  return (
+    <>
+      <div>
+        <label htmlFor="launchdarkly-token" className="block text-sm font-medium text-(--ink-base)">
+          API Token
+        </label>
+        <div className="mt-1">
+          <input
+            type="password"
+            name="api_key"
+            id="launchdarkly-token"
+            className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+            placeholder="api-..."
+          />
+        </div>
+        <p className="mt-2 text-sm text-(--ink-muted)">
+          Recommended for long-lived sync jobs: LaunchDarkly service token with reader access.
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="launchdarkly-project" className="block text-sm font-medium text-(--ink-base)">
+          Project Key
+        </label>
+        <div className="mt-1">
+          <input
+            type="text"
+            name="project_key"
+            id="launchdarkly-project"
+            className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+            placeholder="default"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="launchdarkly-environment" className="block text-sm font-medium text-(--ink-base)">
+          Environment Key
+        </label>
+        <div className="mt-1">
+          <input
+            type="text"
+            name="environment"
+            id="launchdarkly-environment"
+            className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+            placeholder="production"
+          />
+        </div>
+      </div>
+    </>
+  );
+}

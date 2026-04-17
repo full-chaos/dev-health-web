@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import { AnalyticsRequestInput, AnalyticsResult } from "@/lib/graphql/schemas/analytics";
+import { logger } from "@/lib/logger";
 import {
   TESTOPS_PIPELINE_QUERY,
   TESTOPS_TEST_QUERY,
@@ -51,7 +52,7 @@ export async function fetchTestOpsData(
       coverage: coverageRes.analytics,
     };
   } catch (error) {
-    console.error("Failed to fetch TestOps data:", error);
+    logger.error({ err: error }, "Failed to fetch TestOps data");
     return {
       pipelines: EMPTY_ANALYTICS,
       tests: EMPTY_ANALYTICS,
@@ -74,7 +75,7 @@ export async function fetchCoverageMetrics(
     const res = await graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_COVERAGE_QUERY, { orgId, batch });
     return res.analytics;
   } catch (error) {
-    console.error("Failed to fetch coverage metrics:", error);
+    logger.error({ err: error }, "Failed to fetch coverage metrics");
     return EMPTY_ANALYTICS;
   }
 }
@@ -176,7 +177,7 @@ export async function fetchRiskMetrics(
       stability_delta: delta(pipelineSuccess),
     };
   } catch (error) {
-    console.error("Failed to fetch risk metrics:", error);
+    logger.error({ err: error }, "Failed to fetch risk metrics");
     return null;
   }
 }

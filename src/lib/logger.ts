@@ -19,6 +19,7 @@
  */
 
 import { isServer } from "@/lib/env";
+import { publicEnv, getServerEnv } from "@/lib/config";
 
 type LogFormat = "json" | "pretty";
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
@@ -38,18 +39,19 @@ interface Logger {
   child: (bindings: Record<string, unknown>) => Logger;
 }
 
-/** Minimum log level from env (defaults to info in prod, debug in dev). */
-const LOG_LEVEL: LogLevel =
-  (process.env.LOG_LEVEL as LogLevel | undefined) ??
-  (process.env.NODE_ENV === "production" ? "info" : "debug");
+const isProd = publicEnv.NODE_ENV === "production";
 
-/**
- * Output format from env. When unset, defaults to "pretty" in development
- * and "json" in production. Explicit values override the NODE_ENV-based default.
- */
-const LOG_FORMAT: LogFormat =
-  (process.env.LOG_FORMAT as LogFormat | undefined) ??
-  (process.env.NODE_ENV === "production" ? "json" : "pretty");
+const LOG_LEVEL: LogLevel = (() => {
+  if (!isServer) return isProd ? "info" : "debug";
+  const env = getServerEnv();
+  return (env.LOG_LEVEL as LogLevel | undefined) ?? (isProd ? "info" : "debug");
+})();
+
+const LOG_FORMAT: LogFormat = (() => {
+  if (!isServer) return isProd ? "json" : "pretty";
+  const env = getServerEnv();
+  return (env.LOG_FORMAT as LogFormat | undefined) ?? (isProd ? "json" : "pretty");
+})();
 
 /**
  * Browser-side shim — pino cannot run in the browser.

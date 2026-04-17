@@ -37,6 +37,7 @@ export function useAnalytics(options: UseAnalyticsOptions): UseAnalyticsResult {
     query: INVESTMENT_BREAKDOWN_QUERY,
     variables: { orgId, batch },
     pause,
+    requestPolicy: "cache-and-network",
   });
 
   return {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-import { getSankey } from "@/lib/api";
+import { getSankey } from "@/lib/api/investment";
 import { useInvestmentMix } from "@/lib/graphql/hooks";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter, SankeyMode } from "@/lib/types";
@@ -28,8 +28,9 @@ import {
     type TreemapSunburstType,
 } from "@/components/charts/ChartTypeToggle";
 import { formatNumber } from "@/lib/formatters";
+import { publicEnv } from "@/lib/config";
 
-const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+const DEMO_MODE = publicEnv.NEXT_PUBLIC_DEMO_MODE === "true";
 
 type FlowViewProps = {
     filters: MetricFilter;

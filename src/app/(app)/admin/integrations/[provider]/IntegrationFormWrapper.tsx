@@ -6,6 +6,7 @@ import {
   GitLabForm,
   JiraForm,
   LinearForm,
+  LaunchDarklyForm,
 } from "@/components/admin/integrations/ProviderForms";
 import { createCredential, testConnection } from "@/lib/admin/server";
 import type { IntegrationCredential } from "@/lib/admin/types";
@@ -74,6 +75,8 @@ export function IntegrationFormWrapper({
         return <JiraForm />;
       case "linear":
         return <LinearForm />;
+      case "launchdarkly":
+        return <LaunchDarklyForm />;
       default:
         return null;
     }

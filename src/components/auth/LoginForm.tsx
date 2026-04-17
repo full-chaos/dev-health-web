@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { signIn, getSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 
@@ -11,8 +10,16 @@ type LoginFormProps = {
   trialIntent?: boolean
 }
 
+async function getSessionWithRetry(attempts = 2, delayMs = 150) {
+  for (let i = 0; i < attempts; i++) {
+    const session = await getSession()
+    if (session) return session
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs))
+  }
+  return null
+}
+
 export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
-   const router = useRouter()
    const [email, setEmail] = useState("")
    const [password, setPassword] = useState("")
    const [loading, setLoading] = useState(false)
@@ -41,17 +48,17 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
             toast.error("Invalid email or password")
           }
         } else {
-          const session = await getSession()
-          if (session?.user?.needs_onboarding) {
-            router.push(
-              isTeamTrialIntent
-                ? "/auth/onboard?plan=team&trial=true"
-                : "/auth/onboard",
-            )
-          } else {
-            router.push("/dashboard")
-            router.refresh()
-          }
+          // getSession can return null if the auth cookie set by signIn hasn't
+          // propagated to the browser cookie jar yet; a single retry absorbs
+          // that race before we decide the destination.
+          const session = await getSessionWithRetry()
+          const destination = session?.user?.needs_onboarding
+            ? (isTeamTrialIntent ? "/auth/onboard?plan=team&trial=true" : "/auth/onboard")
+            : "/dashboard"
+          // Hard navigation (not router.push) guarantees the new auth cookie
+          // is attached to the request for `destination`. Soft App Router
+          // navigation is racy immediately after signIn in e2e environments.
+          window.location.assign(destination)
         }
      } catch {
        toast.error("An error occurred. Please try again.")

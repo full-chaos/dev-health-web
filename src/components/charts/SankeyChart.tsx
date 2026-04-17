@@ -2,9 +2,14 @@
 
 import { type CSSProperties, useCallback, useMemo } from "react";
 
+import { SankeyChart as EChartsSankeyChart } from "echarts/charts";
+
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import type { SankeyLink, SankeyNode } from "@/lib/types";
+
+echarts.use([EChartsSankeyChart]);
 
 type SankeyChartProps = {
   nodes: SankeyNode[];

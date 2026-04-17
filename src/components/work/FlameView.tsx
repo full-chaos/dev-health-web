@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getAggregatedFlame } from "@/lib/api";
+import { getAggregatedFlame } from "@/lib/api/visuals";
 import type { AggregatedFlameMode, MetricFilter, AggregatedFlameResponse } from "@/lib/types";
 import { HierarchicalFlameGraph } from "@/components/charts/HierarchicalFlameGraph";
 

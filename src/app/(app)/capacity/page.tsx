@@ -5,32 +5,41 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CapacityView } from "@/components/work/CapacityView";
-import { checkApiHealth } from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
+import { getCapacityForecastForHydration } from "@/lib/graphql/capacityHydration";
+import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { runtimeConfig } from "@/lib/runtimeConfig";
 
 type CapacityPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default async function CapacityPage({ searchParams }: CapacityPageProps) {
-  // Run health check and org fetch in parallel to eliminate the waterfall.
-  const [health, orgResult] = await Promise.all([
+  // Run health check, org fetch, and entitlements fetch as concurrently as possible.
+  const orgPromise = fetchOrNull(getCurrentOrg(), "capacity/org");
+  const entitlementsPromise = orgPromise.then((orgResult) => {
+    const orgId = orgResult?.data?.id;
+
+    return orgId
+      ? fetchOrNull(getOrgEntitlements(orgId), "capacity/entitlements")
+      : null;
+  });
+
+  const [health, , entitlements] = await Promise.all([
     checkApiHealth(),
-    fetchOrNull(getCurrentOrg(), "capacity/org"),
+    orgPromise,
+    entitlementsPromise,
   ]);
 
   if (!health.ok) {
     return <ServiceUnavailable />;
   }
 
-  const org = orgResult?.data;
-  const entitlements = org?.id
-    ? await fetchOrNull(getOrgEntitlements(org.id), "capacity/entitlements")
-    : null;
   const features = entitlements?.data?.features ?? {};
 
   const params = (await searchParams) ?? {};
@@ -43,6 +52,23 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
+
+  const graphqlEnabled = runtimeConfig.useGraphQLAnalytics();
+  let hydrationOrgId: string | undefined;
+  if (graphqlEnabled) {
+    const { auth } = await import("@/lib/auth");
+    const session = await auth();
+    hydrationOrgId = session?.user?.org_id as string | undefined;
+  }
+
+  const capacityResult = graphqlEnabled && hydrationOrgId
+    ? await fetchOrNull(
+        getCapacityForecastForHydration(filters, hydrationOrgId),
+        "capacity/forecast-hydration"
+      )
+    : null;
+
+  const capacityHydrationPayload = capacityResult?.hydrationPayload ?? null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -94,7 +120,8 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
 
             <ContextStrip filters={filters} origin={activeOrigin} />
 
-            <CapacityView filters={filters} />
+            <HydrateUrqlResults payload={capacityHydrationPayload} />
+            <CapacityView filters={filters} orgId={hydrationOrgId} />
           </UpgradeGate>
         </main>
       </div>

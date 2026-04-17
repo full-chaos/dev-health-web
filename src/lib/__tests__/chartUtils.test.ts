@@ -3,6 +3,7 @@ import {
   formatTooltipValue,
   formatPercent,
   calcPercent,
+  lightenByDepth,
   buildTooltipHtml,
   buildPathString,
   createAreaGradient,
@@ -158,6 +159,27 @@ describe("chartUtils", () => {
         percent: NaN,
       });
       expect(html).not.toContain("NaN%");
+    });
+  });
+
+  describe("lightenByDepth", () => {
+    it("returns the base color unchanged at depth 0", () => {
+      expect(lightenByDepth("#112233", 0)).toBe("#112233");
+    });
+
+    it("lightens colors for positive depths", () => {
+      expect(lightenByDepth("#112233", 1)).toBe("#203142");
+      expect(lightenByDepth("#112233", 2)).toBe("#2f4051");
+    });
+
+    it("caps channels at white for large depths", () => {
+      expect(lightenByDepth("#f8f8f8", 1)).toBe("#ffffff");
+      expect(lightenByDepth("#112233", 100)).toBe("#ffffff");
+    });
+
+    it("returns invalid colors as-is", () => {
+      expect(lightenByDepth("rgb(1, 2, 3)", 2)).toBe("rgb(1, 2, 3)");
+      expect(lightenByDepth("#zzz999", 2)).toBe("#zzz999");
     });
   });
 

@@ -27,6 +27,12 @@ const LinearIcon = () => (
   </svg>
 );
 
+const LaunchDarklyIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current text-emerald-500">
+    <path d="M11 3a1 1 0 0 1 1-1h1v20h-1a1 1 0 0 1-1-1V3Zm-6 7a1 1 0 0 1 1-1h3v6H6a1 1 0 0 1-1-1v-4Zm10 0h3a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-3v-6Z" />
+  </svg>
+);
+
 const PROVIDER_META: Record<
   string,
   { name: string; description: string; icon: React.ReactNode }
@@ -50,6 +56,11 @@ const PROVIDER_META: Record<
     name: "Linear",
     description: "Connect to Linear to sync issues, cycles, and projects.",
     icon: <LinearIcon />,
+  },
+  launchdarkly: {
+    name: "LaunchDarkly",
+    description: "Connect to LaunchDarkly to sync feature flag definitions and rollout signals.",
+    icon: <LaunchDarklyIcon />,
   },
 };
 

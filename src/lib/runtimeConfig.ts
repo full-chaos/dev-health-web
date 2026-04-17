@@ -3,6 +3,8 @@
 // For runtime config to be testable, we need dynamic checks that can reflect
 // test mocks of the `window` object.
 
+import { getServerEnv } from "@/lib/config";
+
 type RuntimeConfig = {
   publicEnv?: Record<string, string>;
 };
@@ -37,7 +39,7 @@ export const runtimeConfig = {
       return value !== "false";
     }
     const raw =
-      process.env.USE_GRAPHQL_ANALYTICS ??
+      getServerEnv().USE_GRAPHQL_ANALYTICS ??
       getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
     // Default to true unless explicitly set to "false"
     return raw !== "false";

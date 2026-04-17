@@ -181,3 +181,68 @@ query WorkGraphEdges($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
   }
 }
 `;
+
+// ==== Security Alert Queries ====
+
+export const SECURITY_OVERVIEW_QUERY = `
+query SecurityOverview($orgId: String!, $filters: SecurityAlertFilterInput) {
+  securityOverview(orgId: $orgId, filters: $filters) {
+    kpis {
+      openTotal
+      critical
+      high
+      meanDaysToFix30d
+      openDelta30d
+    }
+    severityBreakdown {
+      severity
+      count
+    }
+    topRepos {
+      repoId
+      repoName
+      repoUrl
+      count
+    }
+    trend {
+      day
+      opened
+      fixed
+    }
+  }
+}
+`;
+
+export const SECURITY_ALERTS_QUERY = `
+query SecurityAlerts($orgId: String!, $filters: SecurityAlertFilterInput, $pagination: SecurityPaginationInput) {
+  securityAlerts(orgId: $orgId, filters: $filters, pagination: $pagination) {
+    edges {
+      node {
+        alertId
+        repoId
+        repoName
+        repoUrl
+        source
+        severity
+        state
+        packageName
+        cveId
+        url
+        title
+        description
+        createdAt
+        fixedAt
+        dismissedAt
+      }
+      cursor
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+`;

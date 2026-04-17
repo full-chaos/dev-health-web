@@ -1,16 +1,19 @@
 "use client";
 
-import { type CSSProperties, useMemo } from "react";
-// Type-only import from full echarts package (erased at runtime — no bundle impact).
+import { type CSSProperties, useCallback, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
+import { GraphChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
 import type {
   WorkGraphEdge,
   WorkGraphNodeType,
   WorkGraphEdgeType,
 } from "@/lib/graphql/types";
+
+echarts.use([GraphChart]);
 
 type WorkGraphNode = {
   id: string;
@@ -46,6 +49,8 @@ const NODE_TYPE_COLORS: Record<WorkGraphNodeType, string> = {
   PR: "#10b981",
   COMMIT: "#6366f1",
   FILE: "#8b5cf6",
+  RELEASE: "#0d9488",
+  FEATURE_FLAG: "#d97706",
 };
 
 const NODE_TYPE_SYMBOLS: Record<WorkGraphNodeType, string> = {
@@ -53,7 +58,24 @@ const NODE_TYPE_SYMBOLS: Record<WorkGraphNodeType, string> = {
   PR: "diamond",
   COMMIT: "rect",
   FILE: "triangle",
+  RELEASE: "roundRect",
+  FEATURE_FLAG: "arrow",
 };
+
+const NODE_TYPE_LABELS: Record<WorkGraphNodeType, string> = {
+  ISSUE: "Issue",
+  PR: "PR",
+  COMMIT: "Commit",
+  FILE: "File",
+  RELEASE: "Release",
+  FEATURE_FLAG: "Feature Flag",
+};
+
+const ALL_NODE_TYPES: WorkGraphNodeType[] = [
+  "ISSUE", "PR", "COMMIT", "FILE", "RELEASE", "FEATURE_FLAG",
+];
+
+const FILTERABLE_NODE_TYPES: WorkGraphNodeType[] = ["RELEASE", "FEATURE_FLAG"];
 
 const EDGE_TYPE_STYLES: Record<
   string,
@@ -70,9 +92,25 @@ const EDGE_TYPE_STYLES: Record<
   PARENT_OF: { color: "#14b8a6", type: "solid" },
   CHILD_OF: { color: "#14b8a6", type: "dashed" },
   DUPLICATES: { color: "#eab308", type: "dashed" },
+  INTRODUCED_BY: { color: "#0d9488", type: "dashed" },
+  CONFIG_CHANGED_BY: { color: "#d97706", type: "dashed" },
+  GUARDS: { color: "#d97706", type: "solid" },
+  IMPACTS: { color: "#9ca3af", type: "dotted" },
 };
 
-function edgesToGraph(edges: WorkGraphEdge[]): {
+const NODE_SIZE: Record<WorkGraphNodeType, number> = {
+  ISSUE: 30,
+  PR: 30,
+  COMMIT: 30,
+  FILE: 20,
+  RELEASE: 34,
+  FEATURE_FLAG: 28,
+};
+
+function edgesToGraph(
+  edges: WorkGraphEdge[],
+  hiddenNodeTypes: Set<WorkGraphNodeType>,
+): {
   nodes: WorkGraphNode[];
   links: WorkGraphLink[];
 } {
@@ -80,6 +118,10 @@ function edgesToGraph(edges: WorkGraphEdge[]): {
   const links: WorkGraphLink[] = [];
 
   for (const edge of edges) {
+    if (hiddenNodeTypes.has(edge.sourceType) || hiddenNodeTypes.has(edge.targetType)) {
+      continue;
+    }
+
     const sourceKey = `${edge.sourceType}:${edge.sourceId}`;
     const targetKey = `${edge.targetType}:${edge.targetId}`;
 
@@ -88,8 +130,8 @@ function edgesToGraph(edges: WorkGraphEdge[]): {
         id: sourceKey,
         name: edge.sourceId,
         type: edge.sourceType,
-        category: ["ISSUE", "PR", "COMMIT", "FILE"].indexOf(edge.sourceType),
-        symbolSize: edge.sourceType === "FILE" ? 20 : 30,
+        category: ALL_NODE_TYPES.indexOf(edge.sourceType),
+        symbolSize: NODE_SIZE[edge.sourceType] ?? 30,
       });
     }
 
@@ -98,8 +140,8 @@ function edgesToGraph(edges: WorkGraphEdge[]): {
         id: targetKey,
         name: edge.targetId,
         type: edge.targetType,
-        category: ["ISSUE", "PR", "COMMIT", "FILE"].indexOf(edge.targetType),
-        symbolSize: edge.targetType === "FILE" ? 20 : 30,
+        category: ALL_NODE_TYPES.indexOf(edge.targetType),
+        symbolSize: NODE_SIZE[edge.targetType] ?? 30,
       });
     }
 
@@ -132,16 +174,34 @@ export function WorkGraphExplorer({
 }: WorkGraphExplorerProps) {
   const chartTheme = useChartTheme();
 
-  const { nodes, links } = useMemo(() => edgesToGraph(edges), [edges]);
+  const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(
+    () => new Set(),
+  );
+
+  const toggleNodeType = useCallback((nodeType: WorkGraphNodeType) => {
+    setHiddenNodeTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeType)) {
+        next.delete(nodeType);
+      } else {
+        next.add(nodeType);
+      }
+      return next;
+    });
+  }, []);
+
+  const { nodes, links } = useMemo(
+    () => edgesToGraph(edges, hiddenNodeTypes),
+    [edges, hiddenNodeTypes],
+  );
 
   const categories = useMemo(
-    () => [
-      { name: "Issue", itemStyle: { color: NODE_TYPE_COLORS.ISSUE } },
-      { name: "PR", itemStyle: { color: NODE_TYPE_COLORS.PR } },
-      { name: "Commit", itemStyle: { color: NODE_TYPE_COLORS.COMMIT } },
-      { name: "File", itemStyle: { color: NODE_TYPE_COLORS.FILE } },
-    ],
-    []
+    () =>
+      ALL_NODE_TYPES.map((type) => ({
+        name: NODE_TYPE_LABELS[type],
+        itemStyle: { color: NODE_TYPE_COLORS[type] },
+      })),
+    [],
   );
 
   const option: EChartsOption = useMemo(() => {
@@ -201,12 +261,6 @@ export function WorkGraphExplorer({
           return "";
         },
       },
-      legend: {
-        data: categories.map((c) => c.name),
-        orient: "horizontal",
-        bottom: 10,
-        textStyle: { color: chartTheme.text },
-      },
       series: [
         {
           type: "graph",
@@ -215,12 +269,17 @@ export function WorkGraphExplorer({
           data: echartsNodes,
           links: echartsLinks,
           categories,
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: 24,
+          center: ["50%", "54%"],
           roam: true,
           draggable: true,
           force: {
-            repulsion: 200,
-            gravity: 0.1,
-            edgeLength: [80, 200],
+            repulsion: 150,
+            gravity: 0.18,
+            edgeLength: [60, 150],
             layoutAnimation: true,
           },
           emphasis: {
@@ -266,65 +325,95 @@ export function WorkGraphExplorer({
   }
 
   return (
-    <Chart
-      option={option}
-      className={className}
-      style={{ height, width, ...style }}
-      onEvents={handleEvents}
-      chartTheme={chartTheme}
-    />
+    <div className={className} style={{ width, ...style }}>
+      {FILTERABLE_NODE_TYPES.length > 0 && (
+        <div className="mb-2 flex items-center gap-3 px-1">
+          {FILTERABLE_NODE_TYPES.map((type) => (
+            <label key={type} className="flex cursor-pointer items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={!hiddenNodeTypes.has(type)}
+                onChange={() => toggleNodeType(type)}
+                className="accent-current"
+                style={{ accentColor: NODE_TYPE_COLORS[type] }}
+              />
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
+              />
+              <span className="text-(--ink-muted)">
+                {NODE_TYPE_LABELS[type]}
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+      <Chart
+        option={option}
+        style={{ height, width: "100%" }}
+        onEvents={handleEvents}
+        chartTheme={chartTheme}
+      />
+    </div>
   );
 }
 
+const LEGEND_EDGE_TYPES: WorkGraphEdgeType[] = [
+  "BLOCKS", "IS_BLOCKED_BY", "FIXES", "IMPLEMENTS", "REFERENCES", "RELATES",
+  "INTRODUCED_BY", "CONFIG_CHANGED_BY", "GUARDS", "IMPACTS",
+];
+
 export function WorkGraphLegend() {
   return (
-    <div className="flex flex-wrap gap-4 text-xs">
-      <div className="space-y-1">
-        <p className="font-medium text-(--ink-muted) uppercase tracking-wider">
+    <div className="space-y-3 text-[11px]">
+      <div className="space-y-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-(--ink-muted)">
           Node Types
         </p>
-        <div className="flex flex-wrap gap-3">
-          {(Object.entries(NODE_TYPE_COLORS) as [WorkGraphNodeType, string][]).map(
-            ([type]) => {
-              const bgClass = {
-                ISSUE: "bg-[#f59e0b]",
-                PR: "bg-[#10b981]",
-                COMMIT: "bg-[#6366f1]",
-                FILE: "bg-[#8b5cf6]",
-              }[type];
-              return (
-                <div key={type} className="flex items-center gap-1">
-                  <span className={`w-3 h-3 rounded-sm ${bgClass}`} />
-                  <span>{type}</span>
-                </div>
-              );
-            }
-          )}
+        <div className="space-y-2">
+          {ALL_NODE_TYPES.map((type) => (
+            <div
+              key={type}
+              className="flex items-center gap-2 rounded-xl border border-(--card-stroke) px-2 py-2"
+            >
+              <span
+                className="h-3 w-3 shrink-0 rounded-sm"
+                style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
+              />
+              <span className="leading-none">{NODE_TYPE_LABELS[type]}</span>
+            </div>
+          ))}
         </div>
       </div>
-      <div className="space-y-1">
-        <p className="font-medium text-(--ink-muted) uppercase tracking-wider">
+      <div className="space-y-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-(--ink-muted)">
           Edge Types
         </p>
-        <div className="flex flex-wrap gap-3">
-          {Object.entries(EDGE_TYPE_STYLES)
-            .slice(0, 6)
-            .map(([type]) => {
-              const bgClass = {
-                BLOCKS: "bg-[#ef4444]",
-                IS_BLOCKED_BY: "bg-[#ef4444]",
-                FIXES: "bg-[#22c55e]",
-                IMPLEMENTS: "bg-[#3b82f6]",
-                REFERENCES: "bg-[#a855f7]",
-                RELATES: "bg-[#6b7280]",
-              }[type] || "bg-gray-500";
-              return (
-                <div key={type} className="flex items-center gap-1">
-                  <span className={`w-4 h-0.5 ${bgClass}`} />
-                  <span>{type.toLowerCase().replace(/_/g, " ")}</span>
-                </div>
-              );
-            })}
+        <div className="space-y-2">
+          {LEGEND_EDGE_TYPES.map((type) => {
+            const edgeStyle = EDGE_TYPE_STYLES[type];
+            return (
+              <div
+                key={type}
+                className="flex items-center gap-2 rounded-xl border border-(--card-stroke) px-2 py-2"
+              >
+                <span
+                  className="h-0.5 w-4 shrink-0"
+                  style={{
+                    backgroundColor: edgeStyle?.color ?? "#6b7280",
+                    borderBottom: edgeStyle?.type === "dashed"
+                      ? `2px dashed ${edgeStyle.color}`
+                      : edgeStyle?.type === "dotted"
+                        ? `2px dotted ${edgeStyle.color}`
+                        : undefined,
+                  }}
+                />
+                <span className="leading-tight">
+                  {type.toLowerCase().replace(/_/g, " ")}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

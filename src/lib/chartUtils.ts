@@ -33,6 +33,28 @@ export const calcPercent = (value: number, total: number): number => {
 };
 
 /**
+ * Lightens a hex color based on tree depth for hierarchical charts.
+ * At depth 0, returns the base color unchanged.
+ */
+export const lightenByDepth = (color: string, depth: number, factor = 15): string => {
+    if (depth <= 0) return color;
+
+    const normalized = color.replace("#", "");
+    if (normalized.length !== 6) return color;
+
+    const value = Number.parseInt(normalized, 16);
+    if (Number.isNaN(value)) return color;
+
+    const clamp = (channel: number) => Math.max(0, Math.min(255, channel));
+    const amount = depth * factor;
+    const r = clamp((value >> 16) + amount);
+    const g = clamp(((value >> 8) & 0xff) + amount);
+    const b = clamp((value & 0xff) + amount);
+
+    return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+};
+
+/**
  * Build a standard HTML tooltip with consistent styling.
  */
 export const buildTooltipHtml = (params: {

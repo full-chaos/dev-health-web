@@ -4,8 +4,10 @@ import GitHub from "next-auth/providers/github"
 import Google from "next-auth/providers/google"
 import GitLab from "next-auth/providers/gitlab"
 import { redirect } from "next/navigation"
+import { cache } from "react"
 import { getBackendUrl } from "@/lib/origin"
 import { logger } from "@/lib/logger"
+import { getServerEnv } from "@/lib/config"
 
 const authLogger = logger.child({ module: "auth" })
 
@@ -28,9 +30,10 @@ class RateLimited extends CredentialsSignin {
 
 // Lazy secret: in production, pass undefined so Auth.js validates per-request
 // instead of the old IIFE that threw at module-load and killed all exports.
-const authSecret = process.env.AUTH_SECRET
-  || process.env.NEXTAUTH_SECRET
-  || (process.env.NODE_ENV === "production"
+const authEnv = getServerEnv()
+const authSecret = authEnv.AUTH_SECRET
+  || authEnv.NEXTAUTH_SECRET
+  || (authEnv.NODE_ENV === "production"
     ? undefined
     : "dev-secret-change-in-production")
 
@@ -113,9 +116,9 @@ const nextAuth = NextAuth({
         return null
       },
     }),
-    ...(process.env.AUTH_GITHUB_ID ? [GitHub({ clientId: process.env.AUTH_GITHUB_ID, clientSecret: process.env.AUTH_GITHUB_SECRET! })] : []),
-    ...(process.env.AUTH_GOOGLE_ID ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET! })] : []),
-    ...(process.env.AUTH_GITLAB_ID ? [GitLab({ clientId: process.env.AUTH_GITLAB_ID, clientSecret: process.env.AUTH_GITLAB_SECRET! })] : []),
+    ...(authEnv.AUTH_GITHUB_ID ? [GitHub({ clientId: authEnv.AUTH_GITHUB_ID, clientSecret: authEnv.AUTH_GITHUB_SECRET! })] : []),
+    ...(authEnv.AUTH_GOOGLE_ID ? [Google({ clientId: authEnv.AUTH_GOOGLE_ID, clientSecret: authEnv.AUTH_GOOGLE_SECRET! })] : []),
+    ...(authEnv.AUTH_GITLAB_ID ? [GitLab({ clientId: authEnv.AUTH_GITLAB_ID, clientSecret: authEnv.AUTH_GITLAB_SECRET! })] : []),
   ],
   callbacks: {
     async jwt({ token, user, account, trigger, session }) {
@@ -158,7 +161,10 @@ const nextAuth = NextAuth({
             token.expires_at = Date.now() + (data.expires_in || 3600) * 1000
             token.last_validated = Date.now()
           } else {
-            const errorData = await res.json().catch(() => null)
+            const errorData = await res.json().catch((error) => {
+              authLogger.warn({ err: error }, "failed to parse social login error response")
+              return null
+            })
             token.error = errorData?.detail?.message || errorData?.detail || "social_login_failed"
           }
         } catch (error) {
@@ -308,24 +314,28 @@ export const { handlers, signIn, signOut } = nextAuth
 
 import type { Session } from "next-auth"
 
-export async function auth(): Promise<Session | null> {
+// Per-request memoized session read. React.cache() dedupes calls within a
+// single RSC render tree so auth()/requireSession()/requireRole()/
+// requireSuperuser() share one next-auth read no matter how many server
+// components or layouts invoke them. Safe because the module is server-only
+// (no "use client" importers) and the getter has no side effects.
+const getServerSession = cache(async (): Promise<Session | null> => {
   try {
-    const session = await nextAuth.auth()
-    if (!session?.access_token) return null
-    if (session.error) return null
-    return session
+    return await nextAuth.auth()
   } catch {
     return null
   }
+})
+
+export async function auth(): Promise<Session | null> {
+  const session = await getServerSession()
+  if (!session?.access_token) return null
+  if (session.error) return null
+  return session
 }
 
 export async function requireSession(callbackUrl?: string): Promise<Session> {
-  let session: Session | null = null
-  try {
-    session = await nextAuth.auth()
-  } catch {
-    session = null
-  }
+  const session = await getServerSession()
   // Surface social login errors (e.g. 409 account conflict) before dropping the session
   if (session?.error) {
     redirect(`/auth/signin?error=${encodeURIComponent(session.error)}`)
@@ -357,9 +367,10 @@ export async function requireSuperuser(callbackUrl?: string): Promise<Session> {
 }
 
 export function getAvailableSocialProviders(): string[] {
+  const env = getServerEnv()
   const providers: string[] = []
-  if (process.env.AUTH_GITHUB_ID) providers.push("github")
-  if (process.env.AUTH_GOOGLE_ID) providers.push("google")
-  if (process.env.AUTH_GITLAB_ID) providers.push("gitlab")
+  if (env.AUTH_GITHUB_ID) providers.push("github")
+  if (env.AUTH_GOOGLE_ID) providers.push("google")
+  if (env.AUTH_GITLAB_ID) providers.push("gitlab")
   return providers
 }

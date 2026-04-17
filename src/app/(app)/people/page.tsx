@@ -1,7 +1,7 @@
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PeopleSearch } from "@/components/people/PeopleSearch";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { checkApiHealth } from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter } from "@/lib/filters/encode";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 

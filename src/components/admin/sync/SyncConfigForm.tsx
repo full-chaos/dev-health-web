@@ -26,6 +26,7 @@ const ALL_SYNC_TARGETS = [
   { id: "deployments", label: "Deployments" },
   { id: "incidents", label: "Incidents" },
   { id: "work-items", label: "Work Items (Issues, Tickets)" },
+  { id: "feature-flags", label: "Feature Flags" },
 ];
 
 function getSyncTargetsForProvider(provider: string) {

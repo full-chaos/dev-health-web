@@ -28,10 +28,16 @@ interface UseCatalogResult {
 export function useCatalog(options: UseCatalogOptions): UseCatalogResult {
   const { orgId, dimension, pause = false } = options;
 
+  // Catalog values (teams, repos, services, dimensions) are semi-static
+  // reference data that rarely changes within a session. Override the client
+  // default (`cache-and-network`) with `cache-first` so mounting a filter
+  // dropdown doesn't trigger a network request every time — the cache is
+  // authoritative until an explicit `reexecute()` call. (CHAOS-1225)
   const [result, reexecute] = useQuery<{ catalog: CatalogResult }>({
     query: CATALOG_VALUES_QUERY,
     variables: { orgId, dimension },
     pause,
+    requestPolicy: "cache-first",
   });
 
   return {
@@ -75,6 +81,7 @@ export function useDimensionValues(
     query: CATALOG_VALUES_QUERY,
     variables: { orgId, dimension },
     pause,
+    requestPolicy: "cache-first",
   });
 
   return {

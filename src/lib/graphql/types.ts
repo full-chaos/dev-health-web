@@ -17,7 +17,23 @@ export type MeasureInput =
     | "COUNT"
     | "CHURN_LOC"
     | "CYCLE_TIME_HOURS"
-    | "THROUGHPUT";
+    | "THROUGHPUT"
+    | "PIPELINE_SUCCESS_RATE"
+    | "PIPELINE_FAILURE_RATE"
+    | "PIPELINE_DURATION_P95"
+    | "PIPELINE_QUEUE_TIME"
+    | "PIPELINE_RERUN_RATE"
+    | "TEST_PASS_RATE"
+    | "TEST_FAILURE_RATE"
+    | "TEST_FLAKE_RATE"
+    | "TEST_SUITE_DURATION_P95"
+    | "COVERAGE_LINE_PCT"
+    | "COVERAGE_BRANCH_PCT"
+    | "COVERAGE_DELTA_PCT"
+    | "FLAG_FRICTION_DELTA"
+    | "FLAG_ERROR_RATE_DELTA"
+    | "FLAG_COVERAGE_RATIO"
+    | "FLAG_ACTIVATION_RATE";
 
 export type BucketIntervalInput = "DAY" | "WEEK" | "MONTH";
 
@@ -276,7 +292,7 @@ export interface CapacityForecastsQueryResponse {
 
 // ==== Work Graph Types ====
 
-export type WorkGraphNodeType = "ISSUE" | "PR" | "COMMIT" | "FILE";
+export type WorkGraphNodeType = "ISSUE" | "PR" | "COMMIT" | "FILE" | "RELEASE" | "FEATURE_FLAG";
 
 export type WorkGraphEdgeType =
     // Issue-to-issue relationships
@@ -295,7 +311,12 @@ export type WorkGraphEdgeType =
     // PR-to-commit relationships
     | "CONTAINS"
     // Commit-to-file relationships
-    | "TOUCHES";
+    | "TOUCHES"
+    // Release/feature-flag relationships
+    | "INTRODUCED_BY"
+    | "CONFIG_CHANGED_BY"
+    | "GUARDS"
+    | "IMPACTS";
 
 export type WorkGraphProvenance = "NATIVE" | "EXPLICIT_TEXT" | "HEURISTIC";
 

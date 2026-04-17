@@ -7,13 +7,9 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import {
-  checkApiHealth,
-  getExplainData,
-  getHeatmap,
-  getHomeData,
-  getQuadrant,
-} from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
+import { getExplainData, getHomeData } from "@/lib/api/home";
+import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";

@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { logger } from "@/lib/logger";
 import { ReportStatus, SavedReport, ReportRun } from "@/lib/reports/types";
 import {
   fetchSavedReport,
@@ -16,6 +17,7 @@ import {
   cloneSavedReport,
   deleteSavedReport,
 } from "@/lib/reports/fetchers";
+import { publicEnv } from "@/lib/config";
 
 type ReportParameters = {
   scope?: string;
@@ -158,7 +160,7 @@ export default function SingleReportPage() {
 
   useEffect(() => {
     async function loadData() {
-      const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+      const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
       const [reportData, runsData] = await Promise.all([
         fetchSavedReport("default-org", id, isTestMode),
         fetchReportRuns("default-org", id, undefined, isTestMode)
@@ -214,7 +216,7 @@ export default function SingleReportPage() {
     try {
       await triggerReport("default-org", id);
 
-      const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+      const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
       const pollRuns = async () => {
         try {
@@ -227,7 +229,7 @@ export default function SingleReportPage() {
             setIsRunning(false);
           }
         } catch (pollErr) {
-          console.error("Report run polling failed:", pollErr);
+          logger.error({ err: pollErr }, "Report run polling failed");
           stopPolling();
           setIsRunning(false);
         }

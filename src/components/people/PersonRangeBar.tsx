@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -10,6 +11,14 @@ import {
   toLocalDate,
 } from "@/lib/dateUtils";
 
+// Two-pass hydration guard: `getServerSnapshot` returns false so SSR never
+// takes the client branch, avoiding mismatches when the server and client
+// read `new Date()` at different moments. Same pattern as ClientTimestamp.
+// Ref: https://react.dev/reference/react-dom/client/hydrateRoot#hydrating-server-rendered-html
+const subscribe = () => () => {};
+const getIsClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 type PersonRangeBarProps = {
   rangeDays: number;
 };
@@ -18,6 +27,12 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const isClient = useSyncExternalStore(
+    subscribe,
+    getIsClientSnapshot,
+    getServerSnapshot,
+  );
 
   const rangeParam = Number(searchParams.get("range_days") ?? rangeDays);
   const range = Number.isFinite(rangeParam) && rangeParam > 0 ? rangeParam : 14;
@@ -57,48 +72,61 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
           </p>
         </div>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm">
-          <span className="text-xs text-(--ink-muted)">Start date</span>
-          <input
-            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-            type="date"
-            value={formatDateInput(startDate)}
-            onChange={(event) => {
-              const parsed = parseDateInput(event.target.value);
-              if (!parsed) {
-                return;
-              }
-              const nextStart = toLocalDate(parsed);
-              let nextEnd = endDate;
-              if (nextStart > nextEnd) {
-                nextEnd = nextStart;
-              }
-              updateParams(nextStart, nextEnd);
-            }}
-          />
-        </label>
-        <label className="flex flex-col gap-2 text-sm">
-          <span className="text-xs text-(--ink-muted)">End date</span>
-          <input
-            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-            type="date"
-            value={formatDateInput(endDate)}
-            onChange={(event) => {
-              const parsed = parseDateInput(event.target.value);
-              if (!parsed) {
-                return;
-              }
-              const nextEnd = toLocalDate(parsed);
-              let nextStart = startDate;
-              if (nextEnd < nextStart) {
-                nextStart = nextEnd;
-              }
-              updateParams(nextStart, nextEnd);
-            }}
-          />
-        </label>
-      </div>
+      {isClient ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-2 text-sm">
+            <span className="text-xs text-(--ink-muted)">Start date</span>
+            <input
+              className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+              type="date"
+              value={formatDateInput(startDate)}
+              onChange={(event) => {
+                const parsed = parseDateInput(event.target.value);
+                if (!parsed) {
+                  return;
+                }
+                const nextStart = toLocalDate(parsed);
+                let nextEnd = endDate;
+                if (nextStart > nextEnd) {
+                  nextEnd = nextStart;
+                }
+                updateParams(nextStart, nextEnd);
+              }}
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm">
+            <span className="text-xs text-(--ink-muted)">End date</span>
+            <input
+              className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+              type="date"
+              value={formatDateInput(endDate)}
+              onChange={(event) => {
+                const parsed = parseDateInput(event.target.value);
+                if (!parsed) {
+                  return;
+                }
+                const nextEnd = toLocalDate(parsed);
+                let nextStart = startDate;
+                if (nextEnd < nextStart) {
+                  nextStart = nextEnd;
+                }
+                updateParams(nextStart, nextEnd);
+              }}
+            />
+          </label>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2" aria-hidden="true">
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-16 rounded bg-(--card-70) animate-pulse" />
+            <div className="h-10 rounded-xl border border-(--card-stroke) bg-(--card-70) animate-pulse" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-16 rounded bg-(--card-70) animate-pulse" />
+            <div className="h-10 rounded-xl border border-(--card-stroke) bg-(--card-70) animate-pulse" />
+          </div>
+        </div>
+      )}
     </section>
   );
 }

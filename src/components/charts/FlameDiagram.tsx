@@ -7,11 +7,15 @@ import type {
   CustomSeriesRenderItemAPI,
   CustomSeriesRenderItemParams,
 } from "echarts";
+import { CustomChart } from "echarts/charts";
 
 import type { FlameFrame } from "@/lib/types";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
+
+echarts.use([CustomChart]);
 
 const formatDuration = (start: string, end: string) => {
   const startTime = new Date(start).getTime();

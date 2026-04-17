@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getExplainData } from "@/lib/api";
+import { getExplainData } from "@/lib/api/home";
+import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";
 import { Contributor } from "@/lib/types";
@@ -78,7 +79,7 @@ export function EvidencePanel({
                     let result;
                     if (apiUrl) {
                         const res = await fetch(apiUrl);
-                        if (!res.ok) throw new Error("Failed to fetch evidence");
+                        if (!res.ok) throw new Error(ValidationErrors.FailedToFetchEvidence);
                         result = await res.json();
                     } else if (metric) {
                         result = await getExplainData({ 

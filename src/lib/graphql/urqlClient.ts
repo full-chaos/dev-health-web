@@ -1,12 +1,16 @@
 /**
- * urql GraphQL client configuration for dev-health-web.
+ * urql GraphQL client — browser/provider-side.
  *
- * Single GraphQL client for all data fetching — both React hooks (via
- * useQuery/useSubscription) and imperative fetches (via graphqlFetch).
+ * Since CHAOS-1217 Phase A this module is focused on the BROWSER client used
+ * by `<GraphQLProvider>` and `useQuery`-style hooks. Server-side (RSC) use
+ * lives in `./server.ts`, which uses `registerUrql` + `react.cache` for
+ * per-request isolation.
  *
- * Replaces the dual-client setup (urqlClient + fetch-based client.ts):
- *  - React components use urql hooks as before.
- *  - Server actions / non-hook code use graphqlFetch() from this module.
+ * Public API:
+ *   - `createUrqlClient`    — browser client factory (used by provider.tsx).
+ *   - `getUrqlClient`       — browser singleton getter.
+ *   - `resetUrqlClient`     — resets the browser singleton (testing / org switch).
+ *   - `graphqlFetch`        — re-exported from `./server` (server-only).
  */
 
 import {
@@ -15,13 +19,10 @@ import {
   cacheExchange,
   mapExchange,
   type Client,
-  type TypedDocumentNode,
 } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
-import { isServer } from "@/lib/env";
-import { runtimeConfig } from "@/lib/runtimeConfig";
 import { errorExchange, timingExchange } from "./urqlExchanges";
-import type { GraphQLResponse } from "./types";
+import { graphqlFetch } from "./server";
 
 const GRAPHQL_PATH = "/graphql";
 
@@ -30,7 +31,7 @@ export interface UrqlClientOptions {
 }
 
 /**
- * Create a urql client instance.
+ * Create a urql client instance for browser/provider use.
  *
  * @param options - Client configuration options
  * @returns Configured urql client
@@ -40,7 +41,6 @@ export function createUrqlClient(options: UrqlClientOptions = {}): Client {
 
   const url = new URL(GRAPHQL_PATH, resolveOrigin());
 
-  // Add org_id as query param for compatibility
   if (orgId) {
     url.searchParams.set("org_id", orgId);
   }
@@ -48,7 +48,6 @@ export function createUrqlClient(options: UrqlClientOptions = {}): Client {
   return createClient({
     url: url.toString(),
     exchanges: [
-      // Org-header injection (must be first to affect outgoing operations).
       mapExchange({
         onOperation(operation) {
           if (!orgId) return operation;
@@ -73,7 +72,6 @@ export function createUrqlClient(options: UrqlClientOptions = {}): Client {
           };
         },
       }),
-      // Observability exchanges — capture errors and measure timing.
       timingExchange,
       errorExchange,
       cacheExchange,
@@ -83,18 +81,16 @@ export function createUrqlClient(options: UrqlClientOptions = {}): Client {
   });
 }
 
-// Singleton client instance for app-wide use
 let _client: Client | null = null;
 let _currentOrgId: string | undefined;
 
 /**
- * Get or create the shared urql client instance.
+ * Get or create the shared browser urql client instance.
  *
- * @param orgId - Optional org ID for scoping requests
- * @returns urql client instance
+ * This singleton is safe in the browser (one client per tab). On the server,
+ * use `getServerClient` from `./server.ts` for per-request isolation.
  */
 export function getUrqlClient(orgId?: string): Client {
-  // Recreate client if org changes
   if (_client && orgId !== _currentOrgId) {
     _client = null;
   }
@@ -108,105 +104,11 @@ export function getUrqlClient(orgId?: string): Client {
 }
 
 /**
- * Reset the shared client (useful for testing or org switching).
+ * Reset the shared browser client (useful for testing or org switching).
  */
 export function resetUrqlClient(): void {
   _client = null;
   _currentOrgId = undefined;
 }
 
-// ============================================================================
-// Imperative GraphQL fetch — replaces the fetch-based graphqlClient
-// ============================================================================
-
-interface GraphQLFetchOptions {
-  orgId?: string;
-}
-
-/**
- * Execute a GraphQL query imperatively (no React required).
- *
- * Suitable for use in Server Actions, API routes, and non-component code.
- * Uses the shared urql client under the hood so both hooks and imperative
- * calls share caching and error handling infrastructure.
- *
- * @param query  - GraphQL query string or TypedDocumentNode
- * @param variables - Query variables
- * @param options - Optional org ID and other options
- * @returns The typed query result data
- * @throws Error if the query returns GraphQL errors or missing data
- */
-export async function graphqlFetch<T>(
-  query: string | TypedDocumentNode<T, Record<string, unknown>>,
-  variables: Record<string, unknown> = {},
-  options: GraphQLFetchOptions = {}
-): Promise<T> {
-  const client = getUrqlClient(options.orgId);
-
-  const authHeaders: Record<string, string> = {};
-  if (isServer) {
-    try {
-      const { auth } = await import("@/lib/auth");
-      const session = await auth();
-      if (session?.access_token) {
-        authHeaders["Authorization"] = `Bearer ${session.access_token}`;
-      }
-    } catch {}
-  }
-
-  const isMutation =
-    typeof query === "string" && /^\s*mutation\b/i.test(query);
-
-  const result = isMutation
-    ? await client
-        .mutation<T>(query, variables, {
-          fetchOptions: { headers: authHeaders },
-        })
-        .toPromise()
-    : await client
-        .query<T>(query, variables, {
-          requestPolicy: "network-only",
-          fetchOptions: { headers: authHeaders },
-        })
-        .toPromise();
-
-  if (result.error) {
-    throw new Error(`GraphQL error: ${result.error.message}`);
-  }
-
-  if (!result.data) {
-    throw new Error("GraphQL response missing data");
-  }
-
-  return result.data;
-}
-
-// ============================================================================
-// Legacy graphqlClient shim — keep callers working during transition
-// ============================================================================
-
-/**
- * @deprecated Use graphqlFetch() directly. This shim will be removed once all
- * callers in investmentFetchers and capacityFetchers are updated.
- */
-export const graphqlClient = {
-  query: async <T>(
-    query: string,
-    variables: Record<string, unknown>,
-    options: GraphQLFetchOptions = {}
-  ): Promise<T> => graphqlFetch<T>(query, variables, options),
-
-  isEnabled: (): boolean => {
-    return runtimeConfig.useGraphQLAnalytics();
-  },
-
-  /** @deprecated use graphqlFetch */
-  request: async <T>(
-    query: string,
-    variables: Record<string, unknown>,
-    options: GraphQLFetchOptions = {}
-  ): Promise<GraphQLResponse<T>> => {
-    const data = await graphqlFetch<T>(query, variables, options);
-    return { data };
-  },
-};
+export { graphqlFetch };

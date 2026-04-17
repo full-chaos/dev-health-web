@@ -6,10 +6,11 @@
  * Toggle with USE_GRAPHQL_ANALYTICS=true (runtime) or NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true.
  */
 
+import { AuthErrors } from "@/lib/constants/errors";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse, SankeyNode, SankeyLink } from "@/lib/types";
 import { formatSubcategoryLabel } from "@/lib/investmentMix";
-import { graphqlClient } from "./client";
+import { graphqlFetch } from "./urqlClient";
 import { INVESTMENT_BREAKDOWN_QUERY, INVESTMENT_FULL_QUERY } from "./queries";
 import type {
     AnalyticsQueryResponse,
@@ -35,7 +36,7 @@ export function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
         return contextOrgId;
     }
     // Throw error if no org can be determined
-    throw new Error("org_id is required: not found in filters or context");
+    throw new Error(AuthErrors.OrgIdRequiredFromContext);
 }
 
 /**
@@ -108,7 +109,7 @@ export async function getInvestmentViaGraphQL(
         filters: translateMetricFilterToGraphQL(filters),
     };
 
-    const response = await graphqlClient.query<AnalyticsQueryResponse>(
+    const response = await graphqlFetch<AnalyticsQueryResponse>(
         INVESTMENT_BREAKDOWN_QUERY,
         { orgId, batch },
         { orgId }
@@ -253,7 +254,7 @@ export async function getInvestmentFlowViaGraphQL(params: {
         filters: graphqlFilters,
     };
 
-    const response = await graphqlClient.query<AnalyticsQueryResponse>(
+    const response = await graphqlFetch<AnalyticsQueryResponse>(
         INVESTMENT_FULL_QUERY,
         { orgId, batch },
         { orgId }
@@ -301,7 +302,7 @@ export async function getInvestmentRepoTeamFlowViaGraphQL(params: {
         filters: translateMetricFilterToGraphQL(filters),
     };
 
-    const response = await graphqlClient.query<AnalyticsQueryResponse>(
+    const response = await graphqlFetch<AnalyticsQueryResponse>(
         INVESTMENT_FULL_QUERY,
         { orgId, batch },
         { orgId }

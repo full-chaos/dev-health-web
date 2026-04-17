@@ -6,12 +6,13 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
-import { checkApiHealth } from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
 import { TimeseriesResult, TimeseriesBucket, BreakdownResult, BreakdownItem } from "@/lib/graphql/schemas/analytics";
+import { getServerEnv } from "@/lib/config";
 
 type TestsPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -39,7 +40,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
 
-  const isTestMode = process.env.DEV_HEALTH_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+  const env = getServerEnv();
+  const isTestMode = env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
   const rangeDays = filters?.time?.range_days ?? 14;
   const today = new Date();

@@ -3,14 +3,13 @@ import type { Session } from "next-auth";
 
 // Mock dependencies BEFORE importing the module under test
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/graphql", () => ({
-  graphqlClient: { isEnabled: () => true, query: vi.fn(), request: vi.fn() },
+vi.mock("@/lib/graphql/capacityFetchers", () => ({
   getCapacityForecastViaGraphQL: vi.fn(),
 }));
 
 import { auth } from "@/lib/auth";
-import { getCapacityForecastViaGraphQL } from "@/lib/graphql";
-import { getCapacityForecast } from "../api";
+import { getCapacityForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
+import { getCapacityForecast } from "../api/capacity";
 
 // Helper to mock auth session
 function mockSession(orgId: string) {

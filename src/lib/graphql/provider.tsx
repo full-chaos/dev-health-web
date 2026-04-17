@@ -4,11 +4,20 @@
  * urql Provider component for React applications.
  *
  * Provides the urql client to child components via React context.
+ *
+ * Since CHAOS-1217 Phase B this provider uses `@urql/next` instead of plain
+ * `urql`. `@urql/next` re-exports the entire `urql`/`@urql/core` surface, so
+ * downstream `useQuery`/`useSubscription` hooks are unaffected.
  */
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { Provider as UrqlProvider } from "urql";
-import { createUrqlClient } from "./urqlClient";
+import {
+  UrqlProvider,
+  ssrExchange,
+  createClient,
+} from "@urql/next";
+import type { SSRExchange } from "@urql/core";
+import { createGraphQLClientOptions } from "./providerClient";
 
 interface GraphQLProviderProps {
   children: ReactNode;
@@ -18,10 +27,25 @@ interface GraphQLProviderProps {
 const OrgIdContext = createContext<string | undefined>(undefined);
 
 /**
- * GraphQL Provider that configures urql client with org scoping.
+ * Exposes the client-side `ssrExchange` instance so `HydrateUrqlResults`
+ * (or any descendant) can call `restoreData(payload)` to seed the browser
+ * cache with data already fetched on the server. See CHAOS-1276 Phase C.
+ */
+const SsrContext = createContext<SSRExchange | null>(null);
+
+/**
+ * GraphQL provider for client components.
  *
- * Wrap your application or page with this provider to enable
- * GraphQL queries via urql hooks.
+ * Wires `@urql/next`'s `UrqlProvider` with an `ssrExchange` instance that
+ * will be used in Phase C to restore server-fetched data into the client
+ * cache. Until then, `ssrExchange` is present but no RSC results are
+ * hydrated, so client queries still trigger their own fetches (same as
+ * pre-Phase B).
+ *
+ * Org scoping: the `orgId` (from the user's session) is injected as an
+ * `X-Org-Id` header on every operation via `mapExchange`, and as the
+ * `org_id` query param on the GraphQL URL. A change in `orgId` re-creates
+ * both the client and the SSR exchange.
  *
  * @example
  * ```tsx
@@ -34,11 +58,23 @@ export function GraphQLProvider({
   children,
   orgId,
 }: GraphQLProviderProps): React.ReactNode {
-  const client = useMemo(() => createUrqlClient({ orgId }), [orgId]);
+  const [client, ssr] = useMemo(() => {
+    const ssr = ssrExchange({
+      isClient: typeof window !== "undefined",
+    });
+
+    const client = createClient(createGraphQLClientOptions({ orgId, ssr }));
+
+    return [client, ssr] as const;
+  }, [orgId]);
 
   return (
     <OrgIdContext.Provider value={orgId}>
-      <UrqlProvider value={client}>{children}</UrqlProvider>
+      <SsrContext.Provider value={ssr}>
+        <UrqlProvider client={client} ssr={ssr}>
+          {children}
+        </UrqlProvider>
+      </SsrContext.Provider>
     </OrgIdContext.Provider>
   );
 }
@@ -48,6 +84,17 @@ export function GraphQLProvider({
  */
 export function useOrgId(): string | undefined {
   return useContext(OrgIdContext);
+}
+
+/**
+ * Hook to access the client-side `ssrExchange` instance (CHAOS-1276 Phase C).
+ *
+ * Used by `HydrateUrqlResults` to seed the browser urql cache with a
+ * hydration payload extracted on the server, eliminating the RSC→client
+ * double-fetch. Returns `null` if called outside a `GraphQLProvider`.
+ */
+export function useSsr(): SSRExchange | null {
+  return useContext(SsrContext);
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   getInvoice,
@@ -47,20 +47,6 @@ export function InvoiceList({
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [voidingInvoice, setVoidingInvoice] = useState<InvoiceRecord | null>(null);
-
-  const totalPages = useMemo(() => {
-    if (data.limit <= 0) {
-      return 1;
-    }
-    return Math.max(1, Math.ceil(data.total / data.limit));
-  }, [data.limit, data.total]);
-
-  const currentPage = useMemo(() => {
-    if (data.limit <= 0) {
-      return 1;
-    }
-    return Math.floor(data.offset / data.limit) + 1;
-  }, [data.limit, data.offset]);
 
   const refreshList = useCallback((
     nextOffset = 0,

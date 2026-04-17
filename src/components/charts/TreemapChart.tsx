@@ -4,10 +4,14 @@ import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
 // Type-only import from full echarts package (erased at runtime — no bundle impact).
 import type { EChartsOption } from "echarts";
+import { TreemapChart as EChartsTreemapChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
-import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import { echarts } from "@/lib/echartsInit";
+import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
+
+echarts.use([EChartsTreemapChart]);
 
 export type TreemapNode = {
     name: string;
@@ -71,7 +75,7 @@ export function TreemapChart({
             const baseColor = chartColors[colorIndex % chartColors.length];
             return {
                 ...node,
-                itemStyle: depth === 0 ? { color: baseColor } : node.itemStyle,
+                itemStyle: depth === 0 ? { color: lightenByDepth(baseColor, depth) } : node.itemStyle,
                 children: node.children?.map((child, idx) =>
                     assignColors(child, depth + 1, depth === 0 ? idx : colorIndex)
                 ),

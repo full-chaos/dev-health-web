@@ -22,12 +22,7 @@ import type {
 } from "./types";
 
 import {
-  investmentMixSample,
   reviewHeatmapSample,
-  workUnitInvestmentsSample,
-  cycleBreakdownFlameSample,
-  codeHotspotsFlameSample,
-  throughputFlameSample,
   sankeyStateTransitionSample,
   sankeyHotspotNodes,
   sankeyHotspotLinks,
@@ -35,9 +30,153 @@ import {
   sankeyExpenseLinks,
   sankeyInvestmentNodes,
   sankeyInvestmentLinks,
-  investmentRepoTeamMapSample,
-  sampleCapacityForecast,
 } from "../../src/data/devHealthOpsSample";
+
+const investmentMixSample = {
+  theme_distribution: {
+    feature_delivery: 644.6,
+    maintenance: 606,
+    operational: 423.6,
+    quality: 550.2,
+    risk: 125.6,
+  },
+  subcategory_distribution: {
+    "feature_delivery.customer": 320.6,
+    "feature_delivery.roadmap": 200.8,
+    "feature_delivery.enablement": 123.2,
+    "maintenance.debt": 279.2,
+    "maintenance.refactor": 250.8,
+    "maintenance.upgrade": 76,
+    "operational.incident_response": 206,
+    "operational.support": 167.2,
+    "operational.on_call": 50.4,
+    "quality.bugfix": 250.6,
+    "quality.testing": 177.4,
+    "quality.reliability": 122.2,
+    "risk.security": 82.8,
+    "risk.compliance": 30.4,
+    "risk.vulnerability": 12.4,
+  },
+  unit: "loc",
+};
+
+const investmentRepoTeamMapSample = {
+  "repo:web-app": "Growth",
+  "repo:core-api": "Core",
+  "repo:infra": "Infra",
+  "repo:search": "Data",
+};
+
+const workUnitInvestmentsSample = [
+  {
+    work_unit_id: "wu-41c2a",
+    work_unit_type: "story",
+    work_unit_name: "PROJ-123: Launch customer onboarding",
+    display_name: "PROJ-123: Launch customer onboarding",
+    provider: "jira",
+    item_type: "issue",
+    key: "PROJ-123",
+    time_range: { start: "2025-02-01T12:00:00Z", end: "2025-02-03T18:00:00Z" },
+    effort: { metric: "churn_loc", value: 820 },
+    investment: { themes: { feature_delivery: 0.52, maintenance: 0.18, operational: 0.16, quality: 0.1, risk: 0.04 }, subcategories: { "feature_delivery.customer": 0.32, "feature_delivery.roadmap": 0.2, "maintenance.refactor": 0.12, "maintenance.debt": 0.06, "operational.incident_response": 0.1, "operational.support": 0.06, "quality.testing": 0.1, "risk.security": 0.04 } },
+    evidence_quality: { value: 0.78, band: "moderate" },
+    evidence: { textual: [{ type: "text_phrase", phrase: "feature launch", source: "issue_title" }], structural: [{ type: "work_item_type", work_item_type: "story", count: 3 }], contextual: [{ type: "time_range", start: "2025-02-01T12:00:00Z", end: "2025-02-03T18:00:00Z", span_days: 2.25, score: 0.64 }, { type: "repo_scope", repo_ids: ["repo:web-app"] }, { type: "team_scope", team_ids: ["growth"], team_names: ["Growth"] }] },
+  },
+  {
+    work_unit_id: "wu-53a17",
+    work_unit_type: "pr",
+    work_unit_name: "Refactor debt cleanup",
+    display_name: "github:pr:#482 Refactor debt cleanup",
+    provider: "github",
+    item_type: "pr",
+    key: "#482",
+    time_range: { start: "2025-02-02T09:00:00Z", end: "2025-02-04T16:30:00Z" },
+    effort: { metric: "churn_loc", value: 540 },
+    investment: { themes: { feature_delivery: 0.12, maintenance: 0.58, operational: 0.08, quality: 0.18, risk: 0.04 }, subcategories: { "feature_delivery.enablement": 0.12, "maintenance.debt": 0.3, "maintenance.refactor": 0.18, "maintenance.upgrade": 0.1, "operational.support": 0.08, "quality.bugfix": 0.12, "quality.reliability": 0.06, "risk.compliance": 0.04 } },
+    evidence_quality: { value: 0.84, band: "high" },
+    evidence: { textual: [], structural: [{ type: "work_item_type", work_item_type: "chore", count: 2 }], contextual: [{ type: "time_range", start: "2025-02-02T09:00:00Z", end: "2025-02-04T16:30:00Z", span_days: 2.3, score: 0.72 }, { type: "repo_scope", repo_ids: ["repo:core-api"] }, { type: "team_scope", team_ids: ["core"], team_names: ["Core"] }] },
+  },
+  {
+    work_unit_id: "wu-7ed90",
+    work_unit_type: "incident",
+    work_unit_name: "Hotfix on-call regression",
+    display_name: "INC-77: Hotfix on-call regression",
+    provider: "pagerduty",
+    item_type: "incident",
+    key: "INC-77",
+    time_range: { start: "2025-02-05T08:00:00Z", end: "2025-02-06T20:00:00Z" },
+    effort: { metric: "churn_loc", value: 310 },
+    investment: { themes: { feature_delivery: 0.06, maintenance: 0.12, operational: 0.6, quality: 0.18, risk: 0.04 }, subcategories: { "feature_delivery.customer": 0.06, "maintenance.debt": 0.12, "operational.incident_response": 0.4, "operational.on_call": 0.12, "operational.support": 0.08, "quality.reliability": 0.1, "quality.bugfix": 0.08, "risk.vulnerability": 0.04 } },
+    evidence_quality: { value: 0.55, band: "low" },
+    evidence: { textual: [{ type: "text_phrase", phrase: "hotfix", source: "pr_title" }], structural: [{ type: "work_item_type", work_item_type: "incident", count: 1 }], contextual: [{ type: "time_range", start: "2025-02-05T08:00:00Z", end: "2025-02-06T20:00:00Z", span_days: 1.5, score: 0.44 }, { type: "repo_scope", repo_ids: ["repo:infra"] }, { type: "team_scope", team_ids: ["infra"], team_names: ["Infra"] }] },
+  },
+];
+
+const cycleBreakdownFlameSample = {
+  mode: "cycle_breakdown",
+  unit: "hours",
+  root: {
+    name: "Total Cycle Time",
+    value: 847.2,
+    children: [
+      { name: "In Progress", value: 412.5, children: [{ name: "Development", value: 245.3 }, { name: "Code Review", value: 98.7 }, { name: "Testing", value: 68.5 }] },
+      { name: "Waiting", value: 312.4, children: [{ name: "Waiting for Review", value: 156.2 }, { name: "Blocked", value: 89.1 }, { name: "Waiting for Deploy", value: 67.1 }] },
+      { name: "Review", value: 122.3, children: [{ name: "Initial Review", value: 78.4 }, { name: "Re-review", value: 43.9 }] },
+    ],
+  },
+  meta: { window_start: "2025-01-01", window_end: "2025-01-30", filters: {}, notes: ["Sample data for demonstration"] },
+};
+
+const codeHotspotsFlameSample = {
+  mode: "code_hotspots",
+  unit: "changes",
+  root: {
+    name: "All Repositories",
+    value: 1247,
+    children: [
+      { name: "dev-health-ops", value: 523, children: [{ name: "src/api", value: 234, children: [{ name: "routes.py", value: 89 }, { name: "services/", value: 78 }, { name: "middleware.py", value: 67 }] }, { name: "src/processors", value: 178, children: [{ name: "sync.py", value: 92 }, { name: "local.py", value: 86 }] }, { name: "src/metrics", value: 111 }] },
+      { name: "dev-health-web", value: 412, children: [{ name: "src/components", value: 245, children: [{ name: "charts/", value: 134 }, { name: "work/", value: 78 }, { name: "navigation/", value: 33 }] }, { name: "src/lib", value: 167, children: [{ name: "api.ts", value: 56 }, { name: "graphql/", value: 62 }, { name: "filters/", value: 49 }] }] },
+      { name: "atlassian", value: 312, children: [{ name: "src/client", value: 156 }, { name: "src/schema", value: 98 }, { name: "tests/", value: 58 }] },
+    ],
+  },
+  meta: { window_start: "2025-01-01", window_end: "2025-01-30", filters: {}, notes: ["Sample data for demonstration"] },
+};
+
+const throughputFlameSample = {
+  mode: "throughput",
+  unit: "items",
+  root: {
+    name: "Completed Work",
+    value: 156,
+    children: [
+      { name: "Features", value: 67, children: [{ name: "Customer Requests", value: 34 }, { name: "Roadmap Items", value: 22 }, { name: "Internal Tools", value: 11 }] },
+      { name: "Bug Fixes", value: 48, children: [{ name: "Critical", value: 8 }, { name: "High Priority", value: 18 }, { name: "Normal", value: 22 }] },
+      { name: "Maintenance", value: 28, children: [{ name: "Dependency Updates", value: 12 }, { name: "Refactoring", value: 10 }, { name: "Documentation", value: 6 }] },
+      { name: "Tech Debt", value: 13, children: [{ name: "Performance", value: 7 }, { name: "Code Quality", value: 6 }] },
+    ],
+  },
+  meta: { window_start: "2025-01-01", window_end: "2025-01-30", filters: {}, notes: ["Sample data for demonstration"] },
+};
+
+const sampleCapacityForecast = {
+  forecastId: "sample-forecast-001",
+  computedAt: "2026-01-29T12:00:00Z",
+  teamId: "team-alpha",
+  workScopeId: "project-main",
+  backlogSize: 47,
+  targetItems: 47,
+  p50Date: "2026-02-10",
+  p85Date: "2026-02-17",
+  p95Date: "2026-02-25",
+  p50Days: 12,
+  p85Days: 19,
+  p95Days: 27,
+  throughputMean: 3.2,
+  throughputStddev: 1.8,
+  historyDays: 90,
+  insufficientHistory: false,
+  highVariance: false,
+};
 
 // ---------------------------------------------------------------------------
 // People search
@@ -525,6 +664,18 @@ export const handlers = [
       coverage: { repos: 10 },
       limits: { drilldown_max: 200 },
       supported_endpoints: ["/api/v1/home", "/api/v1/meta"],
+    }),
+  ),
+
+  http.get("*/api/v1/filters/options", () =>
+    HttpResponse.json({
+      teams: ["core", "growth", "infra", "platform"],
+      repos: ["dev-health-web", "dev-health-ops", "frontend-web"],
+      services: ["web", "api", "analytics"],
+      developers: ["Alex Harper", "Jordan Lee", "metrics-owner", "dev-health-web"],
+      work_category: ["feature", "maintenance", "support"],
+      issue_type: ["bug", "story", "task"],
+      flow_stage: ["review", "build", "deploy"],
     }),
   ),
 

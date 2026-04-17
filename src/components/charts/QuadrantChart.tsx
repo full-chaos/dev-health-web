@@ -8,12 +8,16 @@ import type {
   MarkAreaComponentOption,
   TooltipComponentFormatterCallbackParams,
 } from "echarts";
+import { ScatterChart } from "echarts/charts";
 
 import type { ZoneOverlay } from "@/lib/quadrantZones";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { Chart } from "./Chart";
 import { type ChartTheme, useChartColors, useChartTheme } from "./chartTheme";
+import { echarts } from "@/lib/echartsInit";
+
+echarts.use([ScatterChart]);
 
 const formatValue = (value: number, unit: string) => {
   if (!Number.isFinite(value)) {
@@ -217,7 +221,7 @@ export const buildQuadrantOption = ({
       ];
     })
     : [];
-  const zoneAreas = showInterpretation
+  const zoneAreas: MarkAreaComponentOption["data"] = showInterpretation
     ? (activeZoneOverlay?.zones ?? []).map((zone: import("@/lib/quadrantZones").ZoneRegion) => [
       {
         name: zone.label,
@@ -226,17 +230,17 @@ export const buildQuadrantOption = ({
         itemStyle: buildZoneSurfaceStyle(zone.color, {
           active: highlightOverlayKey === `zone:${zone.id}`,
         }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
       {
         xAxis: zone.xRange[1],
         yAxis: zone.yRange[1],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
     ])
     : [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markAreaData: any = [...annotationAreas, ...zoneAreas];
+  const markAreaData: MarkAreaComponentOption["data"] = [
+    ...(annotationAreas ?? []),
+    ...(zoneAreas ?? []),
+  ];
   const markArea: MarkAreaComponentOption | undefined = markAreaData.length
     ? {
       silent: true,

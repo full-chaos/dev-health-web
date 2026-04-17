@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import {
   SavedReport,
@@ -35,7 +36,7 @@ export async function fetchSavedReports(
     );
     return res.savedReports;
   } catch (error) {
-    console.error("Failed to fetch saved reports:", error);
+    logger.error({ err: error }, "Failed to fetch saved reports");
     return { items: [], total: 0 };
   }
 }
@@ -56,7 +57,7 @@ export async function fetchSavedReport(
     );
     return res.savedReport;
   } catch (error) {
-    console.error("Failed to fetch saved report:", error);
+    logger.error({ err: error }, "Failed to fetch saved report");
     return null;
   }
 }
@@ -79,7 +80,7 @@ export async function fetchReportRuns(
     );
     return res.reportRuns;
   } catch (error) {
-    console.error("Failed to fetch report runs:", error);
+    logger.error({ err: error }, "Failed to fetch report runs");
     return { items: [], total: 0 };
   }
 }

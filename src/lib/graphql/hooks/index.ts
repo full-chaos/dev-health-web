@@ -18,3 +18,4 @@ export {
   type SyncProgress,
 } from "./useSubscription";
 export { useWorkGraphEdges, useNodeEdges } from "./useWorkGraph";
+export { useSecurityOverview, useSecurityAlerts } from "./useSecurity";
