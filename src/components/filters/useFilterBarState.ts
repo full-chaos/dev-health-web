@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { apiClient } from "@/lib/apiClient";
@@ -27,6 +34,15 @@ import {
   type FilterOptions,
 } from "./filterBarUtils";
 
+// Two-pass hydration guard — see components/ClientTimestamp.tsx and
+// components/people/PersonRangeBar.tsx for the same pattern. Gates
+// wall-clock reads (`new Date()`) so SSR and the first client render emit
+// identical markup, preventing hydration attribute/text mismatches.
+// Ref: https://react.dev/reference/react-dom/client/hydrateRoot#hydrating-server-rendered-html
+const subscribe = () => () => {};
+const getIsClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export function useFilterBarState({
   view,
   tab,
@@ -39,6 +55,12 @@ export function useFilterBarState({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const isClient = useSyncExternalStore(
+    subscribe,
+    getIsClientSnapshot,
+    getServerSnapshot,
+  );
 
   const encoded = searchParams.get("f");
   const initialFilters = useMemo(() => decodeFilter(encoded), [encoded]);
@@ -252,7 +274,14 @@ export function useFilterBarState({
   );
   const startDate = resolvedStart > resolvedEnd ? resolvedEnd : resolvedStart;
   const endDate = resolvedStart > resolvedEnd ? resolvedStart : resolvedEnd;
-  const dateValue = `${formatDateInput(startDate)} - ${formatDateInput(endDate)}`;
+  // When the URL doesn't pin both dates, startDate/endDate derive from
+  // `new Date()` — server and client would disagree. Keep `dateValue` empty
+  // until mounted so the custom-range button label hydrates cleanly.
+  const datesFromWallClock = !filters.time.start_date || !filters.time.end_date;
+  const dateValue =
+    !isClient && datesFromWallClock
+      ? ""
+      : `${formatDateInput(startDate)} - ${formatDateInput(endDate)}`;
   const isCustomDateRange = !DATE_PRESETS.some((preset) => preset.days === filters.time.range_days);
 
   return {
