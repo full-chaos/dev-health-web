@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { logger } from "@/lib/logger";
 import { ReportStatus, SavedReport, ReportRun } from "@/lib/reports/types";
 import {
   fetchSavedReport,
@@ -228,7 +229,7 @@ export default function SingleReportPage() {
             setIsRunning(false);
           }
         } catch (pollErr) {
-          console.error("Report run polling failed:", pollErr);
+          logger.error({ err: pollErr }, "Report run polling failed");
           stopPolling();
           setIsRunning(false);
         }
