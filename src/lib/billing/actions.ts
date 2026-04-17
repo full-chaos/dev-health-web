@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
+import { AuthErrors, ValidationErrors, requestFailedMessage } from "@/lib/constants/errors";
 import type { ActionResult } from "@/lib/result";
 
 export type SubscriptionDetails = {
@@ -179,7 +180,7 @@ export type BillingPlanUpsert = {
 const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/;
 function sanitizeId(id: string): string {
   if (!SAFE_ID_RE.test(id)) {
-    throw new Error("Invalid ID format");
+    throw new Error(ValidationErrors.InvalidIdFormat);
   }
   return id;
 }
@@ -229,7 +230,7 @@ function getBackendUrl(): string {
 async function getAuthHeadersOrThrow(): Promise<Record<string, string>> {
   const session = await auth();
   if (!session?.access_token) {
-    throw new Error("Unauthorized");
+    throw new Error(AuthErrors.Unauthorized);
   }
   return {
     "Content-Type": "application/json",
@@ -258,7 +259,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const detail = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(detail.detail || `Request failed (${response.status})`);
+    throw new Error(detail.detail || requestFailedMessage(response.status));
   }
 
   return (await response.json()) as T;

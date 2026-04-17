@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { ValidationErrors } from "@/lib/constants/errors";
 import { getBackendUrl } from "@/lib/origin";
 import type { ActionResult } from "@/lib/result";
 
@@ -8,7 +9,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 function validateId(id: string): string {
   if (!UUID_RE.test(id)) {
-    throw new Error("Invalid audit entry ID");
+    throw new Error(ValidationErrors.InvalidAuditEntryId);
   }
   return id;
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { ValidationErrors } from "@/lib/constants/errors";
 import {
   createBillingPlan,
   deleteBillingPlan,
@@ -64,7 +65,7 @@ function mapPlanToForm(plan: BillingPlanRecord): PlanFormState {
 function parsePriceJson(input: string): BillingPriceInput[] {
   const parsed = JSON.parse(input) as BillingPriceInput[];
   if (!Array.isArray(parsed)) {
-    throw new Error("Prices JSON must be an array");
+    throw new Error(ValidationErrors.PricesJsonMustBeArray);
   }
   return parsed;
 }
