@@ -9,7 +9,7 @@ vi.mock("@/lib/graphql/capacityFetchers", () => ({
 
 import { auth } from "@/lib/auth";
 import { getCapacityForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
-import { getCapacityForecast } from "../api";
+import { getCapacityForecast } from "../api/capacity";
 
 // Helper to mock auth session
 function mockSession(orgId: string) {

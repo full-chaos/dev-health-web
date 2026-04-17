@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useInvestmentFlow, useInvestmentMix, useInvestmentRepoTeamFlow } from "@/lib/graphql/hooks";
-import { explainInvestmentMix, getWorkUnitExplanation, getWorkUnits } from "@/lib/api";
+import { explainInvestmentMix, getWorkUnitExplanation, getWorkUnits } from "@/lib/api/investment";
 import { formatWorkUnitTypeLabel, getBaselineFilters } from "@/lib/investment";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import type { MetricFilter } from "@/lib/filters/types";

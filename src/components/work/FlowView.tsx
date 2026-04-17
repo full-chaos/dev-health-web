@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-import { getSankey } from "@/lib/api";
+import { getSankey } from "@/lib/api/investment";
 import { useInvestmentMix } from "@/lib/graphql/hooks";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter, SankeyMode } from "@/lib/types";

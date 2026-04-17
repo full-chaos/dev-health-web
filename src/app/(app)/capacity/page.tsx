@@ -5,7 +5,7 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { CapacityView } from "@/components/work/CapacityView";
-import { checkApiHealth } from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";

@@ -7,7 +7,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { QuadrantChart } from "@/components/charts/QuadrantChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
-import { checkApiHealth } from "@/lib/api";
+import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchRiskMetrics } from "@/lib/testops/fetchers";
