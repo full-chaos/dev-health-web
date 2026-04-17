@@ -51,6 +51,7 @@ export function useSecurityOverview(filter: SecurityFilter): UseSecurityOverview
     query: SECURITY_OVERVIEW_QUERY,
     variables: { orgId: orgId ?? "", filters },
     pause: !orgId,
+    requestPolicy: "cache-and-network",
   });
 
   return {
@@ -98,6 +99,7 @@ export function useSecurityAlerts(
     query: SECURITY_ALERTS_QUERY,
     variables: { orgId: orgId ?? "", filters, pagination: paginationInput },
     pause: !orgId,
+    requestPolicy: "cache-and-network",
   });
 
   // Merge new edges into accumulated list when data changes
