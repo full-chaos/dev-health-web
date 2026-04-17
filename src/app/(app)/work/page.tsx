@@ -15,10 +15,10 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { graphqlClient } from "@/lib/graphql/client";
 import { getInvestmentMixForHydration } from "@/lib/graphql/investmentHydration";
 import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
+import { runtimeConfig } from "@/lib/runtimeConfig";
 import { LandscapeView } from "@/components/work/LandscapeView";
 import { HeatmapView } from "@/components/work/HeatmapView";
 import { FlowView } from "@/components/work/FlowView";
@@ -74,7 +74,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   // the client-side <InvestmentView> useQuery resolves from cache instead of
   // triggering a second network round-trip (CHAOS-1276 Phase C). Falls back
   // to the REST path when GraphQL is disabled or session has no org_id.
-  const graphqlEnabled = graphqlClient.isEnabled();
+  const graphqlEnabled = runtimeConfig.useGraphQLAnalytics();
   let hydrationOrgId: string | undefined;
   if (graphqlEnabled) {
     const { auth } = await import("@/lib/auth");
