@@ -15,6 +15,9 @@ import {
   toLocalDate,
 } from "@/lib/dateUtils";
 import { FilterPill } from "./FilterPill";
+import { toggleValue } from "./filterBarUtils";
+import { OptionList } from "./sections/OptionList";
+import { ScopeSection } from "./sections/ScopeSection";
 import { TimeRangeSection } from "./sections/TimeRangeSection";
 
 const DATE_PRESETS = [
@@ -190,13 +193,6 @@ const formatSelection = (values: string[], emptyLabel: string) => {
     return values.join(", ");
   }
   return `${values.length} selected`;
-};
-
-const toggleValue = (values: string[], value: string) => {
-  if (values.includes(value)) {
-    return values.filter((item) => item !== value);
-  }
-  return [...values, value];
 };
 
 const scopeLabelMap: Record<MetricFilter["scope"]["level"], string> = {
@@ -437,40 +433,6 @@ export function FilterBarClient({
   const endDate = resolvedStart > resolvedEnd ? resolvedStart : resolvedEnd;
   const dateValue = `${formatDateInput(startDate)} - ${formatDateInput(endDate)}`;
 
-  const renderOptionList = (
-    items: string[],
-    selected: string[],
-    emptyLabel: string,
-    onChange: (nextValues: string[]) => void
-  ) => (
-    <div className="space-y-2 text-xs">
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={!selected.length}
-          onChange={() => onChange([])}
-        />
-        <span>{emptyLabel}</span>
-      </label>
-      {items.length ? (
-        items.map((item) => (
-          <label key={item} className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={selected.includes(item)}
-              onChange={() => onChange(toggleValue(selected, item))}
-            />
-            <span>{item}</span>
-          </label>
-        ))
-      ) : (
-        <p className="text-[11px] text-(--ink-muted)">
-          No options yet. Use Advanced filters to type values.
-        </p>
-      )}
-    </div>
-  );
-
   return (
     <section
       ref={barRef}
@@ -480,59 +442,20 @@ export function FilterBarClient({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             {visibility.scope && (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setOpenMenu(openMenu === "scope" ? null : "scope")}
-                  className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
-                  aria-expanded={openMenu === "scope"}
-                >
-                  <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                    {scopeLabel}:
-                  </span>
-                  <span className="text-foreground">{scopeValue}</span>
-                  <span className="text-(--ink-muted)">▾</span>
-                </button>
-                {openMenu === "scope" && (
-                  <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
-                    {!scopeLock && (
-                      <label className="flex flex-col gap-2 text-xs">
-                        <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                          Scope level
-                        </span>
-                        <select
-                          className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
-                          value={scopeLevel}
-                          onChange={(event) =>
-                            updateFilters({
-                              ...filters,
-                              scope: {
-                                ...filters.scope,
-                                level: event.target.value as MetricFilter["scope"]["level"],
-                                ids: [],
-                              },
-                            })
-                          }
-                        >
-                          <option value="org">Org</option>
-                          <option value="team">Team</option>
-                          <option value="repo">Repo</option>
-                          <option value="service">Service</option>
-                          <option value="developer">Developer</option>
-                        </select>
-                      </label>
-                    )}
-                    <div className="mt-3 max-h-56 overflow-auto">
-                      {renderOptionList(scopeOptions, effectiveScopeIds, scopeEmptyLabel, (next) =>
-                        updateFilters({
-                          ...filters,
-                          scope: { ...filters.scope, level: scopeLevel, ids: next },
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ScopeSection
+                effectiveScopeIds={effectiveScopeIds}
+                filters={filters}
+                openMenu={openMenu}
+                scopeEmptyLabel={scopeEmptyLabel}
+                scopeLabel={scopeLabel}
+                scopeLevel={scopeLevel}
+                scopeLock={scopeLock}
+                scopeOptions={scopeOptions}
+                scopeValue={scopeValue}
+                setOpenMenu={setOpenMenu}
+                toggleValue={toggleValue}
+                updateFilters={updateFilters}
+              />
             )}
 
             {visibility.date && (
@@ -565,12 +488,18 @@ export function FilterBarClient({
                 {openMenu === "repo" && (
                   <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                     <div className="max-h-56 overflow-auto">
-                      {renderOptionList(options.repos, repos, "All", (next) =>
-                        updateFilters({
-                          ...filters,
-                          what: { ...filters.what, repos: next },
-                        })
-                      )}
+                      <OptionList
+                        emptyLabel="All"
+                        items={options.repos}
+                        onChange={(next) =>
+                          updateFilters({
+                            ...filters,
+                            what: { ...filters.what, repos: next },
+                          })
+                        }
+                        selected={repos}
+                        toggleValue={toggleValue}
+                      />
                     </div>
                   </div>
                 )}
@@ -595,12 +524,18 @@ export function FilterBarClient({
                 {openMenu === "developer" && (
                   <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                     <div className="max-h-56 overflow-auto">
-                      {renderOptionList(options.developers, developers, "All", (next) =>
-                        updateFilters({
-                          ...filters,
-                          who: { ...filters.who, developers: next },
-                        })
-                      )}
+                      <OptionList
+                        emptyLabel="All"
+                        items={options.developers}
+                        onChange={(next) =>
+                          updateFilters({
+                            ...filters,
+                            who: { ...filters.who, developers: next },
+                          })
+                        }
+                        selected={developers}
+                        toggleValue={toggleValue}
+                      />
                     </div>
                   </div>
                 )}
@@ -623,12 +558,18 @@ export function FilterBarClient({
                 {openMenu === "work" && (
                   <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                     <div className="max-h-56 overflow-auto">
-                      {renderOptionList(options.work_category, workCategory, "All", (next) =>
-                        updateFilters({
-                          ...filters,
-                          why: { ...filters.why, work_category: next },
-                        })
-                      )}
+                      <OptionList
+                        emptyLabel="All"
+                        items={options.work_category}
+                        onChange={(next) =>
+                          updateFilters({
+                            ...filters,
+                            why: { ...filters.why, work_category: next },
+                          })
+                        }
+                        selected={workCategory}
+                        toggleValue={toggleValue}
+                      />
                     </div>
                   </div>
                 )}
@@ -651,12 +592,18 @@ export function FilterBarClient({
                 {openMenu === "flow" && (
                   <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
                     <div className="max-h-56 overflow-auto">
-                      {renderOptionList(options.flow_stage, flowStage, "All", (next) =>
-                        updateFilters({
-                          ...filters,
-                          how: { ...filters.how, flow_stage: next },
-                        })
-                      )}
+                      <OptionList
+                        emptyLabel="All"
+                        items={options.flow_stage}
+                        onChange={(next) =>
+                          updateFilters({
+                            ...filters,
+                            how: { ...filters.how, flow_stage: next },
+                          })
+                        }
+                        selected={flowStage}
+                        toggleValue={toggleValue}
+                      />
                     </div>
                   </div>
                 )}
