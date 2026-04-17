@@ -1,5 +1,6 @@
 import { resolveOrigin } from "@/lib/origin";
 import { isServer } from "@/lib/env";
+import { ApiErrors, apiErrorMessage } from "@/lib/constants/errors";
 
 /**
  * Generate a unique request ID for distributed tracing.
@@ -104,9 +105,9 @@ const fetchJson = async <T>(
   const response = await request(path, init, params);
   if (!response.ok) {
     if (response.status === 429) {
-      throw new Error("Rate limit exceeded. Please try again later.");
+      throw new Error(ApiErrors.RateLimitExceeded);
     }
-    throw new Error(`API error: ${response.status}`);
+    throw new Error(apiErrorMessage(response.status));
   }
   // Use text() and trim() to handle keep-alive pings (leading/trailing whitespace)
   const text = await response.text();
@@ -198,11 +199,11 @@ const fetchWithFallback = async <T, C>(
 
   if (lastError instanceof Response) {
     if (lastError.status === 429) {
-      throw new Error("Rate limit exceeded. Please try again later.");
+      throw new Error(ApiErrors.RateLimitExceeded);
     }
-    throw new Error(`API error: ${lastError.status}`);
+    throw new Error(apiErrorMessage(lastError.status));
   }
-  throw lastError ?? new Error("API error");
+  throw lastError ?? new Error(ApiErrors.GenericApiError);
 };
 
 export const apiClient = {
@@ -214,4 +215,3 @@ export const apiClient = {
   sendBeacon,
   fetchWithFallback,
 };
-
