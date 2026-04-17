@@ -15,7 +15,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { graphqlClient } from "@/lib/graphql";
+import { graphqlClient } from "@/lib/graphql/client";
 import { getInvestmentMixForHydration } from "@/lib/graphql/investmentHydration";
 import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";

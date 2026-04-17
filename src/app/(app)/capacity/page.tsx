@@ -10,7 +10,7 @@ import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
-import { graphqlClient } from "@/lib/graphql";
+import { graphqlClient } from "@/lib/graphql/client";
 import { getCapacityForecastForHydration } from "@/lib/graphql/capacityHydration";
 import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { ContextStrip } from "@/components/navigation/ContextStrip";

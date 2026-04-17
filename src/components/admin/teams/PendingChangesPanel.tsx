@@ -142,7 +142,7 @@ export function PendingChangesPanel() {
             </button>
           </div>
 
-          {changes.map((change, idx) => (
+          {changes.map((change) => (
             <div
               key={`${change.team_id}-${change.change_type}-${change.field ?? "all"}-${change.change_index}`}
               className="flex items-center justify-between border-b border-(--card-stroke) px-4 py-3 last:border-0 hover:bg-(--card-70)"
