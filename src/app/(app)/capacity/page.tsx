@@ -10,6 +10,9 @@ import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
+import { graphqlClient } from "@/lib/graphql";
+import { getCapacityForecastForHydration } from "@/lib/graphql/capacityHydration";
+import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 
 type CapacityPageProps = {
@@ -49,6 +52,23 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
   const filters = encodedFilter
     ? decodeFilter(encodedFilter)
     : filterFromQueryParams(params);
+
+  const graphqlEnabled = graphqlClient.isEnabled();
+  let hydrationOrgId: string | undefined;
+  if (graphqlEnabled) {
+    const { auth } = await import("@/lib/auth");
+    const session = await auth();
+    hydrationOrgId = session?.user?.org_id as string | undefined;
+  }
+
+  const capacityResult = graphqlEnabled && hydrationOrgId
+    ? await fetchOrNull(
+        getCapacityForecastForHydration(filters, hydrationOrgId),
+        "capacity/forecast-hydration"
+      )
+    : null;
+
+  const capacityHydrationPayload = capacityResult?.hydrationPayload ?? null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -100,7 +120,8 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
 
             <ContextStrip filters={filters} origin={activeOrigin} />
 
-            <CapacityView filters={filters} />
+            <HydrateUrqlResults payload={capacityHydrationPayload} />
+            <CapacityView filters={filters} orgId={hydrationOrgId} />
           </UpgradeGate>
         </main>
       </div>
