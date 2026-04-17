@@ -1,9 +1,10 @@
 import { test, expect, Page } from "@playwright/test";
 
+import { decodeFilter } from "../src/lib/filters/encode";
+
 const getFilterParam = (url: string) => new URL(url).searchParams.get("f");
 
 const waitForFilterParam = async (page: Page) => {
-  await page.waitForLoadState("networkidle");
   await page.waitForFunction(
     () => new URL(window.location.href).searchParams.get("f"),
     { timeout: 10000 }
@@ -15,6 +16,9 @@ const waitForFilterParam = async (page: Page) => {
 
 const updateDeveloperFilter = async (page: Page, value: string, previous: string) => {
   // Click "Filters" button to expand the advanced filters panel
+  await expect(page.getByRole("button", { name: "Filters" })).toBeVisible({
+    timeout: 15000,
+  });
   await page.getByRole("button", { name: "Filters" }).click();
   await page.locator("summary", { hasText: "Who" }).click();
   await page.getByPlaceholder("alice, bob").fill(value);
@@ -42,6 +46,16 @@ const expectFilterParam = async (page: Page, expected: string) => {
   );
 };
 
+const expectDeveloperFilter = async (page: Page, expected: string) => {
+  await expect
+    .poll(() => {
+      const encoded = getFilterParam(page.url());
+      const filters = decodeFilter(encoded);
+      return filters.who.developers?.join(",") ?? "";
+    })
+    .toBe(expected);
+};
+
 test.describe("filter propagation", () => {
   test("primary routes retain filter param", async ({ page }) => {
     await page.goto("/dashboard");
@@ -55,19 +69,22 @@ test.describe("filter propagation", () => {
     const nav = page.locator("aside nav");
     // Routes that exist in the primary navigation
     const routes = [
-      { label: /People/i, url: /\/people/ },
-      { label: /Metrics/i, url: /\/metrics/ },
-      { label: /Landscape/i, url: /\/explore\/landscape/ },
-      { label: /Work/i, url: /\/work/ },
-      { label: /Code/i, url: /\/code/ },
-      { label: /Opportunities/i, url: /\/opportunities/ },
-      { label: /Home/i, url: /\/dashboard\?f=/ },
+      { label: /People/i, path: "/people" },
+      { label: /Metrics/i, path: "/metrics" },
+      { label: /Landscape/i, path: "/explore/landscape" },
+      { label: /Work/i, path: "/work" },
+      { label: /Code/i, path: "/code" },
+      { label: /Opportunities/i, path: "/opportunities" },
+      { label: /Home/i, path: "/dashboard" },
     ];
 
     for (const route of routes) {
       await nav.getByRole("link", { name: route.label }).click();
-      await expect(page).toHaveURL(route.url);
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toBe(route.path);
       await expectFilterParam(page, updatedFilter);
+      await expectDeveloperFilter(page, "dev-health-web");
     }
   });
 
@@ -83,7 +100,10 @@ test.describe("filter propagation", () => {
 
     const nav = page.locator("aside nav");
     await nav.getByRole("link", { name: /Work/i }).click();
-    await expect(page).toHaveURL(/\/work/);
+    await expect
+      .poll(() => new URL(page.url()).pathname)
+      .toBe("/work");
     await expectFilterParam(page, updatedFilter);
+    await expectDeveloperFilter(page, "metrics-owner");
   });
 });
