@@ -6,6 +6,7 @@
  * Toggle with USE_GRAPHQL_ANALYTICS=true (runtime) or NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true.
  */
 
+import { AuthErrors } from "@/lib/constants/errors";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse, SankeyNode, SankeyLink } from "@/lib/types";
 import { formatSubcategoryLabel } from "@/lib/investmentMix";
@@ -35,7 +36,7 @@ export function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
         return contextOrgId;
     }
     // Throw error if no org can be determined
-    throw new Error("org_id is required: not found in filters or context");
+    throw new Error(AuthErrors.OrgIdRequiredFromContext);
 }
 
 /**

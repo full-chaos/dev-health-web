@@ -1,5 +1,6 @@
 import { useQuery } from "urql";
 import { useMemo } from "react";
+import { AuthErrors } from "@/lib/constants/errors";
 import { INVESTMENT_BREAKDOWN_QUERY, INVESTMENT_FULL_QUERY } from "../queries";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse } from "@/lib/types";
@@ -21,7 +22,7 @@ function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
   if (contextOrgId) {
     return contextOrgId;
   }
-  throw new Error("org_id is required: not found in filters or GraphQL context");
+  throw new Error(AuthErrors.OrgIdRequiredFromGraphQLContext);
 }
 
 function buildDateRange(filters: MetricFilter): { startDate: string; endDate: string } {

@@ -46,6 +46,7 @@ import {
   type TypedDocumentNode,
 } from "@urql/core";
 import { registerUrql } from "@urql/next/rsc";
+import { ValidationErrors, graphQlErrorMessage } from "@/lib/constants/errors";
 import { resolveOrigin } from "@/lib/origin";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 
@@ -125,11 +126,11 @@ export async function graphqlFetch<T>(
     : await client.query<T>(query, variables, operationContext).toPromise();
 
   if (result.error) {
-    throw new Error(`GraphQL error: ${result.error.message}`);
+    throw new Error(graphQlErrorMessage(result.error.message));
   }
 
   if (!result.data) {
-    throw new Error("GraphQL response missing data");
+    throw new Error(ValidationErrors.GraphQLResponseMissingData);
   }
 
   return result.data;
@@ -191,11 +192,11 @@ export async function graphqlFetchForHydration<T>(
     : await client.query<T>(query, variables, operationContext).toPromise();
 
   if (result.error) {
-    throw new Error(`GraphQL error: ${result.error.message}`);
+    throw new Error(graphQlErrorMessage(result.error.message));
   }
 
   if (!result.data) {
-    throw new Error("GraphQL response missing data");
+    throw new Error(ValidationErrors.GraphQLResponseMissingData);
   }
 
   return { data: result.data, hydrationPayload: ssr.extractData() };
