@@ -10,6 +10,7 @@ on:
   pull_request:
     branches:
       - main
+  merge_group:
   workflow_dispatch:
     inputs:
       tag:
@@ -62,22 +63,28 @@ jobs:
   build:
     name: Build Static Assets
     needs: [changes]
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      startsWith(github.ref, 'refs/tags/') ||
-      needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.meta.outputs.version }}
       artifact_name: ${{ steps.meta.outputs.artifact_name }}
 
+    env:
+      SHOULD_BUILD: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.changes.outputs.code == 'true' }}
+
     steps:
+      - name: Skip if no relevant changes
+        if: env.SHOULD_BUILD != 'true'
+        run: |
+          echo "No build-relevant files changed; emitting success without building."
+          echo "Keeps 'Build Static Assets' as a consistent required status check regardless of PR scope."
       - name: Checkout code
+        if: env.SHOULD_BUILD == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Generate build metadata
+        if: env.SHOULD_BUILD == 'true'
         id: meta
         run: |
           # Use shared script to generate version tag
@@ -96,26 +103,32 @@ jobs:
           GITHUB_EVENT_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
 
       - name: Setup Node.js
+        if: env.SHOULD_BUILD == 'true'
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
+        if: env.SHOULD_BUILD == 'true'
         run: npm ci
 
       - name: Run linting
+        if: env.SHOULD_BUILD == 'true'
         run: npm run lint
 
       - name: Run unit tests
+        if: env.SHOULD_BUILD == 'true'
         run: npm run test:unit
 
       - name: Build application
+        if: env.SHOULD_BUILD == 'true'
         env:
           BACKEND_URL: ${{ secrets.BACKEND_URL || 'https://api.dev-health.io' }}
         run: npm run build
 
       - name: Create build metadata
+        if: env.SHOULD_BUILD == 'true'
         run: |
           mkdir -p .next/meta
           cat > .next/meta/build-info.json << EOF
@@ -135,6 +148,7 @@ jobs:
           echo "${{ github.sha }}" > .next/meta/commit.txt
 
       - name: Upload build artifact
+        if: env.SHOULD_BUILD == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.meta.outputs.artifact_name }}
@@ -148,6 +162,7 @@ jobs:
           compression-level: 9
 
       - name: Output build results
+        if: env.SHOULD_BUILD == 'true'
         run: |
           echo "### Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

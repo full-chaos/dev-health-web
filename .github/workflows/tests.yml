@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
 
 permissions:
   contents: read
@@ -43,22 +44,30 @@ jobs:
 
   test:
     needs: [changes]
-    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Skip if no relevant changes
+        if: needs.changes.outputs.code != 'true'
+        run: |
+          echo "No test-relevant files changed; emitting success without running the suite."
+          echo "Keeps 'test' as a consistent required status check regardless of PR scope."
       - name: Checkout
+        if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Setup Node
+        if: needs.changes.outputs.code == 'true'
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 25
           cache: npm
       - name: Install dependencies
+        if: needs.changes.outputs.code == 'true'
         run: npm ci
       - name: Run CI test contract
+        if: needs.changes.outputs.code == 'true'
         run: bash ci/run_tests.sh ci
       - name: Upload Playwright report
-        if: always()
+        if: always() && needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
@@ -66,7 +75,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Upload Playwright raw results and JUnit
-        if: always()
+        if: always() && needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-results-${{ github.run_id }}-${{ github.run_attempt }}
