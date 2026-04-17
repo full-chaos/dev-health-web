@@ -55,6 +55,7 @@ export function useCapacityForecast(
     query: CAPACITY_FORECAST_QUERY,
     variables: { orgId, input: input ?? null },
     pause,
+    requestPolicy: "cache-and-network",
   });
 
   return {
