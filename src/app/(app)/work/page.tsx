@@ -15,6 +15,9 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { fetchOrNull } from "@/lib/fetchOrNull";
+import { graphqlClient } from "@/lib/graphql";
+import { getInvestmentMixForHydration } from "@/lib/graphql/investmentHydration";
+import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import { LandscapeView } from "@/components/work/LandscapeView";
 import { HeatmapView } from "@/components/work/HeatmapView";
@@ -67,11 +70,32 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
         ? filters.scope.level
         : "org";
 
-  // Run health check in parallel with all data fetches to eliminate the waterfall.
+  // When GraphQL transport is enabled we use the hydration-aware fetcher so
+  // the client-side <InvestmentView> useQuery resolves from cache instead of
+  // triggering a second network round-trip (CHAOS-1276 Phase C). Falls back
+  // to the REST path when GraphQL is disabled or session has no org_id.
+  const graphqlEnabled = graphqlClient.isEnabled();
+  let hydrationOrgId: string | undefined;
+  if (graphqlEnabled) {
+    const { auth } = await import("@/lib/auth");
+    const session = await auth();
+    hydrationOrgId = session?.user?.org_id as string | undefined;
+  }
+
+  const investmentFetch = graphqlEnabled && hydrationOrgId
+    ? fetchOrNull(
+        getInvestmentMixForHydration(filters, hydrationOrgId),
+        "work/investment-hydration"
+      )
+    : fetchOrNull(
+        getInvestment(filters).then((data) => ({ data, hydrationPayload: null })),
+        "work/investment"
+      );
+
   const [
     health,
     home,
-    investment,
+    investmentResult,
     wipExplain,
     blockedExplain,
     reviewHeatmap,
@@ -81,7 +105,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   ] = await Promise.all([
     checkApiHealth(),
     fetchOrNull(getHomeData(filters), "work/home-data"),
-    fetchOrNull(getInvestment(filters), "work/investment"),
+    investmentFetch,
     fetchOrNull(getExplainData({ metric: "wip_saturation", filters }), "work/explain-wip_saturation"),
     fetchOrNull(getExplainData({ metric: "blocked_work", filters }), "work/explain-blocked_work"),
     fetchOrNull(
@@ -140,6 +164,8 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
+  const investment = investmentResult?.data ?? null;
+  const investmentHydrationPayload = investmentResult?.hydrationPayload ?? null;
   const investmentMix = investment ? normalizeInvestmentMix(investment) : null;
 
   const investmentCategoriesForSummary = investmentMix
@@ -234,9 +260,12 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
           )}
 
           {activeTab === "investment" && (
-            <InvestmentView
-              filters={filters}
-            />
+            <>
+              <HydrateUrqlResults payload={investmentHydrationPayload} />
+              <InvestmentView
+                filters={filters}
+              />
+            </>
           )}
 
           {activeTab === "capacity" && (

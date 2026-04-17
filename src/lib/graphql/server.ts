@@ -40,7 +40,9 @@ import {
   createClient,
   fetchExchange,
   cacheExchange,
+  ssrExchange as createSsrExchange,
   type Client,
+  type SSRData,
   type TypedDocumentNode,
 } from "@urql/core";
 import { registerUrql } from "@urql/next/rsc";
@@ -131,4 +133,70 @@ export async function graphqlFetch<T>(
   }
 
   return result.data;
+}
+
+/**
+ * Server-side GraphQL fetch that also returns a hydration payload (CHAOS-1276
+ * Phase C). The caller renders `<HydrateUrqlResults payload={payload}>` on a
+ * client boundary; the payload seeds the browser `ssrExchange` cache so a
+ * subsequent client-side `useQuery` with the SAME query and EXACTLY the same
+ * variables resolves synchronously from cache — no second network request.
+ *
+ * Uses a per-call client with its own `ssrExchange({ isClient: false })` so
+ * the extracted payload contains ONLY this operation's result, never leaking
+ * other concurrent requests' data.
+ *
+ * Variable parity is the caller's responsibility: if server variables differ
+ * from client variables (e.g. sort order, numeric coercion), the urql cache
+ * key differs and hydration silently misses.
+ */
+export async function graphqlFetchForHydration<T>(
+  query: string | TypedDocumentNode<T, Record<string, unknown>>,
+  variables: Record<string, unknown> = {},
+  options: GraphQLFetchOptions = {}
+): Promise<{ data: T; hydrationPayload: SSRData }> {
+  const ssr = createSsrExchange({ isClient: false });
+
+  const url = new URL(GRAPHQL_PATH, resolveOrigin());
+
+  const headers: Record<string, string> = {};
+  if (options.orgId) headers["X-Org-Id"] = options.orgId;
+
+  try {
+    const { auth } = await import("@/lib/auth");
+    const session = await auth();
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+  } catch {
+    // Unauthenticated fetch (codegen / tests / unauthenticated pages).
+  }
+
+  const client = createClient({
+    url: url.toString(),
+    exchanges: [timingExchange, errorExchange, cacheExchange, ssr, fetchExchange],
+    requestPolicy: "cache-first",
+  });
+
+  const operationContext =
+    Object.keys(headers).length > 0 ? { fetchOptions: { headers } } : undefined;
+
+  const isMutation =
+    typeof query === "string" && /^\s*mutation\b/i.test(query);
+
+  const result = isMutation
+    ? await client
+        .mutation<T>(query, variables, operationContext)
+        .toPromise()
+    : await client.query<T>(query, variables, operationContext).toPromise();
+
+  if (result.error) {
+    throw new Error(`GraphQL error: ${result.error.message}`);
+  }
+
+  if (!result.data) {
+    throw new Error("GraphQL response missing data");
+  }
+
+  return { data: result.data, hydrationPayload: ssr.extractData() };
 }
