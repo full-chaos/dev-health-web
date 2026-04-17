@@ -26,10 +26,11 @@
  * for the full 6-phase SSR hydration plan.
  *
  * NOTE: `import "server-only"` is intentionally omitted. The existing
- * `@/lib/api` and `@/lib/graphql/client` shims are imported by a handful of
+ * `@/lib/api` is imported by a handful of
  * client components (FlowView, FlameView, HeatmapPanel, EvidencePanel,
  * useInvestmentData). Those client paths never execute `graphqlFetch` at
- * runtime (`api.ts` gates the GraphQL branch with `graphqlClient.isEnabled()`
+ * runtime (`api.ts` gates the GraphQL branch with
+ * `runtimeConfig.useGraphQLAnalytics()`
  * and dynamic-imports `@/lib/auth` only on the server path), but a
  * `"server-only"` assertion would block Turbopack's static analysis and fail
  * the build. CHAOS-1219 (api.ts split) will draw the module boundary cleanly;
