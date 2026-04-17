@@ -88,6 +88,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
     query: INVESTMENT_BREAKDOWN_QUERY,
     variables,
     pause,
+    requestPolicy: "cache-and-network",
   });
 
   const data = useMemo<InvestmentResponse | null>(() => {
@@ -179,6 +180,7 @@ export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestm
     query: INVESTMENT_FULL_QUERY,
     variables,
     pause,
+    requestPolicy: "cache-and-network",
   });
 
   const data = useMemo<SankeyResponse | null>(() => {
@@ -232,6 +234,7 @@ export function useInvestmentRepoTeamFlow(options: UseInvestmentRepoTeamFlowOpti
     query: INVESTMENT_FULL_QUERY,
     variables,
     pause,
+    requestPolicy: "cache-and-network",
   });
 
   const data = useMemo<SankeyResponse | null>(() => {

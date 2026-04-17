@@ -32,6 +32,7 @@ export function useWorkGraphEdges(
       query: WORK_GRAPH_EDGES_QUERY,
       variables: { orgId, filters },
       pause,
+      requestPolicy: "cache-and-network",
     }
   );
 
