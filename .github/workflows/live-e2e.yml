@@ -190,48 +190,39 @@ jobs:
           # This guarantees the smoke-test login below uses OUR password.
           HASH=$(python3 -c "import bcrypt,os; print(bcrypt.hashpw(os.environ['SUPERUSER_PASSWORD'].encode(), bcrypt.gensalt()).decode())")
 
-          # Overwrite password, promote to superuser, mark verified. Uses
-          # information_schema introspection so we tolerate column-name
-          # drift across backend versions without a hardcoded schema. The
-          # password column is probed across the three conventional names
-          # (hashed_password / password_hash / password).
+          # Overwrite password, promote to superuser, mark verified.
+          # `\gexec` generates one UPDATE per column that actually exists
+          # in the `users` table, so we don't hardcode a schema and we
+          # never reference a missing column (the SQL parser would choke).
+          # The password column is probed across three conventional names
+          # (hashed_password / password_hash / password); flag columns
+          # similarly across is_superuser / is_verified / email_verified /
+          # is_active.
           psql -h localhost -U postgres -d test_db \
             -v email="${SUPERUSER_EMAIL}" -v hash="${HASH}" <<'SQL'
-          DO $$
-          DECLARE
-            target_email text := :'email';
-            new_hash text := :'hash';
-            pwd_col text;
-          BEGIN
-            SELECT column_name INTO pwd_col
-              FROM information_schema.columns
-              WHERE table_name='users'
-                AND column_name IN ('hashed_password','password_hash','password')
-              ORDER BY column_name
-              LIMIT 1;
-            IF pwd_col IS NOT NULL THEN
-              EXECUTE format('UPDATE users SET %I = $1 WHERE email = $2', pwd_col)
-                USING new_hash, target_email;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns
-                       WHERE table_name='users' AND column_name='is_superuser') THEN
-              UPDATE users SET is_superuser = true WHERE email = target_email;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns
-                       WHERE table_name='users' AND column_name='is_verified') THEN
-              UPDATE users SET is_verified = true WHERE email = target_email;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns
-                       WHERE table_name='users' AND column_name='email_verified') THEN
-              UPDATE users SET email_verified = true WHERE email = target_email;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns
-                       WHERE table_name='users' AND column_name='is_active') THEN
-              UPDATE users SET is_active = true WHERE email = target_email;
-            END IF;
-          END$$;
-          SELECT email, is_superuser, is_verified, is_active
-          FROM users WHERE email = :'email';
+          \set ON_ERROR_STOP on
+          SELECT format(
+            'UPDATE users SET %I = %L WHERE email = %L',
+            column_name, :'hash', :'email'
+          )
+            FROM information_schema.columns
+           WHERE table_name='users'
+             AND column_name IN ('hashed_password','password_hash','password')
+          \gexec
+
+          SELECT format(
+            'UPDATE users SET %I = true WHERE email = %L',
+            column_name, :'email'
+          )
+            FROM information_schema.columns
+           WHERE table_name='users'
+             AND column_name IN ('is_superuser','is_verified','email_verified','is_active')
+          \gexec
+
+          SELECT email,
+                 (SELECT column_name FROM information_schema.columns
+                    WHERE table_name='users' AND column_name='is_superuser') IS NOT NULL AS has_is_superuser
+            FROM users WHERE email = :'email';
           SQL
 
           # Smoke-test the credentials end-to-end so a failure at this step
