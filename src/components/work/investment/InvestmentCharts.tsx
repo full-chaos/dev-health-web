@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ChartTypeToggle, INVESTMENT_SANKEY_CHORD_OPTIONS, type InvestmentFlowChartType } from "@/components/charts/ChartTypeToggle";
 import { formatEffortUnit } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 import { InvestmentMixSection } from "./charts/InvestmentMixSection";
 import { RepoTeamSankeySection } from "./charts/RepoTeamSankeySection";
+import { TeamExchangeChordSection } from "./charts/TeamExchangeChordSection";
 import { TeamCategorySankeySection } from "./charts/TeamCategorySankeySection";
 import { useInvestmentColorMaps } from "./charts/useInvestmentColorMaps";
 
@@ -52,6 +54,7 @@ export function InvestmentCharts({
   selectedThemeKey,
   showSubcategories,
 }: InvestmentChartsProps) {
+  const [chartType, setChartType] = useState<InvestmentFlowChartType>("sankey");
   const { themeColorMap, categoryColorMap, prepareSankeyFlow, resolveSubcategoryIdFromLabel, buildSankeyTooltipFormatter } = useInvestmentColorMaps({
     investmentMix,
     workUnits,
@@ -67,6 +70,20 @@ export function InvestmentCharts({
     return "effort";
   }, [workUnits]);
 
+  const dateRange = useMemo(() => {
+    const { start_date, end_date, range_days } = filters.time;
+    if (start_date && end_date) {
+      return { startDate: start_date, endDate: end_date };
+    }
+
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - range_days * 24 * 60 * 60 * 1000);
+    return {
+      startDate: startDate.toISOString().split("T")[0],
+      endDate: endDate.toISOString().split("T")[0],
+    };
+  }, [filters.time]);
+
   return (
     <>
       <InvestmentMixSection
@@ -81,36 +98,46 @@ export function InvestmentCharts({
         themeColorMap={themeColorMap}
       />
 
-      <TeamCategorySankeySection
-        filters={filters}
-        focusedTeam={focusedTeam}
-        setFocusedTeam={setFocusedTeam}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        setFocusSubcategory={setFocusSubcategory}
-        showSubcategories={showSubcategories}
-        effortUnit={effortUnit}
-        teamCategoryFlow={teamCategoryFlow}
-        baselineSankeyFlow={baselineSankeyFlow}
-        isCategoryFlowLoading={isCategoryFlowLoading}
-        prepareSankeyFlow={prepareSankeyFlow}
-        buildSankeyTooltipFormatter={buildSankeyTooltipFormatter}
-        resolveSubcategoryIdFromLabel={resolveSubcategoryIdFromLabel}
-      />
+      <div className="flex justify-end">
+        <ChartTypeToggle options={INVESTMENT_SANKEY_CHORD_OPTIONS} value={chartType} onChange={setChartType} />
+      </div>
 
-      <RepoTeamSankeySection
-        filters={filters}
-        workUnits={workUnits}
-        setFocusSubcategory={setFocusSubcategory}
-        effortUnit={effortUnit}
-        repoTeamFlow={repoTeamFlow}
-        isRepoTeamLoading={isRepoTeamLoading}
-        repoTeamFlowFailed={repoTeamFlowFailed}
-        categoryColorMap={categoryColorMap}
-        prepareSankeyFlow={prepareSankeyFlow}
-        buildSankeyTooltipFormatter={buildSankeyTooltipFormatter}
-        resolveSubcategoryIdFromLabel={resolveSubcategoryIdFromLabel}
-      />
+      {chartType === "chord" ? (
+        <TeamExchangeChordSection filters={filters} dateRange={dateRange} effortUnit={effortUnit} />
+      ) : (
+        <>
+          <TeamCategorySankeySection
+            filters={filters}
+            focusedTeam={focusedTeam}
+            setFocusedTeam={setFocusedTeam}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            setFocusSubcategory={setFocusSubcategory}
+            showSubcategories={showSubcategories}
+            effortUnit={effortUnit}
+            teamCategoryFlow={teamCategoryFlow}
+            baselineSankeyFlow={baselineSankeyFlow}
+            isCategoryFlowLoading={isCategoryFlowLoading}
+            prepareSankeyFlow={prepareSankeyFlow}
+            buildSankeyTooltipFormatter={buildSankeyTooltipFormatter}
+            resolveSubcategoryIdFromLabel={resolveSubcategoryIdFromLabel}
+          />
+
+          <RepoTeamSankeySection
+            filters={filters}
+            workUnits={workUnits}
+            setFocusSubcategory={setFocusSubcategory}
+            effortUnit={effortUnit}
+            repoTeamFlow={repoTeamFlow}
+            isRepoTeamLoading={isRepoTeamLoading}
+            repoTeamFlowFailed={repoTeamFlowFailed}
+            categoryColorMap={categoryColorMap}
+            prepareSankeyFlow={prepareSankeyFlow}
+            buildSankeyTooltipFormatter={buildSankeyTooltipFormatter}
+            resolveSubcategoryIdFromLabel={resolveSubcategoryIdFromLabel}
+          />
+        </>
+      )}
     </>
   );
 }

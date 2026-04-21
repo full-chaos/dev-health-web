@@ -1,3 +1,5 @@
+import type { ChordRecord } from "@/lib/types";
+
 import type {
   FlowTransitionSummary,
   WorkItemFlowEfficiencyDaily,
@@ -616,4 +618,282 @@ export const sankeyHotspotLinks = [
   { source: "deploy.yml", target: "refactor", value: 2 },
   { source: "rollback.yml", target: "fix", value: 3 },
   { source: "rollback.yml", target: "refactor", value: 1 },
+];
+
+/**
+ * 12 teams exchanging review load. Includes asymmetric pairs to demonstrate
+ * directional encoding. Designed to trigger the "Other" bucket when topN=8.
+ *
+ * Shape:
+ * - 12 distinct teams (Growth, Mobile dominate; Operations, Security fall
+ *   outside top-7 and aggregate into "Other").
+ * - Strong bilateral: Growth <-> Mobile (60/60 = 120 bilateral) dwarfs the
+ *   next strongest pair (Platform <-> Core = 44).
+ * - Strongly asymmetric: Platform -> Core = 40 vs Core -> Platform = 4;
+ *   Infra -> Ops = 35 vs Ops -> Infra = 6.
+ * - No self-links.
+ */
+export const sampleChordTeamReviewLoad: ChordRecord[] = [
+  {
+    source: "Growth",
+    target: "Mobile",
+    value: 60,
+    metadata: { team: "Growth", period: "2025-W08" },
+  },
+  {
+    source: "Mobile",
+    target: "Growth",
+    value: 60,
+    metadata: { team: "Mobile", period: "2025-W08" },
+  },
+  {
+    source: "Platform",
+    target: "Core",
+    value: 40,
+    metadata: { team: "Platform", period: "2025-W08" },
+  },
+  {
+    source: "Core",
+    target: "Platform",
+    value: 4,
+    metadata: { team: "Core", period: "2025-W08" },
+  },
+  {
+    source: "Infra",
+    target: "Ops",
+    value: 35,
+    metadata: { team: "Infra", period: "2025-W08" },
+  },
+  {
+    source: "Ops",
+    target: "Infra",
+    value: 6,
+    metadata: { team: "Ops", period: "2025-W08" },
+  },
+  {
+    source: "Data",
+    target: "Docs",
+    value: 15,
+    metadata: { team: "Data", period: "2025-W08" },
+  },
+  {
+    source: "Docs",
+    target: "Data",
+    value: 3,
+    metadata: { team: "Docs", period: "2025-W08" },
+  },
+  {
+    source: "Reliability",
+    target: "Core",
+    value: 12,
+    metadata: { team: "Reliability", period: "2025-W08" },
+  },
+  {
+    source: "Core",
+    target: "Reliability",
+    value: 4,
+    metadata: { team: "Core", period: "2025-W08" },
+  },
+  {
+    source: "Research",
+    target: "Data",
+    value: 8,
+    metadata: { team: "Research", period: "2025-W08" },
+  },
+  {
+    source: "Data",
+    target: "Research",
+    value: 2,
+    metadata: { team: "Data", period: "2025-W08" },
+  },
+  {
+    source: "Operations",
+    target: "Ops",
+    value: 6,
+    metadata: { team: "Operations", period: "2025-W08" },
+  },
+  {
+    source: "Security",
+    target: "Platform",
+    value: 5,
+    metadata: { team: "Security", period: "2025-W08" },
+  },
+  {
+    source: "Security",
+    target: "Infra",
+    value: 4,
+    metadata: { team: "Security", period: "2025-W08" },
+  },
+];
+
+/**
+ * 6 repos with cross-service work transfer. Small enough to NOT trigger "Other"
+ * at default topN=8. Includes one strongly bilateral pair.
+ *
+ * Shape:
+ * - 6 distinct repos (web-app, core-api, auth-svc, billing-svc, search-svc,
+ *   mobile-app).
+ * - No self-links: demonstrates clean directional exchange.
+ * - Strongest bilateral: web-app <-> core-api (25 + 20 = 45).
+ * - Mix of strong and weak edges.
+ */
+export const sampleChordRepoTransfer: ChordRecord[] = [
+  {
+    source: "web-app",
+    target: "core-api",
+    value: 25,
+    metadata: { repo: "web-app", period: "2025-W08" },
+  },
+  {
+    source: "core-api",
+    target: "web-app",
+    value: 20,
+    metadata: { repo: "core-api", period: "2025-W08" },
+  },
+  {
+    source: "core-api",
+    target: "auth-svc",
+    value: 18,
+    metadata: { repo: "core-api", period: "2025-W08" },
+  },
+  {
+    source: "auth-svc",
+    target: "core-api",
+    value: 6,
+    metadata: { repo: "auth-svc", period: "2025-W08" },
+  },
+  {
+    source: "core-api",
+    target: "billing-svc",
+    value: 14,
+    metadata: { repo: "core-api", period: "2025-W08" },
+  },
+  {
+    source: "billing-svc",
+    target: "core-api",
+    value: 10,
+    metadata: { repo: "billing-svc", period: "2025-W08" },
+  },
+  {
+    source: "mobile-app",
+    target: "core-api",
+    value: 12,
+    metadata: { repo: "mobile-app", period: "2025-W08" },
+  },
+  {
+    source: "core-api",
+    target: "mobile-app",
+    value: 8,
+    metadata: { repo: "core-api", period: "2025-W08" },
+  },
+  {
+    source: "search-svc",
+    target: "core-api",
+    value: 9,
+    metadata: { repo: "search-svc", period: "2025-W08" },
+  },
+  {
+    source: "core-api",
+    target: "search-svc",
+    value: 5,
+    metadata: { repo: "core-api", period: "2025-W08" },
+  },
+  {
+    source: "web-app",
+    target: "auth-svc",
+    value: 7,
+    metadata: { repo: "web-app", period: "2025-W08" },
+  },
+  {
+    source: "web-app",
+    target: "mobile-app",
+    value: 3,
+    metadata: { repo: "web-app", period: "2025-W08" },
+  },
+  {
+    source: "billing-svc",
+    target: "auth-svc",
+    value: 4,
+    metadata: { repo: "billing-svc", period: "2025-W08" },
+  },
+  {
+    source: "mobile-app",
+    target: "search-svc",
+    value: 2,
+    metadata: { repo: "mobile-app", period: "2025-W08" },
+  },
+];
+
+/**
+ * 5 work-types with rework loops. Deliberately includes several self-links
+ * (A -> A) to demonstrate the self-link toggle.
+ *
+ * Shape:
+ * - 5 distinct work types: feature, bugfix, refactor, incident, investigation.
+ * - 4 self-links (bugfix, refactor, investigation, incident) to demo rework
+ *   detection.
+ * - 6 cross-type flows that express how feature work leaks into quality and
+ *   maintenance buckets, and how investigations seed features.
+ */
+export const sampleChordWorkTypeRework: ChordRecord[] = [
+  {
+    source: "bugfix",
+    target: "bugfix",
+    value: 20,
+    metadata: { workType: "bugfix", period: "2025-W08" },
+  },
+  {
+    source: "refactor",
+    target: "refactor",
+    value: 15,
+    metadata: { workType: "refactor", period: "2025-W08" },
+  },
+  {
+    source: "investigation",
+    target: "investigation",
+    value: 10,
+    metadata: { workType: "investigation", period: "2025-W08" },
+  },
+  {
+    source: "incident",
+    target: "incident",
+    value: 8,
+    metadata: { workType: "incident", period: "2025-W08" },
+  },
+  {
+    source: "feature",
+    target: "bugfix",
+    value: 18,
+    metadata: { workType: "feature", period: "2025-W08" },
+  },
+  {
+    source: "feature",
+    target: "refactor",
+    value: 12,
+    metadata: { workType: "feature", period: "2025-W08" },
+  },
+  {
+    source: "incident",
+    target: "bugfix",
+    value: 14,
+    metadata: { workType: "incident", period: "2025-W08" },
+  },
+  {
+    source: "investigation",
+    target: "feature",
+    value: 6,
+    metadata: { workType: "investigation", period: "2025-W08" },
+  },
+  {
+    source: "bugfix",
+    target: "refactor",
+    value: 9,
+    metadata: { workType: "bugfix", period: "2025-W08" },
+  },
+  {
+    source: "refactor",
+    target: "feature",
+    value: 5,
+    metadata: { workType: "refactor", period: "2025-W08" },
+  },
 ];

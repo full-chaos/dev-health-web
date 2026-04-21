@@ -19,6 +19,7 @@ export default defineConfig({
           include: [
             "src/lib/**/__tests__/**/*.test.ts",
             "src/utils/**/__tests__/**/*.test.ts",
+            "src/data/**/__tests__/**/*.test.ts",
           ],
         },
       },
