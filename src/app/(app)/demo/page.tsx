@@ -1,3 +1,14 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+import { ChordChart } from "@/components/charts/ChordChart";
+import {
+  ChordChartControls,
+  CHORD_CONTROLS_DEFAULTS,
+  type ChordControlsValue,
+} from "@/components/charts/ChordChartControls";
+import { ChordSummaryPanel } from "@/components/charts/ChordSummaryPanel";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
@@ -15,6 +26,9 @@ import {
 } from "@/components/charts/WorkGraphExplorer";
 import type { WorkGraphEdge } from "@/lib/graphql/types";
 import {
+  sampleChordRepoTransfer,
+  sampleChordTeamReviewLoad,
+  sampleChordWorkTypeRework,
   sankeyStateTransitionSample,
   workItemFlowEfficiencyDailySample,
   workItemMetricsDailySample,
@@ -29,11 +43,51 @@ import {
   toThroughputBarSeries,
   toWorkItemTypeDonutData,
 } from "@/lib/chartTransforms";
+import { buildChordDataset } from "@/lib/chord";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { FlameFrame, HeatmapResponse, QuadrantResponse } from "@/lib/types";
 
 export default function Home() {
+  const [chordControls, setChordControls] = useState<ChordControlsValue>(
+    CHORD_CONTROLS_DEFAULTS
+  );
+
+  const teamDataset = useMemo(
+    () =>
+      buildChordDataset(sampleChordTeamReviewLoad, {
+        topN: chordControls.topN,
+        includeSelfLinks: chordControls.showSelfLinks,
+        direction: chordControls.direction,
+        grouping: chordControls.grouping,
+        unit: "reviews",
+      }),
+    [chordControls]
+  );
+
+  const repoDataset = useMemo(
+    () =>
+      buildChordDataset(sampleChordRepoTransfer, {
+        topN: 8,
+        includeSelfLinks: false,
+        direction: "bilateral",
+        grouping: "repo",
+        unit: "transfers",
+      }),
+    []
+  );
+
+  const workTypeDataset = useMemo(
+    () =>
+      buildChordDataset(sampleChordWorkTypeRework, {
+        topN: 8,
+        includeSelfLinks: true,
+        direction: "bilateral",
+        grouping: "work_type",
+        unit: "items",
+      }),
+    []
+  );
   const throughput = toThroughputBarSeries(workItemMetricsDailySample, {
     scopeOrder: ["auth", "api", "ui", "data", "ops", "docs"],
   });
@@ -512,6 +566,83 @@ export default function Home() {
             </span>
           </div>
           <SankeyChart nodes={sankey.nodes} links={sankey.links} />
+        </section>
+
+        <section
+          className="rounded-2xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+          data-testid="chart-chord"
+        >
+          <header className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">
+                Chord Chart — Cross-Entity Flow
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-(--ink-muted)">
+                Relationship view showing how work load exchanges between
+                teams, repos, or work types. Complements the Sankey lifecycle
+                view.
+              </p>
+            </div>
+            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+              Exchange
+            </span>
+          </header>
+
+          <div className="mb-4">
+            <ChordChartControls
+              value={chordControls}
+              onChange={setChordControls}
+              otherAvailable={teamDataset.summary.otherShare > 0}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+            <ChordChart
+              dataset={teamDataset}
+              unit="reviews"
+              height={420}
+            />
+            <ChordSummaryPanel
+              dataset={teamDataset}
+              unit="reviews"
+            />
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div
+              className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4"
+              data-testid="chart-chord-repo"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Repo transfer</h3>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                  6 repos
+                </span>
+              </div>
+              <ChordChart
+                dataset={repoDataset}
+                unit="transfers"
+                height={280}
+              />
+            </div>
+
+            <div
+              className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4"
+              data-testid="chart-chord-work-type"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Work type rework</h3>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                  Self-links on
+                </span>
+              </div>
+              <ChordChart
+                dataset={workTypeDataset}
+                unit="items"
+                height={280}
+              />
+            </div>
+          </div>
         </section>
 
         <section
