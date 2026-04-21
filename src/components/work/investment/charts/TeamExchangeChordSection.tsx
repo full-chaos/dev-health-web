@@ -41,7 +41,7 @@ export function TeamExchangeChordSection({
     orgId,
     grouping: controls.grouping,
     dateRange,
-    pause: false,
+    pause: !orgId,
   });
 
   const entityCount = useMemo(() => {
@@ -107,14 +107,6 @@ export function TeamExchangeChordSection({
   const handleRowSelect = useCallback((entityId: string) => {
     setHighlightedEntity(entityId);
   }, []);
-
-  if (!orgId) {
-    return (
-      <section className={`rounded-3xl border border-(--card-stroke) bg-card p-5 ${className ?? ""}`}>
-        <ErrorCard title="Chord exchange unavailable" message={`Missing ${filters.scope.level} context for exchange analysis.`} />
-      </section>
-    );
-  }
 
   return (
     <section
