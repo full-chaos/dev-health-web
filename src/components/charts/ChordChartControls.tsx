@@ -116,7 +116,7 @@ export function ChordChartControls({
   }
 
   const handleDirectionKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    let nextIndex = index;
+    let nextIndex: number;
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       nextIndex = (index + 1) % DIRECTIONS.length;
     } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
