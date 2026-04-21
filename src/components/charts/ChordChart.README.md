@@ -170,7 +170,7 @@ Summary panel — `topImporters` / `topExporters` filter on `incoming > outgoing
 
 **Recommended v1 interpretation**: read the chord as a **collaboration-through-shared-repositories** view. The "Strongest exchange" list is the primary signal; direction modes and importer/exporter sections are placeholders for when directional data lands.
 
-**Unlock path**: CHAOS-1289 introduces native `analytics.sankey path: [X, X]` queries on the backend, or an alternative directional edge source (author → reviewer via PRs, issue-blocking relationships, etc.). The UX follow-up is tracked under a sibling issue; once directional data is available, the `applyChordDirection` math will produce meaningful in/out/net matrices with no changes to the pure math library.
+**Unlock path**: [CHAOS-1289](https://linear.app/fullchaos/issue/CHAOS-1289) introduces native `analytics.sankey path: [X, X]` queries on the backend, or an alternative directional edge source (author → reviewer via PRs, issue-blocking relationships, etc.). Once directional data is available, the `applyChordDirection` math produces meaningful in/out/net matrices with no changes to the pure math library — simply remove the two-hop `toSameDimensionSankey` projection in `useChordFlow.ts` and point the hook at the native same-dim query.
 
 ### Other
 
