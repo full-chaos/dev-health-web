@@ -153,7 +153,28 @@ const updateControls = (next: ChordControlsValue) => {
 
 ## Known limitations / future work
 
-- Same-dimension backend flow is a **two-hop projection** (`TEAM -> REPO -> TEAM`). See **CHAOS-1289** for the backend follow-up that would enable direct same-dimension queries.
+### Directional modes collapse on current backend data (v1)
+
+The same-dimension flow comes from a **two-hop projection** (`TEAM → REPO → TEAM`, `REPO → TEAM → REPO`, `WORK_TYPE → REPO → WORK_TYPE`) because the backend rejects `path: [X, X]`. The projection is mathematically a **co-occurrence metric**: for every repo R, every pair of teams touching R contributes `w_src × w_tgt` to both `m[src][tgt]` and `m[tgt][src]`. This makes the matrix **symmetric by construction**.
+
+Consequence — direction modes in `ChordChartControls`:
+
+| Mode | Formula | Behaviour on symmetric input |
+| --- | --- | --- |
+| **Bilateral** | `m[i][j] + m[j][i]` | Renders correctly (doubled values). |
+| **Outflow** | `m[i][j]` | Renders the same matrix as Inflow (transpose of symmetric = itself). |
+| **Inflow** | `m[j][i]` | Identical to Outflow. |
+| **Net** | `max(0, m[i][j] − m[j][i])` | Always `0` → empty state. |
+
+Summary panel — `topImporters` / `topExporters` filter on `incoming > outgoing` vs `outgoing > incoming`, which are always equal on symmetric input → both sections render "—" in every mode. Only **Strongest exchange** (bilateral pair ranking) is semantically meaningful with current data.
+
+**Recommended v1 interpretation**: read the chord as a **collaboration-through-shared-repositories** view. The "Strongest exchange" list is the primary signal; direction modes and importer/exporter sections are placeholders for when directional data lands.
+
+**Unlock path**: CHAOS-1289 introduces native `analytics.sankey path: [X, X]` queries on the backend, or an alternative directional edge source (author → reviewer via PRs, issue-blocking relationships, etc.). The UX follow-up is tracked under a sibling issue; once directional data is available, the `applyChordDirection` math will produce meaningful in/out/net matrices with no changes to the pure math library.
+
+### Other
+
+- Same-dimension backend flow is a **two-hop projection**. See **CHAOS-1289** for the backend follow-up that would enable direct same-dimension queries.
 - No animated transitions between groupings yet (tracked as follow-up work beyond v1).
 - Desktop-first layout uses `grid-cols-[1fr_360px]`; mobile falls back to a single-column stack.
 
