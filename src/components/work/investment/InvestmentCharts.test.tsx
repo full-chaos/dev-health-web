@@ -63,6 +63,10 @@ vi.mock("@/components/charts/InvestmentMixSunburst", () => ({
   },
 }));
 
+vi.mock("@/lib/graphql/hooks/useChordFlow", () => ({
+  useChordFlow: () => ({ data: null, fetching: false, error: undefined }),
+}));
+
 const baseFilters: MetricFilter = {
   scope: { level: "org", ids: [] },
   time: { range_days: 30, compare_days: 30 },

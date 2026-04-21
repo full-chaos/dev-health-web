@@ -17,7 +17,13 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { useChordFlow } from "@/lib/graphql/hooks/useChordFlow";
 
 type TeamExchangeChordSectionProps = {
-  orgId: string;
+  /**
+   * Optional explicit org ID override. When omitted, `useChordFlow` reads
+   * from the session via `useOrgId()` (matches `useInvestmentFlow` /
+   * `useSecurity` convention). Pass a value only for tests or embeds
+   * outside the auth provider.
+   */
+  orgId?: string;
   filters: MetricFilter;
   dateRange: { startDate: string; endDate: string };
   effortUnit: string;

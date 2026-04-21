@@ -70,7 +70,6 @@ export function InvestmentCharts({
     return "effort";
   }, [workUnits]);
 
-  const orgId = useMemo(() => filters.scope.ids[0] ?? "", [filters.scope.ids]);
   const dateRange = useMemo(() => {
     const { start_date, end_date, range_days } = filters.time;
     if (start_date && end_date) {
@@ -104,7 +103,7 @@ export function InvestmentCharts({
       </div>
 
       {chartType === "chord" ? (
-        <TeamExchangeChordSection orgId={orgId} filters={filters} dateRange={dateRange} effortUnit={effortUnit} />
+        <TeamExchangeChordSection filters={filters} dateRange={dateRange} effortUnit={effortUnit} />
       ) : (
         <>
           <TeamCategorySankeySection

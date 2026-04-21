@@ -4,11 +4,12 @@ import { useQuery } from "urql";
 import type { ChordGroupingDimension, ChordRecord } from "@/lib/types";
 
 import { adaptSankeyToChord } from "../chordAdapter";
+import { useOrgId } from "../provider";
 import { INVESTMENT_FULL_QUERY } from "../queries";
 import type { AnalyticsQueryResponse, AnalyticsRequestInput, DimensionInput, MeasureInput } from "../types";
 
 type UseChordFlowArgs = {
-  orgId: string;
+  orgId?: string;
   grouping: ChordGroupingDimension;
   dateRange: { startDate: string; endDate: string };
   measure?: string;
@@ -90,7 +91,9 @@ function toSameDimensionSankey(
  * Fetch chord flow records derived from GraphQL `analytics.sankey` data.
  */
 export function useChordFlow(args: UseChordFlowArgs): UseChordFlowResult {
-  const { orgId, grouping, dateRange, measure = "THROUGHPUT", pause = false } = args;
+  const { orgId: orgIdOverride, grouping, dateRange, measure = "THROUGHPUT", pause = false } = args;
+  const sessionOrgId = useOrgId();
+  const orgId = orgIdOverride || sessionOrgId || "";
 
   const variables = useMemo(() => {
     const dimension = GROUPING_TO_DIMENSION[grouping];
@@ -112,7 +115,7 @@ export function useChordFlow(args: UseChordFlowArgs): UseChordFlowResult {
   const [result] = useQuery<AnalyticsQueryResponse>({
     query: INVESTMENT_FULL_QUERY,
     variables,
-    pause,
+    pause: pause || !orgId,
     requestPolicy: "cache-and-network",
   });
 
