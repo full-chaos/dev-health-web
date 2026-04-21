@@ -444,4 +444,75 @@ export type AggregatedFlameResponse = {
   meta: AggregatedFlameMeta;
 };
 
+// ============================================================================
+// Chord chart types (CHAOS-1279 milestone — relationship flow visualization)
+// Rendered via ECharts v6 native `series.type: 'chord'`. See:
+//   https://echarts.apache.org/en/option.html#series-chord
+// ============================================================================
+
+/**
+ * Direction mode for the chord chart view.
+ * - "bilateral": symmetric view, ribbons represent A<->B total
+ * - "in": focus on incoming flows only
+ * - "out": focus on outgoing flows only
+ * - "net": net balance (max(0, m[i][j] - m[j][i]))
+ */
+export type ChordDirection = "bilateral" | "in" | "out" | "net";
+
+/**
+ * Entity dimension used to group chord nodes.
+ * Maps 1:1 to the GraphQL `DimensionInput` enum values TEAM / REPO / WORK_TYPE.
+ * NOT to be confused with `THEME` (investment taxonomy — different concept).
+ */
+export type ChordGroupingDimension = "team" | "repo" | "work_type";
+
+/**
+ * Normalized record for chord chart ingestion. The adapter layer converts
+ * backend data (e.g. `analytics.sankey` edges) into this shape.
+ */
+export type ChordRecord = {
+  source: string;
+  target: string;
+  value: number;
+  /** Optional per-record directionality hint. Interpretation happens at dataset level. */
+  direction?: "in" | "out" | "bidirectional";
+  metadata?: {
+    workType?: string;
+    team?: string;
+    repo?: string;
+    period?: string;
+  };
+};
+
+/** A single chord arc node (post top-N + "Other" aggregation). */
+export type ChordNode = {
+  id: string;
+  label: string;
+  group?: string;
+  /** True when this node represents aggregated overflow (the "Other" bucket). */
+  isOther?: boolean;
+};
+
+/** Summary insights for the chord companion panel. */
+export type ChordSummary = {
+  topImporters: Array<{ id: string; label: string; net: number }>;
+  topExporters: Array<{ id: string; label: string; net: number }>;
+  strongestBilateral: Array<{ a: string; b: string; bilateralValue: number }>;
+  /** Fraction of total flow collapsed into "Other". Range: [0, 1]. */
+  otherShare: number;
+};
+
+/**
+ * Fully processed chord dataset ready for rendering.
+ * `matrix[i][j]` = flow from node i to node j. Matrix is always square: N = nodes.length.
+ */
+export type ChordDataset = {
+  nodes: ChordNode[];
+  matrix: number[][];
+  totalFlow: number;
+  summary: ChordSummary;
+  grouping: ChordGroupingDimension;
+  unit?: string;
+};
+
 export * from "./filters/types";
