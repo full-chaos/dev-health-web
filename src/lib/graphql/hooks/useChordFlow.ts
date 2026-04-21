@@ -91,7 +91,7 @@ function toSameDimensionSankey(
  * Fetch chord flow records derived from GraphQL `analytics.sankey` data.
  */
 export function useChordFlow(args: UseChordFlowArgs): UseChordFlowResult {
-  const { orgId: orgIdOverride, grouping, dateRange, measure = "THROUGHPUT", pause = false } = args;
+  const { orgId: orgIdOverride, grouping, dateRange, measure = "COUNT", pause = false } = args;
   const sessionOrgId = useOrgId();
   const orgId = orgIdOverride || sessionOrgId || "";
 
