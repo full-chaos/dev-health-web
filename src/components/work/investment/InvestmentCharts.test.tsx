@@ -211,12 +211,15 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
   });
 
   describe("interaction invariants", () => {
-    it("renders the treemap/sunburst radiogroup so users can switch chart type", () => {
+    it("renders the investment and mix chart toggles so users can switch views", () => {
       render(<InvestmentCharts {...baseProps()} />);
-      const radiogroup = screen.getByRole("radiogroup", { name: /chart type/i });
-      expect(radiogroup).toBeInTheDocument();
+
+      const radiogroups = screen.getAllByRole("radiogroup", { name: /chart type/i });
+      expect(radiogroups.length).toBeGreaterThanOrEqual(2);
       expect(screen.getByRole("radio", { name: /treemap/i })).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: /sunburst/i })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /sankey/i })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /chord/i })).toBeInTheDocument();
     });
   });
 
