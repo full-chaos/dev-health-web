@@ -47,7 +47,6 @@ export function TeamExchangeChordSection({
     orgId,
     grouping: controls.grouping,
     dateRange,
-    pause: !orgId,
   });
 
   const entityCount = useMemo(() => {
