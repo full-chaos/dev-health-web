@@ -295,4 +295,33 @@ describe("buildChordDataset", () => {
     expect(outDs.totalFlow).toBe(10);
     expect(bilateralDs.totalFlow).toBe(10);
   });
+
+  // CHAOS-1289 — Canary for native same-dimension flowMatrix data.
+  // Prior to CHAOS-1289, the frontend projected a symmetric co-occurrence matrix,
+  // collapsing Inflow/Outflow/Net to identical (or empty) output. With directional
+  // backend data, all four modes must produce distinguishable matrices.
+  it("produces distinct matrices for all four direction modes on asymmetric input", () => {
+    const records: ChordRecord[] = [
+      edge("A", "B", 10),
+      edge("B", "A", 3),
+      edge("A", "C", 4),
+      edge("C", "A", 1),
+    ];
+    const out = buildChordDataset(records, { grouping: "team", direction: "out" });
+    const inn = buildChordDataset(records, { grouping: "team", direction: "in" });
+    const net = buildChordDataset(records, { grouping: "team", direction: "net" });
+    const bil = buildChordDataset(records, { grouping: "team", direction: "bilateral" });
+
+    const serialize = (m: number[][]) => JSON.stringify(m);
+    const signatures = [out.matrix, inn.matrix, net.matrix, bil.matrix].map(serialize);
+    expect(new Set(signatures).size).toBe(4);
+
+    // Net must be non-empty (A exports more than it imports).
+    const netTotal = net.matrix.flat().reduce((a, b) => a + b, 0);
+    expect(netTotal).toBeGreaterThan(0);
+
+    // Summary distinguishes exporter A from importer B under the "out" mode.
+    const exporters = out.summary.topExporters.map((e) => e.id);
+    expect(exporters).toContain("A");
+  });
 });

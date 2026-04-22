@@ -5,7 +5,7 @@ import type { ChordGroupingDimension, ChordRecord } from "@/lib/types";
 
 import { adaptSankeyToChord } from "../chordAdapter";
 import { useOrgId } from "../provider";
-import { INVESTMENT_FULL_QUERY } from "../queries";
+import { FLOW_MATRIX_QUERY } from "../queries";
 import type { AnalyticsQueryResponse, AnalyticsRequestInput, DimensionInput, MeasureInput } from "../types";
 
 type UseChordFlowArgs = {
@@ -28,67 +28,10 @@ const GROUPING_TO_DIMENSION: Record<ChordGroupingDimension, DimensionInput> = {
   work_type: "WORK_TYPE",
 };
 
-const FALLBACK_BRIDGE_DIMENSION: Record<ChordGroupingDimension, DimensionInput> = {
-  team: "REPO",
-  repo: "TEAM",
-  work_type: "REPO",
-};
-
-function toSameDimensionSankey(
-  sankey: NonNullable<AnalyticsQueryResponse["analytics"]["sankey"]>,
-  grouping: ChordGroupingDimension
-) {
-  const primaryDimension = GROUPING_TO_DIMENSION[grouping];
-  const bridgeDimension = FALLBACK_BRIDGE_DIMENSION[grouping];
-  const primaryNodes = sankey.nodes.filter((node) => node.dimension.toUpperCase() === primaryDimension);
-  const bridgeNodeIds = new Set(
-    sankey.nodes
-      .filter((node) => node.dimension.toUpperCase() === bridgeDimension)
-      .map((node) => node.id)
-  );
-
-  const weightsByBridge = new Map<string, Array<{ nodeId: string; value: number }>>();
-
-  for (const edge of sankey.edges) {
-    const isPrimaryToBridge = bridgeNodeIds.has(edge.target);
-    const isBridgeToPrimary = bridgeNodeIds.has(edge.source);
-
-    if (isPrimaryToBridge) {
-      const existing = weightsByBridge.get(edge.target) ?? [];
-      existing.push({ nodeId: edge.source, value: edge.value });
-      weightsByBridge.set(edge.target, existing);
-      continue;
-    }
-
-    if (isBridgeToPrimary) {
-      const existing = weightsByBridge.get(edge.source) ?? [];
-      existing.push({ nodeId: edge.target, value: edge.value });
-      weightsByBridge.set(edge.source, existing);
-    }
-  }
-
-  const edgeTotals = new Map<string, number>();
-
-  for (const weights of weightsByBridge.values()) {
-    for (const source of weights) {
-      for (const target of weights) {
-        const key = `${source.nodeId}→${target.nodeId}`;
-        edgeTotals.set(key, (edgeTotals.get(key) ?? 0) + source.value * target.value);
-      }
-    }
-  }
-
-  return {
-    nodes: primaryNodes,
-    edges: Array.from(edgeTotals.entries()).map(([key, value]) => {
-      const [source, target] = key.split("→");
-      return { source, target, value };
-    }),
-  };
-}
-
 /**
- * Fetch chord flow records derived from GraphQL `analytics.sankey` data.
+ * Fetch chord flow records from the native same-dimension `analytics.flowMatrix`
+ * resolver. Produces directional N×N data, so inflow / outflow / net modes each
+ * render distinct matrices (previously collapsed by the two-hop projection).
  */
 export function useChordFlow(args: UseChordFlowArgs): UseChordFlowResult {
   const { orgId: orgIdOverride, grouping, dateRange, measure = "COUNT", pause = false } = args;
@@ -98,8 +41,8 @@ export function useChordFlow(args: UseChordFlowArgs): UseChordFlowResult {
   const variables = useMemo(() => {
     const dimension = GROUPING_TO_DIMENSION[grouping];
     const batch: AnalyticsRequestInput = {
-      sankey: {
-        path: [dimension, FALLBACK_BRIDGE_DIMENSION[grouping]],
+      flowMatrix: {
+        dimension,
         measure: measure as MeasureInput,
         dateRange,
         maxNodes: 50,
@@ -113,18 +56,18 @@ export function useChordFlow(args: UseChordFlowArgs): UseChordFlowResult {
   }, [dateRange, grouping, measure, orgId]);
 
   const [result] = useQuery<AnalyticsQueryResponse>({
-    query: INVESTMENT_FULL_QUERY,
+    query: FLOW_MATRIX_QUERY,
     variables,
     pause: pause || !orgId,
     requestPolicy: "cache-and-network",
   });
 
   const data = useMemo<ChordRecord[] | null>(() => {
-    if (result.fetching || result.error || !result.data?.analytics?.sankey) {
+    if (result.fetching || result.error || !result.data?.analytics?.flowMatrix) {
       return null;
     }
 
-    return adaptSankeyToChord(toSameDimensionSankey(result.data.analytics.sankey, grouping), grouping);
+    return adaptSankeyToChord(result.data.analytics.flowMatrix, grouping);
   }, [grouping, result.data, result.error, result.fetching]);
 
   return {

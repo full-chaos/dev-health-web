@@ -69,6 +69,15 @@ export interface SankeyRequestInput {
     useInvestment?: boolean;
 }
 
+export interface FlowMatrixRequestInput {
+    dimension: DimensionInput;
+    measure: MeasureInput;
+    dateRange: DateRangeInput;
+    maxNodes?: number;
+    maxEdges?: number;
+    useInvestment?: boolean;
+}
+
 // ==== Filter Input Types ====
 
 export interface ScopeFilterInput {
@@ -107,6 +116,7 @@ export interface AnalyticsRequestInput {
     timeseries?: TimeseriesRequestInput[];
     breakdowns?: BreakdownRequestInput[];
     sankey?: SankeyRequestInput;
+    flowMatrix?: FlowMatrixRequestInput;
     useInvestment?: boolean;
     filters?: FilterInput;
 }
@@ -160,10 +170,16 @@ export interface SankeyResult {
     coverage?: SankeyCoverage;
 }
 
+export interface FlowMatrixResult {
+    nodes: SankeyNode[];
+    edges: SankeyEdge[];
+}
+
 export interface AnalyticsResult {
     timeseries: TimeseriesResult[];
     breakdowns: BreakdownResult[];
     sankey?: SankeyResult;
+    flowMatrix?: FlowMatrixResult;
 }
 
 export interface CatalogValueItem {
