@@ -2,10 +2,11 @@ import type { ChordGroupingDimension, ChordRecord } from "@/lib/types";
 import type { SankeyResult } from "./types";
 
 /**
- * Backend limitation: the GraphQL Sankey compiler rejects duplicate dimensions in
- * `path` (for example `[TEAM, TEAM]`). When the hook needs same-dimension chord
- * data, it falls back to a two-hop query and projects the result back into a
- * same-dimension matrix before calling `adaptSankeyToChord`.
+ * Adapts a same-dimension flow payload (nodes + edges) into ChordRecord[].
+ * Input typically comes from the `analytics.flowMatrix` resolver, which
+ * returns directional N×N edges where source and target share one dimension.
+ * Reuses SankeyResult's nodes/edges shape so the same adapter can consume
+ * either resolver.
  */
 
 type ChordSankeyInput = Pick<SankeyResult, "nodes" | "edges">;

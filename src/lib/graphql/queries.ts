@@ -42,6 +42,29 @@ query InvestmentSankey($orgId: String!, $batch: AnalyticsRequestInput!) {
 }
 `;
 
+// Query for fetching same-dimension flow matrix (team↔team, repo↔repo, work_type↔work_type).
+// Backed by analytics.flowMatrix resolver (CHAOS-1289) — returns directional N×N data
+// where source and target share a single dimension.
+export const FLOW_MATRIX_QUERY = `
+query FlowMatrix($orgId: String!, $batch: AnalyticsRequestInput!) {
+  analytics(orgId: $orgId, batch: $batch) {
+    flowMatrix {
+      nodes {
+        id
+        label
+        dimension
+        value
+      }
+      edges {
+        source
+        target
+        value
+      }
+    }
+  }
+}
+`;
+
 // Query for fetching filter dropdown values (catalog dimension values)
 export const CATALOG_VALUES_QUERY = `
 query CatalogValues($orgId: String!, $dimension: DimensionInput!) {
