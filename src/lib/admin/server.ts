@@ -163,7 +163,7 @@ export async function createCredential(
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     const result = await adminApi.credentials.create(data, token, orgId);
-    revalidatePath("/admin/integrations", "page");
+    revalidatePath("/admin/integrations", "layout");
     return result;
   });
 }
@@ -175,7 +175,7 @@ export async function testConnection(
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     const result = await adminApi.credentials.test(provider, options, token, orgId);
-    revalidatePath("/admin/integrations", "page");
+    revalidatePath("/admin/integrations", "layout");
     return result;
   });
 }
@@ -187,7 +187,7 @@ export async function deleteCredential(
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     const result = await adminApi.credentials.delete(provider, name, token, orgId);
-    revalidatePath("/admin/integrations", "page");
+    revalidatePath("/admin/integrations", "layout");
     return result;
   });
 }

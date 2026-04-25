@@ -8,6 +8,7 @@ export type IntegrationProvider = {
   description: string;
   icon: React.ReactNode;
   status: ConnectionStatusType;
+  credentialCount: number;
 };
 
 type IntegrationCardProps = {
@@ -22,7 +23,14 @@ export function IntegrationCard({ provider }: IntegrationCardProps) {
           <div className="flex h-12 w-12 items-center justify-center rounded-md bg-(--surface-muted)">
             {provider.icon}
           </div>
-          <ConnectionStatus status={provider.status} />
+          <div className="flex items-center gap-2">
+            {provider.credentialCount > 0 && (
+              <span className="inline-flex items-center rounded-full bg-(--surface-muted) px-2.5 py-0.5 text-xs font-medium text-(--ink-base)">
+                {provider.credentialCount} connected
+              </span>
+            )}
+            <ConnectionStatus status={provider.status} />
+          </div>
         </div>
         <h3 className="mb-2 text-lg font-semibold text-(--ink-base)">{provider.name}</h3>
         <p className="mb-6 text-sm text-(--ink-muted)">{provider.description}</p>
