@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, useEffect } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createCredential, testConnection } from "@/lib/admin/server";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
@@ -40,7 +40,7 @@ const PROVIDER_FIELDS: Record<Provider, ProviderField[]> = {
 };
 
 function getInitialCredentials(provider: Provider, existingConfig?: Record<string, unknown>): Record<string, string> {
-  const base = (() => {
+  const base: Record<string, string> = ((): Record<string, string> => {
     if (provider === "gitlab") return { token: "", url: "https://gitlab.com" };
     if (provider === "jira") return { email: "", api_token: "", server_url: "" };
     if (provider === "linear") return { api_key: "" };
@@ -52,7 +52,7 @@ function getInitialCredentials(provider: Provider, existingConfig?: Record<strin
 
   // Pre-populate non-password fields from existing config if possible
   // Note: The backend doesn't return the actual tokens, so password fields will be empty
-  const result = { ...base };
+  const result: Record<string, string> = { ...base };
   for (const key of Object.keys(result)) {
     if (existingConfig[key] && typeof existingConfig[key] === "string") {
       result[key] = existingConfig[key] as string;
@@ -70,15 +70,23 @@ export function EditCredentialModal({
 }: EditCredentialModalProps) {
   const [isTesting, startTesting] = useTransition();
   const [isSaving, startSaving] = useTransition();
-  const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [credentials, setCredentials] = useState<Record<string, string>>(() =>
+    getInitialCredentials(provider, existingCredential?.config),
+  );
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  useEffect(() => {
-    if (isOpen && existingCredential) {
+  // React-recommended pattern for resetting local state when a key prop changes,
+  // in lieu of useEffect (which would violate `react-hooks/set-state-in-effect`).
+  // See https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const targetCredentialId = isOpen && existingCredential ? existingCredential.id : null;
+  const [prevCredentialId, setPrevCredentialId] = useState<string | null>(targetCredentialId);
+  if (targetCredentialId !== prevCredentialId) {
+    setPrevCredentialId(targetCredentialId);
+    if (existingCredential) {
       setCredentials(getInitialCredentials(provider, existingCredential.config));
       setTestResult(null);
     }
-  }, [isOpen, existingCredential, provider]);
+  }
 
   const canRunTest = useMemo(() => {
     const fields = PROVIDER_FIELDS[provider];
