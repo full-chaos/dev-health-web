@@ -2,6 +2,7 @@ input AnalyticsRequestInput {
   timeseries: [TimeseriesRequestInput!]! = []
   breakdowns: [BreakdownRequestInput!]! = []
   sankey: SankeyRequestInput = null
+  flowMatrix: FlowMatrixRequestInput = null
   useInvestment: Boolean = null
   filters: FilterInput = null
 }
@@ -10,6 +11,7 @@ type AnalyticsResult {
   timeseries: [TimeseriesResult!]!
   breakdowns: [BreakdownResult!]!
   sankey: SankeyResult
+  flowMatrix: FlowMatrixResult
 }
 
 type BreakdownItem {
@@ -167,6 +169,20 @@ input FilterInput {
   what: WhatFilterInput = null
   why: WhyFilterInput = null
   how: HowFilterInput = null
+}
+
+input FlowMatrixRequestInput {
+  dimension: DimensionInput!
+  measure: MeasureInput!
+  dateRange: DateRangeInput!
+  maxNodes: Int! = 100
+  maxEdges: Int! = 500
+  useInvestment: Boolean = null
+}
+
+type FlowMatrixResult {
+  nodes: [SankeyNode!]!
+  edges: [SankeyEdge!]!
 }
 
 type Freshness {

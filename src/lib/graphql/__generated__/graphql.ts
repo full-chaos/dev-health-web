@@ -25,6 +25,7 @@ export type Scalars = {
 export type AnalyticsRequestInput = {
   breakdowns?: Array<BreakdownRequestInput>;
   filters?: InputMaybe<FilterInput>;
+  flowMatrix?: InputMaybe<FlowMatrixRequestInput>;
   sankey?: InputMaybe<SankeyRequestInput>;
   timeseries?: Array<TimeseriesRequestInput>;
   useInvestment?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33,6 +34,7 @@ export type AnalyticsRequestInput = {
 export type AnalyticsResult = {
   __typename?: 'AnalyticsResult';
   breakdowns: Array<BreakdownResult>;
+  flowMatrix?: Maybe<FlowMatrixResult>;
   sankey?: Maybe<SankeyResult>;
   timeseries: Array<TimeseriesResult>;
 };
@@ -195,6 +197,21 @@ export type FilterInput = {
   what?: InputMaybe<WhatFilterInput>;
   who?: InputMaybe<WhoFilterInput>;
   why?: InputMaybe<WhyFilterInput>;
+};
+
+export type FlowMatrixRequestInput = {
+  dateRange: DateRangeInput;
+  dimension: DimensionInput;
+  maxEdges?: Scalars['Int']['input'];
+  maxNodes?: Scalars['Int']['input'];
+  measure: MeasureInput;
+  useInvestment?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type FlowMatrixResult = {
+  __typename?: 'FlowMatrixResult';
+  edges: Array<SankeyEdge>;
+  nodes: Array<SankeyNode>;
 };
 
 export type Freshness = {
