@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { IntegrationFormWrapper } from "./IntegrationFormWrapper";
-import { listCredentials } from "@/lib/admin/server";
-import type { IntegrationCredential } from "@/lib/admin/types";
-import type { ConnectionStatusType } from "@/components/admin/integrations/ConnectionStatus";
+import { ProviderCredentialsList } from "@/components/admin/integrations/ProviderCredentialsList";
+import { listCredentials, listSyncConfigs } from "@/lib/admin/server";
+import type { Provider } from "@/lib/admin/types";
 
 const PROVIDERS: Record<string, string> = {
   github: "GitHub",
@@ -12,13 +11,6 @@ const PROVIDERS: Record<string, string> = {
   linear: "Linear",
   launchdarkly: "LaunchDarkly",
 };
-
-function getStatus(credential: IntegrationCredential | undefined): ConnectionStatusType {
-  if (!credential) return "not_configured";
-  if (credential.last_test_success === true) return "connected";
-  if (credential.last_test_success === false) return "error";
-  return "connected";
-}
 
 export default async function IntegrationPage({
   params,
@@ -32,28 +24,34 @@ export default async function IntegrationPage({
     notFound();
   }
 
-  const result = await listCredentials();
-  const credentials = result.data ?? [];
-  const credential = credentials.find((c) => c.provider === provider);
+  const [credentialsResult, syncConfigsResult] = await Promise.all([
+    listCredentials(),
+    listSyncConfigs(),
+  ]);
+
+  const credentials = (credentialsResult.data ?? []).filter(
+    (c) => c.provider === provider
+  );
+  const syncConfigs = syncConfigsResult.data ?? [];
 
   return (
     <div>
       <AdminHeader
         title={`${providerName} Integration`}
-        description={`Configure your ${providerName} connection settings.`}
+        description={`Manage your ${providerName} connections and credentials.`}
       />
 
-      {result.error && (
+      {credentialsResult.error && (
         <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
-          Failed to load credentials: {result.error}
+          Failed to load credentials: {credentialsResult.error}
         </div>
       )}
 
-      <IntegrationFormWrapper
-        provider={provider}
+      <ProviderCredentialsList
+        provider={provider as Provider}
         providerName={providerName}
-        initialStatus={getStatus(credential)}
-        existingCredential={credential}
+        credentials={credentials}
+        syncConfigs={syncConfigs}
       />
     </div>
   );

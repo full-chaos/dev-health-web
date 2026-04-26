@@ -11,6 +11,7 @@ type IntegrationFormProps = {
   initialStatus: ConnectionStatusType;
   onSave: (data: FormDataRecord) => Promise<void>;
   onTestConnection: (data: FormDataRecord) => Promise<boolean>;
+  onCancel?: () => void;
   children: React.ReactNode;
 };
 
@@ -18,6 +19,7 @@ export function IntegrationForm({
   initialStatus,
   onSave,
   onTestConnection,
+  onCancel,
   children,
 }: IntegrationFormProps) {
    const [status, setStatus] = useState<ConnectionStatusType>(initialStatus);
@@ -46,8 +48,6 @@ export function IntegrationForm({
      setIsTesting(true);
      setStatus("connecting");
 
-     // In a real app, we would grab the form data here too
-     // For now, we assume the parent handles data gathering or we pass current form state
      const form = (e.target as HTMLElement).closest("form");
      const formData = new FormData(form!);
      const data = Object.fromEntries(formData.entries());
@@ -60,9 +60,9 @@ export function IntegrationForm({
        } else {
          toast.error("Connection failed. Please check your credentials.");
        }
-     } catch {
+     } catch (err) {
        setStatus("error");
-       toast.error("An error occurred while testing the connection.");
+       toast.error(err instanceof Error ? err.message : "An error occurred while testing the connection.");
      } finally {
        setIsTesting(false);
      }
@@ -79,6 +79,16 @@ export function IntegrationForm({
         {children}
 
         <div className="flex items-center justify-end gap-4 pt-4 border-t border-(--border-subtle)">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={isTesting || isSaving}
+              className="rounded-md border border-(--border-base) bg-transparent px-4 py-2 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted) focus:outline-none focus:ring-2 focus:ring-(--surface-inverted) focus:ring-offset-2 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="button"
             onClick={handleTestConnection}

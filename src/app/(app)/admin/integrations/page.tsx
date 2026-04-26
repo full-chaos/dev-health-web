@@ -69,11 +69,15 @@ export default async function IntegrationsPage() {
   const credentials = result.data ?? [];
 
   const getStatus = (providerId: string): ConnectionStatusType => {
-    const cred = credentials.find((c) => c.provider === providerId);
-    if (!cred) return "not_configured";
-    if (cred.last_test_success === true) return "connected";
-    if (cred.last_test_success === false) return "error";
+    const creds = credentials.filter((c) => c.provider === providerId);
+    if (creds.length === 0) return "not_configured";
+    if (creds.some((c) => c.last_test_success === false)) return "error";
+    if (creds.some((c) => c.last_test_success === true)) return "connected";
     return "connected";
+  };
+
+  const getCount = (providerId: string): number => {
+    return credentials.filter((c) => c.provider === providerId).length;
   };
 
   const providers: IntegrationProvider[] = Object.entries(PROVIDER_META).map(
@@ -83,6 +87,7 @@ export default async function IntegrationsPage() {
       description: meta.description,
       icon: meta.icon,
       status: getStatus(id),
+      credentialCount: getCount(id),
     })
   );
 

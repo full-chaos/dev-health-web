@@ -10,8 +10,22 @@ test("integrations page renders provider cards", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Linear" })).toBeVisible();
 });
 
-test("GitHub integration form renders all fields", async ({ page }) => {
+// CHAOS-840 made the integrations page credential-card-first. When at least
+// one credential is already saved (the case in the seeded test environment),
+// the page renders saved-credential cards rather than the legacy form, so
+// these tests open the form via the "Add Connection" button before asserting
+// on form fields. The button is also rendered when no credentials exist (the
+// page just auto-opens the form in that case), so the click is conditional.
+async function openGithubForm(page: import("@playwright/test").Page) {
   await page.goto("/admin/integrations/github");
+  const addConnection = page.getByRole("button", { name: "Add Connection" }).first();
+  if (await addConnection.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await addConnection.click();
+  }
+}
+
+test("GitHub integration form renders all fields", async ({ page }) => {
+  await openGithubForm(page);
 
   await expect(page.locator("#github-token")).toBeVisible();
   await expect(page.locator("#github-org")).toBeVisible();
@@ -20,7 +34,7 @@ test("GitHub integration form renders all fields", async ({ page }) => {
 });
 
 test("GitHub save shows success toast", async ({ page }) => {
-  await page.goto("/admin/integrations/github");
+  await openGithubForm(page);
 
   await page.locator("#github-token").fill("ghp_test123");
   await page.locator("#github-org").fill("test-org");
@@ -30,7 +44,7 @@ test("GitHub save shows success toast", async ({ page }) => {
 });
 
 test("GitHub test connection updates status", async ({ page }) => {
-  await page.goto("/admin/integrations/github");
+  await openGithubForm(page);
 
   await page.locator("#github-token").fill("ghp_test123");
   await page.getByRole("button", { name: "Test Connection" }).click();
