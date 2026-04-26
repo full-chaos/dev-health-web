@@ -36,8 +36,8 @@ export function IntegrationForm({
      try {
        await onSave(data);
        toast.success("Settings saved successfully.");
-     } catch (err) {
-       toast.error(err instanceof Error ? err.message : "Failed to save settings.");
+     } catch {
+       toast.error("Failed to save settings.");
      } finally {
        setIsSaving(false);
      }
