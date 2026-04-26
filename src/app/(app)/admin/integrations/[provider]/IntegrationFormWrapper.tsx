@@ -118,9 +118,8 @@ export function IntegrationFormWrapper({
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={!!existingCredential}
-            required
             className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            placeholder="e.g., Production Token"
+            placeholder='e.g., "Production Token" (defaults to "default")'
           />
         </div>
         {existingCredential && (
