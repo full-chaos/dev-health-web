@@ -17,7 +17,7 @@ const navItems = [
   { id: "billing-audit", label: "Billing Audit", href: "/superadmin/billing/audit", description: "Finance" },
 ];
 
-export function SuperadminSidebar() {
+export function SuperadminSidebar({ canAccessOrgAdmin = false }: { canAccessOrgAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -64,9 +64,11 @@ export function SuperadminSidebar() {
               );
             })}
           </nav>
-          <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
-            Return to <Link href="/admin" className="underline hover:text-foreground">org admin</Link>.
-          </div>
+          {canAccessOrgAdmin && (
+            <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
+              Return to <Link href="/admin" className="underline hover:text-foreground">org admin</Link>.
+            </div>
+          )}
         </div>
       </div>
     </aside>
