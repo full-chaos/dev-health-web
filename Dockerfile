@@ -1,20 +1,23 @@
 FROM node:25-alpine AS deps
 WORKDIR /app
-RUN npm install -g pnpm
-COPY package.json pnpm-lock.yaml ./
+# Pin pnpm to v10 — pnpm v11 enforces an approve-builds workflow that is
+# incompatible with non-interactive Docker builds. Keep in sync with the
+# packageManager field in package.json.
+RUN npm install -g pnpm@10
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM node:25-alpine AS dev
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 FROM node:25-alpine AS builder
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1

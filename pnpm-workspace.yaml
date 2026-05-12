@@ -1,0 +1,16 @@
+# pnpm settings (canonical location in pnpm v10+).
+# `onlyBuiltDependencies` allow-lists packages whose install/postinstall scripts
+# are permitted to run. Required because pnpm v10+ refuses to execute build
+# scripts by default for supply-chain safety, and Docker CI treats the resulting
+# ERR_PNPM_IGNORED_BUILDS as a hard error.
+#
+# Why each entry:
+#   - @sentry/cli     : downloads platform-specific binary for Sentry uploads
+#   - msw             : sets up Service Worker stubs used by tests
+#   - sharp           : downloads native image-processing binaries used by next/image
+#   - unrs-resolver   : downloads platform-specific resolver binary
+onlyBuiltDependencies:
+  - '@sentry/cli'
+  - msw
+  - sharp
+  - unrs-resolver

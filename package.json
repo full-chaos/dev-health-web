@@ -5,6 +5,7 @@
   "engines": {
     "node": ">=22"
   },
+  "packageManager": "pnpm@10.33.4",
   "scripts": {
     "predev": "node scripts/write-runtime-config.mjs",
     "dev": "next dev",
@@ -44,13 +45,7 @@
     "zod": "^4"
   },
   "overrides": {
-    "serialize-javascript": ">=7.0.3",
-    "@graphql-codegen/plugin-helpers": "6.2.1"
-  },
-  "pnpm": {
-    "overrides": {
-      "@graphql-codegen/plugin-helpers": "6.2.1"
-    }
+    "serialize-javascript": ">=7.0.3"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^7.0.0",
