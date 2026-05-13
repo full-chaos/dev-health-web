@@ -1,20 +1,20 @@
 FROM node:25-alpine AS deps
 WORKDIR /app
-RUN npm install -g pnpm
-COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm@11.1.1
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM node:25-alpine AS dev
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@11.1.1
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 FROM node:25-alpine AS builder
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@11.1.1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
