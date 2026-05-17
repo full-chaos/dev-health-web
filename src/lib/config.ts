@@ -89,6 +89,7 @@ const serverEnvSchema = z.object({
     LINEAR_API_KEY: z.string().optional(),
     LINEAR_TEAM_ID: z.string().optional(),
     REDIS_URL: z.string().optional(),
+    TRUST_PROXY: z.string().optional(),
     USE_GRAPHQL_ANALYTICS: z.string().optional(),
     DEV_HEALTH_TEST_MODE: z.string().optional(),
     DEMO_EXPORT: z.string().optional(),

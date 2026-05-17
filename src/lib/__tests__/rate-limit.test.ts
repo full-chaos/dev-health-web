@@ -5,11 +5,20 @@ vi.mock("ioredis", () => {
   const MockRedis = vi.fn().mockImplementation(() => ({
     incr: vi.fn(),
     expire: vi.fn(),
+    ttl: vi.fn(),
     disconnect: vi.fn(),
     on: vi.fn(),
   }));
   return { default: MockRedis };
 });
+
+vi.mock("@sentry/nextjs", () => ({
+  withScope: vi.fn((callback: (scope: { setTag: ReturnType<typeof vi.fn>; setContext: ReturnType<typeof vi.fn> }) => void) =>
+    callback({ setTag: vi.fn(), setContext: vi.fn() })
+  ),
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+}));
 
 // Mock logger to avoid pino in test
 vi.mock("@/lib/logger", () => ({
@@ -40,6 +49,16 @@ describe("rate-limit", () => {
 
       const result = await isRateLimited("user-1");
       expect(result).toBe(false);
+    });
+
+    it("fails closed when Redis is missing and failClosed is true", async () => {
+      const { checkRateLimit, isRateLimited, _resetMemoryStore } = await import("@/lib/rate-limit");
+      _resetMemoryStore();
+
+      await expect(isRateLimited("must-have-redis", { failClosed: true })).resolves.toBe(true);
+      await expect(
+        checkRateLimit("must-have-redis-meta", { failClosed: true, windowMs: 15_000 }),
+      ).resolves.toEqual({ limited: true, retryAfter: 15 });
     });
 
     it("blocks after RATE_LIMIT_MAX_REQUESTS", async () => {
@@ -134,11 +153,18 @@ describe("rate-limit", () => {
       // Simulate 6th request (over the 5-request limit)
       redis!.incr = vi.fn().mockResolvedValue(6);
       redis!.expire = vi.fn().mockResolvedValue(1);
+      redis!.ttl = vi.fn().mockResolvedValue(123);
 
       const { isRateLimited } = await import("@/lib/rate-limit");
       const result = await isRateLimited("over-limit-user");
 
       expect(result).toBe(true);
+
+      const { checkRateLimit } = await import("@/lib/rate-limit");
+      await expect(checkRateLimit("over-limit-user", { namespace: "custom", maxRequests: 5 })).resolves.toEqual({
+        limited: true,
+        retryAfter: 123,
+      });
 
       _resetRedisClient();
     });
@@ -178,6 +204,23 @@ describe("rate-limit", () => {
       // Should not throw, should fall back to in-memory
       const result = await isRateLimited("error-user");
       expect(result).toBe(false);
+
+      _resetRedisClient();
+    });
+
+    it("fails closed on Redis error when failClosed is true", async () => {
+      vi.stubEnv("REDIS_URL", "redis://localhost:6379/0");
+
+      const { _resetRedisClient, getRedis } = await import("@/lib/redis");
+      _resetRedisClient();
+
+      const redis = getRedis();
+      redis!.incr = vi.fn().mockRejectedValue(new Error("Connection refused"));
+
+      const { checkRateLimit } = await import("@/lib/rate-limit");
+      await expect(
+        checkRateLimit("error-user", { failClosed: true, windowMs: 30_000, namespace: "auth-login" }),
+      ).resolves.toEqual({ limited: true, retryAfter: 30 });
 
       _resetRedisClient();
     });
