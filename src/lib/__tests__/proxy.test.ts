@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import type { Session } from "next-auth";
 
@@ -18,8 +18,21 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn(),
+}));
+
 import { auth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { isPublicPath, sanitizeCallbackUrl, proxy } from "@/proxy";
+
+const mockCheckRateLimit = vi.mocked(checkRateLimit);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllEnvs();
+  mockCheckRateLimit.mockResolvedValue({ limited: false, retryAfter: 0 });
+});
 
 describe("isPublicPath", () => {
   it("returns true for exact public paths", () => {
@@ -134,5 +147,86 @@ describe("org-scoped route guard", () => {
     mockAuth.mockResolvedValue(superuserWithOrg);
     const res = await proxy(makeRequest("/dashboard"));
     expect(res.status).not.toBe(303);
+  });
+});
+
+describe("proxy rate limiting", () => {
+  const mockAuth = vi.mocked(auth);
+  const makeRequest = (path: string, method = "POST") =>
+    new NextRequest(new URL(path, "http://localhost:3000"), {
+      method,
+      headers: {
+        "user-agent": "proxy-test",
+        "x-forwarded-for": "198.51.100.10",
+      },
+    });
+
+  const session: Session = {
+    access_token: "test-token",
+    user: { id: "u-123", name: "Test", email: "t@t.com", org_id: "org-123" },
+    expires: "2099-01-01T00:00:00.000Z",
+  };
+
+  it("limits login with the auth-login route options", async () => {
+    mockCheckRateLimit.mockResolvedValue({ limited: true, retryAfter: 60 });
+
+    const res = await proxy(makeRequest("/api/v1/auth/login"));
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("60");
+    await expect(res.json()).resolves.toEqual({ detail: "Rate limit exceeded", retry_after: 60 });
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(
+      expect.stringMatching(/^proxy:POST:auth-login:ip:anon:/),
+      { failClosed: true, namespace: "auth-login", windowMs: 15 * 60_000, maxRequests: 10 },
+    );
+  });
+
+  it("limits password reset with the auth-pwreset route options", async () => {
+    mockCheckRateLimit.mockResolvedValue({ limited: true, retryAfter: 120 });
+
+    const res = await proxy(makeRequest("/api/v1/auth/password-reset"));
+
+    expect(res.status).toBe(429);
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(
+      expect.stringMatching(/^proxy:POST:auth-password-reset:ip:anon:/),
+      { failClosed: true, namespace: "auth-pwreset", windowMs: 60 * 60_000, maxRequests: 3 },
+    );
+  });
+
+  it("keys authenticated credential tests by user id", async () => {
+    mockAuth.mockResolvedValue(session);
+    mockCheckRateLimit.mockResolvedValue({ limited: true, retryAfter: 30 });
+
+    const res = await proxy(makeRequest("/api/v1/admin/credentials/test-connection"));
+
+    expect(res.status).toBe(429);
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(
+      "proxy:POST:admin-credentials-test-connection:user:u-123",
+      { failClosed: true, namespace: "admin-cred-test", windowMs: 60 * 60_000, maxRequests: 10 },
+    );
+  });
+
+  it("does not limit GET requests without a route table match", async () => {
+    const res = await proxy(makeRequest("/api/v1/auth/login", "GET"));
+
+    expect(res.status).not.toBe(429);
+    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("does not limit NextAuth /api/auth routes", async () => {
+    const res = await proxy(makeRequest("/api/auth/callback/github"));
+
+    expect(res.status).not.toBe(429);
+    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("bypasses proxy limiter in non-production test mode", async () => {
+    vi.stubEnv("DEV_HEALTH_TEST_MODE", "true");
+    vi.stubEnv("NODE_ENV", "test");
+
+    const res = await proxy(makeRequest("/api/v1/auth/login"));
+
+    expect(res.status).not.toBe(429);
+    expect(mockCheckRateLimit).not.toHaveBeenCalled();
   });
 });

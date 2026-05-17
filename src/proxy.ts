@@ -1,9 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
+import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { checkRateLimit, type RateLimitOptions } from "@/lib/rate-limit";
 
 const log = logger.child({ module: "proxy" });
+
+if (process.env.DEV_HEALTH_TEST_MODE === "true" && process.env.NODE_ENV === "production") {
+    throw new Error("DEV_HEALTH_TEST_MODE must not be enabled in production");
+}
+
+const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
+
+const ROUTE_LIMITS: Array<{ match: (method: string, pathname: string) => boolean; opts: RateLimitOptions }> = [
+    {
+        match: (method, pathname) => method === "POST" && pathname.startsWith("/api/v1/auth/login"),
+        opts: { failClosed: true, namespace: "auth-login", windowMs: 15 * 60_000, maxRequests: 10 },
+    },
+    {
+        match: (method, pathname) => method === "POST" && pathname.startsWith("/api/v1/auth/password-reset"),
+        opts: { failClosed: true, namespace: "auth-pwreset", windowMs: 60 * 60_000, maxRequests: 3 },
+    },
+    {
+        match: (method, pathname) => method === "POST" && pathname.startsWith("/api/v1/auth/register"),
+        opts: { failClosed: true, namespace: "auth-register", windowMs: 60 * 60_000, maxRequests: 5 },
+    },
+    {
+        match: (method, pathname) => MUTATING_METHODS.includes(method) && pathname.startsWith("/api/v1/auth/"),
+        opts: { failClosed: true, namespace: "auth-other", windowMs: 15 * 60_000, maxRequests: 20 },
+    },
+    {
+        match: (method, pathname) => method === "POST" && pathname.startsWith("/api/v1/admin/credentials/test-connection"),
+        opts: { failClosed: true, namespace: "admin-cred-test", windowMs: 60 * 60_000, maxRequests: 10 },
+    },
+];
 
 const EXACT_PUBLIC_PATHS = [
     "/pricing",
@@ -73,6 +105,49 @@ function buildCspHeader(nonce: string): string {
     ].join("; ");
 }
 
+function pathBucket(pathname: string): string {
+    if (pathname.startsWith("/api/v1/auth/login")) return "auth-login";
+    if (pathname.startsWith("/api/v1/auth/password-reset")) return "auth-password-reset";
+    if (pathname.startsWith("/api/v1/auth/register")) return "auth-register";
+    if (pathname.startsWith("/api/v1/auth/")) return "auth-other";
+    if (pathname.startsWith("/api/v1/admin/credentials/test-connection")) return "admin-credentials-test-connection";
+    return pathname;
+}
+
+function shouldBypassProxyRateLimit(): boolean {
+    return process.env.DEV_HEALTH_TEST_MODE === "true" && process.env.NODE_ENV !== "production";
+}
+
+async function enforceProxyRateLimit(
+    request: NextRequest,
+    sessionUserId: string | undefined,
+): Promise<NextResponse | null> {
+    if (shouldBypassProxyRateLimit()) return null;
+
+    const { method } = request;
+    const { pathname } = request.nextUrl;
+    const routeLimit = ROUTE_LIMITS.find(({ match }) => match(method, pathname));
+    if (!routeLimit) return null;
+
+    const env = getServerEnv();
+    const clientIp = getClientIp(request, { trustProxy: isTrustProxyEnabled(env.TRUST_PROXY) });
+    const bucket = pathBucket(pathname);
+    const identity = pathname.startsWith("/api/v1/admin/credentials/test-connection")
+        ? `user:${sessionUserId ?? `ip:${clientIp}`}`
+        : `ip:${clientIp}`;
+    const key = `proxy:${method}:${bucket}:${identity}`;
+    const result = await checkRateLimit(key, routeLimit.opts);
+
+    if (!result.limited) return null;
+
+    const response = NextResponse.json(
+        { detail: "Rate limit exceeded", retry_after: result.retryAfter },
+        { status: 429 },
+    );
+    response.headers.set("Retry-After", String(result.retryAfter));
+    return response;
+}
+
 export async function proxy(request: NextRequest) {
     const start = Date.now();
     const { method } = request;
@@ -112,6 +187,7 @@ async function handleRequest(request: NextRequest) {
 
     let accessToken: string | undefined;
     let orgId: string | undefined;
+    let sessionUserId: string | undefined;
     let isSuperuser = false;
 
     if (!isPublicPath(pathname)) {
@@ -124,6 +200,7 @@ async function handleRequest(request: NextRequest) {
             return redirect;
         }
         accessToken = session.access_token;
+        sessionUserId = session.user?.id;
         orgId = session.user?.org_id;
         isSuperuser = session.user?.is_superuser ?? false;
     }
@@ -138,6 +215,12 @@ async function handleRequest(request: NextRequest) {
         const redirect = NextResponse.redirect(new URL(target, request.url), 303);
         redirect.headers.set("Content-Security-Policy", csp);
         return redirect;
+    }
+
+    const rateLimitResponse = await enforceProxyRateLimit(request, sessionUserId);
+    if (rateLimitResponse) {
+        rateLimitResponse.headers.set("Content-Security-Policy", csp);
+        return rateLimitResponse;
     }
 
     const shouldProxy =

@@ -89,6 +89,7 @@ const serverEnvSchema = z.object({
     LINEAR_API_KEY: z.string().optional(),
     LINEAR_TEAM_ID: z.string().optional(),
     REDIS_URL: z.string().optional(),
+    TRUST_PROXY: z.string().optional(),
     USE_GRAPHQL_ANALYTICS: z.string().optional(),
     DEV_HEALTH_TEST_MODE: z.string().optional(),
     DEMO_EXPORT: z.string().optional(),
@@ -115,7 +116,11 @@ export function getServerEnv(): ServerEnv {
     // blocking server-side tests.
     const inNodeTest =
         typeof process !== "undefined" &&
-        !!process.versions?.node &&
+        // Indirect access via globalThis prevents Next.js's Edge-runtime
+        // static analyzer from flagging the Node-only `process.versions`
+        // token. The check correctly evaluates to `false` in Edge runtime,
+        // which is the desired semantics (Edge is never a Node test runner).
+        !!(globalThis as { process?: { versions?: { node?: string } } }).process?.versions?.node &&
         (process.env.VITEST === "true" ||
             process.env.NODE_ENV === "test" ||
             typeof (globalThis as { jest?: unknown }).jest !== "undefined");
