@@ -24,8 +24,13 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       return;
     }
 
-    if (newPassword.length < 12) {
-      toast.error("Password must be at least 12 characters long");
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    if (newPassword.length > 128) {
+      toast.error("Password must be at most 128 characters");
       return;
     }
 
@@ -91,6 +96,8 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             name="new_password"
             type="password"
             required
+            minLength={8}
+            maxLength={128}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -109,6 +116,8 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             name="confirm_password"
             type="password"
             required
+            minLength={8}
+            maxLength={128}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
