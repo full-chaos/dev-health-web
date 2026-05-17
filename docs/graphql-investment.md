@@ -29,15 +29,17 @@ When disabled (default), all calls continue to use the existing REST endpoints.
 
 ### Backend (dev-health-ops)
 
-The GraphQL endpoint is already mounted at `/graphql`:
+The GraphQL endpoint is already mounted at `/graphql`, but GraphiQL is dev-only and only available when the ops API runs with `DEBUG=1` in a dev environment:
 
 ```bash
 cd dev-health-ops
 # Start the API server
 python cli.py api --port 8000 --db "$DATABASE_URI"
 
-# GraphiQL is available at http://localhost:8000/graphql
+# GraphiQL is available only in dev at http://localhost:8000/graphql
 ```
+
+To keep the schema in sync, use the `dev_health_ops.api.graphql.export_schema` CLI from `dev-health-ops`.
 
 ### Frontend (dev-health-web)
 
