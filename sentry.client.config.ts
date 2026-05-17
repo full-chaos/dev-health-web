@@ -1,3 +1,6 @@
+import { publicEnv } from "@/lib/config";
+import { attachBeforeSend } from "@/lib/sentry/scrubber";
+
 import * as Sentry from "@sentry/nextjs";
 
 /**
@@ -42,13 +45,16 @@ function shouldLoadReplay(): boolean {
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  environment: process.env.NODE_ENV,
-  tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-  replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-  replaysOnErrorSampleRate: 1.0,
-});
+Sentry.init(
+  attachBeforeSend({
+    dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN,
+    environment: process.env.NODE_ENV,
+    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+    replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+    replaysOnErrorSampleRate: 1.0,
+    sendDefaultPii: false,
+  })
+);
 
 if (shouldLoadReplay()) {
   void Sentry.lazyLoadIntegration("replayIntegration")
