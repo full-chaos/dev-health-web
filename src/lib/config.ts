@@ -116,7 +116,11 @@ export function getServerEnv(): ServerEnv {
     // blocking server-side tests.
     const inNodeTest =
         typeof process !== "undefined" &&
-        !!process.versions?.node &&
+        // Indirect access via globalThis prevents Next.js's Edge-runtime
+        // static analyzer from flagging the Node-only `process.versions`
+        // token. The check correctly evaluates to `false` in Edge runtime,
+        // which is the desired semantics (Edge is never a Node test runner).
+        !!(globalThis as { process?: { versions?: { node?: string } } }).process?.versions?.node &&
         (process.env.VITEST === "true" ||
             process.env.NODE_ENV === "test" ||
             typeof (globalThis as { jest?: unknown }).jest !== "undefined");
