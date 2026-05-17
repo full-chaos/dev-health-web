@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { renderWithToaster, screen, userEvent, waitFor, cleanup } from '@/test/utils'
+import { renderWithToaster, screen, fireEvent, userEvent, waitFor, cleanup } from '@/test/utils'
 import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm'
 
 const mockFetch = vi.fn()
@@ -31,15 +31,41 @@ describe('ResetPasswordForm', () => {
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
-  test('validates minimum length', async () => {
+  test('rejects password under minimum length without fetch', async () => {
     renderWithToaster(<ResetPasswordForm token="test-token" />)
 
-    await userEvent.type(screen.getByLabelText(/^new password/i), 'Short1a')
-    await userEvent.type(screen.getByLabelText(/confirm new password/i), 'Short1a')
+    await userEvent.type(screen.getByLabelText(/^new password/i), 'Ab12345')
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), 'Ab12345')
     await userEvent.click(screen.getByRole('button', { name: /reset password/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/Password must be at least 12 characters long/i)).toBeInTheDocument()
+      expect(screen.getByText(/Password must be at least 8 characters/i)).toBeInTheDocument()
+    })
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  test('inputs have minLength and maxLength bounds preventing over-max at input level', () => {
+    renderWithToaster(<ResetPasswordForm token="test-token" />)
+    const newPwInput = screen.getByLabelText(/^new password/i)
+    const confirmPwInput = screen.getByLabelText(/confirm new password/i)
+    expect(newPwInput).toHaveAttribute('minLength', '8')
+    expect(newPwInput).toHaveAttribute('maxLength', '128')
+    expect(confirmPwInput).toHaveAttribute('minLength', '8')
+    expect(confirmPwInput).toHaveAttribute('maxLength', '128')
+  })
+
+  test('rejects password over 128 characters without fetch', async () => {
+    renderWithToaster(<ResetPasswordForm token="test-token" />)
+    const newPwInput = screen.getByLabelText(/^new password/i)
+    const confirmPwInput = screen.getByLabelText(/confirm new password/i)
+    // Bypass HTML maxLength using fireEvent to test the JS guard
+    const longPassword = 'Aa1' + 'x'.repeat(127) // 130 chars
+    fireEvent.change(newPwInput, { target: { value: longPassword } })
+    fireEvent.change(confirmPwInput, { target: { value: longPassword } })
+    await userEvent.click(screen.getByRole('button', { name: /reset password/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Password must be at most 128 characters/i)).toBeInTheDocument()
     })
     expect(mockFetch).not.toHaveBeenCalled()
   })
