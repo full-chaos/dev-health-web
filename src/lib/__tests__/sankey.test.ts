@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { decodeFilter } from "@/lib/filters/encode";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
@@ -11,9 +11,30 @@ import {
     filterSankeyToTeam,
     getSankeyDefinition,
     limitRepoNodes,
+    registerSankeyDemoData,
 } from "@/lib/sankey";
+import {
+    sankeyExpenseLinks,
+    sankeyExpenseNodes,
+    sankeyHotspotLinks,
+    sankeyHotspotNodes,
+    sankeyInvestmentLinks,
+    sankeyInvestmentNodes,
+    sankeyStateTransitionSample,
+} from "@/data/devHealthOpsSample";
 import type { SankeyLink, SankeyNode } from "@/lib/types";
 
+beforeAll(() => {
+    registerSankeyDemoData({
+        investmentNodes: sankeyInvestmentNodes,
+        investmentLinks: sankeyInvestmentLinks,
+        expenseNodes: sankeyExpenseNodes,
+        expenseLinks: sankeyExpenseLinks,
+        hotspotNodes: sankeyHotspotNodes,
+        hotspotLinks: sankeyHotspotLinks,
+        stateTransitions: sankeyStateTransitionSample,
+    });
+});
 describe("SANKEY_MODES", () => {
     it("declares every required mode with label/description/unit", () => {
         const ids = SANKEY_MODES.map((m) => m.id).sort();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ChordChart } from "@/components/charts/ChordChart";
 import {
@@ -25,16 +25,14 @@ import {
   WorkGraphLegend,
 } from "@/components/charts/WorkGraphExplorer";
 import type { WorkGraphEdge } from "@/lib/graphql/types";
-import {
-  sampleChordRepoTransfer,
-  sampleChordTeamReviewLoad,
-  sampleChordWorkTypeRework,
-  sankeyStateTransitionSample,
-  workItemFlowEfficiencyDailySample,
-  workItemMetricsDailySample,
-  workItemTypeByScopeSample,
-  workItemTypeSummarySample,
-} from "@/data/devHealthOpsSample";
+import type { ChordRecord } from "@/lib/types";
+import type {
+  FlowTransitionSummary,
+  WorkItemFlowEfficiencyDaily,
+  WorkItemMetricsDaily,
+  WorkItemTypeByScope,
+  WorkItemTypeSummary,
+} from "@/data/devHealthOpsTypes";
 import {
   toNestedPieData,
   toSankeyData,
@@ -53,6 +51,31 @@ export default function Home() {
     CHORD_CONTROLS_DEFAULTS
   );
 
+  // Sample data — loaded lazily so it never ships in production client bundles.
+  // NEXT_PUBLIC_DEV_HEALTH_TEST_MODE gates the dynamic import.
+  const [sampleChordTeamReviewLoad, setSampleChordTeamReviewLoad] = useState<ChordRecord[]>([]);
+  const [sampleChordRepoTransfer, setSampleChordRepoTransfer] = useState<ChordRecord[]>([]);
+  const [sampleChordWorkTypeRework, setSampleChordWorkTypeRework] = useState<ChordRecord[]>([]);
+  const [sankeyStateTransitionSample, setSankeyStateTransitionSample] = useState<FlowTransitionSummary[]>([]);
+  const [workItemMetricsDailySample, setWorkItemMetricsDailySample] = useState<WorkItemMetricsDaily[]>([]);
+  const [workItemFlowEfficiencyDailySample, setWorkItemFlowEfficiencyDailySample] = useState<WorkItemFlowEfficiencyDaily[]>([]);
+  const [workItemTypeSummarySample, setWorkItemTypeSummarySample] = useState<WorkItemTypeSummary[]>([]);
+  const [workItemTypeByScopeSample, setWorkItemTypeByScopeSample] = useState<WorkItemTypeByScope[]>([]);
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE !== "true") return;
+    import("@/data/devHealthOpsSample").then((m) => {
+      setSampleChordTeamReviewLoad(m.sampleChordTeamReviewLoad);
+      setSampleChordRepoTransfer(m.sampleChordRepoTransfer);
+      setSampleChordWorkTypeRework(m.sampleChordWorkTypeRework);
+      setSankeyStateTransitionSample(m.sankeyStateTransitionSample);
+      setWorkItemMetricsDailySample(m.workItemMetricsDailySample);
+      setWorkItemFlowEfficiencyDailySample(m.workItemFlowEfficiencyDailySample);
+      setWorkItemTypeSummarySample(m.workItemTypeSummarySample);
+      setWorkItemTypeByScopeSample(m.workItemTypeByScopeSample);
+    }).catch((err: unknown) => { console.warn("[demo/page] Failed to load sample data", err); });
+  }, []);
+
   const teamDataset = useMemo(
     () =>
       buildChordDataset(sampleChordTeamReviewLoad, {
@@ -62,7 +85,7 @@ export default function Home() {
         grouping: chordControls.grouping,
         unit: "reviews",
       }),
-    [chordControls]
+    [chordControls, sampleChordTeamReviewLoad]
   );
 
   const repoDataset = useMemo(
@@ -74,7 +97,7 @@ export default function Home() {
         grouping: "repo",
         unit: "transfers",
       }),
-    []
+    [sampleChordRepoTransfer]
   );
 
   const workTypeDataset = useMemo(
@@ -86,7 +109,7 @@ export default function Home() {
         grouping: "work_type",
         unit: "items",
       }),
-    []
+    [sampleChordWorkTypeRework]
   );
   const throughput = toThroughputBarSeries(workItemMetricsDailySample, {
     scopeOrder: ["auth", "api", "ui", "data", "ops", "docs"],

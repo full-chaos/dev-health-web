@@ -1,17 +1,10 @@
-import {
-  sankeyExpenseLinks,
-  sankeyExpenseNodes,
-  sankeyHotspotLinks,
-  sankeyHotspotNodes,
-  sankeyInvestmentLinks,
-  sankeyInvestmentNodes,
-  sankeyStateTransitionSample,
-} from "@/data/devHealthOpsSample";
+import type { SankeyLink, SankeyMode, SankeyNode } from "@/lib/types";
 import { toSankeyData } from "@/lib/chartTransforms";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { applyWindowToFilters } from "@/lib/filters/time";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { SankeyLink, SankeyMode, SankeyNode } from "@/lib/types";
+import type { FlowTransitionSummary } from "@/data/devHealthOpsTypes";
+
 
 export type SankeyDataset = {
   mode: SankeyMode;
@@ -85,6 +78,52 @@ const dedupeNodes = (nodes: SankeyNode[]) => {
   return Array.from(map.values());
 };
 
+// ---------------------------------------------------------------------------
+// Demo-data registry — populated at runtime via registerSankeyDemoData().
+// Production bundles never import devHealthOpsSample; the store stays empty.
+// ---------------------------------------------------------------------------
+type SankeyDemoStore = {
+  investmentNodes: SankeyNode[];
+  investmentLinks: SankeyLink[];
+  expenseNodes: SankeyNode[];
+  expenseLinks: SankeyLink[];
+  hotspotNodes: SankeyNode[];
+  hotspotLinks: SankeyLink[];
+  stateTransitions: FlowTransitionSummary[];
+};
+
+const _demoStore: SankeyDemoStore = {
+  investmentNodes: [],
+  investmentLinks: [],
+  expenseNodes: [],
+  expenseLinks: [],
+  hotspotNodes: [],
+  hotspotLinks: [],
+  stateTransitions: [],
+};
+
+/**
+ * Register sample data for demo / test mode.
+ * Call this before using buildSankeyDataset in non-production contexts.
+ * In production this function is never called, so the store stays empty.
+ */
+export const registerSankeyDemoData = (data: {
+  investmentNodes: SankeyNode[];
+  investmentLinks: SankeyLink[];
+  expenseNodes: SankeyNode[];
+  expenseLinks: SankeyLink[];
+  hotspotNodes: SankeyNode[];
+  hotspotLinks: SankeyLink[];
+  stateTransitions: FlowTransitionSummary[];
+}): void => {
+  _demoStore.investmentNodes = data.investmentNodes;
+  _demoStore.investmentLinks = data.investmentLinks;
+  _demoStore.expenseNodes = data.expenseNodes;
+  _demoStore.expenseLinks = data.expenseLinks;
+  _demoStore.hotspotNodes = data.hotspotNodes;
+  _demoStore.hotspotLinks = data.hotspotLinks;
+  _demoStore.stateTransitions = data.stateTransitions;
+};
 
 export const getSankeyDefinition = (mode: SankeyMode) =>
   SANKEY_MODES.find((entry) => entry.id === mode) ?? SANKEY_MODES[0];
@@ -97,8 +136,8 @@ export const buildSankeyDataset = (mode: SankeyMode): SankeyDataset => {
       label: definition.label,
       description: definition.description,
       unit: definition.unit,
-      nodes: dedupeNodes(sankeyInvestmentNodes),
-      links: sankeyInvestmentLinks,
+      nodes: dedupeNodes(_demoStore.investmentNodes),
+      links: _demoStore.investmentLinks,
     };
   }
   if (mode === "expense") {
@@ -107,12 +146,12 @@ export const buildSankeyDataset = (mode: SankeyMode): SankeyDataset => {
       label: definition.label,
       description: definition.description,
       unit: definition.unit,
-      nodes: dedupeNodes(sankeyExpenseNodes),
-      links: sankeyExpenseLinks,
+      nodes: dedupeNodes(_demoStore.expenseNodes),
+      links: _demoStore.expenseLinks,
     };
   }
   if (mode === "state") {
-    const sankey = toSankeyData(sankeyStateTransitionSample);
+    const sankey = toSankeyData(_demoStore.stateTransitions);
     const nodes = sankey.nodes.map((node) => ({
       ...node,
       group: "state" as const,
@@ -131,8 +170,8 @@ export const buildSankeyDataset = (mode: SankeyMode): SankeyDataset => {
     label: definition.label,
     description: definition.description,
     unit: definition.unit,
-    nodes: dedupeNodes(sankeyHotspotNodes),
-    links: sankeyHotspotLinks,
+    nodes: dedupeNodes(_demoStore.hotspotNodes),
+    links: _demoStore.hotspotLinks,
   };
 };
 

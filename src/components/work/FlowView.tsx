@@ -14,7 +14,7 @@ import {
     generateSampleExpenseData,
     toStackedAreaData,
 } from "@/lib/chartTransforms";
-import { sankeyHotspotNodes, sankeyHotspotLinks } from "@/data/devHealthOpsSample";
+import type { SankeyNode, SankeyLink } from "@/lib/types";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import type { TreemapSunburstType } from "@/components/charts/ChartTypeToggle";
 
@@ -47,6 +47,17 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     const [resolvedKey, setResolvedKey] = useState<string | null>(null);
     const [selection, setSelection] = useState<FlowSelection | null>(null);
     const [investmentMixFocusTheme, setInvestmentMixFocusTheme] = useState<string | null>(null);
+    const [hotspotNodes, setHotspotNodes] = useState<SankeyNode[]>([]);
+    const [hotspotLinks, setHotspotLinks] = useState<SankeyLink[]>([]);
+
+    // Lazy-load sample hotspot data only in demo mode — never ships in production bundles
+    useEffect(() => {
+        if (process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE !== 'true') return;
+        import("@/data/devHealthOpsSample").then((m) => {
+            setHotspotNodes(m.sankeyHotspotNodes);
+            setHotspotLinks(m.sankeyHotspotLinks);
+        }).catch((err: unknown) => { console.warn("[FlowView] Failed to load sample hotspot data", err); });
+    }, []);
 
     // Context from URL
     const contextEntityId = searchParams.get("context_entity_id");
@@ -137,8 +148,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     };
 
     const hotspotHierarchy = useMemo(() => {
-        return toHotspotHierarchy(sankeyHotspotNodes, sankeyHotspotLinks);
-    }, []);
+        return toHotspotHierarchy(hotspotNodes, hotspotLinks);
+    }, [hotspotNodes, hotspotLinks]);
 
     const expenseData = useMemo(() => {
         return toStackedAreaData(generateSampleExpenseData(30));
