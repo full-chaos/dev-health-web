@@ -3,19 +3,19 @@ import { TreemapChart } from "@/components/charts/TreemapChart";
 import { SunburstChart } from "@/components/charts/SunburstChart";
 import { StackedAreaChart } from "@/components/charts/StackedAreaChart";
 import { SankeyChart } from "@/components/charts/SankeyChart";
-import { toStackedAreaData, type HierarchyNode } from "@/lib/chartTransforms";
 import type { TreemapSunburstType } from "@/components/charts/ChartTypeToggle";
-import type { InvestmentMixAggregate } from "@/lib/investmentMix";
 import type { SankeyDataset } from "@/lib/sankey";
-import type { FlowSubTab } from "./Tabs";
+import type { HierarchyNode } from "@/lib/chartTransforms";
+import type { InvestmentMixAggregate } from "@/lib/investmentMix";
+import type { FlowSubTab } from "./types";
 
-type ChartProps = {
+type FlowChartProps = {
     subTab: FlowSubTab;
     isLoading: boolean;
     hasData: boolean;
     hotspotChartType: TreemapSunburstType;
     hotspotHierarchy: HierarchyNode;
-    expenseData: ReturnType<typeof toStackedAreaData>;
+    expenseData: ReturnType<typeof import("@/lib/chartTransforms").toStackedAreaData>;
     investmentMix: InvestmentMixAggregate | null;
     investmentMixLoading: boolean;
     investmentMixFocusTheme: string | null;
@@ -26,7 +26,7 @@ type ChartProps = {
     onSankeyClick: (item: { type: "node" | "link"; name?: string; source?: string; target?: string; value?: number }) => void;
 };
 
-export function Chart({
+export function FlowChart({
     subTab,
     isLoading,
     hasData,
@@ -41,7 +41,7 @@ export function Chart({
     onInvestmentMixClick,
     onAreaClick,
     onSankeyClick,
-}: ChartProps) {
+}: FlowChartProps) {
     return (
         <div
             className="relative min-h-[400px]"
@@ -81,7 +81,7 @@ export function Chart({
                             <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                 {investmentMixFocusTheme ? "Focused theme" : "How to use"}
                             </p>
-                            <div className="mt-3 space-y-2 text-sm text-(--ink-muted)">
+                            <div className="mt-2 space-y-1 text-xs text-(--ink-muted)">
                                 {investmentMixFocusTheme ? (
                                     <>
                                         <p className="text-foreground font-medium">
