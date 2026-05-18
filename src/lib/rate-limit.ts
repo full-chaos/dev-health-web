@@ -8,6 +8,22 @@
  * In-memory strategy: sliding-window timestamp array (matches the original
  * feedback route implementation).
  *
+ * ## Client IP trust model
+ *
+ * Rate-limit keys that incorporate a client IP MUST be derived via
+ * `getClientIp()` from `@/lib/client-ip`, NOT by reading `x-forwarded-for`
+ * directly. The helper enforces the following policy:
+ *
+ *   - `TRUST_PROXY=true`  → reads the leftmost `X-Forwarded-For` hop, then
+ *     falls back to `X-Real-IP`. Use only when the app is deployed behind a
+ *     known, trusted reverse proxy that strips/rewrites these headers.
+ *   - `TRUST_PROXY=false` (default) → ignores `X-Forwarded-For` entirely to
+ *     prevent IP spoofing. Falls back to platform-injected headers
+ *     (`x-vercel-forwarded-for`, `cf-connecting-ip`) and then to an
+ *     anonymous SHA-256 fingerprint of stable request headers.
+ *
+ * Never read `X-Forwarded-For` outside of `getClientIp()` in this module.
+ *
  * Usage:
  *   import { isRateLimited, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS } from "@/lib/rate-limit";
  *   if (await isRateLimited(key)) { return 429; }

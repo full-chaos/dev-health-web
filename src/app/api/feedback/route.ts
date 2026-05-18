@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
-
 import { NextResponse } from "next/server";
 
 import type { FeedbackPayload, FeedbackResponse } from "@/components/feedback/types";
 import { auth } from "@/lib/auth";
+import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { ApiErrors, linearApiRequestFailedMessage } from "@/lib/constants/errors";
 import { isRateLimited } from "@/lib/rate-limit";
@@ -22,36 +21,6 @@ const ISSUE_CREATE_MUTATION = `
     }
   }
 `;
-
-function getClientIp(request: Request): string {
-  // In production behind a reverse proxy, X-Forwarded-For is set by the proxy.
-  // WARNING: This header is spoofable if the app is not behind a trusted proxy.
-  // For stronger guarantees, use the platform's native IP detection (e.g., Vercel's
-  // x-real-ip header) or move rate limiting to an edge middleware / WAF.
-  const realIp = request.headers.get("x-real-ip");
-  if (realIp) return realIp;
-
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const trustedProxyHeader = request.headers.get("x-forwarded-proto") || request.headers.get("via");
-
-  if (forwardedFor && trustedProxyHeader) {
-    return forwardedFor.split(",")[0]?.trim() || "unknown";
-  }
-
-  const fallbackIdentifier = [
-    request.headers.get("user-agent") ?? "",
-    request.headers.get("accept-language") ?? "",
-    request.headers.get("sec-ch-ua") ?? "",
-    request.headers.get("x-vercel-id") ?? "",
-    request.headers.get("cf-ray") ?? "",
-  ].join("|");
-
-  if (!fallbackIdentifier.replaceAll("|", "")) {
-    return "unknown";
-  }
-
-  return `anon:${createHash("sha256").update(fallbackIdentifier).digest("hex")}`;
-}
 
 function getPriority(type: FeedbackPayload["type"]): number {
   switch (type) {
@@ -116,7 +85,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const ip = getClientIp(request);
+  const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled(env.TRUST_PROXY) });
   const rateLimitKey = session.user?.id ?? ip;
 
   if (await isRateLimited(rateLimitKey)) {
