@@ -1,5 +1,5 @@
-"use server";
-
+// Barrel — re-exports all admin server actions from domain modules.
+// Do not add implementation here; edit the domain files under ./server/.
 export * from "./server/users";
 export * from "./server/credentials";
 export * from "./server/sync";
