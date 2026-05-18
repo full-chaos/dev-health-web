@@ -1,24 +1,36 @@
 import Link from "next/link";
 import { formatNumber } from "@/lib/formatters";
-import type { FlowSelection } from "./types";
+import type { FlowSubTab } from "./Tabs";
 
-type FlowInspectPanelProps = {
+export type FlowSelection = {
+    view: FlowSubTab;
+    path: string[];
+    key?: string;
+    metricValue: number;
+    percentTotal: number;
+    unit: string;
+    children?: Array<{ name: string; value: number }>;
+    transition?: { from: string; to: string };
+    outcomes?: string[];
+};
+
+type InspectPanelProps = {
     selection: FlowSelection | null;
     evidenceUrl: string | null;
     flameUrl: string | null;
-    contextEntityLabel?: string | null;
-    contextZone?: string | null;
+    contextEntityLabel: string | null;
+    contextZone: string | null;
     onClearContext: () => void;
 };
 
-export function FlowInspectPanel({
+export function InspectPanel({
     selection,
     evidenceUrl,
     flameUrl,
     contextEntityLabel,
     contextZone,
     onClearContext,
-}: FlowInspectPanelProps) {
+}: InspectPanelProps) {
     return (
         <div className="flex flex-col gap-4">
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 h-full min-h-[400px]">
