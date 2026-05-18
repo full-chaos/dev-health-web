@@ -89,6 +89,13 @@ const serverEnvSchema = z.object({
     LINEAR_API_KEY: z.string().optional(),
     LINEAR_TEAM_ID: z.string().optional(),
     REDIS_URL: z.string().optional(),
+    /**
+     * When set to "true" or "1", the application trusts the `X-Forwarded-For`
+     * header for client IP extraction (used by rate limiting). Only enable this
+     * when the app is deployed behind a trusted reverse proxy that strips or
+     * rewrites forwarded headers. Defaults to false (untrusted) to prevent IP
+     * spoofing attacks.
+     */
     TRUST_PROXY: z.string().optional(),
     USE_GRAPHQL_ANALYTICS: z.string().optional(),
     DEV_HEALTH_TEST_MODE: z.string().optional(),

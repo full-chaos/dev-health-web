@@ -226,3 +226,44 @@ describe("rate-limit", () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// getClientIp — TRUST_PROXY gate (CHAOS-1563)
+// ---------------------------------------------------------------------------
+describe("getClientIp trust-proxy gate", () => {
+  function makeRequest(headers: Record<string, string>) {
+    return { headers: new Headers(headers) };
+  }
+
+  it("ignores X-Forwarded-For when TRUST_PROXY is false (spoofing prevention)", async () => {
+    const { getClientIp, isTrustProxyEnabled } = await import("@/lib/client-ip");
+    const request = makeRequest({
+      "x-forwarded-for": "1.2.3.4, 10.0.0.1",
+      "user-agent": "test-browser",
+    });
+    const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled("false") });
+    expect(ip).not.toBe("1.2.3.4");
+    // Should fall back to anon fingerprint
+    expect(ip).toMatch(/^anon:/);
+  });
+
+  it("returns the leftmost X-Forwarded-For hop when TRUST_PROXY is true", async () => {
+    const { getClientIp, isTrustProxyEnabled } = await import("@/lib/client-ip");
+    const request = makeRequest({
+      "x-forwarded-for": "1.2.3.4, 10.0.0.1",
+    });
+    const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled("true") });
+    expect(ip).toBe("1.2.3.4");
+  });
+
+  it("ignores X-Forwarded-For when TRUST_PROXY env is undefined (default false)", async () => {
+    const { getClientIp, isTrustProxyEnabled } = await import("@/lib/client-ip");
+    const request = makeRequest({
+      "x-forwarded-for": "1.2.3.4",
+      "user-agent": "test-browser",
+    });
+    const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled(undefined) });
+    expect(ip).not.toBe("1.2.3.4");
+  });
+});
+
