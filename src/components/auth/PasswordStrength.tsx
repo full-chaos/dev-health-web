@@ -5,7 +5,7 @@ type PasswordStrengthProps = {
 }
 
 const checks = [
-  { label: "At least 12 characters", test: (p: string) => p.length >= 12 },
+  { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
   { label: "One letter", test: (p: string) => /[a-zA-Z]/.test(p) },
   { label: "One number", test: (p: string) => /\d/.test(p) },
 ]

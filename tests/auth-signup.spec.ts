@@ -63,7 +63,7 @@ test("password too short shows error toast", async ({ page }) => {
   await page.getByRole("button", { name: "Create account" }).click();
 
   await expect(
-    page.getByText("Password must be at least 12 characters"),
+    page.getByText("Password must be at least 8 characters"),
   ).toBeVisible({ timeout: 10_000 });
 });
 

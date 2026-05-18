@@ -26,8 +26,8 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault()
 
-     if (password.length < 12) {
-       toast.error("Password must be at least 12 characters")
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters")
        return
      }
 
@@ -120,7 +120,8 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          minLength={12}
+          minLength={8}
+          maxLength={128}
           className={inputClass}
         />
       </div>
