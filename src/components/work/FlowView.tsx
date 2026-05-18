@@ -50,7 +50,9 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     const [hotspotNodes, setHotspotNodes] = useState<SankeyNode[]>([]);
     const [hotspotLinks, setHotspotLinks] = useState<SankeyLink[]>([]);
 
-    // Lazy-load sample hotspot data only in demo mode — never ships in production bundles
+    // Lazy-load sample hotspot data only in test/demo mode — gated on the
+    // NEXT_PUBLIC_DEV_HEALTH_TEST_MODE env var so webpack can statically
+    // eliminate the dynamic import in production builds (no client chunk).
     useEffect(() => {
         if (process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE !== 'true') return;
         import("@/data/devHealthOpsSample").then((m) => {
