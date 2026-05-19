@@ -1,3 +1,246 @@
+enum AIAttributionBucketInput {
+  AI_ASSISTED
+  AGENT_CREATED
+  AI_REVIEW
+  HUMAN
+  UNKNOWN
+}
+
+type AIComparison {
+  orgId: String!
+  startDate: Date!
+  endDate: Date!
+  aiSide: AIComparisonSide!
+  baselineSide: AIComparisonSide!
+  delta: AIComparisonDelta!
+  dataAvailable: Boolean!
+}
+
+type AIComparisonDelta {
+  cycleTimeDeltaHours: Float
+  reviewsPerPrDelta: Float
+  reworkRateDelta: Float
+  revertRateDelta: Float
+  testGapRateDelta: Float
+  incidentRateDelta: Float
+}
+
+type AIComparisonSide {
+  bucket: String!
+  prsTotal: Int!
+  prsMerged: Int!
+  cycleTimeAvgHours: Float
+  reviewsPerPr: Float
+  reworkRate: Float
+  revertRate: Float
+  testGapRate: Float
+  incidentRate: Float
+}
+
+input AIDateRangeInput {
+  startDate: Date!
+  endDate: Date!
+}
+
+type AIGovernanceCoverageRow {
+  day: Date!
+  teamId: String
+  repoId: String
+  aiArtifacts: Int!
+  declaredArtifacts: Int!
+  humanReviewedPrs: Int!
+  securityScannedPrs: Int!
+  inPolicyArtifacts: Int!
+  declarationCoverage: Float!
+  humanReviewCoverage: Float!
+  securityScanCoverage: Float!
+  inPolicyCoverage: Float!
+}
+
+type AIGovernanceSummary {
+  orgId: String!
+  startDate: Date!
+  endDate: Date!
+  coverage: [AIGovernanceCoverageRow!]!
+  recentViolations: [AIGovernanceViolationRow!]!
+  dataAvailable: Boolean!
+}
+
+type AIGovernanceViolationRow {
+  ruleId: String!
+  severity: String!
+  subjectType: String!
+  subjectId: String!
+  teamId: String
+  repoId: String
+  observedAt: DateTime!
+  evidence: String!
+}
+
+type AIImpactBucketRow {
+  bucket: String!
+  prsTotal: Int!
+  prsMerged: Int!
+  cycleTimeAvgHours: Float
+  reviewsPerPr: Float
+  changesRequestedPerPr: Float
+  reworkPrs: Int!
+  reworkRate: Float
+  revertPrs: Int!
+  revertRate: Float
+  incidentsCount: Int!
+  incidentRate: Float
+  testGapPrs: Int!
+  testGapRate: Float
+}
+
+type AIImpactBucketTotals {
+  bucket: String!
+  prsTotal: Int!
+  prsMerged: Int!
+  aiAssistedPrRatio: Float
+  agentCreatedPrCount: Int!
+  cycleTimeAvgHours: Float
+  aiCycleTimeDeltaHours: Float
+  aiReviewAmplification: Float
+  reworkDragRate: Float
+  revertRate: Float
+  incidentDragRate: Float
+  testGapRate: Float
+  leverage: AILeverageComponents!
+}
+
+type AIImpactSummary {
+  orgId: String!
+  startDate: Date!
+  endDate: Date!
+  totalPrs: Int!
+  aiAssistedPrs: Int!
+  agentCreatedPrs: Int!
+  humanPrs: Int!
+  unknownPrs: Int!
+  aiAssistedPrRatio: Float
+  byBucket: [AIImpactBucketTotals!]!
+  daily: [AIImpactBucketRow!]!
+  dataAvailable: Boolean!
+  computedAt: DateTime
+}
+
+type AILeverageComponents {
+  prsComponent: Float!
+  cycleTimeComponent: Float
+  reviewComponent: Float
+  reworkComponent: Float
+  testComponent: Float
+  incidentComponent: Float
+}
+
+type AIOpportunitiesResult {
+  orgId: String!
+  recommendations: [AIOpportunity!]!
+  detectorReady: Boolean!
+}
+
+type AIOpportunity {
+  opportunityId: String!
+  kind: AIOpportunityKind!
+  repoId: String
+  teamId: String
+  title: String!
+  rationale: String!
+  score: Float!
+  evidenceRefs: [String!]!
+}
+
+enum AIOpportunityKind {
+  REPETITIVE_CHANGE
+  HIGH_REVIEW_LOAD
+  HIGH_REWORK
+  SLOW_CYCLE
+  UNCOVERED_TEST_AREA
+}
+
+type AIReviewLoadResult {
+  orgId: String!
+  startDate: Date!
+  endDate: Date!
+  byBucket: [AIReviewLoadRow!]!
+  daily: [AIReviewLoadRow!]!
+  dataAvailable: Boolean!
+}
+
+type AIReviewLoadRow {
+  bucket: String!
+  prsTotal: Int!
+  reviewsTotal: Int!
+  reviewsPerPr: Float
+  changesRequestedPerPr: Float
+  reviewAmplification: Float
+}
+
+type AIRiskBreakdownResult {
+  orgId: String!
+  startDate: Date!
+  endDate: Date!
+  byBucket: [AIRiskBreakdownRow!]!
+  dataAvailable: Boolean!
+}
+
+type AIRiskBreakdownRow {
+  bucket: String!
+  prsTotal: Int!
+  reworkPrs: Int!
+  reworkRate: Float
+  revertPrs: Int!
+  revertRate: Float
+  testGapPrs: Int!
+  testGapRate: Float
+  incidentsCount: Int!
+  incidentRate: Float
+}
+
+input AIScopeInput {
+  repoId: String = null
+  teamId: String = null
+  workType: String = null
+  buckets: [AIAttributionBucketInput!] = null
+}
+
+type AIWorkflowDrilldownResult {
+  orgId: String!
+  rootType: String!
+  rootId: String!
+  nodes: [AIWorkflowGraphNodeOut!]!
+  edges: [AIWorkflowGraphEdgeOut!]!
+  partial: Boolean!
+  dataAvailable: Boolean!
+}
+
+type AIWorkflowGraphEdgeOut {
+  edgeId: String!
+  sourceType: String!
+  sourceId: String!
+  targetType: String!
+  targetId: String!
+  edgeType: String!
+  confidence: Float!
+  source: String!
+  evidence: String!
+  provider: String
+  repoId: String
+}
+
+type AIWorkflowGraphNodeOut {
+  nodeType: String!
+  nodeId: String!
+}
+
+enum AIWorkflowRootTypeInput {
+  ISSUE
+  PR
+  WORK_UNIT
+}
+
 input AnalyticsRequestInput {
   timeseries: [TimeseriesRequestInput!]! = []
   breakdowns: [BreakdownRequestInput!]! = []
@@ -300,6 +543,31 @@ type Query {
 
   """List persisted capacity forecasts"""
   capacityForecasts(orgId: String!, filters: CapacityForecastFilterInput = null): CapacityForecastConnection!
+
+  """AI workflow impact summary across the requested time range."""
+  aiImpactSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIImpactSummary!
+
+  """Side-by-side AI-assisted vs non-AI baseline comparison."""
+  aiComparison(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIComparison!
+
+  """Per-bucket AI review-load breakdown with amplification."""
+  aiReviewLoad(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIReviewLoadResult!
+
+  """Per-bucket AI risk breakdown (rework, revert, test gaps, incidents)."""
+  aiRiskBreakdown(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIRiskBreakdownResult!
+
+  """
+  AI automation opportunity recommendations. Returns an empty, stable contract until the detector ships (CHAOS-1586).
+  """
+  aiOpportunities(orgId: String!, scope: AIScopeInput = null, limit: Int! = 25): AIOpportunitiesResult!
+
+  """AI governance coverage and recent policy violations."""
+  aiGovernanceSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, violationLimit: Int! = 100): AIGovernanceSummary!
+
+  """
+  Drilldown into AI workflow evidence rooted at an issue, PR, or work_unit. Returns Work Graph nodes and edges with provenance and short evidence references.
+  """
+  aiWorkflowDrilldown(orgId: String!, rootType: AIWorkflowRootTypeInput!, rootId: String!, depth: Int! = 3, limit: Int! = 100): AIWorkflowDrilldownResult!
 }
 
 type RepoAlertCount {
@@ -615,6 +883,11 @@ enum WorkGraphEdgeType {
   CONFIG_CHANGED_BY
   GUARDS
   IMPACTS
+  HAS_AI_WORKFLOW
+  GENERATES
+  HAS_REVIEW_OUTCOME
+  DEPLOYS
+  LINKED_INCIDENT
 }
 
 enum WorkGraphEdgeTypeInput {
@@ -635,6 +908,11 @@ enum WorkGraphEdgeTypeInput {
   CONFIG_CHANGED_BY
   GUARDS
   IMPACTS
+  HAS_AI_WORKFLOW
+  GENERATES
+  HAS_REVIEW_OUTCOME
+  DEPLOYS
+  LINKED_INCIDENT
 }
 
 type WorkGraphEdgesResult {
@@ -650,6 +928,11 @@ enum WorkGraphNodeType {
   FILE
   RELEASE
   FEATURE_FLAG
+  AI_WORKFLOW_RUN
+  DIFF
+  REVIEW_OUTCOME
+  DEPLOYMENT
+  INCIDENT
 }
 
 enum WorkGraphNodeTypeInput {
@@ -659,6 +942,11 @@ enum WorkGraphNodeTypeInput {
   FILE
   RELEASE
   FEATURE_FLAG
+  AI_WORKFLOW_RUN
+  DIFF
+  REVIEW_OUTCOME
+  DEPLOYMENT
+  INCIDENT
 }
 
 enum WorkGraphProvenance {
