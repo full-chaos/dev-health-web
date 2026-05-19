@@ -1,0 +1,456 @@
+/**
+ * Synthetic AI Workflow Intelligence fixtures for MSW e2e mocks (CHAOS-1588).
+ *
+ * These fixtures cover the empty / partial / populated UX states the GraphQL
+ * resolvers (CHAOS-1582) advertise via `dataAvailable`. Tests drive the mode
+ * with the AI scope filter:
+ *
+ *   scope.teamId === "team-empty"   → empty contract (no buckets, no daily)
+ *   scope.teamId === "team-missing" → dataAvailable=false (missing-data UX)
+ *   anything else                   → populated state with deltas
+ *
+ * Shapes mirror `src/lib/graphql/schema.graphql` AI types. Bucket coverage is
+ * org-level only: no repo or team rollups, no per-author breakouts. Reviewer
+ * concentration intentionally absent — it is deferred until aggregate-only
+ * reviewer mix ships (CHAOS-1585 anti-surveillance posture).
+ */
+
+export type AIScopeVars = {
+  repoId?: string | null;
+  teamId?: string | null;
+  workType?: string | null;
+  buckets?: string[] | null;
+};
+
+export type AIMode = "empty" | "missing" | "populated";
+
+export function resolveAIMode(scope: AIScopeVars | undefined | null): AIMode {
+  const teamId = scope?.teamId ?? null;
+  if (teamId === "team-empty") return "empty";
+  if (teamId === "team-missing") return "missing";
+  return "populated";
+}
+
+const COMPUTED_AT = "2026-05-19T00:00:00Z";
+
+function side(bucket: string, overrides: Record<string, number> = {}) {
+  return {
+    bucket,
+    prsTotal: 0,
+    prsMerged: 0,
+    cycleTimeAvgHours: 0,
+    reviewsPerPr: 0,
+    reworkRate: 0,
+    revertRate: 0,
+    testGapRate: 0,
+    incidentRate: 0,
+    ...overrides,
+  };
+}
+
+function emptyComparison(orgId: string, startDate: string, endDate: string) {
+  return {
+    orgId,
+    startDate,
+    endDate,
+    dataAvailable: false,
+    aiSide: side("AI_ASSISTED"),
+    baselineSide: side("HUMAN"),
+    delta: {
+      cycleTimeDeltaHours: null,
+      reviewsPerPrDelta: null,
+      reworkRateDelta: null,
+      revertRateDelta: null,
+      testGapRateDelta: null,
+      incidentRateDelta: null,
+    },
+  };
+}
+
+function populatedComparison(orgId: string, startDate: string, endDate: string) {
+  return {
+    orgId,
+    startDate,
+    endDate,
+    dataAvailable: true,
+    aiSide: side("AI_ASSISTED", {
+      prsTotal: 42,
+      prsMerged: 38,
+      cycleTimeAvgHours: 18.4,
+      reviewsPerPr: 2.6,
+      reworkRate: 0.22,
+      revertRate: 0.04,
+      testGapRate: 0.18,
+      incidentRate: 0.03,
+    }),
+    baselineSide: side("HUMAN", {
+      prsTotal: 120,
+      prsMerged: 110,
+      cycleTimeAvgHours: 22.1,
+      reviewsPerPr: 1.9,
+      reworkRate: 0.14,
+      revertRate: 0.02,
+      testGapRate: 0.11,
+      incidentRate: 0.02,
+    }),
+    delta: {
+      cycleTimeDeltaHours: -3.7,
+      reviewsPerPrDelta: 0.7,
+      reworkRateDelta: 0.08,
+      revertRateDelta: 0.02,
+      testGapRateDelta: 0.07,
+      incidentRateDelta: 0.01,
+    },
+  };
+}
+
+export function aiComparisonResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+  return mode === "populated"
+    ? populatedComparison(orgId, startDate, endDate)
+    : emptyComparison(orgId, startDate, endDate);
+}
+
+function leverage(overrides: Record<string, number> = {}) {
+  return {
+    prsComponent: 0,
+    cycleTimeComponent: 0,
+    reviewComponent: 0,
+    reworkComponent: 0,
+    testComponent: 0,
+    incidentComponent: 0,
+    ...overrides,
+  };
+}
+
+function impactBucket(bucket: string, overrides: Record<string, number | object> = {}) {
+  return {
+    bucket,
+    prsTotal: 0,
+    prsMerged: 0,
+    aiAssistedPrRatio: 0,
+    agentCreatedPrCount: 0,
+    cycleTimeAvgHours: 0,
+    aiCycleTimeDeltaHours: 0,
+    aiReviewAmplification: 0,
+    reworkDragRate: 0,
+    revertRate: 0,
+    incidentDragRate: 0,
+    testGapRate: 0,
+    leverage: leverage(),
+    ...overrides,
+  };
+}
+
+function dailyRow(bucket: string, overrides: Record<string, number> = {}) {
+  return {
+    bucket,
+    prsTotal: 0,
+    prsMerged: 0,
+    cycleTimeAvgHours: 0,
+    reviewsPerPr: 0,
+    changesRequestedPerPr: 0,
+    reworkPrs: 0,
+    reworkRate: 0,
+    revertPrs: 0,
+    revertRate: 0,
+    incidentsCount: 0,
+    incidentRate: 0,
+    testGapPrs: 0,
+    testGapRate: 0,
+    ...overrides,
+  };
+}
+
+export function aiImpactSummaryResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+  if (mode === "missing") {
+    return {
+      orgId,
+      startDate,
+      endDate,
+      totalPrs: 0,
+      aiAssistedPrs: 0,
+      agentCreatedPrs: 0,
+      humanPrs: 0,
+      unknownPrs: 0,
+      aiAssistedPrRatio: 0,
+      dataAvailable: false,
+      computedAt: COMPUTED_AT,
+      byBucket: [],
+      daily: [],
+    };
+  }
+
+  if (mode === "empty") {
+    return {
+      orgId,
+      startDate,
+      endDate,
+      totalPrs: 0,
+      aiAssistedPrs: 0,
+      agentCreatedPrs: 0,
+      humanPrs: 0,
+      unknownPrs: 0,
+      aiAssistedPrRatio: 0,
+      dataAvailable: true,
+      computedAt: COMPUTED_AT,
+      byBucket: [],
+      daily: [],
+    };
+  }
+
+  return {
+    orgId,
+    startDate,
+    endDate,
+    totalPrs: 162,
+    aiAssistedPrs: 42,
+    agentCreatedPrs: 12,
+    humanPrs: 96,
+    unknownPrs: 12,
+    aiAssistedPrRatio: 0.26,
+    dataAvailable: true,
+    computedAt: COMPUTED_AT,
+    byBucket: [
+      impactBucket("AI_ASSISTED", {
+        prsTotal: 42,
+        prsMerged: 38,
+        aiAssistedPrRatio: 0.26,
+        cycleTimeAvgHours: 18.4,
+        aiCycleTimeDeltaHours: -3.7,
+        aiReviewAmplification: 1.4,
+        reworkDragRate: 0.22,
+        revertRate: 0.04,
+        testGapRate: 0.18,
+        incidentDragRate: 0.03,
+        leverage: leverage({
+          prsComponent: 0.12,
+          cycleTimeComponent: 0.06,
+          reviewComponent: -0.04,
+          reworkComponent: -0.05,
+          testComponent: -0.03,
+          incidentComponent: -0.01,
+        }),
+      }),
+      impactBucket("AGENT_CREATED", {
+        prsTotal: 12,
+        prsMerged: 11,
+        agentCreatedPrCount: 12,
+        cycleTimeAvgHours: 14.0,
+      }),
+      impactBucket("HUMAN", {
+        prsTotal: 96,
+        prsMerged: 88,
+        cycleTimeAvgHours: 22.1,
+      }),
+      impactBucket("UNKNOWN", { prsTotal: 12, prsMerged: 10 }),
+    ],
+    daily: Array.from({ length: 7 }, (_, i) =>
+      dailyRow("AGENT_CREATED", { prsTotal: i + 1 }),
+    ),
+  };
+}
+
+export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+  if (mode === "missing") {
+    return {
+      orgId,
+      startDate,
+      endDate,
+      dataAvailable: false,
+      byBucket: [],
+      daily: [],
+    };
+  }
+
+  if (mode === "empty") {
+    return {
+      orgId,
+      startDate,
+      endDate,
+      dataAvailable: true,
+      byBucket: [],
+      daily: [],
+    };
+  }
+
+  return {
+    orgId,
+    startDate,
+    endDate,
+    dataAvailable: true,
+    byBucket: [
+      {
+        bucket: "AI_ASSISTED",
+        prsTotal: 42,
+        reviewsTotal: 110,
+        reviewsPerPr: 2.6,
+        changesRequestedPerPr: 0.9,
+        reviewAmplification: 1.4,
+      },
+      {
+        bucket: "HUMAN",
+        prsTotal: 96,
+        reviewsTotal: 183,
+        reviewsPerPr: 1.9,
+        changesRequestedPerPr: 0.5,
+        reviewAmplification: 1.0,
+      },
+    ],
+    daily: Array.from({ length: 7 }, (_, i) => ({
+      bucket: "AI_ASSISTED",
+      prsTotal: 6 - i,
+      reviewsTotal: 18 - i,
+      reviewsPerPr: 2.4 + i * 0.05,
+      changesRequestedPerPr: 0.9,
+      reviewAmplification: 1.3 + i * 0.02,
+    })),
+  };
+}
+
+export function aiRiskBreakdownResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+  if (mode === "missing") {
+    return {
+      orgId,
+      startDate,
+      endDate,
+      dataAvailable: false,
+      byBucket: [],
+    };
+  }
+
+  if (mode === "empty") {
+    return {
+      orgId,
+      startDate,
+      endDate,
+      dataAvailable: true,
+      byBucket: [],
+    };
+  }
+
+  return {
+    orgId,
+    startDate,
+    endDate,
+    dataAvailable: true,
+    byBucket: [
+      {
+        bucket: "AI_ASSISTED",
+        prsTotal: 42,
+        reworkPrs: 9,
+        reworkRate: 0.22,
+        revertPrs: 2,
+        revertRate: 0.04,
+        testGapPrs: 8,
+        testGapRate: 0.18,
+        incidentsCount: 1,
+        incidentRate: 0.03,
+      },
+      {
+        bucket: "HUMAN",
+        prsTotal: 96,
+        reworkPrs: 13,
+        reworkRate: 0.14,
+        revertPrs: 2,
+        revertRate: 0.02,
+        testGapPrs: 11,
+        testGapRate: 0.11,
+        incidentsCount: 2,
+        incidentRate: 0.02,
+      },
+    ],
+  };
+}
+
+export function aiOpportunitiesResponse(orgId: string, mode: AIMode) {
+  if (mode !== "populated") {
+    return { orgId, detectorReady: false, recommendations: [] };
+  }
+  return {
+    orgId,
+    detectorReady: true,
+    recommendations: [
+      {
+        opportunityId: "opp-1",
+        kind: "DEPENDENCY_UPDATE",
+        repoId: "repo-1",
+        teamId: "team-platform",
+        title: "Automate dependency updates in platform repo",
+        rationale: "Recurring weekly dependency PRs match the AI-assisted heuristic.",
+        score: 0.78,
+        evidenceRefs: ["pr:1001", "pr:1009", "pr:1014"],
+      },
+      {
+        opportunityId: "opp-2",
+        kind: "TEST_GENERATION",
+        repoId: "repo-2",
+        teamId: "team-platform",
+        title: "Generate tests for legacy module",
+        rationale: "Low test-delta on AI-attributed PRs flagged this module for follow-up.",
+        score: 0.62,
+        evidenceRefs: ["pr:1020", "pr:1024"],
+      },
+    ],
+  };
+}
+
+export function aiGovernanceSummaryResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+  if (mode === "missing") {
+    return { orgId, startDate, endDate, dataAvailable: false, recentViolations: [] };
+  }
+  if (mode === "empty") {
+    return { orgId, startDate, endDate, dataAvailable: true, recentViolations: [] };
+  }
+  return {
+    orgId,
+    startDate,
+    endDate,
+    dataAvailable: true,
+    recentViolations: [
+      {
+        ruleId: "ai-declaration-required",
+        severity: "MEDIUM",
+        subjectType: "PR",
+        subjectId: "pr-7001",
+        teamId: "team-platform",
+        repoId: "repo-1",
+        observedAt: "2026-05-18T15:21:00Z",
+        evidence: "PR merged without explicit AI assistance declaration.",
+      },
+      {
+        ruleId: "human-review-required",
+        severity: "HIGH",
+        subjectType: "PR",
+        subjectId: "pr-7002",
+        teamId: "team-platform",
+        repoId: "repo-2",
+        observedAt: "2026-05-17T10:02:00Z",
+        evidence: "Agent-created PR merged without human review approval.",
+      },
+    ],
+  };
+}
+
+export function catalogValuesResponse(dimension: string) {
+  const values: Record<string, Array<{ value: string; count: number }>> = {
+    TEAM: [
+      { value: "team-platform", count: 30 },
+      { value: "team-product", count: 21 },
+    ],
+    REPO: [
+      { value: "repo-1", count: 42 },
+      { value: "repo-2", count: 18 },
+    ],
+    WORK_TYPE: [
+      { value: "feature", count: 22 },
+      { value: "bug", count: 14 },
+      { value: "chore", count: 9 },
+    ],
+  };
+  return {
+    dimension,
+    values: values[dimension] ?? [],
+    measures: [],
+    limits: { rowLimit: 100, dimensions: [] },
+  };
+}

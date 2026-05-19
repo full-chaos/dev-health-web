@@ -32,6 +32,18 @@ import {
   sankeyInvestmentLinks,
 } from "../../src/data/devHealthOpsSample";
 
+import {
+  aiComparisonResponse,
+  aiGovernanceSummaryResponse,
+  aiImpactSummaryResponse,
+  aiOpportunitiesResponse,
+  aiReviewLoadResponse,
+  aiRiskBreakdownResponse,
+  catalogValuesResponse,
+  resolveAIMode,
+  type AIScopeVars,
+} from "./aiSample";
+
 const investmentMixSample = {
   theme_distribution: {
     feature_delivery: 644.6,
@@ -442,6 +454,151 @@ const buildDeploymentFlameResponse = (deploymentId: string) => ({
     },
   ],
 });
+
+// ---------------------------------------------------------------------------
+// GraphQL dispatcher
+//
+// urql sends GraphQL queries as POST with a JSON body in most setups, but
+// some @urql/next code paths (and any future preferGetMethod usage) emit
+// GET with `query`, `variables`, and `operationName` URL params. Both
+// methods route through the same dispatcher so MSW can serve them without
+// duplicating the if/else chain.
+// ---------------------------------------------------------------------------
+
+function dispatchGraphQL(query: string, variables: Record<string, unknown>): Response {
+  const vars = variables as {
+    orgId?: string;
+    dateRange?: { startDate?: string; endDate?: string };
+    scope?: AIScopeVars | null;
+    dimension?: { dimension?: string } | string;
+  };
+
+  // Investment breakdown query (analytics).
+  if (query.includes("InvestmentBreakdown") || query.includes("analytics")) {
+    return HttpResponse.json({
+      data: {
+        analytics: {
+          breakdowns: [
+            {
+              dimension: "THEME",
+              measure: "COUNT",
+              items: Object.entries(investmentMixSample.theme_distribution).map(
+                ([key, value]) => ({ key, value }),
+              ),
+            },
+            {
+              dimension: "SUBCATEGORY",
+              measure: "COUNT",
+              items: Object.entries(investmentMixSample.subcategory_distribution).map(
+                ([key, value]) => ({ key, value }),
+              ),
+            },
+          ],
+        },
+      },
+    });
+  }
+
+  // Work graph edges.
+  if (query.includes("workGraphEdges") || query.includes("WorkGraphEdges")) {
+    return HttpResponse.json({
+      data: {
+        workGraphEdges: {
+          edges: [
+            { edgeId: "e1", sourceType: "ISSUE", sourceId: "PROJ-101", targetType: "PR", targetId: "PR-201", edgeType: "FIXES", provenance: "NATIVE", confidence: 1.0, evidence: "Fixes #101" },
+            { edgeId: "e2", sourceType: "ISSUE", sourceId: "PROJ-102", targetType: "ISSUE", targetId: "PROJ-101", edgeType: "BLOCKS", provenance: "EXPLICIT_TEXT", confidence: 0.9, evidence: "is blocked by PROJ-102" },
+            { edgeId: "e3", sourceType: "PR", sourceId: "PR-201", targetType: "COMMIT", targetId: "abc123", edgeType: "CONTAINS", provenance: "NATIVE", confidence: 1.0, evidence: "" },
+            { edgeId: "e4", sourceType: "COMMIT", sourceId: "abc123", targetType: "FILE", targetId: "src/api/handler.ts", edgeType: "TOUCHES", provenance: "NATIVE", confidence: 1.0, evidence: "" },
+            { edgeId: "e5", sourceType: "ISSUE", sourceId: "PROJ-103", targetType: "ISSUE", targetId: "PROJ-101", edgeType: "RELATES", provenance: "HEURISTIC", confidence: 0.7, evidence: "similar labels" },
+            { edgeId: "e6", sourceType: "ISSUE", sourceId: "PROJ-104", targetType: "PR", targetId: "PR-202", edgeType: "IMPLEMENTS", provenance: "EXPLICIT_TEXT", confidence: 0.95, evidence: "Implements PROJ-104" },
+          ],
+          totalCount: 6,
+        },
+      },
+    });
+  }
+
+  // Capacity forecast.
+  if (query.includes("capacityForecast") || query.includes("CapacityForecast")) {
+    return HttpResponse.json({ data: { capacityForecast: sampleCapacityForecast } });
+  }
+
+  // Investment flow.
+  if (query.includes("investmentFlow")) {
+    return HttpResponse.json({
+      data: {
+        investmentFlow: {
+          nodes: sankeyInvestmentNodes.map((n, i) => ({ id: `n${i}`, label: n.name, dimension: n.group, value: 10 })),
+          edges: sankeyInvestmentLinks.map((l, i) => ({
+            id: `e${i}`,
+            source: `n${sankeyInvestmentNodes.findIndex((n) => n.name === l.source)}`,
+            target: `n${sankeyInvestmentNodes.findIndex((n) => n.name === l.target)}`,
+            value: l.value,
+          })),
+        },
+      },
+    });
+  }
+
+  // ---- AI Workflow Intelligence (CHAOS-1588) ----
+  const orgId = vars.orgId ?? "org-e2e";
+  const startDate = vars.dateRange?.startDate ?? "2026-04-20";
+  const endDate = vars.dateRange?.endDate ?? "2026-05-19";
+  const aiMode = resolveAIMode(vars.scope ?? null);
+
+  if (query.includes("AIImpactSummary")) {
+    return HttpResponse.json({ data: { aiImpactSummary: aiImpactSummaryResponse(orgId, startDate, endDate, aiMode) } });
+  }
+  if (query.includes("AIReviewLoad")) {
+    return HttpResponse.json({
+      data: {
+        aiReviewLoad: aiReviewLoadResponse(orgId, startDate, endDate, aiMode),
+        aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode),
+      },
+    });
+  }
+  if (query.includes("AIRiskBreakdown")) {
+    return HttpResponse.json({
+      data: {
+        aiRiskBreakdown: aiRiskBreakdownResponse(orgId, startDate, endDate, aiMode),
+        aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode),
+      },
+    });
+  }
+  if (query.includes("AIComparison")) {
+    return HttpResponse.json({ data: { aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode) } });
+  }
+  if (query.includes("AIOpportunities")) {
+    return HttpResponse.json({ data: { aiOpportunities: aiOpportunitiesResponse(orgId, aiMode) } });
+  }
+  if (query.includes("AIGovernanceSummary")) {
+    return HttpResponse.json({ data: { aiGovernanceSummary: aiGovernanceSummaryResponse(orgId, startDate, endDate, aiMode) } });
+  }
+  if (query.includes("AIWorkflowDrilldown")) {
+    return HttpResponse.json({
+      data: {
+        aiWorkflowDrilldown: {
+          orgId,
+          rootType: "PR",
+          rootId: "pr-7001",
+          partial: false,
+          dataAvailable: true,
+          nodes: [],
+          edges: [],
+        },
+      },
+    });
+  }
+
+  // Catalog dimension values for AI filter bar dropdowns.
+  if (query.includes("CatalogValues") || query.includes("catalog(")) {
+    const dim = typeof vars.dimension === "string" ? vars.dimension : (vars.dimension?.dimension ?? "TEAM");
+    return HttpResponse.json({ data: { catalog: catalogValuesResponse(dim) } });
+  }
+
+  // Default: empty data.
+  return HttpResponse.json({ data: {} });
+}
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -1073,147 +1230,25 @@ export const handlers = [
 
   // ---- GraphQL ----
   http.post("*/graphql", async ({ request }) => {
-    const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> } | null;
-    const query = body?.query ?? "";
+    const body = (await request.json().catch(() => null)) as
+      | { query?: string; variables?: Record<string, unknown> }
+      | null;
+    return dispatchGraphQL(body?.query ?? "", body?.variables ?? {});
+  }),
 
-    // Investment breakdown query (analytics)
-    if (query.includes("InvestmentBreakdown") || query.includes("analytics")) {
-      return HttpResponse.json({
-        data: {
-          analytics: {
-            breakdowns: [
-              {
-                dimension: "THEME",
-                measure: "COUNT",
-                items: Object.entries(investmentMixSample.theme_distribution).map(
-                  ([key, value]) => ({ key, value }),
-                ),
-              },
-              {
-                dimension: "SUBCATEGORY",
-                measure: "COUNT",
-                items: Object.entries(investmentMixSample.subcategory_distribution).map(
-                  ([key, value]) => ({ key, value }),
-                ),
-              },
-            ],
-          },
-        },
-      });
+  http.get("*/graphql", ({ request }) => {
+    const url = new URL(request.url);
+    const query = url.searchParams.get("query") ?? "";
+    const rawVariables = url.searchParams.get("variables");
+    let variables: Record<string, unknown> = {};
+    if (rawVariables) {
+      try {
+        variables = JSON.parse(rawVariables) as Record<string, unknown>;
+      } catch {
+        variables = {};
+      }
     }
-
-    // Work graph edges
-    if (query.includes("workGraphEdges") || query.includes("WorkGraphEdges")) {
-      return HttpResponse.json({
-        data: {
-          workGraphEdges: {
-            edges: [
-              {
-                edgeId: "e1",
-                sourceType: "ISSUE",
-                sourceId: "PROJ-101",
-                targetType: "PR",
-                targetId: "PR-201",
-                edgeType: "FIXES",
-                provenance: "NATIVE",
-                confidence: 1.0,
-                evidence: "Fixes #101",
-              },
-              {
-                edgeId: "e2",
-                sourceType: "ISSUE",
-                sourceId: "PROJ-102",
-                targetType: "ISSUE",
-                targetId: "PROJ-101",
-                edgeType: "BLOCKS",
-                provenance: "EXPLICIT_TEXT",
-                confidence: 0.9,
-                evidence: "is blocked by PROJ-102",
-              },
-              {
-                edgeId: "e3",
-                sourceType: "PR",
-                sourceId: "PR-201",
-                targetType: "COMMIT",
-                targetId: "abc123",
-                edgeType: "CONTAINS",
-                provenance: "NATIVE",
-                confidence: 1.0,
-                evidence: "",
-              },
-              {
-                edgeId: "e4",
-                sourceType: "COMMIT",
-                sourceId: "abc123",
-                targetType: "FILE",
-                targetId: "src/api/handler.ts",
-                edgeType: "TOUCHES",
-                provenance: "NATIVE",
-                confidence: 1.0,
-                evidence: "",
-              },
-              {
-                edgeId: "e5",
-                sourceType: "ISSUE",
-                sourceId: "PROJ-103",
-                targetType: "ISSUE",
-                targetId: "PROJ-101",
-                edgeType: "RELATES",
-                provenance: "HEURISTIC",
-                confidence: 0.7,
-                evidence: "similar labels",
-              },
-              {
-                edgeId: "e6",
-                sourceType: "ISSUE",
-                sourceId: "PROJ-104",
-                targetType: "PR",
-                targetId: "PR-202",
-                edgeType: "IMPLEMENTS",
-                provenance: "EXPLICIT_TEXT",
-                confidence: 0.95,
-                evidence: "Implements PROJ-104",
-              },
-            ],
-            totalCount: 6,
-          },
-        },
-      });
-    }
-
-    // Capacity forecast
-    if (query.includes("capacityForecast") || query.includes("CapacityForecast")) {
-      return HttpResponse.json({
-        data: {
-          capacityForecast: sampleCapacityForecast,
-        },
-      });
-    }
-
-    // Investment flow
-    if (query.includes("investmentFlow")) {
-      return HttpResponse.json({
-        data: {
-          investmentFlow: {
-            nodes: sankeyInvestmentNodes.map((n, i) => ({
-              id: `n${i}`,
-              label: n.name,
-              dimension: n.group,
-              value: 10,
-            })),
-            edges: sankeyInvestmentLinks.map((l, i) => ({
-              id: `e${i}`,
-              source: `n${sankeyInvestmentNodes.findIndex((n) => n.name === l.source)}`,
-              target: `n${sankeyInvestmentNodes.findIndex((n) => n.name === l.target)}`,
-              value: l.value,
-            })),
-          },
-        },
-      });
-    }
-
-    // Default: empty data
-    return HttpResponse.json({ data: {} });
+    return dispatchGraphQL(query, variables);
   }),
 
   http.post("*/api/v1/auth/register", async ({ request }) => {

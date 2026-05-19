@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useDimensionValues } from "@/lib/graphql/hooks/useCatalog";
 import { useOrgId } from "@/lib/graphql/provider";
 import { encodeAIFilterParam, type AIFilter } from "@/lib/filters/ai";
@@ -11,6 +11,7 @@ type AIFilterBarProps = {
 
 export function AIFilterBar({ filter }: AIFilterBarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const orgId = useOrgId() ?? "";
   const { values: teams } = useDimensionValues({ orgId, dimension: "TEAM", pause: !orgId });
   const { values: repos } = useDimensionValues({ orgId, dimension: "REPO", pause: !orgId });
@@ -20,7 +21,7 @@ export function AIFilterBar({ filter }: AIFilterBarProps) {
     const next = { ...filter, ...patch };
     const params = new URLSearchParams();
     params.set("f", encodeAIFilterParam(next));
-    router.replace(`/ai/impact?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`);
   };
 
   return (

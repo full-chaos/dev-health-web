@@ -1,3 +1,4 @@
+import { isServer } from "@/lib/env";
 import type { AiAttributionBucketInput } from "@/lib/graphql/__generated__/types";
 
 type AIAttributionBucket = AiAttributionBucketInput;
@@ -14,8 +15,13 @@ export type AIFilter = {
 const ALLOWED_KEYS = new Set(["startDate", "endDate", "teamId", "repoId", "workType", "buckets"]);
 const BUCKETS = new Set(["AI_ASSISTED", "AI_REVIEW", "AGENT_CREATED", "HUMAN", "UNKNOWN"]);
 
+// Next.js polyfills `Buffer` in the browser bundle, but the polyfill does
+// NOT support the `base64url` encoding (Node 16+ only). Falling back to a
+// `typeof Buffer !== "undefined"` check would crash the client at runtime
+// with `TypeError: Unknown encoding: base64url`. Use the canonical
+// `isServer` flag instead, matching `src/lib/filters/encode.ts`.
 const toBase64Url = (value: string): string => {
-  if (typeof Buffer !== "undefined") {
+  if (isServer) {
     return Buffer.from(value, "utf-8").toString("base64url");
   }
   const encoded = btoa(unescape(encodeURIComponent(value)));
@@ -23,7 +29,7 @@ const toBase64Url = (value: string): string => {
 };
 
 const fromBase64Url = (value: string): string => {
-  if (typeof Buffer !== "undefined") {
+  if (isServer) {
     return Buffer.from(value, "base64url").toString("utf-8");
   }
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
