@@ -17,7 +17,10 @@ import type {
   AiRiskBreakdownRow,
   AiScopeInput,
 } from "../__generated__/types";
-import type { AIBucket, AIFilter } from "@/lib/filters/ai";
+import type { AIFilter } from "@/lib/filters/ai";
+import type { AiAttributionBucketInput } from "@/lib/graphql/__generated__/types";
+
+type AIBucket = AiAttributionBucketInput;
 
 type AIInputs = {
   dateRange: AiDateRangeInput;

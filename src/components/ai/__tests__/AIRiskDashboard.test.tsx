@@ -17,7 +17,7 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
   };
 });
 
-const filter: AIFilter = { dateRange: { startDate: "2026-04-01", endDate: "2026-05-01" }, scope: {} };
+const filter: AIFilter = { startDate: "2026-04-01", endDate: "2026-05-01" };
 
 describe("AIRiskDashboard", () => {
   beforeEach(() => {
