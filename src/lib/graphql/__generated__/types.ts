@@ -20,6 +20,265 @@ export type Scalars = {
   JSON: { input: Record<string, unknown>; output: Record<string, unknown>; }
 };
 
+export type AiAttributionBucketInput =
+  | 'AGENT_CREATED'
+  | 'AI_ASSISTED'
+  | 'AI_REVIEW'
+  | 'HUMAN'
+  | 'UNKNOWN';
+
+export type AiComparison = {
+  __typename?: 'AIComparison';
+  aiSide: AiComparisonSide;
+  baselineSide: AiComparisonSide;
+  dataAvailable: Scalars['Boolean']['output'];
+  delta: AiComparisonDelta;
+  endDate: Scalars['Date']['output'];
+  orgId: Scalars['String']['output'];
+  startDate: Scalars['Date']['output'];
+};
+
+export type AiComparisonDelta = {
+  __typename?: 'AIComparisonDelta';
+  cycleTimeDeltaHours?: Maybe<Scalars['Float']['output']>;
+  incidentRateDelta?: Maybe<Scalars['Float']['output']>;
+  revertRateDelta?: Maybe<Scalars['Float']['output']>;
+  reviewsPerPrDelta?: Maybe<Scalars['Float']['output']>;
+  reworkRateDelta?: Maybe<Scalars['Float']['output']>;
+  testGapRateDelta?: Maybe<Scalars['Float']['output']>;
+};
+
+export type AiComparisonSide = {
+  __typename?: 'AIComparisonSide';
+  bucket: Scalars['String']['output'];
+  cycleTimeAvgHours?: Maybe<Scalars['Float']['output']>;
+  incidentRate?: Maybe<Scalars['Float']['output']>;
+  prsMerged: Scalars['Int']['output'];
+  prsTotal: Scalars['Int']['output'];
+  revertRate?: Maybe<Scalars['Float']['output']>;
+  reviewsPerPr?: Maybe<Scalars['Float']['output']>;
+  reworkRate?: Maybe<Scalars['Float']['output']>;
+  testGapRate?: Maybe<Scalars['Float']['output']>;
+};
+
+export type AiDateRangeInput = {
+  endDate: Scalars['Date']['input'];
+  startDate: Scalars['Date']['input'];
+};
+
+export type AiGovernanceCoverageRow = {
+  __typename?: 'AIGovernanceCoverageRow';
+  aiArtifacts: Scalars['Int']['output'];
+  day: Scalars['Date']['output'];
+  declarationCoverage: Scalars['Float']['output'];
+  declaredArtifacts: Scalars['Int']['output'];
+  humanReviewCoverage: Scalars['Float']['output'];
+  humanReviewedPrs: Scalars['Int']['output'];
+  inPolicyArtifacts: Scalars['Int']['output'];
+  inPolicyCoverage: Scalars['Float']['output'];
+  repoId?: Maybe<Scalars['String']['output']>;
+  securityScanCoverage: Scalars['Float']['output'];
+  securityScannedPrs: Scalars['Int']['output'];
+  teamId?: Maybe<Scalars['String']['output']>;
+};
+
+export type AiGovernanceSummary = {
+  __typename?: 'AIGovernanceSummary';
+  coverage: Array<AiGovernanceCoverageRow>;
+  dataAvailable: Scalars['Boolean']['output'];
+  endDate: Scalars['Date']['output'];
+  orgId: Scalars['String']['output'];
+  recentViolations: Array<AiGovernanceViolationRow>;
+  startDate: Scalars['Date']['output'];
+};
+
+export type AiGovernanceViolationRow = {
+  __typename?: 'AIGovernanceViolationRow';
+  evidence: Scalars['String']['output'];
+  observedAt: Scalars['DateTime']['output'];
+  repoId?: Maybe<Scalars['String']['output']>;
+  ruleId: Scalars['String']['output'];
+  severity: Scalars['String']['output'];
+  subjectId: Scalars['String']['output'];
+  subjectType: Scalars['String']['output'];
+  teamId?: Maybe<Scalars['String']['output']>;
+};
+
+export type AiImpactBucketRow = {
+  __typename?: 'AIImpactBucketRow';
+  bucket: Scalars['String']['output'];
+  changesRequestedPerPr?: Maybe<Scalars['Float']['output']>;
+  cycleTimeAvgHours?: Maybe<Scalars['Float']['output']>;
+  incidentRate?: Maybe<Scalars['Float']['output']>;
+  incidentsCount: Scalars['Int']['output'];
+  prsMerged: Scalars['Int']['output'];
+  prsTotal: Scalars['Int']['output'];
+  revertPrs: Scalars['Int']['output'];
+  revertRate?: Maybe<Scalars['Float']['output']>;
+  reviewsPerPr?: Maybe<Scalars['Float']['output']>;
+  reworkPrs: Scalars['Int']['output'];
+  reworkRate?: Maybe<Scalars['Float']['output']>;
+  testGapPrs: Scalars['Int']['output'];
+  testGapRate?: Maybe<Scalars['Float']['output']>;
+};
+
+export type AiImpactBucketTotals = {
+  __typename?: 'AIImpactBucketTotals';
+  agentCreatedPrCount: Scalars['Int']['output'];
+  aiAssistedPrRatio?: Maybe<Scalars['Float']['output']>;
+  aiCycleTimeDeltaHours?: Maybe<Scalars['Float']['output']>;
+  aiReviewAmplification?: Maybe<Scalars['Float']['output']>;
+  bucket: Scalars['String']['output'];
+  cycleTimeAvgHours?: Maybe<Scalars['Float']['output']>;
+  incidentDragRate?: Maybe<Scalars['Float']['output']>;
+  leverage: AiLeverageComponents;
+  prsMerged: Scalars['Int']['output'];
+  prsTotal: Scalars['Int']['output'];
+  revertRate?: Maybe<Scalars['Float']['output']>;
+  reworkDragRate?: Maybe<Scalars['Float']['output']>;
+  testGapRate?: Maybe<Scalars['Float']['output']>;
+};
+
+export type AiImpactSummary = {
+  __typename?: 'AIImpactSummary';
+  agentCreatedPrs: Scalars['Int']['output'];
+  aiAssistedPrRatio?: Maybe<Scalars['Float']['output']>;
+  aiAssistedPrs: Scalars['Int']['output'];
+  byBucket: Array<AiImpactBucketTotals>;
+  computedAt?: Maybe<Scalars['DateTime']['output']>;
+  daily: Array<AiImpactBucketRow>;
+  dataAvailable: Scalars['Boolean']['output'];
+  endDate: Scalars['Date']['output'];
+  humanPrs: Scalars['Int']['output'];
+  orgId: Scalars['String']['output'];
+  startDate: Scalars['Date']['output'];
+  totalPrs: Scalars['Int']['output'];
+  unknownPrs: Scalars['Int']['output'];
+};
+
+export type AiLeverageComponents = {
+  __typename?: 'AILeverageComponents';
+  cycleTimeComponent?: Maybe<Scalars['Float']['output']>;
+  incidentComponent?: Maybe<Scalars['Float']['output']>;
+  prsComponent: Scalars['Float']['output'];
+  reviewComponent?: Maybe<Scalars['Float']['output']>;
+  reworkComponent?: Maybe<Scalars['Float']['output']>;
+  testComponent?: Maybe<Scalars['Float']['output']>;
+};
+
+export type AiOpportunitiesResult = {
+  __typename?: 'AIOpportunitiesResult';
+  detectorReady: Scalars['Boolean']['output'];
+  orgId: Scalars['String']['output'];
+  recommendations: Array<AiOpportunity>;
+};
+
+export type AiOpportunity = {
+  __typename?: 'AIOpportunity';
+  evidenceRefs: Array<Scalars['String']['output']>;
+  kind: AiOpportunityKind;
+  opportunityId: Scalars['String']['output'];
+  rationale: Scalars['String']['output'];
+  repoId?: Maybe<Scalars['String']['output']>;
+  score: Scalars['Float']['output'];
+  teamId?: Maybe<Scalars['String']['output']>;
+  title: Scalars['String']['output'];
+};
+
+export type AiOpportunityKind =
+  | 'HIGH_REVIEW_LOAD'
+  | 'HIGH_REWORK'
+  | 'REPETITIVE_CHANGE'
+  | 'SLOW_CYCLE'
+  | 'UNCOVERED_TEST_AREA';
+
+export type AiReviewLoadResult = {
+  __typename?: 'AIReviewLoadResult';
+  byBucket: Array<AiReviewLoadRow>;
+  daily: Array<AiReviewLoadRow>;
+  dataAvailable: Scalars['Boolean']['output'];
+  endDate: Scalars['Date']['output'];
+  orgId: Scalars['String']['output'];
+  startDate: Scalars['Date']['output'];
+};
+
+export type AiReviewLoadRow = {
+  __typename?: 'AIReviewLoadRow';
+  bucket: Scalars['String']['output'];
+  changesRequestedPerPr?: Maybe<Scalars['Float']['output']>;
+  prsTotal: Scalars['Int']['output'];
+  reviewAmplification?: Maybe<Scalars['Float']['output']>;
+  reviewsPerPr?: Maybe<Scalars['Float']['output']>;
+  reviewsTotal: Scalars['Int']['output'];
+};
+
+export type AiRiskBreakdownResult = {
+  __typename?: 'AIRiskBreakdownResult';
+  byBucket: Array<AiRiskBreakdownRow>;
+  dataAvailable: Scalars['Boolean']['output'];
+  endDate: Scalars['Date']['output'];
+  orgId: Scalars['String']['output'];
+  startDate: Scalars['Date']['output'];
+};
+
+export type AiRiskBreakdownRow = {
+  __typename?: 'AIRiskBreakdownRow';
+  bucket: Scalars['String']['output'];
+  incidentRate?: Maybe<Scalars['Float']['output']>;
+  incidentsCount: Scalars['Int']['output'];
+  prsTotal: Scalars['Int']['output'];
+  revertPrs: Scalars['Int']['output'];
+  revertRate?: Maybe<Scalars['Float']['output']>;
+  reworkPrs: Scalars['Int']['output'];
+  reworkRate?: Maybe<Scalars['Float']['output']>;
+  testGapPrs: Scalars['Int']['output'];
+  testGapRate?: Maybe<Scalars['Float']['output']>;
+};
+
+export type AiScopeInput = {
+  buckets?: InputMaybe<Array<AiAttributionBucketInput>>;
+  repoId?: InputMaybe<Scalars['String']['input']>;
+  teamId?: InputMaybe<Scalars['String']['input']>;
+  workType?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AiWorkflowDrilldownResult = {
+  __typename?: 'AIWorkflowDrilldownResult';
+  dataAvailable: Scalars['Boolean']['output'];
+  edges: Array<AiWorkflowGraphEdgeOut>;
+  nodes: Array<AiWorkflowGraphNodeOut>;
+  orgId: Scalars['String']['output'];
+  partial: Scalars['Boolean']['output'];
+  rootId: Scalars['String']['output'];
+  rootType: Scalars['String']['output'];
+};
+
+export type AiWorkflowGraphEdgeOut = {
+  __typename?: 'AIWorkflowGraphEdgeOut';
+  confidence: Scalars['Float']['output'];
+  edgeId: Scalars['String']['output'];
+  edgeType: Scalars['String']['output'];
+  evidence: Scalars['String']['output'];
+  provider?: Maybe<Scalars['String']['output']>;
+  repoId?: Maybe<Scalars['String']['output']>;
+  source: Scalars['String']['output'];
+  sourceId: Scalars['String']['output'];
+  sourceType: Scalars['String']['output'];
+  targetId: Scalars['String']['output'];
+  targetType: Scalars['String']['output'];
+};
+
+export type AiWorkflowGraphNodeOut = {
+  __typename?: 'AIWorkflowGraphNodeOut';
+  nodeId: Scalars['String']['output'];
+  nodeType: Scalars['String']['output'];
+};
+
+export type AiWorkflowRootTypeInput =
+  | 'ISSUE'
+  | 'PR'
+  | 'WORK_UNIT';
+
 export type AnalyticsRequestInput = {
   breakdowns?: Array<BreakdownRequestInput>;
   filters?: InputMaybe<FilterInput>;
@@ -323,6 +582,20 @@ export type PageInfo = {
 
 export type Query = {
   __typename?: 'Query';
+  /** Side-by-side AI-assisted vs non-AI baseline comparison. */
+  aiComparison: AiComparison;
+  /** AI governance coverage and recent policy violations. */
+  aiGovernanceSummary: AiGovernanceSummary;
+  /** AI workflow impact summary across the requested time range. */
+  aiImpactSummary: AiImpactSummary;
+  /** AI automation opportunity recommendations. Returns an empty, stable contract until the detector ships (CHAOS-1586). */
+  aiOpportunities: AiOpportunitiesResult;
+  /** Per-bucket AI review-load breakdown with amplification. */
+  aiReviewLoad: AiReviewLoadResult;
+  /** Per-bucket AI risk breakdown (rework, revert, test gaps, incidents). */
+  aiRiskBreakdown: AiRiskBreakdownResult;
+  /** Drilldown into AI workflow evidence rooted at an issue, PR, or work_unit. Returns Work Graph nodes and edges with provenance and short evidence references. */
+  aiWorkflowDrilldown: AiWorkflowDrilldownResult;
   /** Run batch analytics queries */
   analytics: AnalyticsResult;
   /** Compute capacity forecast on-demand */
@@ -345,6 +618,58 @@ export type Query = {
   securityOverview: SecurityOverview;
   /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
+};
+
+
+export type QueryAiComparisonArgs = {
+  dateRange: AiDateRangeInput;
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<AiScopeInput>;
+};
+
+
+export type QueryAiGovernanceSummaryArgs = {
+  dateRange: AiDateRangeInput;
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<AiScopeInput>;
+  violationLimit?: Scalars['Int']['input'];
+};
+
+
+export type QueryAiImpactSummaryArgs = {
+  dateRange: AiDateRangeInput;
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<AiScopeInput>;
+};
+
+
+export type QueryAiOpportunitiesArgs = {
+  limit?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<AiScopeInput>;
+};
+
+
+export type QueryAiReviewLoadArgs = {
+  dateRange: AiDateRangeInput;
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<AiScopeInput>;
+};
+
+
+export type QueryAiRiskBreakdownArgs = {
+  dateRange: AiDateRangeInput;
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<AiScopeInput>;
+};
+
+
+export type QueryAiWorkflowDrilldownArgs = {
+  depth?: Scalars['Int']['input'];
+  limit?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+  rootId: Scalars['String']['input'];
+  rootType: AiWorkflowRootTypeInput;
 };
 
 
@@ -749,15 +1074,20 @@ export type WorkGraphEdgeType =
   | 'CHILD_OF'
   | 'CONFIG_CHANGED_BY'
   | 'CONTAINS'
+  | 'DEPLOYS'
   | 'DUPLICATES'
   | 'FIXES'
+  | 'GENERATES'
   | 'GUARDS'
+  | 'HAS_AI_WORKFLOW'
+  | 'HAS_REVIEW_OUTCOME'
   | 'IMPACTS'
   | 'IMPLEMENTS'
   | 'INTRODUCED_BY'
   | 'IS_BLOCKED_BY'
   | 'IS_DUPLICATE_OF'
   | 'IS_RELATED_TO'
+  | 'LINKED_INCIDENT'
   | 'PARENT_OF'
   | 'REFERENCES'
   | 'RELATES'
@@ -768,15 +1098,20 @@ export type WorkGraphEdgeTypeInput =
   | 'CHILD_OF'
   | 'CONFIG_CHANGED_BY'
   | 'CONTAINS'
+  | 'DEPLOYS'
   | 'DUPLICATES'
   | 'FIXES'
+  | 'GENERATES'
   | 'GUARDS'
+  | 'HAS_AI_WORKFLOW'
+  | 'HAS_REVIEW_OUTCOME'
   | 'IMPACTS'
   | 'IMPLEMENTS'
   | 'INTRODUCED_BY'
   | 'IS_BLOCKED_BY'
   | 'IS_DUPLICATE_OF'
   | 'IS_RELATED_TO'
+  | 'LINKED_INCIDENT'
   | 'PARENT_OF'
   | 'REFERENCES'
   | 'RELATES'
@@ -790,20 +1125,30 @@ export type WorkGraphEdgesResult = {
 };
 
 export type WorkGraphNodeType =
+  | 'AI_WORKFLOW_RUN'
   | 'COMMIT'
+  | 'DEPLOYMENT'
+  | 'DIFF'
   | 'FEATURE_FLAG'
   | 'FILE'
+  | 'INCIDENT'
   | 'ISSUE'
   | 'PR'
-  | 'RELEASE';
+  | 'RELEASE'
+  | 'REVIEW_OUTCOME';
 
 export type WorkGraphNodeTypeInput =
+  | 'AI_WORKFLOW_RUN'
   | 'COMMIT'
+  | 'DEPLOYMENT'
+  | 'DIFF'
   | 'FEATURE_FLAG'
   | 'FILE'
+  | 'INCIDENT'
   | 'ISSUE'
   | 'PR'
-  | 'RELEASE';
+  | 'RELEASE'
+  | 'REVIEW_OUTCOME';
 
 export type WorkGraphProvenance =
   | 'EXPLICIT_TEXT'
