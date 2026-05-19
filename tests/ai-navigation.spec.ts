@@ -25,6 +25,8 @@ const aiReviewLoadLink = (page: Page) =>
   page.locator('a[href^="/ai/review-load"]').first();
 const aiRiskLink = (page: Page) =>
   page.locator('a[href^="/ai/risk"]').first();
+const aiAutomationsLink = (page: Page) =>
+  page.locator('a[href*="#opportunities"]').first();
 
 test.describe("AI workflow primary navigation", () => {
   test("nav links route between the three AI views", async ({ page }) => {
@@ -46,6 +48,16 @@ test.describe("AI workflow primary navigation", () => {
     await aiImpactLink(page).click();
     await expect(page).toHaveURL(/\/ai\/impact/);
     await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
+  });
+
+  test("Automations hash link owns the active nav state", async ({ page }) => {
+    await page.goto(`/ai/impact?f=${defaultFilter}`);
+
+    await aiAutomationsLink(page).click();
+
+    await expect(page).toHaveURL(/\/ai\/impact\?[^#]*#opportunities/);
+    await expect(aiAutomationsLink(page)).toHaveAttribute("aria-current", "page");
+    await expect(aiImpactLink(page)).not.toHaveAttribute("aria-current", "page");
   });
 
   test("AIFilterBar updates stay on the current AI route", async ({ page }) => {
