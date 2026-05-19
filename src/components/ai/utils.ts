@@ -15,6 +15,18 @@ export function formatPercent(value?: number | null): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+/**
+ * Compute a ratio guarded against zero / missing denominators. Returns
+ * null when the ratio cannot be expressed, which `formatPercent` renders
+ * as “—”. Avoids the `denom ?? 1` antipattern that silently treats a
+ * missing denominator as 1 and emits absurd percents like 1200.0%.
+ */
+export function safeRatio(numerator?: number | null, denominator?: number | null): number | null {
+  if (numerator == null || denominator == null) return null;
+  if (denominator === 0) return null;
+  return numerator / denominator;
+}
+
 export function formatNumber(value?: number | null, digits = 1): string {
   if (value == null || Number.isNaN(value)) return "—";
   return value.toFixed(digits);
@@ -27,7 +39,7 @@ export function formatSigned(value?: number | null, suffix = ""): string {
 }
 
 export function assistedWorkShareRows(rows: AiImpactBucketTotals[]) {
-  const assistedBuckets = new Set(["AI_ASSISTED", "AI_REVIEW", "AGENT_CREATED", "HUMAN", "UNKNOWN"]);
+  const assistedBuckets = new Set<string>(AI_BUCKETS);
   return rows
     .filter((row) => assistedBuckets.has(row.bucket))
     .map((row) => ({ name: bucketLabel(row.bucket), value: row.prsTotal }));

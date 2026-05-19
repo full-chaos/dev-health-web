@@ -29,7 +29,7 @@ vi.mock("@/components/charts/SparklineChart", () => ({
   SparklineChart: ({ data }: { data: number[] }) => <div data-testid="sparkline-chart">{data.join(",")}</div>,
 }));
 
-import { AIImpactDashboard } from "./AIImpactDashboard";
+import { AIImpactDashboard } from "../AIImpactDashboard";
 import type { AIFilter } from "@/lib/filters/ai";
 
 const filter: AIFilter = { startDate: "2026-04-20", endDate: "2026-05-19" };

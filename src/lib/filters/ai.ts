@@ -1,3 +1,4 @@
+import { AI_BUCKETS } from "@/components/ai/utils";
 import { isServer } from "@/lib/env";
 import type { AiAttributionBucketInput } from "@/lib/graphql/__generated__/types";
 
@@ -13,7 +14,7 @@ export type AIFilter = {
 };
 
 const ALLOWED_KEYS = new Set(["startDate", "endDate", "teamId", "repoId", "workType", "buckets"]);
-const BUCKETS = new Set(["AI_ASSISTED", "AI_REVIEW", "AGENT_CREATED", "HUMAN", "UNKNOWN"]);
+const BUCKETS = new Set<string>(AI_BUCKETS);
 
 // Next.js polyfills `Buffer` in the browser bundle, but the polyfill does
 // NOT support the `base64url` encoding (Node 16+ only). Falling back to a

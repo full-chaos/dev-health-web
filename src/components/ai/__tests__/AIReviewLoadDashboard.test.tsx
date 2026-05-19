@@ -8,7 +8,7 @@ const { mockUseAIReviewLoad } = vi.hoisted(() => ({ mockUseAIReviewLoad: vi.fn()
 vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
   return {
     useAIReviewLoad: mockUseAIReviewLoad,
-    findBucketRow: <T extends { bucket: string }>(rows: T[] | undefined, bucket = "AI_ASSISTED") => rows?.find((row) => row.bucket === bucket) ?? rows?.find((row) => row.bucket !== "HUMAN"),
+    findBucketRow: <T extends { bucket: string }>(rows: T[] | undefined, bucket = "AI_ASSISTED") => rows?.find((row) => row.bucket === bucket),
     valueDelta: (value?: number | null, baseline?: number | null) => value == null || baseline == null ? undefined : value - baseline,
     approvalFriction: (row?: { changesRequestedPerPr?: number | null; reviewsPerPr?: number | null }) => !row?.reviewsPerPr || row.changesRequestedPerPr == null ? undefined : row.changesRequestedPerPr / row.reviewsPerPr,
   };

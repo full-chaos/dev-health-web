@@ -57,8 +57,14 @@ export function toAIQueryInputs(filter: AIFilter): AIInputs {
   };
 }
 
+/**
+ * Strict bucket lookup. Returns `undefined` when the requested bucket is
+ * absent so the caller's missing-data branch fires honestly rather than
+ * silently substituting an unrelated bucket (e.g. AGENT_CREATED or
+ * UNKNOWN) when AI_ASSISTED rows haven't populated yet.
+ */
 export function findBucketRow<T extends { bucket: string }>(rows: T[] | undefined, bucket: AIBucket | string = "AI_ASSISTED"): T | undefined {
-  return rows?.find((row) => row.bucket === bucket) ?? rows?.find((row) => row.bucket !== "HUMAN");
+  return rows?.find((row) => row.bucket === bucket);
 }
 
 export function valueDelta(value: number | null | undefined, baseline: number | null | undefined): number | undefined {
