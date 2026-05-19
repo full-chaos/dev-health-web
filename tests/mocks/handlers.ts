@@ -32,6 +32,18 @@ import {
   sankeyInvestmentLinks,
 } from "../../src/data/devHealthOpsSample";
 
+import {
+  aiComparisonResponse,
+  aiGovernanceSummaryResponse,
+  aiImpactSummaryResponse,
+  aiOpportunitiesResponse,
+  aiReviewLoadResponse,
+  aiRiskBreakdownResponse,
+  catalogValuesResponse,
+  resolveAIMode,
+  type AIScopeVars,
+} from "./aiSample";
+
 const investmentMixSample = {
   theme_distribution: {
     feature_delivery: 644.6,
@@ -1209,6 +1221,84 @@ export const handlers = [
             })),
           },
         },
+      });
+    }
+
+    // ---- AI Workflow Intelligence (CHAOS-1588) ----
+    const vars = (body?.variables ?? {}) as {
+      orgId?: string;
+      dateRange?: { startDate?: string; endDate?: string };
+      scope?: AIScopeVars | null;
+      dimension?: { dimension?: string };
+    };
+    const orgId = vars.orgId ?? "org-e2e";
+    const startDate = vars.dateRange?.startDate ?? "2026-04-20";
+    const endDate = vars.dateRange?.endDate ?? "2026-05-19";
+    const aiMode = resolveAIMode(vars.scope ?? null);
+
+    if (query.includes("AIImpactSummary")) {
+      return HttpResponse.json({
+        data: { aiImpactSummary: aiImpactSummaryResponse(orgId, startDate, endDate, aiMode) },
+      });
+    }
+
+    if (query.includes("AIReviewLoad")) {
+      return HttpResponse.json({
+        data: {
+          aiReviewLoad: aiReviewLoadResponse(orgId, startDate, endDate, aiMode),
+          aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode),
+        },
+      });
+    }
+
+    if (query.includes("AIRiskBreakdown")) {
+      return HttpResponse.json({
+        data: {
+          aiRiskBreakdown: aiRiskBreakdownResponse(orgId, startDate, endDate, aiMode),
+          aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode),
+        },
+      });
+    }
+
+    if (query.includes("AIComparison")) {
+      return HttpResponse.json({
+        data: { aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode) },
+      });
+    }
+
+    if (query.includes("AIOpportunities")) {
+      return HttpResponse.json({
+        data: { aiOpportunities: aiOpportunitiesResponse(orgId, aiMode) },
+      });
+    }
+
+    if (query.includes("AIGovernanceSummary")) {
+      return HttpResponse.json({
+        data: { aiGovernanceSummary: aiGovernanceSummaryResponse(orgId, startDate, endDate, aiMode) },
+      });
+    }
+
+    if (query.includes("AIWorkflowDrilldown")) {
+      return HttpResponse.json({
+        data: {
+          aiWorkflowDrilldown: {
+            orgId,
+            rootType: "PR",
+            rootId: "pr-7001",
+            partial: false,
+            dataAvailable: true,
+            nodes: [],
+            edges: [],
+          },
+        },
+      });
+    }
+
+    // Catalog dimension values for AI filter bar dropdowns.
+    if (query.includes("CatalogValues") || query.includes("catalog(")) {
+      const dimension = (vars.dimension?.dimension ?? "TEAM") as string;
+      return HttpResponse.json({
+        data: { catalog: catalogValuesResponse(dimension) },
       });
     }
 
