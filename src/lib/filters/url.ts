@@ -26,6 +26,7 @@ export const buildExploreUrl = (options: {
 };
 
 export const withFilterParam = (path: string, filters: MetricFilter, role?: string, origin?: string) => {
+  const [pathWithoutHash, hash] = path.split("#", 2);
   const params = new URLSearchParams();
   params.set("f", encodeFilterParam(filters));
   if (role) {
@@ -34,8 +35,9 @@ export const withFilterParam = (path: string, filters: MetricFilter, role?: stri
   if (origin) {
     params.set("origin", origin);
   }
-  if (path.includes("?")) {
-    return `${path}&${params.toString()}`;
+  const suffix = hash ? `#${hash}` : "";
+  if (pathWithoutHash.includes("?")) {
+    return `${pathWithoutHash}&${params.toString()}${suffix}`;
   }
-  return `${path}?${params.toString()}`;
+  return `${pathWithoutHash}?${params.toString()}${suffix}`;
 };
