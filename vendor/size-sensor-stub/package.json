@@ -1,0 +1,8 @@
+{
+  "name": "size-sensor",
+  "version": "1.0.0-local-stub",
+  "description": "Local stub replacing the malware-flagged size-sensor (GHSA-gx6x-v325-85g4). Uses native ResizeObserver to provide the bind/clear API surface consumed by echarts-for-react.",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true
+}

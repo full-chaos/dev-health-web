@@ -20,6 +20,14 @@ const nextConfig = {
     : {
         output: "standalone",
         pageExtensions: ["tsx", "ts", "jsx", "js"],
+        // size-sensor (transitive via echarts-for-react) is flagged as malware
+        // (GHSA-gx6x-v325-85g4). Resolve all `size-sensor` imports to a local
+        // ResizeObserver-backed stub so the npm dependency is never installed.
+        turbopack: {
+          resolveAlias: {
+            "size-sensor": "./vendor/size-sensor-stub/index.js",
+          },
+        },
       }),
   async headers() {
     return [
