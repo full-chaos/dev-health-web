@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore, useCallback } from "react";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { BetaBadge } from "@/components/BetaBadge";
 
 import { withFilterParam } from "@/lib/filters/url";
@@ -30,6 +31,11 @@ function getCollapsedState(): Record<string, boolean> {
 function subscribeToStorage(callback: () => void) {
   window.addEventListener("storage", callback);
   return () => window.removeEventListener("storage", callback);
+}
+
+function getLocationHash() {
+  if (typeof window === "undefined") return "";
+  return window.location.hash;
 }
 
 type NavItem = {
@@ -114,11 +120,24 @@ type PrimaryNavProps = {
 };
 
 export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
+  const pathname = usePathname();
+  const [hash, setHash] = useState("");
   const collapsed = useSyncExternalStore(
     subscribeToStorage,
     getCollapsedState,
     () => EMPTY_COLLAPSED
   );
+
+  useEffect(() => {
+    const syncHash = () => setHash(getLocationHash());
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    window.addEventListener("popstate", syncHash);
+    return () => {
+      window.removeEventListener("hashchange", syncHash);
+      window.removeEventListener("popstate", syncHash);
+    };
+  }, []);
 
   const toggleGroup = useCallback((groupId: string) => {
     const current = getCollapsedState();
@@ -170,11 +189,15 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                 
                 <div className={`space-y-2 overflow-hidden transition-all duration-300 ${collapsed[group.id] ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"}`}>
                   {group.items.map((item) => {
-                    const isActive = active === item.id;
+                    const [itemPath, itemHash] = item.href.split("#", 2);
+                    const hashMatchesItem = Boolean(itemHash) && pathname === itemPath && hash === `#${itemHash}`;
+                    const pageMatchesItem = active === item.id && !(hash && pathname === itemPath);
+                    const isActive = hashMatchesItem || pageMatchesItem;
                     return (
                       <Link
                         key={item.id}
                         href={withFilterParam(item.href, filters, role)}
+                        onClick={itemHash ? () => setHash(`#${itemHash}`) : undefined}
                         aria-current={isActive ? "page" : undefined}
                         className={`group relative flex items-center justify-between rounded-2xl border px-3 py-2 transition ${isActive
                           ? "border-(--accent) bg-(--accent)/15 text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-full before:bg-(--accent)"
