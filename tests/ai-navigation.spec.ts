@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 import { encodeAIFilterParam } from "../src/lib/filters/ai";
 
@@ -15,6 +15,17 @@ const defaultFilter = encodeAIFilterParam({
   endDate: "2026-05-19",
 });
 
+// PrimaryNav links carry the label + description in their accessible name
+// (e.g. "Review Load Pressure"), so a `/^Review Load$/` regex misses them
+// and `/^Risk/` also matches the TestOps "Risk Confidence" entry. Target the
+// AI sidebar links by their href to stay unambiguous.
+const aiImpactLink = (page: Page) =>
+  page.locator('a[href^="/ai/impact"]').first();
+const aiReviewLoadLink = (page: Page) =>
+  page.locator('a[href^="/ai/review-load"]').first();
+const aiRiskLink = (page: Page) =>
+  page.locator('a[href^="/ai/risk"]').first();
+
 test.describe("AI workflow primary navigation", () => {
   test("nav links route between the three AI views", async ({ page }) => {
     await page.goto(`/ai/impact?f=${defaultFilter}`);
@@ -22,17 +33,17 @@ test.describe("AI workflow primary navigation", () => {
     await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
     await expect(page.getByTestId("ai-impact-dashboard")).toBeVisible();
 
-    await page.getByRole("link", { name: /^Review Load$/i }).click();
+    await aiReviewLoadLink(page).click();
     await expect(page).toHaveURL(/\/ai\/review-load/);
     await expect(page.getByRole("heading", { name: "AI Review Load" })).toBeVisible();
     await expect(page.getByTestId("ai-review-load-dashboard")).toBeVisible();
 
-    await page.getByRole("link", { name: /^Risk$/i }).click();
+    await aiRiskLink(page).click();
     await expect(page).toHaveURL(/\/ai\/risk/);
     await expect(page.getByRole("heading", { name: "AI Risk" })).toBeVisible();
     await expect(page.getByTestId("ai-risk-dashboard")).toBeVisible();
 
-    await page.getByRole("link", { name: /^Impact$/i }).click();
+    await aiImpactLink(page).click();
     await expect(page).toHaveURL(/\/ai\/impact/);
     await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
   });
@@ -62,7 +73,7 @@ test.describe("AI workflow primary navigation", () => {
     await expect(page.getByLabel("Start")).toHaveValue("2026-03-01");
     await expect(page.getByLabel("End")).toHaveValue("2026-04-01");
 
-    await page.getByRole("link", { name: /^Review Load$/i }).click();
+    await aiReviewLoadLink(page).click();
     await expect(page).toHaveURL(/\/ai\/review-load/);
     await expect(page.getByRole("heading", { name: "AI Review Load" })).toBeVisible();
   });

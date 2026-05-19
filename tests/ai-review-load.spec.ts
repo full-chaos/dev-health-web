@@ -32,7 +32,8 @@ test.describe("AI Review Load dashboard", () => {
     await expect(dashboard.getByText("Review comments per PR")).toBeVisible();
     await expect(dashboard.getByText("Change request rate")).toBeVisible();
     await expect(dashboard.getByText("Approval friction")).toBeVisible();
-    await expect(dashboard.getByText("Review amplification")).toBeVisible();
+    // Disambiguate from "Review amplification trend" heading + daily-trend paragraph.
+    await expect(dashboard.getByRole("heading", { name: "Review amplification", exact: true })).toBeVisible();
   });
 
   test("reviewer concentration is intentionally deferred without person-level ranking", async ({ page }) => {

@@ -27,17 +27,20 @@ test.describe("AI Impact dashboard", () => {
     await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
     await expect(page.getByTestId("ai-impact-dashboard")).toBeVisible();
 
-    // Spec panels (CHAOS-1584).
+    // Spec panels (CHAOS-1584). Three panels (AI-assisted/Agent-created/Net
+    // delivery lift) appear twice in the populated layout — once as the
+    // eyebrow on a headline card and once as the heading on the matching
+    // detailed panel — so we scope to the panel heading specifically.
     const dashboard = page.getByTestId("ai-impact-dashboard");
-    await expect(dashboard.getByText("AI-assisted work share")).toBeVisible();
-    await expect(dashboard.getByText("Agent-created work share")).toBeVisible();
-    await expect(dashboard.getByText("Net delivery lift")).toBeVisible();
-    await expect(dashboard.getByText("Review amplification")).toBeVisible();
-    await expect(dashboard.getByText("Rework drag")).toBeVisible();
-    await expect(dashboard.getByText("Test gap rate")).toBeVisible();
-    await expect(dashboard.getByText("Revert + incident drag")).toBeVisible();
-    await expect(dashboard.getByText("Top affected repos and teams")).toBeVisible();
-    await expect(dashboard.getByText("Best-fit automation opportunities")).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "AI-assisted work share", exact: true })).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "Agent-created work share", exact: true })).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "Net delivery lift", exact: true })).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "Review amplification", exact: true })).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "Rework drag", exact: true })).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "Test gap rate", exact: true })).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "Revert + incident drag", exact: true })).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "Top affected repos and teams", exact: true })).toBeVisible();
+    await expect(dashboard.getByRole("heading", { name: "Best-fit automation opportunities", exact: true })).toBeVisible();
 
     // Unknown attribution bucket must remain visible (data coverage transparency).
     await expect(dashboard.getByText("Unknown attribution")).toBeVisible();
