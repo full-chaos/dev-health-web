@@ -414,3 +414,150 @@ query SecurityAlerts($orgId: String!, $filters: SecurityAlertFilterInput, $pagin
   }
 }
 `;
+
+// ---------------------------------------------------------------------------
+// AI review-load and risk diagnostic views (CHAOS-1585)
+// ---------------------------------------------------------------------------
+
+export const AI_REVIEW_LOAD_QUERY = `
+query AIReviewLoad($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIScopeInput) {
+  aiReviewLoad(orgId: $orgId, dateRange: $dateRange, scope: $scope) {
+    orgId
+    startDate
+    endDate
+    dataAvailable
+    byBucket {
+      bucket
+      prsTotal
+      reviewsTotal
+      reviewsPerPr
+      changesRequestedPerPr
+      reviewAmplification
+    }
+    daily {
+      bucket
+      prsTotal
+      reviewsTotal
+      reviewsPerPr
+      changesRequestedPerPr
+      reviewAmplification
+    }
+  }
+  aiComparison(orgId: $orgId, dateRange: $dateRange, scope: $scope) {
+    orgId
+    startDate
+    endDate
+    dataAvailable
+    aiSide {
+      bucket
+      prsTotal
+      prsMerged
+      cycleTimeAvgHours
+      reviewsPerPr
+      reworkRate
+      revertRate
+      testGapRate
+      incidentRate
+    }
+    baselineSide {
+      bucket
+      prsTotal
+      prsMerged
+      cycleTimeAvgHours
+      reviewsPerPr
+      reworkRate
+      revertRate
+      testGapRate
+      incidentRate
+    }
+    delta {
+      cycleTimeDeltaHours
+      reviewsPerPrDelta
+      reworkRateDelta
+      revertRateDelta
+      testGapRateDelta
+      incidentRateDelta
+    }
+  }
+}
+`;
+
+export const AI_RISK_BREAKDOWN_QUERY = `
+query AIRiskBreakdown($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIScopeInput) {
+  aiRiskBreakdown(orgId: $orgId, dateRange: $dateRange, scope: $scope) {
+    orgId
+    startDate
+    endDate
+    dataAvailable
+    byBucket {
+      bucket
+      prsTotal
+      reworkPrs
+      reworkRate
+      revertPrs
+      revertRate
+      testGapPrs
+      testGapRate
+      incidentsCount
+      incidentRate
+    }
+  }
+  aiComparison(orgId: $orgId, dateRange: $dateRange, scope: $scope) {
+    orgId
+    startDate
+    endDate
+    dataAvailable
+    aiSide {
+      bucket
+      prsTotal
+      prsMerged
+      cycleTimeAvgHours
+      reviewsPerPr
+      reworkRate
+      revertRate
+      testGapRate
+      incidentRate
+    }
+    baselineSide {
+      bucket
+      prsTotal
+      prsMerged
+      cycleTimeAvgHours
+      reviewsPerPr
+      reworkRate
+      revertRate
+      testGapRate
+      incidentRate
+    }
+    delta {
+      cycleTimeDeltaHours
+      reviewsPerPrDelta
+      reworkRateDelta
+      revertRateDelta
+      testGapRateDelta
+      incidentRateDelta
+    }
+  }
+}
+`;
+
+export const AI_GOVERNANCE_SUMMARY_QUERY = `
+query AIGovernanceSummary($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIScopeInput, $violationLimit: Int! = 50) {
+  aiGovernanceSummary(orgId: $orgId, dateRange: $dateRange, scope: $scope, violationLimit: $violationLimit) {
+    orgId
+    startDate
+    endDate
+    dataAvailable
+    recentViolations {
+      ruleId
+      severity
+      subjectType
+      subjectId
+      teamId
+      repoId
+      observedAt
+      evidence
+    }
+  }
+}
+`;

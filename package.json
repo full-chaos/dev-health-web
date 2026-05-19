@@ -47,7 +47,7 @@
   "overrides": {
     "serialize-javascript": ">=7.0.3",
     "@graphql-codegen/plugin-helpers": "6.2.1",
-    "size-sensor": "npm:noop2@2.0.0"
+    "size-sensor": "file:./vendor/size-sensor-stub"
   },
   "pnpm": {
     "overrides": {

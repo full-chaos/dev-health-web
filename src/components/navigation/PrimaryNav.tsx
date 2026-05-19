@@ -93,7 +93,8 @@ const navGroups: NavGroup[] = [
     label: "AI",
     items: [
       { id: "ai-impact", label: "Impact", href: "/ai/impact", description: "Leverage" },
-      { id: "ai-review-load", label: "Review & Risk", href: "/ai/review-load", description: "Guardrails" },
+      { id: "ai-review-load", label: "Review Load", href: "/ai/review-load", description: "Pressure" },
+      { id: "ai-risk", label: "Risk", href: "/ai/risk", description: "Quality" },
       { id: "ai-opportunities", label: "Automations", href: "/ai/impact#opportunities", description: "Candidates" },
     ],
   },
