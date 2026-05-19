@@ -5,13 +5,12 @@ import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { useAIComparison, useAIImpactSummary, useAIOpportunities } from "@/lib/graphql/hooks/useAIImpact";
 import type { AIFilter } from "@/lib/filters/ai";
-import { encodeAIFilterParam } from "@/lib/filters/ai";
 import { AIComparisonCard } from "./AIComparisonCard";
 import { AIEmptyState } from "./AIEmptyState";
 import { AILeverageBars } from "./AILeverageBars";
 import { AIOpportunityList } from "./AIOpportunityList";
 import { AIPanelCard } from "./AIPanelCard";
-import { agentCreatedTrend, assistedWorkShareRows, bucketLabel, formatPercent } from "./utils";
+import { agentCreatedTrend, assistedWorkShareRows, bucketLabel, formatPercent, safeRatio } from "./utils";
 
 type AIImpactDashboardProps = {
   filter: AIFilter;
@@ -25,7 +24,9 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
   const summary = summaryResult.data?.aiImpactSummary;
   const comparison = comparisonResult.data?.aiComparison;
   const opportunities = opportunitiesResult.data?.aiOpportunities;
-  const evidenceHref = `/ai/impact/PR/summary?f=${encodeURIComponent(encodeAIFilterParam(filter))}`;
+  // Drill-into-evidence is intentionally not wired yet: the PR-row picker
+  // and `/ai/impact/PR/summary` route haven't shipped. Panels render
+  // without an evidence link rather than pointing at a 404. (CHAOS-1715)
 
   if (summaryResult.error || comparisonResult.error || opportunitiesResult.error) {
     return (
@@ -65,7 +66,7 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
         <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
           <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Agent-created work share</p>
           <p className="mt-2 text-4xl font-semibold tabular-nums">{summary?.agentCreatedPrs ?? 0}</p>
-          <p className="mt-2 text-sm text-(--ink-muted)">{formatPercent((summary?.agentCreatedPrs ?? 0) / Math.max(summary?.totalPrs ?? 1, 1))} of PRs appear agent-created.</p>
+          <p className="mt-2 text-sm text-(--ink-muted)">{formatPercent(safeRatio(summary?.agentCreatedPrs, summary?.totalPrs))} of PRs appear agent-created.</p>
         </div>
         <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
           <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Unknown attribution</p>
@@ -75,11 +76,11 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <AIPanelCard title="AI-assisted work share" description="PR attribution mix across human, assisted, review, agent, and unknown buckets." evidenceHref={evidenceHref}>
+        <AIPanelCard title="AI-assisted work share" description="PR attribution mix across human, assisted, review, agent, and unknown buckets.">
           {donutRows.length ? <DonutChart data={donutRows} height={260} /> : <AIEmptyState title="Attribution mix has no rows yet" />}
         </AIPanelCard>
 
-        <AIPanelCard title="Agent-created work share" description="Absolute agent-created PR count with a scoped trend." evidenceHref={evidenceHref}>
+        <AIPanelCard title="Agent-created work share" description="Absolute agent-created PR count with a scoped trend.">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-4xl font-semibold tabular-nums">{agentBucket?.agentCreatedPrCount ?? summary?.agentCreatedPrs ?? 0}</p>
@@ -90,23 +91,23 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
           {trend.length ? <TimeseriesChart data={trend} height={180} /> : <AIEmptyState title="Agent-created trend has no rows yet" />}
         </AIPanelCard>
 
-        <AIPanelCard title="Net delivery lift" description="AI Operating Leverage broken into signed delivery and drag components." evidenceHref={evidenceHref}>
+        <AIPanelCard title="Net delivery lift" description="AI Operating Leverage broken into signed delivery and drag components.">
           <AILeverageBars components={leverage} />
         </AIPanelCard>
 
-        <AIPanelCard title="Review amplification" description="Reviews per PR on the AI side compared with the non-AI baseline." evidenceHref={evidenceHref}>
+        <AIPanelCard title="Review amplification" description="Reviews per PR on the AI side compared with the non-AI baseline.">
           <AIComparisonCard label="Reviews per PR" aiSide={comparison?.aiSide} baselineSide={comparison?.baselineSide} delta={comparison?.delta.reviewsPerPrDelta} metric="reviewsPerPr" percent={false} />
         </AIPanelCard>
 
-        <AIPanelCard title="Rework drag" description="Rework rate suggests where assisted flow may add iteration load." evidenceHref={evidenceHref}>
+        <AIPanelCard title="Rework drag" description="Rework rate suggests where assisted flow may add iteration load.">
           <AIComparisonCard label="Rework rate" aiSide={comparison?.aiSide} baselineSide={comparison?.baselineSide} delta={comparison?.delta.reworkRateDelta} metric="reworkRate" />
         </AIPanelCard>
 
-        <AIPanelCard title="Test gap rate" description="Test gaps show where confidence may lag behind generated or assisted change." evidenceHref={evidenceHref}>
+        <AIPanelCard title="Test gap rate" description="Test gaps show where confidence may lag behind generated or assisted change.">
           <AIComparisonCard label="Test gap rate" aiSide={comparison?.aiSide} baselineSide={comparison?.baselineSide} delta={comparison?.delta.testGapRateDelta} metric="testGapRate" />
         </AIPanelCard>
 
-        <AIPanelCard title="Revert + incident drag" description="Operational drag indicators compared with the baseline side." evidenceHref={evidenceHref}>
+        <AIPanelCard title="Revert + incident drag" description="Operational drag indicators compared with the baseline side.">
           <div className="grid gap-3 md:grid-cols-2">
             <AIComparisonCard label="Revert rate" aiSide={comparison?.aiSide} baselineSide={comparison?.baselineSide} delta={comparison?.delta.revertRateDelta} metric="revertRate" />
             <AIComparisonCard label="Incident rate" aiSide={comparison?.aiSide} baselineSide={comparison?.baselineSide} delta={comparison?.delta.incidentRateDelta} metric="incidentRate" />
@@ -119,7 +120,7 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
           </AIEmptyState>
         </AIPanelCard>
 
-        <AIPanelCard title="Best-fit automation opportunities" description="Candidate patterns for responsible automation once the recommendation engine becomes ready." evidenceHref={evidenceHref}>
+        <AIPanelCard title="Best-fit automation opportunities" description="Candidate patterns for responsible automation once the recommendation engine becomes ready.">
           <AIOpportunityList detectorReady={opportunities?.detectorReady} recommendations={opportunities?.recommendations} />
         </AIPanelCard>
       </div>

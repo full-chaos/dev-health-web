@@ -1,5 +1,6 @@
 import { AIImpactDashboard } from "@/components/ai/AIImpactDashboard";
 import { AIFilterBar } from "@/components/ai/AIFilterBar";
+import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
@@ -25,13 +26,9 @@ export default async function AIImpactPage({ searchParams }: AIImpactPageProps) 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={defaultMetricFilter} active="ai-impact" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
-          <header>
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">AI</p>
-            <h1 className="mt-2 font-(--font-display) text-3xl">AI Impact</h1>
-            <p className="mt-2 max-w-3xl text-sm text-(--ink-muted)">
-              Org-wide view of how AI-assisted workflows appear to influence delivery, review load, quality gaps, and operational drag.
-            </p>
-          </header>
+          <AIPageHeader eyebrow="AI" title="AI Impact">
+            Org-wide view of how AI-assisted workflows appear to influence delivery, review load, quality gaps, and operational drag.
+          </AIPageHeader>
 
           <AIFilterBar filter={filter} />
           <AIImpactDashboard filter={filter} />

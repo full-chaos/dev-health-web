@@ -12,7 +12,7 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
   return {
     useAIRiskBreakdown: mockUseAIRiskBreakdown,
     useAIGovernanceSummary: mockUseAIGovernanceSummary,
-    findBucketRow: <T extends { bucket: string }>(rows: T[] | undefined, bucket = "AI_ASSISTED") => rows?.find((row) => row.bucket === bucket) ?? rows?.find((row) => row.bucket !== "HUMAN"),
+    findBucketRow: <T extends { bucket: string }>(rows: T[] | undefined, bucket = "AI_ASSISTED") => rows?.find((row) => row.bucket === bucket),
     prViolationRows: (summary?: { recentViolations?: Array<{ subjectType: string }> }) => (summary?.recentViolations ?? []).filter((violation) => violation.subjectType.toLowerCase() === "pr"),
   };
 });

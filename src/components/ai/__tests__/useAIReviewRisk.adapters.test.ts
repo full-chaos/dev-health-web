@@ -22,10 +22,11 @@ describe("useAIReviewRisk adapters", () => {
     });
   });
 
-  it("finds the requested bucket and falls back to non-human AI bucket", () => {
+  it("returns the requested bucket and undefined when it is absent (no silent fallback)", () => {
     const rows = [{ bucket: "HUMAN", value: 1 }, { bucket: "AGENT_CREATED", value: 2 }];
     expect(findBucketRow(rows, "HUMAN")?.value).toBe(1);
-    expect(findBucketRow(rows)?.value).toBe(2);
+    expect(findBucketRow(rows)).toBeUndefined();
+    expect(findBucketRow(rows, "AGENT_CREATED")?.value).toBe(2);
   });
 
   it("derives deltas and approval friction only when inputs exist", () => {
