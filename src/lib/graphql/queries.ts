@@ -236,6 +236,151 @@ query SecurityOverview($orgId: String!, $filters: SecurityAlertFilterInput) {
 }
 `;
 
+// ==== AI Workflow Analytics Queries ====
+
+export const AI_IMPACT_SUMMARY_QUERY = `
+query AIImpactSummary($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIScopeInput) {
+  aiImpactSummary(orgId: $orgId, dateRange: $dateRange, scope: $scope) {
+    orgId
+    startDate
+    endDate
+    totalPrs
+    aiAssistedPrs
+    agentCreatedPrs
+    humanPrs
+    unknownPrs
+    aiAssistedPrRatio
+    dataAvailable
+    computedAt
+    byBucket {
+      bucket
+      prsTotal
+      prsMerged
+      aiAssistedPrRatio
+      agentCreatedPrCount
+      cycleTimeAvgHours
+      aiCycleTimeDeltaHours
+      aiReviewAmplification
+      reworkDragRate
+      revertRate
+      incidentDragRate
+      testGapRate
+      leverage {
+        prsComponent
+        cycleTimeComponent
+        reviewComponent
+        reworkComponent
+        testComponent
+        incidentComponent
+      }
+    }
+    daily {
+      bucket
+      prsTotal
+      prsMerged
+      cycleTimeAvgHours
+      reviewsPerPr
+      changesRequestedPerPr
+      reworkPrs
+      reworkRate
+      revertPrs
+      revertRate
+      incidentsCount
+      incidentRate
+      testGapPrs
+      testGapRate
+    }
+  }
+}
+`;
+
+export const AI_COMPARISON_QUERY = `
+query AIComparison($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIScopeInput) {
+  aiComparison(orgId: $orgId, dateRange: $dateRange, scope: $scope) {
+    orgId
+    startDate
+    endDate
+    dataAvailable
+    aiSide {
+      bucket
+      prsTotal
+      prsMerged
+      cycleTimeAvgHours
+      reviewsPerPr
+      reworkRate
+      revertRate
+      testGapRate
+      incidentRate
+    }
+    baselineSide {
+      bucket
+      prsTotal
+      prsMerged
+      cycleTimeAvgHours
+      reviewsPerPr
+      reworkRate
+      revertRate
+      testGapRate
+      incidentRate
+    }
+    delta {
+      cycleTimeDeltaHours
+      reviewsPerPrDelta
+      reworkRateDelta
+      revertRateDelta
+      testGapRateDelta
+      incidentRateDelta
+    }
+  }
+}
+`;
+
+export const AI_OPPORTUNITIES_QUERY = `
+query AIOpportunities($orgId: String!, $scope: AIScopeInput, $limit: Int! = 5) {
+  aiOpportunities(orgId: $orgId, scope: $scope, limit: $limit) {
+    orgId
+    detectorReady
+    recommendations {
+      opportunityId
+      kind
+      repoId
+      teamId
+      title
+      rationale
+      score
+      evidenceRefs
+    }
+  }
+}
+`;
+
+export const AI_WORKFLOW_DRILLDOWN_QUERY = `
+query AIWorkflowDrilldown($orgId: String!, $rootType: AIWorkflowRootTypeInput!, $rootId: String!, $depth: Int! = 3, $limit: Int! = 100) {
+  aiWorkflowDrilldown(orgId: $orgId, rootType: $rootType, rootId: $rootId, depth: $depth, limit: $limit) {
+    orgId
+    rootType
+    rootId
+    partial
+    dataAvailable
+    nodes {
+      nodeType
+      nodeId
+    }
+    edges {
+      edgeId
+      sourceType
+      sourceId
+      targetType
+      targetId
+      edgeType
+      provenance
+      confidence
+      evidence
+    }
+  }
+}
+`;
+
 export const SECURITY_ALERTS_QUERY = `
 query SecurityAlerts($orgId: String!, $filters: SecurityAlertFilterInput, $pagination: SecurityPaginationInput) {
   securityAlerts(orgId: $orgId, filters: $filters, pagination: $pagination) {
