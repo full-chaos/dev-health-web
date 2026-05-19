@@ -89,6 +89,15 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    id: "ai",
+    label: "AI",
+    items: [
+      { id: "ai-impact", label: "Impact", href: "/ai/impact", description: "Leverage" },
+      { id: "ai-review-load", label: "Review & Risk", href: "/ai/review-load", description: "Guardrails" },
+      { id: "ai-opportunities", label: "Opportunities", href: "/ai/impact#opportunities", description: "Candidates" },
+    ],
+  },
+  {
     id: "reports",
     label: "Reports",
     items: [
