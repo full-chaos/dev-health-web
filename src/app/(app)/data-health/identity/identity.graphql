@@ -1,0 +1,22 @@
+query DataHealthIdentity($team: ID!) {
+  dataHealth(team: $team) {
+    identityMapping {
+      unmappedCount
+      unmappedIdentities {
+        provider
+        email
+        displayName
+        observedCount
+      }
+      suggestedAliases {
+        unmappedIdentity {
+          provider
+          email
+          displayName
+        }
+        suggestedCanonicalId
+        confidence
+      }
+    }
+  }
+}

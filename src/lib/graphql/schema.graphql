@@ -1041,3 +1041,76 @@ enum WorkGraphProvenance {
   EXPLICIT_TEXT
   HEURISTIC
 }
+extend type Query {
+  dataHealth(team: ID!): DataHealth!
+}
+
+type DataHealth {
+  connectors: [ConnectorStatus!]!
+  identityMapping: IdentityMappingHealth!
+  mappingCoverage: MappingCoverage!
+  metricLineage(metricId: ID!): MetricLineage
+}
+
+type ConnectorStatus {
+  provider: String!
+  scope: String!
+  lastSyncAt: DateTime
+  rowsIngested: Int!
+  lastFailure: ConnectorFailure
+}
+
+type ConnectorFailure {
+  occurredAt: DateTime!
+  message: String!
+  stage: String
+}
+
+type IdentityMappingHealth {
+  unmappedCount: Int!
+  unmappedIdentities: [UnmappedIdentity!]!
+  suggestedAliases: [AliasSuggestion!]!
+}
+
+type UnmappedIdentity {
+  provider: String!
+  email: String
+  displayName: String
+  observedCount: Int
+}
+
+type AliasSuggestion {
+  unmappedIdentity: UnmappedIdentity!
+  suggestedCanonicalId: String!
+  confidence: Float!
+}
+
+type MappingCoverage {
+  deployments: CoverageStat!
+  workItems: CoverageStat!
+}
+
+type CoverageStat {
+  totalRepos: Int!
+  coveredRepos: Int!
+  coveragePct: Float!
+  missing: [MissingMapping!]!
+}
+
+type MissingMapping {
+  repoName: String!
+  reason: String!
+}
+
+type MetricLineage {
+  metricId: ID!
+  sourceTables: [String!]!
+  computeWindow: WindowSpec!
+  computedAt: DateTime!
+  rowCount: Int
+}
+
+type WindowSpec {
+  kind: String!
+  durationDays: Int
+}
