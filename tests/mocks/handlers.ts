@@ -1253,9 +1253,12 @@ export const handlers = [
 
   // ---- GraphQL ----
   http.post("*/graphql", async ({ request }) => {
-    const body = (await request.json().catch(() => null)) as
-      | { query?: string; variables?: Record<string, unknown> }
-      | null;
+    let body: { query?: string; variables?: Record<string, unknown> } | null = null;
+    try {
+      body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+    } catch (error) {
+      console.warn("[msw] Failed to parse GraphQL request body", error);
+    }
     return dispatchGraphQL(body?.query ?? "", body?.variables ?? {});
   }),
 
