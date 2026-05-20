@@ -574,6 +574,50 @@ export type MutationUpdateSavedReportArgs = {
   reportId: Scalars['String']['input'];
 };
 
+export type OperatingReview = {
+  __typename?: 'OperatingReview';
+  orgId: Scalars['String']['output'];
+  priorWeekStart: Scalars['Date']['output'];
+  recommendations: Array<Scalars['String']['output']>;
+  recommendationsEmptyState: Scalars['String']['output'];
+  sections: Array<OperatingReviewSection>;
+  teamId: Scalars['String']['output'];
+  weekStart: Scalars['Date']['output'];
+};
+
+export type OperatingReviewDelta = {
+  __typename?: 'OperatingReviewDelta';
+  absolute: Scalars['Float']['output'];
+  percent?: Maybe<Scalars['Float']['output']>;
+  priorValue: Scalars['Float']['output'];
+  status: Scalars['String']['output'];
+  value: Scalars['Float']['output'];
+};
+
+export type OperatingReviewInput = {
+  teamId: Scalars['String']['input'];
+  weekStart: Scalars['Date']['input'];
+};
+
+export type OperatingReviewMetric = {
+  __typename?: 'OperatingReviewMetric';
+  delta: OperatingReviewDelta;
+  key: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  unit: Scalars['String']['output'];
+  value: Scalars['Float']['output'];
+};
+
+export type OperatingReviewSection = {
+  __typename?: 'OperatingReviewSection';
+  changed: Array<Scalars['String']['output']>;
+  improved: Array<Scalars['String']['output']>;
+  key: Scalars['String']['output'];
+  metrics: Array<OperatingReviewMetric>;
+  title: Scalars['String']['output'];
+  worsened: Array<Scalars['String']['output']>;
+};
+
 export type PageInfo = {
   __typename?: 'PageInfo';
   endCursor?: Maybe<Scalars['String']['output']>;
@@ -608,6 +652,8 @@ export type Query = {
   catalog: CatalogResult;
   /** Get home dashboard metrics */
   home: HomeResult;
+  /** Weekly Engineering Operating Review */
+  operatingReview: OperatingReview;
   /** List report runs for a saved report */
   reportRuns: ReportRunConnection;
   /** Get a saved report by ID */
@@ -618,6 +664,8 @@ export type Query = {
   securityAlerts: SecurityAlertConnection;
   /** Aggregated security posture for the dashboard */
   securityOverview: SecurityOverview;
+  /** Compute throughput-based capacity forecast */
+  throughputForecast?: Maybe<ThroughputForecast>;
   /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
 };
@@ -706,6 +754,12 @@ export type QueryHomeArgs = {
 };
 
 
+export type QueryOperatingReviewArgs = {
+  input: OperatingReviewInput;
+  orgId: Scalars['String']['input'];
+};
+
+
 export type QueryReportRunsArgs = {
   limit?: Scalars['Int']['input'];
   orgId: Scalars['String']['input'];
@@ -735,6 +789,12 @@ export type QuerySecurityAlertsArgs = {
 
 export type QuerySecurityOverviewArgs = {
   filters?: InputMaybe<SecurityAlertFilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryThroughputForecastArgs = {
+  input: ThroughputForecastInput;
   orgId: Scalars['String']['input'];
 };
 
@@ -991,6 +1051,50 @@ export type TaskStatus = {
   status: Scalars['String']['output'];
   taskId: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+};
+
+export type ThroughputForecast = {
+  __typename?: 'ThroughputForecast';
+  backlogSize: Scalars['Int']['output'];
+  computedAt: Scalars['String']['output'];
+  forecastId: Scalars['String']['output'];
+  historyWeeks: Scalars['Int']['output'];
+  incidentLoad: ThroughputRiskOverlay;
+  insufficientHistory: Scalars['Boolean']['output'];
+  p50Weeks?: Maybe<Scalars['Int']['output']>;
+  p75Weeks?: Maybe<Scalars['Int']['output']>;
+  p90Weeks?: Maybe<Scalars['Int']['output']>;
+  primaryRisk: ThroughputRiskOverlay;
+  reviewBottleneck: ThroughputRiskOverlay;
+  rollingWindows: Array<ThroughputRollingWindow>;
+  teamId: Scalars['String']['output'];
+  wipCongestion: ThroughputRiskOverlay;
+  workScopeId?: Maybe<Scalars['String']['output']>;
+};
+
+export type ThroughputForecastInput = {
+  backlogSize: Scalars['Int']['input'];
+  historyWeeks?: Scalars['Int']['input'];
+  teamId: Scalars['String']['input'];
+  workScopeId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ThroughputRiskOverlay = {
+  __typename?: 'ThroughputRiskOverlay';
+  active: Scalars['Boolean']['output'];
+  kind: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  score: Scalars['Float']['output'];
+  threshold: Scalars['Float']['output'];
+  value: Scalars['Float']['output'];
+};
+
+export type ThroughputRollingWindow = {
+  __typename?: 'ThroughputRollingWindow';
+  insufficientHistory: Scalars['Boolean']['output'];
+  meanWeeklyThroughput: Scalars['Float']['output'];
+  sampleCount: Scalars['Int']['output'];
+  windowWeeks: Scalars['Int']['output'];
 };
 
 export type TimeseriesBucket = {
