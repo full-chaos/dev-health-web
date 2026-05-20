@@ -14,7 +14,7 @@ export function SuggestedActions({ actions }: SuggestedActionsProps) {
     if (!actions || actions.length === 0) return null;
 
     return (
-        <section className="space-y-3">
+        <section className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                 Suggested Actions
             </p>
@@ -22,7 +22,7 @@ export function SuggestedActions({ actions }: SuggestedActionsProps) {
                 {actions.map((action) => (
                     <div
                         key={action.id}
-                        className="px-3 py-1.5 rounded-full border border-(--accent-2)/20 bg-(--accent-2)/5 text-xs text-(--accent-2) font-medium"
+                        className="rounded-full border border-(--accent)/20 bg-(--accent)/5 px-3 py-1.5 text-xs font-medium text-(--accent)"
                     >
                         {action.label}
                     </div>
