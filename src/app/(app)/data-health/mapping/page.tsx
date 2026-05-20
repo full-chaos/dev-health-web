@@ -1,11 +1,14 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { CoverageBar } from "../_components/CoverageBar";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
-import { GetMappingCoverageHealthDocument, type GetMappingCoverageHealthQuery } from "@/lib/graphql/__generated__/graphql";
-import { requireAuth } from "@/lib/auth";
+import {
+  GetMappingCoverageHealthDocument,
+  type GetMappingCoverageHealthQuery,
+} from "@/lib/graphql/__generated__/graphql";
+import { requireSession } from "@/lib/auth";
 
 export default async function MappingHealthPage() {
-  const session = await requireAuth();
+  const session = await requireSession();
   
   const teamId = session.user.org_id || "default";
 
@@ -14,8 +17,8 @@ export default async function MappingHealthPage() {
 
   try {
     const res = await graphqlFetch<GetMappingCoverageHealthQuery>(
-      GetMappingCoverageHealthDocument,
-      { teamId }
+      GetMappingCoverageHealthDocument.toString(),
+      { teamId },
     );
     coverageData = res.dataHealth.mappingCoverage;
   } catch (e) {

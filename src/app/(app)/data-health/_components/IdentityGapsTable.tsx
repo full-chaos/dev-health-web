@@ -1,16 +1,20 @@
 "use client";
 
 import { useQuery } from "urql";
-import { DataHealthIdentityDocument } from "@/lib/graphql/__generated__/graphql";
+import {
+  DataHealthIdentityDocument,
+  type DataHealthIdentityQuery,
+} from "@/lib/graphql/__generated__/graphql";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { ProviderBadge } from "@/components/admin/identities/ProviderBadge";
-import { useState } from "react";
+
 import { AliasSuggestionRow } from "./AliasSuggestionRow";
 
 export function IdentityGapsTable() {
   const [result] = useQuery({
-    query: DataHealthIdentityDocument,
-    variables: { team: "ALL" }, // Or context
+    query: DataHealthIdentityDocument as unknown as TypedDocumentNode<DataHealthIdentityQuery, { team: string }>,
+    variables: { team: "ALL" },
   });
 
   const { data, fetching, error } = result;
@@ -21,13 +25,14 @@ export function IdentityGapsTable() {
   const health = data?.dataHealth?.identityMapping;
   if (!health) return null;
 
-  const columns: DataTableColumn<any>[] = [
+  type UnmappedIdentity = NonNullable<NonNullable<NonNullable<DataHealthIdentityQuery["dataHealth"]>["identityMapping"]>["unmappedIdentities"]>[number];
+  const columns: DataTableColumn<UnmappedIdentity>[] = [
     {
       key: "provider",
       header: "Provider",
       headerClassName: "px-6 py-4 font-medium",
       className: "px-6 py-4",
-      render: (id) => <ProviderBadge provider={id.provider} />,
+      render: (id) => <ProviderBadge provider={id.provider} username={id.email ?? id.displayName ?? ""} />,
     },
     {
       key: "displayName",
@@ -60,7 +65,12 @@ export function IdentityGapsTable() {
           These identities have been observed in events but are not mapped to any canonical user.
         </p>
         <div className="rounded-xl border border-(--card-stroke) bg-card overflow-hidden">
-          <DataTable data={health.unmappedIdentities} columns={columns} keyField="email" />
+          <DataTable
+            data={health.unmappedIdentities}
+            columns={columns}
+            rowKeyAction={(r) => (r as { email?: string | null }).email ?? ""}
+            emptyMessage="No unmapped identities."
+          />
         </div>
       </section>
 

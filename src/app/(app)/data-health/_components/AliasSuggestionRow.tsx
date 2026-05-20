@@ -2,7 +2,17 @@
 
 import { ProviderBadge } from "@/components/admin/identities/ProviderBadge";
 
-export function AliasSuggestionRow({ suggestion }: { suggestion: any }) {
+type AliasSuggestion = {
+  unmappedIdentity: {
+    provider: string;
+    email?: string | null;
+    displayName?: string | null;
+  };
+  suggestedCanonicalId: string;
+  confidence: number;
+};
+
+export function AliasSuggestionRow({ suggestion }: { suggestion: AliasSuggestion }) {
   const { unmappedIdentity, suggestedCanonicalId, confidence } = suggestion;
 
   const handleConfirm = () => {
@@ -19,7 +29,7 @@ export function AliasSuggestionRow({ suggestion }: { suggestion: any }) {
       <div className="flex items-center gap-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <ProviderBadge provider={unmappedIdentity.provider} />
+            <ProviderBadge provider={unmappedIdentity.provider} username={unmappedIdentity.email ?? unmappedIdentity.displayName ?? ""} />
             <span className="font-medium text-foreground">
               {unmappedIdentity.displayName || unmappedIdentity.email || "Unknown"}
             </span>

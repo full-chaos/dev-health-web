@@ -1,11 +1,15 @@
 "use client";
 
 import { useQuery } from "urql";
-import { MetricLineageDocument } from "@/lib/graphql/__generated__/graphql";
+import {
+  MetricLineageDocument,
+  type MetricLineageQuery,
+} from "@/lib/graphql/__generated__/graphql";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 
 export function LineagePopover({ metricId }: { metricId: string }) {
   const [result] = useQuery({
-    query: MetricLineageDocument,
+    query: MetricLineageDocument as unknown as TypedDocumentNode<MetricLineageQuery, { metricId: string }>,
     variables: { metricId },
   });
 

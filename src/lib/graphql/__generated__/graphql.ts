@@ -1,5 +1,4 @@
 /* eslint-disable */
-import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = T | null | undefined;
