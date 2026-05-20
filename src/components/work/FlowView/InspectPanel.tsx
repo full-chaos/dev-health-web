@@ -1,6 +1,41 @@
 import Link from "next/link";
+import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
 import { formatNumber } from "@/lib/formatters";
 import type { FlowSubTab } from "./Tabs";
+
+const WORK_GRAPH_CONNECTION_BY_VIEW: Partial<Record<string, string>> = {
+    state_flow: "work-to-change",
+    code_hotspots: "change-to-code",
+};
+
+export const buildFlowWorkGraphUrl = (
+    selection: Pick<FlowSelection, "view" | "hotspot" | "investment">,
+    filters: MetricFilter,
+    activeRole?: string
+) => {
+    const drilldownFilters: MetricFilter = selection.hotspot?.repoId
+        ? { ...filters, what: { ...filters.what, repos: [selection.hotspot.repoId] } }
+        : filters;
+    const baseHref = withFilterParam("/work?tab=graph", drilldownFilters, activeRole);
+    const connection = WORK_GRAPH_CONNECTION_BY_VIEW[selection.view];
+    const [path, query = ""] = baseHref.split("?", 2);
+    const params = new URLSearchParams(query);
+    if (connection) {
+        params.set("graph_connection", connection);
+    }
+    if (selection.hotspot?.filePath) {
+        params.set("graph_node", `FILE:${selection.hotspot.filePath}`);
+    }
+    if (selection.investment?.themeKey) {
+        params.set("graph_theme", selection.investment.themeKey);
+    }
+    if (selection.investment?.subcategoryKey) {
+        params.set("graph_subcategory", selection.investment.subcategoryKey);
+    }
+
+    return `${path}?${params.toString()}`;
+};
 
 export type FlowSelection = {
     view: FlowSubTab;
@@ -12,12 +47,22 @@ export type FlowSelection = {
     children?: Array<{ name: string; value: number }>;
     transition?: { from: string; to: string };
     outcomes?: string[];
+    hotspot?: {
+        repoId?: string;
+        filePath?: string;
+    };
+    investment?: {
+        themeKey: string;
+        subcategoryKey?: string;
+    };
 };
 
 type InspectPanelProps = {
     selection: FlowSelection | null;
     evidenceUrl: string | null;
     flameUrl: string | null;
+    filters: MetricFilter;
+    activeRole?: string;
     contextEntityLabel: string | null;
     contextZone: string | null;
     onClearContext: () => void;
@@ -27,6 +72,8 @@ export function InspectPanel({
     selection,
     evidenceUrl,
     flameUrl,
+    filters,
+    activeRole,
     contextEntityLabel,
     contextZone,
     onClearContext,
@@ -108,6 +155,13 @@ export function InspectPanel({
                                 className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
                             >
                                 <span>Open Representative Flame</span>
+                                <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">↗</span>
+                            </Link>
+                            <Link
+                                href={buildFlowWorkGraphUrl(selection, filters, activeRole)}
+                                className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
+                            >
+                                <span>Open Work Graph</span>
                                 <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">↗</span>
                             </Link>
                         </div>
