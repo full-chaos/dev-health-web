@@ -233,6 +233,41 @@ query CapacityForecasts($orgId: String!, $filters: CapacityForecastFilterInput) 
 }
 `;
 
+// ==== Operating Review Queries ====
+
+export const OPERATING_REVIEW_QUERY = `
+query OperatingReview($orgId: String!, $input: OperatingReviewInput!) {
+  operatingReview(orgId: $orgId, input: $input) {
+    orgId
+    teamId
+    weekStart
+    priorWeekStart
+    sections {
+      key
+      title
+      changed
+      improved
+      worsened
+      metrics {
+        key
+        label
+        value
+        unit
+        delta {
+          value
+          priorValue
+          absolute
+          percent
+          status
+        }
+      }
+    }
+    recommendations
+    recommendationsEmptyState
+  }
+}
+`;
+
 export const WORK_GRAPH_EDGES_QUERY = `
 query WorkGraphEdges($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
   workGraphEdges(orgId: $orgId, filters: $filters) {
