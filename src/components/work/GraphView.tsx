@@ -127,6 +127,11 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
     FILE: "bg-purple-500",
     RELEASE: "bg-teal-600",
     FEATURE_FLAG: "bg-amber-600",
+    AI_WORKFLOW_RUN: "bg-cyan-500",
+    DIFF: "bg-pink-500",
+    REVIEW_OUTCOME: "bg-lime-500",
+    DEPLOYMENT: "bg-sky-500",
+    INCIDENT: "bg-red-500",
   };
 
   const typeLabels: Record<WorkGraphNodeType, string> = {
@@ -136,6 +141,11 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
     FILE: "File",
     RELEASE: "Release",
     FEATURE_FLAG: "Feature Flag",
+    AI_WORKFLOW_RUN: "AI Workflow",
+    DIFF: "Diff",
+    REVIEW_OUTCOME: "Review",
+    DEPLOYMENT: "Deployment",
+    INCIDENT: "Incident",
   };
 
   return (
