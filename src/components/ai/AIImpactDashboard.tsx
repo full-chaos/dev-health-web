@@ -1,14 +1,15 @@
 "use client";
 
+import Link from "next/link";
+
 import { DonutChart } from "@/components/charts/DonutChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { ErrorCard } from "@/components/ui/ErrorCard";
-import { useAIComparison, useAIImpactSummary, useAIOpportunities } from "@/lib/graphql/hooks/useAIImpact";
+import { useAIComparison, useAIImpactSummary } from "@/lib/graphql/hooks/useAIImpact";
 import type { AIFilter } from "@/lib/filters/ai";
 import { AIComparisonCard } from "./AIComparisonCard";
 import { AIEmptyState } from "./AIEmptyState";
 import { AILeverageBars } from "./AILeverageBars";
-import { AIOpportunityList } from "./AIOpportunityList";
 import { AIPanelCard } from "./AIPanelCard";
 import { agentCreatedTrend, assistedWorkShareRows, bucketLabel, formatPercent, safeRatio } from "./utils";
 
@@ -19,20 +20,18 @@ type AIImpactDashboardProps = {
 export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
   const summaryResult = useAIImpactSummary(filter);
   const comparisonResult = useAIComparison(filter);
-  const opportunitiesResult = useAIOpportunities(filter);
-  const fetching = summaryResult.fetching || comparisonResult.fetching || opportunitiesResult.fetching;
+  const fetching = summaryResult.fetching || comparisonResult.fetching;
   const summary = summaryResult.data?.aiImpactSummary;
   const comparison = comparisonResult.data?.aiComparison;
-  const opportunities = opportunitiesResult.data?.aiOpportunities;
   // Drill-into-evidence is intentionally not wired yet: the PR-row picker
   // and `/ai/impact/PR/summary` route haven't shipped. Panels render
   // without an evidence link rather than pointing at a 404. (CHAOS-1715)
 
-  if (summaryResult.error || comparisonResult.error || opportunitiesResult.error) {
+  if (summaryResult.error || comparisonResult.error) {
     return (
       <ErrorCard
         title="AI impact data could not load"
-        message={(summaryResult.error || comparisonResult.error || opportunitiesResult.error)?.message ?? "Please retry the request."}
+        message={(summaryResult.error || comparisonResult.error)?.message ?? "Please retry the request."}
       />
     );
   }
@@ -120,8 +119,13 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
           </AIEmptyState>
         </AIPanelCard>
 
-        <AIPanelCard title="Best-fit automation opportunities" description="Candidate patterns for responsible automation once the recommendation engine becomes ready.">
-          <AIOpportunityList detectorReady={opportunities?.detectorReady} recommendations={opportunities?.recommendations} />
+        <AIPanelCard title="Best-fit automation opportunities" description="Candidate patterns for responsible automation now have a dedicated workflow.">
+          <div className="flex flex-col gap-3 text-sm text-(--ink-muted)">
+            <p>Automation candidates moved out of the Impact dashboard so leverage diagnostics and candidate triage can evolve independently.</p>
+            <Link className="font-medium text-accent underline-offset-4 hover:underline" href="/ai/automations">
+              See AI Automations →
+            </Link>
+          </div>
         </AIPanelCard>
       </div>
 
