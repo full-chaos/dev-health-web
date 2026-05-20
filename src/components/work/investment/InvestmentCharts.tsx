@@ -11,11 +11,13 @@ import { useInvestmentColorMaps } from "./charts/useInvestmentColorMaps";
 
 type InvestmentChartsProps = {
   filters: MetricFilter;
+  activeRole?: string;
   workUnits: WorkUnitInvestment[];
   isLoading: boolean;
   investmentMix: ReturnType<typeof import("@/lib/investmentMix").normalizeInvestmentMix> | null;
   isMixLoading: boolean;
   focusTheme: string | null;
+  focusSubcategory?: string | null;
   setFocusTheme: (value: string | null) => void;
   setFocusSubcategory: (value: string | null) => void;
   selectedCategory: string | null;
@@ -34,11 +36,13 @@ type InvestmentChartsProps = {
 
 export function InvestmentCharts({
   filters,
+  activeRole,
   workUnits,
   isLoading,
   investmentMix,
   isMixLoading,
   focusTheme,
+  focusSubcategory,
   setFocusTheme,
   setFocusSubcategory,
   selectedCategory,
@@ -87,12 +91,15 @@ export function InvestmentCharts({
   return (
     <>
       <InvestmentMixSection
+        filters={filters}
+        activeRole={activeRole}
         investmentMix={investmentMix}
         isLoading={isLoading}
         isMixLoading={isMixLoading}
         workUnits={workUnits}
         effortUnit={effortUnit}
         focusTheme={focusTheme}
+        focusSubcategory={focusSubcategory ?? null}
         setFocusTheme={setFocusTheme}
         setFocusSubcategory={setFocusSubcategory}
         themeColorMap={themeColorMap}

@@ -260,6 +260,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               <HydrateUrqlResults payload={investmentHydrationPayload} />
               <InvestmentView
                 filters={filters}
+                activeRole={activeRole}
               />
             </>
           )}

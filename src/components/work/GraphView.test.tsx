@@ -4,9 +4,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
 import type { MetricFilter } from "@/lib/filters/types";
 
-const { mockUseWorkGraphEdges, mockUseOrgId } = vi.hoisted(() => ({
+const { mockUseSearchParams, mockUseWorkGraphEdges, mockUseOrgId } = vi.hoisted(() => ({
+  mockUseSearchParams: vi.fn(() => new URLSearchParams()),
   mockUseWorkGraphEdges: vi.fn(),
   mockUseOrgId: vi.fn(() => "org-1"),
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: mockUseSearchParams,
 }));
 
 vi.mock("@/lib/graphql/hooks", () => ({
@@ -31,6 +36,7 @@ describe("GraphView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseSearchParams.mockReturnValue(new URLSearchParams());
   });
 
   it("shows empty state when no edges returned", () => {
@@ -174,6 +180,42 @@ describe("GraphView", () => {
 
     expect(screen.getByText(/Quality \/ Quality \/ Bugfix/i)).toBeInTheDocument();
     expect(screen.getByText(/persisted distributions drive the selected theme context/i)).toBeInTheDocument();
+  });
+
+  it("hydrates graph drilldown state from URL search params", () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams({
+      graph_connection: "change-to-code",
+      graph_theme: "quality",
+      graph_subcategory: "quality.bugfix",
+      graph_node: "FILE:src/app/page.tsx",
+    }));
+    mockUseWorkGraphEdges.mockReturnValue({
+      edges: [
+        {
+          edgeId: "e1",
+          sourceType: "COMMIT",
+          sourceId: "sha-1",
+          targetType: "FILE",
+          targetId: "src/app/page.tsx",
+          edgeType: "TOUCHES",
+          provenance: "NATIVE",
+          confidence: 1.0,
+          evidence: "Touches src/app/page.tsx",
+        },
+      ],
+      loading: false,
+      error: null,
+      totalCount: 1,
+      refetch: vi.fn(),
+    });
+
+    render(<GraphView filters={filters} />);
+
+    expect(screen.getByLabelText(/Connection type/i)).toHaveValue("change-to-code");
+    expect(screen.getByLabelText(/Theme/i)).toHaveValue("quality");
+    expect(screen.getByLabelText(/Subcategory/i)).toHaveValue("quality.bugfix");
+    expect(screen.getByText(/Quality \/ Quality \/ Bugfix/i)).toBeInTheDocument();
+    expect(screen.getByText("src/app/page.tsx")).toBeInTheDocument();
   });
 
   it("does NOT fall back to sample data when edges are empty", () => {

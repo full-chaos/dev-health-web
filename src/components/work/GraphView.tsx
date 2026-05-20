@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 import {
   WorkGraphExplorer,
@@ -65,13 +66,84 @@ const CONNECTION_SLICES: ConnectionSlice[] = [
   },
 ];
 
+const NODE_TYPES: WorkGraphNodeType[] = [
+  "ISSUE",
+  "PR",
+  "COMMIT",
+  "FILE",
+  "RELEASE",
+  "FEATURE_FLAG",
+  "AI_WORKFLOW_RUN",
+  "DIFF",
+  "REVIEW_OUTCOME",
+  "DEPLOYMENT",
+  "INCIDENT",
+];
+
+const DEFAULT_CONNECTION_SLICE_ID = CONNECTION_SLICES[0].id;
+
+function isConnectionSliceId(value: string | null): value is ConnectionSlice["id"] {
+  return Boolean(value && CONNECTION_SLICES.some((slice) => slice.id === value));
+}
+
+function isInvestmentTheme(value: string | null): value is (typeof INVESTMENT_THEMES)[number] {
+  return Boolean(value && INVESTMENT_THEMES.includes(value as (typeof INVESTMENT_THEMES)[number]));
+}
+
+function isInvestmentSubcategory(value: string | null): value is (typeof INVESTMENT_SUBCATEGORIES)[number] {
+  return Boolean(value && INVESTMENT_SUBCATEGORIES.includes(value as (typeof INVESTMENT_SUBCATEGORIES)[number]));
+}
+
+function parseGraphNode(value: string | null): SelectedNode | null {
+  if (!value) return null;
+  const separatorIndex = value.indexOf(":");
+  if (separatorIndex <= 0 || separatorIndex === value.length - 1) return null;
+
+  const type = value.slice(0, separatorIndex);
+  if (!NODE_TYPES.includes(type as WorkGraphNodeType)) return null;
+
+  return {
+    type: type as WorkGraphNodeType,
+    id: value.slice(separatorIndex + 1),
+  };
+}
+
+function getGraphSearchState(searchParams: URLSearchParams) {
+  const subcategoryParam = searchParams.get("graph_subcategory");
+  const themeParam = searchParams.get("graph_theme");
+  const connectionParam = searchParams.get("graph_connection");
+  const subcategory = isInvestmentSubcategory(subcategoryParam) ? subcategoryParam : "all";
+  const subcategoryTheme = subcategory === "all" ? null : subcategory.split(".", 1)[0];
+  const theme = isInvestmentTheme(themeParam)
+    ? themeParam
+    : isInvestmentTheme(subcategoryTheme)
+      ? subcategoryTheme
+      : "all";
+
+  return {
+    theme,
+    subcategory,
+    connectionSliceId: isConnectionSliceId(connectionParam) ? connectionParam : DEFAULT_CONNECTION_SLICE_ID,
+    selectedNode: parseGraphNode(searchParams.get("graph_node")),
+  };
+}
+
 export function GraphView({ filters, activeRole }: GraphViewProps) {
-  const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
-  const [theme, setTheme] = useState("all");
-  const [subcategory, setSubcategory] = useState("all");
-  const [connectionSliceId, setConnectionSliceId] = useState(CONNECTION_SLICES[0].id);
+  const searchParams = useSearchParams();
+  const searchState = useMemo(() => getGraphSearchState(searchParams), [searchParams]);
+  const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(searchState.selectedNode);
+  const [theme, setTheme] = useState(searchState.theme);
+  const [subcategory, setSubcategory] = useState(searchState.subcategory);
+  const [connectionSliceId, setConnectionSliceId] = useState(searchState.connectionSliceId);
   const [isLegendCollapsed, setIsLegendCollapsed] = useState(true);
   const graphHeight = 580;
+
+  useEffect(() => {
+    setTheme(searchState.theme);
+    setSubcategory(searchState.subcategory);
+    setConnectionSliceId(searchState.connectionSliceId);
+    setSelectedNode(searchState.selectedNode);
+  }, [searchState]);
 
   const contextOrgId = useOrgId();
   const orgId = filters.scope.ids[0] || contextOrgId || "";

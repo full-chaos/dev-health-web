@@ -236,6 +236,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
                     selection={selection}
                     evidenceUrl={evidenceUrl}
                     flameUrl={flameUrl}
+                    filters={filters}
+                    activeRole={activeRole}
                     contextEntityLabel={contextEntityLabel}
                     contextZone={contextZone}
                     onClearContext={clearContext}
