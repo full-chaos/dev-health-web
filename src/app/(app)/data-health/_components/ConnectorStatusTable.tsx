@@ -43,14 +43,7 @@ export function ConnectorStatusTable({ data, isPending }: ConnectorStatusTablePr
       key: "status",
       header: "Status",
       render: (row) => {
-        let status: SyncStatus = "idle";
-        if (row.lastFailure) {
-          status = "failed";
-        } else if (row.lastSyncAt) {
-          status = "success";
-        } else {
-          status = "never";
-        }
+        const status: SyncStatus = row.lastFailure ? "failed" : row.lastSyncAt ? "success" : "never";
         return <SyncStatusBadge status={status} />;
       },
     },
