@@ -8,6 +8,12 @@ import { getFlame } from "@/lib/api/visuals";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { fetchOrNull } from "@/lib/fetchOrNull";
+import { RelatedEntitiesPanel } from "@/components/work/RelatedEntitiesPanel";
+import { requireSession } from "@/lib/auth";
+import {
+  getAIWorkflowDrilldownViaGraphQL,
+  getWorkUnitInvestmentDistribution,
+} from "@/lib/graphql/workGraphFetchers";
 
 type PrDetailPageProps = {
   params: Promise<{ pr_id: string }>;
@@ -20,7 +26,18 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
   }
 
   const { pr_id: prId } = await params;
-  const flame = await fetchOrNull(getFlame({ entity_type: "pr", entity_id: prId }), "pr-flame");
+  const session = await requireSession();
+  const orgId = session.user.org_id ?? "default-org";
+  const [flame, drilldown] = await Promise.all([
+    fetchOrNull(getFlame({ entity_type: "pr", entity_id: prId }), "pr-flame"),
+    getAIWorkflowDrilldownViaGraphQL({
+      orgId,
+      rootType: "PR",
+      rootId: prId,
+      useDemoFallback: true,
+    }),
+  ]);
+  const investment = getWorkUnitInvestmentDistribution({ rootType: "PR", rootId: prId });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -47,7 +64,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
             </Link>
           </header>
 
-          {!flame ? (
+          {!flame?.entity || !flame.timeline || !flame.frames ? (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
               Flame data unavailable for this PR.
             </div>
@@ -77,6 +94,12 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
               </div>
             </section>
           )}
+          <RelatedEntitiesPanel
+            rootType="PR"
+            rootId={prId}
+            drilldown={drilldown}
+            investment={investment}
+          />
         </main>
       </div>
     </div>

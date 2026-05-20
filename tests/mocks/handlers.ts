@@ -513,6 +513,12 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
             { edgeId: "e6", sourceType: "ISSUE", sourceId: "PROJ-104", targetType: "PR", targetId: "PR-202", edgeType: "IMPLEMENTS", provenance: "EXPLICIT_TEXT", confidence: 0.95, evidence: "Implements PROJ-104" },
           ],
           totalCount: 6,
+          pageInfo: {
+            hasNextPage: false,
+            hasPreviousPage: false,
+            startCursor: null,
+            endCursor: null,
+          },
         },
       },
     });
@@ -575,16 +581,33 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
     return HttpResponse.json({ data: { aiGovernanceSummary: aiGovernanceSummaryResponse(orgId, startDate, endDate, aiMode) } });
   }
   if (query.includes("AIWorkflowDrilldown")) {
+    const rootType = (variables.rootType as string | undefined) ?? "PR";
+    const rootId = (variables.rootId as string | undefined) ?? "PR-201";
+    const issueId = rootType === "ISSUE" ? rootId : "PROJ-101";
+    const prId = rootType === "PR" ? rootId : "PR-201";
     return HttpResponse.json({
       data: {
         aiWorkflowDrilldown: {
           orgId,
-          rootType: "PR",
-          rootId: "pr-7001",
+          rootType,
+          rootId,
           partial: false,
           dataAvailable: true,
-          nodes: [],
-          edges: [],
+          nodes: [
+            { nodeType: "ISSUE", nodeId: issueId },
+            { nodeType: "PR", nodeId: prId },
+            { nodeType: "REVIEW_OUTCOME", nodeId: "review-approved" },
+            { nodeType: "COMMIT", nodeId: "abc123" },
+            { nodeType: "DEPLOYMENT", nodeId: "deploy-123" },
+            { nodeType: "INCIDENT", nodeId: "inc-42" },
+          ],
+          edges: [
+            { edgeId: "demo-issue-pr", sourceType: "ISSUE", sourceId: issueId, targetType: "PR", targetId: prId, edgeType: "FIXES", confidence: 1, source: "msw", evidence: `Fixes ${issueId}`, provider: "github", repoId: "repo:web-app" },
+            { edgeId: "demo-pr-review", sourceType: "PR", sourceId: prId, targetType: "REVIEW_OUTCOME", targetId: "review-approved", edgeType: "HAS_REVIEW_OUTCOME", confidence: 0.96, source: "msw", evidence: "Approved after accessibility copy updates.", provider: "github", repoId: "repo:web-app" },
+            { edgeId: "demo-pr-commit", sourceType: "PR", sourceId: prId, targetType: "COMMIT", targetId: "abc123", edgeType: "CONTAINS", confidence: 1, source: "msw", evidence: "Merge commit abc123", provider: "github", repoId: "repo:web-app" },
+            { edgeId: "demo-pr-deploy", sourceType: "PR", sourceId: prId, targetType: "DEPLOYMENT", targetId: "deploy-123", edgeType: "DEPLOYS", confidence: 0.91, source: "msw", evidence: "Staging deployment completed 45 minutes after merge.", provider: "github", repoId: "repo:web-app" },
+            { edgeId: "demo-deploy-incident", sourceType: "DEPLOYMENT", sourceId: "deploy-123", targetType: "INCIDENT", targetId: "inc-42", edgeType: "LINKED_INCIDENT", confidence: 0.74, source: "msw", evidence: "Incident opened inside the post-deploy observation window.", provider: "github", repoId: "repo:web-app" },
+          ],
         },
       },
     });

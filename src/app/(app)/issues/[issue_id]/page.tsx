@@ -8,6 +8,12 @@ import { getFlame } from "@/lib/api/visuals";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { fetchOrNull } from "@/lib/fetchOrNull";
+import { RelatedEntitiesPanel } from "@/components/work/RelatedEntitiesPanel";
+import { requireSession } from "@/lib/auth";
+import {
+  getAIWorkflowDrilldownViaGraphQL,
+  getWorkUnitInvestmentDistribution,
+} from "@/lib/graphql/workGraphFetchers";
 
 type IssueDetailPageProps = {
   params: Promise<{ issue_id: string }>;
@@ -20,7 +26,18 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
   }
 
   const { issue_id: issueId } = await params;
-  const flame = await fetchOrNull(getFlame({ entity_type: "issue", entity_id: issueId }), "issue-flame");
+  const session = await requireSession();
+  const orgId = session.user.org_id ?? "default-org";
+  const [flame, drilldown] = await Promise.all([
+    fetchOrNull(getFlame({ entity_type: "issue", entity_id: issueId }), "issue-flame"),
+    getAIWorkflowDrilldownViaGraphQL({
+      orgId,
+      rootType: "ISSUE",
+      rootId: issueId,
+      useDemoFallback: true,
+    }),
+  ]);
+  const investment = getWorkUnitInvestmentDistribution({ rootType: "ISSUE", rootId: issueId });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -47,7 +64,7 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
             </Link>
           </header>
 
-          {!flame ? (
+          {!flame?.entity || !flame.timeline || !flame.frames ? (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
               Flame data unavailable for this issue.
             </div>
@@ -77,6 +94,12 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
               </div>
             </section>
           )}
+          <RelatedEntitiesPanel
+            rootType="ISSUE"
+            rootId={issueId}
+            drilldown={drilldown}
+            investment={investment}
+          />
         </main>
       </div>
     </div>
