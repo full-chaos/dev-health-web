@@ -306,6 +306,51 @@ export interface CapacityForecastsQueryResponse {
     capacityForecasts: CapacityForecastConnection;
 }
 
+export interface ThroughputForecastInput {
+    teamId: string;
+    workScopeId?: string;
+    backlogSize: number;
+    historyWeeks?: number;
+}
+
+export interface ThroughputRollingWindow {
+    windowWeeks: number;
+    meanWeeklyThroughput: number;
+    sampleCount: number;
+    insufficientHistory: boolean;
+}
+
+export interface ThroughputRiskOverlay {
+    kind: string;
+    score: number;
+    label: string;
+    value: number;
+    threshold: number;
+    active: boolean;
+}
+
+export interface ThroughputForecast {
+    forecastId: string;
+    computedAt: string;
+    teamId: string;
+    workScopeId?: string;
+    backlogSize: number;
+    historyWeeks: number;
+    p50Weeks?: number | null;
+    p75Weeks?: number | null;
+    p90Weeks?: number | null;
+    rollingWindows: ThroughputRollingWindow[];
+    primaryRisk: ThroughputRiskOverlay;
+    wipCongestion: ThroughputRiskOverlay;
+    reviewBottleneck: ThroughputRiskOverlay;
+    incidentLoad: ThroughputRiskOverlay;
+    insufficientHistory: boolean;
+}
+
+export interface ThroughputForecastQueryResponse {
+    throughputForecast: ThroughputForecast | null;
+}
+
 // ==== Work Graph Types ====
 
 export type InvestmentTheme =
