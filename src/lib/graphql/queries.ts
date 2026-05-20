@@ -137,6 +137,61 @@ query CapacityForecast($orgId: String!, $input: CapacityForecastInput) {
 }
 `;
 
+export const THROUGHPUT_FORECAST_QUERY = `
+query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
+  throughputForecast(orgId: $orgId, input: $input) {
+    forecastId
+    computedAt
+    teamId
+    workScopeId
+    backlogSize
+    historyWeeks
+    p50Weeks
+    p75Weeks
+    p90Weeks
+    insufficientHistory
+    rollingWindows {
+      windowWeeks
+      meanWeeklyThroughput
+      sampleCount
+      insufficientHistory
+    }
+    primaryRisk {
+      kind
+      score
+      label
+      value
+      threshold
+      active
+    }
+    wipCongestion {
+      kind
+      score
+      label
+      value
+      threshold
+      active
+    }
+    reviewBottleneck {
+      kind
+      score
+      label
+      value
+      threshold
+      active
+    }
+    incidentLoad {
+      kind
+      score
+      label
+      value
+      threshold
+      active
+    }
+  }
+}
+`;
+
 // Query for listing persisted capacity forecasts
 export const CAPACITY_FORECASTS_QUERY = `
 query CapacityForecasts($orgId: String!, $filters: CapacityForecastFilterInput) {

@@ -6,11 +6,14 @@
  */
 
 import { graphqlFetch } from "./urqlClient";
-import { CAPACITY_FORECAST_QUERY } from "./queries";
+import { CAPACITY_FORECAST_QUERY, THROUGHPUT_FORECAST_QUERY } from "./queries";
 import type {
     CapacityForecast,
     CapacityForecastInput,
     CapacityForecastQueryResponse,
+    ThroughputForecast,
+    ThroughputForecastInput,
+    ThroughputForecastQueryResponse,
 } from "./types";
 
 /**
@@ -31,4 +34,17 @@ export async function getCapacityForecastViaGraphQL(
     );
 
     return response.capacityForecast;
+}
+
+export async function getThroughputForecastViaGraphQL(
+    orgId: string,
+    input: ThroughputForecastInput
+): Promise<ThroughputForecast | null> {
+    const response = await graphqlFetch<ThroughputForecastQueryResponse>(
+        THROUGHPUT_FORECAST_QUERY,
+        { orgId, input },
+        { orgId }
+    );
+
+    return response.throughputForecast;
 }
