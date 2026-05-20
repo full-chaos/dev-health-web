@@ -492,6 +492,16 @@ export type DimensionInput =
   | 'THEME'
   | 'WORK_TYPE';
 
+export type EvidenceRef = {
+  __typename?: 'EvidenceRef';
+  field: Scalars['String']['output'];
+  metricTable: Scalars['String']['output'];
+  teamId: Scalars['String']['output'];
+  value: Scalars['Float']['output'];
+  windowEnd: Scalars['Date']['output'];
+  windowStart: Scalars['Date']['output'];
+};
+
 export type FilterInput = {
   how?: InputMaybe<HowFilterInput>;
   scope?: InputMaybe<ScopeFilterInput>;
@@ -720,11 +730,14 @@ export type Query = {
   capacityForecasts: CapacityForecastConnection;
   /** Get catalog of available dimensions, measures, and limits */
   catalog: CatalogResult;
+  /** Operator data-health and trust surface */
   dataHealth: DataHealth;
   /** Get home dashboard metrics */
   home: HomeResult;
   /** Weekly Engineering Operating Review */
   operatingReview: OperatingReview;
+  /** Latest rule-based recommendations for a team within a lookback window. */
+  recommendations: Array<Recommendation>;
   /** List report runs for a saved report */
   reportRuns: ReportRunConnection;
   /** Get a saved report by ID */
@@ -836,6 +849,13 @@ export type QueryOperatingReviewArgs = {
 };
 
 
+export type QueryRecommendationsArgs = {
+  orgId: Scalars['String']['input'];
+  team: Scalars['ID']['input'];
+  window: WindowInput;
+};
+
+
 export type QueryReportRunsArgs = {
   limit?: Scalars['Int']['input'];
   orgId: Scalars['String']['input'];
@@ -878,6 +898,21 @@ export type QueryThroughputForecastArgs = {
 export type QueryWorkGraphEdgesArgs = {
   filters?: InputMaybe<WorkGraphEdgeFilterInput>;
   orgId: Scalars['String']['input'];
+};
+
+export type Recommendation = {
+  __typename?: 'Recommendation';
+  computedAt: Scalars['DateTime']['output'];
+  evidence: Array<EvidenceRef>;
+  orgId: Scalars['String']['output'];
+  rationale: Scalars['String']['output'];
+  ruleId: Scalars['String']['output'];
+  severity: Severity;
+  successCriterion: Scalars['String']['output'];
+  teamId: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  windowEnd: Scalars['Date']['output'];
+  windowStart: Scalars['Date']['output'];
 };
 
 export type RepoAlertCount = {
@@ -1071,6 +1106,10 @@ export type SecurityStateInput =
   | 'OPEN'
   | 'RESOLVED';
 
+export type Severity =
+  | 'CRITICAL'
+  | 'WARNING';
+
 export type SeverityBucket = {
   __typename?: 'SeverityBucket';
   count: Scalars['Int']['output'];
@@ -1235,11 +1274,21 @@ export type WhyFilterInput = {
   workCategory?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
+export type WindowInput = {
+  unit?: WindowUnit;
+  value?: Scalars['Int']['input'];
+};
+
 export type WindowSpec = {
   __typename?: 'WindowSpec';
   durationDays?: Maybe<Scalars['Int']['output']>;
   kind: Scalars['String']['output'];
 };
+
+export type WindowUnit =
+  | 'CYCLE'
+  | 'DAY'
+  | 'WEEK';
 
 export type WorkGraphEdgeFilterInput = {
   edgeType?: InputMaybe<WorkGraphEdgeTypeInput>;
