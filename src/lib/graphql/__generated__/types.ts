@@ -616,8 +616,6 @@ export type Query = {
   securityAlerts: SecurityAlertConnection;
   /** Aggregated security posture for the dashboard */
   securityOverview: SecurityOverview;
-  /** Compute throughput-based capacity forecast */
-  throughputForecast?: Maybe<ThroughputForecast>;
   /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
 };
@@ -735,12 +733,6 @@ export type QuerySecurityAlertsArgs = {
 
 export type QuerySecurityOverviewArgs = {
   filters?: InputMaybe<SecurityAlertFilterInput>;
-  orgId: Scalars['String']['input'];
-};
-
-
-export type QueryThroughputForecastArgs = {
-  input: ThroughputForecastInput;
   orgId: Scalars['String']['input'];
 };
 
@@ -997,50 +989,6 @@ export type TaskStatus = {
   status: Scalars['String']['output'];
   taskId: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
-};
-
-export type ThroughputForecast = {
-  __typename?: 'ThroughputForecast';
-  backlogSize: Scalars['Int']['output'];
-  computedAt: Scalars['String']['output'];
-  forecastId: Scalars['String']['output'];
-  historyWeeks: Scalars['Int']['output'];
-  incidentLoad: ThroughputRiskOverlay;
-  insufficientHistory: Scalars['Boolean']['output'];
-  p50Weeks?: Maybe<Scalars['Int']['output']>;
-  p75Weeks?: Maybe<Scalars['Int']['output']>;
-  p90Weeks?: Maybe<Scalars['Int']['output']>;
-  primaryRisk: ThroughputRiskOverlay;
-  reviewBottleneck: ThroughputRiskOverlay;
-  rollingWindows: Array<ThroughputRollingWindow>;
-  teamId: Scalars['String']['output'];
-  wipCongestion: ThroughputRiskOverlay;
-  workScopeId?: Maybe<Scalars['String']['output']>;
-};
-
-export type ThroughputForecastInput = {
-  backlogSize: Scalars['Int']['input'];
-  historyWeeks?: Scalars['Int']['input'];
-  teamId: Scalars['String']['input'];
-  workScopeId?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type ThroughputRiskOverlay = {
-  __typename?: 'ThroughputRiskOverlay';
-  active: Scalars['Boolean']['output'];
-  kind: Scalars['String']['output'];
-  label: Scalars['String']['output'];
-  score: Scalars['Float']['output'];
-  threshold: Scalars['Float']['output'];
-  value: Scalars['Float']['output'];
-};
-
-export type ThroughputRollingWindow = {
-  __typename?: 'ThroughputRollingWindow';
-  insufficientHistory: Scalars['Boolean']['output'];
-  meanWeeklyThroughput: Scalars['Float']['output'];
-  sampleCount: Scalars['Int']['output'];
-  windowWeeks: Scalars['Int']['output'];
 };
 
 export type TimeseriesBucket = {
