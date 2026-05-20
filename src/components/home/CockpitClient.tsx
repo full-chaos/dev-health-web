@@ -57,7 +57,7 @@ export function CockpitClient({
         <>
             <EvidencePanel
                 isOpen={panelState.isOpen}
-                onClose={closePanel}
+                onCloseAction={closePanel}
                 title={panelState.title}
                 apiUrl={panelState.apiUrl}
                 metric={panelState.metric}

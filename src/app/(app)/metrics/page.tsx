@@ -3,7 +3,7 @@ import Link from "next/link";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
-import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
@@ -247,22 +247,13 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {activeTab.metrics.map((metric) => {
-              const data = getMetric(deltas, metric);
-              return (
-                <MetricCard
-                  key={metric}
-                  label={data?.label ?? metric}
-                  href={buildExploreUrl({ metric, filters, role: activeRole })}
-                  value={placeholderDeltas ? undefined : data?.value}
-                  unit={data?.unit}
-                  delta={placeholderDeltas ? undefined : data?.delta_pct}
-                  spark={data?.spark}
-                />
-              );
-            })}
-          </section>
+          <MetricEvidenceCards
+            metrics={activeTab.metrics}
+            deltas={deltas}
+            filters={filters}
+            activeRole={activeRole}
+            placeholderDeltas={placeholderDeltas}
+          />
 
           <section>
             <QuadrantPanel
