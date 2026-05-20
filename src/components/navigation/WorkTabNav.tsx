@@ -20,12 +20,12 @@ const tabs = [
     { id: "capacity", label: "Capacity" },
     { id: "flame", label: "Flame" },
     { id: "evidence", label: "Evidence" },
-    { id: "graph", label: "Connections" },
+    { id: "graph", label: "Work Graph" },
 ] as const;
 
 export function WorkTabNav({ activeTab, filters, role }: WorkTabNavProps) {
     return (
-        <div className="flex items-center gap-1 border-b border-(--card-stroke) overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap border-b border-(--card-stroke) px-1 scrollbar-hide">
             {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const href = withFilterParam(`/work?tab=${tab.id}`, filters, role);
@@ -35,9 +35,9 @@ export function WorkTabNav({ activeTab, filters, role }: WorkTabNavProps) {
                         key={tab.id}
                         href={href}
                         aria-current={isActive ? "page" : undefined}
-                        className={`px-4 py-3 text-[10px] uppercase tracking-[0.2em] transition-all border-b-2 -mb-px ${isActive
-                            ? "border-(--accent-2) text-foreground font-semibold"
-                            : "border-transparent text-(--ink-muted) hover:text-foreground hover:border-(--card-stroke)/40"
+                        className={`-mb-px border-b-2 px-3.5 py-3 text-[10px] uppercase tracking-[0.18em] transition-all ${isActive
+                            ? "border-(--accent) text-foreground font-semibold"
+                            : "border-transparent text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground"
                             }`}
                     >
                         {tab.label}
