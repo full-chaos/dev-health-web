@@ -71,6 +71,7 @@ const navGroups: NavGroup[] = [
     label: "Investigate",
     items: [
       { id: "work", label: "Work", href: "/work", description: "Investment" },
+      { id: "capacity-planning", label: "Capacity Planning", href: "/capacity-planning", description: "Forecast" },
       { id: "code", label: "Code", href: "/code", description: "Ownership" },
       { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
       { id: "security", label: "Security", href: "/security", description: "Alerts" },
