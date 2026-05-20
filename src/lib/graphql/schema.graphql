@@ -333,6 +333,47 @@ input CapacityForecastInput {
   simulations: Int! = 10000
 }
 
+type ThroughputRollingWindow {
+  windowWeeks: Int!
+  meanWeeklyThroughput: Float!
+  sampleCount: Int!
+  insufficientHistory: Boolean!
+}
+
+type ThroughputRiskOverlay {
+  kind: String!
+  score: Float!
+  label: String!
+  value: Float!
+  threshold: Float!
+  active: Boolean!
+}
+
+type ThroughputForecast {
+  forecastId: String!
+  computedAt: String!
+  teamId: String!
+  workScopeId: String
+  backlogSize: Int!
+  historyWeeks: Int!
+  p50Weeks: Int
+  p75Weeks: Int
+  p90Weeks: Int
+  rollingWindows: [ThroughputRollingWindow!]!
+  primaryRisk: ThroughputRiskOverlay!
+  wipCongestion: ThroughputRiskOverlay!
+  reviewBottleneck: ThroughputRiskOverlay!
+  incidentLoad: ThroughputRiskOverlay!
+  insufficientHistory: Boolean!
+}
+
+input ThroughputForecastInput {
+  teamId: String!
+  workScopeId: String = null
+  backlogSize: Int!
+  historyWeeks: Int! = 12
+}
+
 type CatalogDimension {
   name: String!
   description: String!
@@ -543,6 +584,9 @@ type Query {
 
   """List persisted capacity forecasts"""
   capacityForecasts(orgId: String!, filters: CapacityForecastFilterInput = null): CapacityForecastConnection!
+
+  """Compute throughput-based capacity forecast"""
+  throughputForecast(orgId: String!, input: ThroughputForecastInput!): ThroughputForecast
 
   """AI workflow impact summary across the requested time range."""
   aiImpactSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIImpactSummary!
