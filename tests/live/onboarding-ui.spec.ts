@@ -144,5 +144,5 @@ test("full signup then login reaches dashboard", async ({ page, request }) => {
   // Should reach dashboard and see main navigation
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
   // Verify the page has rendered (not just a redirect)
-  await expect(page.locator("main")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Developer Health Ops Cockpit" })).toBeVisible({ timeout: 10_000 });
 });
