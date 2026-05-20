@@ -241,6 +241,12 @@ enum AIWorkflowRootTypeInput {
   WORK_UNIT
 }
 
+type AliasSuggestion {
+  unmappedIdentity: UnmappedIdentity!
+  suggestedCanonicalId: String!
+  confidence: Float!
+}
+
 input AnalyticsRequestInput {
   timeseries: [TimeseriesRequestInput!]! = []
   breakdowns: [BreakdownRequestInput!]! = []
@@ -370,10 +376,31 @@ input CloneSavedReportInput {
   parameterOverrides: JSON = null
 }
 
+type ConnectorFailure {
+  occurredAt: DateTime!
+  message: String!
+  stage: String
+}
+
+type ConnectorStatus {
+  provider: String!
+  scope: String!
+  lastSyncAt: DateTime
+  rowsIngested: Int!
+  lastFailure: ConnectorFailure
+}
+
 type Coverage {
   reposCoveredPct: Float!
   prsLinkedToIssuesPct: Float!
   issuesWithCycleStatesPct: Float!
+}
+
+type CoverageStat {
+  totalRepos: Int!
+  coveredRepos: Int!
+  coveragePct: Float!
+  missing: [MissingMapping!]!
 }
 
 input CreateSavedReportInput {
@@ -384,6 +411,13 @@ input CreateSavedReportInput {
   parameters: JSON = null
   scheduleCron: String = null
   scheduleTimezone: String! = "UTC"
+}
+
+type DataHealth {
+  connectors: [ConnectorStatus!]!
+  identityMapping: IdentityMappingHealth!
+  mappingCoverage: MappingCoverage!
+  metricLineage(metricId: ID!): MetricLineage
 }
 
 """Date (isoformat)"""
@@ -404,6 +438,15 @@ enum DimensionInput {
   WORK_TYPE
   THEME
   SUBCATEGORY
+}
+
+type EvidenceRef {
+  teamId: String!
+  metricTable: String!
+  windowStart: Date!
+  windowEnd: Date!
+  field: String!
+  value: Float!
 }
 
 input FilterInput {
@@ -442,10 +485,21 @@ input HowFilterInput {
   flowStage: [String!] = null
 }
 
+type IdentityMappingHealth {
+  unmappedCount: Int!
+  unmappedIdentities: [UnmappedIdentity!]!
+  suggestedAliases: [AliasSuggestion!]!
+}
+
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
 """
 scalar JSON @specifiedBy(url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf")
+
+type MappingCoverage {
+  deployments: CoverageStat!
+  workItems: CoverageStat!
+}
 
 enum MeasureInput {
   COUNT
@@ -479,11 +533,24 @@ type MetricDelta {
   spark: [SparkPoint!]!
 }
 
+type MetricLineage {
+  metricId: ID!
+  sourceTables: [String!]!
+  computeWindow: WindowSpec!
+  computedAt: DateTime!
+  rowCount: Int
+}
+
 type MetricsUpdate {
   orgId: String!
   day: String!
   updatedAt: DateTime!
   message: String!
+}
+
+type MissingMapping {
+  repoName: String!
+  reason: String!
 }
 
 type Mutation {
@@ -590,6 +657,12 @@ type Query {
   """Weekly Engineering Operating Review"""
   operatingReview(orgId: String!, input: OperatingReviewInput!): OperatingReview!
 
+  """Operator data-health and trust surface"""
+  dataHealth(team: ID!): DataHealth!
+
+  """Latest rule-based recommendations for a team within a lookback window."""
+  recommendations(orgId: String!, team: ID!, window: WindowInput!): [Recommendation!]!
+
   """AI workflow impact summary across the requested time range."""
   aiImpactSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIImpactSummary!
 
@@ -614,6 +687,20 @@ type Query {
   Drilldown into AI workflow evidence rooted at an issue, PR, or work_unit. Returns Work Graph nodes and edges with provenance and short evidence references.
   """
   aiWorkflowDrilldown(orgId: String!, rootType: AIWorkflowRootTypeInput!, rootId: String!, depth: Int! = 3, limit: Int! = 100): AIWorkflowDrilldownResult!
+}
+
+type Recommendation {
+  ruleId: String!
+  teamId: String!
+  orgId: String!
+  computedAt: DateTime!
+  windowStart: Date!
+  windowEnd: Date!
+  severity: Severity!
+  title: String!
+  rationale: String!
+  successCriterion: String!
+  evidence: [EvidenceRef!]!
 }
 
 type RepoAlertCount {
@@ -797,6 +884,11 @@ enum SecurityStateInput {
   RESOLVED
 }
 
+enum Severity {
+  WARNING
+  CRITICAL
+}
+
 type SeverityBucket {
   severity: String!
   count: Int!
@@ -903,6 +995,13 @@ type TrendPoint {
   fixed: Int!
 }
 
+type UnmappedIdentity {
+  provider: String!
+  email: String
+  displayName: String
+  observedCount: Int
+}
+
 input UpdateSavedReportInput {
   name: String = null
   description: String = null
@@ -927,6 +1026,22 @@ input WhoFilterInput {
 input WhyFilterInput {
   workCategory: [String!] = null
   issueType: [String!] = null
+}
+
+input WindowInput {
+  value: Int! = 4
+  unit: WindowUnit! = WEEK
+}
+
+type WindowSpec {
+  kind: String!
+  durationDays: Int
+}
+
+enum WindowUnit {
+  DAY
+  WEEK
+  CYCLE
 }
 
 input WorkGraphEdgeFilterInput {

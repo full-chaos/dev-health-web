@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LineagePopover } from "@/app/(app)/data-health/_components/LineagePopover";
 
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
@@ -24,6 +25,7 @@ type MetricCardProps = {
   spark?: SparkPoint[];
   caption?: string;
   className?: string;
+  lineageMetricId?: string;
 };
 
 export function MetricCard({
@@ -35,6 +37,7 @@ export function MetricCard({
   spark,
   caption,
   className,
+  lineageMetricId,
 }: MetricCardProps) {
   const sparkValues = spark?.map((point) => point.value) ?? [];
   const sparkLabels = spark?.map((point) => point.ts) ?? [];
@@ -45,7 +48,10 @@ export function MetricCard({
       className={`group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg ${className ?? ""}`}
     >
       <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-        <span>{label}</span>
+        <div className="flex items-center">
+          <span>{label}</span>
+          {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
+        </div>
         <span className={deltaTone(delta)}>
           {delta === undefined || delta === null ? "--" : formatDelta(delta)}
         </span>

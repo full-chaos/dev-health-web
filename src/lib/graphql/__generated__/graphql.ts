@@ -1,5 +1,5 @@
 /* eslint-disable */
-import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
+import { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = T | null | undefined;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -281,6 +281,13 @@ export type AiWorkflowRootTypeInput =
   | 'PR'
   | 'WORK_UNIT';
 
+export type AliasSuggestion = {
+  __typename?: 'AliasSuggestion';
+  confidence: Scalars['Float']['output'];
+  suggestedCanonicalId: Scalars['String']['output'];
+  unmappedIdentity: UnmappedIdentity;
+};
+
 export type AnalyticsRequestInput = {
   breakdowns?: Array<BreakdownRequestInput>;
   filters?: InputMaybe<FilterInput>;
@@ -420,11 +427,35 @@ export type CloneSavedReportInput = {
   sourceReportId: Scalars['String']['input'];
 };
 
+export type ConnectorFailure = {
+  __typename?: 'ConnectorFailure';
+  message: Scalars['String']['output'];
+  occurredAt: Scalars['DateTime']['output'];
+  stage?: Maybe<Scalars['String']['output']>;
+};
+
+export type ConnectorStatus = {
+  __typename?: 'ConnectorStatus';
+  lastFailure?: Maybe<ConnectorFailure>;
+  lastSyncAt?: Maybe<Scalars['DateTime']['output']>;
+  provider: Scalars['String']['output'];
+  rowsIngested: Scalars['Int']['output'];
+  scope: Scalars['String']['output'];
+};
+
 export type Coverage = {
   __typename?: 'Coverage';
   issuesWithCycleStatesPct: Scalars['Float']['output'];
   prsLinkedToIssuesPct: Scalars['Float']['output'];
   reposCoveredPct: Scalars['Float']['output'];
+};
+
+export type CoverageStat = {
+  __typename?: 'CoverageStat';
+  coveragePct: Scalars['Float']['output'];
+  coveredRepos: Scalars['Int']['output'];
+  missing: Array<MissingMapping>;
+  totalRepos: Scalars['Int']['output'];
 };
 
 export type CreateSavedReportInput = {
@@ -435,6 +466,19 @@ export type CreateSavedReportInput = {
   reportPlan?: InputMaybe<Scalars['JSON']['input']>;
   scheduleCron?: InputMaybe<Scalars['String']['input']>;
   scheduleTimezone?: Scalars['String']['input'];
+};
+
+export type DataHealth = {
+  __typename?: 'DataHealth';
+  connectors: Array<ConnectorStatus>;
+  identityMapping: IdentityMappingHealth;
+  mappingCoverage: MappingCoverage;
+  metricLineage?: Maybe<MetricLineage>;
+};
+
+
+export type DataHealthMetricLineageArgs = {
+  metricId: Scalars['ID']['input'];
 };
 
 export type DateRangeInput = {
@@ -449,6 +493,16 @@ export type DimensionInput =
   | 'TEAM'
   | 'THEME'
   | 'WORK_TYPE';
+
+export type EvidenceRef = {
+  __typename?: 'EvidenceRef';
+  field: Scalars['String']['output'];
+  metricTable: Scalars['String']['output'];
+  teamId: Scalars['String']['output'];
+  value: Scalars['Float']['output'];
+  windowEnd: Scalars['Date']['output'];
+  windowStart: Scalars['Date']['output'];
+};
 
 export type FilterInput = {
   how?: InputMaybe<HowFilterInput>;
@@ -489,6 +543,19 @@ export type HowFilterInput = {
   flowStage?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
+export type IdentityMappingHealth = {
+  __typename?: 'IdentityMappingHealth';
+  suggestedAliases: Array<AliasSuggestion>;
+  unmappedCount: Scalars['Int']['output'];
+  unmappedIdentities: Array<UnmappedIdentity>;
+};
+
+export type MappingCoverage = {
+  __typename?: 'MappingCoverage';
+  deployments: CoverageStat;
+  workItems: CoverageStat;
+};
+
 export type MeasureInput =
   | 'CHURN_LOC'
   | 'COUNT'
@@ -521,12 +588,27 @@ export type MetricDelta = {
   value: Scalars['Float']['output'];
 };
 
+export type MetricLineage = {
+  __typename?: 'MetricLineage';
+  computeWindow: WindowSpec;
+  computedAt: Scalars['DateTime']['output'];
+  metricId: Scalars['ID']['output'];
+  rowCount?: Maybe<Scalars['Int']['output']>;
+  sourceTables: Array<Scalars['String']['output']>;
+};
+
 export type MetricsUpdate = {
   __typename?: 'MetricsUpdate';
   day: Scalars['String']['output'];
   message: Scalars['String']['output'];
   orgId: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+};
+
+export type MissingMapping = {
+  __typename?: 'MissingMapping';
+  reason: Scalars['String']['output'];
+  repoName: Scalars['String']['output'];
 };
 
 export type Mutation = {
@@ -650,10 +732,14 @@ export type Query = {
   capacityForecasts: CapacityForecastConnection;
   /** Get catalog of available dimensions, measures, and limits */
   catalog: CatalogResult;
+  /** Operator data-health and trust surface */
+  dataHealth: DataHealth;
   /** Get home dashboard metrics */
   home: HomeResult;
   /** Weekly Engineering Operating Review */
   operatingReview: OperatingReview;
+  /** Latest rule-based recommendations for a team within a lookback window. */
+  recommendations: Array<Recommendation>;
   /** List report runs for a saved report */
   reportRuns: ReportRunConnection;
   /** Get a saved report by ID */
@@ -748,6 +834,11 @@ export type QueryCatalogArgs = {
 };
 
 
+export type QueryDataHealthArgs = {
+  team: Scalars['ID']['input'];
+};
+
+
 export type QueryHomeArgs = {
   filters?: InputMaybe<FilterInput>;
   orgId: Scalars['String']['input'];
@@ -757,6 +848,13 @@ export type QueryHomeArgs = {
 export type QueryOperatingReviewArgs = {
   input: OperatingReviewInput;
   orgId: Scalars['String']['input'];
+};
+
+
+export type QueryRecommendationsArgs = {
+  orgId: Scalars['String']['input'];
+  team: Scalars['ID']['input'];
+  window: WindowInput;
 };
 
 
@@ -802,6 +900,21 @@ export type QueryThroughputForecastArgs = {
 export type QueryWorkGraphEdgesArgs = {
   filters?: InputMaybe<WorkGraphEdgeFilterInput>;
   orgId: Scalars['String']['input'];
+};
+
+export type Recommendation = {
+  __typename?: 'Recommendation';
+  computedAt: Scalars['DateTime']['output'];
+  evidence: Array<EvidenceRef>;
+  orgId: Scalars['String']['output'];
+  rationale: Scalars['String']['output'];
+  ruleId: Scalars['String']['output'];
+  severity: Severity;
+  successCriterion: Scalars['String']['output'];
+  teamId: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  windowEnd: Scalars['Date']['output'];
+  windowStart: Scalars['Date']['output'];
 };
 
 export type RepoAlertCount = {
@@ -995,6 +1108,10 @@ export type SecurityStateInput =
   | 'OPEN'
   | 'RESOLVED';
 
+export type Severity =
+  | 'CRITICAL'
+  | 'WARNING';
+
 export type SeverityBucket = {
   __typename?: 'SeverityBucket';
   count: Scalars['Int']['output'];
@@ -1125,6 +1242,14 @@ export type TrendPoint = {
   opened: Scalars['Int']['output'];
 };
 
+export type UnmappedIdentity = {
+  __typename?: 'UnmappedIdentity';
+  displayName?: Maybe<Scalars['String']['output']>;
+  email?: Maybe<Scalars['String']['output']>;
+  observedCount?: Maybe<Scalars['Int']['output']>;
+  provider: Scalars['String']['output'];
+};
+
 export type UpdateSavedReportInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   isActive?: InputMaybe<Scalars['Boolean']['input']>;
@@ -1150,6 +1275,22 @@ export type WhyFilterInput = {
   issueType?: InputMaybe<Array<Scalars['String']['input']>>;
   workCategory?: InputMaybe<Array<Scalars['String']['input']>>;
 };
+
+export type WindowInput = {
+  unit?: WindowUnit;
+  value?: Scalars['Int']['input'];
+};
+
+export type WindowSpec = {
+  __typename?: 'WindowSpec';
+  durationDays?: Maybe<Scalars['Int']['output']>;
+  kind: Scalars['String']['output'];
+};
+
+export type WindowUnit =
+  | 'CYCLE'
+  | 'DAY'
+  | 'WEEK';
 
 export type WorkGraphEdgeFilterInput = {
   edgeType?: InputMaybe<WorkGraphEdgeTypeInput>;
@@ -1261,6 +1402,34 @@ export type WorkGraphProvenance =
   | 'HEURISTIC'
   | 'NATIVE';
 
+export type GetConnectorsDataHealthQueryVariables = Exact<{
+  teamId: Scalars['ID']['input'];
+}>;
+
+
+export type GetConnectorsDataHealthQuery = { __typename?: 'Query', dataHealth: { __typename?: 'DataHealth', connectors: Array<{ __typename?: 'ConnectorStatus', provider: string, scope: string, lastSyncAt?: string | null, rowsIngested: number, lastFailure?: { __typename?: 'ConnectorFailure', occurredAt: string, message: string, stage?: string | null } | null }> } };
+
+export type DataHealthIdentityQueryVariables = Exact<{
+  team: Scalars['ID']['input'];
+}>;
+
+
+export type DataHealthIdentityQuery = { __typename?: 'Query', dataHealth: { __typename?: 'DataHealth', identityMapping: { __typename?: 'IdentityMappingHealth', unmappedCount: number, unmappedIdentities: Array<{ __typename?: 'UnmappedIdentity', provider: string, email?: string | null, displayName?: string | null, observedCount?: number | null }>, suggestedAliases: Array<{ __typename?: 'AliasSuggestion', suggestedCanonicalId: string, confidence: number, unmappedIdentity: { __typename?: 'UnmappedIdentity', provider: string, email?: string | null, displayName?: string | null } }> } } };
+
+export type MetricLineageQueryVariables = Exact<{
+  metricId: Scalars['ID']['input'];
+}>;
+
+
+export type MetricLineageQuery = { __typename?: 'Query', dataHealth: { __typename?: 'DataHealth', metricLineage?: { __typename?: 'MetricLineage', metricId: string, sourceTables: Array<string>, computedAt: string, rowCount?: number | null, computeWindow: { __typename?: 'WindowSpec', kind: string, durationDays?: number | null } } | null } };
+
+export type GetMappingCoverageHealthQueryVariables = Exact<{
+  teamId: Scalars['ID']['input'];
+}>;
+
+
+export type GetMappingCoverageHealthQuery = { __typename?: 'Query', dataHealth: { __typename?: 'DataHealth', mappingCoverage: { __typename?: 'MappingCoverage', deployments: { __typename?: 'CoverageStat', totalRepos: number, coveredRepos: number, coveragePct: number }, workItems: { __typename?: 'CoverageStat', totalRepos: number, coveredRepos: number, coveragePct: number } } } };
+
 export class TypedDocumentString<TResult, TVariables>
   extends String
   implements DocumentTypeDecoration<TResult, TVariables>
@@ -1279,3 +1448,79 @@ export class TypedDocumentString<TResult, TVariables>
     return this.value;
   }
 }
+
+export const GetConnectorsDataHealthDocument = new TypedDocumentString(`
+    query GetConnectorsDataHealth($teamId: ID!) {
+  dataHealth(team: $teamId) {
+    connectors {
+      provider
+      scope
+      lastSyncAt
+      rowsIngested
+      lastFailure {
+        occurredAt
+        message
+        stage
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<GetConnectorsDataHealthQuery, GetConnectorsDataHealthQueryVariables>;
+export const DataHealthIdentityDocument = new TypedDocumentString(`
+    query DataHealthIdentity($team: ID!) {
+  dataHealth(team: $team) {
+    identityMapping {
+      unmappedCount
+      unmappedIdentities {
+        provider
+        email
+        displayName
+        observedCount
+      }
+      suggestedAliases {
+        unmappedIdentity {
+          provider
+          email
+          displayName
+        }
+        suggestedCanonicalId
+        confidence
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<DataHealthIdentityQuery, DataHealthIdentityQueryVariables>;
+export const MetricLineageDocument = new TypedDocumentString(`
+    query MetricLineage($metricId: ID!) {
+  dataHealth(team: "ALL") {
+    metricLineage(metricId: $metricId) {
+      metricId
+      sourceTables
+      computeWindow {
+        kind
+        durationDays
+      }
+      computedAt
+      rowCount
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<MetricLineageQuery, MetricLineageQueryVariables>;
+export const GetMappingCoverageHealthDocument = new TypedDocumentString(`
+    query GetMappingCoverageHealth($teamId: ID!) {
+  dataHealth(team: $teamId) {
+    mappingCoverage {
+      deployments {
+        totalRepos
+        coveredRepos
+        coveragePct
+      }
+      workItems {
+        totalRepos
+        coveredRepos
+        coveragePct
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<GetMappingCoverageHealthQuery, GetMappingCoverageHealthQueryVariables>;
