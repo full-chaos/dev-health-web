@@ -373,9 +373,11 @@ query AIWorkflowDrilldown($orgId: String!, $rootType: AIWorkflowRootTypeInput!, 
       targetType
       targetId
       edgeType
-      provenance
       confidence
+      source
       evidence
+      provider
+      repoId
     }
   }
 }

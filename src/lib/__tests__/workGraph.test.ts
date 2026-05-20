@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { WORK_GRAPH_EDGES_QUERY } from "../graphql/queries";
+import { AI_WORKFLOW_DRILLDOWN_QUERY, WORK_GRAPH_EDGES_QUERY } from "../graphql/queries";
 import type {
+  AIWorkflowDrilldownResult,
+  InvestmentSubcategory,
+  InvestmentTheme,
   WorkGraphEdge,
   WorkGraphEdgeFilterInput,
   WorkGraphEdgesResult,
@@ -43,6 +46,15 @@ describe("Work Graph GraphQL", () => {
     });
   });
 
+  describe("AI_WORKFLOW_DRILLDOWN_QUERY", () => {
+    it("exports a schema-valid drilldown query", () => {
+      expect(AI_WORKFLOW_DRILLDOWN_QUERY).toContain("query AIWorkflowDrilldown");
+      expect(AI_WORKFLOW_DRILLDOWN_QUERY).toContain("aiWorkflowDrilldown");
+      expect(AI_WORKFLOW_DRILLDOWN_QUERY).toContain("source");
+      expect(AI_WORKFLOW_DRILLDOWN_QUERY).not.toContain("provenance");
+    });
+  });
+
   describe("types", () => {
     it("WorkGraphEdge has correct shape", () => {
       const edge: WorkGraphEdge = {
@@ -79,6 +91,11 @@ describe("Work Graph GraphQL", () => {
       expect(types).toHaveLength(4);
     });
 
+    it("WorkGraphNodeType includes Story Loop entities", () => {
+      const types: WorkGraphNodeType[] = ["REVIEW_OUTCOME", "DEPLOYMENT", "INCIDENT"];
+      expect(types).toContain("DEPLOYMENT");
+    });
+
     it("WorkGraphEdgeType accepts relationship values", () => {
       const edgeTypes: WorkGraphEdgeType[] = [
         "BLOCKS",
@@ -87,8 +104,31 @@ describe("Work Graph GraphQL", () => {
         "IMPLEMENTS",
         "CONTAINS",
         "TOUCHES",
+        "HAS_REVIEW_OUTCOME",
+        "DEPLOYS",
+        "LINKED_INCIDENT",
       ];
       expect(edgeTypes.length).toBeGreaterThan(0);
+    });
+
+    it("investment taxonomy mirrors the compute-time schema", () => {
+      const themes: InvestmentTheme[] = ["feature_delivery", "operational", "maintenance", "quality", "risk"];
+      const subcategories: InvestmentSubcategory[] = ["feature_delivery.customer", "operational.incident_response", "risk.vulnerability"];
+      expect(themes).toHaveLength(5);
+      expect(subcategories).toContain("feature_delivery.customer");
+    });
+
+    it("AIWorkflowDrilldownResult exposes evidence source and graph nodes", () => {
+      const drilldown: AIWorkflowDrilldownResult = {
+        orgId: "org-1",
+        rootType: "PR",
+        rootId: "PR-1",
+        partial: false,
+        dataAvailable: true,
+        nodes: [{ nodeType: "PR", nodeId: "PR-1" }],
+        edges: [{ edgeId: "edge-1", sourceType: "PR", sourceId: "PR-1", targetType: "DEPLOYMENT", targetId: "deploy-1", edgeType: "DEPLOYS", confidence: 0.9, source: "native", evidence: "deploy evidence" }],
+      };
+      expect(drilldown.edges[0]?.source).toBe("native");
     });
 
     it("WorkGraphProvenance accepts valid values", () => {

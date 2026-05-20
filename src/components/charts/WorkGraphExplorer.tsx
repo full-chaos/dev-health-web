@@ -51,6 +51,11 @@ const NODE_TYPE_COLORS: Record<WorkGraphNodeType, string> = {
   FILE: "#8b5cf6",
   RELEASE: "#0d9488",
   FEATURE_FLAG: "#d97706",
+  AI_WORKFLOW_RUN: "#14b8a6",
+  DIFF: "#ec4899",
+  REVIEW_OUTCOME: "#84cc16",
+  DEPLOYMENT: "#06b6d4",
+  INCIDENT: "#ef4444",
 };
 
 const NODE_TYPE_SYMBOLS: Record<WorkGraphNodeType, string> = {
@@ -60,6 +65,11 @@ const NODE_TYPE_SYMBOLS: Record<WorkGraphNodeType, string> = {
   FILE: "triangle",
   RELEASE: "roundRect",
   FEATURE_FLAG: "arrow",
+  AI_WORKFLOW_RUN: "pin",
+  DIFF: "rect",
+  REVIEW_OUTCOME: "diamond",
+  DEPLOYMENT: "roundRect",
+  INCIDENT: "circle",
 };
 
 const NODE_TYPE_LABELS: Record<WorkGraphNodeType, string> = {
@@ -69,10 +79,15 @@ const NODE_TYPE_LABELS: Record<WorkGraphNodeType, string> = {
   FILE: "File",
   RELEASE: "Release",
   FEATURE_FLAG: "Feature Flag",
+  AI_WORKFLOW_RUN: "AI Workflow",
+  DIFF: "Diff",
+  REVIEW_OUTCOME: "Review",
+  DEPLOYMENT: "Deployment",
+  INCIDENT: "Incident",
 };
 
 const ALL_NODE_TYPES: WorkGraphNodeType[] = [
-  "ISSUE", "PR", "COMMIT", "FILE", "RELEASE", "FEATURE_FLAG",
+  "ISSUE", "PR", "COMMIT", "FILE", "RELEASE", "FEATURE_FLAG", "AI_WORKFLOW_RUN", "DIFF", "REVIEW_OUTCOME", "DEPLOYMENT", "INCIDENT",
 ];
 
 const FILTERABLE_NODE_TYPES: WorkGraphNodeType[] = ["RELEASE", "FEATURE_FLAG"];
@@ -96,6 +111,11 @@ const EDGE_TYPE_STYLES: Record<
   CONFIG_CHANGED_BY: { color: "#d97706", type: "dashed" },
   GUARDS: { color: "#d97706", type: "solid" },
   IMPACTS: { color: "#9ca3af", type: "dotted" },
+  HAS_AI_WORKFLOW: { color: "#14b8a6", type: "solid" },
+  GENERATES: { color: "#ec4899", type: "solid" },
+  HAS_REVIEW_OUTCOME: { color: "#84cc16", type: "solid" },
+  DEPLOYS: { color: "#06b6d4", type: "solid" },
+  LINKED_INCIDENT: { color: "#ef4444", type: "dashed" },
 };
 
 const NODE_SIZE: Record<WorkGraphNodeType, number> = {
@@ -105,6 +125,11 @@ const NODE_SIZE: Record<WorkGraphNodeType, number> = {
   FILE: 20,
   RELEASE: 34,
   FEATURE_FLAG: 28,
+  AI_WORKFLOW_RUN: 30,
+  DIFF: 24,
+  REVIEW_OUTCOME: 26,
+  DEPLOYMENT: 34,
+  INCIDENT: 34,
 };
 
 function edgesToGraph(

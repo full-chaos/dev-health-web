@@ -308,7 +308,56 @@ export interface CapacityForecastsQueryResponse {
 
 // ==== Work Graph Types ====
 
-export type WorkGraphNodeType = "ISSUE" | "PR" | "COMMIT" | "FILE" | "RELEASE" | "FEATURE_FLAG";
+export type InvestmentTheme =
+    | "feature_delivery"
+    | "operational"
+    | "maintenance"
+    | "quality"
+    | "risk";
+
+export type InvestmentSubcategory =
+    | "feature_delivery.customer"
+    | "feature_delivery.roadmap"
+    | "feature_delivery.enablement"
+    | "operational.incident_response"
+    | "operational.on_call"
+    | "operational.support"
+    | "maintenance.refactor"
+    | "maintenance.upgrade"
+    | "maintenance.debt"
+    | "quality.testing"
+    | "quality.bugfix"
+    | "quality.reliability"
+    | "risk.security"
+    | "risk.compliance"
+    | "risk.vulnerability";
+
+export interface InvestmentEvidenceQuote {
+    quote: string;
+    sourceType: "issue" | "pr" | "commit";
+    sourceId: string;
+}
+
+export interface WorkUnitInvestmentDistribution {
+    workUnitId: string;
+    themeDistribution: Partial<Record<InvestmentTheme, number>>;
+    subcategoryDistribution: Partial<Record<InvestmentSubcategory, number>>;
+    evidenceQuotes: InvestmentEvidenceQuote[];
+    uncertainty?: string;
+}
+
+export type WorkGraphNodeType =
+    | "ISSUE"
+    | "PR"
+    | "COMMIT"
+    | "FILE"
+    | "RELEASE"
+    | "FEATURE_FLAG"
+    | "AI_WORKFLOW_RUN"
+    | "DIFF"
+    | "REVIEW_OUTCOME"
+    | "DEPLOYMENT"
+    | "INCIDENT";
 
 export type WorkGraphEdgeType =
     // Issue-to-issue relationships
@@ -332,7 +381,12 @@ export type WorkGraphEdgeType =
     | "INTRODUCED_BY"
     | "CONFIG_CHANGED_BY"
     | "GUARDS"
-    | "IMPACTS";
+    | "IMPACTS"
+    | "HAS_AI_WORKFLOW"
+    | "GENERATES"
+    | "HAS_REVIEW_OUTCOME"
+    | "DEPLOYS"
+    | "LINKED_INCIDENT";
 
 export type WorkGraphProvenance = "NATIVE" | "EXPLICIT_TEXT" | "HEURISTIC";
 
@@ -367,4 +421,39 @@ export interface WorkGraphEdgesResult {
 
 export interface WorkGraphEdgesQueryResponse {
     workGraphEdges: WorkGraphEdgesResult;
+}
+
+export type AIWorkflowRootTypeInput = "ISSUE" | "PR" | "WORK_UNIT";
+
+export interface AIWorkflowGraphNode {
+    nodeType: string;
+    nodeId: string;
+}
+
+export interface AIWorkflowGraphEdge {
+    edgeId: string;
+    sourceType: string;
+    sourceId: string;
+    targetType: string;
+    targetId: string;
+    edgeType: string;
+    confidence: number;
+    source: string;
+    evidence: string;
+    provider?: string | null;
+    repoId?: string | null;
+}
+
+export interface AIWorkflowDrilldownResult {
+    orgId: string;
+    rootType: string;
+    rootId: string;
+    nodes: AIWorkflowGraphNode[];
+    edges: AIWorkflowGraphEdge[];
+    partial: boolean;
+    dataAvailable: boolean;
+}
+
+export interface AIWorkflowDrilldownQueryResponse {
+    aiWorkflowDrilldown: AIWorkflowDrilldownResult;
 }
