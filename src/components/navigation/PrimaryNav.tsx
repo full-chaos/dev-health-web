@@ -55,7 +55,10 @@ const navGroups: NavGroup[] = [
   {
     id: "cockpit",
     label: "Cockpit",
-    items: [{ id: "home", label: "Home", href: "/dashboard", description: "Overview" }],
+    items: [
+      { id: "home", label: "Home", href: "/dashboard", description: "Overview" },
+      { id: "operating-review", label: "Operating Review", href: "/operating-review", description: "Weekly" },
+    ],
   },
   {
     id: "observe",

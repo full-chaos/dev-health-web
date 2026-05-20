@@ -306,6 +306,7 @@ export interface CapacityForecastsQueryResponse {
     capacityForecasts: CapacityForecastConnection;
 }
 
+
 export interface ThroughputForecastInput {
     teamId: string;
     workScopeId?: string;
@@ -350,6 +351,57 @@ export interface ThroughputForecast {
 export interface ThroughputForecastQueryResponse {
     throughputForecast: ThroughputForecast | null;
 }
+
+
+
+// ==== Operating Review Types ====
+
+export interface OperatingReviewInput {
+    teamId: string;
+    weekStart: string;
+}
+
+export type OperatingReviewDeltaStatus = "changed" | "improved" | "worsened" | "unchanged";
+
+export interface OperatingReviewDelta {
+    value: number;
+    priorValue: number;
+    absolute: number;
+    percent?: number | null;
+    status: OperatingReviewDeltaStatus;
+}
+
+export interface OperatingReviewMetric {
+    key: string;
+    label: string;
+    value: number;
+    unit: string;
+    delta: OperatingReviewDelta;
+}
+
+export interface OperatingReviewSection {
+    key: string;
+    title: string;
+    metrics: OperatingReviewMetric[];
+    changed: string[];
+    improved: string[];
+    worsened: string[];
+}
+
+export interface OperatingReview {
+    orgId: string;
+    teamId: string;
+    weekStart: string;
+    priorWeekStart: string;
+    sections: OperatingReviewSection[];
+    recommendations: string[];
+    recommendationsEmptyState: string;
+}
+
+export interface OperatingReviewQueryResponse {
+    operatingReview: OperatingReview;
+}
+
 
 // ==== Work Graph Types ====
 
