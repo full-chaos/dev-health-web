@@ -20,7 +20,7 @@ type ChartProps = {
     investmentMixLoading: boolean;
     investmentMixFocusTheme: string | null;
     dataset: SankeyDataset | null;
-    onTreemapClick: (node: { name: string; value: number; path: string[]; percent: number }, view: FlowSubTab, unit: string) => void;
+    onTreemapClick: (node: { name: string; value: number; path: string[]; percent: number; data?: HierarchyNode }, view: FlowSubTab, unit: string) => void;
     onInvestmentMixClick: (key: string, type: "theme" | "subcategory") => void;
     onAreaClick: (params: { seriesName: string; date: string; value: number; percent: number }) => void;
     onSankeyClick: (item: { type: "node" | "link"; name?: string; source?: string; target?: string; value?: number }) => void;

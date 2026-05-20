@@ -37,6 +37,7 @@ type SunburstChartProps = {
         value: number;
         path: string[];
         percent: number;
+        data?: SunburstNode;
     }) => void;
 };
 
@@ -91,14 +92,14 @@ export function SunburstChart({
                 data?: { name?: string; value?: number };
                 treePathInfo?: Array<{ name: string; value: number }>;
             };
-            const nodeData = entry.data;
+            const nodeData = entry.data as SunburstNode | undefined;
             if (!nodeData?.name) return;
 
             const path = entry.treePathInfo?.map((p) => p.name) ?? [nodeData.name];
             const value = nodeData.value ?? 0;
             const percent = calcPercent(value, totalValue);
 
-            onNodeClick({ name: nodeData.name, value, path, percent });
+            onNodeClick({ name: nodeData.name, value, path, percent, data: nodeData });
         },
         [onNodeClick, totalValue]
     );

@@ -22,7 +22,20 @@ export function useFlowHandlers({
         value: number;
         path: string[];
         percent: number;
+        data?: { children?: unknown[] };
     }, view: FlowSubTab, unit: string) => {
+        const hotspotPath = node.path[0] === "All" ? node.path.slice(1) : node.path;
+        const hasChildren = Array.isArray(node.data?.children) && node.data.children.length > 0;
+        let hotspot: FlowSelection["hotspot"];
+        if (view === "code_hotspots") {
+            const repoId = hotspotPath[0];
+            const filePath = hotspotPath.length > 1 && !hasChildren ? hotspotPath.slice(1).join("/") : undefined;
+            hotspot = {
+                ...(repoId ? { repoId } : {}),
+                ...(filePath ? { filePath } : {}),
+            };
+        }
+
         const outcomesMap: Record<string, string[]> = {
             "code_hotspots": [
                 "Change frequency verified",
@@ -38,6 +51,7 @@ export function useFlowHandlers({
             metricValue: node.value,
             percentTotal: node.percent,
             unit,
+            hotspot,
             outcomes: outcomesMap[view]
         });
     }, [setSelection]);
@@ -52,14 +66,18 @@ export function useFlowHandlers({
         let value = 0;
         const total = Object.values(investmentMix.theme_distribution).reduce((a, b) => a + b, 0);
 
+        let investment: FlowSelection["investment"];
+
         if (type === "theme") {
             path = [titleCase(key)];
             value = investmentMix.theme_distribution[key] ?? 0;
+            investment = { themeKey: key };
             setInvestmentMixFocusTheme(current => current === key ? null : key);
         } else {
             const [themeKey] = key.split(".", 1);
             path = [titleCase(themeKey || ""), formatSubcategoryLabel(key, true)];
             value = investmentMix.subcategory_distribution[key] ?? 0;
+            investment = { themeKey: themeKey || key, subcategoryKey: key };
             setInvestmentMixFocusTheme(themeKey || null);
         }
 
@@ -80,6 +98,7 @@ export function useFlowHandlers({
             metricValue: value,
             percentTotal: total > 0 ? (value / total) * 100 : 0,
             unit: investmentMix.unit ?? "units",
+            investment,
             outcomes,
         });
     }, [investmentMix, setSelection, setInvestmentMixFocusTheme]);
