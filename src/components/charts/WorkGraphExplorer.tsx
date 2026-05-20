@@ -40,7 +40,7 @@ type WorkGraphExplorerProps = {
   width?: number | string;
   className?: string;
   style?: CSSProperties;
-  onNodeClick?: (nodeId: string, nodeType: WorkGraphNodeType) => void;
+  onNodeClickAction?: (nodeId: string, nodeType: WorkGraphNodeType) => void;
   selectedNodeId?: string;
 };
 
@@ -194,7 +194,7 @@ export function WorkGraphExplorer({
   width = "100%",
   className,
   style,
-  onNodeClick,
+  onNodeClickAction,
   selectedNodeId,
 }: WorkGraphExplorerProps) {
   const chartTheme = useChartTheme();
@@ -230,6 +230,10 @@ export function WorkGraphExplorer({
   );
 
   const option: EChartsOption = useMemo(() => {
+    const totalGraphics = nodes.length + links.length;
+    const animateGraph = totalGraphics < 2000;
+    const useForceLayout = totalGraphics < 900;
+    const showNodeLabels = nodes.length <= 120;
     const echartsNodes = nodes.map((node) => ({
       id: node.id,
       name: node.name,
@@ -242,7 +246,7 @@ export function WorkGraphExplorer({
         borderWidth: selectedNodeId === node.id ? 2 : 0,
       },
       label: {
-        show: node.symbolSize > 25,
+        show: showNodeLabels && node.symbolSize > 25,
         position: "bottom" as const,
         fontSize: 10,
         color: chartTheme.text,
@@ -268,6 +272,8 @@ export function WorkGraphExplorer({
     });
 
     return {
+      animation: animateGraph,
+      animationThreshold: 2000,
       tooltip: {
         trigger: "item",
         backgroundColor: chartTheme.background,
@@ -289,24 +295,31 @@ export function WorkGraphExplorer({
       series: [
         {
           type: "graph",
-          layout: "force",
-          animation: true,
+          layout: useForceLayout ? "force" : "circular",
+          animation: animateGraph,
           data: echartsNodes,
           links: echartsLinks,
           categories,
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: 24,
-          center: ["50%", "54%"],
+          left: 56,
+          right: 56,
+          top: 48,
+          bottom: 48,
+          center: ["50%", "50%"],
           roam: true,
-          draggable: true,
-          force: {
-            repulsion: 150,
-            gravity: 0.18,
-            edgeLength: [60, 150],
-            layoutAnimation: true,
-          },
+          draggable: useForceLayout,
+          force: useForceLayout
+            ? {
+                repulsion: 150,
+                gravity: 0.18,
+                edgeLength: [60, 150],
+                layoutAnimation: animateGraph,
+              }
+            : undefined,
+          circular: useForceLayout
+            ? undefined
+            : {
+                rotateLabel: false,
+              },
           emphasis: {
             focus: "adjacency",
             lineStyle: { width: 4 },
@@ -314,8 +327,8 @@ export function WorkGraphExplorer({
           label: {
             show: false,
           },
-          edgeSymbol: ["none", "arrow"],
-          edgeSymbolSize: [0, 8],
+          edgeSymbol: useForceLayout ? ["none", "arrow"] : ["none", "none"],
+          edgeSymbolSize: useForceLayout ? [0, 8] : [0, 0],
         },
       ],
     };
@@ -325,13 +338,13 @@ export function WorkGraphExplorer({
     () => ({
       click: (params: unknown) => {
         const p = params as { dataType?: string; data?: { id?: string } };
-        if (p.dataType === "node" && p.data?.id && onNodeClick) {
+        if (p.dataType === "node" && p.data?.id && onNodeClickAction) {
           const [type, id] = p.data.id.split(":");
-          onNodeClick(id, type as WorkGraphNodeType);
+          onNodeClickAction(id, type as WorkGraphNodeType);
         }
       },
     }),
-    [onNodeClick]
+    [onNodeClickAction]
   );
 
   if (edges.length === 0) {
@@ -352,9 +365,14 @@ export function WorkGraphExplorer({
   return (
     <div className={className} style={{ width, ...style }}>
       {FILTERABLE_NODE_TYPES.length > 0 && (
-        <div className="mb-2 flex items-center gap-3 px-1">
+        <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-[11px]">
+          <span className="mr-1 uppercase tracking-[0.16em] text-(--ink-muted)">Show</span>
           {FILTERABLE_NODE_TYPES.map((type) => (
-            <label key={type} className="flex cursor-pointer items-center gap-1.5 text-xs">
+            <label
+              key={type}
+              title={NODE_TYPE_LABELS[type]}
+              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-(--card-stroke) bg-(--card-90) px-2 py-1 text-(--ink-muted) transition-colors hover:text-foreground"
+            >
               <input
                 type="checkbox"
                 checked={!hiddenNodeTypes.has(type)}
@@ -366,7 +384,7 @@ export function WorkGraphExplorer({
                 className="inline-block h-2.5 w-2.5 rounded-sm"
                 style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
               />
-              <span className="text-(--ink-muted)">
+              <span>
                 {NODE_TYPE_LABELS[type]}
               </span>
             </label>
@@ -388,42 +406,120 @@ const LEGEND_EDGE_TYPES: WorkGraphEdgeType[] = [
   "INTRODUCED_BY", "CONFIG_CHANGED_BY", "GUARDS", "IMPACTS",
 ];
 
-export function WorkGraphLegend() {
+const LEGEND_EDGE_LABELS: Record<WorkGraphEdgeType, string> = {
+  BLOCKS: "blocks",
+  IS_BLOCKED_BY: "is blocked by",
+  FIXES: "fixes",
+  IMPLEMENTS: "implements",
+  REFERENCES: "references",
+  RELATES: "relates",
+  INTRODUCED_BY: "introduced by",
+  CONFIG_CHANGED_BY: "config changed by",
+  GUARDS: "guards",
+  IMPACTS: "impacts",
+  CONTAINS: "contains",
+  TOUCHES: "touches",
+  DEPLOYS: "deploys",
+  LINKED_INCIDENT: "linked incident",
+  IS_RELATED_TO: "is related to",
+  DUPLICATES: "duplicates",
+  IS_DUPLICATE_OF: "is duplicate of",
+  PARENT_OF: "parent of",
+  CHILD_OF: "child of",
+  HAS_AI_WORKFLOW: "has AI workflow",
+  GENERATES: "generates",
+  HAS_REVIEW_OUTCOME: "has review outcome",
+};
+
+type WorkGraphLegendProps = {
+  collapsed?: boolean;
+  onToggleAction?: () => void;
+};
+
+export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraphLegendProps) {
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-3 text-(--ink-muted)">
+        <button
+          type="button"
+          onClick={onToggleAction}
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-(--card-stroke) text-sm transition-colors hover:border-(--accent)/40 hover:text-foreground"
+          aria-label="Expand legend"
+          title="Expand legend"
+        >
+          ◀
+        </button>
+        <div className="flex flex-col items-center gap-1.5" aria-label="Node color key">
+          {ALL_NODE_TYPES.slice(0, 7).map((type) => (
+            <span
+              key={type}
+              className="h-2.5 w-2.5 rounded-full"
+              title={NODE_TYPE_LABELS[type]}
+              style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
+            />
+          ))}
+        </div>
+        <span className="[writing-mode:vertical-rl] rotate-180 text-[10px] uppercase tracking-[0.2em]">
+          Legend
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-3 text-[11px]">
-      <div className="space-y-2">
-        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-(--ink-muted)">
-          Node Types
-        </p>
-        <div className="space-y-2">
+    <div className="text-xs text-(--ink-muted)">
+      <div className="flex items-center justify-between gap-3 px-1 py-1">
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-[0.18em]">Legend</p>
+          <p className="mt-0.5 text-[11px]">Node colors + edge styles</p>
+        </div>
+        <button
+          type="button"
+          onClick={onToggleAction}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-(--card-stroke) text-sm transition-colors hover:border-(--accent)/40 hover:text-foreground"
+          aria-label="Collapse legend"
+          title="Collapse legend"
+        >
+          ▶
+        </button>
+      </div>
+      <div className="mt-3 space-y-4 border-t border-(--card-stroke) pt-3">
+        <section className="space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-[0.18em]">
+            Node Types
+          </p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
           {ALL_NODE_TYPES.map((type) => (
             <div
               key={type}
-              className="flex items-center gap-2 rounded-xl border border-(--card-stroke) px-2 py-2"
+              title={NODE_TYPE_LABELS[type]}
+              className="flex min-w-0 items-center gap-2"
             >
               <span
-                className="h-3 w-3 shrink-0 rounded-sm"
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
               />
-              <span className="leading-none">{NODE_TYPE_LABELS[type]}</span>
+              <span className="min-w-0 truncate leading-none text-foreground/85">{NODE_TYPE_LABELS[type]}</span>
             </div>
           ))}
-        </div>
-      </div>
-      <div className="space-y-2">
-        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-(--ink-muted)">
-          Edge Types
-        </p>
-        <div className="space-y-2">
+          </div>
+        </section>
+        <section className="space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-[0.18em]">
+            Edge Types
+          </p>
+          <div className="grid gap-y-2">
           {LEGEND_EDGE_TYPES.map((type) => {
             const edgeStyle = EDGE_TYPE_STYLES[type];
+            const label = LEGEND_EDGE_LABELS[type];
             return (
               <div
                 key={type}
-                className="flex items-center gap-2 rounded-xl border border-(--card-stroke) px-2 py-2"
+                title={label}
+                className="flex min-w-0 items-center gap-2"
               >
                 <span
-                  className="h-0.5 w-4 shrink-0"
+                  className="h-0.5 w-5 shrink-0"
                   style={{
                     backgroundColor: edgeStyle?.color ?? "#6b7280",
                     borderBottom: edgeStyle?.type === "dashed"
@@ -433,13 +529,14 @@ export function WorkGraphLegend() {
                         : undefined,
                   }}
                 />
-                <span className="leading-tight">
-                  {type.toLowerCase().replace(/_/g, " ")}
+                <span className="min-w-0 truncate leading-tight text-foreground/85">
+                  {label}
                 </span>
               </div>
             );
           })}
-        </div>
+          </div>
+        </section>
       </div>
     </div>
   );

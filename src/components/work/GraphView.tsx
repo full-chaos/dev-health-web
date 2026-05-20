@@ -7,9 +7,10 @@ import {
   WorkGraphLegend,
 } from "@/components/charts/WorkGraphExplorer";
 import { useWorkGraphEdges } from "@/lib/graphql/hooks";
-import type { WorkGraphEdge, WorkGraphNodeType } from "@/lib/graphql/types";
+import type { WorkGraphEdge, WorkGraphEdgeType, WorkGraphNodeType } from "@/lib/graphql/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { useOrgId } from "@/lib/graphql/provider";
+import { INVESTMENT_SUBCATEGORIES, INVESTMENT_THEMES, labelInvestmentKey } from "@/lib/workGraph/taxonomy";
 
 type SelectedNode = {
   id: string;
@@ -21,19 +22,81 @@ type GraphViewProps = {
   activeRole?: string;
 };
 
+const GRAPH_EDGE_QUERY_LIMIT = 1000;
+const GRAPH_RENDER_EDGE_LIMIT = 750;
+
+type ConnectionSlice = {
+  id: string;
+  label: string;
+  description: string;
+  edgeTypes: WorkGraphEdgeType[];
+};
+
+const CONNECTION_SLICES: ConnectionSlice[] = [
+  {
+    id: "work-to-change",
+    label: "Work → PRs",
+    description: "Issues connected to pull requests.",
+    edgeTypes: ["FIXES", "IMPLEMENTS", "REFERENCES"],
+  },
+  {
+    id: "change-to-code",
+    label: "PRs → Commits → Files",
+    description: "Pull requests, commits, and touched files.",
+    edgeTypes: ["CONTAINS", "TOUCHES"],
+  },
+  {
+    id: "release-risk",
+    label: "Deployments → Incidents",
+    description: "Release and incident relationships.",
+    edgeTypes: ["DEPLOYS", "LINKED_INCIDENT", "INTRODUCED_BY"],
+  },
+  {
+    id: "dependencies",
+    label: "Dependencies",
+    description: "Blocking, related, duplicate, and parent-child links.",
+    edgeTypes: ["BLOCKS", "IS_BLOCKED_BY", "RELATES", "IS_RELATED_TO", "DUPLICATES", "IS_DUPLICATE_OF", "PARENT_OF", "CHILD_OF"],
+  },
+  {
+    id: "all",
+    label: "All connections",
+    description: "Every fetched edge type. Best for narrow filters only.",
+    edgeTypes: [],
+  },
+];
+
 export function GraphView({ filters, activeRole }: GraphViewProps) {
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
+  const [theme, setTheme] = useState("all");
+  const [subcategory, setSubcategory] = useState("all");
+  const [connectionSliceId, setConnectionSliceId] = useState(CONNECTION_SLICES[0].id);
+  const [isLegendCollapsed, setIsLegendCollapsed] = useState(true);
   const graphHeight = 580;
 
   const contextOrgId = useOrgId();
   const orgId = filters.scope.ids[0] || contextOrgId || "";
   const { edges, loading, error, totalCount } = useWorkGraphEdges({
     orgId,
-    filters: { limit: 500 },
+    filters: { repoIds: filters.what?.repos, limit: GRAPH_EDGE_QUERY_LIMIT },
     pause: !orgId,
   });
 
-  const displayEdges = edges;
+  const activeConnectionSlice = CONNECTION_SLICES.find((slice) => slice.id === connectionSliceId) ?? CONNECTION_SLICES[0];
+  const slicedEdges = useMemo(
+    () => activeConnectionSlice.edgeTypes.length
+      ? edges.filter((edge) => activeConnectionSlice.edgeTypes.includes(edge.edgeType))
+      : edges,
+    [activeConnectionSlice, edges]
+  );
+  const displayEdges = useMemo(
+    () => slicedEdges.slice(0, GRAPH_RENDER_EDGE_LIMIT),
+    [slicedEdges]
+  );
+  const hiddenEdgeCount = Math.max(0, slicedEdges.length - displayEdges.length);
+  const visibleSubcategories = useMemo(
+    () => INVESTMENT_SUBCATEGORIES.filter((item) => theme === "all" || item.startsWith(`${theme}.`)),
+    [theme]
+  );
 
   const handleNodeClick = useCallback((nodeId: string, nodeType: WorkGraphNodeType) => {
     setSelectedNode((prev) =>
@@ -58,8 +121,8 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
   void activeRole;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(10rem,20%)] xl:items-start">
-      <div className="order-2 space-y-4 xl:order-1">
+    <div className={`grid gap-4 2xl:items-start ${isLegendCollapsed ? "2xl:grid-cols-[minmax(0,1fr)_3.25rem]" : "2xl:grid-cols-[minmax(0,1fr)_17rem]"}`}>
+      <div className="order-1 min-w-0 space-y-4">
         <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
@@ -73,6 +136,73 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
             </div>
           </div>
 
+          <div className="mb-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3 text-xs">
+            <div className="grid gap-3 lg:grid-cols-[minmax(13rem,1.1fr)_minmax(11rem,0.9fr)_minmax(14rem,1.2fr)]">
+            <label className="grid min-w-0 gap-1">
+              <span className="uppercase tracking-[0.18em] text-(--ink-muted)">Connection type</span>
+              <select
+                value={connectionSliceId}
+                onChange={(event) => {
+                  setConnectionSliceId(event.target.value);
+                  setSelectedNode(null);
+                }}
+                className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+              >
+                {CONNECTION_SLICES.map((slice) => (
+                  <option key={slice.id} value={slice.id}>{slice.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1">
+              <span className="uppercase tracking-[0.18em] text-(--ink-muted)">Theme</span>
+              <select
+                value={theme}
+                onChange={(event) => {
+                  setTheme(event.target.value);
+                  setSubcategory("all");
+                }}
+                className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+              >
+                <option value="all">All themes</option>
+                {INVESTMENT_THEMES.map((item) => (
+                  <option key={item} value={item}>{labelInvestmentKey(item)}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1">
+              <span className="uppercase tracking-[0.18em] text-(--ink-muted)">Subcategory</span>
+              <select
+                value={subcategory}
+                onChange={(event) => setSubcategory(event.target.value)}
+                className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+              >
+                <option value="all">All subcategories</option>
+                {visibleSubcategories.map((item) => (
+                  <option key={item} value={item}>{labelInvestmentKey(item)}</option>
+                ))}
+              </select>
+            </label>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-(--card-stroke) pt-3 text-[11px] text-(--ink-muted)">
+              <span title={activeConnectionSlice.description}>{activeConnectionSlice.description}</span>
+              <span>
+                {theme !== "all" || subcategory !== "all"
+                  ? `Selected context: ${theme === "all" ? "all themes" : labelInvestmentKey(theme)} / ${subcategory === "all" ? "all subcategories" : labelInvestmentKey(subcategory)}. `
+                  : ""}
+                Theme/subcategory are context only; persisted distributions drive the selected theme context.
+              </span>
+            </div>
+          </div>
+
+          {(hiddenEdgeCount > 0 || totalCount > edges.length || slicedEdges.length !== edges.length) && (
+            <div className="mb-4 rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              Showing {displayEdges.length} {activeConnectionSlice.label.toLowerCase()} edges for browser responsiveness
+              {slicedEdges.length !== edges.length ? ` (${edges.length - slicedEdges.length} fetched edges hidden by connection type)` : ""}
+              {hiddenEdgeCount > 0 ? `; ${hiddenEdgeCount} sliced edges summarized outside the canvas` : ""}
+              {totalCount > edges.length ? `; ${totalCount - edges.length} additional backend edges are available through narrower filters` : ""}.
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
               Failed to load work graph: {error.message}
@@ -84,12 +214,15 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
               No work graph data available for this scope and window.
             </div>
           ) : (
-            <WorkGraphExplorer
-              edges={displayEdges}
-              height={graphHeight}
-              onNodeClick={handleNodeClick}
-              selectedNodeId={selectedNode ? `${selectedNode.type}:${selectedNode.id}` : undefined}
-            />
+            <div data-testid="work-graph-panel" className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-background/30">
+              <WorkGraphExplorer
+                edges={displayEdges}
+                height={graphHeight}
+                className="p-2"
+                onNodeClickAction={handleNodeClick}
+                selectedNodeId={selectedNode ? `${selectedNode.type}:${selectedNode.id}` : undefined}
+              />
+            </div>
           )}
         </div>
 
@@ -103,9 +236,12 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
         )}
       </div>
 
-      <div className="order-1 xl:order-2 xl:sticky xl:top-4">
-        <div className="bg-card rounded-2xl border border-(--card-stroke) p-3.5">
-          <WorkGraphLegend />
+      <div className="order-2 2xl:sticky 2xl:top-4">
+        <div className={`rounded-2xl border border-(--card-stroke) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}>
+          <WorkGraphLegend
+            collapsed={isLegendCollapsed}
+            onToggleAction={() => setIsLegendCollapsed((collapsed) => !collapsed)}
+          />
         </div>
       </div>
     </div>
@@ -218,12 +354,20 @@ function EdgeList({ title, subtitle, edges, getLabel, getRelation }: EdgeListPro
         {edges.map((edge) => (
           <li
             key={edge.edgeId}
-            className="flex items-center justify-between text-sm bg-white/5 rounded px-2 py-1"
+            className="grid gap-1 text-sm bg-white/5 rounded px-2 py-1"
           >
-            <span className="font-mono text-xs truncate">{getLabel(edge)}</span>
-            <span className="text-xs text-(--ink-muted) ml-2">
-              {getRelation(edge).toLowerCase().replace(/_/g, " ")}
+            <span className="flex items-center justify-between gap-2">
+              <span className="font-mono text-xs truncate">{getLabel(edge)}</span>
+              <span className="text-xs text-(--ink-muted)">
+                {getRelation(edge).toLowerCase().replace(/_/g, " ")}
+              </span>
             </span>
+            <span className="text-[11px] text-(--ink-muted)">
+              {edge.provenance.toLowerCase().replace(/_/g, " ")} · {Math.round(edge.confidence * 100)}% confidence
+            </span>
+            {edge.evidence && (
+              <q className="text-[11px] text-(--ink-muted)">{edge.evidence}</q>
+            )}
           </li>
         ))}
       </ul>

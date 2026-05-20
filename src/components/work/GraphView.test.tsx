@@ -1,4 +1,5 @@
 import { render, screen } from "@/test/utils";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -24,7 +25,8 @@ vi.mock("@/components/charts/WorkGraphExplorer", () => ({
 describe("GraphView", () => {
   const filters = {
     scope: { level: "org" as const, ids: ["org-1"] },
-    dateRange: { start: "2024-01-01", end: "2024-12-31" },
+    time: { range_days: 30 },
+    what: { repos: ["repo-1"] },
   } as unknown as MetricFilter;
 
   beforeEach(() => {
@@ -73,6 +75,105 @@ describe("GraphView", () => {
     expect(screen.getByTestId("work-graph-explorer")).toBeInTheDocument();
     expect(screen.getByTestId("work-graph-legend")).toBeInTheDocument();
     expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+    expect(mockUseWorkGraphEdges).toHaveBeenCalledWith({
+      orgId: "org-1",
+      filters: { repoIds: ["repo-1"], limit: 1000 },
+      pause: false,
+    });
+  });
+
+  it("caps the interactive render and explains partial graph output", () => {
+    mockUseWorkGraphEdges.mockReturnValue({
+      edges: Array.from({ length: 760 }, (_, index) => ({
+        edgeId: `e${index}`,
+        sourceType: "ISSUE",
+        sourceId: `ISS-${index}`,
+        targetType: "PR",
+        targetId: `PR-${index}`,
+        edgeType: "FIXES",
+        provenance: "NATIVE",
+        confidence: 1.0,
+        evidence: "test",
+      })),
+      loading: false,
+      error: null,
+      totalCount: 1200,
+      refetch: vi.fn(),
+    });
+
+    render(<GraphView filters={filters} />);
+
+    expect(screen.getByText(/Showing 750 work → prs edges/i)).toBeInTheDocument();
+    expect(screen.getByText(/additional backend edges are available/i)).toBeInTheDocument();
+  });
+
+  it("defaults to a connection hierarchy slice instead of rendering every edge type", () => {
+    mockUseWorkGraphEdges.mockReturnValue({
+      edges: [
+        {
+          edgeId: "e1",
+          sourceType: "ISSUE",
+          sourceId: "ISS-1",
+          targetType: "PR",
+          targetId: "PR-1",
+          edgeType: "FIXES",
+          provenance: "NATIVE",
+          confidence: 1.0,
+          evidence: "test",
+        },
+        {
+          edgeId: "e2",
+          sourceType: "COMMIT",
+          sourceId: "sha-1",
+          targetType: "FILE",
+          targetId: "app.ts",
+          edgeType: "TOUCHES",
+          provenance: "NATIVE",
+          confidence: 1.0,
+          evidence: "test",
+        },
+      ],
+      loading: false,
+      error: null,
+      totalCount: 2,
+      refetch: vi.fn(),
+    });
+
+    render(<GraphView filters={filters} />);
+
+    expect(screen.getByLabelText(/Connection type/i)).toHaveValue("work-to-change");
+    expect(screen.getByText(/1 fetched edges hidden by connection type/i)).toBeInTheDocument();
+  });
+
+  it("shows theme and subcategory filter context without recomputing graph data", async () => {
+    const user = userEvent.setup();
+    mockUseWorkGraphEdges.mockReturnValue({
+      edges: [
+        {
+          edgeId: "e1",
+          sourceType: "ISSUE",
+          sourceId: "ISS-1",
+          targetType: "PR",
+          targetId: "PR-1",
+          edgeType: "FIXES",
+          provenance: "NATIVE",
+          confidence: 1.0,
+          evidence: "Fixes ISS-1",
+        },
+      ],
+      loading: false,
+      error: null,
+      totalCount: 1,
+      refetch: vi.fn(),
+    });
+
+    render(<GraphView filters={filters} />);
+
+    await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
+    await user.selectOptions(screen.getByLabelText(/Subcategory/i), "quality.bugfix");
+
+    expect(screen.getByText(/Quality \/ Quality \/ Bugfix/i)).toBeInTheDocument();
+    expect(screen.getByText(/persisted distributions drive the selected theme context/i)).toBeInTheDocument();
   });
 
   it("does NOT fall back to sample data when edges are empty", () => {
