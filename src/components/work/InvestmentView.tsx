@@ -20,9 +20,10 @@ import { InvestmentWorkUnitList } from "./investment/InvestmentWorkUnitList";
 
 type InvestmentViewProps = {
   filters: MetricFilter;
+  activeRole?: string;
 };
 
-export function InvestmentView({ filters }: InvestmentViewProps) {
+export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
   const data = useInvestmentData({ filters });
 
   const effortUnit = useMemo(() => {
@@ -138,11 +139,13 @@ export function InvestmentView({ filters }: InvestmentViewProps) {
 
       <InvestmentCharts
         filters={data.filters}
+        activeRole={activeRole}
         workUnits={data.workUnits}
         isLoading={data.isLoading}
         investmentMix={data.investmentMix}
         isMixLoading={data.isMixLoading}
         focusTheme={data.focusTheme}
+        focusSubcategory={data.focusSubcategory}
         setFocusTheme={data.setFocusTheme}
         setFocusSubcategory={data.setFocusSubcategory}
         selectedCategory={data.selectedCategory}

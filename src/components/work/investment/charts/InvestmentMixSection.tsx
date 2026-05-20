@@ -1,36 +1,45 @@
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { ChartTypeToggle, TREEMAP_SUNBURST_OPTIONS, type TreemapSunburstType } from "@/components/charts/ChartTypeToggle";
 import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
 import { adjustHex, clamp, formatQuality, formatSubcategoryLabel, titleCase } from "@/lib/investment";
 import { getSortedSubcategories, getSortedThemes } from "@/lib/investmentMix";
 import type { WorkUnitInvestment } from "@/lib/types";
+import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
 import type { TreemapSelection } from "../types";
 
 type InvestmentMix = ReturnType<typeof import("@/lib/investmentMix").normalizeInvestmentMix>;
 
 type InvestmentMixSectionProps = {
+  filters: MetricFilter;
+  activeRole?: string;
   investmentMix: InvestmentMix | null;
   isLoading: boolean;
   isMixLoading: boolean;
   workUnits: WorkUnitInvestment[];
   effortUnit: string;
   focusTheme: string | null;
+  focusSubcategory: string | null;
   setFocusTheme: (value: string | null) => void;
   setFocusSubcategory: (value: string | null) => void;
   themeColorMap: Map<string, string>;
 };
 
 export function InvestmentMixSection({
+  filters,
+  activeRole,
   investmentMix,
   isLoading,
   isMixLoading,
   workUnits,
   effortUnit,
   focusTheme,
+  focusSubcategory,
   setFocusTheme,
   setFocusSubcategory,
   themeColorMap,
@@ -50,6 +59,24 @@ export function InvestmentMixSection({
     if (!focusTheme) return [];
     return mixSubcategories.filter((entry) => entry.themeKey === focusTheme);
   }, [focusTheme, mixSubcategories]);
+  const focusedWorkGraphUrl = useMemo(() => {
+    if (!focusTheme) return null;
+    return buildInvestmentWorkGraphUrl({
+      filters,
+      role: activeRole,
+      themeKey: focusTheme,
+      subcategoryKey: focusSubcategory?.startsWith(`${focusTheme}.`) ? focusSubcategory : null,
+    });
+  }, [activeRole, filters, focusSubcategory, focusTheme]);
+  const treemapWorkGraphUrl = useMemo(() => {
+    if (!treemapSelection?.themeKey) return null;
+    return buildInvestmentWorkGraphUrl({
+      filters,
+      role: activeRole,
+      themeKey: treemapSelection.themeKey,
+      subcategoryKey: treemapSelection.type === "subcategory" ? treemapSelection.subcategoryId : null,
+    });
+  }, [activeRole, filters, treemapSelection]);
 
   const handleThemeClick = useCallback(
     (themeKey: string) => {
@@ -267,6 +294,11 @@ export function InvestmentMixSection({
                   )}
                 </>
               )}
+              {treemapWorkGraphUrl && (
+                <Link href={treemapWorkGraphUrl} className="ml-auto rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40">
+                  Open in Work Graph ↗
+                </Link>
+              )}
             </div>
             {isLoading ? (
               <p className="text-sm text-(--ink-muted)">Loading work units...</p>
@@ -306,6 +338,15 @@ export function InvestmentMixSection({
                 <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">{focusTheme ? "Subcategory breakdown" : "Themes"}</p>
                 {focusTheme && <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">{titleCase(focusTheme)}</span>}
               </div>
+              {focusedWorkGraphUrl && (
+                <Link
+                  href={focusedWorkGraphUrl}
+                  className="mt-3 flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
+                >
+                  <span>Open in Work Graph</span>
+                  <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">↗</span>
+                </Link>
+              )}
               <div className="mt-3 space-y-2 text-sm">
                 {focusTheme ? (
                   focusedThemeSubcategories.length ? (
