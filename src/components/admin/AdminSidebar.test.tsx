@@ -18,6 +18,10 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/components/navigation/OrgSwitcher", () => ({
+  OrgSwitcher: () => <div data-testid="org-switcher">Org switcher</div>,
+}));
+
 describe("AdminSidebar", () => {
   beforeEach(() => {
     pathname = "/admin";
@@ -27,6 +31,7 @@ describe("AdminSidebar", () => {
     render(<AdminSidebar />);
 
     expect(screen.getByText("Full Chaos Dev Health Ops")).toBeInTheDocument();
+    expect(screen.getByTestId("org-switcher")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /dashboardoverview/i })).toHaveAttribute(
       "aria-current",
       "page"

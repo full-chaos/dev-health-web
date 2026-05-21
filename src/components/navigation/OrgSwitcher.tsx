@@ -68,9 +68,11 @@ export function OrgSwitcher() {
     [activeOrgId, state?.organizations]
   );
 
-  if (!state || state.organizations.length <= 1) {
+  if (!state || state.organizations.length === 0) {
     return null;
   }
+
+  const canSwitchOrganizations = state.organizations.length > 1;
 
   async function switchOrg(orgId: string) {
     if (!orgId || orgId === activeOrgId || isPending) return;
@@ -95,12 +97,12 @@ export function OrgSwitcher() {
   return (
     <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3">
       <label htmlFor="org-switcher" className="text-[10px] uppercase tracking-widest text-(--ink-muted)">
-        Organization
+        {canSwitchOrganizations ? "Organization" : "Current organization"}
       </label>
       <select
         id="org-switcher"
         value={activeOrgId}
-        disabled={isPending}
+        disabled={isPending || !canSwitchOrganizations}
         onChange={(event) => switchOrg(event.target.value)}
         className="mt-2 w-full rounded-xl border border-(--card-stroke) bg-(--background) px-3 py-2 text-sm text-foreground outline-none transition focus:border-(--accent) disabled:opacity-60"
         aria-describedby="org-switcher-data"
@@ -112,7 +114,10 @@ export function OrgSwitcher() {
         ))}
       </select>
       <p id="org-switcher-data" className="mt-2 text-[11px] text-(--ink-muted)">
-        {activeOrg ? dataLabel(activeOrg) : "Choose the organization used for dashboards."}
+        {activeOrg
+          ? dataLabel(activeOrg)
+          : "Choose the organization used for dashboards."}
+        {!canSwitchOrganizations ? " · Only organization on this account" : null}
       </p>
       {error ? <p className="mt-2 text-[11px] text-red-400">{error}</p> : null}
     </div>

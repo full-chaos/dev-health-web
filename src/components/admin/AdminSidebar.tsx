@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
 
 type NavItem = {
   id: string;
@@ -62,6 +63,8 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
               System configuration and management.
             </p>
           </div>
+
+          <OrgSwitcher />
           <nav className="mt-5 space-y-2 text-sm">
             {filteredNavItems.map((item) => {
               const isActive = pathname === item.href;

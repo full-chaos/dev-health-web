@@ -75,4 +75,32 @@ describe("OrgSwitcher", () => {
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ activeOrg: expect.any(Object) })));
     expect(mockRefresh).toHaveBeenCalled();
   });
+
+  it("shows the current organization even when there is nothing to switch", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          active_org_id: "org-empty",
+          organizations: [
+            {
+              id: "org-empty",
+              slug: "empty",
+              name: "Empty Org",
+              tier: "community",
+              role: "admin",
+              has_data: false,
+              last_metrics_at: null,
+            },
+          ],
+        })
+      )
+    );
+
+    render(<OrgSwitcher />);
+
+    const select = await screen.findByLabelText(/current organization/i);
+    expect(select).toBeDisabled();
+    expect(screen.getByText(/only organization on this account/i)).toBeInTheDocument();
+  });
 });
