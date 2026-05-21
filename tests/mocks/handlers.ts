@@ -33,6 +33,7 @@ import {
 } from "../../src/data/devHealthOpsSample";
 
 import {
+  aiAttributedPrsResponse,
   aiComparisonResponse,
   aiGovernanceSummaryResponse,
   aiImpactSummaryResponse,
@@ -579,6 +580,9 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
   }
   if (query.includes("AIGovernanceSummary")) {
     return HttpResponse.json({ data: { aiGovernanceSummary: aiGovernanceSummaryResponse(orgId, startDate, endDate, aiMode) } });
+  }
+  if (query.includes("AIAttributedPrs")) {
+    return HttpResponse.json({ data: { aiAttributedPrs: aiAttributedPrsResponse(orgId, startDate, endDate, aiMode) } });
   }
   if (query.includes("AIWorkflowDrilldown")) {
     const rootType = (variables.rootType as string | undefined) ?? "PR";

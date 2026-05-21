@@ -59,17 +59,25 @@ test.describe("AI Review Load dashboard", () => {
     await expect(pushIterCard).toContainText(/Not yet instrumented/i);
   });
 
-  test("drill-into-evidence button opens the placeholder dialog", async ({ page }) => {
+  test("drill-into-evidence button opens the PR selector modal (CHAOS-1739)", async ({ page }) => {
     await page.goto(`/ai/review-load?f=${populatedFilter}`);
 
     const dashboard = page.getByTestId("ai-review-load-dashboard");
     await dashboard.getByRole("button", { name: /Drill into evidence/i }).first().click();
 
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByTestId("ai-drilldown-modal");
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(/aiWorkflowDrilldown/);
 
-    await dialog.getByRole("button", { name: "Close" }).click();
+    // The modal is the real selector now: search input + PR table + evidence
+    // prompt. The old placeholder copy that leaked resolver names is gone.
+    await expect(dialog.getByRole("heading", { name: "Evidence by pull request" })).toBeVisible();
+    await expect(dialog).not.toContainText(/aiWorkflowDrilldown/);
+    await expect(dialog).not.toContainText(/fabricat/i);
+    await expect(dialog.getByTestId("ai-drilldown-search")).toBeVisible();
+    await expect(dialog.getByTestId("ai-drilldown-table")).toBeVisible();
+    await expect(dialog.getByTestId("ai-drilldown-evidence-prompt")).toBeVisible();
+
+    await dialog.getByRole("button", { name: /close/i }).click();
     await expect(dialog).not.toBeVisible();
   });
 
