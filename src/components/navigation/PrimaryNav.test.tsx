@@ -72,4 +72,18 @@ describe("PrimaryNav — section composition", () => {
     expect(investigateIdx).toBeGreaterThan(observeIdx);
     expect(testopsIdx).toBeGreaterThan(investigateIdx);
   });
+
+  it("renders the 'Bottlenecks' nav item under Investigate (CHAOS-1742)", () => {
+    render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
+
+    const bottleneckLinks = screen.getAllByRole("link", {
+      name: /bottlenecks/i,
+    });
+    // Exactly one Bottlenecks link — under the Investigate section.
+    expect(bottleneckLinks).toHaveLength(1);
+    expect(bottleneckLinks[0]).toHaveAttribute(
+      "href",
+      expect.stringContaining("/bottleneck")
+    );
+  });
 });

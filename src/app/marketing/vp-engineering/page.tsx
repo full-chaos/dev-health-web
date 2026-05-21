@@ -1,4 +1,5 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -6,7 +7,16 @@ export const metadata: Metadata = {
   description: "Know where delivery is constrained before it becomes a miss.",
 };
 
-const SURFACES = [
+type SurfaceConfig = {
+  label: string;
+  title: string;
+  description: string;
+  href: string;
+  comingSoon?: boolean;
+  icon: ReactNode;
+};
+
+const SURFACES: SurfaceConfig[] = [
   {
     label: "Operating Review",
     title: "Engineering Operating Review",
@@ -36,7 +46,6 @@ const SURFACES = [
     title: "Delivery Bottleneck Summary",
     description: "Spot where work is piling up. Identify high review latency and coordination debt before it impacts ship dates.",
     href: "/bottleneck",
-    comingSoon: true,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M5 22h14" />
