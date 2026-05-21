@@ -1,11 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { screen } from "@testing-library/react";
+import { render } from "@/test/utils";
 import { PrimaryNav } from "./PrimaryNav";
 import type { MetricFilter } from "@/lib/filters/types";
 
 // Stub usePathname so PrimaryNav (a client component) renders deterministically
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({
+    data: { user: { org_id: "org-1" } },
+    update: vi.fn(),
+  }),
 }));
 
 function makeFilter(): MetricFilter {
