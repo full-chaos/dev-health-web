@@ -347,6 +347,65 @@ export function CompoundingRiskDashboard({
   trend,
   generatedAt,
 }: CompoundingRiskDashboardProps) {
+
+  const allScoresNull = rows.length > 0 && rows.every((r) => r.score === null);
+  if (allScoresNull) {
+    const missingInputs: string[] = [];
+    if (rows.every((r) => r.components.churnNorm === null)) {
+      missingInputs.push("rework churn");
+    }
+    if (rows.every((r) => r.components.complexityNorm === null)) {
+      missingInputs.push("complexity delta (rising cyclomatic_per_kloc trend)");
+    }
+    if (rows.every((r) => r.components.ownershipNorm === null)) {
+      missingInputs.push("ownership concentration (gini and single-owner ratio)");
+    }
+    if (rows.every((r) => r.components.reviewNorm === null)) {
+      missingInputs.push("review latency (p90h)");
+    }
+
+    return (
+      <div className="flex flex-col gap-6" data-testid="compounding-risk-dashboard">
+        <section
+          className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
+          data-testid="all-scores-null-state"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--ink-muted)">
+            Compounding risk
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">
+            Scores currently unavailable
+          </h1>
+
+          <p className="mt-6 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
+            Compounding Risk appears unavailable for every {breakout} today. The composite requires four inputs (rework churn, complexity trend, ownership concentration, and review latency), and at least one of these is missing across all {breakout}s.
+          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
+            This usually clears once more PR review activity or recent complexity data is recorded. The page will populate automatically when the next daily metrics run completes.
+          </p>
+
+          {missingInputs.length > 0 && (
+            <div className="mt-8 rounded-2xl border border-(--card-stroke) bg-(--card-60) p-6">
+              <h3 className="text-sm font-semibold tracking-tight">
+                Missing inputs across all {breakout}s:
+              </h3>
+              <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-(--ink-muted)">
+                {missingInputs.map((input) => (
+                  <li key={input}>{input}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p className="mt-8 text-xs text-(--ink-muted)">
+            Org <span className="font-mono">{orgId}</span> · generated{" "}
+            <time dateTime={generatedAt}>{generatedAt.replace("T", " ").slice(0, 16)}</time>
+          </p>
+        </section>
+      </div>
+    );
+  }
+
   const headline = selectHeadlineRow(rows);
 
   return (

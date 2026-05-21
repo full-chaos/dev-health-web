@@ -156,7 +156,7 @@ describe("CompoundingRiskDashboard", () => {
     expect(sparkline.children.length).toBe(2);
   });
 
-  it("renders '—' for null scores rather than 0", () => {
+  it("renders '—' for null scores rather than 0 in a mixed or non-empty valid set", () => {
     const rows = [
       makeRow({
         score: null,
@@ -169,13 +169,63 @@ describe("CompoundingRiskDashboard", () => {
           reviewNorm: null,
         },
       }),
+      makeRow({
+        score: 0.8,
+        severity: "high",
+        scopeId: "repo-b",
+      })
     ];
     renderDashboard({ rows });
-    // headline shows em-dash, not 0
+    // headline shows 0.8 from the valid row
     const score = screen.getByTestId("headline-score");
-    expect(score.textContent).toBe("—");
-    // and severity chip on the headline reads unknown
-    const chips = screen.getAllByTestId("severity-chip");
-    expect(chips[0].getAttribute("data-severity")).toBe("unknown");
+    expect(score.textContent).toBe("0.80");
+    
+    // the first row in the table should be the null one if we just look at rows[0], but let's check the table
+    const tableRows = screen.getAllByTestId("risk-row");
+    // The null row is tableRows[0]
+    expect(tableRows[0].textContent).toContain("—");
+  });
+
+  it("renders the explanatory empty state when ALL rows have null scores", () => {
+    const rows = [
+      makeRow({
+        score: null,
+        severity: "unknown",
+        components: {
+          ...makeRow().components,
+          churnNorm: null,
+          complexityNorm: null,
+          ownershipNorm: null,
+          reviewNorm: null,
+        },
+      }),
+      makeRow({
+        scopeId: "repo-b",
+        score: null,
+        severity: "unknown",
+        components: {
+          ...makeRow().components,
+          churnNorm: null,
+          complexityNorm: null,
+          ownershipNorm: null,
+          reviewNorm: null,
+        },
+      }),
+    ];
+    renderDashboard({ rows, breakout: "team" });
+
+    expect(screen.getByTestId("all-scores-null-state")).toBeInTheDocument();
+    expect(screen.getByText(/Scores currently unavailable/)).toBeInTheDocument();
+    expect(screen.getByText(/Missing inputs across all teams:/)).toBeInTheDocument();
+    
+    // check that the 4 derived missing inputs are listed
+    expect(screen.getByText("rework churn")).toBeInTheDocument();
+    expect(screen.getByText("complexity delta (rising cyclomatic_per_kloc trend)")).toBeInTheDocument();
+    expect(screen.getByText("ownership concentration (gini and single-owner ratio)")).toBeInTheDocument();
+    expect(screen.getByText("review latency (p90h)")).toBeInTheDocument();
+
+    // The normal components shouldn't be there
+    expect(screen.queryByTestId("headline-score")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("compounding-risk-table")).not.toBeInTheDocument();
   });
 });
