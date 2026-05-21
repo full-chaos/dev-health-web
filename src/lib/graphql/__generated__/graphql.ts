@@ -330,6 +330,27 @@ export type BucketIntervalInput =
   | 'MONTH'
   | 'WEEK';
 
+export type BusFactor = {
+  __typename?: 'BusFactor';
+  evidenceSampleCount: Scalars['Int']['output'];
+  orgId: Scalars['String']['output'];
+  repos: Array<RepoBusFactor>;
+  scope: BusFactorScope;
+  topMaintainers: Array<MaintainerShare>;
+  value: Scalars['Int']['output'];
+};
+
+export type BusFactorScope = {
+  __typename?: 'BusFactorScope';
+  repoId?: Maybe<Scalars['String']['output']>;
+  teamId?: Maybe<Scalars['String']['output']>;
+};
+
+export type BusFactorScopeInput = {
+  repoId?: InputMaybe<Scalars['String']['input']>;
+  teamId?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type CapacityForecast = {
   __typename?: 'CapacityForecast';
   backlogSize: Scalars['Int']['output'];
@@ -550,6 +571,12 @@ export type IdentityMappingHealth = {
   unmappedIdentities: Array<UnmappedIdentity>;
 };
 
+export type MaintainerShare = {
+  __typename?: 'MaintainerShare';
+  author: Scalars['String']['output'];
+  sharePercent: Scalars['Float']['output'];
+};
+
 export type MappingCoverage = {
   __typename?: 'MappingCoverage';
   deployments: CoverageStat;
@@ -726,6 +753,8 @@ export type Query = {
   aiWorkflowDrilldown: AiWorkflowDrilldownResult;
   /** Run batch analytics queries */
   analytics: AnalyticsResult;
+  /** Repository ownership concentration and bus-factor summary. */
+  busFactor: BusFactor;
   /** Compute capacity forecast on-demand */
   capacityForecast?: Maybe<CapacityForecast>;
   /** List persisted capacity forecasts */
@@ -812,6 +841,12 @@ export type QueryAiWorkflowDrilldownArgs = {
 export type QueryAnalyticsArgs = {
   batch: AnalyticsRequestInput;
   orgId: Scalars['String']['input'];
+};
+
+
+export type QueryBusFactorArgs = {
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<BusFactorScopeInput>;
 };
 
 
@@ -923,6 +958,15 @@ export type RepoAlertCount = {
   repoId: Scalars['String']['output'];
   repoName: Scalars['String']['output'];
   repoUrl?: Maybe<Scalars['String']['output']>;
+};
+
+export type RepoBusFactor = {
+  __typename?: 'RepoBusFactor';
+  evidenceSampleCount: Scalars['Int']['output'];
+  repoId: Scalars['String']['output'];
+  repoName: Scalars['String']['output'];
+  topMaintainers: Array<MaintainerShare>;
+  value: Scalars['Int']['output'];
 };
 
 export type ReportRunConnection = {
