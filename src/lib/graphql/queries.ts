@@ -681,3 +681,29 @@ query AIGovernanceSummary($orgId: String!, $dateRange: AIDateRangeInput!, $scope
   }
 }
 `;
+
+// ---------------------------------------------------------------------------
+// AI-attributed PR drilldown selector (CHAOS-1738/1739)
+// ---------------------------------------------------------------------------
+
+export const AI_ATTRIBUTED_PRS_QUERY = `
+query AIAttributedPrs($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIScopeInput, $limit: Int! = 50, $offset: Int! = 0) {
+  aiAttributedPrs(orgId: $orgId, dateRange: $dateRange, scope: $scope, limit: $limit, offset: $offset) {
+    orgId
+    startDate
+    endDate
+    total
+    hasMore
+    dataAvailable
+    rows {
+      repoId
+      number
+      title
+      kind
+      workType
+      teamId
+      mergedAt
+    }
+  }
+}
+`;

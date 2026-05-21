@@ -241,6 +241,26 @@ enum AIWorkflowRootTypeInput {
   WORK_UNIT
 }
 
+type AiAttributedPr {
+  repoId: ID!
+  number: Int!
+  title: String
+  kind: String
+  workType: String
+  teamId: String
+  mergedAt: DateTime
+}
+
+type AiAttributedPrsResult {
+  orgId: String!
+  startDate: Date!
+  endDate: Date!
+  rows: [AiAttributedPr!]!
+  total: Int!
+  hasMore: Boolean!
+  dataAvailable: Boolean!
+}
+
 type AliasSuggestion {
   unmappedIdentity: UnmappedIdentity!
   suggestedCanonicalId: String!
@@ -714,6 +734,11 @@ type Query {
   Drilldown into AI workflow evidence rooted at an issue, PR, or work_unit. Returns Work Graph nodes and edges with provenance and short evidence references.
   """
   aiWorkflowDrilldown(orgId: String!, rootType: AIWorkflowRootTypeInput!, rootId: String!, depth: Int! = 3, limit: Int! = 100): AIWorkflowDrilldownResult!
+
+  """
+  List AI-attributed pull requests in the requested window so the UI can offer a concrete drilldown selector. Rows come from ai_attribution_resolved joined to git_pull_requests; no aggregation, no fabrication.
+  """
+  aiAttributedPrs(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, limit: Int! = 50, offset: Int! = 0): AiAttributedPrsResult!
 }
 
 type Recommendation {

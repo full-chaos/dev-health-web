@@ -2,12 +2,15 @@ import { useMemo } from "react";
 import { useQuery } from "urql";
 
 import {
+  AI_ATTRIBUTED_PRS_QUERY,
   AI_GOVERNANCE_SUMMARY_QUERY,
   AI_REVIEW_LOAD_QUERY,
   AI_RISK_BREAKDOWN_QUERY,
+  AI_WORKFLOW_DRILLDOWN_QUERY,
 } from "../queries";
 import { useOrgId } from "../provider";
 import type {
+  AiAttributedPrsResult,
   AiComparison,
   AiDateRangeInput,
   AiGovernanceSummary,
@@ -16,6 +19,8 @@ import type {
   AiRiskBreakdownResult,
   AiRiskBreakdownRow,
   AiScopeInput,
+  AiWorkflowDrilldownResult,
+  AiWorkflowRootTypeInput,
 } from "../__generated__/types";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiAttributionBucketInput } from "@/lib/graphql/__generated__/types";
@@ -39,6 +44,10 @@ type RiskData = {
 
 type GovernanceData = {
   aiGovernanceSummary: AiGovernanceSummary;
+};
+
+type AttributedPrsData = {
+  aiAttributedPrs: AiAttributedPrsResult;
 };
 
 export function toAIQueryInputs(filter: AIFilter): AIInputs {
@@ -137,6 +146,55 @@ export function useAIGovernanceSummary(filter: AIFilter, violationLimit = 50) {
 
   return {
     data: result.data,
+    fetching: result.fetching,
+    error: result.error,
+  };
+}
+
+export function useAIAttributedPrs(filter: AIFilter, limit = 50, offset = 0, pause = false) {
+  const orgId = useOrgId();
+  const inputs = useMemo(() => toAIQueryInputs(filter), [filter]);
+
+  const [result] = useQuery<AttributedPrsData>({
+    query: AI_ATTRIBUTED_PRS_QUERY,
+    variables: { orgId: orgId ?? "", ...inputs, limit, offset },
+    pause: !orgId || pause,
+    requestPolicy: "cache-and-network",
+  });
+
+  return {
+    data: result.data?.aiAttributedPrs,
+    fetching: result.fetching,
+    error: result.error,
+  };
+}
+
+type WorkflowDrilldownData = {
+  aiWorkflowDrilldown: AiWorkflowDrilldownResult;
+};
+
+export function useAIWorkflowDrilldownForPr(
+  rootId: string | null,
+  options: { depth?: number; limit?: number } = {}
+) {
+  const orgId = useOrgId();
+  const variables = {
+    orgId: orgId ?? "",
+    rootType: "PR" as AiWorkflowRootTypeInput,
+    rootId: rootId ?? "",
+    depth: options.depth ?? 3,
+    limit: options.limit ?? 100,
+  };
+
+  const [result] = useQuery<WorkflowDrilldownData>({
+    query: AI_WORKFLOW_DRILLDOWN_QUERY,
+    variables,
+    pause: !orgId || !rootId,
+    requestPolicy: "cache-and-network",
+  });
+
+  return {
+    data: result.data?.aiWorkflowDrilldown,
     fetching: result.fetching,
     error: result.error,
   };

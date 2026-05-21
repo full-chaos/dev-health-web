@@ -7,6 +7,7 @@ import type { AIFilter } from "@/lib/filters/ai";
 import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
 import { approvalFriction, findBucketRow, useAIReviewLoad, valueDelta } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
+import { AIDrilldownModal } from "./AIDrilldownModal";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 import { AIReviewAmplificationTrend } from "./AIReviewAmplificationTrend";
 
@@ -94,15 +95,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
       <AIReviewAmplificationTrend daily={reviewLoad?.daily ?? []} loading={fetching} />
 
       {drilldownMetric && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={() => setDrilldownMetric(null)}>
-          <div className="max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
-            <h3 className="font-(--font-display) text-xl">{drilldownMetric} evidence</h3>
-            <p className="mt-2 text-sm text-(--ink-muted)">
-              Drilldown will call aiWorkflowDrilldown once a specific PR is selected. This page avoids fabricating PR-level evidence from aggregate metrics.
-            </p>
-            <button type="button" className="mt-5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background" onClick={() => setDrilldownMetric(null)}>Close</button>
-          </div>
-        </div>
+        <AIDrilldownModal metric={drilldownMetric} filter={filter} onClose={() => setDrilldownMetric(null)} />
       )}
     </div>
   );

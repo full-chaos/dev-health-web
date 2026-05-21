@@ -394,6 +394,53 @@ export function aiOpportunitiesResponse(orgId: string, mode: AIMode) {
   };
 }
 
+export function aiAttributedPrsResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+  if (mode === "missing") {
+    return { orgId, startDate, endDate, total: 0, hasMore: false, dataAvailable: false, rows: [] };
+  }
+  if (mode === "empty") {
+    return { orgId, startDate, endDate, total: 0, hasMore: false, dataAvailable: true, rows: [] };
+  }
+  const rows = [
+    {
+      repoId: "repo-web-app",
+      number: 201,
+      title: "Add feature flag for new pricing page",
+      kind: "copilot",
+      workType: "feature",
+      teamId: "team-platform",
+      mergedAt: `${endDate}T15:00:00Z`,
+    },
+    {
+      repoId: "repo-web-app",
+      number: 198,
+      title: "Refactor auth middleware",
+      kind: "cursor",
+      workType: "tech-debt",
+      teamId: "team-platform",
+      mergedAt: `${endDate}T09:30:00Z`,
+    },
+    {
+      repoId: "repo-api",
+      number: 154,
+      title: "Generate snapshot tests for legacy module",
+      kind: "claude",
+      workType: "feature",
+      teamId: "team-platform",
+      mergedAt: null,
+    },
+  ];
+  return {
+    orgId,
+    startDate,
+    endDate,
+    total: rows.length,
+    hasMore: false,
+    dataAvailable: true,
+    rows,
+  };
+}
+
 export function aiGovernanceSummaryResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
   if (mode === "missing") {
     return { orgId, startDate, endDate, dataAvailable: false, recentViolations: [] };
