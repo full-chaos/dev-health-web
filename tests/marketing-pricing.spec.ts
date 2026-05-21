@@ -31,9 +31,9 @@ test.describe("Marketing landing page", () => {
   test("personas section renders all four roles", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText("One platform, four perspectives")).toBeVisible();
-    await expect(page.getByText("Individual Contributor")).toBeVisible();
-    await expect(page.getByText("Engineering Manager")).toBeVisible();
-    await expect(page.getByText("Product Manager")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Individual Contributor" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Engineering Manager" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Product Manager" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Leadership" })).toBeVisible();
   });
 });
