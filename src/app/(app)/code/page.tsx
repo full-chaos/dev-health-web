@@ -90,7 +90,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
   const hotspots = (churnExplain?.contributors ?? []).slice(0, 6);
   const hasBusFactorEvidence = (busFactor?.evidenceSampleCount ?? 0) > 0;
   const topMaintainers = (busFactor?.topMaintainers ?? []).slice(0, 5);
-  const riskyRepos = (busFactor?.perRepo ?? [])
+  const riskyRepos = (busFactor?.repos ?? [])
     .toSorted(
       (left, right) => left.value - right.value || left.repoName.localeCompare(right.repoName)
     )
@@ -192,7 +192,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Hotspots</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
+                  href={buildExploreUrl({ metric: "ownership", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Evidence
@@ -248,7 +248,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                       Scope-wide bus factor
                     </p>
                     <p className="mt-2 font-(--font-display) text-4xl">
-                      {busFactor?.scopeValue ?? 0}
+                      {busFactor?.value ?? 0}
                     </p>
                     <p className="mt-1 text-xs text-(--ink-muted)">
                       {busFactor?.evidenceSampleCount ?? 0} file-change samples
@@ -291,9 +291,24 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                 BF {repo.value}
                               </span>
                             </div>
-                            <p className="mt-1 text-xs text-(--ink-muted)">
-                              {repo.evidenceSampleCount} samples ·{" "}
-                              {repo.topMaintainers[0]?.author ?? "No maintainer evidence"}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {repo.topMaintainers.length ? (
+                                repo.topMaintainers.slice(0, 3).map((maintainer) => (
+                                  <span
+                                    key={`${repo.repoId}-${maintainer.author}`}
+                                    className="rounded-full border border-(--card-stroke) px-2 py-1 text-xs text-(--ink-muted)"
+                                  >
+                                    {maintainer.author} · {maintainer.sharePercent.toFixed(1)}%
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs text-(--ink-muted)">
+                                  No maintainer evidence
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-xs text-(--ink-muted)">
+                              {repo.evidenceSampleCount} samples
                             </p>
                           </div>
                         ))}
@@ -304,7 +319,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               ) : (
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-(--ink-muted)">
-                    Ownership metadata is required to show bus factor detail.
+                    Ownership metadata not yet available for this scope.
                   </div>
                 </div>
               )}

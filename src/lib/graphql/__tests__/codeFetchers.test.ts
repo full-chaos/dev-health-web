@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { getBusFactorViaGraphQL } from "../codeFetchers";
-import type { BusFactorResult } from "../types";
+import type { BusFactor } from "../types";
 
 vi.mock("../urqlClient", () => ({
   graphqlFetch: vi.fn(),
@@ -11,13 +11,15 @@ import { graphqlFetch } from "../urqlClient";
 
 const mockedFetch = vi.mocked(graphqlFetch);
 
-const sampleResult: BusFactorResult = {
-  scopeValue: 3,
+const sampleResult: BusFactor = {
+  orgId: "org-1",
+  scope: { repoId: null, teamId: null },
+  value: 3,
   topMaintainers: [
     { author: "alice@example.com", sharePercent: 0.45 },
     { author: "bob@example.com", sharePercent: 0.3 },
   ],
-  perRepo: [
+  repos: [
     {
       repoId: "repo-1",
       repoName: "web",

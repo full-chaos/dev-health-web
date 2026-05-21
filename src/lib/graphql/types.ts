@@ -241,30 +241,38 @@ export interface AnalyticsQueryResponse {
 
 export interface BusFactorScopeInput {
     repoId?: string | null;
+    teamId?: string | null;
 }
 
-export interface BusFactorMaintainer {
+export interface MaintainerShare {
     author: string;
     sharePercent: number;
 }
 
-export interface BusFactorRepoResult {
+export interface RepoBusFactor {
     repoId: string;
     repoName: string;
     value: number;
-    topMaintainers: BusFactorMaintainer[];
+    topMaintainers: MaintainerShare[];
     evidenceSampleCount: number;
 }
 
-export interface BusFactorResult {
-    scopeValue: number;
-    topMaintainers: BusFactorMaintainer[];
-    perRepo: BusFactorRepoResult[];
+export interface BusFactorScope {
+    repoId?: string | null;
+    teamId?: string | null;
+}
+
+export interface BusFactor {
+    orgId: string;
+    scope: BusFactorScope;
+    value: number;
+    topMaintainers: MaintainerShare[];
+    repos: RepoBusFactor[];
     evidenceSampleCount: number;
 }
 
 export interface BusFactorQueryResponse {
-    busFactor: BusFactorResult;
+    busFactor: BusFactor;
 }
 
 // ==== Capacity Planning Types ====

@@ -328,31 +328,25 @@ export type BucketIntervalInput =
   | 'MONTH'
   | 'WEEK';
 
-export type BusFactorMaintainer = {
-  __typename?: 'BusFactorMaintainer';
-  author: Scalars['String']['output'];
-  sharePercent: Scalars['Float']['output'];
-};
-
-export type BusFactorRepoResult = {
-  __typename?: 'BusFactorRepoResult';
+export type BusFactor = {
+  __typename?: 'BusFactor';
   evidenceSampleCount: Scalars['Int']['output'];
-  repoId: Scalars['String']['output'];
-  repoName: Scalars['String']['output'];
-  topMaintainers: Array<BusFactorMaintainer>;
+  orgId: Scalars['String']['output'];
+  repos: Array<RepoBusFactor>;
+  scope: BusFactorScope;
+  topMaintainers: Array<MaintainerShare>;
   value: Scalars['Int']['output'];
 };
 
-export type BusFactorResult = {
-  __typename?: 'BusFactorResult';
-  evidenceSampleCount: Scalars['Int']['output'];
-  perRepo: Array<BusFactorRepoResult>;
-  scopeValue: Scalars['Int']['output'];
-  topMaintainers: Array<BusFactorMaintainer>;
+export type BusFactorScope = {
+  __typename?: 'BusFactorScope';
+  repoId?: Maybe<Scalars['String']['output']>;
+  teamId?: Maybe<Scalars['String']['output']>;
 };
 
 export type BusFactorScopeInput = {
   repoId?: InputMaybe<Scalars['String']['input']>;
+  teamId?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CapacityForecast = {
@@ -575,6 +569,12 @@ export type IdentityMappingHealth = {
   unmappedIdentities: Array<UnmappedIdentity>;
 };
 
+export type MaintainerShare = {
+  __typename?: 'MaintainerShare';
+  author: Scalars['String']['output'];
+  sharePercent: Scalars['Float']['output'];
+};
+
 export type MappingCoverage = {
   __typename?: 'MappingCoverage';
   deployments: CoverageStat;
@@ -752,7 +752,7 @@ export type Query = {
   /** Run batch analytics queries */
   analytics: AnalyticsResult;
   /** Repository ownership concentration and bus-factor summary. */
-  busFactor: BusFactorResult;
+  busFactor: BusFactor;
   /** Compute capacity forecast on-demand */
   capacityForecast?: Maybe<CapacityForecast>;
   /** List persisted capacity forecasts */
@@ -956,6 +956,15 @@ export type RepoAlertCount = {
   repoId: Scalars['String']['output'];
   repoName: Scalars['String']['output'];
   repoUrl?: Maybe<Scalars['String']['output']>;
+};
+
+export type RepoBusFactor = {
+  __typename?: 'RepoBusFactor';
+  evidenceSampleCount: Scalars['Int']['output'];
+  repoId: Scalars['String']['output'];
+  repoName: Scalars['String']['output'];
+  topMaintainers: Array<MaintainerShare>;
+  value: Scalars['Int']['output'];
 };
 
 export type ReportRunConnection = {

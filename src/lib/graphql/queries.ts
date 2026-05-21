@@ -80,13 +80,18 @@ query CatalogValues($orgId: String!, $dimension: DimensionInput!) {
 export const BUS_FACTOR_QUERY = `
 query BusFactor($orgId: String!, $scope: BusFactorScopeInput = null) {
   busFactor(orgId: $orgId, scope: $scope) {
-    scopeValue
+    orgId
+    scope {
+      repoId
+      teamId
+    }
+    value
     evidenceSampleCount
     topMaintainers {
       author
       sharePercent
     }
-    perRepo {
+    repos {
       repoId
       repoName
       value
