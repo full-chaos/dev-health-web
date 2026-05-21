@@ -45,24 +45,25 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
   }
 
   const orgId = orgResult.data?.id;
-  const review = orgId && teamId
-    ? await fetchOrNull(
-        getOperatingReviewViaGraphQL(orgId, { teamId, weekStart }),
-        "operating-review/data"
-      )
-    : null;
-  let teams: { value: string; count: number }[] = [];
-  if (!teamId && orgId) {
-    const catalogResult = await fetchOrNull(
-      graphqlFetch<{ catalog: { values: { value: string; count: number }[] } }>(
-        CATALOG_VALUES_QUERY,
-        { orgId, dimension: "TEAM" },
-        { orgId }
-      ),
-      "catalog/teams"
-    );
-    teams = catalogResult?.catalog?.values ?? [];
-  }
+  const [review, teamsResult] = await Promise.all([
+    orgId && teamId
+      ? fetchOrNull(
+          getOperatingReviewViaGraphQL(orgId, { teamId, weekStart }),
+          "operating-review/data"
+        )
+      : Promise.resolve(null),
+    !teamId && orgId
+      ? fetchOrNull(
+          graphqlFetch<{ catalog: { values: { value: string; count: number }[] } }>(
+            CATALOG_VALUES_QUERY,
+            { orgId, dimension: "TEAM" },
+            { orgId }
+          ),
+          "catalog/teams"
+        )
+      : Promise.resolve(null),
+  ]);
+  const teams = teamsResult?.catalog?.values ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
