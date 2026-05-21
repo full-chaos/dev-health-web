@@ -19,7 +19,7 @@ type AIDrilldownModalProps = {
 
 
 function prRowKey(pr: AiAttributedPr): string {
-  return `${pr.repoId}#${pr.number}`;
+  return `${pr.repoId}:${pr.number}`;
 }
 
 function formatMergedAt(value: string | null | undefined): string {
@@ -107,7 +107,7 @@ function PrTable({
 }
 
 function EvidencePanel({ selected }: { selected: AiAttributedPr | null }) {
-  const rootId = selected ? `${selected.repoId}#${selected.number}` : null;
+  const rootId = selected ? prRowKey(selected) : null;
   const { data: drilldown, fetching, error } = useAIWorkflowDrilldownForPr(rootId);
 
   if (!selected) {
