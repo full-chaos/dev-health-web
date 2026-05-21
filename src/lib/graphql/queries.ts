@@ -105,6 +105,60 @@ query BusFactor($orgId: String!, $scope: BusFactorScopeInput = null) {
 }
 `;
 
+// Compounding Risk surface (CHAOS-1642)
+//
+// Reads from compounding_risk_daily (CHAOS-1641). Every field carries enough
+// audit data (weights, thresholds, raw inputs, normalized components) that the
+// UI can render the score's full provenance without a second roundtrip.
+export const COMPOUNDING_RISK_QUERY = `
+query CompoundingRisk(
+  $orgId: String!,
+  $filter: CompoundingRiskFilterInput = null
+) {
+  compoundingRisk(orgId: $orgId, filter: $filter) {
+    orgId
+    breakout
+    generatedAt
+    rows {
+      day
+      scope
+      scopeId
+      scopeLabel
+      score
+      severity
+      computedAt
+      components {
+        churnNorm
+        complexityNorm
+        ownershipNorm
+        reviewNorm
+        reworkChurn
+        complexityDelta
+        busFactor
+        ownershipGini
+        singleOwnerRatio
+        reviewLatencyP90h
+      }
+      weights {
+        churn
+        complexity
+        ownership
+        review
+      }
+      thresholds {
+        elevated
+        high
+      }
+    }
+    trend {
+      day
+      score
+      severity
+    }
+  }
+}
+`;
+
 // Combined query for investment view (breakdowns + sankey)
 export const INVESTMENT_FULL_QUERY = `
 query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {

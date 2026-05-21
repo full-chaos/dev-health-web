@@ -463,6 +463,82 @@ export type CloneSavedReportInput = {
   sourceReportId: Scalars['String']['input'];
 };
 
+export type CompoundingRiskComponents = {
+  __typename?: 'CompoundingRiskComponents';
+  busFactor?: Maybe<Scalars['Float']['output']>;
+  churnNorm?: Maybe<Scalars['Float']['output']>;
+  complexityDelta?: Maybe<Scalars['Float']['output']>;
+  complexityNorm?: Maybe<Scalars['Float']['output']>;
+  ownershipGini?: Maybe<Scalars['Float']['output']>;
+  ownershipNorm?: Maybe<Scalars['Float']['output']>;
+  reviewLatencyP90h?: Maybe<Scalars['Float']['output']>;
+  reviewNorm?: Maybe<Scalars['Float']['output']>;
+  reworkChurn?: Maybe<Scalars['Float']['output']>;
+  singleOwnerRatio?: Maybe<Scalars['Float']['output']>;
+};
+
+export type CompoundingRiskFilterInput = {
+  breakout?: CompoundingRiskScope;
+  day?: InputMaybe<Scalars['Date']['input']>;
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  trendDays?: Scalars['Int']['input'];
+};
+
+export type CompoundingRiskPoint = {
+  __typename?: 'CompoundingRiskPoint';
+  components: CompoundingRiskComponents;
+  computedAt: Scalars['DateTime']['output'];
+  day: Scalars['Date']['output'];
+  scope: CompoundingRiskScope;
+  scopeId: Scalars['String']['output'];
+  scopeLabel: Scalars['String']['output'];
+  score?: Maybe<Scalars['Float']['output']>;
+  severity: CompoundingRiskSeverity;
+  thresholds: CompoundingRiskThresholds;
+  weights: CompoundingRiskWeights;
+};
+
+export type CompoundingRiskResult = {
+  __typename?: 'CompoundingRiskResult';
+  breakout: CompoundingRiskScope;
+  generatedAt: Scalars['DateTime']['output'];
+  orgId: Scalars['String']['output'];
+  rows: Array<CompoundingRiskPoint>;
+  trend: Array<CompoundingRiskTrendPoint>;
+};
+
+export type CompoundingRiskScope =
+  | 'REPO'
+  | 'TEAM';
+
+export type CompoundingRiskSeverity =
+  | 'ELEVATED'
+  | 'HIGH'
+  | 'LOW'
+  | 'UNKNOWN';
+
+export type CompoundingRiskThresholds = {
+  __typename?: 'CompoundingRiskThresholds';
+  elevated: Scalars['Float']['output'];
+  high: Scalars['Float']['output'];
+};
+
+export type CompoundingRiskTrendPoint = {
+  __typename?: 'CompoundingRiskTrendPoint';
+  day: Scalars['Date']['output'];
+  score?: Maybe<Scalars['Float']['output']>;
+  severity: CompoundingRiskSeverity;
+};
+
+export type CompoundingRiskWeights = {
+  __typename?: 'CompoundingRiskWeights';
+  churn: Scalars['Float']['output'];
+  complexity: Scalars['Float']['output'];
+  ownership: Scalars['Float']['output'];
+  review: Scalars['Float']['output'];
+};
+
 export type ConnectorFailure = {
   __typename?: 'ConnectorFailure';
   message: Scalars['String']['output'];
@@ -778,6 +854,8 @@ export type Query = {
   capacityForecasts: CapacityForecastConnection;
   /** Get catalog of available dimensions, measures, and limits */
   catalog: CatalogResult;
+  /** Compounding Risk composite: churn × complexity × ownership × review-latency. Inspectable score with persisted weights, thresholds, raw inputs, and normalized components. */
+  compoundingRisk: CompoundingRiskResult;
   /** Operator data-health and trust surface */
   dataHealth: DataHealth;
   /** Get home dashboard metrics */
@@ -891,6 +969,12 @@ export type QueryCapacityForecastsArgs = {
 export type QueryCatalogArgs = {
   dimension?: InputMaybe<DimensionInput>;
   filters?: InputMaybe<FilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryCompoundingRiskArgs = {
+  filter?: InputMaybe<CompoundingRiskFilterInput>;
   orgId: Scalars['String']['input'];
 };
 
