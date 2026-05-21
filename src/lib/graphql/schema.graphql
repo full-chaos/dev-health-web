@@ -415,6 +415,78 @@ input CloneSavedReportInput {
   parameterOverrides: JSON = null
 }
 
+type CompoundingRiskComponents {
+  churnNorm: Float
+  complexityNorm: Float
+  ownershipNorm: Float
+  reviewNorm: Float
+  reworkChurn: Float
+  complexityDelta: Float
+  busFactor: Float
+  ownershipGini: Float
+  singleOwnerRatio: Float
+  reviewLatencyP90h: Float
+}
+
+input CompoundingRiskFilterInput {
+  day: Date = null
+  breakout: CompoundingRiskScope! = REPO
+  repoIds: [String!] = null
+  teamIds: [String!] = null
+  trendDays: Int! = 30
+}
+
+type CompoundingRiskPoint {
+  day: Date!
+  scope: CompoundingRiskScope!
+  scopeId: String!
+  scopeLabel: String!
+  score: Float
+  severity: CompoundingRiskSeverity!
+  components: CompoundingRiskComponents!
+  weights: CompoundingRiskWeights!
+  thresholds: CompoundingRiskThresholds!
+  computedAt: DateTime!
+}
+
+type CompoundingRiskResult {
+  orgId: String!
+  breakout: CompoundingRiskScope!
+  rows: [CompoundingRiskPoint!]!
+  trend: [CompoundingRiskTrendPoint!]!
+  generatedAt: DateTime!
+}
+
+enum CompoundingRiskScope {
+  REPO
+  TEAM
+}
+
+enum CompoundingRiskSeverity {
+  UNKNOWN
+  LOW
+  ELEVATED
+  HIGH
+}
+
+type CompoundingRiskThresholds {
+  elevated: Float!
+  high: Float!
+}
+
+type CompoundingRiskTrendPoint {
+  day: Date!
+  score: Float
+  severity: CompoundingRiskSeverity!
+}
+
+type CompoundingRiskWeights {
+  churn: Float!
+  complexity: Float!
+  ownership: Float!
+  review: Float!
+}
+
 type ConnectorFailure {
   occurredAt: DateTime!
   message: String!
@@ -706,6 +778,11 @@ type Query {
 
   """Repository ownership concentration and bus-factor summary."""
   busFactor(orgId: String!, scope: BusFactorScopeInput = null): BusFactor!
+
+  """
+  Compounding Risk composite: churn × complexity × ownership × review-latency. Inspectable score with persisted weights, thresholds, raw inputs, and normalized components.
+  """
+  compoundingRisk(orgId: String!, filter: CompoundingRiskFilterInput = null): CompoundingRiskResult!
 
   """Latest rule-based recommendations for a team within a lookback window."""
   recommendations(orgId: String!, team: ID!, window: WindowInput!): [Recommendation!]!
