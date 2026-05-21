@@ -688,7 +688,7 @@ type Mutation {
 
 type OperatingReview {
   orgId: String!
-  teamId: String!
+  teamId: String
   weekStart: Date!
   priorWeekStart: Date!
   sections: [OperatingReviewSection!]!
@@ -705,7 +705,7 @@ type OperatingReviewDelta {
 }
 
 input OperatingReviewInput {
-  teamId: String!
+  teamId: String
   weekStart: Date!
 }
 

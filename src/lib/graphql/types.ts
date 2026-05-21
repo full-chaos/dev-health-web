@@ -395,7 +395,7 @@ export interface ThroughputForecastQueryResponse {
 // ==== Operating Review Types ====
 
 export interface OperatingReviewInput {
-    teamId: string;
+    teamId: string | null;
     weekStart: string;
 }
 
@@ -428,7 +428,7 @@ export interface OperatingReviewSection {
 
 export interface OperatingReview {
     orgId: string;
-    teamId: string;
+    teamId: string | null;
     weekStart: string;
     priorWeekStart: string;
     sections: OperatingReviewSection[];

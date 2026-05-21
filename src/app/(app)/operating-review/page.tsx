@@ -9,9 +9,7 @@ import { auth } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
-import { CATALOG_VALUES_QUERY } from "@/lib/graphql/queries";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
-import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
 
 
@@ -51,38 +49,23 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
   // downstream review fetch.
   const orgId = session?.user?.org_id ?? undefined;
 
-  // Auto-select the first synced team when the URL doesn't specify one so
-  // the page lands on a real review rather than an empty hint. Tracked for
-  // a proper cross-team aggregate in CHAOS-1755.
-  const requestedTeamId = teamId;
-  let availableTeams: string[] = [];
-  let effectiveTeamId = requestedTeamId;
-  if (orgId && !requestedTeamId) {
-    const teamsResult = await fetchOrNull(
-      graphqlFetch<{ catalog: { values: { value: string; count: number }[] } }>(
-        CATALOG_VALUES_QUERY,
-        { orgId, dimension: "TEAM" },
-        { orgId }
-      ),
-      "catalog/teams"
-    );
-    availableTeams = teamsResult?.catalog?.values?.map((v) => v.value) ?? [];
-    effectiveTeamId = availableTeams[0];
-  }
+  // CHAOS-1755: when no team is selected, request the cross-team aggregate
+  // ("All Teams" mode) from the backend by passing teamId: null. The
+  // resolver returns an aggregate payload with documented per-metric
+  // aggregation rules (see ops docs/api/operating-review.md); the response
+  // surfaces teamId: null so we render an explicit "All Teams" badge rather
+  // than pretending a single team was chosen.
+  const review = orgId
+    ? await fetchOrNull(
+        getOperatingReviewViaGraphQL(orgId, {
+          teamId: teamId ?? null,
+          weekStart,
+        }),
+        "operating-review/data"
+      )
+    : null;
 
-  const review =
-    orgId && effectiveTeamId
-      ? await fetchOrNull(
-          getOperatingReviewViaGraphQL(orgId, {
-            teamId: effectiveTeamId,
-            weekStart,
-          }),
-          "operating-review/data"
-        )
-      : null;
-
-  const usingDefaultTeam = !requestedTeamId && Boolean(effectiveTeamId);
-  const noTeamsSynced = !requestedTeamId && availableTeams.length === 0;
+  const isAllTeams = !teamId;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -117,9 +100,8 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
 
           <ContextStrip filters={filters} origin={activeOrigin} />
 
-          {usingDefaultTeam ? <DefaultTeamBanner teamId={effectiveTeamId!} /> : null}
-          {noTeamsSynced ? <NoTeamsHint /> : null}
-          {effectiveTeamId && !review ? <EmptyReviewState teamId={effectiveTeamId} weekStart={weekStart} /> : null}
+          {isAllTeams ? <AllTeamsBadge /> : null}
+          {!review ? <EmptyReviewState teamId={teamId} weekStart={weekStart} /> : null}
           {review ? <OperatingReviewAgenda review={review} /> : null}
         </main>
       </div>
@@ -127,22 +109,13 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
   );
 }
 
-function DefaultTeamBanner({ teamId }: { teamId: string }) {
+function AllTeamsBadge() {
   return (
     <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
-      Showing <span className="font-medium text-foreground">{teamId}</span> by default. Use the{" "}
-      <span className="font-medium text-foreground">Team</span> filter above to switch teams.
-    </section>
-  );
-}
-
-function NoTeamsHint() {
-  return (
-    <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-8 text-sm text-(--ink-muted)">
-      <h2 className="text-lg font-semibold text-foreground">No teams synced yet</h2>
-      <p className="mt-2">
-        Connect a provider in <Link href="/data-health" className="font-medium text-foreground underline underline-offset-4">data connections</Link> to start syncing teams.
-      </p>
+      Showing the cross-team aggregate{" "}
+      <span className="font-medium text-foreground">(All Teams)</span>. Pick a team from
+      the <span className="font-medium text-foreground">Team</span> filter above to scope
+      to one.
     </section>
   );
 }
@@ -270,12 +243,23 @@ function CalloutColumn({ title, tone, items }: { title: string; tone: "improved"
   );
 }
 
-function EmptyReviewState({ teamId, weekStart }: { teamId: string; weekStart: string }) {
+function EmptyReviewState({
+  teamId,
+  weekStart,
+}: {
+  teamId: string | undefined;
+  weekStart: string;
+}) {
+  const scopeLabel = teamId ? (
+    <>team <span className="font-medium text-foreground">{teamId}</span></>
+  ) : (
+    <>the cross-team aggregate <span className="font-medium text-foreground">(All Teams)</span></>
+  );
   return (
     <section className="rounded-[1.75rem] border border-dashed border-border bg-card/70 p-8">
       <h2 className="text-lg font-semibold">No operating review data yet</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        The surface is ready for team <span className="font-medium text-foreground">{teamId}</span> for week {weekStart}, but no backend payload was returned.
+        The surface is ready for {scopeLabel} for week {weekStart}, but no backend payload was returned.
       </p>
       <Link className="mt-4 inline-flex text-sm font-medium text-primary" href="/settings">
         Check data connections
