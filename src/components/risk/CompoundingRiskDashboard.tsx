@@ -348,20 +348,23 @@ export function CompoundingRiskDashboard({
   generatedAt,
 }: CompoundingRiskDashboardProps) {
 
-  const allScoresNull = rows.length > 0 && rows.every((r) => r.score === null);
+  const hasRows = rows.length > 0;
+  const allScoresNull = !hasRows || rows.every((r) => r.score === null);
   if (allScoresNull) {
     const missingInputs: string[] = [];
-    if (rows.every((r) => r.components.churnNorm === null)) {
-      missingInputs.push("rework churn");
-    }
-    if (rows.every((r) => r.components.complexityNorm === null)) {
-      missingInputs.push("complexity delta (rising cyclomatic_per_kloc trend)");
-    }
-    if (rows.every((r) => r.components.ownershipNorm === null)) {
-      missingInputs.push("ownership concentration (gini and single-owner ratio)");
-    }
-    if (rows.every((r) => r.components.reviewNorm === null)) {
-      missingInputs.push("review latency (p90h)");
+    if (hasRows) {
+      if (rows.every((r) => r.components.churnNorm === null)) {
+        missingInputs.push("rework churn");
+      }
+      if (rows.every((r) => r.components.complexityNorm === null)) {
+        missingInputs.push("complexity delta (rising cyclomatic_per_kloc trend)");
+      }
+      if (rows.every((r) => r.components.ownershipNorm === null)) {
+        missingInputs.push("ownership concentration (gini and single-owner ratio)");
+      }
+      if (rows.every((r) => r.components.reviewNorm === null)) {
+        missingInputs.push("review latency (p90h)");
+      }
     }
 
     return (
@@ -370,18 +373,21 @@ export function CompoundingRiskDashboard({
           className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
           data-testid="all-scores-null-state"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--ink-muted)">
-            Compounding risk
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">
+          <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
             Scores currently unavailable
           </h1>
 
           <p className="mt-6 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
-            Compounding Risk appears unavailable for every {breakout} today. The composite requires four inputs (rework churn, complexity trend, ownership concentration, and review latency), and at least one of these is missing across all {breakout}s.
+            Compounding Risk is a deterministic composite of four normalized inputs: rework churn, complexity trend, ownership concentration, and review latency. The score cannot be computed until all four are populated for the current scope.
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
-            This usually clears once more PR review activity or recent complexity data is recorded. The page will populate automatically when the next daily metrics run completes.
+            {hasRows
+              ? `This usually clears once more PR review activity or recent complexity data is recorded. The page will populate automatically when the next daily metrics run completes.`
+              : `No compounding_risk_daily rows are available yet for this org. Run `}
+            {!hasRows && (
+              <code className="font-mono text-[0.85em]">dev-hops metrics daily</code>
+            )}
+            {!hasRows && ` to populate the metric, then refresh this page.`}
           </p>
 
           {missingInputs.length > 0 && (
@@ -413,10 +419,7 @@ export function CompoundingRiskDashboard({
       <section className="overflow-hidden rounded-[2rem] border border-(--card-stroke) bg-(--card-80) shadow-sm">
         <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="p-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--ink-muted)">
-              Compounding risk
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">
+            <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
               Where change pressure is compounding risk.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">

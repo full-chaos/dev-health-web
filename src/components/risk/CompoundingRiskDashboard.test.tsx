@@ -145,9 +145,18 @@ describe("CompoundingRiskDashboard", () => {
     expect(drilldown.getAttribute("href")).toContain("risk_scope_id=team-x");
   });
 
-  it("renders an empty state when no rows are supplied", () => {
-    renderDashboard({ rows: [] });
-    expect(screen.getByTestId("empty-state")).toBeInTheDocument();
+  it("renders the rich empty state when no rows are supplied (no compounding_risk_daily payload)", () => {
+    renderDashboard({ rows: [], trend: [] });
+    // Unified rich empty state — same testid as the all-null branch.
+    expect(screen.getByTestId("all-scores-null-state")).toBeInTheDocument();
+    expect(screen.getByText(/Scores currently unavailable/)).toBeInTheDocument();
+    // Empty-rows branch points the operator at the metrics command.
+    expect(screen.getByText(/dev-hops metrics daily/)).toBeInTheDocument();
+    // No specific input list when there are no rows to inspect.
+    expect(screen.queryByText(/Missing inputs across all/)).not.toBeInTheDocument();
+    // The normal dashboard chrome must NOT render.
+    expect(screen.queryByTestId("headline-score")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("compounding-risk-table")).not.toBeInTheDocument();
   });
 
   it("renders a trend sparkline with one bar per day", () => {

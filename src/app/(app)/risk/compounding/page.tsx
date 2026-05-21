@@ -24,6 +24,7 @@ import {
 } from "@/components/risk/CompoundingRiskDashboard";
 import { requireSession } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { withFilterParam } from "@/lib/filters/url";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPOUNDING_RISK_QUERY } from "@/lib/graphql/queries";
 
@@ -160,9 +161,20 @@ export default async function CompoundingRiskPage({
   const orgId =
     session.user?.org_id ?? "demo-org";
 
-  const dashboard = isDeveloperScope
+  const fetched = isDeveloperScope
     ? null
     : await fetchCompoundingRisk(orgId, breakout);
+
+  // Always render the dashboard with the data we have (or empty defaults).
+  // The dashboard component owns the unified empty-state UX so the layout
+  // is consistent whether the GraphQL payload is populated, missing, or all-null.
+  const dashboard: CompoundingRiskDashboardProps = fetched ?? {
+    orgId,
+    breakout,
+    rows: [],
+    trend: [],
+    generatedAt: new Date().toISOString(),
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -173,9 +185,32 @@ export default async function CompoundingRiskPage({
           role={activeRole}
         />
         <main
-          className="flex min-w-0 flex-1 flex-col gap-6"
+          className="flex min-w-0 flex-1 flex-col gap-8"
           data-testid="compounding-risk-page"
         >
+          <header className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                Compounding Risk
+              </p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">
+                Composite risk score
+              </h1>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Where churn, complexity trend, ownership concentration, and review latency are compounding into structural risk.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Every score is inspectable: weights, thresholds, and raw inputs persist with the row.
+              </p>
+            </div>
+            <Link
+              href={withFilterParam("/", filters, activeRole)}
+              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+            >
+              Back to cockpit
+            </Link>
+          </header>
+
           <ContextStrip filters={filters} origin={activeOrigin} />
 
           {isDeveloperScope ? (
@@ -202,22 +237,8 @@ export default async function CompoundingRiskPage({
                 Return to team/repo view
               </Link>
             </section>
-          ) : dashboard ? (
-            <CompoundingRiskDashboard {...dashboard} />
           ) : (
-            <section
-              className="rounded-2xl border border-(--card-stroke) bg-card p-6 text-sm text-(--ink-muted)"
-              data-testid="empty-state"
-            >
-              <p>
-                No Compounding Risk data is available yet. Run{" "}
-                <code className="font-mono text-[0.85em]">
-                  dev-hops metrics daily
-                </code>{" "}
-                to populate the metric, or check the analytics backend
-                connection.
-              </p>
-            </section>
+            <CompoundingRiskDashboard {...dashboard} />
           )}
         </main>
       </div>
