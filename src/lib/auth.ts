@@ -183,6 +183,18 @@ const nextAuth = NextAuth({
         token.expires_at = Date.now() + (session.onboardComplete.expires_in || 3600) * 1000
       }
 
+      if (trigger === "update" && session?.activeOrg) {
+        token.access_token = session.activeOrg.access_token
+        token.refresh_token = session.activeOrg.refresh_token
+        token.org_id = session.activeOrg.user.org_id
+        token.role = session.activeOrg.user.role
+        token.is_superuser = session.activeOrg.user.is_superuser ?? false
+        token.needs_onboarding = false
+        token.expires_at = Date.now() + (session.activeOrg.expires_in || 3600) * 1000
+        token.last_validated = Date.now()
+        token.error = undefined
+      }
+
       // For superusers: sync impersonation state from backend at most every 30s.
       // This ensures router.refresh() picks up the current impersonation state
       // without hammering the backend on every JWT callback.
