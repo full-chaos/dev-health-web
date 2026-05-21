@@ -1,35 +1,34 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Operating Review", () => {
-  test("navigate, click first team, assert URL", async ({ page }) => {
+  test("renders page header and auto-selects first synced team", async ({ page }) => {
     await page.goto("/operating-review");
 
-    // The page renders either:
-    //   (a) the team picker with 'Select a team' heading + team links, OR
-    //   (b) the empty 'No teams synced yet' state when catalog has no team values.
-    // The picker behavior is the contract; the empty state is acceptable in
-    // environments without seeded team data.
-    const heading = page.getByRole("heading", { name: "Select a team" });
-    const emptyState = page.getByText("No teams synced yet");
-    await expect(heading.or(emptyState)).toBeVisible();
+    // The standard page chrome is always present (matches /investment, /quality).
+    await expect(
+      page.getByRole("heading", { name: "Engineering Operating Review" })
+    ).toBeVisible();
 
-    if (await emptyState.isVisible().catch(() => false)) {
-      test.info().annotations.push({
-        type: "skip-reason",
-        description: "catalog has no teams; picker click path not exercised",
-      });
-      return;
-    }
+    // The page reaches one of three terminal states:
+    //   (a) auto-default banner — the org has teams and the URL did not pin one;
+    //   (b) no-teams hint — the org has zero synced teams;
+    //   (c) operating-review agenda — the URL pinned a team OR the auto-default
+    //       picked one and a review payload exists.
+    const defaultBanner = page.getByText(/Showing .* by default\. Use the/);
+    const noTeamsHint = page.getByRole("heading", { name: "No teams synced yet" });
+    const agenda = page.getByRole("heading", { name: "Recommendations" });
 
-    // Picker path: click the first team and verify the URL params.
-    const teamLinks = page.locator('section:has-text("Select a team") a');
-    await expect(teamLinks.first()).toBeVisible();
+    await expect(defaultBanner.or(noTeamsHint).or(agenda)).toBeVisible();
+  });
 
-    const href = await teamLinks.first().getAttribute("href");
-    expect(href).toMatch(/\?team=.+&week=\d{4}-\d{2}-\d{2}/);
+  test("pinned team in URL skips the auto-default banner", async ({ page }) => {
+    // When ?team=X is present the page renders that team directly and does not
+    // surface the "Showing <team> by default" banner — the user is in control.
+    await page.goto("/operating-review?team=team-platform&week=2026-05-18");
 
-    await teamLinks.first().click();
-    await page.waitForURL(/\/operating-review\?team=.+&week=\d{4}-\d{2}-\d{2}/);
-    await expect(heading).not.toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Engineering Operating Review" })
+    ).toBeVisible();
+    await expect(page.getByText(/Showing .* by default/)).toHaveCount(0);
   });
 });

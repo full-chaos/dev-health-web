@@ -5,14 +5,15 @@ import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
-import { TeamPicker } from "@/components/operating-review/TeamPicker";
-import { getCurrentOrg } from "@/lib/admin/server";
+import { auth } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { withFilterParam } from "@/lib/filters/url";
 import { CATALOG_VALUES_QUERY } from "@/lib/graphql/queries";
-import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
+import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
+
 
 type OperatingReviewPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -35,72 +36,114 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
   const teamId = singleParam(params.team) ?? firstTeamFromFilters(filters);
   const weekStart = normalizeWeekStart(singleParam(params.week));
 
-  const [health, orgResult] = await Promise.all([
+  const [health, session] = await Promise.all([
     checkApiHealth(),
-    getCurrentOrg().catch(() => ({ data: undefined })),
+    auth(),
   ]);
 
   if (!health.ok) {
     return <ServiceUnavailable />;
   }
 
-  const orgId = orgResult.data?.id;
-  const [review, teamsResult] = await Promise.all([
-    orgId && teamId
-      ? fetchOrNull(
-          getOperatingReviewViaGraphQL(orgId, { teamId, weekStart }),
+  // CHAOS-1751: read orgId from the NextAuth session JWT directly. The
+  // previous getCurrentOrg() path hits /api/v1/admin/orgs/{id} which is
+  // admin-only and silently nulled orgId for non-superusers, blocking the
+  // downstream review fetch.
+  const orgId = session?.user?.org_id ?? undefined;
+
+  // Auto-select the first synced team when the URL doesn't specify one so
+  // the page lands on a real review rather than an empty hint. Tracked for
+  // a proper cross-team aggregate in CHAOS-1755.
+  const requestedTeamId = teamId;
+  let availableTeams: string[] = [];
+  let effectiveTeamId = requestedTeamId;
+  if (orgId && !requestedTeamId) {
+    const teamsResult = await fetchOrNull(
+      graphqlFetch<{ catalog: { values: { value: string; count: number }[] } }>(
+        CATALOG_VALUES_QUERY,
+        { orgId, dimension: "TEAM" },
+        { orgId }
+      ),
+      "catalog/teams"
+    );
+    availableTeams = teamsResult?.catalog?.values?.map((v) => v.value) ?? [];
+    effectiveTeamId = availableTeams[0];
+  }
+
+  const review =
+    orgId && effectiveTeamId
+      ? await fetchOrNull(
+          getOperatingReviewViaGraphQL(orgId, {
+            teamId: effectiveTeamId,
+            weekStart,
+          }),
           "operating-review/data"
         )
-      : Promise.resolve(null),
-    !teamId && orgId
-      ? fetchOrNull(
-          graphqlFetch<{ catalog: { values: { value: string; count: number }[] } }>(
-            CATALOG_VALUES_QUERY,
-            { orgId, dimension: "TEAM" },
-            { orgId }
-          ),
-          "catalog/teams"
-        )
-      : Promise.resolve(null),
-  ]);
-  const teams = teamsResult?.catalog?.values ?? [];
+      : null;
+
+  const usingDefaultTeam = !requestedTeamId && Boolean(effectiveTeamId);
+  const noTeamsSynced = !requestedTeamId && availableTeams.length === 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="operating-review" />
-        <main className="flex min-w-0 flex-1 flex-col gap-6">
-          <ContextStrip filters={filters} origin={activeOrigin} />
+        <main className="flex min-w-0 flex-1 flex-col gap-8">
+          <header className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                Weekly mode
+              </p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">
+                Engineering Operating Review
+              </h1>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                A Monday-ready agenda for delivery movement, bottlenecks, risk,
+                reliability, investment, and recommendations.
+              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Each callout compares the selected week against the prior week.
+              </p>
+            </div>
+            <Link
+              href={withFilterParam("/", filters, undefined, activeOrigin)}
+              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+            >
+              Back to cockpit
+            </Link>
+          </header>
+
           <FilterBar view="work" />
 
-          <section className="rounded-[2rem] border border-border bg-card/80 p-8 shadow-sm">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-3xl space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                  Weekly mode
-                </p>
-                <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  Engineering Operating Review
-                </h1>
-                <p className="text-sm leading-6 text-muted-foreground md:text-base">
-                  A Monday-ready agenda for delivery movement, bottlenecks, risk,
-                  reliability, investment, and recommendations. Every callout compares
-                  the selected week against the prior week.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">
-                <div>Team: <span className="font-medium text-foreground">{teamId ?? "pick one below"}</span></div>
-                <div>Week: <span className="font-medium text-foreground">{weekStart}</span></div>
-              </div>
-            </div>
-          </section>
+          <ContextStrip filters={filters} origin={activeOrigin} />
 
-          {!teamId ? <TeamPicker teams={teams} weekStart={weekStart} encodedFilter={encodedFilter} /> : null}
-          {teamId && !review ? <EmptyReviewState teamId={teamId} weekStart={weekStart} /> : null}
+          {usingDefaultTeam ? <DefaultTeamBanner teamId={effectiveTeamId!} /> : null}
+          {noTeamsSynced ? <NoTeamsHint /> : null}
+          {effectiveTeamId && !review ? <EmptyReviewState teamId={effectiveTeamId} weekStart={weekStart} /> : null}
           {review ? <OperatingReviewAgenda review={review} /> : null}
         </main>
       </div>
     </div>
+  );
+}
+
+function DefaultTeamBanner({ teamId }: { teamId: string }) {
+  return (
+    <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
+      Showing <span className="font-medium text-foreground">{teamId}</span> by default. Use the{" "}
+      <span className="font-medium text-foreground">Team</span> filter above to switch teams.
+    </section>
+  );
+}
+
+function NoTeamsHint() {
+  return (
+    <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-8 text-sm text-(--ink-muted)">
+      <h2 className="text-lg font-semibold text-foreground">No teams synced yet</h2>
+      <p className="mt-2">
+        Connect a provider in <Link href="/data-health" className="font-medium text-foreground underline underline-offset-4">data connections</Link> to start syncing teams.
+      </p>
+    </section>
   );
 }
 
