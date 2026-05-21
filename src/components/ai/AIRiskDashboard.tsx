@@ -7,6 +7,7 @@ import type { AIFilter } from "@/lib/filters/ai";
 import type { AiRiskBreakdownRow } from "@/lib/graphql/__generated__/types";
 import { findBucketRow, prViolationRows, useAIGovernanceSummary, useAIRiskBreakdown } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
+import { AIDrilldownModal } from "./AIDrilldownModal";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 import { AIViolationsList } from "./AIViolationsList";
 
@@ -52,7 +53,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
         <AIMissingDataPanel title="High-complexity file overlap" reason="Complexity overlap is not in the current schema." needed="Complexity-indexed file metadata linked to PR file changes." />
         <section className="rounded-3xl border border-(--card-stroke) bg-card p-5" data-testid="ai-linked-incidents">
           <h3 className="font-(--font-display) text-lg">Linked incidents</h3>
-          <p className="mt-2 text-sm text-(--ink-muted)">Summary count from AI-attributed PR incident rollups. PR-level edges will use aiWorkflowDrilldown after a PR is selected.</p>
+          <p className="mt-2 text-sm text-(--ink-muted)">Summary count from AI-attributed PR incident rollups. Open evidence on any tile to inspect Work Graph edges per PR.</p>
           <p className="mt-6 text-3xl font-semibold tabular-nums">{risk.fetching ? "—" : (aiBucket?.incidentsCount ?? 0)}</p>
         </section>
       </div>
@@ -66,15 +67,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
       )}
 
       {drilldownMetric && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={() => setDrilldownMetric(null)}>
-          <div className="max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
-            <h3 className="font-(--font-display) text-xl">{drilldownMetric} evidence</h3>
-            <p className="mt-2 text-sm text-(--ink-muted)">
-              Drilldown will call aiWorkflowDrilldown(rootType=PR, rootId=…) after a PR row is selected. The aggregate risk card does not invent PR-level edges.
-            </p>
-            <button type="button" className="mt-5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background" onClick={() => setDrilldownMetric(null)}>Close</button>
-          </div>
-        </div>
+        <AIDrilldownModal metric={drilldownMetric} filter={filter} onClose={() => setDrilldownMetric(null)} />
       )}
     </div>
   );

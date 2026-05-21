@@ -281,6 +281,28 @@ export type AiWorkflowRootTypeInput =
   | 'PR'
   | 'WORK_UNIT';
 
+export type AiAttributedPr = {
+  __typename?: 'AiAttributedPr';
+  kind?: Maybe<Scalars['String']['output']>;
+  mergedAt?: Maybe<Scalars['DateTime']['output']>;
+  number: Scalars['Int']['output'];
+  repoId: Scalars['ID']['output'];
+  teamId?: Maybe<Scalars['String']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
+  workType?: Maybe<Scalars['String']['output']>;
+};
+
+export type AiAttributedPrsResult = {
+  __typename?: 'AiAttributedPrsResult';
+  dataAvailable: Scalars['Boolean']['output'];
+  endDate: Scalars['Date']['output'];
+  hasMore: Scalars['Boolean']['output'];
+  orgId: Scalars['String']['output'];
+  rows: Array<AiAttributedPr>;
+  startDate: Scalars['Date']['output'];
+  total: Scalars['Int']['output'];
+};
+
 export type AliasSuggestion = {
   __typename?: 'AliasSuggestion';
   confidence: Scalars['Float']['output'];
@@ -737,6 +759,8 @@ export type PageInfo = {
 
 export type Query = {
   __typename?: 'Query';
+  /** List AI-attributed pull requests in the requested window so the UI can offer a concrete drilldown selector. Rows come from ai_attribution_resolved joined to git_pull_requests; no aggregation, no fabrication. */
+  aiAttributedPrs: AiAttributedPrsResult;
   /** Side-by-side AI-assisted vs non-AI baseline comparison. */
   aiComparison: AiComparison;
   /** AI governance coverage and recent policy violations. */
@@ -783,6 +807,15 @@ export type Query = {
   throughputForecast?: Maybe<ThroughputForecast>;
   /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
+};
+
+
+export type QueryAiAttributedPrsArgs = {
+  dateRange: AiDateRangeInput;
+  limit?: Scalars['Int']['input'];
+  offset?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<AiScopeInput>;
 };
 
 
