@@ -705,7 +705,7 @@ type OperatingReviewDelta {
 }
 
 input OperatingReviewInput {
-  teamId: String
+  teamId: String = null
   weekStart: Date!
 }
 

@@ -781,7 +781,7 @@ export type OperatingReview = {
   recommendations: Array<Scalars['String']['output']>;
   recommendationsEmptyState: Scalars['String']['output'];
   sections: Array<OperatingReviewSection>;
-  teamId: Scalars['String']['output'];
+  teamId?: Maybe<Scalars['String']['output']>;
   weekStart: Scalars['Date']['output'];
 };
 
@@ -795,7 +795,7 @@ export type OperatingReviewDelta = {
 };
 
 export type OperatingReviewInput = {
-  teamId: Scalars['String']['input'];
+  teamId?: InputMaybe<Scalars['String']['input']>;
   weekStart: Scalars['Date']['input'];
 };
 
