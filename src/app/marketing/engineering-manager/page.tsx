@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -6,13 +7,21 @@ export const metadata: Metadata = {
   description: "Coach teams with evidence, not rankings.",
 };
 
-const FEATURES = [
+type FeatureConfig = {
+  label: string;
+  title: string;
+  description: string;
+  href: string;
+  comingSoon?: boolean;
+  icon: ReactNode;
+};
+
+const FEATURES: FeatureConfig[] = [
   {
     label: "Team Flow",
     title: "Visualize delivery pace",
     description: "Measure throughput and cycle time to keep the team unblocked and delivering consistently.",
     href: "/team-flow",
-    comingSoon: true,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
