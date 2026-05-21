@@ -46,7 +46,7 @@ test.describe("Operating Review", () => {
     await expect(page.getByText(/Showing the cross-team aggregate/)).toHaveCount(0);
   });
 
-  test("multi-team filter renders each selected team's operating review", async ({
+  test("multi-team filter renders one bounded selected-team aggregate", async ({
     page,
   }) => {
     await page.goto(`/operating-review?f=${multiTeamFilter}&week=2026-05-18`);
@@ -55,8 +55,11 @@ test.describe("Operating Review", () => {
       page.getByRole("heading", { name: "Engineering Operating Review" })
     ).toBeVisible();
     await expect(page.getByText(/Showing operating review data for/)).toContainText("2 selected teams");
-    await expect(page.getByRole("heading", { name: "team-platform" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "team-growth" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "team-platform" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "team-growth" })).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Recommendations" }).or(page.getByRole("heading", { name: "No operating review data yet" }))
+    ).toBeVisible();
     await expect(page.getByText(/Showing the cross-team aggregate/)).toHaveCount(0);
   });
 });
