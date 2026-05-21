@@ -31,4 +31,5 @@ test.describe("Operating Review", () => {
     await teamLinks.first().click();
     await page.waitForURL(/\/operating-review\?team=.+&week=\d{4}-\d{2}-\d{2}/);
     await expect(heading).not.toBeVisible();
+  });
 });
