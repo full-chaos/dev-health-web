@@ -547,6 +547,96 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
     });
   }
 
+  // Compounding Risk (CHAOS-1642).
+  if (query.includes("compoundingRisk") || query.includes("CompoundingRisk")) {
+    const orgId = vars.orgId ?? "org-e2e";
+    const breakout = (variables as { filter?: { breakout?: string } }).filter?.breakout ?? "REPO";
+    const weights = { churn: 0.3, complexity: 0.3, ownership: 0.2, review: 0.2 };
+    const thresholds = { elevated: 0.4, high: 0.65 };
+    const baseComponents = {
+      churnNorm: 0.78,
+      complexityNorm: 0.62,
+      ownershipNorm: 0.55,
+      reviewNorm: 0.48,
+      reworkChurn: 0.21,
+      complexityDelta: 0.13,
+      busFactor: 3,
+      ownershipGini: 0.58,
+      singleOwnerRatio: 0.55,
+      reviewLatencyP90h: 38,
+    };
+    const repoRows = [
+      {
+        day: "2026-05-20",
+        scope: "REPO",
+        scopeId: "repo-a",
+        scopeLabel: "acme/backend",
+        score: 0.71,
+        severity: "HIGH",
+        components: baseComponents,
+        weights,
+        thresholds,
+        computedAt: "2026-05-21T12:00:00Z",
+      },
+      {
+        day: "2026-05-20",
+        scope: "REPO",
+        scopeId: "repo-b",
+        scopeLabel: "acme/frontend",
+        score: 0.42,
+        severity: "ELEVATED",
+        components: { ...baseComponents, churnNorm: 0.4, complexityNorm: 0.4, ownershipNorm: 0.4, reviewNorm: 0.45 },
+        weights,
+        thresholds,
+        computedAt: "2026-05-21T12:00:00Z",
+      },
+      {
+        day: "2026-05-20",
+        scope: "REPO",
+        scopeId: "repo-c",
+        scopeLabel: "acme/infra",
+        score: 0.25,
+        severity: "LOW",
+        components: { ...baseComponents, churnNorm: 0.2, complexityNorm: 0.2, ownershipNorm: 0.3, reviewNorm: 0.25 },
+        weights,
+        thresholds,
+        computedAt: "2026-05-21T12:00:00Z",
+      },
+    ];
+    const teamRows = [
+      {
+        day: "2026-05-20",
+        scope: "TEAM",
+        scopeId: "team-platform",
+        scopeLabel: "Platform",
+        score: 0.56,
+        severity: "ELEVATED",
+        components: baseComponents,
+        weights,
+        thresholds,
+        computedAt: "2026-05-21T12:00:00Z",
+      },
+    ];
+    return HttpResponse.json({
+      data: {
+        compoundingRisk: {
+          orgId,
+          breakout,
+          rows: breakout === "TEAM" ? teamRows : repoRows,
+          trend: [
+            { day: "2026-05-15", score: 0.62, severity: "ELEVATED" },
+            { day: "2026-05-16", score: 0.66, severity: "HIGH" },
+            { day: "2026-05-17", score: 0.68, severity: "HIGH" },
+            { day: "2026-05-18", score: 0.70, severity: "HIGH" },
+            { day: "2026-05-19", score: 0.70, severity: "HIGH" },
+            { day: "2026-05-20", score: 0.71, severity: "HIGH" },
+          ],
+          generatedAt: "2026-05-21T12:00:00Z",
+        },
+      },
+    });
+  }
+
   // ---- AI Workflow Intelligence (CHAOS-1588) ----
   const orgId = vars.orgId ?? "org-e2e";
   const startDate = vars.dateRange?.startDate ?? "2026-04-20";
