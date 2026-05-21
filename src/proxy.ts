@@ -57,7 +57,7 @@ const EXACT_PUBLIC_PATHS = [
     "/sitemap.xml",
 ];
 
-const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/_next"];
+const PREFIX_PUBLIC_PATHS = ["/api/auth", "/api/v1/auth", "/_next", "/marketing"];
 
 export function isPublicPath(pathname: string): boolean {
     if (pathname === "/") return true;

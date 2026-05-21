@@ -38,7 +38,7 @@ export default function AuthLayout({
         </div>
         <div className="flex items-center gap-4">
           <Link
-            href="/pricing"
+            href="/marketing/pricing"
             className="text-sm text-(--ink-muted) transition hover:text-foreground"
           >
             Pricing

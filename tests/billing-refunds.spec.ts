@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("refund dialog validates partial refund amount before submit", async ({ page }) => {
-  await page.goto("/billing-refunds-test");
+  await page.goto("/marketing/billing-refunds-test");
 
   await page.getByRole("button", { name: "Issue Refund" }).click();
   await page.getByRole("checkbox", { name: "Partial refund" }).check();

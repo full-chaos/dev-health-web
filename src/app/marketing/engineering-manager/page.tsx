@@ -96,7 +96,7 @@ export default function EngineeringManagerPage() {
               Start for free
             </Link>
             <Link
-              href="/pricing"
+              href="/marketing/pricing"
               className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
             >
               See pricing

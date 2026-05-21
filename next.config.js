@@ -56,6 +56,22 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    // 301 redirects for legacy URLs that lived at the root before the
+    // `(marketing)` route group was split out of `/marketing/*`. Preserves
+    // external/bookmarked links so nothing 404s. Keep these in sync with
+    // every page that moves under `src/app/marketing/`.
+    return [
+      { source: "/pricing", destination: "/marketing/pricing", permanent: true },
+      { source: "/privacy", destination: "/marketing/privacy", permanent: true },
+      { source: "/terms", destination: "/marketing/terms", permanent: true },
+      { source: "/vp-engineering", destination: "/marketing/vp-engineering", permanent: true },
+      { source: "/platform-devex", destination: "/marketing/platform-devex", permanent: true },
+      { source: "/engineering-manager", destination: "/marketing/engineering-manager", permanent: true },
+      { source: "/cto-architecture", destination: "/marketing/cto-architecture", permanent: true },
+      { source: "/billing-refunds-test", destination: "/marketing/billing-refunds-test", permanent: true },
+    ];
+  },
   // API proxying is handled by proxy.ts at runtime (not baked at build time)
 };
 
