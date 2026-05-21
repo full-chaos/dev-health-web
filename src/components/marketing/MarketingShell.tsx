@@ -33,6 +33,7 @@ const FOOTER_LINKS: Record<
     { label: "CTO / Architecture", href: "/marketing/cto-architecture" },
   ],
   Resources: [
+    { label: "About", href: "/marketing/about" },
     {
       label: "Documentation",
       href: "https://github.com/full-chaos/dev-health-ops",
