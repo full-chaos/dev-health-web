@@ -11,6 +11,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
+import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
 import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
 
 
@@ -50,10 +51,6 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
   // downstream review fetch.
   const orgId = session?.user?.org_id ?? undefined;
 
-  const reviewRequests = selectedTeamIds.length
-    ? selectedTeamIds.map((teamId) => ({ teamId }))
-    : [{ teamId: null }];
-
   // CHAOS-1755: when no team is selected, request the cross-team aggregate
   // ("All Teams" mode) from the backend by passing teamId: null. The
   // resolver returns an aggregate payload with documented per-metric
@@ -61,21 +58,12 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
   // surfaces teamId: null so we render an explicit "All Teams" badge rather
   // than pretending a single team was chosen. The GraphQL contract still
   // accepts one teamId per request, so multi-team filter selections fan out to
-  // one request per team and render each selected team's review.
-  const reviewEntries = orgId
-    ? await Promise.all(
-        reviewRequests.map(async ({ teamId }) => ({
-          teamId,
-          review: await fetchOrNull(
-            getOperatingReviewViaGraphQL(orgId, {
-              teamId,
-              weekStart,
-            }),
-            `operating-review/data/${teamId ?? "all-teams"}`
-          ),
-        }))
-      )
-    : reviewRequests.map(({ teamId }) => ({ teamId, review: null }));
+  // team requests and a cross-team ceiling. The selected-team aggregate is
+  // bounded by the cross-team aggregate so overlapping team ownership cannot
+  // render counts above the All Teams total.
+  const review = orgId
+    ? await resolveOperatingReview(orgId, selectedTeamIds, weekStart)
+    : null;
 
   const isAllTeams = selectedTeamIds.length === 0;
   const isMultiTeam = selectedTeamIds.length > 1;
@@ -115,21 +103,53 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
 
           {isAllTeams ? <AllTeamsBadge /> : null}
           {isMultiTeam ? <SelectedTeamsBadge teamIds={selectedTeamIds} /> : null}
-          <div className="space-y-6">
-            {reviewEntries.map(({ teamId, review }) => (
-              <OperatingReviewEntry
-                key={teamId ?? "all-teams"}
-                review={review}
-                showTeamHeading={isMultiTeam}
-                teamId={teamId}
-                weekStart={weekStart}
-              />
-            ))}
-          </div>
+          {!review ? <EmptyReviewState teamId={selectedTeamIds.join(", ") || undefined} weekStart={weekStart} /> : null}
+          {review ? <OperatingReviewAgenda review={review} /> : null}
         </main>
       </div>
     </div>
   );
+}
+
+async function resolveOperatingReview(
+  orgId: string,
+  selectedTeamIds: string[],
+  weekStart: string
+): Promise<OperatingReview | null> {
+  if (selectedTeamIds.length <= 1) {
+    return fetchOrNull(
+      getOperatingReviewViaGraphQL(orgId, {
+        teamId: selectedTeamIds[0] ?? null,
+        weekStart,
+      }),
+      `operating-review/data/${selectedTeamIds[0] ?? "all-teams"}`
+    );
+  }
+
+  const [ceilingReview, teamReviews] = await Promise.all([
+    fetchOrNull(
+      getOperatingReviewViaGraphQL(orgId, { teamId: null, weekStart }),
+      "operating-review/data/all-teams-ceiling"
+    ),
+    Promise.all(
+      selectedTeamIds.map((teamId) =>
+        fetchOrNull(
+          getOperatingReviewViaGraphQL(orgId, { teamId, weekStart }),
+          `operating-review/data/${teamId}`
+        )
+      )
+    ),
+  ]);
+
+  if (!ceilingReview) {
+    return teamReviews.find((review): review is OperatingReview => Boolean(review)) ?? null;
+  }
+
+  return aggregateOperatingReviews({
+    ceilingReview,
+    reviews: teamReviews.filter((review): review is OperatingReview => Boolean(review)),
+    teamIds: selectedTeamIds,
+  });
 }
 
 function AllTeamsBadge() {
@@ -148,34 +168,6 @@ function SelectedTeamsBadge({ teamIds }: { teamIds: string[] }) {
     <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
       Showing operating review data for{" "}
       <span className="font-medium text-foreground">{teamIds.length} selected teams</span>: {teamIds.join(", ")}
-    </section>
-  );
-}
-
-function OperatingReviewEntry({
-  review,
-  showTeamHeading,
-  teamId,
-  weekStart,
-}: {
-  review: OperatingReview | null;
-  showTeamHeading: boolean;
-  teamId: string | null;
-  weekStart: string;
-}) {
-  return (
-    <section className={showTeamHeading ? "rounded-[1.75rem] border border-border bg-card/60 p-5" : undefined}>
-      {showTeamHeading ? (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Selected team</p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight">{teamId}</h2>
-          </div>
-          <span className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">Week {weekStart}</span>
-        </div>
-      ) : null}
-      {!review ? <EmptyReviewState teamId={teamId ?? undefined} weekStart={weekStart} /> : null}
-      {review ? <OperatingReviewAgenda review={review} /> : null}
     </section>
   );
 }
