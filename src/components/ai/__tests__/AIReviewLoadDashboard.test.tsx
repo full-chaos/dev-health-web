@@ -6,9 +6,13 @@ import type { AIFilter } from "@/lib/filters/ai";
 const { mockUseAIReviewLoad } = vi.hoisted(() => ({ mockUseAIReviewLoad: vi.fn() }));
 
 vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
+  const normalizeBucket = (bucket: string) => bucket.trim().toLowerCase();
   return {
     useAIReviewLoad: mockUseAIReviewLoad,
-    findBucketRow: <T extends { bucket: string }>(rows: T[] | undefined, bucket = "AI_ASSISTED") => rows?.find((row) => row.bucket === bucket),
+    findBucketRow: <T extends { bucket: string }>(rows: T[] | undefined, bucket = "AI_ASSISTED") => {
+      const targetBucket = normalizeBucket(bucket);
+      return rows?.find((row) => normalizeBucket(row.bucket) === targetBucket);
+    },
     valueDelta: (value?: number | null, baseline?: number | null) => value == null || baseline == null ? undefined : value - baseline,
     approvalFriction: (row?: { changesRequestedPerPr?: number | null; reviewsPerPr?: number | null }) => !row?.reviewsPerPr || row.changesRequestedPerPr == null ? undefined : row.changesRequestedPerPr / row.reviewsPerPr,
   };
@@ -30,7 +34,7 @@ describe("AIReviewLoadDashboard", () => {
     expect(screen.getByTestId("trend")).toHaveTextContent("loading");
   });
 
-  it("renders populated cards and derived friction", () => {
+  it("renders all populated metric cards and derived friction", () => {
     mockUseAIReviewLoad.mockReturnValue({
       fetching: false,
       error: undefined,
@@ -41,8 +45,8 @@ describe("AIReviewLoadDashboard", () => {
           endDate: "2026-05-01",
           dataAvailable: true,
           byBucket: [
-            { bucket: "AI_ASSISTED", prsTotal: 10, reviewsTotal: 30, reviewsPerPr: 3, changesRequestedPerPr: 1.5, reviewAmplification: 1.8 },
-            { bucket: "HUMAN", prsTotal: 10, reviewsTotal: 20, reviewsPerPr: 2, changesRequestedPerPr: 0.5, reviewAmplification: 1.1 },
+            { bucket: "ai_assisted", prsTotal: 10, reviewsTotal: 30, reviewsPerPr: 3, changesRequestedPerPr: 1.5, reviewAmplification: 1.8 },
+            { bucket: "human", prsTotal: 10, reviewsTotal: 20, reviewsPerPr: 2, changesRequestedPerPr: 0.5, reviewAmplification: 1.1 },
           ],
           daily: [],
         },
@@ -51,8 +55,8 @@ describe("AIReviewLoadDashboard", () => {
           startDate: "2026-04-01",
           endDate: "2026-05-01",
           dataAvailable: true,
-          aiSide: { bucket: "AI_ASSISTED", prsTotal: 10, prsMerged: 8, cycleTimeAvgHours: 9, reviewsPerPr: 3 },
-          baselineSide: { bucket: "HUMAN", prsTotal: 10, prsMerged: 8, cycleTimeAvgHours: 7, reviewsPerPr: 2 },
+          aiSide: { bucket: "ai_assisted", prsTotal: 10, prsMerged: 8, cycleTimeAvgHours: 9, reviewsPerPr: 3 },
+          baselineSide: { bucket: "human", prsTotal: 10, prsMerged: 8, cycleTimeAvgHours: 7, reviewsPerPr: 2 },
           delta: { cycleTimeDeltaHours: 2, reviewsPerPrDelta: 1 },
         },
       },
@@ -60,6 +64,11 @@ describe("AIReviewLoadDashboard", () => {
 
     render(<AIReviewLoadDashboard filter={filter} />);
     expect(screen.getByText("Pickup latency")).toBeInTheDocument();
+    expect(screen.getByText("9.00 h")).toBeInTheDocument();
+    expect(screen.getByText("Review comments per PR")).toBeInTheDocument();
+    expect(screen.getByText("3.00")).toBeInTheDocument();
+    expect(screen.getByText("Change request rate")).toBeInTheDocument();
+    expect(screen.getByText("1.50")).toBeInTheDocument();
     expect(screen.getByText("Approval friction")).toBeInTheDocument();
     expect(screen.getByText("0.50")).toBeInTheDocument();
   });

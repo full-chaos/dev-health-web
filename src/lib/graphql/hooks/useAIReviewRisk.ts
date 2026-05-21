@@ -61,10 +61,17 @@ export function toAIQueryInputs(filter: AIFilter): AIInputs {
  * Strict bucket lookup. Returns `undefined` when the requested bucket is
  * absent so the caller's missing-data branch fires honestly rather than
  * silently substituting an unrelated bucket (e.g. AGENT_CREATED or
- * UNKNOWN) when AI_ASSISTED rows haven't populated yet.
+ * UNKNOWN) when AI_ASSISTED rows haven't populated yet. The GraphQL input
+ * enum is uppercase, while persisted/resolver bucket values are lowercase
+ * snake_case, so compare canonicalized keys instead of raw strings.
  */
 export function findBucketRow<T extends { bucket: string }>(rows: T[] | undefined, bucket: AIBucket | string = "AI_ASSISTED"): T | undefined {
-  return rows?.find((row) => row.bucket === bucket);
+  const targetBucket = normalizeBucketKey(bucket);
+  return rows?.find((row) => normalizeBucketKey(row.bucket) === targetBucket);
+}
+
+function normalizeBucketKey(bucket: string): string {
+  return bucket.trim().toLowerCase();
 }
 
 export function valueDelta(value: number | null | undefined, baseline: number | null | undefined): number | undefined {
