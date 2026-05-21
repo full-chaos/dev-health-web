@@ -75,9 +75,6 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="operating-review" />
         <main className="flex min-w-0 flex-1 flex-col gap-6">
-          <ContextStrip filters={filters} origin={activeOrigin} />
-          <FilterBar view="work" />
-
           <section className="rounded-[2rem] border border-border bg-card/80 p-8 shadow-sm">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-3xl space-y-3">
@@ -99,6 +96,9 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
               </div>
             </div>
           </section>
+
+          <ContextStrip filters={filters} origin={activeOrigin} />
+          <FilterBar view="work" />
 
           {!teamId ? <TeamPicker teams={teams} weekStart={weekStart} encodedFilter={encodedFilter} /> : null}
           {teamId && !review ? <EmptyReviewState teamId={teamId} weekStart={weekStart} /> : null}
