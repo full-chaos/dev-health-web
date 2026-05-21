@@ -553,6 +553,46 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
     const breakout = (variables as { filter?: { breakout?: string } }).filter?.breakout ?? "REPO";
     const weights = { churn: 0.3, complexity: 0.3, ownership: 0.2, review: 0.2 };
     const thresholds = { elevated: 0.4, high: 0.65 };
+
+    // CHAOS-1750 test hook
+    if (orgId === "null-scores-org") {
+      return HttpResponse.json({
+        data: {
+          compoundingRisk: {
+            orgId,
+            breakout,
+            rows: [
+              {
+                day: "2026-05-20",
+                scope: breakout,
+                scopeId: "scope-1",
+                scopeLabel: "acme/null",
+                score: null,
+                severity: "UNKNOWN",
+                components: {
+                  churnNorm: null,
+                  complexityNorm: null,
+                  ownershipNorm: null,
+                  reviewNorm: null,
+                  reworkChurn: null,
+                  complexityDelta: null,
+                  busFactor: null,
+                  ownershipGini: null,
+                  singleOwnerRatio: null,
+                  reviewLatencyP90h: null,
+                },
+                weights,
+                thresholds,
+                computedAt: "2026-05-21T12:00:00Z",
+              }
+            ],
+            trend: [],
+            generatedAt: "2026-05-21T12:00:00Z",
+          }
+        }
+      });
+    }
+
     const baseComponents = {
       churnNorm: 0.78,
       complexityNorm: 0.62,
