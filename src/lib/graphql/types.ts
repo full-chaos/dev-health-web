@@ -237,6 +237,36 @@ export interface AnalyticsQueryResponse {
     analytics: AnalyticsResult;
 }
 
+// ==== Code Health Types ====
+
+export interface BusFactorScopeInput {
+    repoId?: string | null;
+}
+
+export interface BusFactorMaintainer {
+    author: string;
+    sharePercent: number;
+}
+
+export interface BusFactorRepoResult {
+    repoId: string;
+    repoName: string;
+    value: number;
+    topMaintainers: BusFactorMaintainer[];
+    evidenceSampleCount: number;
+}
+
+export interface BusFactorResult {
+    scopeValue: number;
+    topMaintainers: BusFactorMaintainer[];
+    perRepo: BusFactorRepoResult[];
+    evidenceSampleCount: number;
+}
+
+export interface BusFactorQueryResponse {
+    busFactor: BusFactorResult;
+}
+
 // ==== Capacity Planning Types ====
 
 export interface CapacityForecastInput {

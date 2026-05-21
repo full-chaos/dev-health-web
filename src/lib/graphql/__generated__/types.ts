@@ -328,6 +328,33 @@ export type BucketIntervalInput =
   | 'MONTH'
   | 'WEEK';
 
+export type BusFactorMaintainer = {
+  __typename?: 'BusFactorMaintainer';
+  author: Scalars['String']['output'];
+  sharePercent: Scalars['Float']['output'];
+};
+
+export type BusFactorRepoResult = {
+  __typename?: 'BusFactorRepoResult';
+  evidenceSampleCount: Scalars['Int']['output'];
+  repoId: Scalars['String']['output'];
+  repoName: Scalars['String']['output'];
+  topMaintainers: Array<BusFactorMaintainer>;
+  value: Scalars['Int']['output'];
+};
+
+export type BusFactorResult = {
+  __typename?: 'BusFactorResult';
+  evidenceSampleCount: Scalars['Int']['output'];
+  perRepo: Array<BusFactorRepoResult>;
+  scopeValue: Scalars['Int']['output'];
+  topMaintainers: Array<BusFactorMaintainer>;
+};
+
+export type BusFactorScopeInput = {
+  repoId?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type CapacityForecast = {
   __typename?: 'CapacityForecast';
   backlogSize: Scalars['Int']['output'];
@@ -724,6 +751,8 @@ export type Query = {
   aiWorkflowDrilldown: AiWorkflowDrilldownResult;
   /** Run batch analytics queries */
   analytics: AnalyticsResult;
+  /** Repository ownership concentration and bus-factor summary. */
+  busFactor: BusFactorResult;
   /** Compute capacity forecast on-demand */
   capacityForecast?: Maybe<CapacityForecast>;
   /** List persisted capacity forecasts */
@@ -810,6 +839,12 @@ export type QueryAiWorkflowDrilldownArgs = {
 export type QueryAnalyticsArgs = {
   batch: AnalyticsRequestInput;
   orgId: Scalars['String']['input'];
+};
+
+
+export type QueryBusFactorArgs = {
+  orgId: Scalars['String']['input'];
+  scope?: InputMaybe<BusFactorScopeInput>;
 };
 
 

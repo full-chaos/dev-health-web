@@ -287,6 +287,30 @@ enum BucketIntervalInput {
   MONTH
 }
 
+type BusFactorMaintainer {
+  author: String!
+  sharePercent: Float!
+}
+
+type BusFactorRepoResult {
+  repoId: String!
+  repoName: String!
+  value: Int!
+  topMaintainers: [BusFactorMaintainer!]!
+  evidenceSampleCount: Int!
+}
+
+type BusFactorResult {
+  scopeValue: Int!
+  topMaintainers: [BusFactorMaintainer!]!
+  perRepo: [BusFactorRepoResult!]!
+  evidenceSampleCount: Int!
+}
+
+input BusFactorScopeInput {
+  repoId: String = null
+}
+
 type CapacityForecast {
   forecastId: String!
   computedAt: String!
@@ -659,6 +683,9 @@ type Query {
 
   """Operator data-health and trust surface"""
   dataHealth(team: ID!): DataHealth!
+
+  """Repository ownership concentration and bus-factor summary."""
+  busFactor(orgId: String!, scope: BusFactorScopeInput = null): BusFactorResult!
 
   """Latest rule-based recommendations for a team within a lookback window."""
   recommendations(orgId: String!, team: ID!, window: WindowInput!): [Recommendation!]!
