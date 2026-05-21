@@ -287,24 +287,6 @@ enum BucketIntervalInput {
   MONTH
 }
 
-type MaintainerShare {
-  author: String!
-  sharePercent: Float!
-}
-
-type RepoBusFactor {
-  repoId: String!
-  repoName: String!
-  value: Int!
-  topMaintainers: [MaintainerShare!]!
-  evidenceSampleCount: Int!
-}
-
-type BusFactorScope {
-  repoId: String
-  teamId: String
-}
-
 type BusFactor {
   orgId: String!
   scope: BusFactorScope!
@@ -312,6 +294,11 @@ type BusFactor {
   topMaintainers: [MaintainerShare!]!
   repos: [RepoBusFactor!]!
   evidenceSampleCount: Int!
+}
+
+type BusFactorScope {
+  repoId: String
+  teamId: String
 }
 
 input BusFactorScopeInput {
@@ -528,6 +515,11 @@ The `JSON` scalar type represents JSON values as specified by [ECMA-404](https:/
 """
 scalar JSON @specifiedBy(url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf")
 
+type MaintainerShare {
+  author: String!
+  sharePercent: Float!
+}
+
 type MappingCoverage {
   deployments: CoverageStat!
   workItems: CoverageStat!
@@ -743,6 +735,14 @@ type RepoAlertCount {
   repoName: String!
   repoUrl: String
   count: Int!
+}
+
+type RepoBusFactor {
+  repoId: String!
+  repoName: String!
+  value: Int!
+  topMaintainers: [MaintainerShare!]!
+  evidenceSampleCount: Int!
 }
 
 type ReportRunConnection {
