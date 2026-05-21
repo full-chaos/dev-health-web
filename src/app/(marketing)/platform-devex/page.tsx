@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "Find systemic friction across repos, CI, reviews, and deployments.",
 };
 
-const SURFACES = [
+const SURFACES: Array<{ label: string; title: string; description: string; href: string; icon: React.ReactElement; comingSoon?: boolean }> = [
   {
     label: "CI/CD + TestOps",
     title: "CI/CD + TestOps",
@@ -22,7 +22,7 @@ const SURFACES = [
     label: "Review Load",
     title: "Review Load",
     description: "Identify bottlenecks in PR reviews and systemic latency in the code review process.",
-    href: "/review-load",
+    href: "/ai/review-load",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
@@ -33,7 +33,7 @@ const SURFACES = [
     label: "Work Graph",
     title: "Work Graph",
     description: "Map the dependencies and connections between teams, repos, and issues.",
-    href: "/work-graph",
+    href: "/work",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="18" cy="5" r="3" />
@@ -48,7 +48,7 @@ const SURFACES = [
     label: "Hotspots",
     title: "Hotspots",
     description: "Discover complex files with high churn that slow down feature delivery.",
-    href: "/hotspots",
+    href: "/code",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M12 2v20" />
@@ -106,28 +106,53 @@ export default function PlatformDevexPage() {
       {/* Primary Surfaces */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {SURFACES.map((surface) => (
-            <Link
-              key={surface.href}
-              href={surface.href}
-              className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1 block"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
-                  {surface.icon}
+          {SURFACES.map((surface) => {
+            const cardInner = (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                      {surface.icon}
+                    </div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                      {surface.label}
+                    </p>
+                  </div>
+                  {surface.comingSoon && (
+                    <span className="rounded-full border border-(--card-stroke) bg-(--card) px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                      Coming soon
+                    </span>
+                  )}
                 </div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                  {surface.label}
+                <h3 className="mt-4 font-(--font-display) text-lg">
+                  {surface.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
+                  {surface.description}
                 </p>
-              </div>
-              <h3 className="mt-4 font-(--font-display) text-lg">
-                {surface.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
-                {surface.description}
-              </p>
-            </Link>
-          ))}
+              </>
+            );
+            if (surface.comingSoon) {
+              return (
+                <div
+                  key={surface.label}
+                  className="block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 opacity-90"
+                  aria-disabled="true"
+                >
+                  {cardInner}
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={surface.label}
+                href={surface.href}
+                className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
+              >
+                {cardInner}
+              </Link>
+            );
+          })}
         </div>
       </section>
 

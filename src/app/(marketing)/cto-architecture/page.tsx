@@ -9,7 +9,8 @@ export const metadata: Metadata = {
 const SURFACES = [
   {
     title: "Compounding Risk",
-    href: "/compounding-risk",
+    href: "/risk/compounding",
+    comingSoon: true,
     description: "Track where high churn meets high complexity to identify system fragility.",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -22,6 +23,7 @@ const SURFACES = [
   {
     title: "Complexity trends",
     href: "/complexity",
+    comingSoon: true,
     description: "Monitor code complexity over time to prevent unmanageable technical debt.",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -31,7 +33,7 @@ const SURFACES = [
   },
   {
     title: "Ownership concentration",
-    href: "/ownership",
+    href: "/code",
     description: "Identify key person dependencies and knowledge silos before they become bottlenecks.",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -44,7 +46,7 @@ const SURFACES = [
   },
   {
     title: "Hotspots",
-    href: "/hotspots",
+    href: "/code",
     description: "Pinpoint the areas of your codebase consuming the most effort and generating the most bugs.",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -55,6 +57,7 @@ const SURFACES = [
   {
     title: "Incident correlation",
     href: "/incident-correlation",
+    comingSoon: true,
     description: "Connect system outages to recent deployment activity to speed up root cause analysis.",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -110,25 +113,48 @@ export default function CTOArchitecturePage() {
         </div>
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {SURFACES.map((surface) => (
-            <Link
-              key={surface.title}
-              href={surface.href}
-              className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1 block"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
-                  {surface.icon}
+          {SURFACES.map((surface) => {
+            const cardInner = (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                    {surface.icon}
+                  </div>
+                  {surface.comingSoon && (
+                    <span className="rounded-full border border-(--card-stroke) bg-(--card) px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                      Coming soon
+                    </span>
+                  )}
                 </div>
-              </div>
-              <h3 className="mt-4 font-(--font-display) text-lg group-hover:text-(--accent) transition-colors">
-                {surface.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
-                {surface.description}
-              </p>
-            </Link>
-          ))}
+                <h3 className="mt-4 font-(--font-display) text-lg group-hover:text-(--accent) transition-colors">
+                  {surface.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
+                  {surface.description}
+                </p>
+              </>
+            );
+            if (surface.comingSoon) {
+              return (
+                <div
+                  key={surface.title}
+                  className="block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 opacity-90"
+                  aria-disabled="true"
+                >
+                  {cardInner}
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={surface.title}
+                href={surface.href}
+                className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
+              >
+                {cardInner}
+              </Link>
+            );
+          })}
         </div>
       </section>
 

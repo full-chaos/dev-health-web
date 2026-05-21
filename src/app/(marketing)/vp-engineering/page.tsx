@@ -23,7 +23,7 @@ const SURFACES = [
     label: "Capacity Forecast",
     title: "Predictable Capacity",
     description: "Forecast delivery constraints based on historical throughput, cycle time trends, and WIP saturation.",
-    href: "/capacity-forecast",
+    href: "/capacity-planning",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
@@ -36,6 +36,7 @@ const SURFACES = [
     title: "Delivery Bottleneck Summary",
     description: "Spot where work is piling up. Identify high review latency and coordination debt before it impacts ship dates.",
     href: "/bottleneck",
+    comingSoon: true,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M5 22h14" />
@@ -61,7 +62,7 @@ const SURFACES = [
     label: "Reliability",
     title: "Reliability & Incidents",
     description: "Connect incident volume to delivery velocity. Understand the cost of poor quality on feature throughput.",
-    href: "/reliability",
+    href: "/quality",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="m3 11 18-5v12L3 13v-2z" />
@@ -115,28 +116,53 @@ export default function VPEngineeringPage() {
           </h2>
         </div>
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {SURFACES.map((surface) => (
-            <Link
-              key={surface.label}
-              href={surface.href}
-              className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
-                  {surface.icon}
+          {SURFACES.map((surface) => {
+            const cardInner = (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                      {surface.icon}
+                    </div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                      {surface.label}
+                    </p>
+                  </div>
+                  {surface.comingSoon && (
+                    <span className="rounded-full border border-(--card-stroke) bg-(--card) px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                      Coming soon
+                    </span>
+                  )}
                 </div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                  {surface.label}
+                <h3 className="mt-4 font-(--font-display) text-lg">
+                  {surface.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
+                  {surface.description}
                 </p>
-              </div>
-              <h3 className="mt-4 font-(--font-display) text-lg">
-                {surface.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
-                {surface.description}
-              </p>
-            </Link>
-          ))}
+              </>
+            );
+            if (surface.comingSoon) {
+              return (
+                <div
+                  key={surface.label}
+                  className="block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 opacity-90"
+                  aria-disabled="true"
+                >
+                  {cardInner}
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={surface.label}
+                href={surface.href}
+                className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
+              >
+                {cardInner}
+              </Link>
+            );
+          })}
         </div>
       </section>
 

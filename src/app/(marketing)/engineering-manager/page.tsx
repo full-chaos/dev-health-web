@@ -12,6 +12,7 @@ const FEATURES = [
     title: "Visualize delivery pace",
     description: "Measure throughput and cycle time to keep the team unblocked and delivering consistently.",
     href: "/team-flow",
+    comingSoon: true,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
@@ -23,6 +24,7 @@ const FEATURES = [
     title: "Eliminate bottlenecks",
     description: "Spot WIP saturation and review latency before they turn into major coordination debt.",
     href: "/bottleneck",
+    comingSoon: true,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
@@ -34,7 +36,7 @@ const FEATURES = [
     label: "Reflection",
     title: "Single-person reflection",
     description: "Single-person views are strictly for private reflection, not peer ranking or surveillance.",
-    href: "/reflection",
+    href: "/people",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
@@ -47,7 +49,7 @@ const FEATURES = [
     label: "Sustainability",
     title: "Protect your people",
     description: "Intervene early on burnout signals like after-hours work and weekend commit patterns.",
-    href: "/sustainability",
+    href: "/cognitive-load",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
@@ -58,7 +60,7 @@ const FEATURES = [
     label: "Recommendations",
     title: "Evidence-backed playbooks",
     description: "Manager coaching playbooks generated from actual investment data to support strategic conversations.",
-    href: "/recommendations",
+    href: "/opportunities",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -115,28 +117,53 @@ export default function EngineeringManagerPage() {
         </div>
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <Link
-              key={feature.label}
-              href={feature.href}
-              className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1 hover:border-(--accent)/50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
-                  {feature.icon}
+          {FEATURES.map((feature) => {
+            const cardInner = (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                      {feature.icon}
+                    </div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                      {feature.label}
+                    </p>
+                  </div>
+                  {feature.comingSoon && (
+                    <span className="rounded-full border border-(--card-stroke) bg-(--card) px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                      Coming soon
+                    </span>
+                  )}
                 </div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                  {feature.label}
+                <h3 className="mt-4 font-(--font-display) text-lg group-hover:text-(--accent) transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
+                  {feature.description}
                 </p>
-              </div>
-              <h3 className="mt-4 font-(--font-display) text-lg group-hover:text-(--accent) transition-colors">
-                {feature.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
-                {feature.description}
-              </p>
-            </Link>
-          ))}
+              </>
+            );
+            if (feature.comingSoon) {
+              return (
+                <div
+                  key={feature.label}
+                  className="block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 opacity-90"
+                  aria-disabled="true"
+                >
+                  {cardInner}
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={feature.label}
+                href={feature.href}
+                className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1 hover:border-(--accent)/50"
+              >
+                {cardInner}
+              </Link>
+            );
+          })}
         </div>
       </section>
 
