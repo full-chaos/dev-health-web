@@ -90,6 +90,40 @@ describe('LoginForm', () => {
     })
   })
 
+  test('submits when Enter is pressed in the email field', async () => {
+    mockSignIn.mockResolvedValue({ error: 'CredentialsSignin', code: 'credentials', status: 401, ok: false, url: null })
+    renderWithToaster(<LoginForm />)
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'tester@example.com')
+    await userEvent.type(screen.getByLabelText(/password/i), 'password')
+    await userEvent.click(screen.getByLabelText(/email/i))
+    await userEvent.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenCalledWith('credentials', {
+        email: 'tester@example.com',
+        password: 'password',
+        redirect: false,
+      })
+    })
+  })
+
+  test('submits when Enter is pressed in the password field', async () => {
+    mockSignIn.mockResolvedValue({ error: 'CredentialsSignin', code: 'credentials', status: 401, ok: false, url: null })
+    renderWithToaster(<LoginForm />)
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'tester@example.com')
+    await userEvent.type(screen.getByLabelText(/password/i), 'password{Enter}')
+
+    await waitFor(() => {
+      expect(mockSignIn).toHaveBeenCalledWith('credentials', {
+        email: 'tester@example.com',
+        password: 'password',
+        redirect: false,
+      })
+    })
+  })
+
   test('hard-navigates to /auth/onboard when session.user.needs_onboarding is true', async () => {
     mockSignIn.mockResolvedValue({ error: undefined, code: undefined, status: 200, ok: true, url: null })
     mockGetSession.mockResolvedValue({ user: { needs_onboarding: true } })

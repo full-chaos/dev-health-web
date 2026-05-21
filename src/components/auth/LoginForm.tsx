@@ -67,6 +67,16 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
      }
    }
 
+   const submitOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+     if (e.key !== "Enter" || e.nativeEvent.isComposing || loading) return
+
+     const form = e.currentTarget.form
+     if (!form) return
+
+     e.preventDefault()
+     form.requestSubmit()
+   }
+
    const inputClass =
      "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow"
 
@@ -90,6 +100,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
              type="email"
              value={email}
              onChange={(e) => setEmail(e.target.value)}
+             onKeyDown={submitOnEnter}
              required
              className={inputClass}
              placeholder="name@example.com"
@@ -105,6 +116,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={submitOnEnter}
             required
             className={inputClass}
           />
