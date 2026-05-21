@@ -1,6 +1,8 @@
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { requireSession } from "@/lib/auth";
+import Link from "next/link";
 
 type CognitiveLoadPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -42,6 +44,7 @@ const signals = [
 const trend = [28, 34, 26, 31, 24, 20, 18];
 
 export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadPageProps) {
+  const session = await requireSession();
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
@@ -49,6 +52,13 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+  const isDeveloperScope = filters.scope.level === "developer";
+  const selectedDeveloperId = isDeveloperScope ? filters.scope.ids[0] : undefined;
+  const effectiveSelfId = session.user.is_impersonating && session.user.impersonated_user_id
+    ? session.user.impersonated_user_id
+    : session.user.id;
+  const isIndividualScope = Boolean(selectedDeveloperId && selectedDeveloperId === effectiveSelfId);
+  const canShowSelectedScope = !isDeveloperScope || isIndividualScope;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -82,20 +92,53 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             </div>
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            {signals.map((signal) => (
-              <article key={signal.label} className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
-                  {signal.label}
-                </p>
-                <p className="mt-5 text-4xl font-semibold tabular-nums">{signal.value}</p>
-                <p className="mt-2 text-xs font-medium text-emerald-600">{signal.delta}</p>
-                <p className="mt-4 text-sm leading-6 text-(--ink-muted)">{signal.description}</p>
-              </article>
-            ))}
-          </section>
+          {!canShowSelectedScope ? (
+            <section className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+                Individual guardrail
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                Individual cognitive load is self-only.
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6">
+                Person-scoped cognitive-load signals are available only when the selected identity matches the current session. Use team or repo aggregation for coaching, planning, and operational review.
+              </p>
+              <Link
+                href="/cognitive-load"
+                className="mt-5 inline-flex rounded-full bg-amber-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50"
+              >
+                Return to team/repo view
+              </Link>
+            </section>
+          ) : (
+            <>
+              {isIndividualScope && (
+                <section className="rounded-[1.75rem] border border-(--accent)/30 bg-(--accent)/10 p-5 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
+                    Self-reflection mode
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-(--ink-muted)">
+                    Only you can open this individual cognitive-load view. These signals are for reflection on focus pressure, not manager review or peer comparison.
+                  </p>
+                </section>
+              )}
 
-          <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                {signals.map((signal) => (
+                  <article key={signal.label} className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                      {signal.label}
+                    </p>
+                    <p className="mt-5 text-4xl font-semibold tabular-nums">{signal.value}</p>
+                    <p className="mt-2 text-xs font-medium text-emerald-600">{signal.delta}</p>
+                    <p className="mt-4 text-sm leading-6 text-(--ink-muted)">{signal.description}</p>
+                  </article>
+                ))}
+              </section>
+            </>
+          )}
+
+          {canShowSelectedScope && <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
                 Aggregation contract
@@ -127,7 +170,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 ))}
               </div>
             </div>
-          </section>
+          </section>}
         </main>
       </div>
     </div>
