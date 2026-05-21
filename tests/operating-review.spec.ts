@@ -1,4 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { encodeFilterParam } from "../src/lib/filters/encode";
+import { defaultMetricFilter } from "../src/lib/filters/defaults";
+
+const multiTeamFilter = encodeFilterParam({
+  ...defaultMetricFilter,
+  scope: { level: "team", ids: ["team-platform", "team-growth"] },
+});
 
 test.describe("Operating Review", () => {
   test("renders page header and the All Teams aggregate when no team is pinned", async ({
@@ -36,6 +43,20 @@ test.describe("Operating Review", () => {
     await expect(
       page.getByRole("heading", { name: "Engineering Operating Review" })
     ).toBeVisible();
+    await expect(page.getByText(/Showing the cross-team aggregate/)).toHaveCount(0);
+  });
+
+  test("multi-team filter renders each selected team's operating review", async ({
+    page,
+  }) => {
+    await page.goto(`/operating-review?f=${multiTeamFilter}&week=2026-05-18`);
+
+    await expect(
+      page.getByRole("heading", { name: "Engineering Operating Review" })
+    ).toBeVisible();
+    await expect(page.getByText(/Showing operating review data for/)).toContainText("2 selected teams");
+    await expect(page.getByRole("heading", { name: "team-platform" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "team-growth" })).toBeVisible();
     await expect(page.getByText(/Showing the cross-team aggregate/)).toHaveCount(0);
   });
 });
