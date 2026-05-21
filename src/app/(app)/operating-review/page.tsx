@@ -5,9 +5,12 @@ import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
+import { TeamPicker } from "@/components/operating-review/TeamPicker";
 import { getCurrentOrg } from "@/lib/admin/server";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { CATALOG_VALUES_QUERY } from "@/lib/graphql/queries";
+import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
 
@@ -42,12 +45,25 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
   }
 
   const orgId = orgResult.data?.id;
-  const review = orgId && teamId
-    ? await fetchOrNull(
-        getOperatingReviewViaGraphQL(orgId, { teamId, weekStart }),
-        "operating-review/data"
-      )
-    : null;
+  const [review, teamsResult] = await Promise.all([
+    orgId && teamId
+      ? fetchOrNull(
+          getOperatingReviewViaGraphQL(orgId, { teamId, weekStart }),
+          "operating-review/data"
+        )
+      : Promise.resolve(null),
+    !teamId && orgId
+      ? fetchOrNull(
+          graphqlFetch<{ catalog: { values: { value: string; count: number }[] } }>(
+            CATALOG_VALUES_QUERY,
+            { orgId, dimension: "TEAM" },
+            { orgId }
+          ),
+          "catalog/teams"
+        )
+      : Promise.resolve(null),
+  ]);
+  const teams = teamsResult?.catalog?.values ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -73,13 +89,13 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
                 </p>
               </div>
               <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">
-                <div>Team: <span className="font-medium text-foreground">{teamId ?? "Select a team"}</span></div>
+                <div>Team: <span className="font-medium text-foreground">{teamId ?? "pick one below"}</span></div>
                 <div>Week: <span className="font-medium text-foreground">{weekStart}</span></div>
               </div>
             </div>
           </section>
 
-          {!teamId ? <MissingTeamState weekStart={weekStart} /> : null}
+          {!teamId ? <TeamPicker teams={teams} weekStart={weekStart} encodedFilter={encodedFilter} /> : null}
           {teamId && !review ? <EmptyReviewState teamId={teamId} weekStart={weekStart} /> : null}
           {review ? <OperatingReviewAgenda review={review} /> : null}
         </main>
@@ -208,14 +224,6 @@ function CalloutColumn({ title, tone, items }: { title: string; tone: "improved"
         <p className="mt-3 text-sm text-muted-foreground">No {tone} signals this week.</p>
       )}
     </div>
-  );
-}
-
-function MissingTeamState({ weekStart }: { weekStart: string }) {
-  return (
-    <section className="rounded-[1.75rem] border border-dashed border-border bg-card/70 p-8 text-sm text-muted-foreground">
-      Add <code className="rounded bg-muted px-1 py-0.5">?team=&lt;id&gt;&week={weekStart}</code> to open a weekly review.
-    </section>
   );
 }
 
