@@ -825,6 +825,42 @@ export const handlers = [
     }),
   ),
 
+  http.get("*/api/v1/auth/me/organizations", () =>
+    HttpResponse.json({
+      active_org_id: "org-e2e",
+      organizations: [
+        {
+          id: "org-e2e",
+          slug: "e2e-org",
+          name: "E2E Organization",
+          tier: "community",
+          role: "owner",
+          joined_at: "2026-01-01T00:00:00Z",
+          has_data: true,
+          last_metrics_at: "2026-05-19T00:00:00Z",
+        },
+      ],
+    }),
+  ),
+
+  http.post("*/api/v1/auth/switch-org", () =>
+    HttpResponse.json<LoginResponseBody>({
+      user: {
+        id: "e2e-user-1",
+        email: "test@example.com",
+        org_id: "org-e2e",
+        role: "owner",
+        is_superuser: true,
+        permissions: ["read", "write"],
+      },
+      access_token: "mock-access-token-e2e",
+      refresh_token: "mock-refresh-token-e2e",
+      token_type: "bearer",
+      expires_in: 86400,
+      needs_onboarding: false,
+    }),
+  ),
+
   http.get("*/api/v1/billing/invoices", ({ request }) => {
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
