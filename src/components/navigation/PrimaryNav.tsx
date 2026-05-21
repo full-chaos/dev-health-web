@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { BetaBadge } from "@/components/BetaBadge";
+import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
 
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -168,6 +169,8 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
               Observe patterns, drill into evidence.
             </p>
           </div>
+
+          <OrgSwitcher />
 
           <nav className="mt-4 space-y-4 text-sm">
             {navGroups.map((group) => (
