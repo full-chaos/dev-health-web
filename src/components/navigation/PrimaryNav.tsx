@@ -66,6 +66,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Trends" },
       { id: "people", label: "People", href: "/people", description: "Individual" },
+      { id: "cognitive-load", label: "Cognitive Load", href: "/cognitive-load", description: "Focus" },
       { id: "landscape", label: "Landscape", href: "/explore/landscape", description: "Quadrants" },
     ],
   },
@@ -77,6 +78,7 @@ const navGroups: NavGroup[] = [
       { id: "capacity-planning", label: "Capacity Planning", href: "/capacity-planning", description: "Forecast" },
       { id: "code", label: "Code", href: "/code", description: "Ownership" },
       { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
+      { id: "cognitive-load", label: "Cognitive Load", href: "/cognitive-load", description: "Focus" },
       { id: "security", label: "Security", href: "/security", description: "Alerts" },
     ],
   },
