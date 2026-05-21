@@ -6,7 +6,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { TeamPicker } from "@/components/operating-review/TeamPicker";
-import { getCurrentOrg } from "@/lib/admin/server";
+import { auth } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { CATALOG_VALUES_QUERY } from "@/lib/graphql/queries";
@@ -35,16 +35,21 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
   const teamId = singleParam(params.team) ?? firstTeamFromFilters(filters);
   const weekStart = normalizeWeekStart(singleParam(params.week));
 
-  const [health, orgResult] = await Promise.all([
+  const [health, session] = await Promise.all([
     checkApiHealth(),
-    getCurrentOrg().catch(() => ({ data: undefined })),
+    auth(),
   ]);
 
   if (!health.ok) {
     return <ServiceUnavailable />;
   }
 
-  const orgId = orgResult.data?.id;
+  // CHAOS-1751: read orgId from the NextAuth session JWT directly.
+  // Previously we called getCurrentOrg() which hits /api/v1/admin/orgs/{id}
+  // (an admin-only endpoint). For non-superusers it returns an error, the
+  // `.catch` collapsed it to `{ data: undefined }`, and the catalog query
+  // below was silently skipped — leaving TeamPicker permanently empty.
+  const orgId = session?.user?.org_id ?? undefined;
   const [review, teamsResult] = await Promise.all([
     orgId && teamId
       ? fetchOrNull(
