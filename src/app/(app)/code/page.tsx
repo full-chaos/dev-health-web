@@ -7,6 +7,7 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { getBusFactorData } from "@/lib/api/code";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
 import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
@@ -43,38 +44,40 @@ export default async function CodePage({ searchParams }: CodePageProps) {
         : "org";
 
   // Run health check in parallel with all data fetches to eliminate the waterfall.
-  const [health, home, churnExplain, hotspotHeatmap, churnThroughput] = await Promise.all([
-    checkApiHealth(),
-    fetchOrNull(getHomeData(filters), "code/home-data"),
-    fetchOrNull(
-      getExplainData({ metric: "churn", filters }),
-      "code/explain-churn"
-    ),
-    fetchOrNull(
-      getHeatmap({
-        type: "risk",
-        metric: "hotspot_risk",
-        scope_type: filters.scope.level,
-        scope_id: scopeId,
-        range_days: filters.time.range_days,
-        start_date: filters.time.start_date,
-        end_date: filters.time.end_date,
-      }),
-      "code/hotspot-heatmap"
-    ),
-    fetchOrNull(
-      getQuadrant({
-        type: "churn_throughput",
-        scope_type: quadrantScope,
-        scope_id: scopeId,
-        range_days: filters.time.range_days,
-        bucket: "week",
-        start_date: filters.time.start_date,
-        end_date: filters.time.end_date,
-      }),
-      "code/churn-throughput-quadrant"
-    ),
-  ]);
+  const [health, home, churnExplain, hotspotHeatmap, churnThroughput, busFactor] =
+    await Promise.all([
+      checkApiHealth(),
+      fetchOrNull(getHomeData(filters), "code/home-data"),
+      fetchOrNull(
+        getExplainData({ metric: "churn", filters }),
+        "code/explain-churn"
+      ),
+      fetchOrNull(
+        getHeatmap({
+          type: "risk",
+          metric: "hotspot_risk",
+          scope_type: filters.scope.level,
+          scope_id: scopeId,
+          range_days: filters.time.range_days,
+          start_date: filters.time.start_date,
+          end_date: filters.time.end_date,
+        }),
+        "code/hotspot-heatmap"
+      ),
+      fetchOrNull(
+        getQuadrant({
+          type: "churn_throughput",
+          scope_type: quadrantScope,
+          scope_id: scopeId,
+          range_days: filters.time.range_days,
+          bucket: "week",
+          start_date: filters.time.start_date,
+          end_date: filters.time.end_date,
+        }),
+        "code/churn-throughput-quadrant"
+      ),
+      fetchOrNull(getBusFactorData(filters), "code/bus-factor"),
+    ]);
 
   if (!health.ok) {
     return <ServiceUnavailable />;
@@ -85,6 +88,13 @@ export default async function CodePage({ searchParams }: CodePageProps) {
 
   const churnMetric = getMetric(deltas, "churn");
   const hotspots = (churnExplain?.contributors ?? []).slice(0, 6);
+  const hasBusFactorEvidence = (busFactor?.evidenceSampleCount ?? 0) > 0;
+  const topMaintainers = (busFactor?.topMaintainers ?? []).slice(0, 5);
+  const riskyRepos = (busFactor?.repos ?? [])
+    .toSorted(
+      (left, right) => left.value - right.value || left.repoName.localeCompare(right.repoName)
+    )
+    .slice(0, 10);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -182,7 +192,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Hotspots</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
+                  href={buildExploreUrl({ metric: "ownership", filters, role: activeRole })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Evidence
@@ -229,13 +239,90 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 </Link>
               </div>
               <p className="mt-3 text-sm text-(--ink-muted)">
-                When ownership patterns are available, this view shows single-maintainer concentration.
+                Small values suggest fewer people account for most recent code churn.
               </p>
-              <div className="mt-4 space-y-2 text-sm">
-                <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-(--ink-muted)">
-                  Ownership metadata is required to show bus factor detail.
+              {hasBusFactorEvidence ? (
+                <div className="mt-4 space-y-4 text-sm">
+                  <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                      Scope-wide bus factor
+                    </p>
+                    <p className="mt-2 font-(--font-display) text-4xl">
+                      {busFactor?.value ?? 0}
+                    </p>
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                      {busFactor?.evidenceSampleCount ?? 0} file-change samples
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                      Maintainer concentration
+                    </h3>
+                    <div className="mt-2 space-y-2">
+                      {topMaintainers.map((maintainer) => (
+                        <div
+                          key={maintainer.author}
+                          className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                        >
+                          <span className="truncate pr-4">{maintainer.author}</span>
+                          <span className="shrink-0 text-xs text-(--ink-muted)">
+                            {maintainer.sharePercent.toFixed(1)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {riskyRepos.length ? (
+                    <div>
+                      <h3 className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                        Repository detail
+                      </h3>
+                      <div className="mt-2 space-y-2">
+                        {riskyRepos.map((repo) => (
+                          <div
+                            key={repo.repoId}
+                            className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-medium">{repo.repoName}</span>
+                              <span className="rounded-full bg-(--accent-soft) px-2 py-1 text-xs text-(--accent)">
+                                BF {repo.value}
+                              </span>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {repo.topMaintainers.length ? (
+                                repo.topMaintainers.slice(0, 3).map((maintainer) => (
+                                  <span
+                                    key={`${repo.repoId}-${maintainer.author}`}
+                                    className="rounded-full border border-(--card-stroke) px-2 py-1 text-xs text-(--ink-muted)"
+                                  >
+                                    {maintainer.author} · {maintainer.sharePercent.toFixed(1)}%
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs text-(--ink-muted)">
+                                  No maintainer evidence
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-xs text-(--ink-muted)">
+                              {repo.evidenceSampleCount} samples
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              </div>
+              ) : (
+                <div className="mt-4 space-y-2 text-sm">
+                  <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-(--ink-muted)">
+                    Ownership metadata not yet available for this scope.
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         </main>

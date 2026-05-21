@@ -77,6 +77,34 @@ query CatalogValues($orgId: String!, $dimension: DimensionInput!) {
 }
 `;
 
+export const BUS_FACTOR_QUERY = `
+query BusFactor($orgId: String!, $scope: BusFactorScopeInput = null) {
+  busFactor(orgId: $orgId, scope: $scope) {
+    orgId
+    scope {
+      repoId
+      teamId
+    }
+    value
+    evidenceSampleCount
+    topMaintainers {
+      author
+      sharePercent
+    }
+    repos {
+      repoId
+      repoName
+      value
+      evidenceSampleCount
+      topMaintainers {
+        author
+        sharePercent
+      }
+    }
+  }
+}
+`;
+
 // Combined query for investment view (breakdowns + sankey)
 export const INVESTMENT_FULL_QUERY = `
 query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
