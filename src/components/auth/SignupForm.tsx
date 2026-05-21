@@ -137,11 +137,11 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
         />
         <span className="text-sm text-[var(--foreground)]">
           I agree to the{" "}
-          <a href="/terms" className="text-[var(--accent)] hover:underline">
+          <a href="/marketing/terms" className="text-[var(--accent)] hover:underline">
             Terms of Service
           </a>{" "}
           and{" "}
-          <a href="/privacy" className="text-[var(--accent)] hover:underline">
+          <a href="/marketing/privacy" className="text-[var(--accent)] hover:underline">
             Privacy Policy
           </a>
         </span>

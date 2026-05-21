@@ -104,7 +104,7 @@ export async function createBillingPlan(data: BillingPlanUpsert): Promise<Action
     }
 
     const plan = (await res.json()) as BillingPlanRecord;
-    revalidatePath("/pricing");
+    revalidatePath("/marketing/pricing");
     return { data: plan };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
@@ -136,7 +136,7 @@ export async function updateBillingPlan(
     }
 
     const plan = (await res.json()) as BillingPlanRecord;
-    revalidatePath("/pricing");
+    revalidatePath("/marketing/pricing");
     return { data: plan };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
@@ -163,7 +163,7 @@ export async function deleteBillingPlan(planId: string): Promise<ActionResult<{ 
     }
 
     const result = (await res.json()) as { deleted: boolean };
-    revalidatePath("/pricing");
+    revalidatePath("/marketing/pricing");
     return { data: result };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
@@ -190,7 +190,7 @@ export async function syncBillingPlanToStripe(planId: string): Promise<ActionRes
     }
 
     const plan = (await res.json()) as BillingPlanRecord;
-    revalidatePath("/pricing");
+    revalidatePath("/marketing/pricing");
     return { data: plan };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Unknown error" };
@@ -202,7 +202,7 @@ export async function pullPlansFromStripe(): Promise<ActionResult<PullStripeResu
     apiRequest<PullStripeResult>("/api/v1/billing/plans/pull-stripe", { method: "POST" })
   );
   if (!result.error) {
-    revalidatePath("/pricing");
+    revalidatePath("/marketing/pricing");
   }
   return result;
 }

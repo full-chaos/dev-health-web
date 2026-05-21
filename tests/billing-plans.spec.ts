@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("pricing page renders plans from billing API", async ({ page }) => {
-  await page.goto("/pricing");
+  await page.goto("/marketing/pricing");
 
   await expect(page.getByRole("heading", { name: /simple, transparent pricing/i })).toBeVisible();
   // Team tier card is visible with dynamic price from mock API ($49 = 4900 cents)

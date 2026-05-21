@@ -56,6 +56,15 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/_next/static/chunk.js")).toBe(true);
     expect(isPublicPath("/api/auth/callback/github")).toBe(true);
     expect(isPublicPath("/api/v1/auth/session")).toBe(true);
+    // marketing subroutes are public (buyer landings, pricing, privacy, terms, hub)
+    expect(isPublicPath("/marketing")).toBe(true);
+    expect(isPublicPath("/marketing/pricing")).toBe(true);
+    expect(isPublicPath("/marketing/privacy")).toBe(true);
+    expect(isPublicPath("/marketing/terms")).toBe(true);
+    expect(isPublicPath("/marketing/vp-engineering")).toBe(true);
+    expect(isPublicPath("/marketing/platform-devex")).toBe(true);
+    expect(isPublicPath("/marketing/engineering-manager")).toBe(true);
+    expect(isPublicPath("/marketing/cto-architecture")).toBe(true);
   });
 });
 
