@@ -132,18 +132,18 @@ describe("AIDrilldownModal", () => {
       data: {
         orgId: "org-test",
         rootType: "PR",
-        rootId: "11111111-1111-1111-1111-111111111111#42",
+        rootId: "11111111-1111-1111-1111-111111111111:42",
         partial: false,
         dataAvailable: true,
         nodes: [
-          { nodeType: "pr", nodeId: "11111111-1111-1111-1111-111111111111#42" },
+          { nodeType: "pr", nodeId: "11111111-1111-1111-1111-111111111111:42" },
           { nodeType: "ai_workflow_run", nodeId: "run-1" },
         ],
         edges: [
           {
             edgeId: "edge-1",
             sourceType: "pr",
-            sourceId: "11111111-1111-1111-1111-111111111111#42",
+            sourceId: "11111111-1111-1111-1111-111111111111:42",
             targetType: "ai_workflow_run",
             targetId: "run-1",
             edgeType: "has_ai_workflow",
@@ -163,7 +163,7 @@ describe("AIDrilldownModal", () => {
     await userEvent.click(within(row).getByText("Add feature flag"));
 
     const lastCall = mockUseDrilldown.mock.calls.at(-1);
-    expect(lastCall?.[0]).toBe("11111111-1111-1111-1111-111111111111#42");
+    expect(lastCall?.[0]).toBe("11111111-1111-1111-1111-111111111111:42");
 
     expect(screen.getByTestId("ai-drilldown-evidence")).toBeInTheDocument();
     expect(screen.getByText(/has_ai_workflow/i)).toBeInTheDocument();
