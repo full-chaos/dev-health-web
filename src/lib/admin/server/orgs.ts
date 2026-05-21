@@ -21,7 +21,38 @@ export async function getCurrentOrg(): Promise<ActionResult<Organization>> {
     if (!orgId) {
       throw new AdminApiError(400, "Bad Request", "No organization ID in session");
     }
-    return adminApi.orgs.get(orgId, token, orgId);
+    const baseUrl = (await import("@/lib/origin")).getBackendUrl();
+    const response = await fetch(`${baseUrl}/api/v1/orgs/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Org-Id": orgId,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      let detail: string | undefined;
+      try {
+        const errorData = await response.json();
+        detail = errorData.detail || errorData.message;
+      } catch {
+        detail = undefined;
+      }
+      throw new AdminApiError(response.status, response.statusText, detail);
+    }
+
+    const org = (await response.json()) as Partial<Organization>;
+    return {
+      id: String(org.id),
+      slug: String(org.slug),
+      name: String(org.name),
+      description: org.description ?? null,
+      tier: String(org.tier ?? "community"),
+      settings: org.settings ?? {},
+      is_active: org.is_active ?? true,
+      created_at: org.created_at ?? "",
+      updated_at: org.updated_at ?? "",
+    } satisfies Organization;
   });
 }
 

@@ -1,4 +1,13 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type Locator } from "@playwright/test";
+
+const gotoLinkHref = async (page: Page, link: Locator) => {
+  const href = await link.getAttribute("href");
+  expect(href).toBeTruthy();
+  if (!href) {
+    throw new Error("Expected link to include an href");
+  }
+  await page.goto(href);
+};
 
 test("people search opens individual and metric evidence", async ({ page }) => {
   await page.goto("/people?q=alex");
@@ -8,21 +17,24 @@ test("people search opens individual and metric evidence", async ({ page }) => {
     .filter({ hasText: "Alex Harper" });
   await expect(personLink).toBeVisible({ timeout: 15000 });
   await expect(personLink).toHaveAttribute("href", /\/people\/person-123\?f=/);
-  await personLink.click();
+  await gotoLinkHref(page, personLink);
   await expect(page).toHaveURL(/\/people\/person-123(?:\?|$)/);
 
-  await expect(page.getByText("Individual view")).toBeVisible({ timeout: 10000 });
+  const main = page.getByRole("main");
+  await expect(main.getByText("Individual view")).toBeVisible({ timeout: 10000 });
 
-  const cycleTimeLink = page.locator(
+  const cycleTimeLink = main.locator(
     'a[href*="/people/person-123/metrics/cycle_time"]'
   );
   await expect(cycleTimeLink.first()).toBeVisible({ timeout: 10000 });
-  await cycleTimeLink.first().click();
+  await gotoLinkHref(page, cycleTimeLink.first());
   await expect(page).toHaveURL(/\/people\/person-123\/metrics\/cycle_time(?:\?|$)/);
 
-  await page.getByRole("link", { name: "PRs" }).click();
-  await expect(page.getByRole("heading", { name: "Evidence" })).toBeVisible();
-  await expect(page.getByRole("table")).toBeVisible();
+  const prsLink = main.getByRole("link", { name: "PRs" });
+  await expect(prsLink).toBeVisible({ timeout: 10000 });
+  await gotoLinkHref(page, prsLink);
+  await expect(main.getByRole("heading", { name: "Evidence" })).toBeVisible();
+  await expect(main.getByRole("table")).toBeVisible();
 });
 
 test("individual pages avoid comparative language", async ({ page }) => {

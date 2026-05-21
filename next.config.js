@@ -2,9 +2,11 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withSentryConfig } = require("@sentry/nextjs");
 
+const isDemoExportBuild = process.env.DEMO_EXPORT === "true" && process.env.NODE_ENV === "production";
+
 /** @type {import("next").NextConfig} */
 const nextConfig = {
-  ...(process.env.DEMO_EXPORT === "true"
+  ...(isDemoExportBuild
     ? {
         output: "export",
         trailingSlash: true,
