@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 import { encodeAIFilterParam } from "../src/lib/filters/ai";
+import { ensureGroupExpanded } from "./helpers/sidebar";
+
 
 /**
  * CHAOS-1588 / CHAOS-1767: AI workflow navigation e2e.
@@ -31,19 +33,6 @@ const aiRiskLink = (page: Page) =>
 const aiAutomationsLink = (page: Page) =>
   page.locator('a[href^="/ai/automations"]').first();
 
-// CHAOS-1760: sidebar groups other than the active-route group are
-// collapsed by default. Expand the destination group before clicking
-// a cross-group nav link. No-op when the group is already expanded.
-async function ensureGroupExpanded(page: Page, label: string) {
-  const button = page.getByRole("button", { name: label, exact: true });
-  const chevron = button.locator("svg").first();
-  const cls = (await chevron.getAttribute("class")) ?? "";
-  if (cls.includes("-rotate-90")) {
-    await button.click();
-    // Wait for the max-h / opacity transition (300ms in CSS).
-    await page.waitForTimeout(350);
-  }
-}
 
 test.describe("AI workflow primary navigation", () => {
   test("nav links route between the three AI views", async ({ page }) => {
