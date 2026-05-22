@@ -2,7 +2,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 
 export function selectedOperatingReviewTeamIds(
   teamParam: string | string[] | undefined,
-  filters: MetricFilter
+  filters: MetricFilter,
 ): string[] {
   const explicitTeamIds = uniqueNonEmptyValues(teamParam);
   if (explicitTeamIds.length) {

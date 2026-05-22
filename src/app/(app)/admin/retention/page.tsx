@@ -30,7 +30,11 @@ export default function RetentionPolicyPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [executingId, setExecutingId] = useState<string | null>(null);
-  const [executeResult, setExecuteResult] = useState<{ id: string; count: number; confirming: boolean } | null>(null);
+  const [executeResult, setExecuteResult] = useState<{
+    id: string;
+    count: number;
+    confirming: boolean;
+  } | null>(null);
 
   const fetchPolicies = useCallback(async () => {
     setLoading(true);
@@ -133,10 +137,7 @@ export default function RetentionPolicyPage() {
   };
 
   return (
-    <UpgradeGate
-      feature="retention_policies"
-      requiredTier="enterprise"
-    >
+    <UpgradeGate feature="retention_policies" requiredTier="enterprise">
       <div>
         <AdminHeader
           title="Data Retention"
@@ -277,7 +278,9 @@ export default function RetentionPolicyPage() {
                         <td className="px-4 py-3 text-(--ink-muted)">
                           {policy.last_run_deleted_count ?? "--"}
                         </td>
-                        <td className="px-4 py-3 text-(--ink-muted)">{formatDate(policy.next_run_at)}</td>
+                        <td className="px-4 py-3 text-(--ink-muted)">
+                          {formatDate(policy.next_run_at)}
+                        </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex flex-wrap items-center justify-end gap-2">
                             <button

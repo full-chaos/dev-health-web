@@ -32,17 +32,11 @@ export const errorExchange = mapExchange({
     const label = operationLabel(operation);
 
     if (error.networkError) {
-      logger.error(
-        { err: error.networkError, operation: label },
-        "urql: network error"
-      );
+      logger.error({ err: error.networkError, operation: label }, "urql: network error");
     }
 
     if (error.graphQLErrors?.length) {
-      logger.warn(
-        { graphQLErrors: error.graphQLErrors, operation: label },
-        "urql: GraphQL errors"
-      );
+      logger.warn({ graphQLErrors: error.graphQLErrors, operation: label }, "urql: GraphQL errors");
     }
   },
 });
@@ -75,12 +69,12 @@ export const timingExchange = mapExchange({
     if (durationMs > SLOW_THRESHOLD_MS) {
       logger.warn(
         { operation: label, durationMs: Math.round(durationMs) },
-        "urql: slow GraphQL operation"
+        "urql: slow GraphQL operation",
       );
     } else {
       logger.debug(
         { operation: label, durationMs: Math.round(durationMs) },
-        "urql: operation timing"
+        "urql: operation timing",
       );
     }
 

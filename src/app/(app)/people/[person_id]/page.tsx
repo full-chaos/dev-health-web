@@ -56,9 +56,7 @@ const toTitleCase = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
-const collectStats = (
-  input?: Record<string, number> | PersonCollaborationStat[]
-) => {
+const collectStats = (input?: Record<string, number> | PersonCollaborationStat[]) => {
   if (!input) {
     return [];
   }
@@ -94,11 +92,17 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
 
   const summary = await fetchOrNull(
     getPersonSummary({ personId, range_days, compare_days }),
-    `people/${personId}/summary`
+    `people/${personId}/summary`,
   );
   const quadrant = await fetchOrNull(
-    getQuadrant({ type: "churn_throughput", scope_type: "person", scope_id: personId, range_days, bucket: "week" }),
-    `people/${personId}/quadrant`
+    getQuadrant({
+      type: "churn_throughput",
+      scope_type: "person",
+      scope_id: personId,
+      range_days,
+      bucket: "week",
+    }),
+    `people/${personId}/quadrant`,
   );
 
   const deltas = summary?.deltas?.length ? summary.deltas : fallbackPersonDeltas;
@@ -112,10 +116,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
     ...collectStats(collaboration?.review_load),
     ...collectStats(collaboration?.handoff_points),
   ];
-  const flowStages =
-    flowBreakdown?.stages ??
-    flowBreakdown?.by_stage ??
-    [];
+  const flowStages = flowBreakdown?.stages ?? flowBreakdown?.by_stage ?? [];
   const workMixData =
     workMix?.categories?.map((category) => ({
       name: category.name,
@@ -128,8 +129,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
     typeof identityCoverageRaw === "number" && identityCoverageRaw <= 1
       ? identityCoverageRaw * 100
       : identityCoverageRaw;
-  const coverageLow =
-    typeof identityCoverage === "number" ? identityCoverage < 70 : false;
+  const coverageLow = typeof identityCoverage === "number" ? identityCoverage < 70 : false;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -144,12 +144,8 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               <h1 className="mt-2 font-(--font-display) text-3xl">
                 {person?.display_name ?? "Individual metrics"}
               </h1>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                This view is scoped to one person.
-              </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Select a metric to investigate.
-              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">This view is scoped to one person.</p>
+              <p className="mt-2 text-sm text-(--ink-muted)">Select a metric to investigate.</p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
                 {(person?.identities ?? []).map((identity) => (
                   <span
@@ -192,7 +188,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                 href={withRangeParams(
                   `/people/${personId}/metrics/${delta.metric}`,
                   range_days,
-                  compare_days
+                  compare_days,
                 )}
                 value={placeholderDeltas ? undefined : delta.value}
                 unit={delta.unit}
@@ -212,12 +208,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               relatedLinks={[
                 {
                   label: "Open landscapes",
-                  href: withRangeParams(
-                    "/explore/landscape",
-                    range_days,
-                    compare_days,
-                    {}
-                  ),
+                  href: withRangeParams("/explore/landscape", range_days, compare_days, {}),
                 },
               ]}
               emptyState="Quadrant landscape unavailable."
@@ -235,12 +226,11 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
                 {narrative.length ? (
                   narrative.map((item) => {
-                    const metric =
-                      getMetricFromEvidenceLink(item.evidence_link) ?? defaultMetric;
+                    const metric = getMetricFromEvidenceLink(item.evidence_link) ?? defaultMetric;
                     const href = withRangeParams(
                       `/people/${personId}/metrics/${metric}`,
                       range_days,
-                      compare_days
+                      compare_days,
                     );
                     return (
                       <Link
@@ -262,27 +252,25 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
 
             <div className="grid gap-4">
               <div
-                className={`rounded-3xl border border-(--card-stroke) p-5 text-sm ${coverageLow
+                className={`rounded-3xl border border-(--card-stroke) p-5 text-sm ${
+                  coverageLow
                     ? "bg-amber-50/80 text-amber-900"
                     : "bg-(--card-80) text-(--ink-muted)"
-                  }`}
+                }`}
               >
-                <p className="text-xs uppercase tracking-[0.15em]">
-                  Identity mapping
-                </p>
+                <p className="text-xs uppercase tracking-[0.15em]">Identity mapping</p>
                 <p className="mt-2 text-2xl font-semibold">
-                  {typeof identityCoverage === "number"
-                    ? formatPercent(identityCoverage)
-                    : "--"}
+                  {typeof identityCoverage === "number" ? formatPercent(identityCoverage) : "--"}
                 </p>
-                <p className="mt-2 text-xs">
-                  Attribution accuracy reflects linked accounts.
-                </p>
+                <p className="mt-2 text-xs">Attribution accuracy reflects linked accounts.</p>
               </div>
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
                 <div className="flex items-center justify-between">
                   <p className="text-xs uppercase tracking-[0.15em]">Freshness</p>
-                  <ClientTimestamp value={summary?.freshness.last_ingested_at} className="text-xs uppercase tracking-[0.2em]" />
+                  <ClientTimestamp
+                    value={summary?.freshness.last_ingested_at}
+                    className="text-xs uppercase tracking-[0.2em]"
+                  />
                 </div>
                 <div className="mt-3 grid gap-2 text-xs">
                   {summary?.freshness.sources ? (
@@ -292,9 +280,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                         className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                       >
                         <span className="uppercase tracking-[0.2em]">{key}</span>
-                        <span className="font-semibold text-foreground">
-                          {value}
-                        </span>
+                        <span className="font-semibold text-foreground">{value}</span>
                       </div>
                     ))
                   ) : (
@@ -390,9 +376,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                       className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                     >
                       <span>{stat.label}</span>
-                      <span className="text-xs text-(--ink-muted)">
-                        {formatNumber(stat.value)}
-                      </span>
+                      <span className="text-xs text-(--ink-muted)">{formatNumber(stat.value)}</span>
                     </div>
                   ))
                 ) : (
@@ -418,14 +402,12 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                   href={withRangeParams(
                     `/people/${personId}/metrics/${metric}`,
                     range_days,
-                    compare_days
+                    compare_days,
                   )}
                   className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-4 py-3 text-sm"
                 >
                   <span>{getMetricLabel(metric)}</span>
-                  <span className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-                    Open
-                  </span>
+                  <span className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">Open</span>
                 </Link>
               ))}
             </div>

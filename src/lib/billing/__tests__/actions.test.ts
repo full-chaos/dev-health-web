@@ -5,7 +5,13 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { getSubscription, getSubscriptions, createRefund, getRefunds, getInvoices } from "../actions";
+import {
+  getSubscription,
+  getSubscriptions,
+  createRefund,
+  getRefunds,
+  getInvoices,
+} from "../actions";
 import { mockAuth } from "@/test/mocks/auth";
 
 describe("getSubscription", () => {
@@ -47,9 +53,9 @@ describe("getSubscription", () => {
   it("returns error when API returns non-ok", async () => {
     mockAuth();
 
-    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ detail: "Not found" }), { status: 404 }),
-    );
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ detail: "Not found" }), { status: 404 }));
 
     const result = await getSubscription();
     expect(result.error).toBeDefined();
@@ -99,9 +105,7 @@ describe("getSubscription", () => {
   it("handles fetch errors gracefully", async () => {
     mockAuth();
 
-    const fetchSpy = vi.spyOn(global, "fetch").mockRejectedValue(
-      new Error("Network error"),
-    );
+    const fetchSpy = vi.spyOn(global, "fetch").mockRejectedValue(new Error("Network error"));
 
     const result = await getSubscription();
     expect(result.error).toBeDefined();
@@ -327,7 +331,9 @@ describe("refund actions", () => {
 
     const fetchSpy = vi
       .spyOn(global, "fetch")
-      .mockResolvedValue(new Response(JSON.stringify({ detail: "Invoice not found" }), { status: 404 }));
+      .mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Invoice not found" }), { status: 404 }),
+      );
 
     const result = await createRefund({ invoiceId: "invoice-missing" });
 

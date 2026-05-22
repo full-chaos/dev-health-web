@@ -43,7 +43,7 @@ describe("POST /api/feedback CSRF origin validation", () => {
 
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(JSON.stringify(mockLinearResponse), { status: 200 }))
+      vi.fn(async () => new Response(JSON.stringify(mockLinearResponse), { status: 200 })),
     );
   });
 

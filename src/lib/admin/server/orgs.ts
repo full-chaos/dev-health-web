@@ -57,7 +57,7 @@ export async function getCurrentOrg(): Promise<ActionResult<Organization>> {
 }
 
 export async function updateCurrentOrg(
-  data: OrganizationUpdate
+  data: OrganizationUpdate,
 ): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -72,9 +72,10 @@ export async function updateCurrentOrg(
  * Self-service org profile update — calls /api/v1/orgs/me (non-admin endpoint)
  * so that org owners/admins can update name & description without superuser.
  */
-export async function updateOrgProfile(
-  data: { name?: string; description?: string | null }
-): Promise<ActionResult<Organization>> {
+export async function updateOrgProfile(data: {
+  name?: string;
+  description?: string | null;
+}): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     if (!orgId) {
@@ -119,11 +120,13 @@ export async function deleteCurrentOrg(): Promise<ActionResult<void>> {
 
 // ---- Impersonation ----
 
-export async function startImpersonation(targetUserId: string): Promise<ActionResult<{
-  status: string;
-  target_user: { id: string; email: string; org_id: string; role: string };
-  expires_at: string;
-}>> {
+export async function startImpersonation(targetUserId: string): Promise<
+  ActionResult<{
+    status: string;
+    target_user: { id: string; email: string; org_id: string; role: string };
+    expires_at: string;
+  }>
+> {
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();
     return adminApi.impersonation.start(targetUserId, token);
@@ -137,13 +140,15 @@ export async function stopImpersonation(): Promise<ActionResult<{ status: string
   });
 }
 
-export async function getImpersonationStatus(): Promise<ActionResult<{
-  is_impersonating: boolean;
-  target_user_id: string | null;
-  target_email: string | null;
-  target_org_id: string | null;
-  expires_at: string | null;
-}>> {
+export async function getImpersonationStatus(): Promise<
+  ActionResult<{
+    is_impersonating: boolean;
+    target_user_id: string | null;
+    target_email: string | null;
+    target_org_id: string | null;
+    expires_at: string | null;
+  }>
+> {
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();
     return adminApi.impersonation.status(token);
@@ -166,14 +171,19 @@ export async function getOrganization(orgId: string): Promise<ActionResult<Organ
   });
 }
 
-export async function createOrganization(data: OrganizationCreate): Promise<ActionResult<Organization>> {
+export async function createOrganization(
+  data: OrganizationCreate,
+): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();
     return adminApi.orgs.create(data, token);
   });
 }
 
-export async function updateOrganization(orgId: string, data: OrganizationUpdate): Promise<ActionResult<Organization>> {
+export async function updateOrganization(
+  orgId: string,
+  data: OrganizationUpdate,
+): Promise<ActionResult<Organization>> {
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();
     return adminApi.orgs.update(orgId, data, token);
@@ -206,7 +216,7 @@ export async function getPlatformStats(): Promise<ActionResult<PlatformStats>> {
 export async function listPlatformAuditLogs(
   filters?: AuditLogFilter,
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<ActionResult<AuditLogListResponse>> {
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();
@@ -217,7 +227,7 @@ export async function listPlatformAuditLogs(
 export async function listAuditLogs(
   filters?: AuditLogFilter,
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<ActionResult<AuditLogListResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -225,7 +235,9 @@ export async function listAuditLogs(
   });
 }
 
-export async function getAuditLog(id: string): Promise<ActionResult<AuditLogListResponse["items"][0]>> {
+export async function getAuditLog(
+  id: string,
+): Promise<ActionResult<AuditLogListResponse["items"][0]>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     return adminApi.audit.get(id, token, orgId);

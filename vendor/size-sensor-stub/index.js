@@ -9,8 +9,7 @@
  * unavailable).
  */
 
-var observers =
-  typeof WeakMap !== "undefined" ? new WeakMap() : null;
+var observers = typeof WeakMap !== "undefined" ? new WeakMap() : null;
 
 function bind(element, callback) {
   if (!element || typeof callback !== "function") return function () {};

@@ -4,7 +4,7 @@ export class AdminApiError extends Error {
   constructor(
     public status: number,
     public statusText: string,
-    public detail?: string
+    public detail?: string,
   ) {
     super(detail || `${status} ${statusText}`);
     this.name = "AdminApiError";
@@ -31,7 +31,7 @@ export async function request<T>(
   path: string,
   options: RequestInit = {},
   accessToken?: string,
-  orgId?: string
+  orgId?: string,
 ): Promise<T> {
   const baseUrl = getBackendUrl();
   const url = `${baseUrl}/api/v1/admin${path}`;
@@ -76,7 +76,7 @@ export async function licensingRequest<T>(
   path: string,
   options: RequestInit = {},
   accessToken?: string,
-  orgId?: string
+  orgId?: string,
 ): Promise<T> {
   const baseUrl = getBackendUrl();
   const url = `${baseUrl}/api/v1/licensing${path}`;

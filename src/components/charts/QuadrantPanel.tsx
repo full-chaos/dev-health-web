@@ -1,19 +1,10 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
-import {
-  getQuadrantDefinition,
-  getZoneOverlay,
-} from "@/lib/quadrantZones";
+import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
 import { trackTelemetryEvent } from "@/lib/telemetry";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
@@ -21,11 +12,9 @@ import { QuadrantChart } from "./QuadrantChart";
 import { InvestigationPanel } from "./InvestigationPanel";
 
 const ANNOTATION_COLOR = "rgba(148, 163, 184, 0.2)";
-const overlayKeyFor = (type: "zone" | "annotation", id: string | number) =>
-  `${type}:${id}`;
+const overlayKeyFor = (type: "zone" | "annotation", id: string | number) => `${type}:${id}`;
 
-const rgbaPattern =
-  /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
+const rgbaPattern = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
 const hexPattern = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 const clampAlpha = (alpha: number) => Math.min(1, Math.max(0, alpha));
@@ -49,7 +38,12 @@ const withAlpha = (color: string, alpha: number) => {
   }
   const hex = hexMatch[1];
   const normalized =
-    hex.length === 3 ? hex.split("").map((item) => item + item).join("") : hex;
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((item) => item + item)
+          .join("")
+      : hex;
   const value = Number.parseInt(normalized, 16);
   if (Number.isNaN(value)) {
     return color;
@@ -60,13 +54,12 @@ const withAlpha = (color: string, alpha: number) => {
   return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
 };
 
-const formatAnnotationType = (label: string) =>
-  label.replace(/_/g, " ").trim();
+const formatAnnotationType = (label: string) => label.replace(/_/g, " ").trim();
 
 const buildLegendSwatchStyle = (color: string): CSSProperties => ({
   background: `radial-gradient(circle at 35% 35%, ${withAlpha(
     color,
-    0.4
+    0.4,
   )}, ${withAlpha(color, 0.14)} 60%, rgba(0, 0, 0, 0) 100%)`,
   borderColor: withAlpha(color, 0.45),
   boxShadow: `0 0 12px ${withAlpha(color, 0.3)}`,
@@ -101,8 +94,7 @@ export function QuadrantPanel({
   chartHeight = 340,
   showViewGuide = true,
 }: QuadrantPanelProps) {
-  const scopeType =
-    filters.scope.level === "developer" ? "person" : filters.scope.level;
+  const scopeType = filters.scope.level === "developer" ? "person" : filters.scope.level;
   const isPersonScope = scopeType === "person";
   const scopeIds = filters.scope.ids;
   const focusEntityIds = useMemo(() => {
@@ -117,9 +109,7 @@ export function QuadrantPanel({
     if (!focusId) {
       return { ...data, points: [] };
     }
-    const points = (data.points ?? []).filter(
-      (point) => point.entity_id === focusId
-    );
+    const points = (data.points ?? []).filter((point) => point.entity_id === focusId);
     return { ...data, points };
   }, [data, focusEntityIds, isPersonScope]);
   const [selectedPoint, setSelectedPoint] = useState<QuadrantPoint | null>(null);
@@ -139,25 +129,19 @@ export function QuadrantPanel({
   }, [data, isPersonScope, scopedData]);
   const quadrantDefinition = useMemo(
     () => (scopedData ? getQuadrantDefinition(scopedData.axes) : null),
-    [scopedData]
+    [scopedData],
   );
-  const hasInterpretationOverlay = Boolean(
-    zoneOverlay || scopedData?.annotations?.length
-  );
+  const hasInterpretationOverlay = Boolean(zoneOverlay || scopedData?.annotations?.length);
   const dataKey = useMemo(() => {
     if (!scopedData?.points?.length) {
       return null;
     }
     const pointsKey = scopedData.points
-      .map(
-        (point) =>
-          `${point.entity_id}:${point.window_start}:${point.window_end}`
-      )
+      .map((point) => `${point.entity_id}:${point.window_start}:${point.window_end}`)
       .join("|");
     return `${scopedData.axes.x.metric}:${scopedData.axes.y.metric}:${pointsKey}`;
   }, [scopedData]);
-  const activeSelectedPoint =
-    dataKey && selectedPointKey === dataKey ? selectedPoint : null;
+  const activeSelectedPoint = dataKey && selectedPointKey === dataKey ? selectedPoint : null;
   const zoneLegendItems = useMemo(() => {
     if (!showZoneOverlay || !scopedData) {
       return [];
@@ -171,7 +155,7 @@ export function QuadrantPanel({
           description: zone.description || "Common operating mode.",
           color: zone.color,
           overlayKey: overlayKeyFor("zone", zone.id),
-        }))
+        })),
       );
     }
     if (scopedData.annotations?.length) {
@@ -179,12 +163,10 @@ export function QuadrantPanel({
         ...scopedData.annotations.map((annotation, index) => ({
           key: `annotation-${index}`,
           label: annotation.description,
-          description: annotation.type
-            ? formatAnnotationType(annotation.type)
-            : "Annotation",
+          description: annotation.type ? formatAnnotationType(annotation.type) : "Annotation",
           color: ANNOTATION_COLOR,
           overlayKey: overlayKeyFor("annotation", index),
-        }))
+        })),
       );
     }
     return items;
@@ -229,7 +211,6 @@ export function QuadrantPanel({
     zoneIgnoredLogged.current = true;
   }, [activeSelectedPoint, axesKey, scopeType, showZoneOverlay, zoneOverlay]);
 
-
   useEffect(() => {
     if (!isGuideOpen) {
       return;
@@ -251,14 +232,11 @@ export function QuadrantPanel({
     );
   }
 
-  const pointMeaning =
-    "A dot represents an observed system state over the selected window.";
+  const pointMeaning = "A dot represents an observed system state over the selected window.";
   const positionMeaning = "Position reflects operating mode, not evaluation.";
   const influenceNarrative = quadrantDefinition?.influence;
   const influenceLens = influenceNarrative?.lens ?? "Operating mode";
-  const influenceFraming =
-    influenceNarrative?.framing ??
-    "Operating modes under paired pressures.";
+  const influenceFraming = influenceNarrative?.framing ?? "Operating modes under paired pressures.";
   const influenceNext =
     influenceNarrative?.next ??
     "Next investigation: heatmaps, flame diagrams, and metric explain views.";
@@ -266,7 +244,7 @@ export function QuadrantPanel({
   const legendLensLabel = influenceNarrative?.lens ?? null;
 
   const supplementalLinks = (relatedLinks ?? []).filter(
-    (link) => !link.label.toLowerCase().includes("heatmap")
+    (link) => !link.label.toLowerCase().includes("heatmap"),
   );
 
   const showZoneLegend = showZoneOverlay && zoneLegendItems.length > 0;
@@ -319,9 +297,7 @@ export function QuadrantPanel({
                 <p className="text-[10px] uppercase tracking-[0.15em] text-(--ink-muted)">
                   {infoTitle}
                 </p>
-                <p className="mt-2 text-sm text-foreground">
-                  Quadrant guide
-                </p>
+                <p className="mt-2 text-sm text-foreground">Quadrant guide</p>
               </div>
               <button
                 type="button"
@@ -375,10 +351,9 @@ export function QuadrantPanel({
       <div className="flex flex-col lg:flex-row gap-6 mt-6">
         <div className="flex-1 min-w-0 flex flex-col gap-6">
           <div
-            className={`grid w-full gap-4 lg:items-start ${showZoneLegend
-              ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]"
-              : "grid-cols-1"
-              }`}
+            className={`grid w-full gap-4 lg:items-start ${
+              showZoneLegend ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]" : "grid-cols-1"
+            }`}
           >
             <div className="min-w-0">
               <QuadrantChart
@@ -404,9 +379,7 @@ export function QuadrantPanel({
                   </span>
                 </div>
                 {legendLensLabel ? (
-                  <p className="mt-1 text-[11px] text-(--ink-muted)">
-                    {legendLensLabel}
-                  </p>
+                  <p className="mt-1 text-[11px] text-(--ink-muted)">{legendLensLabel}</p>
                 ) : null}
                 <div className="mt-3 space-y-3">
                   {zoneLegendItems.map((item) => {
@@ -419,17 +392,18 @@ export function QuadrantPanel({
                         onFocus={() => setHoveredOverlayKey(item.overlayKey)}
                         onBlur={() => setHoveredOverlayKey(null)}
                         tabIndex={0}
-                        className={`flex gap-3 rounded-xl border px-2 py-2 transition ${isActive
-                          ? "border-(--card-stroke) bg-(--card-70)"
-                          : "border-transparent"
-                          }`}
+                        className={`flex gap-3 rounded-xl border px-2 py-2 transition ${
+                          isActive ? "border-(--card-stroke) bg-(--card-70)" : "border-transparent"
+                        }`}
                       >
                         <span
                           className="mt-1 h-3 w-3 shrink-0 rounded-full border"
                           style={buildLegendSwatchStyle(item.color)}
                         />
                         <div className="min-w-0">
-                          <p className={`break-words font-semibold text-foreground ${isActive ? "text-xs" : "text-[11px]"}`}>
+                          <p
+                            className={`break-words font-semibold text-foreground ${isActive ? "text-xs" : "text-[11px]"}`}
+                          >
                             {item.label}
                           </p>
                           {isActive && (
@@ -510,7 +484,6 @@ export function QuadrantPanel({
           </aside>
         )}
       </div>
-
     </div>
   );
 }

@@ -12,7 +12,11 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatNumber } from "@/lib/formatters";
-import { getSortedSubcategories, getSortedThemes, normalizeInvestmentMix } from "@/lib/investmentMix";
+import {
+  getSortedSubcategories,
+  getSortedThemes,
+  normalizeInvestmentMix,
+} from "@/lib/investmentMix";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 
 type InvestmentPageProps = {
@@ -25,9 +29,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
   const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   // Run health check, org entitlements, and investment data in parallel.
   const [health, orgResult, data] = await Promise.all([
@@ -54,25 +56,15 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="work" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
-          <UpgradeGate
-            feature="investment_view"
-            requiredTier="team"
-            features={features}
-          >
+          <UpgradeGate feature="investment_view" requiredTier="team" features={features}>
             <header className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                  Investment
-                </p>
-                <h1 className="mt-2 font-(--font-display) text-3xl">
-                  Elapsed Work Allocation
-                </h1>
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Investment</p>
+                <h1 className="mt-2 font-(--font-display) text-3xl">Elapsed Work Allocation</h1>
                 <p className="mt-2 text-sm text-(--ink-muted)">
                   Effort and attention allocation over the selected window.
                 </p>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                  Select a segment to investigate.
-                </p>
+                <p className="mt-2 text-sm text-(--ink-muted)">Select a segment to investigate.</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
                 <Link
@@ -96,8 +88,8 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
               <span className="text-foreground font-semibold uppercase tracking-wider">
                 Perspective:
               </span>{" "}
-              Investment reflects effort and attention (not spend). Flow moves
-              left-to-right (Allocation &rarr; Streams &rarr; Items).
+              Investment reflects effort and attention (not spend). Flow moves left-to-right
+              (Allocation &rarr; Streams &rarr; Items).
             </div>
 
             <ContextStrip filters={filters} origin={activeOrigin} />
@@ -122,10 +114,17 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                   {themes.map((category) => (
                     <Link
                       key={category.key}
-                      href={withFilterParam(`/explore?metric=throughput&view=align&category=${category.key}`, filters)}
+                      href={withFilterParam(
+                        `/explore?metric=throughput&view=align&category=${category.key}`,
+                        filters,
+                      )}
                       className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                     >
-                      <span>{category.key.replace(/[_-]+/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase())}</span>
+                      <span>
+                        {category.key
+                          .replace(/[_-]+/g, " ")
+                          .replace(/\\b\\w/g, (c) => c.toUpperCase())}
+                      </span>
                       <span className="text-xs text-(--ink-muted)">
                         {formatNumber(category.value)} units
                       </span>
@@ -139,10 +138,19 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                   {subcategories.map((subtype) => (
                     <Link
                       key={subtype.key}
-                      href={withFilterParam(`/explore?metric=throughput&view=align&stream=${subtype.key}`, filters)}
+                      href={withFilterParam(
+                        `/explore?metric=throughput&view=align&stream=${subtype.key}`,
+                        filters,
+                      )}
                       className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                     >
-                      <span>{subtype.key.split(".", 2).join(" · ").replace(/[_-]+/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase())}</span>
+                      <span>
+                        {subtype.key
+                          .split(".", 2)
+                          .join(" · ")
+                          .replace(/[_-]+/g, " ")
+                          .replace(/\\b\\w/g, (c) => c.toUpperCase())}
+                      </span>
                       <span className="text-xs text-(--ink-muted)">
                         {formatNumber(subtype.value)} units
                       </span>
@@ -154,6 +162,6 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
           </UpgradeGate>
         </main>
       </div>
-    </div >
+    </div>
   );
 }

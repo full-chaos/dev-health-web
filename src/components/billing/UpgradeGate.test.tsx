@@ -29,7 +29,7 @@ describe("UpgradeGate", () => {
         features={{ advanced_insights: true }}
       >
         <p>Secret feature content</p>
-      </UpgradeGate>
+      </UpgradeGate>,
     );
 
     expect(screen.getByText("Secret feature content")).toBeInTheDocument();
@@ -44,25 +44,19 @@ describe("UpgradeGate", () => {
         features={{ advanced_insights: false }}
       >
         <p>Secret feature content</p>
-      </UpgradeGate>
+      </UpgradeGate>,
     );
 
     expect(screen.getByText(/team plan feature/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /unlock advanced insights/i })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Unlock advanced insights, team-level metrics/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Unlock advanced insights, team-level metrics/i)).toBeInTheDocument();
   });
 
   it("renders a link to /admin/settings with the required tier label", () => {
     renderWithToaster(
-      <UpgradeGate
-        feature="sso"
-        requiredTier="enterprise"
-        features={{ sso: false }}
-      >
+      <UpgradeGate feature="sso" requiredTier="enterprise" features={{ sso: false }}>
         <p>SSO settings</p>
-      </UpgradeGate>
+      </UpgradeGate>,
     );
 
     const link = screen.getByRole("link", { name: /upgrade to enterprise/i });
@@ -71,13 +65,9 @@ describe("UpgradeGate", () => {
 
   it("falls back to a generic description when the required tier has no TIER_FEATURES entry", () => {
     renderWithToaster(
-      <UpgradeGate
-        feature="some_feature"
-        requiredTier="phantom"
-        features={{ some_feature: false }}
-      >
+      <UpgradeGate feature="some_feature" requiredTier="phantom" features={{ some_feature: false }}>
         <p>child</p>
-      </UpgradeGate>
+      </UpgradeGate>,
     );
 
     expect(screen.getByText(/Upgrade to unlock this feature/i)).toBeInTheDocument();
@@ -87,7 +77,7 @@ describe("UpgradeGate", () => {
     renderWithToaster(
       <UpgradeGate feature="advanced_insights" requiredTier="team">
         <p>hidden</p>
-      </UpgradeGate>
+      </UpgradeGate>,
     );
 
     expect(screen.getByRole("heading", { name: /unlock advanced insights/i })).toBeInTheDocument();
@@ -101,7 +91,7 @@ describe("UpgradeGate", () => {
         features={{ advanced_insights: false }}
       >
         <p>hidden</p>
-      </UpgradeGate>
+      </UpgradeGate>,
     );
 
     expect(screen.getByText(/current plan/i)).toBeInTheDocument();

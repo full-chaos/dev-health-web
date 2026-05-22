@@ -16,8 +16,7 @@ const DEFAULT_DIRECTION: ChordDirection = "bilateral";
 const sumMatrix = (matrix: number[][]): number =>
   matrix.reduce((acc, row) => acc + row.reduce((a, v) => a + v, 0), 0);
 
-const cloneMatrix = (matrix: number[][]): number[][] =>
-  matrix.map((row) => row.slice());
+const cloneMatrix = (matrix: number[][]): number[][] => matrix.map((row) => row.slice());
 
 const zeroMatrix = (n: number): number[][] =>
   Array.from({ length: n }, () => Array.from({ length: n }, () => 0));
@@ -38,7 +37,7 @@ const zeroMatrix = (n: number): number[][] =>
  */
 export function normalizeChordRecords(
   records: ChordRecord[],
-  opts: { includeSelfLinks?: boolean } = {}
+  opts: { includeSelfLinks?: boolean } = {},
 ): ChordRecord[] {
   const { includeSelfLinks = false } = opts;
   const merged = new Map<string, ChordRecord>();
@@ -72,9 +71,10 @@ export function normalizeChordRecords(
  * @param records Normalized records (typically from `normalizeChordRecords`).
  * @returns Nodes in final index order plus the N×N flow matrix.
  */
-export function buildChordMatrix(
-  records: ChordRecord[]
-): { nodes: ChordNode[]; matrix: number[][] } {
+export function buildChordMatrix(records: ChordRecord[]): {
+  nodes: ChordNode[];
+  matrix: number[][];
+} {
   if (records.length === 0) {
     return { nodes: [], matrix: [] };
   }
@@ -144,7 +144,7 @@ export function limitChordNodesTopN(
   nodes: ChordNode[],
   matrix: number[][],
   topN: number,
-  opts: { otherLabel?: string } = {}
+  opts: { otherLabel?: string } = {},
 ): { nodes: ChordNode[]; matrix: number[][]; otherShare: number } {
   const { otherLabel = DEFAULT_OTHER_LABEL } = opts;
   const n = nodes.length;
@@ -163,8 +163,7 @@ export function limitChordNodesTopN(
   const origTotal = sumMatrix(matrix);
 
   const newMatrix = zeroMatrix(newSize);
-  const mapIdx = (oldIdx: number): number =>
-    oldIdx < keepCount ? oldIdx : otherIdx;
+  const mapIdx = (oldIdx: number): number => (oldIdx < keepCount ? oldIdx : otherIdx);
 
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
@@ -212,10 +211,7 @@ export function limitChordNodesTopN(
  * @param direction Directional mode to apply.
  * @returns A new N×N matrix reflecting the selected direction.
  */
-export function applyChordDirection(
-  matrix: number[][],
-  direction: ChordDirection
-): number[][] {
+export function applyChordDirection(matrix: number[][], direction: ChordDirection): number[][] {
   const n = matrix.length;
   const out = zeroMatrix(n);
   for (let i = 0; i < n; i++) {
@@ -261,7 +257,7 @@ export function applyChordDirection(
 export function computeChordSummary(
   nodes: ChordNode[],
   matrix: number[][],
-  topK: number = DEFAULT_TOP_K
+  topK: number = DEFAULT_TOP_K,
 ): ChordSummary {
   const n = nodes.length;
   if (n === 0 || matrix.length === 0) {
@@ -400,7 +396,7 @@ export function buildChordDataset(
     grouping: ChordGroupingDimension;
     unit?: string;
     otherLabel?: string;
-  }
+  },
 ): ChordDataset {
   const {
     topN = DEFAULT_TOP_N,

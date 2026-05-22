@@ -1,7 +1,4 @@
-import type {
-  WorkItemStatusCategory,
-  WorkItemType,
-} from "./devHealthOpsTypes";
+import type { WorkItemStatusCategory, WorkItemType } from "./devHealthOpsTypes";
 
 const toTitleCase = (value: string) =>
   value

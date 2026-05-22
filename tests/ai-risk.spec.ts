@@ -63,7 +63,9 @@ test.describe("AI Risk dashboard", () => {
 
     // Both fixture violations are surfaced; assert presence by count to
     // avoid strict-mode violations when a regex matches multiple rows.
-    await expect(page.getByText(/ai-declaration-required|human-review-required/)).not.toHaveCount(0);
+    await expect(page.getByText(/ai-declaration-required|human-review-required/)).not.toHaveCount(
+      0,
+    );
 
     // Guardrail: no author or login labels in the rendered governance section.
     await expect(page.locator("text=/by @/i")).toHaveCount(0);

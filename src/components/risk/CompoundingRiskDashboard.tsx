@@ -29,11 +29,7 @@ function buildRiskDrilldownUrl({
   return `/work?${params.toString()}`;
 }
 
-export type CompoundingRiskSeverity =
-  | "unknown"
-  | "low"
-  | "elevated"
-  | "high";
+export type CompoundingRiskSeverity = "unknown" | "low" | "elevated" | "high";
 
 export type CompoundingRiskScope = "repo" | "team";
 
@@ -124,9 +120,7 @@ function fmtRawNumber(value: number | null, suffix?: string): string {
   return suffix ? `${formatted}${suffix}` : formatted;
 }
 
-function selectHeadlineRow(
-  rows: CompoundingRiskRowView[],
-): CompoundingRiskRowView | null {
+function selectHeadlineRow(rows: CompoundingRiskRowView[]): CompoundingRiskRowView | null {
   if (rows.length === 0) return null;
   const scored = rows.find((r) => r.score !== null);
   return scored ?? rows[0];
@@ -145,16 +139,10 @@ function SeverityChip({ severity }: { severity: CompoundingRiskSeverity }) {
   );
 }
 
-function TrendSparkline({
-  trend,
-}: {
-  trend: CompoundingRiskTrendPointView[];
-}) {
+function TrendSparkline({ trend }: { trend: CompoundingRiskTrendPointView[] }) {
   if (trend.length === 0) {
     return (
-      <p className="text-xs text-(--ink-muted)">
-        Trend data is not yet available for this scope.
-      </p>
+      <p className="text-xs text-(--ink-muted)">Trend data is not yet available for this scope.</p>
     );
   }
   const max = Math.max(0.01, ...trend.map((p) => p.score ?? 0));
@@ -227,19 +215,12 @@ function ComponentBars({ row }: { row: CompoundingRiskRowView }) {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                 {component.label}
               </p>
-              <p className="text-xs text-(--ink-muted)">
-                weight {component.weight.toFixed(2)}
-              </p>
+              <p className="text-xs text-(--ink-muted)">weight {component.weight.toFixed(2)}</p>
             </div>
-            <p className="mt-3 text-3xl font-semibold tabular-nums">
-              {fmtScore(norm)}
-            </p>
+            <p className="mt-3 text-3xl font-semibold tabular-nums">{fmtScore(norm)}</p>
             <p className="mt-1 text-xs text-(--ink-muted)">{component.raw}</p>
             <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-(--card-stroke)/40">
-              <div
-                className="h-full rounded-full bg-(--accent)"
-                style={{ width: `${width}%` }}
-              />
+              <div className="h-full rounded-full bg-(--accent)" style={{ width: `${width}%` }} />
             </div>
           </article>
         );
@@ -262,8 +243,8 @@ function ScopeTable({
         data-testid="empty-state"
       >
         No Compounding Risk data is available for this org yet. Run{" "}
-        <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> to
-        populate <code className="font-mono text-[0.85em]">compounding_risk_daily</code>.
+        <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> to populate{" "}
+        <code className="font-mono text-[0.85em]">compounding_risk_daily</code>.
       </p>
     );
   }
@@ -273,9 +254,7 @@ function ScopeTable({
       <table className="w-full text-sm" data-testid="compounding-risk-table">
         <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
           <tr>
-            <th className="px-5 py-3 text-left">
-              {breakout === "team" ? "Team" : "Repo"}
-            </th>
+            <th className="px-5 py-3 text-left">{breakout === "team" ? "Team" : "Repo"}</th>
             <th className="px-5 py-3 text-right">Score</th>
             <th className="px-5 py-3 text-left">Severity</th>
             <th className="px-5 py-3 text-right">Churn</th>
@@ -301,12 +280,8 @@ function ScopeTable({
                 data-severity={row.severity}
                 className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
               >
-                <td className="px-5 py-3 align-middle font-medium">
-                  {row.scopeLabel}
-                </td>
-                <td className="px-5 py-3 text-right tabular-nums">
-                  {fmtScore(row.score)}
-                </td>
+                <td className="px-5 py-3 align-middle font-medium">{row.scopeLabel}</td>
+                <td className="px-5 py-3 text-right tabular-nums">{fmtScore(row.score)}</td>
                 <td className="px-5 py-3">
                   <SeverityChip severity={row.severity} />
                 </td>
@@ -347,7 +322,6 @@ export function CompoundingRiskDashboard({
   trend,
   generatedAt,
 }: CompoundingRiskDashboardProps) {
-
   const hasRows = rows.length > 0;
   const allScoresNull = !hasRows || rows.every((r) => r.score === null);
   if (allScoresNull) {
@@ -378,15 +352,15 @@ export function CompoundingRiskDashboard({
           </h1>
 
           <p className="mt-6 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
-            Compounding Risk is a deterministic composite of four normalized inputs: rework churn, complexity trend, ownership concentration, and review latency. The score cannot be computed until all four are populated for the current scope.
+            Compounding Risk is a deterministic composite of four normalized inputs: rework churn,
+            complexity trend, ownership concentration, and review latency. The score cannot be
+            computed until all four are populated for the current scope.
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
             {hasRows
               ? `This usually clears once more PR review activity or recent complexity data is recorded. The page will populate automatically when the next daily metrics run completes.`
               : `No compounding_risk_daily rows are available yet for this org. Run `}
-            {!hasRows && (
-              <code className="font-mono text-[0.85em]">dev-hops metrics daily</code>
-            )}
+            {!hasRows && <code className="font-mono text-[0.85em]">dev-hops metrics daily</code>}
             {!hasRows && ` to populate the metric, then refresh this page.`}
           </p>
 
@@ -423,10 +397,9 @@ export function CompoundingRiskDashboard({
               Where change pressure is compounding risk.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
-              A deterministic composite of churn, complexity trend, ownership
-              concentration, and review-latency tail. Every score is fully
-              inspectable: weights, thresholds, and raw inputs are persisted
-              alongside the composite so historical rows stay auditable.
+              A deterministic composite of churn, complexity trend, ownership concentration, and
+              review-latency tail. Every score is fully inspectable: weights, thresholds, and raw
+              inputs are persisted alongside the composite so historical rows stay auditable.
             </p>
             <p className="mt-3 text-xs text-(--ink-muted)">
               Org <span className="font-mono">{orgId}</span> · generated{" "}
@@ -440,17 +413,12 @@ export function CompoundingRiskDashboard({
             {headline ? (
               <>
                 <div className="mt-3 flex items-baseline gap-3">
-                  <p
-                    className="text-5xl font-semibold tabular-nums"
-                    data-testid="headline-score"
-                  >
+                  <p className="text-5xl font-semibold tabular-nums" data-testid="headline-score">
                     {fmtScore(headline.score)}
                   </p>
                   <SeverityChip severity={headline.severity} />
                 </div>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                  {headline.scopeLabel}
-                </p>
+                <p className="mt-2 text-sm text-(--ink-muted)">{headline.scopeLabel}</p>
               </>
             ) : (
               <p className="mt-3 text-sm text-(--ink-muted)">No data yet.</p>
@@ -466,17 +434,15 @@ export function CompoundingRiskDashboard({
           data-testid="component-breakdown"
         >
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Component breakdown
-            </h2>
+            <h2 className="text-lg font-semibold tracking-tight">Component breakdown</h2>
             <p className="text-xs text-(--ink-muted)">
-              thresholds: elevated ≥ {headline.thresholds.elevated.toFixed(2)} ·
-              high ≥ {headline.thresholds.high.toFixed(2)}
+              thresholds: elevated ≥ {headline.thresholds.elevated.toFixed(2)} · high ≥{" "}
+              {headline.thresholds.high.toFixed(2)}
             </p>
           </div>
           <p className="mt-2 text-sm leading-6 text-(--ink-muted)">
-            Each bar shows the normalized [0, 1] contribution; the raw input
-            value is printed beneath. Weights persist with the row.
+            Each bar shows the normalized [0, 1] contribution; the raw input value is printed
+            beneath. Weights persist with the row.
           </p>
           <div className="mt-5">
             <ComponentBars row={headline} />

@@ -92,10 +92,7 @@ export default function IPAllowlistPage() {
   };
 
   return (
-    <UpgradeGate
-      feature="ip_allowlist"
-      requiredTier="enterprise"
-    >
+    <UpgradeGate feature="ip_allowlist" requiredTier="enterprise">
       <div>
         <AdminHeader
           title="IP Allowlist"
@@ -214,7 +211,9 @@ export default function IPAllowlistPage() {
                     entries.map((entry) => (
                       <tr key={entry.id} className="border-b border-(--card-stroke) last:border-0">
                         <td className="px-4 py-3 font-mono text-xs">{entry.ip_range}</td>
-                        <td className="px-4 py-3 text-(--ink-muted)">{entry.description ?? "--"}</td>
+                        <td className="px-4 py-3 text-(--ink-muted)">
+                          {entry.description ?? "--"}
+                        </td>
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -226,8 +225,12 @@ export default function IPAllowlistPage() {
                             {entry.is_active ? "Active" : "Inactive"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-(--ink-muted)">{formatDate(entry.created_at)}</td>
-                        <td className="px-4 py-3 text-(--ink-muted)">{formatDate(entry.expires_at)}</td>
+                        <td className="px-4 py-3 text-(--ink-muted)">
+                          {formatDate(entry.created_at)}
+                        </td>
+                        <td className="px-4 py-3 text-(--ink-muted)">
+                          {formatDate(entry.expires_at)}
+                        </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button

@@ -32,7 +32,8 @@ export function NoSurveillanceContract({ compact = false }: NoSurveillanceContra
         Signals for learning, not judgment.
       </h2>
       <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
-        Dev Health makes system pressure visible without creating surveillance surfaces. These guardrails apply across the product.
+        Dev Health makes system pressure visible without creating surveillance surfaces. These
+        guardrails apply across the product.
       </p>
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         {CONTRACT_ITEMS.map((item) => (

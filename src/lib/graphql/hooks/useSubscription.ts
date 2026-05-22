@@ -97,7 +97,7 @@ export function useMetricsUpdated(options: UseMetricsUpdatedOptions) {
       variables: { orgId },
       pause,
     },
-    handleSubscription
+    handleSubscription,
   );
 
   return {
@@ -119,10 +119,10 @@ interface UseTaskStatusOptions {
 export function useTaskStatus(options: UseTaskStatusOptions) {
   const { taskId, onUpdate, pause = false } = options;
 
-  const handleSubscription: SubscriptionHandler<
-    { taskStatus: TaskStatus },
-    TaskStatus | null
-  > = (_, response) => {
+  const handleSubscription: SubscriptionHandler<{ taskStatus: TaskStatus }, TaskStatus | null> = (
+    _,
+    response,
+  ) => {
     if (response.taskStatus && onUpdate) {
       onUpdate(response.taskStatus);
     }
@@ -135,7 +135,7 @@ export function useTaskStatus(options: UseTaskStatusOptions) {
       variables: { taskId },
       pause,
     },
-    handleSubscription
+    handleSubscription,
   );
 
   return {
@@ -173,7 +173,7 @@ export function useSyncProgress(options: UseSyncProgressOptions) {
       variables: { orgId },
       pause,
     },
-    handleSubscription
+    handleSubscription,
   );
 
   return {

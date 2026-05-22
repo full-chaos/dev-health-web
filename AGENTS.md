@@ -107,6 +107,7 @@ linear issues get CHAOS-123
 linear issues update CHAOS-123 --state "In Progress"
 linear issues update CHAOS-123 --state "Done"
 ```
+
 ---
 
 ## Landing the Plane (Session Completion)
@@ -129,6 +130,7 @@ linear issues update CHAOS-123 --state "Done"
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
+
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
@@ -174,6 +176,7 @@ Then `Read` that path to view the image.
 ### Claude Code Skills
 
 Available workflow skills (install with `linear skills install --all`):
+
 - `/prd` - Create agent-friendly tickets with PRDs and sub-issues
 - `/triage` - Analyze and prioritize backlog
 - `/cycle-plan` - Plan cycles using velocity analytics

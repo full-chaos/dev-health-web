@@ -26,7 +26,7 @@ describe("adaptSankeyToChord", () => {
           { source: "team:Engineering", target: "repo:web", value: 8 },
         ],
       },
-      "team"
+      "team",
     );
 
     expect(result).toEqual([
@@ -48,7 +48,7 @@ describe("adaptSankeyToChord", () => {
         ],
         edges: [{ source: "repo:api", target: "repo:web", value: 42 }],
       },
-      "repo"
+      "repo",
     );
 
     expect(result[0]?.value).toBe(42);
@@ -62,12 +62,24 @@ describe("adaptSankeyToChord", () => {
     const result = adaptSankeyToChord(
       {
         nodes: [
-          { id: "work_type:Feature Delivery", label: "work_type:Feature Delivery", dimension: "WORK_TYPE", value: 5 },
-          { id: "work_type:Risk / Security", label: "work_type:Risk / Security", dimension: "WORK_TYPE", value: 4 },
+          {
+            id: "work_type:Feature Delivery",
+            label: "work_type:Feature Delivery",
+            dimension: "WORK_TYPE",
+            value: 5,
+          },
+          {
+            id: "work_type:Risk / Security",
+            label: "work_type:Risk / Security",
+            dimension: "WORK_TYPE",
+            value: 4,
+          },
         ],
-        edges: [{ source: "work_type:Feature Delivery", target: "work_type:Risk / Security", value: 2 }],
+        edges: [
+          { source: "work_type:Feature Delivery", target: "work_type:Risk / Security", value: 2 },
+        ],
       },
-      "work_type"
+      "work_type",
     );
 
     expect(result[0]?.metadata).toEqual({ workType: "Feature Delivery" });
@@ -82,7 +94,7 @@ describe("adaptSankeyToChord", () => {
         ],
         edges: [{ source: "team:Engineering", target: "team:Platform", value: 1 }],
       },
-      "team"
+      "team",
     );
 
     expect(result).toHaveLength(1);

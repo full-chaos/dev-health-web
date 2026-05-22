@@ -30,9 +30,7 @@ function buildDateRange(filters: MetricFilter): {
     return { startDate: start_date, endDate: end_date };
   }
   const endDate = new Date();
-  const startDate = new Date(
-    endDate.getTime() - range_days * 24 * 60 * 60 * 1000
-  );
+  const startDate = new Date(endDate.getTime() - range_days * 24 * 60 * 60 * 1000);
   return {
     startDate: startDate.toISOString().split("T")[0],
     endDate: endDate.toISOString().split("T")[0],
@@ -45,12 +43,8 @@ function translateFilters(filters: MetricFilter): FilterInput {
       level: filters.scope.level.toUpperCase() as ScopeLevelInput,
       ids: filters.scope.ids,
     },
-    who: filters.who.developers?.length
-      ? { developers: filters.who.developers }
-      : undefined,
-    what: filters.what.repos?.length
-      ? { repos: filters.what.repos }
-      : undefined,
+    who: filters.who.developers?.length ? { developers: filters.who.developers } : undefined,
+    what: filters.what.repos?.length ? { repos: filters.what.repos } : undefined,
     why:
       filters.why.work_category?.length || filters.why.issue_type?.length
         ? {
@@ -58,9 +52,7 @@ function translateFilters(filters: MetricFilter): FilterInput {
             issueType: filters.why.issue_type,
           }
         : undefined,
-    how: filters.how.flow_stage?.length
-      ? { flowStage: filters.how.flow_stage }
-      : undefined,
+    how: filters.how.flow_stage?.length ? { flowStage: filters.how.flow_stage } : undefined,
   };
 }
 
@@ -72,7 +64,7 @@ function translateFilters(filters: MetricFilter): FilterInput {
  */
 export function buildInvestmentMixVariables(
   filters: MetricFilter,
-  orgId: string
+  orgId: string,
 ): { orgId: string; batch: AnalyticsRequestInput } {
   const dateRange = buildDateRange(filters);
   const batch: AnalyticsRequestInput = {
@@ -96,14 +88,12 @@ export function buildInvestmentMixVariables(
   return { orgId, batch };
 }
 
-function adaptBreakdown(
-  response: AnalyticsQueryResponse
-): InvestmentResponse {
+function adaptBreakdown(response: AnalyticsQueryResponse): InvestmentResponse {
   const themeBreakdown = response.analytics.breakdowns.find(
-    (b) => b.dimension.toLowerCase() === "theme"
+    (b) => b.dimension.toLowerCase() === "theme",
   );
   const subcategoryBreakdown = response.analytics.breakdowns.find(
-    (b) => b.dimension.toLowerCase() === "subcategory"
+    (b) => b.dimension.toLowerCase() === "subcategory",
   );
 
   const theme_distribution: Record<string, number> = {};
@@ -135,14 +125,13 @@ function adaptBreakdown(
  */
 export async function getInvestmentMixForHydration(
   filters: MetricFilter,
-  orgId: string
+  orgId: string,
 ): Promise<{ data: InvestmentResponse; hydrationPayload: SSRData }> {
   const variables = buildInvestmentMixVariables(filters, orgId);
-  const { data, hydrationPayload } =
-    await graphqlFetchForHydration<AnalyticsQueryResponse>(
-      INVESTMENT_BREAKDOWN_QUERY,
-      variables,
-      { orgId }
-    );
+  const { data, hydrationPayload } = await graphqlFetchForHydration<AnalyticsQueryResponse>(
+    INVESTMENT_BREAKDOWN_QUERY,
+    variables,
+    { orgId },
+  );
   return { data: adaptBreakdown(data), hydrationPayload };
 }

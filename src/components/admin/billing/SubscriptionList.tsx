@@ -45,10 +45,7 @@ function planLabel(subscription: SubscriptionRecord): string {
   return "-";
 }
 
-export function SubscriptionList({
-  initialData,
-  initialOrgFilter = "",
-}: SubscriptionListProps) {
+export function SubscriptionList({ initialData, initialOrgFilter = "" }: SubscriptionListProps) {
   const [isPending, startTransition] = useTransition();
   const [orgFilter, setOrgFilter] = useState(initialOrgFilter);
   const [data, setData] = useState<SubscriptionListResponse>(initialData);
@@ -101,7 +98,11 @@ export function SubscriptionList({
             const dStart = new Date(subscription.trial_start);
             const dEnd = new Date(subscription.trial_end);
             const startStr = dStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-            const endStr = dEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            const endStr = dEnd.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            });
             return `Trial: ${startStr} – ${endStr}`;
           }
           return `${formatDate(subscription.current_period_start)} - ${formatDate(subscription.current_period_end)}`;
@@ -114,7 +115,7 @@ export function SubscriptionList({
         render: (subscription) => (subscription.cancel_at_period_end ? "Yes" : "No"),
       },
     ],
-    []
+    [],
   );
 
   return (
@@ -124,7 +125,7 @@ export function SubscriptionList({
       rowKeyAction={(subscription) => subscription.id}
       emptyMessage="No subscriptions found for this filter."
       search={{ value: orgFilter, placeholder: "Org ID", buttonLabel: "Filter" }}
-       onSearchAction={() => refreshList(0, orgFilter)}
+      onSearchAction={() => refreshList(0, orgFilter)}
       onSearchChangeAction={setOrgFilter}
       pagination={{ limit: data.limit, offset: data.offset, total: data.total }}
       summaryLabel="subscriptions"

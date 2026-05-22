@@ -22,10 +22,15 @@ export const licensingApi = {
         `/orgs/${orgId}/feature-overrides`,
         { method: "POST", body: JSON.stringify(data) },
         token,
-        headerOrgId
+        headerOrgId,
       ),
 
     delete: (orgId: string, overrideId: string, token?: string, headerOrgId?: string) =>
-      request<void>(`/orgs/${orgId}/feature-overrides/${overrideId}`, { method: "DELETE" }, token, headerOrgId),
+      request<void>(
+        `/orgs/${orgId}/feature-overrides/${overrideId}`,
+        { method: "DELETE" },
+        token,
+        headerOrgId,
+      ),
   },
 };

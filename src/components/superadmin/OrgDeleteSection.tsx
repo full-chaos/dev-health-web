@@ -41,12 +41,11 @@ export function OrgDeleteSection({ orgId, orgSlug }: OrgDeleteSectionProps) {
         <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/20">
           <div className="flex">
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                Warning
-              </h3>
+              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Warning</h3>
               <div className="mt-2 text-sm text-red-700 dark:text-red-300">
                 <p>
-                  This will permanently delete the organization <strong>{orgSlug}</strong> and remove all associated data, including teams, users, and metrics.
+                  This will permanently delete the organization <strong>{orgSlug}</strong> and
+                  remove all associated data, including teams, users, and metrics.
                 </p>
               </div>
             </div>

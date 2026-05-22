@@ -1,23 +1,19 @@
-import Link from "next/link"
+import Link from "next/link";
 
-type SearchParams = Promise<{ error?: string }>
+type SearchParams = Promise<{ error?: string }>;
 
-export default async function AuthErrorPage({
-  searchParams,
-}: {
-  searchParams: SearchParams
-}) {
-  const params = await searchParams
-  const error = params.error
+export default async function AuthErrorPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const error = params.error;
 
   const errorMessages: Record<string, string> = {
     Configuration: "There is a problem with the server configuration.",
     AccessDenied: "You do not have access to this resource.",
     Verification: "The verification link has expired or has already been used.",
     Default: "An authentication error occurred.",
-  }
+  };
 
-  const message = error ? errorMessages[error] || errorMessages.Default : errorMessages.Default
+  const message = error ? errorMessages[error] || errorMessages.Default : errorMessages.Default;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[var(--background)]">
@@ -26,13 +22,9 @@ export default async function AuthErrorPage({
           <h2 className="mt-6 text-3xl font-bold tracking-tight text-[var(--foreground)]">
             Authentication Error
           </h2>
-          <p className="mt-4 text-sm text-[var(--ink-muted)]">
-            {message}
-          </p>
+          <p className="mt-4 text-sm text-[var(--ink-muted)]">{message}</p>
           {error && (
-            <p className="mt-2 text-xs text-[var(--ink-muted)] font-mono">
-              Error code: {error}
-            </p>
+            <p className="mt-2 text-xs text-[var(--ink-muted)] font-mono">Error code: {error}</p>
           )}
         </div>
         <div className="mt-8">
@@ -45,5 +37,5 @@ export default async function AuthErrorPage({
         </div>
       </div>
     </div>
-  )
+  );
 }

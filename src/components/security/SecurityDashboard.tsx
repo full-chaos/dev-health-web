@@ -35,19 +35,12 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
   const repos = topRepos as RepoAlertCountData[];
   const trendPoints = trend as TrendPointData[];
 
-  const mttfValue = kpis?.meanDaysToFix30d != null
-    ? `${kpis.meanDaysToFix30d.toFixed(1)}d`
-    : "—";
+  const mttfValue = kpis?.meanDaysToFix30d != null ? `${kpis.meanDaysToFix30d.toFixed(1)}d` : "—";
 
   return (
     <div className="flex flex-col gap-6">
       {/* Banner-level error notice — does NOT replace the grid structure */}
-      {error && (
-        <ErrorCard
-          title="Failed to load security overview"
-          message={error.message}
-        />
-      )}
+      {error && <ErrorCard title="Failed to load security overview" message={error.message} />}
 
       {/* Row 1: KPI tiles — testid wrappers always in the DOM (required by Playwright) */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

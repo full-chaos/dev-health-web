@@ -22,10 +22,7 @@ export function TopReposChart({ repos, loading }: TopReposChartProps) {
   const f = searchParams.get("f") ?? undefined;
 
   // Sort descending by count.
-  const sorted = useMemo(
-    () => [...repos].sort((a, b) => b.count - a.count),
-    [repos]
-  );
+  const sorted = useMemo(() => [...repos].sort((a, b) => b.count - a.count), [repos]);
 
   const option = useMemo(
     () => ({
@@ -63,7 +60,7 @@ export function TopReposChart({ repos, loading }: TopReposChartProps) {
         },
       ],
     }),
-    [sorted, chartTheme]
+    [sorted, chartTheme],
   );
 
   if (loading) {
@@ -71,11 +68,7 @@ export function TopReposChart({ repos, loading }: TopReposChartProps) {
   }
 
   if (sorted.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-[var(--ink-muted)]">
-        No repos with alerts
-      </p>
-    );
+    return <p className="py-8 text-center text-sm text-[var(--ink-muted)]">No repos with alerts</p>;
   }
 
   // Each bar row navigates to /security/repos/[repoId].

@@ -60,7 +60,7 @@ describe("OrgSwitcher", () => {
             is_superuser: false,
           },
         });
-      })
+      }),
     );
   });
 
@@ -72,7 +72,11 @@ describe("OrgSwitcher", () => {
 
     fireEvent.change(select, { target: { value: "org-data" } });
 
-    await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ activeOrg: expect.any(Object) })));
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ activeOrg: expect.any(Object) }),
+      ),
+    );
     expect(mockRefresh).toHaveBeenCalled();
   });
 
@@ -93,8 +97,8 @@ describe("OrgSwitcher", () => {
               last_metrics_at: null,
             },
           ],
-        })
-      )
+        }),
+      ),
     );
 
     render(<OrgSwitcher />);

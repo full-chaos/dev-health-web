@@ -28,15 +28,13 @@ export async function ensureGroupExpanded(page: Page, label: string) {
 export async function expandAllSidebarGroups(page: Page) {
   // Group toggle buttons live inside `aside nav` and carry a chevron `<svg>`.
   // Collapsed groups have the chevron rotated via `-rotate-90`.
-  const collapsedButtons = page.locator(
-    'aside nav button:has(svg.-rotate-90)'
-  );
+  const collapsedButtons = page.locator("aside nav button:has(svg.-rotate-90)");
   // Snapshot the count up-front; clicks rerender React and re-issue locators.
   const count = await collapsedButtons.count();
   for (let i = 0; i < count; i++) {
     // Always click the first remaining collapsed button — the list shrinks
     // as each click expands a group.
-    const remaining = page.locator('aside nav button:has(svg.-rotate-90)');
+    const remaining = page.locator("aside nav button:has(svg.-rotate-90)");
     const stillCollapsed = await remaining.count();
     if (stillCollapsed === 0) break;
     await remaining.first().click();

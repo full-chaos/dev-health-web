@@ -23,4 +23,3 @@
 Use this exact format in the PR body:
 
 `TEST-WAIVER: <reason tests were not touched>`
-

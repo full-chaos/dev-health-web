@@ -23,7 +23,7 @@ export async function fetchSavedReports(
   orgId: string,
   limit?: number,
   offset?: number,
-  isTestMode: boolean = false
+  isTestMode: boolean = false,
 ): Promise<{ items: SavedReport[]; total: number }> {
   if (isTestMode) {
     return { items: sampleReports, total: sampleReports.length };
@@ -32,7 +32,7 @@ export async function fetchSavedReports(
   try {
     const res = await graphqlFetch<{ savedReports: { items: SavedReport[]; total: number } }>(
       SAVED_REPORTS_QUERY,
-      { orgId, limit, offset }
+      { orgId, limit, offset },
     );
     return res.savedReports;
   } catch (error) {
@@ -44,17 +44,17 @@ export async function fetchSavedReports(
 export async function fetchSavedReport(
   orgId: string,
   reportId: string,
-  isTestMode: boolean = false
+  isTestMode: boolean = false,
 ): Promise<SavedReport | null> {
   if (isTestMode) {
     return sampleReports.find((r) => r.id === reportId) || null;
   }
 
   try {
-    const res = await graphqlFetch<{ savedReport: SavedReport }>(
-      SAVED_REPORT_QUERY,
-      { orgId, reportId }
-    );
+    const res = await graphqlFetch<{ savedReport: SavedReport }>(SAVED_REPORT_QUERY, {
+      orgId,
+      reportId,
+    });
     return res.savedReport;
   } catch (error) {
     logger.error({ err: error }, "Failed to fetch saved report");
@@ -66,7 +66,7 @@ export async function fetchReportRuns(
   orgId: string,
   reportId: string,
   limit?: number,
-  isTestMode: boolean = false
+  isTestMode: boolean = false,
 ): Promise<{ items: ReportRun[]; total: number }> {
   if (isTestMode) {
     const runs = sampleRuns[reportId] || [];
@@ -76,7 +76,7 @@ export async function fetchReportRuns(
   try {
     const res = await graphqlFetch<{ reportRuns: { items: ReportRun[]; total: number } }>(
       REPORT_RUNS_QUERY,
-      { orgId, reportId, limit }
+      { orgId, reportId, limit },
     );
     return res.reportRuns;
   } catch (error) {
@@ -87,56 +87,51 @@ export async function fetchReportRuns(
 
 export async function createSavedReport(
   orgId: string,
-  input: CreateSavedReportInput
+  input: CreateSavedReportInput,
 ): Promise<SavedReport> {
-  const res = await graphqlFetch<{ createSavedReport: SavedReport }>(
-    CREATE_REPORT_MUTATION,
-    { orgId, input }
-  );
+  const res = await graphqlFetch<{ createSavedReport: SavedReport }>(CREATE_REPORT_MUTATION, {
+    orgId,
+    input,
+  });
   return res.createSavedReport;
 }
 
 export async function updateSavedReport(
   orgId: string,
   reportId: string,
-  input: UpdateSavedReportInput
+  input: UpdateSavedReportInput,
 ): Promise<SavedReport> {
-  const res = await graphqlFetch<{ updateSavedReport: SavedReport }>(
-    UPDATE_REPORT_MUTATION,
-    { orgId, reportId, input }
-  );
+  const res = await graphqlFetch<{ updateSavedReport: SavedReport }>(UPDATE_REPORT_MUTATION, {
+    orgId,
+    reportId,
+    input,
+  });
   return res.updateSavedReport;
 }
 
 export async function cloneSavedReport(
   orgId: string,
-  input: CloneSavedReportInput
+  input: CloneSavedReportInput,
 ): Promise<SavedReport> {
-  const res = await graphqlFetch<{ cloneSavedReport: SavedReport }>(
-    CLONE_REPORT_MUTATION,
-    { orgId, input }
-  );
+  const res = await graphqlFetch<{ cloneSavedReport: SavedReport }>(CLONE_REPORT_MUTATION, {
+    orgId,
+    input,
+  });
   return res.cloneSavedReport;
 }
 
-export async function deleteSavedReport(
-  orgId: string,
-  reportId: string
-): Promise<boolean> {
-  const res = await graphqlFetch<{ deleteSavedReport: boolean }>(
-    DELETE_REPORT_MUTATION,
-    { orgId, reportId }
-  );
+export async function deleteSavedReport(orgId: string, reportId: string): Promise<boolean> {
+  const res = await graphqlFetch<{ deleteSavedReport: boolean }>(DELETE_REPORT_MUTATION, {
+    orgId,
+    reportId,
+  });
   return res.deleteSavedReport;
 }
 
-export async function triggerReport(
-  orgId: string,
-  reportId: string
-): Promise<ReportRun> {
-  const res = await graphqlFetch<{ triggerReport: ReportRun }>(
-    TRIGGER_REPORT_MUTATION,
-    { orgId, reportId }
-  );
+export async function triggerReport(orgId: string, reportId: string): Promise<ReportRun> {
+  const res = await graphqlFetch<{ triggerReport: ReportRun }>(TRIGGER_REPORT_MUTATION, {
+    orgId,
+    reportId,
+  });
   return res.triggerReport;
 }

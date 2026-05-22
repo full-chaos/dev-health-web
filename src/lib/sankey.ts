@@ -5,7 +5,6 @@ import { applyWindowToFilters } from "@/lib/filters/time";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { FlowTransitionSummary } from "@/data/devHealthOpsTypes";
 
-
 export type SankeyDataset = {
   mode: SankeyMode;
   label: string;
@@ -21,35 +20,32 @@ export const SANKEY_MODES: Array<{
   description: string;
   unit: string;
 }> = [
-    {
-      id: "investment",
-      label: "Investment flow",
-      description:
-        "Where effort allocates across initiatives, areas, issue types, and work items.",
-      unit: "items",
-    },
-    {
-      id: "expense",
-      label: "Investment expense",
-      description:
-        "Effort that shifts from planned work into unplanned work, rework, and rewrites. Not a financial cost.",
-      unit: "items",
-    },
-    {
-      id: "state",
-      label: "State flow",
-      description:
-        "Issue, PR, and deployment paths that reveal stalls, loops, and retries.",
-      unit: "items",
-    },
-    {
-      id: "hotspot",
-      label: "Code hotspot flow",
-      description:
-        "Where change concentrates from repos to files and change intent.",
-      unit: "changes",
-    },
-  ];
+  {
+    id: "investment",
+    label: "Investment flow",
+    description: "Where effort allocates across initiatives, areas, issue types, and work items.",
+    unit: "items",
+  },
+  {
+    id: "expense",
+    label: "Investment expense",
+    description:
+      "Effort that shifts from planned work into unplanned work, rework, and rewrites. Not a financial cost.",
+    unit: "items",
+  },
+  {
+    id: "state",
+    label: "State flow",
+    description: "Issue, PR, and deployment paths that reveal stalls, loops, and retries.",
+    unit: "items",
+  },
+  {
+    id: "hotspot",
+    label: "Code hotspot flow",
+    description: "Where change concentrates from repos to files and change intent.",
+    unit: "changes",
+  },
+];
 
 const DEFAULT_METRIC_BY_MODE: Record<SankeyMode, string> = {
   investment: "throughput",
@@ -196,11 +192,7 @@ export const buildSankeyEvidenceUrl = (params: {
 }) => {
   const metric = DEFAULT_METRIC_BY_MODE[params.mode];
   const api = inferEvidenceApi(params.mode, params.label ?? undefined);
-  const withWindow = applyWindowToFilters(
-    params.filters,
-    params.window_start,
-    params.window_end
-  );
+  const withWindow = applyWindowToFilters(params.filters, params.window_start, params.window_end);
   const urlParams = new URLSearchParams();
   if (metric) {
     urlParams.set("metric", metric);
@@ -248,9 +240,7 @@ export const computeSankeyMetrics = (nodes: SankeyNode[], links: SankeyLink[]) =
   }, 0);
 
   const totalFlow =
-    rootTotal > 0
-      ? rootTotal
-      : links.reduce((total, link) => total + link.value, 0);
+    rootTotal > 0 ? rootTotal : links.reduce((total, link) => total + link.value, 0);
 
   return { incomingTotals, outgoingTotals, nodeValueByName, totalFlow };
 };
@@ -261,7 +251,7 @@ export const computeSankeyMetrics = (nodes: SankeyNode[], links: SankeyLink[]) =
 export const limitRepoNodes = <T extends { nodes: SankeyNode[]; links: SankeyLink[] }>(
   flow: T,
   topN: number,
-  otherReposLabel = "Other repos"
+  otherReposLabel = "Other repos",
 ): T => {
   const { nodes, links } = flow;
   const repoNodes = nodes.filter((node) => node.group === "repo");
@@ -356,14 +346,14 @@ export type SankeyResponseWithTeamAssociations = {
  */
 export const filterSankeyToTeam = <T extends { nodes: SankeyNode[]; links: SankeyLink[] }>(
   flow: T | null,
-  teamName: string | null
+  teamName: string | null,
 ): T | null => {
   if (!flow || !teamName) {
     return flow;
   }
   // Find the team node - check both with and without prefix for compatibility
   const teamNode = flow.nodes.find(
-    (node) => node.group === "team" && (node.name === teamName || node.name === `team:${teamName}`)
+    (node) => node.group === "team" && (node.name === teamName || node.name === `team:${teamName}`),
   );
   if (!teamNode) {
     return flow;
@@ -393,9 +383,6 @@ export const filterSankeyToTeam = <T extends { nodes: SankeyNode[]; links: Sanke
   return {
     ...flow,
     nodes: flow.nodes.filter((node) => allowed.has(node.name)),
-    links: flow.links.filter(
-      (link) => allowed.has(link.source) && allowed.has(link.target)
-    ),
+    links: flow.links.filter((link) => allowed.has(link.source) && allowed.has(link.target)),
   };
 };
-

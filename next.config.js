@@ -2,7 +2,8 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { withSentryConfig } = require("@sentry/nextjs");
 
-const isDemoExportBuild = process.env.DEMO_EXPORT === "true" && process.env.NODE_ENV === "production";
+const isDemoExportBuild =
+  process.env.DEMO_EXPORT === "true" && process.env.NODE_ENV === "production";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
@@ -69,9 +70,17 @@ const nextConfig = {
       { source: "/terms", destination: "/marketing/terms", permanent: true },
       { source: "/vp-engineering", destination: "/marketing/vp-engineering", permanent: true },
       { source: "/platform-devex", destination: "/marketing/platform-devex", permanent: true },
-      { source: "/engineering-manager", destination: "/marketing/engineering-manager", permanent: true },
+      {
+        source: "/engineering-manager",
+        destination: "/marketing/engineering-manager",
+        permanent: true,
+      },
       { source: "/cto-architecture", destination: "/marketing/cto-architecture", permanent: true },
-      { source: "/billing-refunds-test", destination: "/marketing/billing-refunds-test", permanent: true },
+      {
+        source: "/billing-refunds-test",
+        destination: "/marketing/billing-refunds-test",
+        permanent: true,
+      },
     ];
   },
   // API proxying is handled by proxy.ts at runtime (not baked at build time)

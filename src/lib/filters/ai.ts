@@ -35,10 +35,7 @@ const fromBase64Url = (value: string): string => {
     return Buffer.from(value, "base64url").toString("utf-8");
   }
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(
-    normalized.length + ((4 - (normalized.length % 4)) % 4),
-    "="
-  );
+  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
   return decodeURIComponent(escape(atob(padded)));
 };
 
@@ -76,11 +73,20 @@ export function decodeAIFilter(encoded?: string | null): AIFilter {
 
     for (const [key, value] of Object.entries(parsed)) {
       if (!ALLOWED_KEYS.has(key)) continue;
-      if ((key === "startDate" || key === "endDate" || key === "teamId" || key === "repoId" || key === "workType") && typeof value === "string") {
+      if (
+        (key === "startDate" ||
+          key === "endDate" ||
+          key === "teamId" ||
+          key === "repoId" ||
+          key === "workType") &&
+        typeof value === "string"
+      ) {
         clean[key] = value;
       }
       if (key === "buckets" && Array.isArray(value)) {
-        clean.buckets = value.filter((item): item is AIAttributionBucket => typeof item === "string" && BUCKETS.has(item));
+        clean.buckets = value.filter(
+          (item): item is AIAttributionBucket => typeof item === "string" && BUCKETS.has(item),
+        );
       }
     }
 
@@ -124,9 +130,7 @@ export function metricFilterToAIFilter(metric: MetricFilter): AIFilter {
   }
 
   const teamId =
-    metric.scope?.level === "team" && metric.scope.ids?.length
-      ? metric.scope.ids[0]
-      : undefined;
+    metric.scope?.level === "team" && metric.scope.ids?.length ? metric.scope.ids[0] : undefined;
   const repoId = metric.what?.repos?.[0];
   const workType = metric.why?.work_category?.[0];
 

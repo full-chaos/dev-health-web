@@ -60,7 +60,9 @@ export type PullStripeResult = {
   errors: string[];
 };
 
-export async function listBillingPlans(includeInactive = false): Promise<ActionResult<BillingPlanRecord[]>> {
+export async function listBillingPlans(
+  includeInactive = false,
+): Promise<ActionResult<BillingPlanRecord[]>> {
   try {
     const session = await auth();
     const headers: HeadersInit = {};
@@ -82,7 +84,9 @@ export async function listBillingPlans(includeInactive = false): Promise<ActionR
   }
 }
 
-export async function createBillingPlan(data: BillingPlanUpsert): Promise<ActionResult<BillingPlanRecord>> {
+export async function createBillingPlan(
+  data: BillingPlanUpsert,
+): Promise<ActionResult<BillingPlanRecord>> {
   try {
     const session = await auth();
     if (!session?.access_token) {
@@ -113,7 +117,7 @@ export async function createBillingPlan(data: BillingPlanUpsert): Promise<Action
 
 export async function updateBillingPlan(
   planId: string,
-  data: Partial<BillingPlanUpsert>
+  data: Partial<BillingPlanUpsert>,
 ): Promise<ActionResult<BillingPlanRecord>> {
   try {
     const session = await auth();
@@ -143,7 +147,9 @@ export async function updateBillingPlan(
   }
 }
 
-export async function deleteBillingPlan(planId: string): Promise<ActionResult<{ deleted: boolean }>> {
+export async function deleteBillingPlan(
+  planId: string,
+): Promise<ActionResult<{ deleted: boolean }>> {
   try {
     const session = await auth();
     if (!session?.access_token) {
@@ -170,19 +176,24 @@ export async function deleteBillingPlan(planId: string): Promise<ActionResult<{ 
   }
 }
 
-export async function syncBillingPlanToStripe(planId: string): Promise<ActionResult<BillingPlanRecord>> {
+export async function syncBillingPlanToStripe(
+  planId: string,
+): Promise<ActionResult<BillingPlanRecord>> {
   try {
     const session = await auth();
     if (!session?.access_token) {
       return { error: "Unauthorized" };
     }
 
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/plans/${sanitizeId(planId)}/sync-stripe`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
+    const res = await fetch(
+      `${getBackendUrl()}/api/v1/billing/plans/${sanitizeId(planId)}/sync-stripe`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       },
-    });
+    );
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({ detail: res.statusText }));
@@ -199,7 +210,7 @@ export async function syncBillingPlanToStripe(planId: string): Promise<ActionRes
 
 export async function pullPlansFromStripe(): Promise<ActionResult<PullStripeResult>> {
   const result = await withErrorHandling(() =>
-    apiRequest<PullStripeResult>("/api/v1/billing/plans/pull-stripe", { method: "POST" })
+    apiRequest<PullStripeResult>("/api/v1/billing/plans/pull-stripe", { method: "POST" }),
   );
   if (!result.error) {
     revalidatePath("/marketing/pricing");

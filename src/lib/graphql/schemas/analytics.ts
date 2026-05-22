@@ -143,13 +143,7 @@ export const SankeyRequestInputSchema = z.object({
 // Filter input schemas
 // =============================================================================
 
-export const ScopeLevelInputSchema = z.enum([
-  "ORG",
-  "TEAM",
-  "REPO",
-  "SERVICE",
-  "DEVELOPER",
-]);
+export const ScopeLevelInputSchema = z.enum(["ORG", "TEAM", "REPO", "SERVICE", "DEVELOPER"]);
 
 export const ScopeFilterInputSchema = z.object({
   level: ScopeLevelInputSchema.optional(),

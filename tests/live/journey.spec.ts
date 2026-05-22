@@ -104,9 +104,7 @@ test.describe("onboarding journey", () => {
     expect(res.status()).toBe(200);
 
     const data = (await res.json()) as Record<string, unknown>;
-    expect(
-      typeof data.org_id === "string" || typeof data.organization_id === "string"
-    ).toBe(true);
+    expect(typeof data.org_id === "string" || typeof data.organization_id === "string").toBe(true);
   });
 
   test("re-login after onboarding → needs_onboarding false", async ({ request }) => {
@@ -204,7 +202,7 @@ test.describe("credentials journey", () => {
 
     const res = await request.post(
       `${liveBackendUrl}/api/v1/admin/credentials/${credentialId}/test`,
-      { headers: authHeaders(token) }
+      { headers: authHeaders(token) },
     );
     // Endpoint may return 200 with success:false or 422 for invalid creds
     expect([200, 422]).toContain(res.status());
@@ -227,10 +225,8 @@ test.describe("credentials journey", () => {
     expect(res.status()).toBe(200);
 
     const data = await res.json();
-    const list = Array.isArray(data) ? data : (data as { items?: unknown[] }).items ?? [];
-    const ids = (list as Array<Record<string, unknown>>).map(
-      (c) => c.id ?? c.credential_id
-    );
+    const list = Array.isArray(data) ? data : ((data as { items?: unknown[] }).items ?? []);
+    const ids = (list as Array<Record<string, unknown>>).map((c) => c.id ?? c.credential_id);
     expect(ids).toContain(credentialId);
   });
 
@@ -322,7 +318,7 @@ test.describe("sync journey", () => {
     // Trigger sync
     const triggerRes = await request.post(
       `${liveBackendUrl}/api/v1/admin/sync-configs/${syncConfigId}/trigger`,
-      { headers: authHeaders(token) }
+      { headers: authHeaders(token) },
     );
     expect(triggerRes.status()).toBe(202);
   });
@@ -335,12 +331,12 @@ test.describe("sync journey", () => {
 
     const res = await request.get(
       `${liveBackendUrl}/api/v1/admin/sync-configs/${syncConfigId}/jobs`,
-      { headers: authHeaders(token) }
+      { headers: authHeaders(token) },
     );
     expect(res.status()).toBe(200);
 
     const data = await res.json();
-    const list = Array.isArray(data) ? data : (data as { items?: unknown[] }).items ?? [];
+    const list = Array.isArray(data) ? data : ((data as { items?: unknown[] }).items ?? []);
     expect(Array.isArray(list)).toBe(true);
   });
 
@@ -348,10 +344,9 @@ test.describe("sync journey", () => {
   test.afterAll(async ({ request }) => {
     if (!token || !syncConfigId) return;
     try {
-      await request.delete(
-        `${liveBackendUrl}/api/v1/admin/sync-configs/${syncConfigId}`,
-        { headers: authHeaders(token) }
-      );
+      await request.delete(`${liveBackendUrl}/api/v1/admin/sync-configs/${syncConfigId}`, {
+        headers: authHeaders(token),
+      });
     } catch {
       // Ignore cleanup errors; this is best-effort only.
     }

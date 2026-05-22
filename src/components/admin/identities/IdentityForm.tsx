@@ -22,7 +22,7 @@ function recordToArray(record: Record<string, string[]>): ProviderEntry[] {
       id: `${provider}-${username}-${index}`,
       provider,
       username,
-    }))
+    })),
   );
 }
 
@@ -50,12 +50,15 @@ export function IdentityForm({
   });
 
   const [providerEntries, setProviderEntries] = useState<ProviderEntry[]>(
-    initialData ? recordToArray(initialData.provider_identities) : []
+    initialData ? recordToArray(initialData.provider_identities) : [],
   );
 
   const handleFormChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (event.target.name === "team_ids") {
-      setFormData((prev) => ({ ...prev, team_ids: event.target.value ? [event.target.value] : [] }));
+      setFormData((prev) => ({
+        ...prev,
+        team_ids: event.target.value ? [event.target.value] : [],
+      }));
       return;
     }
     handleChange(event);
@@ -70,7 +73,11 @@ export function IdentityForm({
   const addProvider = () => {
     setProviderEntries((prev) => [
       ...prev,
-      { id: `provider-${Date.now()}-${Math.random().toString(36).slice(2)}`, provider: "github", username: "" },
+      {
+        id: `provider-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        provider: "github",
+        username: "",
+      },
     ]);
   };
 
@@ -95,7 +102,10 @@ export function IdentityForm({
       contentClassName="space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
       actionsClassName="flex items-center gap-4"
       actionsStart={
-        <Link href="/admin/identities" className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground">
+        <Link
+          href="/admin/identities"
+          className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
+        >
           Cancel
         </Link>
       }
@@ -115,7 +125,9 @@ export function IdentityForm({
           className={`${inputClass} text-sm disabled:opacity-50`}
           placeholder="e.g., alice-smith"
         />
-        <p className="mt-1 text-xs text-(--ink-muted)">Unique identifier for the identity. Cannot be changed after creation.</p>
+        <p className="mt-1 text-xs text-(--ink-muted)">
+          Unique identifier for the identity. Cannot be changed after creation.
+        </p>
       </div>
 
       <div>
@@ -171,7 +183,11 @@ export function IdentityForm({
       <div>
         <div className="mb-2 flex items-center justify-between">
           <span className="block text-sm font-medium">Provider Identities</span>
-          <button type="button" onClick={addProvider} className="text-xs font-medium text-(--accent) hover:underline">
+          <button
+            type="button"
+            onClick={addProvider}
+            className="text-xs font-medium text-(--accent) hover:underline"
+          >
             + Add Identity
           </button>
         </div>
@@ -206,7 +222,9 @@ export function IdentityForm({
               </button>
             </div>
           ))}
-          {providerEntries.length === 0 && <p className="text-sm italic text-(--ink-muted)">No provider identities linked.</p>}
+          {providerEntries.length === 0 && (
+            <p className="text-sm italic text-(--ink-muted)">No provider identities linked.</p>
+          )}
         </div>
       </div>
     </BaseForm>

@@ -21,8 +21,8 @@ function findSetting(settings: Setting[], key: string): string | null {
 }
 
 export function SecuritySettings() {
-   const [isPending, startTransition] = useTransition();
-   const [loaded, setLoaded] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [loaded, setLoaded] = useState(false);
   // TODO: 2FA enforcement — see CHAOS-555 and CHAOS-528 epic
 
   const [sessionTimeout, setSessionTimeout] = useState(DEFAULT_SESSION_TIMEOUT);
@@ -42,36 +42,38 @@ export function SecuritySettings() {
     };
 
     load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
-   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-     e.preventDefault();
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-     startTransition(async () => {
-       const results = await Promise.allSettled([
-         updateSecuritySetting("session_timeout", sessionTimeout),
-       ]);
+    startTransition(async () => {
+      const results = await Promise.allSettled([
+        updateSecuritySetting("session_timeout", sessionTimeout),
+      ]);
 
-       const errors = results
-         .map((r) => (r.status === "fulfilled" ? r.value : { error: "Request failed" }))
-         .filter((r) => r.error)
-         .map((r) => r.error);
+      const errors = results
+        .map((r) => (r.status === "fulfilled" ? r.value : { error: "Request failed" }))
+        .filter((r) => r.error)
+        .map((r) => r.error);
 
-       if (errors.length > 0) {
-         toast.error(errors.join("; "));
-       } else {
-         toast.success("Security settings saved successfully");
-       }
-     });
-   };
+      if (errors.length > 0) {
+        toast.error(errors.join("; "));
+      } else {
+        toast.success("Security settings saved successfully");
+      }
+    });
+  };
 
-   return (
-     <SettingsSection
-       title="Security"
-       description="Configure security settings for your organization."
-     >
-       <form onSubmit={handleSubmit} className="space-y-4">
+  return (
+    <SettingsSection
+      title="Security"
+      description="Configure security settings for your organization."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="sessionTimeout" className="block text-sm font-medium text-(--foreground)">
             Session Timeout

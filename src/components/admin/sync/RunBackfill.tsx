@@ -28,26 +28,29 @@ export function RunBackfill({ configId }: RunBackfillProps) {
     return () => stopPolling();
   }, [stopPolling]);
 
-  const pollJobStatus = useCallback((jobId: string) => {
-    stopPolling();
-    pollingRef.current = setInterval(async () => {
-      const result = await getBackfillJobStatus(jobId);
-      if (result.error) {
-        stopPolling();
-        return;
-      }
-      if (result.data) {
-        setActiveJob(result.data);
-        if (result.data.status === "completed") {
+  const pollJobStatus = useCallback(
+    (jobId: string) => {
+      stopPolling();
+      pollingRef.current = setInterval(async () => {
+        const result = await getBackfillJobStatus(jobId);
+        if (result.error) {
           stopPolling();
-          toast.success("Backfill completed successfully");
-        } else if (result.data.status === "failed") {
-          stopPolling();
-          toast.error(result.data.error_message || "Backfill failed");
+          return;
         }
-      }
-    }, 3000);
-  }, [stopPolling]);
+        if (result.data) {
+          setActiveJob(result.data);
+          if (result.data.status === "completed") {
+            stopPolling();
+            toast.success("Backfill completed successfully");
+          } else if (result.data.status === "failed") {
+            stopPolling();
+            toast.error(result.data.error_message || "Backfill failed");
+          }
+        }
+      }, 3000);
+    },
+    [stopPolling],
+  );
 
   const handleBackfill = () => {
     if (!since || !before) {
@@ -129,13 +132,12 @@ export function RunBackfill({ configId }: RunBackfillProps) {
           <div className="flex items-center justify-between text-xs">
             <span className="text-(--ink-muted)">
               {activeJob.status === "pending" && "Waiting to start..."}
-              {activeJob.status === "running" && `Processing chunk ${activeJob.completed_chunks} of ${activeJob.total_chunks}`}
+              {activeJob.status === "running" &&
+                `Processing chunk ${activeJob.completed_chunks} of ${activeJob.total_chunks}`}
               {activeJob.status === "completed" && "Backfill complete"}
               {activeJob.status === "failed" && (activeJob.error_message || "Backfill failed")}
             </span>
-            <span className="font-medium tabular-nums">
-              {Math.round(activeJob.progress_pct)}%
-            </span>
+            <span className="font-medium tabular-nums">{Math.round(activeJob.progress_pct)}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-(--card-stroke)">
             <div
@@ -143,10 +145,12 @@ export function RunBackfill({ configId }: RunBackfillProps) {
                 activeJob.status === "failed"
                   ? "bg-red-500"
                   : activeJob.status === "completed"
-                  ? "bg-green-500"
-                  : "bg-(--accent)"
+                    ? "bg-green-500"
+                    : "bg-(--accent)"
               }`}
-              style={{ width: `${Math.max(activeJob.progress_pct, activeJob.status === "pending" ? 2 : 0)}%` }}
+              style={{
+                width: `${Math.max(activeJob.progress_pct, activeJob.status === "pending" ? 2 : 0)}%`,
+              }}
             />
           </div>
         </div>

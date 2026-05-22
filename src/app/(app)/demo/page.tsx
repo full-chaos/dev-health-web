@@ -20,10 +20,7 @@ import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
-import {
-  WorkGraphExplorer,
-  WorkGraphLegend,
-} from "@/components/charts/WorkGraphExplorer";
+import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
 import type { WorkGraphEdge } from "@/lib/graphql/types";
 import type { ChordRecord } from "@/lib/types";
 import type {
@@ -47,33 +44,45 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { FlameFrame, HeatmapResponse, QuadrantResponse } from "@/lib/types";
 
 export default function Home() {
-  const [chordControls, setChordControls] = useState<ChordControlsValue>(
-    CHORD_CONTROLS_DEFAULTS
-  );
+  const [chordControls, setChordControls] = useState<ChordControlsValue>(CHORD_CONTROLS_DEFAULTS);
 
   // Sample data — loaded lazily so it never ships in production client bundles.
   // NEXT_PUBLIC_DEV_HEALTH_TEST_MODE gates the dynamic import.
   const [sampleChordTeamReviewLoad, setSampleChordTeamReviewLoad] = useState<ChordRecord[]>([]);
   const [sampleChordRepoTransfer, setSampleChordRepoTransfer] = useState<ChordRecord[]>([]);
   const [sampleChordWorkTypeRework, setSampleChordWorkTypeRework] = useState<ChordRecord[]>([]);
-  const [sankeyStateTransitionSample, setSankeyStateTransitionSample] = useState<FlowTransitionSummary[]>([]);
-  const [workItemMetricsDailySample, setWorkItemMetricsDailySample] = useState<WorkItemMetricsDaily[]>([]);
-  const [workItemFlowEfficiencyDailySample, setWorkItemFlowEfficiencyDailySample] = useState<WorkItemFlowEfficiencyDaily[]>([]);
-  const [workItemTypeSummarySample, setWorkItemTypeSummarySample] = useState<WorkItemTypeSummary[]>([]);
-  const [workItemTypeByScopeSample, setWorkItemTypeByScopeSample] = useState<WorkItemTypeByScope[]>([]);
+  const [sankeyStateTransitionSample, setSankeyStateTransitionSample] = useState<
+    FlowTransitionSummary[]
+  >([]);
+  const [workItemMetricsDailySample, setWorkItemMetricsDailySample] = useState<
+    WorkItemMetricsDaily[]
+  >([]);
+  const [workItemFlowEfficiencyDailySample, setWorkItemFlowEfficiencyDailySample] = useState<
+    WorkItemFlowEfficiencyDaily[]
+  >([]);
+  const [workItemTypeSummarySample, setWorkItemTypeSummarySample] = useState<WorkItemTypeSummary[]>(
+    [],
+  );
+  const [workItemTypeByScopeSample, setWorkItemTypeByScopeSample] = useState<WorkItemTypeByScope[]>(
+    [],
+  );
 
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE !== "true") return;
-    import("@/data/devHealthOpsSample").then((m) => {
-      setSampleChordTeamReviewLoad(m.sampleChordTeamReviewLoad);
-      setSampleChordRepoTransfer(m.sampleChordRepoTransfer);
-      setSampleChordWorkTypeRework(m.sampleChordWorkTypeRework);
-      setSankeyStateTransitionSample(m.sankeyStateTransitionSample);
-      setWorkItemMetricsDailySample(m.workItemMetricsDailySample);
-      setWorkItemFlowEfficiencyDailySample(m.workItemFlowEfficiencyDailySample);
-      setWorkItemTypeSummarySample(m.workItemTypeSummarySample);
-      setWorkItemTypeByScopeSample(m.workItemTypeByScopeSample);
-    }).catch((err: unknown) => { console.warn("[demo/page] Failed to load sample data", err); });
+    import("@/data/devHealthOpsSample")
+      .then((m) => {
+        setSampleChordTeamReviewLoad(m.sampleChordTeamReviewLoad);
+        setSampleChordRepoTransfer(m.sampleChordRepoTransfer);
+        setSampleChordWorkTypeRework(m.sampleChordWorkTypeRework);
+        setSankeyStateTransitionSample(m.sankeyStateTransitionSample);
+        setWorkItemMetricsDailySample(m.workItemMetricsDailySample);
+        setWorkItemFlowEfficiencyDailySample(m.workItemFlowEfficiencyDailySample);
+        setWorkItemTypeSummarySample(m.workItemTypeSummarySample);
+        setWorkItemTypeByScopeSample(m.workItemTypeByScopeSample);
+      })
+      .catch((err: unknown) => {
+        console.warn("[demo/page] Failed to load sample data", err);
+      });
   }, []);
 
   const teamDataset = useMemo(
@@ -85,7 +94,7 @@ export default function Home() {
         grouping: chordControls.grouping,
         unit: "reviews",
       }),
-    [chordControls, sampleChordTeamReviewLoad]
+    [chordControls, sampleChordTeamReviewLoad],
   );
 
   const repoDataset = useMemo(
@@ -97,7 +106,7 @@ export default function Home() {
         grouping: "repo",
         unit: "transfers",
       }),
-    [sampleChordRepoTransfer]
+    [sampleChordRepoTransfer],
   );
 
   const workTypeDataset = useMemo(
@@ -109,7 +118,7 @@ export default function Home() {
         grouping: "work_type",
         unit: "items",
       }),
-    [sampleChordWorkTypeRework]
+    [sampleChordWorkTypeRework],
   );
   const throughput = toThroughputBarSeries(workItemMetricsDailySample, {
     scopeOrder: ["auth", "api", "ui", "data", "ops", "docs"],
@@ -135,7 +144,7 @@ export default function Home() {
       x: hour,
       y: day,
       value: heatmapValues[rowIdx][colIdx],
-    }))
+    })),
   );
   const heatmapData: HeatmapResponse = {
     axes: { x: heatmapAxesX, y: heatmapAxesY },
@@ -147,7 +156,7 @@ export default function Home() {
       x: hour,
       y: day,
       value: Number((heatmapValues[rowIdx][colIdx] * 0.6).toFixed(2)),
-    }))
+    })),
   );
   const icHeatmapData: HeatmapResponse = {
     axes: { x: heatmapAxesX, y: heatmapAxesY },
@@ -338,15 +347,105 @@ export default function Home() {
   };
   const icFocusIds = ["ic-1"];
   const sampleWorkGraphEdges: WorkGraphEdge[] = [
-    { edgeId: "e1", sourceType: "ISSUE", sourceId: "PROJ-101", targetType: "PR", targetId: "PR-201", edgeType: "FIXES", provenance: "NATIVE", confidence: 1.0, evidence: "Fixes #101" },
-    { edgeId: "e2", sourceType: "ISSUE", sourceId: "PROJ-102", targetType: "ISSUE", targetId: "PROJ-101", edgeType: "BLOCKS", provenance: "EXPLICIT_TEXT", confidence: 0.9, evidence: "is blocked by PROJ-102" },
-    { edgeId: "e3", sourceType: "PR", sourceId: "PR-201", targetType: "COMMIT", targetId: "abc123", edgeType: "CONTAINS", provenance: "NATIVE", confidence: 1.0, evidence: "" },
-    { edgeId: "e4", sourceType: "COMMIT", sourceId: "abc123", targetType: "FILE", targetId: "src/api/handler.ts", edgeType: "TOUCHES", provenance: "NATIVE", confidence: 1.0, evidence: "" },
-    { edgeId: "e5", sourceType: "ISSUE", sourceId: "PROJ-103", targetType: "ISSUE", targetId: "PROJ-101", edgeType: "RELATES", provenance: "HEURISTIC", confidence: 0.7, evidence: "similar labels" },
-    { edgeId: "e6", sourceType: "ISSUE", sourceId: "PROJ-104", targetType: "PR", targetId: "PR-202", edgeType: "IMPLEMENTS", provenance: "EXPLICIT_TEXT", confidence: 0.95, evidence: "Implements PROJ-104" },
-    { edgeId: "e7", sourceType: "PR", sourceId: "PR-202", targetType: "COMMIT", targetId: "def456", edgeType: "CONTAINS", provenance: "NATIVE", confidence: 1.0, evidence: "" },
-    { edgeId: "e8", sourceType: "COMMIT", sourceId: "def456", targetType: "FILE", targetId: "src/components/Button.tsx", edgeType: "TOUCHES", provenance: "NATIVE", confidence: 1.0, evidence: "" },
-    { edgeId: "e9", sourceType: "COMMIT", sourceId: "def456", targetType: "FILE", targetId: "src/api/handler.ts", edgeType: "TOUCHES", provenance: "NATIVE", confidence: 1.0, evidence: "" },
+    {
+      edgeId: "e1",
+      sourceType: "ISSUE",
+      sourceId: "PROJ-101",
+      targetType: "PR",
+      targetId: "PR-201",
+      edgeType: "FIXES",
+      provenance: "NATIVE",
+      confidence: 1.0,
+      evidence: "Fixes #101",
+    },
+    {
+      edgeId: "e2",
+      sourceType: "ISSUE",
+      sourceId: "PROJ-102",
+      targetType: "ISSUE",
+      targetId: "PROJ-101",
+      edgeType: "BLOCKS",
+      provenance: "EXPLICIT_TEXT",
+      confidence: 0.9,
+      evidence: "is blocked by PROJ-102",
+    },
+    {
+      edgeId: "e3",
+      sourceType: "PR",
+      sourceId: "PR-201",
+      targetType: "COMMIT",
+      targetId: "abc123",
+      edgeType: "CONTAINS",
+      provenance: "NATIVE",
+      confidence: 1.0,
+      evidence: "",
+    },
+    {
+      edgeId: "e4",
+      sourceType: "COMMIT",
+      sourceId: "abc123",
+      targetType: "FILE",
+      targetId: "src/api/handler.ts",
+      edgeType: "TOUCHES",
+      provenance: "NATIVE",
+      confidence: 1.0,
+      evidence: "",
+    },
+    {
+      edgeId: "e5",
+      sourceType: "ISSUE",
+      sourceId: "PROJ-103",
+      targetType: "ISSUE",
+      targetId: "PROJ-101",
+      edgeType: "RELATES",
+      provenance: "HEURISTIC",
+      confidence: 0.7,
+      evidence: "similar labels",
+    },
+    {
+      edgeId: "e6",
+      sourceType: "ISSUE",
+      sourceId: "PROJ-104",
+      targetType: "PR",
+      targetId: "PR-202",
+      edgeType: "IMPLEMENTS",
+      provenance: "EXPLICIT_TEXT",
+      confidence: 0.95,
+      evidence: "Implements PROJ-104",
+    },
+    {
+      edgeId: "e7",
+      sourceType: "PR",
+      sourceId: "PR-202",
+      targetType: "COMMIT",
+      targetId: "def456",
+      edgeType: "CONTAINS",
+      provenance: "NATIVE",
+      confidence: 1.0,
+      evidence: "",
+    },
+    {
+      edgeId: "e8",
+      sourceType: "COMMIT",
+      sourceId: "def456",
+      targetType: "FILE",
+      targetId: "src/components/Button.tsx",
+      edgeType: "TOUCHES",
+      provenance: "NATIVE",
+      confidence: 1.0,
+      evidence: "",
+    },
+    {
+      edgeId: "e9",
+      sourceType: "COMMIT",
+      sourceId: "def456",
+      targetType: "FILE",
+      targetId: "src/api/handler.ts",
+      edgeType: "TOUCHES",
+      provenance: "NATIVE",
+      confidence: 1.0,
+      evidence: "",
+    },
   ];
 
   return (
@@ -360,9 +459,8 @@ export default function Home() {
             Chart prototypes powered by ECharts
           </h1>
           <p className="max-w-2xl text-base text-(--ink-muted)">
-            Interactive chart types inspired by Grafana charts, built in
-            React + Next.js. Each chart has a Playwright test running in a
-            headless browser.
+            Interactive chart types inspired by Grafana charts, built in React + Next.js. Each chart
+            has a Playwright test running in a headless browser.
           </p>
         </header>
 
@@ -373,9 +471,7 @@ export default function Home() {
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Sparklines</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                Trend
-              </span>
+              <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Trend</span>
             </div>
             <SparklineChart data={sparkline.values} categories={sparkline.categories} />
           </div>
@@ -409,10 +505,7 @@ export default function Home() {
                 Distribution
               </span>
             </div>
-            <HorizontalBarChart
-              categories={efficiency.categories}
-              values={efficiency.values}
-            />
+            <HorizontalBarChart categories={efficiency.categories} values={efficiency.values} />
           </div>
 
           <div
@@ -438,10 +531,7 @@ export default function Home() {
                 Work Mix
               </span>
             </div>
-            <NestedPieChart2D
-              categories={nestedPie.categories}
-              subtypes={nestedPie.subtypes}
-            />
+            <NestedPieChart2D categories={nestedPie.categories} subtypes={nestedPie.subtypes} />
           </div>
 
           <div
@@ -454,10 +544,7 @@ export default function Home() {
                 Work Depth
               </span>
             </div>
-            <NestedPieChart3D
-              categories={nestedPie.categories}
-              subtypes={nestedPie.subtypes}
-            />
+            <NestedPieChart3D categories={nestedPie.categories} subtypes={nestedPie.subtypes} />
           </div>
         </section>
 
@@ -521,9 +608,7 @@ export default function Home() {
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Individual view examples
               </p>
-              <h2 className="mt-2 text-lg font-semibold">
-                IC views in individual scope
-              </h2>
+              <h2 className="mt-2 text-lg font-semibold">IC views in individual scope</h2>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Only the named individual is shown in this view.
               </p>
@@ -581,9 +666,7 @@ export default function Home() {
           data-testid="chart-sankey"
         >
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              Sankey
-            </h2>
+            <h2 className="text-lg font-semibold">Sankey</h2>
             <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
               Investment / Flow Breakdown
             </span>
@@ -597,18 +680,13 @@ export default function Home() {
         >
           <header className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">
-                Chord Chart — Cross-Entity Flow
-              </h2>
+              <h2 className="text-lg font-semibold">Chord Chart — Cross-Entity Flow</h2>
               <p className="mt-1 max-w-2xl text-sm text-(--ink-muted)">
-                Relationship view showing how work load exchanges between
-                teams, repos, or work types. Complements the Sankey lifecycle
-                view.
+                Relationship view showing how work load exchanges between teams, repos, or work
+                types. Complements the Sankey lifecycle view.
               </p>
             </div>
-            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-              Exchange
-            </span>
+            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Exchange</span>
           </header>
 
           <div className="mb-4">
@@ -620,15 +698,8 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-            <ChordChart
-              dataset={teamDataset}
-              unit="reviews"
-              height={420}
-            />
-            <ChordSummaryPanel
-              dataset={teamDataset}
-              unit="reviews"
-            />
+            <ChordChart dataset={teamDataset} unit="reviews" height={420} />
+            <ChordSummaryPanel dataset={teamDataset} unit="reviews" />
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -642,11 +713,7 @@ export default function Home() {
                   6 repos
                 </span>
               </div>
-              <ChordChart
-                dataset={repoDataset}
-                unit="transfers"
-                height={280}
-              />
+              <ChordChart dataset={repoDataset} unit="transfers" height={280} />
             </div>
 
             <div
@@ -659,11 +726,7 @@ export default function Home() {
                   Self-links on
                 </span>
               </div>
-              <ChordChart
-                dataset={workTypeDataset}
-                unit="items"
-                height={280}
-              />
+              <ChordChart dataset={workTypeDataset} unit="items" height={280} />
             </div>
           </div>
         </section>

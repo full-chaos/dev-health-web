@@ -69,9 +69,7 @@ describe("sampleChordRepoTransfer", () => {
 
 describe("sampleChordWorkTypeRework", () => {
   it("contains at least 3 self-links", () => {
-    const selfLinks = sampleChordWorkTypeRework.filter(
-      (record) => record.source === record.target
-    );
+    const selfLinks = sampleChordWorkTypeRework.filter((record) => record.source === record.target);
     expect(selfLinks.length).toBeGreaterThanOrEqual(3);
   });
 

@@ -33,7 +33,10 @@ export function AIAutomationsDashboard({ filter }: AIAutomationsDashboardProps) 
         title="Best-fit automation opportunities"
         description="Candidate patterns for responsible automation once the recommendation engine becomes ready."
       >
-        <AIOpportunityList detectorReady={opportunities?.detectorReady} recommendations={opportunities?.recommendations} />
+        <AIOpportunityList
+          detectorReady={opportunities?.detectorReady}
+          recommendations={opportunities?.recommendations}
+        />
       </AIPanelCard>
     </div>
   );
@@ -41,7 +44,10 @@ export function AIAutomationsDashboard({ filter }: AIAutomationsDashboardProps) 
 
 function AutomationsSkeleton() {
   return (
-    <div className="rounded-3xl border border-(--card-stroke) bg-card p-5" data-testid="ai-automations-loading">
+    <div
+      className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+      data-testid="ai-automations-loading"
+    >
       <div className="h-40 animate-pulse rounded-2xl bg-(--card-80)" />
     </div>
   );

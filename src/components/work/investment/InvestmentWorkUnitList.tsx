@@ -52,7 +52,9 @@ export function InvestmentWorkUnitList({
             Drill down into a theme and choose a subcategory to see the work units that support it.
           </p>
         ) : evidenceUnits.length === 0 ? (
-          <p className="text-sm text-(--ink-muted)">No work units are currently linked to {focusSubcategoryLabel}.</p>
+          <p className="text-sm text-(--ink-muted)">
+            No work units are currently linked to {focusSubcategoryLabel}.
+          </p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {evidenceUnits.slice(0, 6).map((entry) => {
@@ -77,7 +79,9 @@ export function InvestmentWorkUnitList({
                   className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 text-left transition hover:border-(--accent-2)"
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-foreground">{workUnitLabel}</div>
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {workUnitLabel}
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                       {workUnitTypeLabel ? (
                         <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
@@ -85,7 +89,10 @@ export function InvestmentWorkUnitList({
                         </span>
                       ) : null}
                       <span>
-                        ID: <span className="font-mono text-[11px] tracking-normal text-(--ink)">{workUnitIdToken}</span>
+                        ID:{" "}
+                        <span className="font-mono text-[11px] tracking-normal text-(--ink)">
+                          {workUnitIdToken}
+                        </span>
                       </span>
                       <button
                         type="button"
@@ -100,10 +107,12 @@ export function InvestmentWorkUnitList({
                     </div>
                   </div>
                   <div className="mt-3 text-sm">
-                    <span className="text-(--ink-muted)">Weighted effort:</span> {formatNumber(entry.weightedEffort)} {effortUnit}
+                    <span className="text-(--ink-muted)">Weighted effort:</span>{" "}
+                    {formatNumber(entry.weightedEffort)} {effortUnit}
                   </div>
                   <div className="mt-1 text-xs text-(--ink-muted)">
-                    Evidence quality: {entry.unit.evidence_quality.value !== null
+                    Evidence quality:{" "}
+                    {entry.unit.evidence_quality.value !== null
                       ? `${formatQuality(entry.unit.evidence_quality.value)} (${formatBandLabel(entry.unit.evidence_quality.band ?? "unknown")})`
                       : "Unknown"}
                   </div>

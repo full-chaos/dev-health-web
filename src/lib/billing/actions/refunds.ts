@@ -32,12 +32,15 @@ type RefundListResponse = {
   offset: number;
 };
 
-export async function createRefund(input: {
-  invoiceId: string;
-  amount?: number;
-  reason?: "duplicate" | "fraudulent" | "requested_by_customer";
-  description?: string;
-}, orgId?: string): Promise<ActionResult<RefundRecord>> {
+export async function createRefund(
+  input: {
+    invoiceId: string;
+    amount?: number;
+    reason?: "duplicate" | "fraudulent" | "requested_by_customer";
+    description?: string;
+  },
+  orgId?: string,
+): Promise<ActionResult<RefundRecord>> {
   const orgResult = await resolveOrgId(orgId);
   if (orgResult.error) {
     return orgResult;
@@ -81,10 +84,13 @@ export async function createRefund(input: {
   }
 }
 
-export async function getRefunds(input?: {
-  limit?: number;
-  offset?: number;
-}, orgId?: string): Promise<ActionResult<RefundListResponse>> {
+export async function getRefunds(
+  input?: {
+    limit?: number;
+    offset?: number;
+  },
+  orgId?: string,
+): Promise<ActionResult<RefundListResponse>> {
   const orgResult = await resolveOrgId(orgId);
   if (orgResult.error) {
     return orgResult;

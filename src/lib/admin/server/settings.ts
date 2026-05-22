@@ -47,7 +47,7 @@ export async function createSetting(data: SettingCreate): Promise<ActionResult<S
 export async function updateSetting(
   category: string,
   key: string,
-  data: SettingUpdate
+  data: SettingUpdate,
 ): Promise<ActionResult<Setting>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -72,7 +72,7 @@ export async function getSecuritySettings(): Promise<ActionResult<Setting[]>> {
 
 export async function updateSecuritySetting(
   key: string,
-  value: string
+  value: string,
 ): Promise<ActionResult<Setting>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -84,7 +84,7 @@ export async function updateSecuritySetting(
 
 export async function listIPAllowlistEntries(
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<ActionResult<IPAllowlistListResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -93,7 +93,7 @@ export async function listIPAllowlistEntries(
 }
 
 export async function createIPAllowlistEntry(
-  data: IPAllowlistCreate
+  data: IPAllowlistCreate,
 ): Promise<ActionResult<IPAllowlist>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -105,7 +105,7 @@ export async function createIPAllowlistEntry(
 
 export async function updateIPAllowlistEntry(
   id: string,
-  data: IPAllowlistUpdate
+  data: IPAllowlistUpdate,
 ): Promise<ActionResult<IPAllowlist>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -135,7 +135,7 @@ export async function checkIPAllowed(ipAddress: string): Promise<ActionResult<IP
 
 export async function listRetentionPolicies(
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<ActionResult<RetentionPolicyListResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -144,7 +144,7 @@ export async function listRetentionPolicies(
 }
 
 export async function createRetentionPolicy(
-  data: RetentionPolicyCreate
+  data: RetentionPolicyCreate,
 ): Promise<ActionResult<RetentionPolicy>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -156,7 +156,7 @@ export async function createRetentionPolicy(
 
 export async function updateRetentionPolicy(
   id: string,
-  data: RetentionPolicyUpdate
+  data: RetentionPolicyUpdate,
 ): Promise<ActionResult<RetentionPolicy>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -177,7 +177,7 @@ export async function deleteRetentionPolicy(id: string): Promise<ActionResult<vo
 
 export async function executeRetentionPolicy(
   id: string,
-  dryRun = true
+  dryRun = true,
 ): Promise<ActionResult<RetentionExecuteResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();

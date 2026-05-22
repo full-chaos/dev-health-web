@@ -39,9 +39,8 @@ export function RefundDialog({
   const [isOpen, setIsOpen] = useState(false);
   const [isPartial, setIsPartial] = useState(false);
   const [amountInput, setAmountInput] = useState(centsToDollars(refundableAmountCents));
-  const [reason, setReason] = useState<(typeof REFUND_REASONS)[number]["value"]>(
-    "requested_by_customer",
-  );
+  const [reason, setReason] =
+    useState<(typeof REFUND_REASONS)[number]["value"]>("requested_by_customer");
   const [description, setDescription] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();

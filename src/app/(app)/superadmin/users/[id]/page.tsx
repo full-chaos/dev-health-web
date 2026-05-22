@@ -21,22 +21,13 @@ export default async function UserDetailPage({ params }: PageProps) {
 
   return (
     <div>
-      <AdminHeader
-        title={user.full_name || user.email}
-        description={`Manage user ${user.email}`}
-      />
+      <AdminHeader title={user.full_name || user.email} description={`Manage user ${user.email}`} />
 
-      <SettingsSection
-        title="User Profile"
-        description="Update user details and configuration."
-      >
+      <SettingsSection title="User Profile" description="Update user details and configuration.">
         <UserEditForm user={user} />
       </SettingsSection>
 
-      <SettingsSection
-        title="Security"
-        description="Manage user password and security settings."
-      >
+      <SettingsSection title="Security" description="Manage user password and security settings.">
         <UserSetPasswordForm userId={user.id} />
       </SettingsSection>
 

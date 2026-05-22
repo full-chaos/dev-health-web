@@ -12,40 +12,40 @@ type EditUserFormWrapperProps = {
 };
 
 export function EditUserFormWrapper({ user }: EditUserFormWrapperProps) {
-   const router = useRouter();
-   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
-   const handleSubmit = async (data: UserFormData) => {
-     setIsLoading(true);
+  const handleSubmit = async (data: UserFormData) => {
+    setIsLoading(true);
 
-     const result = await updateUser(user.id, {
-       full_name: data.full_name || undefined,
-       username: data.username || undefined,
-       is_active: data.is_active,
-     });
+    const result = await updateUser(user.id, {
+      full_name: data.full_name || undefined,
+      username: data.username || undefined,
+      is_active: data.is_active,
+    });
 
-     setIsLoading(false);
+    setIsLoading(false);
 
-     if (result.error) {
-       toast.error(result.error);
-       return;
-     }
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
 
-     router.push(`/admin/users/${user.id}`);
-     router.refresh();
-   };
+    router.push(`/admin/users/${user.id}`);
+    router.refresh();
+  };
 
   const handleCancel = () => {
     router.push(`/admin/users/${user.id}`);
   };
 
-   return (
-     <UserForm
-       initialData={user}
-       onSubmit={handleSubmit}
-       onCancel={handleCancel}
-       isEdit
-       isLoading={isLoading}
-     />
-   );
- }
+  return (
+    <UserForm
+      initialData={user}
+      onSubmit={handleSubmit}
+      onCancel={handleCancel}
+      isEdit
+      isLoading={isLoading}
+    />
+  );
+}

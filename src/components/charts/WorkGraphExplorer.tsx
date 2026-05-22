@@ -7,11 +7,7 @@ import { GraphChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
-import type {
-  WorkGraphEdge,
-  WorkGraphNodeType,
-  WorkGraphEdgeType,
-} from "@/lib/graphql/types";
+import type { WorkGraphEdge, WorkGraphNodeType, WorkGraphEdgeType } from "@/lib/graphql/types";
 
 echarts.use([GraphChart]);
 
@@ -87,15 +83,22 @@ const NODE_TYPE_LABELS: Record<WorkGraphNodeType, string> = {
 };
 
 const ALL_NODE_TYPES: WorkGraphNodeType[] = [
-  "ISSUE", "PR", "COMMIT", "FILE", "RELEASE", "FEATURE_FLAG", "AI_WORKFLOW_RUN", "DIFF", "REVIEW_OUTCOME", "DEPLOYMENT", "INCIDENT",
+  "ISSUE",
+  "PR",
+  "COMMIT",
+  "FILE",
+  "RELEASE",
+  "FEATURE_FLAG",
+  "AI_WORKFLOW_RUN",
+  "DIFF",
+  "REVIEW_OUTCOME",
+  "DEPLOYMENT",
+  "INCIDENT",
 ];
 
 const FILTERABLE_NODE_TYPES: WorkGraphNodeType[] = ["RELEASE", "FEATURE_FLAG"];
 
-const EDGE_TYPE_STYLES: Record<
-  string,
-  { color: string; type: "solid" | "dashed" | "dotted" }
-> = {
+const EDGE_TYPE_STYLES: Record<string, { color: string; type: "solid" | "dashed" | "dotted" }> = {
   BLOCKS: { color: "#ef4444", type: "solid" },
   IS_BLOCKED_BY: { color: "#ef4444", type: "dashed" },
   FIXES: { color: "#22c55e", type: "solid" },
@@ -199,9 +202,7 @@ export function WorkGraphExplorer({
 }: WorkGraphExplorerProps) {
   const chartTheme = useChartTheme();
 
-  const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(
-    () => new Set(),
-  );
+  const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(() => new Set());
 
   const toggleNodeType = useCallback((nodeType: WorkGraphNodeType) => {
     setHiddenNodeTypes((prev) => {
@@ -280,7 +281,10 @@ export function WorkGraphExplorer({
         borderColor: chartTheme.stroke,
         textStyle: { color: chartTheme.text },
         formatter: (params: unknown) => {
-          const p = params as { dataType?: string; data?: { name?: string; id?: string; edgeType?: string } };
+          const p = params as {
+            dataType?: string;
+            data?: { name?: string; id?: string; edgeType?: string };
+          };
           if (p.dataType === "node") {
             const nodeId = p.data?.id ?? "";
             const [type, id] = nodeId.split(":");
@@ -344,7 +348,7 @@ export function WorkGraphExplorer({
         }
       },
     }),
-    [onNodeClickAction]
+    [onNodeClickAction],
   );
 
   if (edges.length === 0) {
@@ -384,9 +388,7 @@ export function WorkGraphExplorer({
                 className="inline-block h-2.5 w-2.5 rounded-sm"
                 style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
               />
-              <span>
-                {NODE_TYPE_LABELS[type]}
-              </span>
+              <span>{NODE_TYPE_LABELS[type]}</span>
             </label>
           ))}
         </div>
@@ -402,8 +404,16 @@ export function WorkGraphExplorer({
 }
 
 const LEGEND_EDGE_TYPES: WorkGraphEdgeType[] = [
-  "BLOCKS", "IS_BLOCKED_BY", "FIXES", "IMPLEMENTS", "REFERENCES", "RELATES",
-  "INTRODUCED_BY", "CONFIG_CHANGED_BY", "GUARDS", "IMPACTS",
+  "BLOCKS",
+  "IS_BLOCKED_BY",
+  "FIXES",
+  "IMPLEMENTS",
+  "REFERENCES",
+  "RELATES",
+  "INTRODUCED_BY",
+  "CONFIG_CHANGED_BY",
+  "GUARDS",
+  "IMPACTS",
 ];
 
 const LEGEND_EDGE_LABELS: Record<WorkGraphEdgeType, string> = {
@@ -485,56 +495,49 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
       </div>
       <div className="mt-3 space-y-4 border-t border-(--card-stroke) pt-3">
         <section className="space-y-2">
-          <p className="text-[10px] font-medium uppercase tracking-[0.18em]">
-            Node Types
-          </p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.18em]">Node Types</p>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {ALL_NODE_TYPES.map((type) => (
-            <div
-              key={type}
-              title={NODE_TYPE_LABELS[type]}
-              className="flex min-w-0 items-center gap-2"
-            >
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
-              />
-              <span className="min-w-0 truncate leading-none text-foreground/85">{NODE_TYPE_LABELS[type]}</span>
-            </div>
-          ))}
-          </div>
-        </section>
-        <section className="space-y-2">
-          <p className="text-[10px] font-medium uppercase tracking-[0.18em]">
-            Edge Types
-          </p>
-          <div className="grid gap-y-2">
-          {LEGEND_EDGE_TYPES.map((type) => {
-            const edgeStyle = EDGE_TYPE_STYLES[type];
-            const label = LEGEND_EDGE_LABELS[type];
-            return (
+            {ALL_NODE_TYPES.map((type) => (
               <div
                 key={type}
-                title={label}
+                title={NODE_TYPE_LABELS[type]}
                 className="flex min-w-0 items-center gap-2"
               >
                 <span
-                  className="h-0.5 w-5 shrink-0"
-                  style={{
-                    backgroundColor: edgeStyle?.color ?? "#6b7280",
-                    borderBottom: edgeStyle?.type === "dashed"
-                      ? `2px dashed ${edgeStyle.color}`
-                      : edgeStyle?.type === "dotted"
-                        ? `2px dotted ${edgeStyle.color}`
-                        : undefined,
-                  }}
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
                 />
-                <span className="min-w-0 truncate leading-tight text-foreground/85">
-                  {label}
+                <span className="min-w-0 truncate leading-none text-foreground/85">
+                  {NODE_TYPE_LABELS[type]}
                 </span>
               </div>
-            );
-          })}
+            ))}
+          </div>
+        </section>
+        <section className="space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-[0.18em]">Edge Types</p>
+          <div className="grid gap-y-2">
+            {LEGEND_EDGE_TYPES.map((type) => {
+              const edgeStyle = EDGE_TYPE_STYLES[type];
+              const label = LEGEND_EDGE_LABELS[type];
+              return (
+                <div key={type} title={label} className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="h-0.5 w-5 shrink-0"
+                    style={{
+                      backgroundColor: edgeStyle?.color ?? "#6b7280",
+                      borderBottom:
+                        edgeStyle?.type === "dashed"
+                          ? `2px dashed ${edgeStyle.color}`
+                          : edgeStyle?.type === "dotted"
+                            ? `2px dotted ${edgeStyle.color}`
+                            : undefined,
+                    }}
+                  />
+                  <span className="min-w-0 truncate leading-tight text-foreground/85">{label}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
       </div>

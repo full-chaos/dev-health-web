@@ -23,26 +23,12 @@ function DeltaIndicator({ delta }: { delta: number }) {
     return <span className="text-xs text-(--ink-muted)">· no change</span>;
   }
   if (delta > 0) {
-    return (
-      <span className="text-xs text-red-600">
-        ↑ +{delta}
-      </span>
-    );
+    return <span className="text-xs text-red-600">↑ +{delta}</span>;
   }
-  return (
-    <span className="text-xs text-emerald-600">
-      ↓ {delta}
-    </span>
-  );
+  return <span className="text-xs text-emerald-600">↓ {delta}</span>;
 }
 
-export function KpiTile({
-  label,
-  value,
-  delta,
-  tone = "default",
-  loading = false,
-}: KpiTileProps) {
+export function KpiTile({ label, value, delta, tone = "default", loading = false }: KpiTileProps) {
   const accentClass = ACCENT_CLASSES[tone];
 
   return (
@@ -60,12 +46,8 @@ export function KpiTile({
         </div>
       ) : (
         <>
-          <span className="text-3xl font-bold tabular-nums text-foreground">
-            {value}
-          </span>
-          {delta !== undefined && (
-            <DeltaIndicator delta={delta} />
-          )}
+          <span className="text-3xl font-bold tabular-nums text-foreground">{value}</span>
+          {delta !== undefined && <DeltaIndicator delta={delta} />}
         </>
       )}
     </div>

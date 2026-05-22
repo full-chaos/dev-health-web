@@ -36,7 +36,21 @@ describe("AIOpportunityList", () => {
         partial: false,
         dataAvailable: true,
         nodes: [{ nodeType: "PR", nodeId: "repo-1#1001" }],
-        edges: [{ edgeId: "edge-1", sourceType: "PR", sourceId: "repo-1#1001", targetType: "REVIEW_OUTCOME", targetId: "approved", edgeType: "HAS_REVIEW_OUTCOME", confidence: 0.9, source: "msw", evidence: "Approved after focused updates.", provider: "github", repoId: "repo-1" }],
+        edges: [
+          {
+            edgeId: "edge-1",
+            sourceType: "PR",
+            sourceId: "repo-1#1001",
+            targetType: "REVIEW_OUTCOME",
+            targetId: "approved",
+            edgeType: "HAS_REVIEW_OUTCOME",
+            confidence: 0.9,
+            source: "msw",
+            evidence: "Approved after focused updates.",
+            provider: "github",
+            repoId: "repo-1",
+          },
+        ],
       },
     });
   });
@@ -47,7 +61,11 @@ describe("AIOpportunityList", () => {
     await userEvent.click(screen.getByRole("button", { name: /Work Graph: PR 1001/i }));
 
     expect(mockUseAIWorkflowDrilldown).toHaveBeenCalledWith("pr", "repo-1#1001", { limit: 25 });
-    expect(screen.getByTestId("ai-opportunity-workgraph-evidence")).toHaveTextContent("HAS_REVIEW_OUTCOME");
-    expect(screen.getByTestId("ai-opportunity-workgraph-evidence")).toHaveTextContent("Approved after focused updates.");
+    expect(screen.getByTestId("ai-opportunity-workgraph-evidence")).toHaveTextContent(
+      "HAS_REVIEW_OUTCOME",
+    );
+    expect(screen.getByTestId("ai-opportunity-workgraph-evidence")).toHaveTextContent(
+      "Approved after focused updates.",
+    );
   });
 });

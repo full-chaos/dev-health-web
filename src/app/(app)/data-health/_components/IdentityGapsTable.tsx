@@ -13,7 +13,10 @@ import { AliasSuggestionRow } from "./AliasSuggestionRow";
 
 export function IdentityGapsTable() {
   const [result] = useQuery({
-    query: DataHealthIdentityDocument as unknown as TypedDocumentNode<DataHealthIdentityQuery, { team: string }>,
+    query: DataHealthIdentityDocument as unknown as TypedDocumentNode<
+      DataHealthIdentityQuery,
+      { team: string }
+    >,
     variables: { team: "ALL" },
   });
 
@@ -25,14 +28,20 @@ export function IdentityGapsTable() {
   const health = data?.dataHealth?.identityMapping;
   if (!health) return null;
 
-  type UnmappedIdentity = NonNullable<NonNullable<NonNullable<DataHealthIdentityQuery["dataHealth"]>["identityMapping"]>["unmappedIdentities"]>[number];
+  type UnmappedIdentity = NonNullable<
+    NonNullable<
+      NonNullable<DataHealthIdentityQuery["dataHealth"]>["identityMapping"]
+    >["unmappedIdentities"]
+  >[number];
   const columns: DataTableColumn<UnmappedIdentity>[] = [
     {
       key: "provider",
       header: "Provider",
       headerClassName: "px-6 py-4 font-medium",
       className: "px-6 py-4",
-      render: (id) => <ProviderBadge provider={id.provider} username={id.email ?? id.displayName ?? ""} />,
+      render: (id) => (
+        <ProviderBadge provider={id.provider} username={id.email ?? id.displayName ?? ""} />
+      ),
     },
     {
       key: "displayName",

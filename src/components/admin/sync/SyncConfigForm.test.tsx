@@ -24,13 +24,26 @@ vi.mock("@/lib/admin/server", () => ({
   createCredential: (...args: unknown[]) => mockCreateCredential(...args),
 }));
 
-const mockUseAdminTier = vi.fn(() => ({ tier: "community", features: {}, limits: {}, minSyncIntervalHours: 24 }));
+const mockUseAdminTier = vi.fn(() => ({
+  tier: "community",
+  features: {},
+  limits: {},
+  minSyncIntervalHours: 24,
+}));
 vi.mock("@/components/admin/AdminTierContext", () => ({
   useAdminTier: () => mockUseAdminTier(),
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ children, href, ...props }: { children: ReactNode; href: string; [key: string]: unknown }) => (
+  default: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: ReactNode;
+    href: string;
+    [key: string]: unknown;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -73,11 +86,18 @@ describe("SyncConfigForm", () => {
     mockUpdateSyncConfig.mockReset();
     mockBatchCreateSyncConfigs.mockReset();
     mockListReposForCredential.mockReset();
-    mockListReposForCredential.mockResolvedValue({ data: { provider: "github", owner: "", repos: [], total: 0 } });
+    mockListReposForCredential.mockResolvedValue({
+      data: { provider: "github", owner: "", repos: [], total: 0 },
+    });
     mockTestConnection.mockReset();
     mockCreateCredential.mockReset();
     mockUseAdminTier.mockReset();
-    mockUseAdminTier.mockReturnValue({ tier: "community", features: {}, limits: {}, minSyncIntervalHours: 24 });
+    mockUseAdminTier.mockReturnValue({
+      tier: "community",
+      features: {},
+      limits: {},
+      minSyncIntervalHours: 24,
+    });
   });
 
   it("renders all form fields for create mode", () => {
@@ -338,32 +358,39 @@ describe("SyncConfigForm", () => {
       });
     });
 
-  it("shows Create Credential button when no credentials for provider", async () => {
-    render(<SyncConfigForm credentials={mockCredentials} />);
+    it("shows Create Credential button when no credentials for provider", async () => {
+      render(<SyncConfigForm credentials={mockCredentials} />);
 
-    await userEvent.selectOptions(screen.getByLabelText("Provider"), "jira");
+      await userEvent.selectOptions(screen.getByLabelText("Provider"), "jira");
 
-    expect(screen.getByRole("button", { name: "Create One Now" })).toBeInTheDocument();
-  });
-
-  it("schedule picker hidden behind UpgradeGate for non-enterprise", () => {
-    mockUseAdminTier.mockReturnValue({ tier: "community", features: {}, limits: {}, minSyncIntervalHours: 24 });
-    render(<SyncConfigForm credentials={mockCredentials} />);
-
-    expect(screen.getByText("Enterprise Plan Feature")).toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: "Manual only (no schedule)" })).not.toBeInTheDocument();
-  });
-
-  it("shows schedule picker for enterprise tier", () => {
-    mockUseAdminTier.mockReturnValue({
-      tier: "enterprise",
-      features: { custom_scheduling: true },
-      limits: {},
-      minSyncIntervalHours: 0.25,
+      expect(screen.getByRole("button", { name: "Create One Now" })).toBeInTheDocument();
     });
-    render(<SyncConfigForm credentials={mockCredentials} />);
 
-    expect(screen.getByText("Manual only (no schedule)")).toBeInTheDocument();
-  });
+    it("schedule picker hidden behind UpgradeGate for non-enterprise", () => {
+      mockUseAdminTier.mockReturnValue({
+        tier: "community",
+        features: {},
+        limits: {},
+        minSyncIntervalHours: 24,
+      });
+      render(<SyncConfigForm credentials={mockCredentials} />);
+
+      expect(screen.getByText("Enterprise Plan Feature")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("radio", { name: "Manual only (no schedule)" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows schedule picker for enterprise tier", () => {
+      mockUseAdminTier.mockReturnValue({
+        tier: "enterprise",
+        features: { custom_scheduling: true },
+        limits: {},
+        minSyncIntervalHours: 0.25,
+      });
+      render(<SyncConfigForm credentials={mockCredentials} />);
+
+      expect(screen.getByText("Manual only (no schedule)")).toBeInTheDocument();
+    });
   });
 });

@@ -13,6 +13,7 @@
 This plan addresses critical user experience gaps in the dev-health-web application. The current implementation is functionally complete but suffers from navigation cognitive overload, poor filter discoverability, a missing onboarding flow, and a disconnected evidence-to-insight loop.
 
 **Key outcomes:**
+
 - Reduce time-to-insight for new users by 60%
 - Improve filter usage rates through persistent visibility
 - Create coherent navigation hierarchy based on user intent
@@ -23,6 +24,7 @@ This plan addresses critical user experience gaps in the dev-health-web applicat
 ## Current State Analysis
 
 ### Architecture Overview
+
 - **Framework**: Next.js 14+ with App Router
 - **Styling**: Tailwind CSS with CSS custom properties (5 color palettes)
 - **Pages**: 35+ routes across core views, admin, and auth
@@ -30,32 +32,36 @@ This plan addresses critical user experience gaps in the dev-health-web applicat
 
 ### Identified Issues
 
-| Issue | Severity | Location |
-|-------|----------|----------|
-| No onboarding flow | High | `/auth/signin` → `/` |
-| Navigation overload (9 items) | High | `PrimaryNav.tsx` |
-| Filter bar hidden by default | High | `FilterBar.tsx` |
-| Evidence links break context | Medium | Home page → `/explore` |
-| Role selector underutilized | Medium | `RoleSelectorWrapper.tsx` |
-| Mobile sidebar pushes content | Medium | `PrimaryNav.tsx` |
+| Issue                         | Severity | Location                  |
+| ----------------------------- | -------- | ------------------------- |
+| No onboarding flow            | High     | `/auth/signin` → `/`      |
+| Navigation overload (9 items) | High     | `PrimaryNav.tsx`          |
+| Filter bar hidden by default  | High     | `FilterBar.tsx`           |
+| Evidence links break context  | Medium   | Home page → `/explore`    |
+| Role selector underutilized   | Medium   | `RoleSelectorWrapper.tsx` |
+| Mobile sidebar pushes content | Medium   | `PrimaryNav.tsx`          |
 
 ---
 
 ## Implementation Phases
 
 ### Phase 1: Filter Bar Redesign
+
 **Priority**: P0
 **Effort**: 3-5 days
 **Files affected**:
+
 - `src/components/filters/FilterBar.tsx`
 - `src/app/globals.css`
 
 #### Current Behavior
+
 - Filter bar collapses to a small "Filters ▾" chip at top of viewport
 - When expanded, takes significant space with 6+ dropdowns
 - Users often miss it entirely
 
 #### Target Behavior
+
 - Always-visible horizontal bar below page header
 - Compact pill-based design with active filters shown
 - Preset date buttons (7d, 14d, 30d, 90d) instead of date picker by default
@@ -64,12 +70,14 @@ This plan addresses critical user experience gaps in the dev-health-web applicat
 #### Implementation Steps
 
 1. **Remove collapse behavior**
+
    ```tsx
    // FilterBar.tsx - Remove isCollapsed state and conditional rendering
    // Always render the expanded state
    ```
 
 2. **Create pill-based filter component**
+
    ```tsx
    // New component: src/components/filters/FilterPill.tsx
    type FilterPillProps = {
@@ -81,6 +89,7 @@ This plan addresses critical user experience gaps in the dev-health-web applicat
    ```
 
 3. **Add date preset buttons**
+
    ```tsx
    // Add quick select buttons: 7d | 14d | 30d | 90d | Custom
    const DATE_PRESETS = [
@@ -102,6 +111,7 @@ This plan addresses critical user experience gaps in the dev-health-web applicat
    - Add "Clear all" button when filters are active
 
 #### Acceptance Criteria
+
 - [ ] Filter bar visible without user action on all main pages
 - [ ] Active filters shown as removable pills
 - [ ] Date range selectable via preset buttons or custom picker
@@ -111,18 +121,22 @@ This plan addresses critical user experience gaps in the dev-health-web applicat
 ---
 
 ### Phase 2: Navigation Restructure
+
 **Priority**: P0
 **Effort**: 2-3 days
 **Files affected**:
+
 - `src/components/navigation/PrimaryNav.tsx`
 - `src/app/` (route organization)
 
 #### Current Structure (9 items)
+
 ```
 Home | People | Metrics | Landscape | Work | Capacity | Code | Quality | Opportunities
 ```
 
 #### Target Structure (Grouped by Intent)
+
 ```
 COCKPIT (Home)
   └─ Status overview, key shifts, limiting factors
@@ -143,6 +157,7 @@ ADMIN (existing)
 #### Implementation Steps
 
 1. **Update PrimaryNav.tsx**
+
    ```tsx
    const navGroups = [
      {
@@ -156,7 +171,12 @@ ADMIN (existing)
        items: [
          { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Trends" },
          { id: "people", label: "People", href: "/people", description: "Individual" },
-         { id: "landscape", label: "Landscape", href: "/explore/landscape", description: "Quadrants" },
+         {
+           id: "landscape",
+           label: "Landscape",
+           href: "/explore/landscape",
+           description: "Quadrants",
+         },
        ],
      },
      {
@@ -165,7 +185,12 @@ ADMIN (existing)
        items: [
          { id: "work", label: "Work", href: "/work", description: "Investment" },
          { id: "code", label: "Code", href: "/code", description: "Ownership" },
-         { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
+         {
+           id: "opportunities",
+           label: "Opportunities",
+           href: "/opportunities",
+           description: "Threads",
+         },
        ],
      },
    ];
@@ -193,6 +218,7 @@ ADMIN (existing)
    Note: If changing routes, add redirects from old paths.
 
 #### Acceptance Criteria
+
 - [ ] Navigation grouped into Cockpit, Observe, Investigate sections
 - [ ] Group headers are collapsible with state persisted
 - [ ] Reduced from 9 to 6 visible nav items (plus groups)
@@ -202,9 +228,11 @@ ADMIN (existing)
 ---
 
 ### Phase 3: Onboarding Flow
+
 **Priority**: P1
 **Effort**: 2-3 days
 **Files affected**:
+
 - `src/components/onboarding/` (new directory)
 - `src/app/page.tsx`
 - `src/lib/onboarding.ts` (new)
@@ -233,6 +261,7 @@ ADMIN (existing)
 #### Implementation Steps
 
 1. **Create onboarding state management**
+
    ```tsx
    // src/lib/onboarding.ts
    type OnboardingState = {
@@ -247,12 +276,14 @@ ADMIN (existing)
    ```
 
 2. **Add WelcomeModal trigger to layout**
+
    ```tsx
    // src/app/layout.tsx
    // After session check, render <WelcomeModal /> if !hasSeenWelcome
    ```
 
 3. **Integrate GuidedTour on Cockpit**
+
    ```tsx
    // src/app/page.tsx
    // After data loads, check if !hasCompletedTour, render <GuidedTour />
@@ -264,6 +295,7 @@ ADMIN (existing)
    - Add explanatory text and connection CTAs
 
 #### Acceptance Criteria
+
 - [ ] New users see role selection modal on first sign-in
 - [ ] Guided tour highlights 4-5 key cockpit sections
 - [ ] Empty states show sample data with explanatory overlay
@@ -274,19 +306,23 @@ ADMIN (existing)
 ---
 
 ### Phase 4: Evidence Slide-Over Panels
+
 **Priority**: P1
 **Effort**: 3-4 days
 **Files affected**:
+
 - `src/components/evidence/` (new directory)
 - `src/app/page.tsx`
 - `src/components/home/` (various)
 
 #### Current Behavior
+
 - Clicking "Notable Shifts" or "Investigation Threads" navigates to `/explore`
 - User loses context and mental model
 - Explore pages often show raw data tables
 
 #### Target Behavior
+
 - Clicking evidence links opens a slide-over panel from the right
 - Panel shows contextual explanation + specific evidence + suggested actions
 - User can drill deeper from panel or close to return
@@ -295,6 +331,7 @@ ADMIN (existing)
 #### Components to Create
 
 1. **EvidencePanel** (`src/components/evidence/EvidencePanel.tsx`)
+
    ```tsx
    type EvidencePanelProps = {
      isOpen: boolean;
@@ -328,6 +365,7 @@ ADMIN (existing)
    - Overlay behind panel to dim main content
 
 2. **Add panel state to Cockpit**
+
    ```tsx
    // src/app/page.tsx (convert to client component or use state management)
    const [evidencePanel, setEvidencePanel] = useState<{
@@ -347,6 +385,7 @@ ADMIN (existing)
    - Handle error states gracefully
 
 #### Acceptance Criteria
+
 - [ ] Clicking Notable Shifts opens slide-over panel (not new page)
 - [ ] Panel shows context, evidence items, and suggested actions
 - [ ] "Open in Explore" button available for full-page view
@@ -357,9 +396,11 @@ ADMIN (existing)
 ---
 
 ### Phase 5: Visual Identity Refresh
+
 **Priority**: P2
 **Effort**: 5-7 days
 **Files affected**:
+
 - `src/app/globals.css`
 - `src/app/layout.tsx`
 - All component files (styling updates)
@@ -369,6 +410,7 @@ ADMIN (existing)
 **Inspiration**: NASA flight control + Bloomberg Terminal + modern data observability tools
 
 **Key Characteristics**:
+
 - Dark-first design with high-contrast accents
 - Monospace typography for metrics, geometric sans for UI
 - Dense information layout with clear hierarchy
@@ -384,10 +426,10 @@ ADMIN (existing)
   --ink-muted: #8b949e;
 
   /* Status colors */
-  --accent: #58a6ff;           /* Primary action */
-  --accent-2: #3fb950;         /* Success/positive */
-  --accent-3: #d29922;         /* Warning/amber */
-  --accent-negative: #f85149;  /* Error/negative */
+  --accent: #58a6ff; /* Primary action */
+  --accent-2: #3fb950; /* Success/positive */
+  --accent-3: #d29922; /* Warning/amber */
+  --accent-negative: #f85149; /* Error/negative */
 
   /* Surface colors */
   --card: #161b22;
@@ -409,9 +451,9 @@ ADMIN (existing)
 
 ```css
 /* Add to layout.tsx font imports */
---font-display: 'JetBrains Mono', monospace;  /* Headers, metrics */
---font-body: 'IBM Plex Sans', sans-serif;     /* Body text */
---font-mono: 'JetBrains Mono', monospace;     /* Code, data */
+--font-display: "JetBrains Mono", monospace; /* Headers, metrics */
+--font-body: "IBM Plex Sans", sans-serif; /* Body text */
+--font-mono: "JetBrains Mono", monospace; /* Code, data */
 ```
 
 #### Implementation Steps
@@ -425,6 +467,7 @@ ADMIN (existing)
    - Update CSS variable assignments
 
 3. **Add background texture**
+
    ```css
    .bg-grid {
      background-image:
@@ -450,6 +493,7 @@ ADMIN (existing)
    ```
 
 #### Acceptance Criteria
+
 - [ ] New "Mission Control" palette available
 - [ ] Monospace font used for metrics and data values
 - [ ] Subtle grid texture visible in backgrounds
@@ -460,9 +504,11 @@ ADMIN (existing)
 ---
 
 ### Phase 6: Mobile Optimization
+
 **Priority**: P2
 **Effort**: 3-4 days
 **Files affected**:
+
 - `src/components/navigation/MobileNav.tsx` (new)
 - `src/components/filters/MobileFilterModal.tsx` (new)
 - Various page layouts
@@ -470,6 +516,7 @@ ADMIN (existing)
 #### Implementation Steps
 
 1. **Create bottom navigation for mobile**
+
    ```tsx
    // src/components/navigation/MobileNav.tsx
    const mobileNavItems = [
@@ -497,6 +544,7 @@ ADMIN (existing)
    - Add pinch-to-zoom for complex visualizations
 
 #### Acceptance Criteria
+
 - [ ] Bottom navigation visible on screens < 768px
 - [ ] Sidebar hidden on mobile
 - [ ] Filters accessible via floating button → modal
@@ -508,23 +556,27 @@ ADMIN (existing)
 ## Technical Notes
 
 ### State Management Considerations
+
 - Onboarding state: localStorage for anonymous, user profile for authenticated
 - Filter state: URL params (already implemented)
 - Evidence panel state: React state (component-level)
 - Navigation collapse state: localStorage
 
 ### Performance Considerations
+
 - Evidence panel: Lazy load content, show skeleton
 - Onboarding: Defer tour library loading until needed
 - Charts on mobile: Reduce data resolution
 
 ### Accessibility Requirements
+
 - All modals must trap focus
 - Escape key closes modals/panels
 - Color contrast ≥ 4.5:1 for text
 - Reduced motion preference respected for animations
 
 ### Testing Requirements
+
 - E2E tests for onboarding flow
 - Visual regression tests for new palette
 - Mobile viewport tests (375px, 414px, 768px)
@@ -534,32 +586,33 @@ ADMIN (existing)
 
 ## Dependencies
 
-| Phase | Depends On | External Libraries |
-|-------|------------|-------------------|
-| 1 (Filters) | None | None |
-| 2 (Navigation) | None | None |
-| 3 (Onboarding) | None | Optional: driver.js |
-| 4 (Evidence) | None | None |
-| 5 (Visual) | None | Google Fonts |
-| 6 (Mobile) | Phase 1, 2 | None |
+| Phase          | Depends On | External Libraries  |
+| -------------- | ---------- | ------------------- |
+| 1 (Filters)    | None       | None                |
+| 2 (Navigation) | None       | None                |
+| 3 (Onboarding) | None       | Optional: driver.js |
+| 4 (Evidence)   | None       | None                |
+| 5 (Visual)     | None       | Google Fonts        |
+| 6 (Mobile)     | Phase 1, 2 | None                |
 
 ---
 
 ## Success Metrics
 
-| Metric | Current | Target | Measurement |
-|--------|---------|--------|-------------|
-| Time to first insight (new user) | Unknown | < 60 seconds | User testing |
-| Filter usage rate | Low (estimated) | > 50% of sessions | Analytics |
-| Navigation clicks to reach destination | 2-3 | 1-2 | Analytics |
-| Mobile bounce rate | Unknown | < 40% | Analytics |
-| Onboarding completion rate | N/A | > 70% | Analytics |
+| Metric                                 | Current         | Target            | Measurement  |
+| -------------------------------------- | --------------- | ----------------- | ------------ |
+| Time to first insight (new user)       | Unknown         | < 60 seconds      | User testing |
+| Filter usage rate                      | Low (estimated) | > 50% of sessions | Analytics    |
+| Navigation clicks to reach destination | 2-3             | 1-2               | Analytics    |
+| Mobile bounce rate                     | Unknown         | < 40%             | Analytics    |
+| Onboarding completion rate             | N/A             | > 70%             | Analytics    |
 
 ---
 
 ## Appendix: File Inventory
 
 ### Files to Create
+
 ```
 src/components/filters/FilterPill.tsx
 src/components/navigation/MobileNav.tsx
@@ -576,6 +629,7 @@ src/lib/onboarding.ts
 ```
 
 ### Files to Modify
+
 ```
 src/components/filters/FilterBar.tsx
 src/components/navigation/PrimaryNav.tsx
@@ -592,6 +646,6 @@ src/app/people/page.tsx
 
 ## Changelog
 
-| Date | Author | Change |
-|------|--------|--------|
+| Date       | Author                 | Change               |
+| ---------- | ---------------------- | -------------------- |
 | 2026-02-01 | Frontend Design Review | Initial plan created |

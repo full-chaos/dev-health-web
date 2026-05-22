@@ -23,9 +23,7 @@ export async function listSyncConfigs(): Promise<ActionResult<SyncConfig[]>> {
   });
 }
 
-export async function createSyncConfig(
-  data: SyncConfigCreate
-): Promise<ActionResult<SyncConfig>> {
+export async function createSyncConfig(data: SyncConfigCreate): Promise<ActionResult<SyncConfig>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     return adminApi.syncConfigs.create(data, token, orgId);
@@ -34,7 +32,7 @@ export async function createSyncConfig(
 
 export async function listReposForCredential(
   credentialId: string,
-  owner: string
+  owner: string,
 ): Promise<ActionResult<DiscoveredReposResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -43,7 +41,7 @@ export async function listReposForCredential(
 }
 
 export async function batchCreateSyncConfigs(
-  data: SyncConfigBatchCreate | { base: Omit<SyncConfigBatchCreate, "repos">; repos: string[] }
+  data: SyncConfigBatchCreate | { base: Omit<SyncConfigBatchCreate, "repos">; repos: string[] },
 ): Promise<ActionResult<SyncConfigBatchResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -65,7 +63,7 @@ export async function getSyncConfig(id: string): Promise<ActionResult<SyncConfig
 
 export async function updateSyncConfig(
   id: string,
-  data: SyncConfigUpdate
+  data: SyncConfigUpdate,
 ): Promise<ActionResult<SyncConfig>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -79,7 +77,7 @@ export async function updateSyncConfig(
 export async function triggerBackfill(
   configId: string,
   since: string,
-  before: string
+  before: string,
 ): Promise<ActionResult<BackfillResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -89,9 +87,7 @@ export async function triggerBackfill(
   });
 }
 
-export async function getBackfillJobStatus(
-  jobId: string
-): Promise<ActionResult<BackfillJob>> {
+export async function getBackfillJobStatus(jobId: string): Promise<ActionResult<BackfillJob>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
     return await adminApi.syncConfigs.getBackfillJob(jobId, token, orgId);
@@ -126,7 +122,7 @@ export async function getSyncJobs(id: string): Promise<ActionResult<SyncJob[]>> 
 
 export async function toggleSyncActive(
   id: string,
-  isActive: boolean
+  isActive: boolean,
 ): Promise<ActionResult<SyncConfig>> {
   return updateSyncConfig(id, { is_active: isActive });
 }

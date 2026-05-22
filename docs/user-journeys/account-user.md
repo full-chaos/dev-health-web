@@ -3,18 +3,22 @@
 ## Dashboard Landing & Drill-down
 
 Purpose
+
 - Covers dashboard entry, tile drill-down, evidence panel, and explore deep-linking.
 - Verifies filter parameter continuity into explore route.
 
 Primary test file
+
 - `tests/home-flow.spec.ts`
 
 Routes
+
 - `/` with heading `Developer Health Ops Cockpit`
 - `/explore?metric=...&f=...`
 - `/opportunities` with heading `Focus Cards`
 
 Core interaction chain
+
 - Open dashboard.
 - Click delta tile.
 - Evidence panel opens.
@@ -43,26 +47,30 @@ sequenceDiagram
 
 Test coverage
 
-| Layer | Coverage | Tests | Notes |
-|---|---|---|---|
-| Backend Unit | — | — | No backend unit source listed for dashboard drill-down flow. |
-| Frontend Unit | — | — | No component unit source listed for this journey. |
-| Frontend E2E | ✅ | `tests/home-flow.spec.ts` | Route and deep-link continuity are covered end-to-end. |
-| Live E2E | — | — | No live e2e source listed for this journey. |
+| Layer         | Coverage | Tests                     | Notes                                                        |
+| ------------- | -------- | ------------------------- | ------------------------------------------------------------ |
+| Backend Unit  | —        | —                         | No backend unit source listed for dashboard drill-down flow. |
+| Frontend Unit | —        | —                         | No component unit source listed for this journey.            |
+| Frontend E2E  | ✅       | `tests/home-flow.spec.ts` | Route and deep-link continuity are covered end-to-end.       |
+| Live E2E      | —        | —                         | No live e2e source listed for this journey.                  |
 
 ## Work Tabbed Navigation
 
 Purpose
+
 - Covers tab-specific rendering, URL tab routing, and investigation deep links.
 - Verifies persistence of filter state across tab switches.
 
 Primary test file
+
 - `tests/work-navigation.spec.ts`
 
 Route contract
+
 - `/work?tab=[landscape|heatmap|flow|investment|flame]`
 
 Tab expectations
+
 - Default tab `landscape` renders `Investment Mix`.
 - `heatmap` renders `Review wait density`.
 - `flow` renders `Investment Mix` and `flow-chart-container`.
@@ -70,6 +78,7 @@ Tab expectations
 - `flame` renders `Elapsed Time Breakdown` and `chart-flame`.
 
 Investigation routes
+
 - Quadrant entity click then `View Flow` to `/work?tab=flow&context_entity_id=...`.
 - Flow view shows `Filtering flow by` text.
 - Flame deep-link `/work?tab=flame&mode=throughput&context_node=Backend`.
@@ -96,23 +105,26 @@ flowchart TD
 
 Test coverage
 
-| Layer | Coverage | Tests | Notes |
-|---|---|---|---|
-| Backend Unit | — | — | No backend unit source listed for client-side tab routing flow. |
-| Frontend Unit | — | — | No tab component unit source listed in provided data. |
-| Frontend E2E | ✅ | `tests/work-navigation.spec.ts` | Covers all tab modes and context deep-links. |
-| Live E2E | — | — | No live e2e source listed for tabbed work navigation. |
+| Layer         | Coverage | Tests                           | Notes                                                           |
+| ------------- | -------- | ------------------------------- | --------------------------------------------------------------- |
+| Backend Unit  | —        | —                               | No backend unit source listed for client-side tab routing flow. |
+| Frontend Unit | —        | —                               | No tab component unit source listed in provided data.           |
+| Frontend E2E  | ✅       | `tests/work-navigation.spec.ts` | Covers all tab modes and context deep-links.                    |
+| Live E2E      | —        | —                               | No live e2e source listed for tabbed work navigation.           |
 
 ## Filter Propagation
 
 Purpose
+
 - Covers cross-route filter continuity through shared navigation.
 - Validates that encoded filter query parameter is identical after navigation.
 
 Primary test file
+
 - `tests/filter-propagation.spec.ts`
 
 Primary routes in scope
+
 - `/dashboard`
 - `/people`
 - `/metrics`
@@ -122,9 +134,11 @@ Primary routes in scope
 - `/opportunities`
 
 Additional route in scope
+
 - `/metrics?tab=dora`
 
 Flow behavior
+
 - Open `Filters` panel.
 - Expand `Who`.
 - Fill developer filter.
@@ -155,28 +169,32 @@ sequenceDiagram
 
 Test coverage
 
-| Layer | Coverage | Tests | Notes |
-|---|---|---|---|
-| Backend Unit | — | — | No backend unit source listed for URL-only propagation behavior. |
-| Frontend Unit | — | — | No dedicated unit coverage listed for global filter shell behavior. |
-| Frontend E2E | ✅ | `tests/filter-propagation.spec.ts` | Source of truth for end-to-end URL preservation behavior. |
-| Live E2E | — | — | No live e2e source listed for filter propagation journey. |
+| Layer         | Coverage | Tests                              | Notes                                                               |
+| ------------- | -------- | ---------------------------------- | ------------------------------------------------------------------- |
+| Backend Unit  | —        | —                                  | No backend unit source listed for URL-only propagation behavior.    |
+| Frontend Unit | —        | —                                  | No dedicated unit coverage listed for global filter shell behavior. |
+| Frontend E2E  | ✅       | `tests/filter-propagation.spec.ts` | Source of truth for end-to-end URL preservation behavior.           |
+| Live E2E      | —        | —                                  | No live e2e source listed for filter propagation journey.           |
 
 ## People Search & Individual Views
 
 Purpose
+
 - Covers people search, person detail route, metric drill-in, and evidence listing.
 - Enforces language guardrail against comparative performance framing.
 
 Primary test file
+
 - `tests/people.spec.ts`
 
 Route sequence
+
 - `/people?q=alex`
 - `/people/person-123`
 - `/people/person-123/metrics/cycle_time`
 
 Interaction chain
+
 - Search by query parameter.
 - Open person profile.
 - Verify `Individual view` context.
@@ -184,6 +202,7 @@ Interaction chain
 - Open `PRs` evidence section with heading and table.
 
 Guardrail terms excluded
+
 - `rank`
 - `percentile`
 - `top performer`
@@ -212,33 +231,38 @@ sequenceDiagram
 
 Test coverage
 
-| Layer | Coverage | Tests | Notes |
-|---|---|---|---|
-| Backend Unit | — | — | No backend unit source listed for people search endpoint behavior. |
-| Frontend Unit | — | — | No people-page unit test file listed in provided data. |
-| Frontend E2E | ✅ | `tests/people.spec.ts` | Covers search, drill-down, and guardrail assertions. |
-| Live E2E | — | — | No live e2e source listed for people journey. |
+| Layer         | Coverage | Tests                  | Notes                                                              |
+| ------------- | -------- | ---------------------- | ------------------------------------------------------------------ |
+| Backend Unit  | —        | —                      | No backend unit source listed for people search endpoint behavior. |
+| Frontend Unit | —        | —                      | No people-page unit test file listed in provided data.             |
+| Frontend E2E  | ✅       | `tests/people.spec.ts` | Covers search, drill-down, and guardrail assertions.               |
+| Live E2E      | —        | —                      | No live e2e source listed for people journey.                      |
 
 ## Chart Interactions
 
 Purpose
+
 - Covers rendering readiness and interaction surfaces for chart families.
 - Includes sankey, quadrant, heatmap, and flame chart behavior on demo route.
 
 Primary test files
+
 - `tests/sankey.spec.ts`
 - `tests/quadrant.spec.ts`
 - `tests/heatmap.spec.ts`
 - `tests/flame.spec.ts`
 
 Shared route
+
 - `/demo`
 
 Rendering readiness signals
+
 - Chart canvas exists.
 - `data-chart-ready="true"` is present.
 
 Chart-specific behaviors
+
 - Sankey investigation path starts from quadrant panel.
 - `Core` button appears in investigation context.
 - `View Flow` deep-links into `/work?tab=flow`.
@@ -265,32 +289,37 @@ flowchart TD
 
 Test coverage
 
-| Layer | Coverage | Tests | Notes |
-|---|---|---|---|
-| Backend Unit | — | — | No backend unit source listed for client chart rendering interactions. |
-| Frontend Unit | — | — | No chart component unit tests listed in provided data set. |
-| Frontend E2E | ✅ | `tests/sankey.spec.ts`, `tests/quadrant.spec.ts`, `tests/heatmap.spec.ts`, `tests/flame.spec.ts` | Multi-spec e2e coverage for rendering and interaction flows. |
-| Live E2E | — | — | No live e2e chart interaction source listed. |
+| Layer         | Coverage | Tests                                                                                            | Notes                                                                  |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Backend Unit  | —        | —                                                                                                | No backend unit source listed for client chart rendering interactions. |
+| Frontend Unit | —        | —                                                                                                | No chart component unit tests listed in provided data set.             |
+| Frontend E2E  | ✅       | `tests/sankey.spec.ts`, `tests/quadrant.spec.ts`, `tests/heatmap.spec.ts`, `tests/flame.spec.ts` | Multi-spec e2e coverage for rendering and interaction flows.           |
+| Live E2E      | —        | —                                                                                                | No live e2e chart interaction source listed.                           |
 
 ## Deployment Flame View
 
 Purpose
+
 - Covers deployment-specific flame visualization route and fallback state.
 - Confirms metadata and back-navigation rendering.
 
 Primary test file
+
 - `tests/deployments.spec.ts`
 
 Route in scope
+
 - `/deployments/deploy-123`
 
 Expected elements
+
 - `Flame Diagram` heading.
 - Deployment ID.
 - `staging` environment label.
 - `Back to Explore` link.
 
 Fallback route
+
 - `/deployments/missing-flame`
 - Displays `Flame data unavailable for this deployment.`
 
@@ -307,33 +336,38 @@ flowchart TD
 
 Test coverage
 
-| Layer | Coverage | Tests | Notes |
-|---|---|---|---|
-| Backend Unit | — | — | No backend unit source listed for deployment flame payload generation. |
-| Frontend Unit | — | — | No deployment flame component unit source listed. |
-| Frontend E2E | ✅ | `tests/deployments.spec.ts` | Covers happy path and fallback rendering states. |
-| Live E2E | — | — | No live e2e source listed for deployment flame route. |
+| Layer         | Coverage | Tests                       | Notes                                                                  |
+| ------------- | -------- | --------------------------- | ---------------------------------------------------------------------- |
+| Backend Unit  | —        | —                           | No backend unit source listed for deployment flame payload generation. |
+| Frontend Unit | —        | —                           | No deployment flame component unit source listed.                      |
+| Frontend E2E  | ✅       | `tests/deployments.spec.ts` | Covers happy path and fallback rendering states.                       |
+| Live E2E      | —        | —                           | No live e2e source listed for deployment flame route.                  |
 
 ## Marketing & Pricing Pages
 
 Purpose
+
 - Covers marketing landing route and pricing route with dynamic billing-backed prices.
 - Documents core content blocks and CTA navigation behavior.
 
 Primary test file
+
 - `tests/marketing-pricing.spec.ts`
 
 Routes
+
 - `/`
 - `/pricing`
 
 Marketing page expectations
+
 - Hero text includes `Where is your engineering effort`.
 - Feature areas include Signals, Investment, Flow, DORA, Quadrant, Developer Health.
 - Persona sections include IC, EM, PM, Leadership.
 - Navigation includes pricing link.
 
 Pricing page expectations
+
 - Heading `Simple, transparent pricing`.
 - Three tiers:
   - Community = Free
@@ -366,9 +400,9 @@ sequenceDiagram
 
 Test coverage
 
-| Layer | Coverage | Tests | Notes |
-|---|---|---|---|
-| Backend Unit | — | — | No backend pricing-page data test listed in provided source set. |
-| Frontend Unit | — | — | No marketing/pricing unit test source listed. |
-| Frontend E2E | ✅ | `tests/marketing-pricing.spec.ts` | Verifies key content blocks and pricing behavior in browser flow. |
-| Live E2E | — | — | No live e2e source listed for marketing/pricing pages. |
+| Layer         | Coverage | Tests                             | Notes                                                             |
+| ------------- | -------- | --------------------------------- | ----------------------------------------------------------------- |
+| Backend Unit  | —        | —                                 | No backend pricing-page data test listed in provided source set.  |
+| Frontend Unit | —        | —                                 | No marketing/pricing unit test source listed.                     |
+| Frontend E2E  | ✅       | `tests/marketing-pricing.spec.ts` | Verifies key content blocks and pricing behavior in browser flow. |
+| Live E2E      | —        | —                                 | No live e2e source listed for marketing/pricing pages.            |

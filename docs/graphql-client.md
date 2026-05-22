@@ -18,14 +18,10 @@ The frontend uses [urql](https://formidable.com/open-source/urql/) for GraphQL o
 Wrap your app or page with the GraphQL provider:
 
 ```tsx
-import { GraphQLProvider } from '@/lib/graphql/provider';
+import { GraphQLProvider } from "@/lib/graphql/provider";
 
 export default function Layout({ children }) {
-  return (
-    <GraphQLProvider orgId="my-org">
-      {children}
-    </GraphQLProvider>
-  );
+  return <GraphQLProvider orgId="my-org">{children}</GraphQLProvider>;
 }
 ```
 
@@ -60,17 +56,17 @@ const [result] = useQuery({
 Fetch analytics data (breakdowns, timeseries, sankey):
 
 ```tsx
-import { useAnalytics } from '@/lib/graphql/hooks';
+import { useAnalytics } from "@/lib/graphql/hooks";
 
 function InvestmentChart() {
   const { data, loading, error } = useAnalytics({
-    orgId: 'my-org',
+    orgId: "my-org",
     batch: {
       breakdowns: [
         {
-          dimension: 'THEME',
-          measure: 'COUNT',
-          dateRange: { startDate: '2024-01-01', endDate: '2024-01-31' },
+          dimension: "THEME",
+          measure: "COUNT",
+          dateRange: { startDate: "2024-01-01", endDate: "2024-01-31" },
           topN: 10,
         },
       ],
@@ -81,9 +77,7 @@ function InvestmentChart() {
   if (loading) return <Spinner />;
   if (error) return <Error message={error.message} />;
 
-  return (
-    <Chart data={data.breakdowns[0].items} />
-  );
+  return <Chart data={data.breakdowns[0].items} />;
 }
 ```
 
@@ -92,15 +86,15 @@ function InvestmentChart() {
 Simplified hook for single breakdown queries:
 
 ```tsx
-import { useBreakdown } from '@/lib/graphql/hooks';
+import { useBreakdown } from "@/lib/graphql/hooks";
 
 function TeamBreakdown() {
   const { data, loading } = useBreakdown({
-    orgId: 'my-org',
-    dimension: 'TEAM',
-    measure: 'THROUGHPUT',
-    startDate: '2024-01-01',
-    endDate: '2024-01-31',
+    orgId: "my-org",
+    dimension: "TEAM",
+    measure: "THROUGHPUT",
+    startDate: "2024-01-01",
+    endDate: "2024-01-31",
     topN: 10,
   });
 
@@ -113,15 +107,15 @@ function TeamBreakdown() {
 Fetch Sankey flow data:
 
 ```tsx
-import { useSankey } from '@/lib/graphql/hooks';
+import { useSankey } from "@/lib/graphql/hooks";
 
 function FlowChart() {
   const { data, loading } = useSankey({
-    orgId: 'my-org',
-    path: ['THEME', 'TEAM'],
-    measure: 'COUNT',
-    startDate: '2024-01-01',
-    endDate: '2024-01-31',
+    orgId: "my-org",
+    path: ["THEME", "TEAM"],
+    measure: "COUNT",
+    startDate: "2024-01-01",
+    endDate: "2024-01-31",
     maxNodes: 50,
     maxEdges: 200,
   });
@@ -135,11 +129,11 @@ function FlowChart() {
 Fetch catalog metadata:
 
 ```tsx
-import { useCatalog } from '@/lib/graphql/hooks';
+import { useCatalog } from "@/lib/graphql/hooks";
 
 function FilterBar() {
   const { data, loading } = useCatalog({
-    orgId: 'my-org',
+    orgId: "my-org",
   });
 
   // data.dimensions, data.measures, data.limits
@@ -151,12 +145,12 @@ function FilterBar() {
 Fetch distinct values for a dimension:
 
 ```tsx
-import { useDimensionValues } from '@/lib/graphql/hooks';
+import { useDimensionValues } from "@/lib/graphql/hooks";
 
 function TeamSelect() {
   const { values, loading } = useDimensionValues({
-    orgId: 'my-org',
-    dimension: 'TEAM',
+    orgId: "my-org",
+    dimension: "TEAM",
   });
 
   return (
@@ -178,11 +172,11 @@ function TeamSelect() {
 Subscribe to metrics updates:
 
 ```tsx
-import { useMetricsUpdated } from '@/lib/graphql/hooks';
+import { useMetricsUpdated } from "@/lib/graphql/hooks";
 
 function Dashboard() {
   useMetricsUpdated({
-    orgId: 'my-org',
+    orgId: "my-org",
     onUpdate: (update) => {
       console.log(`Metrics updated for ${update.day}`);
       refetchData();
@@ -198,21 +192,19 @@ function Dashboard() {
 Monitor background task progress:
 
 ```tsx
-import { useTaskStatus } from '@/lib/graphql/hooks';
+import { useTaskStatus } from "@/lib/graphql/hooks";
 
 function TaskProgress({ taskId }) {
   const { data } = useTaskStatus({
     taskId,
     onUpdate: (status) => {
-      if (status.status === 'completed') {
-        showSuccess('Task complete!');
+      if (status.status === "completed") {
+        showSuccess("Task complete!");
       }
     },
   });
 
-  return (
-    <ProgressBar value={data?.progress ?? 0} />
-  );
+  return <ProgressBar value={data?.progress ?? 0} />;
 }
 ```
 
@@ -221,17 +213,17 @@ function TaskProgress({ taskId }) {
 Use Zod schemas to validate responses:
 
 ```tsx
-import { validateAnalyticsResponse } from '@/lib/graphql/validate';
-import { AnalyticsResultSchema } from '@/lib/graphql/schemas';
+import { validateAnalyticsResponse } from "@/lib/graphql/validate";
+import { AnalyticsResultSchema } from "@/lib/graphql/schemas";
 
 // Validate raw data
 const result = validateAnalyticsResponse(rawData);
 if (!result.success) {
-  console.error('Validation failed:', result.error);
+  console.error("Validation failed:", result.error);
 }
 
 // Or validate with schema directly
-import { safeParse } from '@/lib/graphql/validate';
+import { safeParse } from "@/lib/graphql/validate";
 const data = safeParse(AnalyticsResultSchema, rawData);
 ```
 

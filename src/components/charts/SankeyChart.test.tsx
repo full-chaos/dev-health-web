@@ -30,11 +30,7 @@ vi.mock("./Chart", () => ({
   },
 }));
 
-const sampleNodes: SankeyNode[] = [
-  { name: "Backlog" },
-  { name: "In Progress" },
-  { name: "Done" },
-];
+const sampleNodes: SankeyNode[] = [{ name: "Backlog" }, { name: "In Progress" }, { name: "Done" }];
 
 const sampleLinks: SankeyLink[] = [
   { source: "Backlog", target: "In Progress", value: 12 },
@@ -61,7 +57,7 @@ describe("SankeyChart", () => {
         links={sampleLinks}
         className="flow-view"
         onItemClick={onItemClick}
-      />
+      />,
     );
 
     const props = chartSpy.mock.calls[0][0] as {

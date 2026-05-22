@@ -64,10 +64,7 @@ export function CreateCredentialModal({
   const [credentials, setCredentials] = useState<Record<string, string>>(
     getInitialCredentials(provider),
   );
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(
-    null,
-  );
-
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const canRunTest = useMemo(() => {
     const fields = PROVIDER_FIELDS[provider];
@@ -174,7 +171,10 @@ export function CreateCredentialModal({
 
           {PROVIDER_FIELDS[provider].map((field) => (
             <div key={field.key}>
-              <label htmlFor={`credential-${field.key}`} className="mb-1.5 block text-sm font-medium">
+              <label
+                htmlFor={`credential-${field.key}`}
+                className="mb-1.5 block text-sm font-medium"
+              >
                 {field.label}
               </label>
               <input

@@ -204,7 +204,7 @@ export type WorkUnitInvestment = {
   /**
    * Probabilistic work-unit investment categorization emitted by dev-health-ops.
    * Used to render Work Unit Investment views without client-side inference.
-  */
+   */
   work_unit_id: string;
   /** Human-readable label emitted by dev-health-ops when available. */
   work_unit_name?: string;
@@ -306,10 +306,7 @@ export type PersonSummary = {
   };
 };
 
-export type PersonMetricDefinition = Record<
-  string,
-  string | number | string[]
->;
+export type PersonMetricDefinition = Record<string, string | number | string[]>;
 
 export type PersonMetricTimeseriesPoint = {
   day: string;

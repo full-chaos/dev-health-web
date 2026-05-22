@@ -46,7 +46,7 @@ vi.mock("next-auth", () => ({
     signOut: vi.fn(),
   })),
   CredentialsSignin: class CredentialsSignin extends Error {
-    code = "credentials"
+    code = "credentials";
   },
 }));
 
@@ -70,7 +70,9 @@ import { requireSession, requireRole, requireSuperuser } from "@/lib/auth";
 
 // ─── Session factories ──────────────────────────────────────────────
 
-function makeSession(overrides: Partial<Session["user"]> & { access_token?: string } = {}): Session {
+function makeSession(
+  overrides: Partial<Session["user"]> & { access_token?: string } = {},
+): Session {
   const { access_token = "tok-valid", ...userOverrides } = overrides;
   return {
     access_token,
@@ -211,9 +213,7 @@ describe("requireRole — RBAC enforcement", () => {
     });
 
     it("orgless users are redirected to onboarding before role check", async () => {
-      mockNextAuthAuth.mockResolvedValueOnce(
-        makeSession({ org_id: "", needs_onboarding: true }),
-      );
+      mockNextAuthAuth.mockResolvedValueOnce(makeSession({ org_id: "", needs_onboarding: true }));
       await expectRedirectTo(() => requireRole(adminRoles), "/auth/onboard");
     });
   });
@@ -228,9 +228,7 @@ describe("requireRole — RBAC enforcement", () => {
     });
 
     it("rejects mismatched single role string", async () => {
-      mockNextAuthAuth.mockResolvedValueOnce(
-        makeSession({ org_id: "org-1", role: "member" }),
-      );
+      mockNextAuthAuth.mockResolvedValueOnce(makeSession({ org_id: "org-1", role: "member" }));
       await expectRedirectTo(() => requireRole("admin"), "/dashboard");
     });
   });
@@ -264,7 +262,12 @@ describe("requireSuperuser — platform admin gate", () => {
   });
 
   it("superuser without org passes requireSuperuser (needs_onboarding=false)", async () => {
-    const session = makeSession({ org_id: "", role: "", is_superuser: true, needs_onboarding: false });
+    const session = makeSession({
+      org_id: "",
+      role: "",
+      is_superuser: true,
+      needs_onboarding: false,
+    });
     mockNextAuthAuth.mockResolvedValueOnce(session);
 
     const result = await requireSuperuser();
@@ -298,7 +301,12 @@ describe("admin layout — orgless superuser redirect", () => {
   }
 
   it("superuser without org is redirected to /superadmin", async () => {
-    const session = makeSession({ org_id: "", role: "", is_superuser: true, needs_onboarding: false });
+    const session = makeSession({
+      org_id: "",
+      role: "",
+      is_superuser: true,
+      needs_onboarding: false,
+    });
     mockNextAuthAuth.mockResolvedValueOnce(session);
 
     await expectRedirectTo(() => simulateAdminLayout(), "/superadmin");
@@ -343,13 +351,36 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
     { id: "dashboard", label: "Dashboard", href: "/admin", description: "Overview" },
     { id: "users", label: "Users", href: "/admin/users", description: "Management" },
     { id: "organization", label: "Organization", href: "/admin/settings", description: "Settings" },
-    { id: "integrations", label: "Integrations", href: "/admin/integrations", description: "Connectors" },
+    {
+      id: "integrations",
+      label: "Integrations",
+      href: "/admin/integrations",
+      description: "Connectors",
+    },
     { id: "sync", label: "Sync Status", href: "/admin/sync", description: "Jobs" },
     { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },
     { id: "identities", label: "Identities", href: "/admin/identities", description: "Mapping" },
-    { id: "audit", label: "Audit Logs", href: "/admin/audit-logs", description: "Enterprise", featureKey: "audit_log" },
-    { id: "ip-allowlist", label: "IP Allowlist", href: "/admin/ip-allowlist", description: "Security", featureKey: "ip_allowlist" },
-    { id: "retention", label: "Retention", href: "/admin/retention", description: "Compliance", featureKey: "retention_policies" },
+    {
+      id: "audit",
+      label: "Audit Logs",
+      href: "/admin/audit-logs",
+      description: "Enterprise",
+      featureKey: "audit_log",
+    },
+    {
+      id: "ip-allowlist",
+      label: "IP Allowlist",
+      href: "/admin/ip-allowlist",
+      description: "Security",
+      featureKey: "ip_allowlist",
+    },
+    {
+      id: "retention",
+      label: "Retention",
+      href: "/admin/retention",
+      description: "Compliance",
+      featureKey: "retention_policies",
+    },
   ];
 
   function filterSidebarItems(isSuperuser: boolean, features: Record<string, boolean>): NavItem[] {
@@ -487,7 +518,11 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
     });
 
     it("superuser does NOT see enterprise features when org has community tier", () => {
-      const visible = filterSidebarItems(true, { audit_log: false, ip_allowlist: false, retention_policies: false });
+      const visible = filterSidebarItems(true, {
+        audit_log: false,
+        ip_allowlist: false,
+        retention_policies: false,
+      });
       const visibleIds = visible.map((i) => i.id);
       expect(visibleIds).not.toContain("audit");
       expect(visibleIds).not.toContain("ip-allowlist");
@@ -542,7 +577,11 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
     it("tier gating blocks enterprise features for the impersonated org", () => {
       // Simulates: admin layout fetches getOrgEntitlements("community-org-1")
       // which returns community-tier features
-      const communityFeatures = { audit_log: false, ip_allowlist: false, retention_policies: false };
+      const communityFeatures = {
+        audit_log: false,
+        ip_allowlist: false,
+        retention_policies: false,
+      };
       expect(communityFeatures.audit_log).toBe(false);
       expect(communityFeatures.ip_allowlist).toBe(false);
       expect(communityFeatures.retention_policies).toBe(false);
@@ -753,10 +792,10 @@ describe("full access matrix — RBAC × tier gates", () => {
         const session = await requireRole(["admin", "owner"]);
         if (session.user.is_superuser === true && !session.user.org_id) {
           const { redirect } = await import("next/navigation");
-          await expectRedirectTo(
-            () => { redirect("/superadmin"); return Promise.resolve(); },
-            "/superadmin",
-          );
+          await expectRedirectTo(() => {
+            redirect("/superadmin");
+            return Promise.resolve();
+          }, "/superadmin");
         }
       });
     }

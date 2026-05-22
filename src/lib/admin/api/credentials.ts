@@ -19,26 +19,45 @@ export const credentialsApi = {
       "/credentials",
       { method: "POST", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
-  update: (provider: string, name: string, data: IntegrationCredentialUpdate, token?: string, orgId?: string) =>
+  update: (
+    provider: string,
+    name: string,
+    data: IntegrationCredentialUpdate,
+    token?: string,
+    orgId?: string,
+  ) =>
     request<IntegrationCredential>(
       `/credentials/${provider}/${name}`,
       { method: "PATCH", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   delete: (provider: string, name: string, token?: string, orgId?: string) =>
     request<void>(`/credentials/${provider}/${name}`, { method: "DELETE" }, token, orgId),
 
-  test: (provider: string, options?: { name?: string; credentialId?: string; credentials?: Record<string, unknown> }, token?: string, orgId?: string) =>
+  test: (
+    provider: string,
+    options?: { name?: string; credentialId?: string; credentials?: Record<string, unknown> },
+    token?: string,
+    orgId?: string,
+  ) =>
     request<TestConnectionResponse>(
       "/credentials/test",
-      { method: "POST", body: JSON.stringify({ provider, name: options?.name ?? "default", credential_id: options?.credentialId, credentials: options?.credentials }) },
+      {
+        method: "POST",
+        body: JSON.stringify({
+          provider,
+          name: options?.name ?? "default",
+          credential_id: options?.credentialId,
+          credentials: options?.credentials,
+        }),
+      },
       token,
-      orgId
+      orgId,
     ),
 
   listRepos: (credentialId: string, owner: string, token?: string, orgId?: string) =>
@@ -46,6 +65,6 @@ export const credentialsApi = {
       `/credentials/${credentialId}/repos?owner=${encodeURIComponent(owner)}`,
       {},
       token,
-      orgId
+      orgId,
     ),
 };

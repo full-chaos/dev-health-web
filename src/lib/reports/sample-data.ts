@@ -11,7 +11,8 @@ export const sampleRuns: Record<string, ReportRun[]> = {
       startedAt: "2026-04-09T08:00:00Z",
       completedAt: "2026-04-09T08:00:45Z",
       createdAt: "2026-04-09T08:00:00Z",
-      renderedMarkdown: "# Weekly Engineering Health\n\n## Summary\nEverything looks good this week. DORA metrics are stable.\n\n## Metrics\n- Deployment Frequency: 4.2/day\n- Lead Time for Changes: 1.2 days\n- Change Failure Rate: 2.1%\n- Time to Restore Service: 1.5 hours",
+      renderedMarkdown:
+        "# Weekly Engineering Health\n\n## Summary\nEverything looks good this week. DORA metrics are stable.\n\n## Metrics\n- Deployment Frequency: 4.2/day\n- Lead Time for Changes: 1.2 days\n- Change Failure Rate: 2.1%\n- Time to Restore Service: 1.5 hours",
     },
     {
       id: "run-1-2",
@@ -68,7 +69,8 @@ export const sampleReports: SavedReport[] = [
     id: "report-2",
     orgId: "default-org",
     name: "Frontend Team Quality",
-    description: "Deep dive into test coverage, CI success rates, and bug reports for the frontend team.",
+    description:
+      "Deep dive into test coverage, CI success rates, and bug reports for the frontend team.",
     reportPlan: {},
     isTemplate: false,
     isActive: true,

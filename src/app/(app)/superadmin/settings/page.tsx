@@ -9,10 +9,7 @@ export default async function SettingsPage() {
   if (categoriesError) {
     return (
       <div>
-        <AdminHeader
-          title="Platform Settings"
-          description="Global platform configuration."
-        />
+        <AdminHeader title="Platform Settings" description="Global platform configuration." />
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
           Error loading settings: {categoriesError}
         </div>
@@ -29,10 +26,7 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <AdminHeader
-        title="Platform Settings"
-        description="Global platform configuration."
-      />
+      <AdminHeader title="Platform Settings" description="Global platform configuration." />
 
       <div className="space-y-8">
         {allSettings.map(({ category, settings }) => (

@@ -84,17 +84,17 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
   if (isTrialing && subscription?.trial_end && subscription?.trial_start) {
     const trialEnd = new Date(subscription.trial_end).getTime();
     const trialStart = new Date(subscription.trial_start).getTime();
-    
+
     trialDaysRemaining = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
     isTrialWarning = trialDaysRemaining <= 3;
-    
+
     const totalMs = Math.max(1, trialEnd - trialStart);
     const elapsedMs = Math.max(0, now - trialStart);
     trialProgress = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100));
   }
 
   const statusClass = hasSubscription
-    ? STATUS_COLORS[subscription.status] ?? "bg-zinc-500/15 text-zinc-700"
+    ? (STATUS_COLORS[subscription.status] ?? "bg-zinc-500/15 text-zinc-700")
     : "bg-green-500/15 text-green-700";
 
   const statusLabel = useMemo(() => {
@@ -122,7 +122,10 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
       if ("error" in historyRes) {
         // History may also 404 for free-tier — silently ignore
-        if (!historyRes.error?.includes("No active subscription") && !historyRes.error?.includes("not found")) {
+        if (
+          !historyRes.error?.includes("No active subscription") &&
+          !historyRes.error?.includes("not found")
+        ) {
           toast.error(historyRes.error);
         }
       } else {
@@ -133,7 +136,9 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
     });
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const openPlanModal = () => {
     setPlansLoading(true);
@@ -215,40 +220,53 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
           <div className="space-y-2">
             <p className="text-sm text-(--ink-muted)">Current Plan</p>
             <p className="text-2xl font-semibold text-(--foreground)">{planName}</p>
-            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold capitalize ${statusClass}`}>
+            <span
+              className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold capitalize ${statusClass}`}
+            >
               {statusLabel}
             </span>
             {hasSubscription ? (
               <>
-                <p className="text-sm text-(--ink-muted)">Price: {amount} / {interval}</p>
                 <p className="text-sm text-(--ink-muted)">
-                  Period: {formatDate(subscription.current_period_start ?? null)} - {formatDate(subscription.current_period_end ?? null)}
+                  Price: {amount} / {interval}
+                </p>
+                <p className="text-sm text-(--ink-muted)">
+                  Period: {formatDate(subscription.current_period_start ?? null)} -{" "}
+                  {formatDate(subscription.current_period_end ?? null)}
                 </p>
 
                 {isTrialing && subscription.trial_end && (
-                  <div className={`mt-4 max-w-sm rounded-lg border p-4 ${
-                    isTrialWarning
-                      ? "border-amber-500/30 bg-amber-500/10"
-                      : "border-(--card-stroke) bg-(--card-80)"
-                  }`}>
+                  <div
+                    className={`mt-4 max-w-sm rounded-lg border p-4 ${
+                      isTrialWarning
+                        ? "border-amber-500/30 bg-amber-500/10"
+                        : "border-(--card-stroke) bg-(--card-80)"
+                    }`}
+                  >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-(--ink-muted)">Trial Status</span>
-                      <span className={`text-xl font-bold ${
-                        isTrialWarning ? "text-amber-600 dark:text-amber-500" : "text-(--foreground)"
-                      }`}>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-(--ink-muted)">
+                        Trial Status
+                      </span>
+                      <span
+                        className={`text-xl font-bold ${
+                          isTrialWarning
+                            ? "text-amber-600 dark:text-amber-500"
+                            : "text-(--foreground)"
+                        }`}
+                      >
                         {trialDaysRemaining} days left
                       </span>
                     </div>
-                    
+
                     <div className="h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
-                      <div 
+                      <div
                         className={`h-full rounded-full transition-all duration-500 ${
                           isTrialWarning ? "bg-amber-500" : "bg-(--accent)"
                         }`}
                         style={{ width: `${trialProgress}%` }}
                       />
                     </div>
-                    
+
                     <p className="mt-2 text-xs text-(--ink-muted)">
                       Ends on {formatDate(subscription.trial_end)}
                     </p>
@@ -256,24 +274,30 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                 )}
               </>
             ) : loaded ? (
-              <p className="text-sm text-(--ink-muted)">No billing — upgrade to unlock paid features.</p>
+              <p className="text-sm text-(--ink-muted)">
+                No billing — upgrade to unlock paid features.
+              </p>
             ) : null}
           </div>
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={isFree ? () => {
-                startTransition(async () => {
-                  const result = await startTrialCheckout();
-                  if (result.error) {
-                    toast.error(result.error);
-                    return;
-                  }
-                  if (result.data?.url) {
-                    window.location.href = result.data.url;
-                  }
-                });
-              } : openPlanModal}
+              onClick={
+                isFree
+                  ? () => {
+                      startTransition(async () => {
+                        const result = await startTrialCheckout();
+                        if (result.error) {
+                          toast.error(result.error);
+                          return;
+                        }
+                        if (result.data?.url) {
+                          window.location.href = result.data.url;
+                        }
+                      });
+                    }
+                  : openPlanModal
+              }
               disabled={isPending}
               className="rounded-md border border-(--card-stroke) px-3 py-2 text-sm hover:bg-(--card) disabled:opacity-50"
             >
@@ -283,7 +307,9 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
               <button
                 type="button"
                 onClick={() => {
-                  const ok = window.confirm("Cancel at period end? Click Cancel for immediate cancellation.");
+                  const ok = window.confirm(
+                    "Cancel at period end? Click Cancel for immediate cancellation.",
+                  );
                   onCancel(!ok);
                 }}
                 disabled={isPending}
@@ -318,7 +344,9 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                 <span className="text-(--ink-muted)">{formatDate(item.processed_at)}</span>
               </div>
               <p className="mt-1 text-xs text-(--ink-muted)">
-                {item.previous_status ?? "-"}{" -> "}{item.new_status}
+                {item.previous_status ?? "-"}
+                {" -> "}
+                {item.new_status}
               </p>
             </li>
           ))}
@@ -329,7 +357,9 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div className="w-full max-w-lg rounded-lg border border-(--card-stroke) bg-(--card-80) p-6 shadow-lg">
             <h3 className="text-lg font-semibold text-(--foreground)">Change Plan</h3>
-            <p className="mt-1 text-sm text-(--ink-muted)">Select the plan you want to switch to.</p>
+            <p className="mt-1 text-sm text-(--ink-muted)">
+              Select the plan you want to switch to.
+            </p>
 
             {plansLoading ? (
               <div className="mt-6 flex items-center justify-center py-8">
@@ -342,7 +372,8 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                 {plans.map((plan) => {
                   const monthly = plan.prices.find((p) => p.interval === "monthly" && p.is_active);
                   const isSelected = selectedPlanId === plan.id;
-                  const isCurrent = planName !== "-" && plan.name.toLowerCase() === planName.toLowerCase();
+                  const isCurrent =
+                    planName !== "-" && plan.name.toLowerCase() === planName.toLowerCase();
 
                   return (
                     <button
@@ -359,7 +390,9 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-(--foreground)">{plan.name}</span>
+                        <span className="text-sm font-semibold text-(--foreground)">
+                          {plan.name}
+                        </span>
                         {isCurrent && (
                           <span className="rounded-full bg-(--accent)/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-(--accent)">
                             Current
@@ -371,13 +404,20 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                       )}
                       <p className="mt-2 text-sm font-medium text-(--foreground)">
                         {monthly ? formatAmount(monthly.amount, monthly.currency) : "Contact sales"}
-                        {monthly && <span className="text-xs font-normal text-(--ink-muted)"> / month</span>}
+                        {monthly && (
+                          <span className="text-xs font-normal text-(--ink-muted)"> / month</span>
+                        )}
                       </p>
                       {plan.bundles.length > 0 && (
                         <ul className="mt-2 space-y-1">
-                          {plan.bundles.flatMap((b) => b.features).slice(0, 4).map((feat) => (
-                            <li key={feat} className="text-xs text-(--ink-muted)">• {feat}</li>
-                          ))}
+                          {plan.bundles
+                            .flatMap((b) => b.features)
+                            .slice(0, 4)
+                            .map((feat) => (
+                              <li key={feat} className="text-xs text-(--ink-muted)">
+                                • {feat}
+                              </li>
+                            ))}
                         </ul>
                       )}
                     </button>

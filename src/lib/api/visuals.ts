@@ -19,12 +19,9 @@ export async function getHeatmap(params: {
   y?: string;
   limit?: number;
 }) {
-  const normalizedScopeType =
-    params.scope_type === "developer" ? "person" : params.scope_type;
+  const normalizedScopeType = params.scope_type === "developer" ? "person" : params.scope_type;
   const candidates =
-    normalizedScopeType === "person"
-      ? ["person", "developer"]
-      : [normalizedScopeType];
+    normalizedScopeType === "person" ? ["person", "developer"] : [normalizedScopeType];
 
   return apiClient.fetchWithFallback<HeatmapResponse, string>(
     "/api/v1/heatmap",
@@ -41,7 +38,7 @@ export async function getHeatmap(params: {
       y: params.y ?? "",
       limit: params.limit ?? 50,
     }),
-    candidates
+    candidates,
   );
 }
 
@@ -55,7 +52,7 @@ export async function getFlame(params: {
       entity_type: params.entity_type,
       entity_id: params.entity_id,
     },
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 }
 
@@ -81,16 +78,12 @@ export async function getAggregatedFlame(params: {
       limit: params.limit ?? 500,
       min_value: params.min_value ?? 1,
     },
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 }
 
 export async function getQuadrant(params: {
-  type:
-  | "churn_throughput"
-  | "cycle_throughput"
-  | "wip_throughput"
-  | "review_load_latency";
+  type: "churn_throughput" | "cycle_throughput" | "wip_throughput" | "review_load_latency";
   scope_type: "org" | "team" | "repo" | "developer" | "person";
   scope_id?: string;
   range_days: number;
@@ -98,8 +91,7 @@ export async function getQuadrant(params: {
   start_date?: string;
   end_date?: string;
 }) {
-  const normalizedScopeType =
-    params.scope_type === "developer" ? "person" : params.scope_type;
+  const normalizedScopeType = params.scope_type === "developer" ? "person" : params.scope_type;
   const candidates =
     normalizedScopeType === "person"
       ? ["person", "developer"]
@@ -121,6 +113,6 @@ export async function getQuadrant(params: {
       end_date: params.end_date ?? "",
       bucket: params.bucket,
     }),
-    candidates
+    candidates,
   );
 }

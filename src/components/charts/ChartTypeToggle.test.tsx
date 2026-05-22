@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 import userEvent from "@testing-library/user-event";
-import { ChartTypeToggle, INVESTMENT_SANKEY_CHORD_OPTIONS, SANKEY_HEATMAP_OPTIONS, TREEMAP_SUNBURST_OPTIONS } from "./ChartTypeToggle";
+import {
+  ChartTypeToggle,
+  INVESTMENT_SANKEY_CHORD_OPTIONS,
+  SANKEY_HEATMAP_OPTIONS,
+  TREEMAP_SUNBURST_OPTIONS,
+} from "./ChartTypeToggle";
 
 describe("ChartTypeToggle", () => {
   it("renders the new chord option while preserving existing options", async () => {
@@ -10,10 +15,14 @@ describe("ChartTypeToggle", () => {
 
     render(
       <>
-        <ChartTypeToggle options={INVESTMENT_SANKEY_CHORD_OPTIONS} value="sankey" onChange={onChange} />
+        <ChartTypeToggle
+          options={INVESTMENT_SANKEY_CHORD_OPTIONS}
+          value="sankey"
+          onChange={onChange}
+        />
         <ChartTypeToggle options={TREEMAP_SUNBURST_OPTIONS} value="treemap" onChange={vi.fn()} />
         <ChartTypeToggle options={SANKEY_HEATMAP_OPTIONS} value="sankey" onChange={vi.fn()} />
-      </>
+      </>,
     );
 
     expect(screen.getByRole("radio", { name: /chord/i })).toBeInTheDocument();

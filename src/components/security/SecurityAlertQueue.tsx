@@ -16,12 +16,7 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
   const { data, fetching, error, fetchMore, allEdges } = useSecurityAlerts(filter);
 
   if (error) {
-    return (
-      <ErrorCard
-        title="Failed to load security alerts"
-        message={error.message}
-      />
-    );
+    return <ErrorCard title="Failed to load security alerts" message={error.message} />;
   }
 
   const pageInfo = data?.securityAlerts?.pageInfo;
@@ -36,9 +31,7 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
             Alert Queue
           </p>
           {!fetching && totalCount > 0 && (
-            <p className="mt-0.5 text-xs text-(--ink-muted)">
-              {totalCount} total
-            </p>
+            <p className="mt-0.5 text-xs text-(--ink-muted)">{totalCount} total</p>
           )}
         </div>
         {lockedRepoId && (
@@ -71,10 +64,7 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
         {fetching && allEdges.length === 0 ? (
           <div className="divide-y divide-(--card-stroke)">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex gap-3 px-3 py-3 animate-pulse"
-              >
+              <div key={i} className="flex gap-3 px-3 py-3 animate-pulse">
                 <div className="h-5 w-16 rounded bg-(--card-70)" />
                 <div className="h-5 w-20 rounded bg-(--card-70)" />
                 <div className="h-5 flex-1 rounded bg-(--card-70)" />
@@ -92,10 +82,7 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
         ) : (
           <div className="divide-y divide-(--card-stroke)">
             {allEdges.map((edge) => (
-              <SecurityAlertRow
-                key={edge.cursor}
-                alert={edge.node as SecurityAlertRowData}
-              />
+              <SecurityAlertRow key={edge.cursor} alert={edge.node as SecurityAlertRowData} />
             ))}
           </div>
         )}

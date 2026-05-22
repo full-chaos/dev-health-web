@@ -29,14 +29,11 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const env = getServerEnv();
   const isTestMode =
-    env.DEV_HEALTH_TEST_MODE === "true" ||
-    env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
   const rangeDays = filters?.time?.range_days ?? 14;
   const today = new Date();
@@ -68,9 +65,7 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Feature Flags
               </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Overview
-              </h1>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Overview</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Flag activity, release friction, and telemetry coverage.
               </p>

@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Next.js build output
+.next
+out
+build
+
+# Coverage + test artifacts
+coverage
+playwright-report
+test-results
+artifacts
+output
+
+# Generated files
+*.generated.*
+**/__generated__/
+src/lib/graphql/generated/
+
+# pnpm lock (not worth formatting)
+pnpm-lock.yaml
+
+# Public assets
+public
+
+# Environment files
+.env*
+
+
+# Generated GraphQL schema (regenerated from dev-health-ops via codegen)
+src/lib/graphql/schema.graphql

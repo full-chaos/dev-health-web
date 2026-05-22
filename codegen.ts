@@ -43,7 +43,6 @@ const config: CodegenConfig = {
         // Use default import from graphql-tag
         documentMode: "string",
       },
-
     },
     // Also generate a single types file for direct import convenience
     "src/lib/graphql/__generated__/types.ts": {

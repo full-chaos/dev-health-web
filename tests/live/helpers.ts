@@ -2,9 +2,7 @@ import type { APIRequestContext } from "@playwright/test";
 
 // Backend URL resolution — mirrors impersonation.spec.ts convention
 export const liveBackendUrl =
-  process.env.PLAYWRIGHT_LIVE_BACKEND_URL ??
-  process.env.BACKEND_URL ??
-  "http://127.0.0.1:8000";
+  process.env.PLAYWRIGHT_LIVE_BACKEND_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 /** Generate a unique test email to avoid collisions across parallel runs. */
 export function testEmail(prefix = "test"): string {
@@ -16,7 +14,7 @@ export async function registerUser(
   request: APIRequestContext,
   email: string,
   password: string,
-  fullName = "Test User"
+  fullName = "Test User",
 ): Promise<Record<string, unknown>> {
   const res = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
     data: { email, password, full_name: fullName },
@@ -29,7 +27,7 @@ export async function registerUser(
 export async function loginUser(
   request: APIRequestContext,
   email: string,
-  password: string
+  password: string,
 ): Promise<Record<string, unknown>> {
   const res = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
     data: { email, password },

@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       if (origin !== allowedOrigin) {
         return NextResponse.json(
           { success: false, error: "Forbidden" } satisfies FeedbackResponse,
-          { status: 403 }
+          { status: 403 },
         );
       }
     } catch {}
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   if (!session?.access_token) {
     return NextResponse.json(
       { success: false, error: "Authentication required" } satisfies FeedbackResponse,
-      { status: 401 }
+      { status: 401 },
     );
   }
 

@@ -52,8 +52,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Full Chaos Dev Health — Engineering Effort Analytics",
-    description:
-      "Open-source analytics for team operating modes and developer health.",
+    description: "Open-source analytics for team operating modes and developer health.",
     images: ["/opengraph-image.png"],
   },
 };

@@ -1,32 +1,34 @@
-import { redirect } from "next/navigation"
-import { auth, getAvailableSocialProviders } from "@/lib/auth"
-import { LoginForm } from "@/components/auth/LoginForm"
-import { AuthCard } from "@/components/auth/AuthCard"
-import { SocialLoginError } from "@/components/auth/SocialLoginError"
+import { redirect } from "next/navigation";
+import { auth, getAvailableSocialProviders } from "@/lib/auth";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { AuthCard } from "@/components/auth/AuthCard";
+import { SocialLoginError } from "@/components/auth/SocialLoginError";
 
-type SearchParams = Promise<{ registered?: string; plan?: string; trial?: string; error?: string; from?: string }>
+type SearchParams = Promise<{
+  registered?: string;
+  plan?: string;
+  trial?: string;
+  error?: string;
+  from?: string;
+}>;
 
-export default async function SignInPage({
-  searchParams,
-}: {
-  searchParams: SearchParams
-}) {
-  const params = await searchParams
-  const plan = params.plan?.toLowerCase()
-  const trialIntent = plan === "team" && params.trial === "true"
-  const signupHref = trialIntent ? "/auth/signup?plan=team&trial=true" : "/auth/signup"
+export default async function SignInPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const plan = params.plan?.toLowerCase();
+  const trialIntent = plan === "team" && params.trial === "true";
+  const signupHref = trialIntent ? "/auth/signup?plan=team&trial=true" : "/auth/signup";
 
-  const session = await auth()
+  const session = await auth();
   if (session?.user && params.from !== "reset") {
     if (session.user.needs_onboarding) {
-      redirect(trialIntent ? "/auth/onboard?plan=team&trial=true" : "/auth/onboard")
+      redirect(trialIntent ? "/auth/onboard?plan=team&trial=true" : "/auth/onboard");
     }
-    redirect("/dashboard")
+    redirect("/dashboard");
   }
 
-  const justRegistered = params.registered === "true"
-  const socialError = params.error
-  const providers = getAvailableSocialProviders()
+  const justRegistered = params.registered === "true";
+  const socialError = params.error;
+  const providers = getAvailableSocialProviders();
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[var(--background)]">
@@ -44,5 +46,5 @@ export default async function SignInPage({
         <LoginForm plan={plan} trialIntent={trialIntent} />
       </AuthCard>
     </div>
-  )
+  );
 }

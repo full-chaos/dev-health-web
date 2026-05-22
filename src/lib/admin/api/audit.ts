@@ -1,8 +1,5 @@
 import { request } from "./_request";
-import type {
-  AuditLogListResponse,
-  AuditLogFilter,
-} from "../types";
+import type { AuditLogListResponse, AuditLogFilter } from "../types";
 
 export const auditApi = {
   list: (filters?: AuditLogFilter, limit = 50, offset = 0, token?: string, orgId?: string) => {
@@ -20,7 +17,12 @@ export const auditApi = {
   get: (id: string, token?: string, orgId?: string) =>
     request<AuditLogListResponse["items"][0]>(`/audit/${id}`, {}, token, orgId),
 
-  export: (format: "json" | "csv" = "json", filters?: AuditLogFilter, token?: string, orgId?: string) => {
+  export: (
+    format: "json" | "csv" = "json",
+    filters?: AuditLogFilter,
+    token?: string,
+    orgId?: string,
+  ) => {
     const params = new URLSearchParams();
     params.set("format", format);
     if (filters) {
@@ -36,7 +38,13 @@ export const auditApi = {
 };
 
 export const platformAuditApi = {
-  list: (filters?: AuditLogFilter, limit?: number, offset?: number, token?: string, orgId?: string) => {
+  list: (
+    filters?: AuditLogFilter,
+    limit?: number,
+    offset?: number,
+    token?: string,
+    orgId?: string,
+  ) => {
     const params = new URLSearchParams();
     if (limit) params.set("limit", String(limit));
     if (offset) params.set("offset", String(offset));
@@ -45,6 +53,11 @@ export const platformAuditApi = {
         if (v != null) params.set(k, String(v));
       });
     }
-    return request<AuditLogListResponse>(`/platform/audit-logs?${params.toString()}`, {}, token, orgId);
+    return request<AuditLogListResponse>(
+      `/platform/audit-logs?${params.toString()}`,
+      {},
+      token,
+      orgId,
+    );
   },
 };

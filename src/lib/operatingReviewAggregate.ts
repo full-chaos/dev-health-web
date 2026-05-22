@@ -23,19 +23,15 @@ export function aggregateOperatingReviews({
   return {
     ...ceilingReview,
     teamId: teamIds.join(", "),
-    sections: ceilingReview.sections.map((section) =>
-      aggregateSection(section, usableReviews)
-    ),
-    recommendations: uniqueStrings(
-      usableReviews.flatMap((review) => review.recommendations)
-    ),
+    sections: ceilingReview.sections.map((section) => aggregateSection(section, usableReviews)),
+    recommendations: uniqueStrings(usableReviews.flatMap((review) => review.recommendations)),
     recommendationsEmptyState: ceilingReview.recommendationsEmptyState,
   };
 }
 
 function aggregateSection(
   ceilingSection: OperatingReviewSection,
-  reviews: OperatingReview[]
+  reviews: OperatingReview[],
 ): OperatingReviewSection {
   const matchingSections = reviews
     .map((review) => review.sections.find((section) => section.key === ceilingSection.key))
@@ -43,9 +39,7 @@ function aggregateSection(
 
   return {
     ...ceilingSection,
-    metrics: ceilingSection.metrics.map((metric) =>
-      aggregateMetric(metric, matchingSections)
-    ),
+    metrics: ceilingSection.metrics.map((metric) => aggregateMetric(metric, matchingSections)),
     changed: uniqueStrings(matchingSections.flatMap((section) => section.changed)),
     improved: uniqueStrings(matchingSections.flatMap((section) => section.improved)),
     worsened: uniqueStrings(matchingSections.flatMap((section) => section.worsened)),
@@ -54,7 +48,7 @@ function aggregateSection(
 
 function aggregateMetric(
   ceilingMetric: OperatingReviewMetric,
-  sections: OperatingReviewSection[]
+  sections: OperatingReviewSection[],
 ): OperatingReviewMetric {
   const metrics = sections
     .map((section) => section.metrics.find((metric) => metric.key === ceilingMetric.key))
@@ -86,15 +80,17 @@ function aggregateMetric(
 function aggregateMetricValue(
   metrics: OperatingReviewMetric[],
   ceilingMetric: OperatingReviewMetric,
-  key: "value" | "priorValue"
+  key: "value" | "priorValue",
 ): number {
   if (!isAdditiveMetric(ceilingMetric)) {
-    return average(metrics.map((metric) => key === "value" ? metric.value : metric.delta.priorValue));
+    return average(
+      metrics.map((metric) => (key === "value" ? metric.value : metric.delta.priorValue)),
+    );
   }
 
   const sum = metrics.reduce(
     (total, metric) => total + (key === "value" ? metric.value : metric.delta.priorValue),
-    0
+    0,
   );
   const ceiling = key === "value" ? ceilingMetric.value : ceilingMetric.delta.priorValue;
   return Math.min(sum, ceiling);

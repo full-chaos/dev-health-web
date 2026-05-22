@@ -1,10 +1,6 @@
 import { useQuery } from "urql";
 
-import {
-  AI_COMPARISON_QUERY,
-  AI_IMPACT_SUMMARY_QUERY,
-  AI_OPPORTUNITIES_QUERY,
-} from "../queries";
+import { AI_COMPARISON_QUERY, AI_IMPACT_SUMMARY_QUERY, AI_OPPORTUNITIES_QUERY } from "../queries";
 import { useOrgId } from "../provider";
 import type { AIFilter } from "@/lib/filters/ai";
 import type {
@@ -39,7 +35,9 @@ type HookResult<T> = {
   error: Error | undefined;
 };
 
-export function useAIImpactSummary(filter: AIFilter): HookResult<{ aiImpactSummary: AiImpactSummary }> {
+export function useAIImpactSummary(
+  filter: AIFilter,
+): HookResult<{ aiImpactSummary: AiImpactSummary }> {
   const orgId = useOrgId();
   const { dateRange, scope } = toAIQueryVariables(filter);
   const [result] = useQuery<{ aiImpactSummary: AiImpactSummary }>({
@@ -65,7 +63,9 @@ export function useAIComparison(filter: AIFilter): HookResult<{ aiComparison: Ai
   return { data: result.data, fetching: result.fetching, error: result.error };
 }
 
-export function useAIOpportunities(filter: AIFilter): HookResult<{ aiOpportunities: AiOpportunitiesResult }> {
+export function useAIOpportunities(
+  filter: AIFilter,
+): HookResult<{ aiOpportunities: AiOpportunitiesResult }> {
   const orgId = useOrgId();
   const { scope } = toAIQueryVariables(filter);
   const [result] = useQuery<{ aiOpportunities: AiOpportunitiesResult }>({

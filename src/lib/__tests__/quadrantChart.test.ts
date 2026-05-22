@@ -37,9 +37,7 @@ type SeriesRecord = {
 };
 
 const getScatterSeries = (option: ReturnType<typeof buildQuadrantOption>) => {
-  const series = Array.isArray(option.series)
-    ? (option.series as SeriesRecord[])
-    : [];
+  const series = Array.isArray(option.series) ? (option.series as SeriesRecord[]) : [];
   return series.filter((item) => item.type === "scatter");
 };
 
@@ -85,9 +83,7 @@ describe("buildQuadrantOption", () => {
       scopeType: "org",
     });
 
-    const series = Array.isArray(option.series)
-      ? (option.series as SeriesRecord[])
-      : [];
+    const series = Array.isArray(option.series) ? (option.series as SeriesRecord[]) : [];
     expect(series.length).toBeGreaterThan(0);
     expect(series.every((item) => item.type === "scatter")).toBe(true);
     expect(series.some((item) => item.type === "line")).toBe(false);

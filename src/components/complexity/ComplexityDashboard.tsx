@@ -129,23 +129,21 @@ export function buildTreemapData(hotspotRows: HotspotRow[]): TreemapNode | null 
     byRepo.get(row.repoName)!.push(row);
   }
 
-  const children: TreemapNode[] = Array.from(byRepo.entries()).map(
-    ([repoName, rows]) => ({
-      name: repoName,
-      value: rows.reduce((sum, r) => sum + r.riskScore, 0),
-      children: rows.map((row) => {
-        const fileName = row.filePath.split("/").pop() ?? row.filePath;
-        return {
-          name: fileName,
-          value: row.riskScore,
-          // Extra fields for tooltip formatter
-          filePath: row.filePath,
-          cyclomaticAvg: row.cyclomaticAvg,
-          churnLoc30d: row.churnLoc30d,
-        } as TreemapNode;
-      }),
+  const children: TreemapNode[] = Array.from(byRepo.entries()).map(([repoName, rows]) => ({
+    name: repoName,
+    value: rows.reduce((sum, r) => sum + r.riskScore, 0),
+    children: rows.map((row) => {
+      const fileName = row.filePath.split("/").pop() ?? row.filePath;
+      return {
+        name: fileName,
+        value: row.riskScore,
+        // Extra fields for tooltip formatter
+        filePath: row.filePath,
+        cyclomaticAvg: row.cyclomaticAvg,
+        churnLoc30d: row.churnLoc30d,
+      } as TreemapNode;
     }),
-  );
+  }));
 
   return {
     name: "Hotspots",
@@ -242,15 +240,7 @@ function buildTrendOption(
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function KpiCard({
-  label,
-  value,
-  caption,
-}: {
-  label: string;
-  value: string;
-  caption: string;
-}) {
+function KpiCard({ label, value, caption }: { label: string; value: string; caption: string }) {
   return (
     <article
       className="rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-sm"
@@ -269,18 +259,11 @@ function KpiCard({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function ComplexityDashboard({
-  orgId,
-  points,
-  hotspotRows,
-}: ComplexityDashboardProps) {
+export function ComplexityDashboard({ orgId, points, hotspotRows }: ComplexityDashboardProps) {
   const chartTheme = useChartTheme();
   const chartColors = useChartColors();
 
-  const { avgComplexity, totalHighComplexity, hotspotCount } = computeKpis(
-    points,
-    hotspotRows,
-  );
+  const { avgComplexity, totalHighComplexity, hotspotCount } = computeKpis(points, hotspotRows);
 
   const treemapData = useMemo(() => buildTreemapData(hotspotRows), [hotspotRows]);
 
@@ -306,9 +289,9 @@ export function ComplexityDashboard({
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
           Complexity data appears once{" "}
-          <code className="font-mono text-[0.85em]">dev-hops metrics daily</code>{" "}
-          has processed at least one complexity analysis run for this org. The
-          page populates automatically on the next metrics run.
+          <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> has processed at
+          least one complexity analysis run for this org. The page populates automatically on the
+          next metrics run.
         </p>
         <p className="mt-2 text-xs text-(--ink-muted)">
           Org <span className="font-mono">{orgId}</span>
@@ -328,11 +311,7 @@ export function ComplexityDashboard({
         />
         <KpiCard
           label="High-Complexity Functions"
-          value={
-            totalHighComplexity > 0
-              ? totalHighComplexity.toLocaleString()
-              : "—"
-          }
+          value={totalHighComplexity > 0 ? totalHighComplexity.toLocaleString() : "—"}
           caption="functions above threshold across repos"
         />
         <KpiCard
@@ -349,12 +328,9 @@ export function ComplexityDashboard({
           data-testid="trend-panel"
         >
           <div className="mb-4">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Complexity trend
-            </h2>
+            <h2 className="text-lg font-semibold tracking-tight">Complexity trend</h2>
             <p className="mt-1 text-sm text-(--ink-muted)">
-              Cyclomatic complexity per kloc over time — top repos by latest
-              score.
+              Cyclomatic complexity per kloc over time — top repos by latest score.
             </p>
           </div>
           <Chart
@@ -373,12 +349,10 @@ export function ComplexityDashboard({
           data-testid="hotspot-panel"
         >
           <div className="mb-4">
-            <h2 className="text-lg font-semibold tracking-tight">
-              File hotspots
-            </h2>
+            <h2 className="text-lg font-semibold tracking-tight">File hotspots</h2>
             <p className="mt-1 text-sm text-(--ink-muted)">
-              Files sized by risk score (churn × complexity × ownership
-              concentration). Grouped by repo.
+              Files sized by risk score (churn × complexity × ownership concentration). Grouped by
+              repo.
             </p>
           </div>
           <TreemapChart
@@ -397,9 +371,7 @@ export function ComplexityDashboard({
               };
               const node = p.data;
               if (!node?.name) return "";
-              const lines = [
-                `<strong>${node.filePath ?? node.name}</strong>`,
-              ];
+              const lines = [`<strong>${node.filePath ?? node.name}</strong>`];
               if (typeof node.value === "number") {
                 lines.push(`Risk score: ${node.value.toFixed(3)} ${unit}`);
               }
@@ -407,9 +379,7 @@ export function ComplexityDashboard({
                 lines.push(`Cyclomatic avg: ${node.cyclomaticAvg.toFixed(1)}`);
               }
               if (typeof node.churnLoc30d === "number") {
-                lines.push(
-                  `Churn LOC 30d: ${node.churnLoc30d.toLocaleString()}`,
-                );
+                lines.push(`Churn LOC 30d: ${node.churnLoc30d.toLocaleString()}`);
               }
               return lines.join("<br/>");
             }}
@@ -421,9 +391,7 @@ export function ComplexityDashboard({
       {top20Hotspots.length > 0 && (
         <section data-testid="drilldown-table">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Top hotspot files
-            </h2>
+            <h2 className="text-lg font-semibold tracking-tight">Top hotspot files</h2>
             <p className="text-xs text-(--ink-muted)">
               sorted by risk score · top {top20Hotspots.length}
             </p>
@@ -442,8 +410,7 @@ export function ComplexityDashboard({
               </thead>
               <tbody>
                 {top20Hotspots.map((row, idx) => {
-                  const fileName =
-                    row.filePath.split("/").pop() ?? row.filePath;
+                  const fileName = row.filePath.split("/").pop() ?? row.filePath;
                   return (
                     <tr
                       key={`${row.repoId}-${row.filePath}-${idx}`}
@@ -456,9 +423,7 @@ export function ComplexityDashboard({
                       >
                         {fileName}
                       </td>
-                      <td className="px-5 py-3 align-middle text-(--ink-muted)">
-                        {row.repoName}
-                      </td>
+                      <td className="px-5 py-3 align-middle text-(--ink-muted)">{row.repoName}</td>
                       <td className="px-5 py-3 text-right tabular-nums">
                         {row.riskScore.toFixed(3)}
                       </td>

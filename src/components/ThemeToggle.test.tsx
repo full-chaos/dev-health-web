@@ -39,9 +39,7 @@ describe("ThemeToggle", () => {
 
     await user.click(screen.getByRole("button", { name: /expand settings/i }));
 
-    expect(
-      screen.getByRole("option", { name: "Fullchaos Infinity Knot" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Fullchaos Infinity Knot" })).toBeInTheDocument();
   });
 
   it("persists the infinity knot palette selection", async () => {
@@ -49,10 +47,7 @@ describe("ThemeToggle", () => {
     render(<ThemeToggle />);
 
     await user.click(screen.getByRole("button", { name: /expand settings/i }));
-    await user.selectOptions(
-      screen.getByLabelText(/theme palette/i),
-      "fullchaos-infinity-knot"
-    );
+    await user.selectOptions(screen.getByLabelText(/theme palette/i), "fullchaos-infinity-knot");
 
     expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot");
     expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot");

@@ -48,41 +48,43 @@ export function InvoiceList({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [voidingInvoice, setVoidingInvoice] = useState<InvoiceRecord | null>(null);
 
-  const refreshList = useCallback((
-    nextOffset = 0,
-    nextStatus = statusFilter,
-    nextOrgId = orgFilter,
-  ) => {
-    startTransition(async () => {
-      const result = await getInvoices(
-        data.limit,
-        nextOffset,
-        nextStatus || undefined,
-        nextOrgId.trim() || undefined,
-      );
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-      if (result.data) {
-        setData(result.data);
-      }
-    });
-  }, [data.limit, orgFilter, statusFilter]);
+  const refreshList = useCallback(
+    (nextOffset = 0, nextStatus = statusFilter, nextOrgId = orgFilter) => {
+      startTransition(async () => {
+        const result = await getInvoices(
+          data.limit,
+          nextOffset,
+          nextStatus || undefined,
+          nextOrgId.trim() || undefined,
+        );
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
+        if (result.data) {
+          setData(result.data);
+        }
+      });
+    },
+    [data.limit, orgFilter, statusFilter],
+  );
 
-  const handleOpenDetail = useCallback((invoiceId: string) => {
-    startTransition(async () => {
-      const result = await getInvoice(invoiceId, orgFilter.trim() || undefined);
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-      if (result.data) {
-        setSelectedInvoice(result.data);
-        setIsDetailOpen(true);
-      }
-    });
-  }, [orgFilter]);
+  const handleOpenDetail = useCallback(
+    (invoiceId: string) => {
+      startTransition(async () => {
+        const result = await getInvoice(invoiceId, orgFilter.trim() || undefined);
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
+        if (result.data) {
+          setSelectedInvoice(result.data);
+          setIsDetailOpen(true);
+        }
+      });
+    },
+    [orgFilter],
+  );
 
   const handleVoidConfirm = useCallback(() => {
     if (!voidingInvoice) {
@@ -102,7 +104,9 @@ export function InvoiceList({
       const updatedInvoice = result.data;
       setData((prev) => ({
         ...prev,
-        items: prev.items.map((item) => (item.id === updatedInvoice.id ? { ...item, ...updatedInvoice } : item)),
+        items: prev.items.map((item) =>
+          item.id === updatedInvoice.id ? { ...item, ...updatedInvoice } : item,
+        ),
       }));
 
       if (selectedInvoice?.id === updatedInvoice.id) {
@@ -142,7 +146,9 @@ export function InvoiceList({
         header: "Status",
         className: "px-4 py-3",
         render: (invoice) => (
-          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[invoice.status] ?? "bg-slate-500/15 text-slate-300"}`}>
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[invoice.status] ?? "bg-slate-500/15 text-slate-300"}`}
+          >
             {invoice.status}
           </span>
         ),
@@ -163,7 +169,8 @@ export function InvoiceList({
         key: "issued",
         header: "Issued",
         className: "px-4 py-3 text-(--ink-muted)",
-        render: (invoice) => (invoice.created_at ? new Date(invoice.created_at).toLocaleDateString() : "-"),
+        render: (invoice) =>
+          invoice.created_at ? new Date(invoice.created_at).toLocaleDateString() : "-",
       },
       {
         key: "actions",
@@ -193,7 +200,7 @@ export function InvoiceList({
             </div>
           );
         },
-      }
+      },
     );
 
     return nextColumns;
@@ -234,12 +241,20 @@ export function InvoiceList({
         onPageChangeAction={(nextOffset) => refreshList(nextOffset)}
         isPending={isPending}
         toolbar={toolbar}
-        search={showOrgColumn ? { value: orgFilter, placeholder: "Org ID", buttonLabel: "Filter" } : undefined}
+        search={
+          showOrgColumn
+            ? { value: orgFilter, placeholder: "Org ID", buttonLabel: "Filter" }
+            : undefined
+        }
         onSearchAction={showOrgColumn ? () => refreshList(0, statusFilter, orgFilter) : undefined}
         onSearchChangeAction={showOrgColumn ? setOrgFilter : undefined}
       />
 
-      <InvoiceDetailModal invoice={selectedInvoice} isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
+      <InvoiceDetailModal
+        invoice={selectedInvoice}
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+      />
       <VoidConfirmDialog
         isOpen={voidingInvoice !== null}
         invoiceLabel={voidingInvoice?.stripe_invoice_id ?? ""}

@@ -47,7 +47,9 @@ const MONITORING_VIEWS = [
   },
 ];
 
-const loadHome = async (filters: Parameters<typeof getHomeData>[0]): Promise<HomeResponse | null> => {
+const loadHome = async (
+  filters: Parameters<typeof getHomeData>[0],
+): Promise<HomeResponse | null> => {
   try {
     return await getHomeData(filters);
   } catch {
@@ -62,9 +64,7 @@ type HomePageProps = {
 export default async function Home({ searchParams }: HomePageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = isValidRole(roleParam) ? roleParam : DEFAULT_ROLE;
@@ -104,7 +104,7 @@ export default async function Home({ searchParams }: HomePageProps) {
     investment: "throughput",
   };
   const prioritizedDeltas = [...rawDeltas].sort((a, b) => {
-    const order = roleConfig.investigationOrder.map(t => metricTypeMap[t] || t);
+    const order = roleConfig.investigationOrder.map((t) => metricTypeMap[t] || t);
     const indexA = order.indexOf(a.metric);
     const indexB = order.indexOf(b.metric);
     if (indexA === -1 && indexB === -1) return 0;
@@ -122,9 +122,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                    Status
-                  </p>
+                  <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Status</p>
                   <div className="mt-4">
                     <RoleSelectorWithSuspense />
                   </div>
@@ -165,9 +163,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   Monitoring views
                 </p>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                  Tabs for steady trend monitoring.
-                </p>
+                <p className="mt-1 text-sm text-(--ink-muted)">Tabs for steady trend monitoring.</p>
               </div>
               <Link
                 href={withFilterParam("/metrics?tab=dora", filters, activeRole)}
@@ -187,12 +183,8 @@ export default async function Home({ searchParams }: HomePageProps) {
                     <span>{view.label}</span>
                     <span className="text-(--accent-2)">Open</span>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
-                    {view.description}
-                  </p>
-                  <p className="mt-2 text-xs text-(--ink-muted)">
-                    {view.focus}
-                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">{view.description}</p>
+                  <p className="mt-2 text-xs text-(--ink-muted)">{view.focus}</p>
                 </Link>
               ))}
             </div>

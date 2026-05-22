@@ -39,11 +39,15 @@ export function TeamExchangeChordSection({
 }: TeamExchangeChordSectionProps) {
   const searchParams = useSearchParams();
   const [controls, setControls] = useState<ChordControlsValue>(() =>
-    parseChordControlsFromSearchParams(searchParams)
+    parseChordControlsFromSearchParams(searchParams),
   );
   const [highlightedEntity, setHighlightedEntity] = useState<string | null>(null);
 
-  const { data: records, fetching, error } = useChordFlow({
+  const {
+    data: records,
+    fetching,
+    error,
+  } = useChordFlow({
     orgId,
     grouping: controls.grouping,
     dateRange,
@@ -63,13 +67,24 @@ export function TeamExchangeChordSection({
     }
 
     return buildChordDataset(records, {
-      topN: controls.showOther ? controls.topN : Math.max(controls.topN, entityCount || controls.topN),
+      topN: controls.showOther
+        ? controls.topN
+        : Math.max(controls.topN, entityCount || controls.topN),
       includeSelfLinks: controls.showSelfLinks,
       direction: controls.direction,
       grouping: controls.grouping,
       unit: effortUnit,
     });
-  }, [controls.direction, controls.grouping, controls.showOther, controls.showSelfLinks, controls.topN, effortUnit, entityCount, records]);
+  }, [
+    controls.direction,
+    controls.grouping,
+    controls.showOther,
+    controls.showSelfLinks,
+    controls.topN,
+    effortUnit,
+    entityCount,
+    records,
+  ]);
 
   const nodeIdByLabel = useMemo(() => {
     const map = new Map<string, string>();
@@ -81,7 +96,7 @@ export function TeamExchangeChordSection({
 
   const highlightedLabel = useMemo(
     () => dataset?.nodes.find((node) => node.id === highlightedEntity)?.label ?? null,
-    [dataset, highlightedEntity]
+    [dataset, highlightedEntity],
   );
 
   const handleControlsChange = useCallback(
@@ -91,22 +106,32 @@ export function TeamExchangeChordSection({
         return;
       }
 
-      const nextParams = serializeChordControlsToSearchParams(next, new URLSearchParams(searchParams.toString()));
+      const nextParams = serializeChordControlsToSearchParams(
+        next,
+        new URLSearchParams(searchParams.toString()),
+      );
       const nextQuery = nextParams.toString();
-      const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
+      const nextUrl = nextQuery
+        ? `${window.location.pathname}?${nextQuery}`
+        : window.location.pathname;
       window.history.replaceState(window.history.state, "", nextUrl);
     },
-    [searchParams]
+    [searchParams],
   );
 
   const handleChartClick = useCallback(
     (item: { type: "node" | "link"; name?: string; source?: string; target?: string }) => {
-      const nextEntity = item.type === "node"
-        ? nodeIdByLabel.get(item.name ?? "") ?? item.name ?? null
-        : nodeIdByLabel.get(item.source ?? "") ?? nodeIdByLabel.get(item.target ?? "") ?? item.source ?? item.target ?? null;
+      const nextEntity =
+        item.type === "node"
+          ? (nodeIdByLabel.get(item.name ?? "") ?? item.name ?? null)
+          : (nodeIdByLabel.get(item.source ?? "") ??
+            nodeIdByLabel.get(item.target ?? "") ??
+            item.source ??
+            item.target ??
+            null);
       setHighlightedEntity(nextEntity);
     },
-    [nodeIdByLabel]
+    [nodeIdByLabel],
   );
 
   const handleRowSelect = useCallback((entityId: string) => {
@@ -129,10 +154,16 @@ export function TeamExchangeChordSection({
             ) : null}
           </div>
           <p className="mt-1 text-xs text-(--ink-muted)">
-            Exchange of {controls.grouping === "work_type" ? "work types" : `${controls.grouping}s`} across repositories. Shows pairs that frequently touch the same work.
+            Exchange of {controls.grouping === "work_type" ? "work types" : `${controls.grouping}s`}{" "}
+            across repositories. Shows pairs that frequently touch the same work.
           </p>
         </div>
-        <ChordChartControls value={controls} onChange={handleControlsChange} otherAvailable={otherAvailable} className="max-w-full" />
+        <ChordChartControls
+          value={controls}
+          onChange={handleControlsChange}
+          otherAvailable={otherAvailable}
+          className="max-w-full"
+        />
       </header>
 
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
@@ -155,9 +186,20 @@ export function TeamExchangeChordSection({
               data-highlighted-entity={highlightedEntity ?? ""}
               data-highlighted-label={highlightedLabel ?? ""}
             >
-              <ChordChart dataset={dataset ?? buildChordDataset([], { grouping: controls.grouping, unit: effortUnit })} unit={effortUnit} onItemClick={handleChartClick} />
+              <ChordChart
+                dataset={
+                  dataset ??
+                  buildChordDataset([], { grouping: controls.grouping, unit: effortUnit })
+                }
+                unit={effortUnit}
+                onItemClick={handleChartClick}
+              />
             </div>
-            <ChordSummaryPanel dataset={dataset} unit={effortUnit} onEntitySelect={handleRowSelect} />
+            <ChordSummaryPanel
+              dataset={dataset}
+              unit={effortUnit}
+              onEntitySelect={handleRowSelect}
+            />
           </>
         )}
       </div>

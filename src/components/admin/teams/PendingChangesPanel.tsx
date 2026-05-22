@@ -3,11 +3,7 @@
 import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  getPendingTeamChanges,
-  approveTeamChanges,
-  dismissTeamChanges,
-} from "@/lib/admin/server";
+import { getPendingTeamChanges, approveTeamChanges, dismissTeamChanges } from "@/lib/admin/server";
 import type { FlaggedChange } from "@/lib/admin/types";
 
 function formatRelativeTime(dateString: string): string {
@@ -82,14 +78,16 @@ export function PendingChangesPanel() {
           const result = await fn(teamId, undefined, true);
           if (result.error) errorCount++;
           else successCount++;
-        })
+        }),
       );
 
       if (errorCount > 0) {
         toast.error(`Failed to ${action} changes for ${errorCount} teams`);
       }
       if (successCount > 0) {
-        toast.success(`${action === "approve" ? "Approved" : "Dismissed"} changes for ${successCount} teams`);
+        toast.success(
+          `${action === "approve" ? "Approved" : "Dismissed"} changes for ${successCount} teams`,
+        );
       }
 
       loadChanges();
@@ -173,8 +171,9 @@ export function PendingChangesPanel() {
                 <div className="text-sm text-(--ink-muted)">
                   {change.change_type === "field_changed" && (
                     <span>
-                      {change.field}: <span className="line-through">{String(change.old_value)}</span>{" "}
-                      → <span className="text-foreground">{String(change.new_value)}</span>
+                      {change.field}:{" "}
+                      <span className="line-through">{String(change.old_value)}</span> →{" "}
+                      <span className="text-foreground">{String(change.new_value)}</span>
                     </span>
                   )}
                   {change.change_type === "provider_removed" && (

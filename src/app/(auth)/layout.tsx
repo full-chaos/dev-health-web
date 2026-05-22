@@ -14,16 +14,10 @@ export default function AuthLayout({
     <SessionProvider>
       <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex items-center"
-            aria-label="Full Chaos Dev Health home"
-          >
+          <Link href="/" className="flex items-center" aria-label="Full Chaos Dev Health home">
             <Image src={fcLogo} alt="Full Chaos Dev Health logo" className="mr-2 h-10 w-auto" />
             <div className="flex flex-col">
-              <span className="text-lg font-semibold leading-tight tracking-tight">
-                Full Chaos
-              </span>
+              <span className="text-lg font-semibold leading-tight tracking-tight">Full Chaos</span>
               <span className="text-xs font-semibold tracking-tight text-(--ink-muted)">
                 Dev Health
               </span>

@@ -11,10 +11,7 @@ const fromBase64Url = (value: string): string => {
     return Buffer.from(value, "base64url").toString("utf-8");
   }
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(
-    normalized.length + ((4 - (normalized.length % 4)) % 4),
-    "="
-  );
+  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
   return decodeURIComponent(escape(atob(padded)));
 };
 
@@ -51,13 +48,7 @@ export type SecuritySource =
   | "advisory"
   | "gitlab_vulnerability"
   | "gitlab_dependency";
-export type SecurityState =
-  | "open"
-  | "fixed"
-  | "dismissed"
-  | "detected"
-  | "confirmed"
-  | "resolved";
+export type SecurityState = "open" | "fixed" | "dismissed" | "detected" | "confirmed" | "resolved";
 
 export type SecurityFilter = {
   severities?: SecuritySeverity[];

@@ -45,7 +45,7 @@ describe("PrimaryNav — section composition", () => {
     expect(cognitiveLoadLinks).toHaveLength(1);
     expect(cognitiveLoadLinks[0]).toHaveAttribute(
       "href",
-      expect.stringContaining("/cognitive-load")
+      expect.stringContaining("/cognitive-load"),
     );
   });
 
@@ -56,9 +56,7 @@ describe("PrimaryNav — section composition", () => {
       .getAllByRole("button")
       .map((b) => b.textContent ?? "")
       .filter((t) =>
-        /cockpit|see where time goes|spot pressure early|improve delivery confidence/i.test(
-          t
-        )
+        /cockpit|see where time goes|spot pressure early|improve delivery confidence/i.test(t),
       );
 
     // Quick sanity that the four primary sections exist and are ordered correctly.
@@ -85,10 +83,7 @@ describe("PrimaryNav — section composition", () => {
     });
     // Exactly one Bottlenecks link — under the Spot Pressure Early section.
     expect(bottleneckLinks).toHaveLength(1);
-    expect(bottleneckLinks[0]).toHaveAttribute(
-      "href",
-      expect.stringContaining("/bottleneck")
-    );
+    expect(bottleneckLinks[0]).toHaveAttribute("href", expect.stringContaining("/bottleneck"));
   });
 });
 
@@ -100,10 +95,7 @@ it("renders the 'Complexity' nav item under Spot Pressure Early (CHAOS-1745)", (
   });
   // Exactly one Complexity link — under the Spot Pressure Early section.
   expect(complexityLinks).toHaveLength(1);
-  expect(complexityLinks[0]).toHaveAttribute(
-    "href",
-    expect.stringContaining("/complexity")
-  );
+  expect(complexityLinks[0]).toHaveAttribute("href", expect.stringContaining("/complexity"));
 });
 
 it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", () => {
@@ -114,9 +106,6 @@ it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", ()
   });
 
   expect(qualityLinks).toHaveLength(1);
-  expect(qualityLinks[0]).toHaveAttribute(
-    "href",
-    expect.stringContaining("/quality")
-  );
+  expect(qualityLinks[0]).toHaveAttribute("href", expect.stringContaining("/quality"));
   expect(qualityLinks[0]).toHaveAttribute("aria-current", "page");
 });

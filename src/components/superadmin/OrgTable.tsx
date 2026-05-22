@@ -45,7 +45,9 @@ export function OrgTable({ orgs }: OrgTableProps) {
       headerClassName: "px-6 py-4 font-medium",
       className: "px-6 py-4",
       render: (org) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTierBadge(org.tier)}`}>
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTierBadge(org.tier)}`}
+        >
           {org.tier}
         </span>
       ),

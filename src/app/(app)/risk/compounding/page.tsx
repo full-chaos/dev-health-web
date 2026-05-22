@@ -62,9 +62,7 @@ function normalizeScope(value: "REPO" | "TEAM"): CompoundingRiskScope {
   return value === "TEAM" ? "team" : "repo";
 }
 
-function normalizeSeverity(
-  value: Uppercase<CompoundingRiskSeverity>,
-): CompoundingRiskSeverity {
+function normalizeSeverity(value: Uppercase<CompoundingRiskSeverity>): CompoundingRiskSeverity {
   switch (value) {
     case "HIGH":
       return "high";
@@ -113,13 +111,11 @@ async function fetchCompoundingRisk(
       thresholds: row.thresholds,
       computedAt: row.computedAt,
     }));
-    const trend: CompoundingRiskTrendPointView[] = payload.trend.map(
-      (point) => ({
-        day: point.day,
-        score: point.score,
-        severity: normalizeSeverity(point.severity),
-      }),
-    );
+    const trend: CompoundingRiskTrendPointView[] = payload.trend.map((point) => ({
+      day: point.day,
+      score: point.score,
+      severity: normalizeSeverity(point.severity),
+    }));
     return {
       orgId: payload.orgId,
       breakout: normalizeScope(payload.breakout),
@@ -135,36 +131,25 @@ async function fetchCompoundingRisk(
   }
 }
 
-export default async function CompoundingRiskPage({
-  searchParams,
-}: CompoundingRiskPageProps) {
+export default async function CompoundingRiskPage({ searchParams }: CompoundingRiskPageProps) {
   const session = await requireSession();
   const params = (await searchParams) ?? {};
 
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-  const originParam = Array.isArray(params.origin)
-    ? params.origin[0]
-    : params.origin;
-  const breakoutParam = Array.isArray(params.breakout)
-    ? params.breakout[0]
-    : params.breakout;
+  const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
+  const breakoutParam = Array.isArray(params.breakout) ? params.breakout[0] : params.breakout;
 
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const isDeveloperScope = filters.scope.level === "developer";
   const breakout = pickBreakoutFromQuery(breakoutParam);
 
-  const orgId =
-    session.user?.org_id ?? "demo-org";
+  const orgId = session.user?.org_id ?? "demo-org";
 
-  const fetched = isDeveloperScope
-    ? null
-    : await fetchCompoundingRisk(orgId, breakout);
+  const fetched = isDeveloperScope ? null : await fetchCompoundingRisk(orgId, breakout);
 
   // Always render the dashboard with the data we have (or empty defaults).
   // The dashboard component owns the unified empty-state UX so the layout
@@ -180,28 +165,21 @@ export default async function CompoundingRiskPage({
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav
-          filters={filters}
-          active="risk-compounding"
-          role={activeRole}
-        />
-        <main
-          className="flex min-w-0 flex-1 flex-col gap-8"
-          data-testid="compounding-risk-page"
-        >
+        <PrimaryNav filters={filters} active="risk-compounding" role={activeRole} />
+        <main className="flex min-w-0 flex-1 flex-col gap-8" data-testid="compounding-risk-page">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Compounding Risk
               </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Composite risk score
-              </h1>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Composite risk score</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Where churn, complexity trend, ownership concentration, and review latency are compounding into structural risk.
+                Where churn, complexity trend, ownership concentration, and review latency are
+                compounding into structural risk.
               </p>
               <p className="mt-2 text-sm text-(--ink-muted)">
-                Every score is inspectable: weights, thresholds, and raw inputs persist with the row.
+                Every score is inspectable: weights, thresholds, and raw inputs persist with the
+                row.
               </p>
             </div>
             <Link
@@ -228,10 +206,9 @@ export default async function CompoundingRiskPage({
                 Compounding Risk is a team and repo signal.
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-6">
-                Per the no-surveillance contract, this surface intentionally
-                does not break down by person. Use team or repo aggregation to
-                see where change pressure is compounding architectural and
-                operational risk.
+                Per the no-surveillance contract, this surface intentionally does not break down by
+                person. Use team or repo aggregation to see where change pressure is compounding
+                architectural and operational risk.
               </p>
               <Link
                 href="/risk/compounding"

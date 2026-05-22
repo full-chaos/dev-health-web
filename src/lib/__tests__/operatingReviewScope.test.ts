@@ -18,7 +18,7 @@ describe("selectedOperatingReviewTeamIds", () => {
       selectedOperatingReviewTeamIds(undefined, {
         ...baseFilter,
         scope: { level: "team", ids: ["platform", "growth"] },
-      })
+      }),
     ).toEqual(["platform", "growth"]);
   });
 
@@ -27,7 +27,7 @@ describe("selectedOperatingReviewTeamIds", () => {
       selectedOperatingReviewTeamIds(undefined, {
         ...baseFilter,
         scope: { level: "repo", ids: ["web"] },
-      })
+      }),
     ).toEqual([]);
   });
 
@@ -36,7 +36,7 @@ describe("selectedOperatingReviewTeamIds", () => {
       selectedOperatingReviewTeamIds(["ops", "", "ops", " product "], {
         ...baseFilter,
         scope: { level: "team", ids: ["platform"] },
-      })
+      }),
     ).toEqual(["ops", "product"]);
   });
 });

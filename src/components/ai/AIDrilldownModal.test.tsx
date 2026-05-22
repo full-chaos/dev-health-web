@@ -48,7 +48,9 @@ describe("AIDrilldownModal", () => {
       error: undefined,
     });
 
-    render(<AIDrilldownModal metric="Change request rate" filter={filter} onClose={() => undefined} />);
+    render(
+      <AIDrilldownModal metric="Change request rate" filter={filter} onClose={() => undefined} />,
+    );
 
     expect(screen.getByText(/Change request rate/i)).toBeInTheDocument();
     expect(screen.getByTestId("ai-drilldown-empty")).toBeInTheDocument();
@@ -98,7 +100,13 @@ describe("AIDrilldownModal", () => {
       error: undefined,
     });
 
-    render(<AIDrilldownModal metric="Review comments per PR" filter={filter} onClose={() => undefined} />);
+    render(
+      <AIDrilldownModal
+        metric="Review comments per PR"
+        filter={filter}
+        onClose={() => undefined}
+      />,
+    );
 
     expect(screen.getByText("Add feature flag")).toBeInTheDocument();
     expect(screen.getByText("Refactor auth")).toBeInTheDocument();
@@ -199,8 +207,24 @@ describe("AIDrilldownModal", () => {
     mockUseAIAttributedPrs.mockReturnValue({
       data: {
         rows: [
-          { repoId: "r", number: 100, title: "Add OAuth", kind: "copilot", workType: "feature", teamId: null, mergedAt: null },
-          { repoId: "r", number: 101, title: "Refactor logger", kind: "copilot", workType: "tech-debt", teamId: null, mergedAt: null },
+          {
+            repoId: "r",
+            number: 100,
+            title: "Add OAuth",
+            kind: "copilot",
+            workType: "feature",
+            teamId: null,
+            mergedAt: null,
+          },
+          {
+            repoId: "r",
+            number: 101,
+            title: "Refactor logger",
+            kind: "copilot",
+            workType: "tech-debt",
+            teamId: null,
+            mergedAt: null,
+          },
         ],
         total: 2,
         hasMore: false,
@@ -210,7 +234,9 @@ describe("AIDrilldownModal", () => {
       error: undefined,
     });
 
-    render(<AIDrilldownModal metric="Approval friction" filter={filter} onClose={() => undefined} />);
+    render(
+      <AIDrilldownModal metric="Approval friction" filter={filter} onClose={() => undefined} />,
+    );
 
     await userEvent.type(screen.getByTestId("ai-drilldown-search"), "logger");
 
@@ -225,7 +251,9 @@ describe("AIDrilldownModal", () => {
       error: undefined,
     });
 
-    render(<AIDrilldownModal metric="Change request rate" filter={filter} onClose={() => undefined} />);
+    render(
+      <AIDrilldownModal metric="Change request rate" filter={filter} onClose={() => undefined} />,
+    );
 
     const modal = screen.getByTestId("ai-drilldown-modal");
     const text = modal.textContent ?? "";

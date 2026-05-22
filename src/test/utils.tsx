@@ -25,15 +25,12 @@ export { customRender as render };
  * Renders a component wrapped with <Toaster /> so toast assertions work.
  * Use this instead of bare `render()` for any component that calls `toast.*`.
  */
-export function renderWithToaster(
-  ui: ReactElement,
-  options?: Omit<RenderOptions, "wrapper">
-) {
+export function renderWithToaster(ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) {
   return customRender(
     <>
       {ui}
       <Toaster />
     </>,
-    options
+    options,
   );
 }

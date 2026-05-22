@@ -93,4 +93,3 @@ query TestOpsRisk($orgId: String!, $batch: AnalyticsRequestInput!) {
   }
 }
 `;
-

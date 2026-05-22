@@ -21,9 +21,7 @@ describe("AuditLogFilters — admin variant", () => {
     // Use querySelector since <form> needs a name attr for getByRole("form")
     fireEvent.submit(document.querySelector("form")!);
 
-    expect(onFilter).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "org.create" })
-    );
+    expect(onFilter).toHaveBeenCalledWith(expect.objectContaining({ action: "org.create" }));
   });
 
   it("omits empty fields from the filter call", () => {
@@ -61,7 +59,7 @@ describe("AuditLogFilters — billing variant", () => {
     fireEvent.submit(document.querySelector("form")!);
 
     expect(onApply).toHaveBeenCalledWith(
-      expect.objectContaining({ reconciliation_status: "matched" })
+      expect.objectContaining({ reconciliation_status: "matched" }),
     );
   });
 

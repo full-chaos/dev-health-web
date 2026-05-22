@@ -108,11 +108,7 @@ const getPaletteServerSnapshot = (): Palette => "fullchaos-infinity-knot-redux";
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);
-  const palette = useSyncExternalStore(
-    subscribe,
-    getPaletteSnapshot,
-    getPaletteServerSnapshot
-  );
+  const palette = useSyncExternalStore(subscribe, getPaletteSnapshot, getPaletteServerSnapshot);
 
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -145,8 +141,9 @@ export function ThemeToggle() {
 
   return (
     <div
-      className={`group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) p-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${isCollapsed ? "w-10 overflow-hidden" : "px-3 py-2"
-        }`}
+      className={`group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) p-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${
+        isCollapsed ? "w-10 overflow-hidden" : "px-3 py-2"
+      }`}
     >
       {!isCollapsed && (
         <>
@@ -178,8 +175,9 @@ export function ThemeToggle() {
       <button
         type="button"
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-(--card-70) ${isCollapsed ? "mx-auto" : ""
-          }`}
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-(--card-70) ${
+          isCollapsed ? "mx-auto" : ""
+        }`}
         aria-label={isCollapsed ? "Expand settings" : "Collapse settings"}
       >
         <span className={`transform transition-transform ${isCollapsed ? "" : "rotate-180"}`}>

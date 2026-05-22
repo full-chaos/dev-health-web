@@ -1,26 +1,26 @@
-"use client"
+"use client";
 
-import { useSession, signOut } from "next-auth/react"
-import Link from "next/link"
-import { useState, useRef, useEffect } from "react"
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 
 export function UserMenu() {
-  const { data: session, status } = useSession()
-  const [isOpen, setIsOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const { data: session, status } = useSession();
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+        setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (status === "loading") {
-    return <div className="h-8 w-8 animate-pulse rounded-full bg-[var(--card-stroke)]" />
+    return <div className="h-8 w-8 animate-pulse rounded-full bg-[var(--card-stroke)]" />;
   }
 
   if (!session) {
@@ -31,7 +31,7 @@ export function UserMenu() {
       >
         Sign In
       </Link>
-    )
+    );
   }
 
   return (
@@ -53,7 +53,8 @@ export function UserMenu() {
         <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md border border-[var(--card-stroke)] bg-[var(--card)] shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div className="py-1">
             <div className="px-4 py-2 text-xs text-[var(--ink-muted)] border-b border-[var(--card-stroke)]">
-              Signed in as<br />
+              Signed in as
+              <br />
               <span className="font-medium text-[var(--foreground)] truncate block">
                 {session.user?.email}
               </span>
@@ -94,5 +95,5 @@ export function UserMenu() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -19,7 +19,7 @@ describe("TestOps Constants", () => {
     ];
 
     expect(Object.keys(TESTOPS_MEASURES)).toHaveLength(12);
-    
+
     expectedMeasures.forEach((measure) => {
       expect(TESTOPS_MEASURES).toHaveProperty(measure);
       expect(TESTOPS_MEASURES[measure].id).toBe(measure);

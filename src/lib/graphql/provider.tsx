@@ -11,11 +11,7 @@
  */
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import {
-  UrqlProvider,
-  ssrExchange,
-  createClient,
-} from "@urql/next";
+import { UrqlProvider, ssrExchange, createClient } from "@urql/next";
 import type { SSRExchange } from "@urql/core";
 import { createGraphQLClientOptions } from "./providerClient";
 
@@ -54,10 +50,7 @@ const SsrContext = createContext<SSRExchange | null>(null);
  * </GraphQLProvider>
  * ```
  */
-export function GraphQLProvider({
-  children,
-  orgId,
-}: GraphQLProviderProps): React.ReactNode {
+export function GraphQLProvider({ children, orgId }: GraphQLProviderProps): React.ReactNode {
   const [client, ssr] = useMemo(() => {
     const ssr = ssrExchange({
       isClient: typeof window !== "undefined",
@@ -106,7 +99,7 @@ export function useSsr(): SSRExchange | null {
  */
 export function withGraphQL<P extends object>(
   Component: React.ComponentType<P>,
-  orgId?: string
+  orgId?: string,
 ): React.FC<P> {
   return function WithGraphQL(props: P) {
     return (

@@ -32,9 +32,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const scopeId = filters.scope.ids[0] ?? "";
   const quadrantScope: "org" | "team" | "repo" | "developer" =
     filters.scope.level === "developer"
@@ -48,10 +46,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     await Promise.all([
       checkApiHealth(),
       fetchOrNull(getHomeData(filters), "code/home-data"),
-      fetchOrNull(
-        getExplainData({ metric: "churn", filters }),
-        "code/explain-churn"
-      ),
+      fetchOrNull(getExplainData({ metric: "churn", filters }), "code/explain-churn"),
       fetchOrNull(
         getHeatmap({
           type: "risk",
@@ -62,7 +57,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
           start_date: filters.time.start_date,
           end_date: filters.time.end_date,
         }),
-        "code/hotspot-heatmap"
+        "code/hotspot-heatmap",
       ),
       fetchOrNull(
         getQuadrant({
@@ -74,7 +69,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
           start_date: filters.time.start_date,
           end_date: filters.time.end_date,
         }),
-        "code/churn-throughput-quadrant"
+        "code/churn-throughput-quadrant",
       ),
       fetchOrNull(getBusFactorData(filters), "code/bus-factor"),
     ]);
@@ -92,7 +87,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
   const topMaintainers = (busFactor?.topMaintainers ?? []).slice(0, 5);
   const riskyRepos = (busFactor?.repos ?? [])
     .toSorted(
-      (left, right) => left.value - right.value || left.repoName.localeCompare(right.repoName)
+      (left, right) => left.value - right.value || left.repoName.localeCompare(right.repoName),
     )
     .slice(0, 10);
 
@@ -103,18 +98,12 @@ export default async function CodePage({ searchParams }: CodePageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Code
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Churn and Ownership
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Code</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Churn and Ownership</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Hotspots and ownership concentration in the selected window.
               </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Open a card to investigate.
-              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">Open a card to investigate.</p>
             </div>
             <Link
               href={withFilterParam("/", filters, activeRole)}
@@ -208,14 +197,16 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                     {hotspots.map((item) => (
                       <Link
                         key={item.id}
-                        href={buildExploreUrl({ api: item.evidence_link, filters, role: activeRole })}
+                        href={buildExploreUrl({
+                          api: item.evidence_link,
+                          filters,
+                          role: activeRole,
+                        })}
                         className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                       >
                         <span>{item.label}</span>
                         <span className="text-xs text-(--ink-muted)">
-                          {churnExplain
-                            ? formatMetricValue(item.value, churnExplain.unit)
-                            : "--"}
+                          {churnExplain ? formatMetricValue(item.value, churnExplain.unit) : "--"}
                         </span>
                       </Link>
                     ))}
@@ -247,9 +238,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                       Scope-wide bus factor
                     </p>
-                    <p className="mt-2 font-(--font-display) text-4xl">
-                      {busFactor?.value ?? 0}
-                    </p>
+                    <p className="mt-2 font-(--font-display) text-4xl">{busFactor?.value ?? 0}</p>
                     <p className="mt-1 text-xs text-(--ink-muted)">
                       {busFactor?.evidenceSampleCount ?? 0} file-change samples
                     </p>

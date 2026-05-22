@@ -28,22 +28,22 @@ export function ConnectorStatusTable({ data, isPending }: ConnectorStatusTablePr
     {
       key: "provider",
       header: "Provider",
-      render: (row) => (
-        <span className="font-medium text-foreground">{row.provider}</span>
-      ),
+      render: (row) => <span className="font-medium text-foreground">{row.provider}</span>,
     },
     {
       key: "scope",
       header: "Scope",
-      render: (row) => (
-        <span className="text-sm text-(--ink-muted)">{row.scope}</span>
-      ),
+      render: (row) => <span className="text-sm text-(--ink-muted)">{row.scope}</span>,
     },
     {
       key: "status",
       header: "Status",
       render: (row) => {
-        const status: SyncStatus = row.lastFailure ? "failed" : row.lastSyncAt ? "success" : "never";
+        const status: SyncStatus = row.lastFailure
+          ? "failed"
+          : row.lastSyncAt
+            ? "success"
+            : "never";
         return <SyncStatusBadge status={status} />;
       },
     },
@@ -59,15 +59,16 @@ export function ConnectorStatusTable({ data, isPending }: ConnectorStatusTablePr
     {
       key: "rowsIngested",
       header: "Rows Ingested",
-      render: (row) => (
-        <span className="text-sm text-(--ink-muted)">{row.rowsIngested}</span>
-      ),
+      render: (row) => <span className="text-sm text-(--ink-muted)">{row.rowsIngested}</span>,
     },
     {
       key: "message",
       header: "Message",
       render: (row) => (
-        <span className="text-sm text-(--ink-muted) truncate max-w-xs block" title={row.lastFailure?.message ?? ""}>
+        <span
+          className="text-sm text-(--ink-muted) truncate max-w-xs block"
+          title={row.lastFailure?.message ?? ""}
+        >
           {row.lastFailure ? row.lastFailure.message : "-"}
         </span>
       ),

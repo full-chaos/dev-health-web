@@ -61,7 +61,9 @@ export function IntegrationFormWrapper({
     onSuccess?.();
   };
 
-  const handleTestConnection = async (formData: Record<string, FormDataEntryValue>): Promise<boolean> => {
+  const handleTestConnection = async (
+    formData: Record<string, FormDataEntryValue>,
+  ): Promise<boolean> => {
     const credentials: Record<string, unknown> = {};
     Object.entries(formData).forEach(([key, value]) => {
       if (key === "credential_name") return;

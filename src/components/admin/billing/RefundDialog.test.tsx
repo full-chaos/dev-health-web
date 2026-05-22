@@ -21,11 +21,7 @@ describe("RefundDialog", () => {
 
   it("renders only the trigger button when closed", () => {
     renderWithToaster(
-      <RefundDialog
-        invoiceId="in_1"
-        invoiceAmountCents={10000}
-        refundableAmountCents={10000}
-      />
+      <RefundDialog invoiceId="in_1" invoiceAmountCents={10000} refundableAmountCents={10000} />,
     );
 
     expect(screen.getByRole("button", { name: /issue refund/i })).toBeInTheDocument();
@@ -34,11 +30,7 @@ describe("RefundDialog", () => {
 
   it("opens the dialog when the trigger button is clicked", async () => {
     renderWithToaster(
-      <RefundDialog
-        invoiceId="in_1"
-        invoiceAmountCents={10000}
-        refundableAmountCents={10000}
-      />
+      <RefundDialog invoiceId="in_1" invoiceAmountCents={10000} refundableAmountCents={10000} />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /issue refund/i }));
@@ -50,11 +42,7 @@ describe("RefundDialog", () => {
 
   it("reveals the amount input when 'Partial refund' is toggled", async () => {
     renderWithToaster(
-      <RefundDialog
-        invoiceId="in_1"
-        invoiceAmountCents={10000}
-        refundableAmountCents={10000}
-      />
+      <RefundDialog invoiceId="in_1" invoiceAmountCents={10000} refundableAmountCents={10000} />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /issue refund/i }));
@@ -65,11 +53,7 @@ describe("RefundDialog", () => {
 
   it("shows an error toast when the partial amount exceeds refundable balance", async () => {
     renderWithToaster(
-      <RefundDialog
-        invoiceId="in_1"
-        invoiceAmountCents={10000}
-        refundableAmountCents={5000}
-      />
+      <RefundDialog invoiceId="in_1" invoiceAmountCents={10000} refundableAmountCents={5000} />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /issue refund/i }));
@@ -83,7 +67,7 @@ describe("RefundDialog", () => {
 
     await waitFor(() => {
       expect(
-        screen.getAllByText(/Amount cannot exceed the refundable balance/i).length
+        screen.getAllByText(/Amount cannot exceed the refundable balance/i).length,
       ).toBeGreaterThan(0);
     });
     expect(mockCreateRefund).not.toHaveBeenCalled();
@@ -120,7 +104,7 @@ describe("RefundDialog", () => {
         invoiceAmountCents={10000}
         refundableAmountCents={10000}
         onRefundCreated={onRefundCreated}
-      />
+      />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /issue refund/i }));
@@ -135,14 +119,12 @@ describe("RefundDialog", () => {
         invoiceId: "in_1",
         amount: 10000,
         reason: "requested_by_customer",
-      })
+      }),
     );
     await waitFor(() => {
       expect(screen.getByText(/Refund issued/i)).toBeInTheDocument();
     });
-    expect(onRefundCreated).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "re_1" })
-    );
+    expect(onRefundCreated).toHaveBeenCalledWith(expect.objectContaining({ id: "re_1" }));
   });
 
   it("shows an error toast when createRefund returns an error", async () => {
@@ -152,11 +134,7 @@ describe("RefundDialog", () => {
     });
 
     renderWithToaster(
-      <RefundDialog
-        invoiceId="in_1"
-        invoiceAmountCents={10000}
-        refundableAmountCents={10000}
-      />
+      <RefundDialog invoiceId="in_1" invoiceAmountCents={10000} refundableAmountCents={10000} />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /issue refund/i }));
@@ -170,11 +148,7 @@ describe("RefundDialog", () => {
 
   it("lets the user change the refund reason", async () => {
     renderWithToaster(
-      <RefundDialog
-        invoiceId="in_1"
-        invoiceAmountCents={10000}
-        refundableAmountCents={10000}
-      />
+      <RefundDialog invoiceId="in_1" invoiceAmountCents={10000} refundableAmountCents={10000} />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /issue refund/i }));

@@ -12,9 +12,7 @@ type AIAutomationsPageProps = {
 export default async function AIAutomationsPage({ searchParams }: AIAutomationsPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const aiFilter = metricFilterToAIFilter(filters);
 
   return (
@@ -23,7 +21,8 @@ export default async function AIAutomationsPage({ searchParams }: AIAutomationsP
         <PrimaryNav filters={filters} active="ai-opportunities" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <AIPageHeader eyebrow="AI workflows" title="AI Automations">
-            Candidate patterns for responsible automation, separated from Impact diagnostics so teams can triage opportunities directly.
+            Candidate patterns for responsible automation, separated from Impact diagnostics so
+            teams can triage opportunities directly.
           </AIPageHeader>
           <FilterBar view="ai" />
           <AIAutomationsDashboard filter={aiFilter} />

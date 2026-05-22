@@ -14,9 +14,9 @@ omit `BASE_PATH`.
 
 ## GitHub Pages (demo)
 
-1) Ensure the Pages source is set to "GitHub Actions" in the repo settings.
-2) Push to `main` or run the "Deploy Demo to Pages" workflow manually.
-3) The workflow sets `DEMO_EXPORT=true` and publishes `out/`.
+1. Ensure the Pages source is set to "GitHub Actions" in the repo settings.
+2. Push to `main` or run the "Deploy Demo to Pages" workflow manually.
+3. The workflow sets `DEMO_EXPORT=true` and publishes `out/`.
 
 ## CDN hosting recommendations
 
@@ -33,8 +33,8 @@ Suggested cache headers:
 
 ## Generic setup guide (any CDN)
 
-1) Build the export:
+1. Build the export:
    `DEMO_EXPORT=true BASE_PATH=/your/subpath npm run build`
-2) Upload the contents of `out/` to your static host.
-3) Configure the host to serve `index.html` for the root path.
-4) If hosting under a subpath, set `BASE_PATH` to that subpath during the build.
+2. Upload the contents of `out/` to your static host.
+3. Configure the host to serve `index.html` for the root path.
+4. If hosting under a subpath, set `BASE_PATH` to that subpath during the build.

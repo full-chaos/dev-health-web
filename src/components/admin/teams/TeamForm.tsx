@@ -10,7 +10,12 @@ type TeamFormProps = {
   isLoading?: boolean;
 };
 
-export function TeamForm({ initialData, onSubmit, isEditing = false, isLoading = false }: TeamFormProps) {
+export function TeamForm({
+  initialData,
+  onSubmit,
+  isEditing = false,
+  isLoading = false,
+}: TeamFormProps) {
   const { formData, handleChange } = useBaseFormState<Team>(
     initialData || {
       team_id: "",
@@ -18,11 +23,15 @@ export function TeamForm({ initialData, onSubmit, isEditing = false, isLoading =
       description: "",
       repo_patterns: [],
       project_keys: [],
-    }
+    },
   );
 
-  const [repoPatternsInput, setRepoPatternsInput] = useState(initialData?.repo_patterns.join(", ") || "");
-  const [projectKeysInput, setProjectKeysInput] = useState(initialData?.project_keys.join(", ") || "");
+  const [repoPatternsInput, setRepoPatternsInput] = useState(
+    initialData?.repo_patterns.join(", ") || "",
+  );
+  const [projectKeysInput, setProjectKeysInput] = useState(
+    initialData?.project_keys.join(", ") || "",
+  );
 
   const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -51,7 +60,10 @@ export function TeamForm({ initialData, onSubmit, isEditing = false, isLoading =
       contentClassName="space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
       actionsClassName="flex items-center gap-4"
       actionsStart={
-        <Link href="/admin/teams" className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground">
+        <Link
+          href="/admin/teams"
+          className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
+        >
           Cancel
         </Link>
       }
@@ -71,7 +83,9 @@ export function TeamForm({ initialData, onSubmit, isEditing = false, isLoading =
           className={`${inputClass} text-sm disabled:opacity-50`}
           placeholder="e.g., platform-eng"
         />
-        <p className="mt-1 text-xs text-(--ink-muted)">Unique identifier for the team. Cannot be changed after creation.</p>
+        <p className="mt-1 text-xs text-(--ink-muted)">
+          Unique identifier for the team. Cannot be changed after creation.
+        </p>
       </div>
 
       <div>

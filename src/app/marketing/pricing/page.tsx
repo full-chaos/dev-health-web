@@ -6,8 +6,7 @@ import { getSubscription } from "@/lib/billing/actions";
 
 export const metadata: Metadata = {
   title: "Pricing — Full Chaos Dev Health",
-  description:
-    "Simple, transparent pricing. Start free, scale as you grow.",
+  description: "Simple, transparent pricing. Start free, scale as you grow.",
 };
 
 // ---------------------------------------------------------------------------
@@ -41,7 +40,6 @@ type BillingPlan = {
   prices: BillingPrice[];
   bundles: FeatureBundle[];
 };
-
 
 async function fetchPlans(): Promise<BillingPlan[]> {
   try {
@@ -79,13 +77,27 @@ function formatPrice(amountInCents: number, currency: string): string {
 // ---------------------------------------------------------------------------
 
 const CHECK = (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-(--accent)">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    className="text-(--accent)"
+  >
     <path d="M20 6 9 17l-5-5" />
   </svg>
 );
 
 const DASH = (
-  <span className="text-(--ink-muted)" aria-hidden="true" title="Not included">—</span>
+  <span className="text-(--ink-muted)" aria-hidden="true" title="Not included">
+    —
+  </span>
 );
 
 type Tier = {
@@ -120,7 +132,8 @@ const TIERS: Tier[] = [
     name: "Team",
     price: "Contact us",
     period: "for pricing",
-    description: "For growing teams that need full visibility into delivery health and investment patterns.",
+    description:
+      "For growing teams that need full visibility into delivery health and investment patterns.",
     features: [
       "Unlimited repos",
       "Unlimited contributors",
@@ -138,7 +151,8 @@ const TIERS: Tier[] = [
     name: "Enterprise",
     price: "Custom",
     period: "pricing",
-    description: "For organizations that need enterprise-grade security, compliance, and dedicated support.",
+    description:
+      "For organizations that need enterprise-grade security, compliance, and dedicated support.",
     features: [
       "Everything in Team",
       "SSO / SAML",
@@ -166,7 +180,12 @@ const COMPARISON = [
   { feature: "Audit Logs", community: false, team: false, enterprise: true },
   { feature: "Custom Integrations", community: false, team: false, enterprise: true },
   { feature: "Support", community: "Community", team: "Priority", enterprise: "Dedicated" },
-  { feature: "Deployment", community: "Self-hosted", team: "Cloud + Self-hosted", enterprise: "Cloud + Self-hosted" },
+  {
+    feature: "Deployment",
+    community: "Self-hosted",
+    team: "Cloud + Self-hosted",
+    enterprise: "Cloud + Self-hosted",
+  },
 ];
 
 function ComparisonCell({ value }: { value: boolean | string }) {
@@ -214,7 +233,7 @@ export default async function PricingPage() {
         ...tierData,
         price: monthly ? formatPrice(monthly.amount, monthly.currency) : tier.price,
       };
-      
+
       if (isTrialing) {
         tierData.cta = "Manage subscription";
         tierData.ctaHref = "/settings/billing";
@@ -239,15 +258,13 @@ export default async function PricingPage() {
       {/* Header */}
       <section className="mx-auto max-w-7xl px-6 pb-16 pt-16 sm:pt-24">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Pricing
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Pricing</p>
           <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl">
             Simple, transparent pricing
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
-            Start free with the Community plan. Scale to Team when you need
-            full analytics. Enterprise for organizations with compliance needs.
+            Start free with the Community plan. Scale to Team when you need full analytics.
+            Enterprise for organizations with compliance needs.
           </p>
         </div>
       </section>
@@ -275,28 +292,31 @@ export default async function PricingPage() {
                 </span>
               )}
 
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                {tier.name}
-              </p>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">{tier.name}</p>
 
               <div className="mt-4 flex items-baseline gap-1">
-                <span className="font-(--font-display) text-4xl font-semibold">
-                  {tier.price}
-                </span>
-                <span className="text-sm text-(--ink-muted)">
-                  {tier.period}
-                </span>
+                <span className="font-(--font-display) text-4xl font-semibold">{tier.price}</span>
+                <span className="text-sm text-(--ink-muted)">{tier.period}</span>
               </div>
 
-              <p className="mt-4 text-sm leading-relaxed text-(--ink-muted)">
-                {tier.description}
-              </p>
+              <p className="mt-4 text-sm leading-relaxed text-(--ink-muted)">{tier.description}</p>
 
               <ul className="mt-6 space-y-3">
                 {tier.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-3 text-sm">
                     <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-(--accent)/10 text-(--accent)">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
                         <path d="M20 6 9 17l-5-5" />
                       </svg>
                     </span>
@@ -338,9 +358,7 @@ export default async function PricingPage() {
       {/* Comparison Table */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Compare plans
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Compare plans</p>
           <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
             All features at a glance
           </h2>
@@ -397,8 +415,8 @@ export default async function PricingPage() {
             Ready to understand your engineering effort?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
-            Start with the Community plan — free forever. Upgrade when your
-            team is ready for deeper insights.
+            Start with the Community plan — free forever. Upgrade when your team is ready for deeper
+            insights.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link

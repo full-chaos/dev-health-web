@@ -1,31 +1,30 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useSession } from "next-auth/react"
-import { toast } from "sonner"
-import { resolveOrigin } from "@/lib/origin"
-import { extractErrorMessage } from "@/lib/errorMessages"
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { resolveOrigin } from "@/lib/origin";
+import { extractErrorMessage } from "@/lib/errorMessages";
 
 type OnboardFormProps = {
-  plan?: string
-  trialIntent?: boolean
-}
+  plan?: string;
+  trialIntent?: boolean;
+};
 
 export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
-  const { data: session, update, status } = useSession()
-  const [orgName, setOrgName] = useState("")
-  const [loading, setLoading] = useState(false)
-  const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team"
+  const { data: session, update, status } = useSession();
+  const [orgName, setOrgName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team";
 
-  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      const backendUrl = resolveOrigin()
+      const backendUrl = resolveOrigin();
       const res = await fetch(`${backendUrl}/api/v1/auth/onboard`, {
         method: "POST",
         headers: {
@@ -36,23 +35,23 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
           action: "create_org",
           org_name: orgName || undefined,
         }),
-      })
+      });
 
       if (!res.ok) {
         if (res.status === 429) {
-          toast.error("Too many requests. Please try again later.")
-          return
+          toast.error("Too many requests. Please try again later.");
+          return;
         }
         try {
-          const data = await res.json()
-          toast.error(extractErrorMessage(data.detail, "Failed to create workspace"))
+          const data = await res.json();
+          toast.error(extractErrorMessage(data.detail, "Failed to create workspace"));
         } catch {
-          toast.error("Failed to create workspace")
+          toast.error("Failed to create workspace");
         }
-        return
+        return;
       }
 
-      const data = await res.json()
+      const data = await res.json();
 
       const onboardingSession = {
         access_token: data.access_token,
@@ -60,50 +59,47 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
         org_id: data.org_id,
         role: data.role,
         expires_in: data.expires_in,
-      }
+      };
 
-      let sessionReady = false
+      let sessionReady = false;
 
       for (let attempt = 0; attempt < 5 && !sessionReady; attempt += 1) {
         try {
-          const result = await update({ onboardComplete: onboardingSession })
+          const result = await update({ onboardComplete: onboardingSession });
           if (result) {
-            sessionReady = true
+            sessionReady = true;
           } else {
-            await delay(300 * (attempt + 1))
+            await delay(300 * (attempt + 1));
           }
         } catch {
-          await delay(300 * (attempt + 1))
+          await delay(300 * (attempt + 1));
         }
       }
 
       const destination = isTeamTrialIntent
         ? "/auth/trial-checkout?plan=team&trial=true"
-        : "/dashboard"
+        : "/dashboard";
 
       if (!sessionReady) {
-        window.location.href = destination
-        return
+        window.location.href = destination;
+        return;
       }
 
       // Hard navigation ensures the middleware reads the freshly-updated session
       // cookie. A soft router.push() can race with the Set-Cookie from the
       // session update, causing the org-scoped guard to redirect back here.
-      window.location.href = destination
+      window.location.href = destination;
     } catch {
-      toast.error("An error occurred. Please try again.")
+      toast.error("An error occurred. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
       <div className="space-y-2">
-        <label
-          htmlFor="orgName"
-          className="block text-sm font-medium text-[var(--foreground)]"
-        >
+        <label htmlFor="orgName" className="block text-sm font-medium text-[var(--foreground)]">
           Organization Name
         </label>
         <input
@@ -127,5 +123,5 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
         {loading ? "Creating workspace..." : "Create Workspace"}
       </button>
     </form>
-  )
+  );
 }

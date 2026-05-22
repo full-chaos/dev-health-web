@@ -179,16 +179,20 @@ describe("GraphView", () => {
     await user.selectOptions(screen.getByLabelText(/Subcategory/i), "quality.bugfix");
 
     expect(screen.getByText(/Quality \/ Quality \/ Bugfix/i)).toBeInTheDocument();
-    expect(screen.getByText(/persisted distributions drive the selected theme context/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/persisted distributions drive the selected theme context/i),
+    ).toBeInTheDocument();
   });
 
   it("hydrates graph drilldown state from URL search params", () => {
-    mockUseSearchParams.mockReturnValue(new URLSearchParams({
-      graph_connection: "change-to-code",
-      graph_theme: "quality",
-      graph_subcategory: "quality.bugfix",
-      graph_node: "FILE:src/app/page.tsx",
-    }));
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams({
+        graph_connection: "change-to-code",
+        graph_theme: "quality",
+        graph_subcategory: "quality.bugfix",
+        graph_node: "FILE:src/app/page.tsx",
+      }),
+    );
     mockUseWorkGraphEdges.mockReturnValue({
       edges: [
         {

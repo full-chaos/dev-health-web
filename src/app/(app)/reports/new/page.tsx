@@ -33,9 +33,7 @@ export default function NewReportPage() {
   const [scope, setScope] = useState("org");
   const [dateRange, setDateRange] = useState("last_7_days");
   const [schedule, setSchedule] = useState("none");
-  const [selectedMetrics, setSelectedMetrics] = useState<Set<string>>(
-    new Set(AVAILABLE_METRICS)
-  );
+  const [selectedMetrics, setSelectedMetrics] = useState<Set<string>>(new Set(AVAILABLE_METRICS));
 
   const toggleMetric = (metric: string) => {
     setSelectedMetrics((prev) => {
@@ -78,21 +76,28 @@ export default function NewReportPage() {
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <Link href="/reports" className="text-(--ink-muted) hover:text-foreground transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m15 18-6-6 6-6"/>
+                <Link
+                  href="/reports"
+                  className="text-(--ink-muted) hover:text-foreground transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m15 18-6-6 6-6" />
                   </svg>
                 </Link>
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                  New Report
-                </p>
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">New Report</p>
               </div>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Create Report
-              </h1>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Define a new AI-generated report.
-              </p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Create Report</h1>
+              <p className="mt-2 text-sm text-(--ink-muted)">Define a new AI-generated report.</p>
             </div>
           </header>
 
@@ -100,9 +105,11 @@ export default function NewReportPage() {
             <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl">
               <div className="space-y-4">
                 <h2 className="font-(--font-display) text-xl">Basic Details</h2>
-                
+
                 <div className="space-y-2">
-                  <label htmlFor="name" className="block text-sm font-medium">Report Name</label>
+                  <label htmlFor="name" className="block text-sm font-medium">
+                    Report Name
+                  </label>
                   <input
                     type="text"
                     id="name"
@@ -115,7 +122,9 @@ export default function NewReportPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="description" className="block text-sm font-medium">Description</label>
+                  <label htmlFor="description" className="block text-sm font-medium">
+                    Description
+                  </label>
                   <textarea
                     id="description"
                     rows={3}
@@ -129,10 +138,12 @@ export default function NewReportPage() {
 
               <div className="space-y-4">
                 <h2 className="font-(--font-display) text-xl">Configuration</h2>
-                
-                  <div className="grid gap-4 md:grid-cols-2">
+
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label htmlFor="scope" className="block text-sm font-medium">Scope</label>
+                    <label htmlFor="scope" className="block text-sm font-medium">
+                      Scope
+                    </label>
                     <select
                       id="scope"
                       value={scope}
@@ -146,7 +157,9 @@ export default function NewReportPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="dateRange" className="block text-sm font-medium">Date Range</label>
+                    <label htmlFor="dateRange" className="block text-sm font-medium">
+                      Date Range
+                    </label>
                     <select
                       id="dateRange"
                       value={dateRange}
@@ -164,7 +177,10 @@ export default function NewReportPage() {
                   <label className="block text-sm font-medium">Metrics to Include</label>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {AVAILABLE_METRICS.map((metric) => (
-                      <label key={metric} className="flex items-center gap-2 rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm cursor-pointer hover:border-(--accent) transition-colors">
+                      <label
+                        key={metric}
+                        className="flex items-center gap-2 rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm cursor-pointer hover:border-(--accent) transition-colors"
+                      >
                         <input
                           type="checkbox"
                           className="rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent)"
@@ -178,7 +194,9 @@ export default function NewReportPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="schedule" className="block text-sm font-medium">Schedule</label>
+                  <label htmlFor="schedule" className="block text-sm font-medium">
+                    Schedule
+                  </label>
                   <select
                     id="schedule"
                     value={schedule}

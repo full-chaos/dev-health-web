@@ -16,7 +16,12 @@ export function OrgCreateForm() {
     const newName = e.target.value;
     setName(newName);
     if (!isSlugManuallyEdited) {
-      setSlug(newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
+      setSlug(
+        newName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, ""),
+      );
     }
   }
 

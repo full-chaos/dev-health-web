@@ -15,7 +15,17 @@ const chartTheme = {
   accent3: "#ef4444",
 };
 
-const chartColors = ["#2563eb", "#14b8a6", "#f97316", "#0ea5e9", "#8b5cf6", "#e2e8f0", "#16a34a", "#f59e0b", "#f97316"];
+const chartColors = [
+  "#2563eb",
+  "#14b8a6",
+  "#f97316",
+  "#0ea5e9",
+  "#8b5cf6",
+  "#e2e8f0",
+  "#16a34a",
+  "#f59e0b",
+  "#f97316",
+];
 
 const { chartSpy } = vi.hoisted(() => ({
   chartSpy: vi.fn(),
@@ -88,7 +98,7 @@ describe("HeatmapChart", () => {
           cells: [],
           axes: { x: [], y: [] },
         }}
-      />
+      />,
     );
 
     const props = chartSpy.mock.calls[0][0] as {

@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { AuthTabs } from "./AuthTabs"
-import { SocialLoginButtons } from "./SocialLoginButtons"
+import { AuthTabs } from "./AuthTabs";
+import { SocialLoginButtons } from "./SocialLoginButtons";
 
 type AuthCardProps = {
-  children: React.ReactNode
-  signInHref?: string
-  signUpHref?: string
-  providers?: string[]
-}
+  children: React.ReactNode;
+  signInHref?: string;
+  signUpHref?: string;
+  providers?: string[];
+};
 
 export function AuthCard({ children, signInHref, signUpHref, providers = [] }: AuthCardProps) {
   return (
@@ -25,5 +25,5 @@ export function AuthCard({ children, signInHref, signUpHref, providers = [] }: A
 
       {children}
     </div>
-  )
+  );
 }

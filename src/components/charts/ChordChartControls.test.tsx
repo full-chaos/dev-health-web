@@ -108,7 +108,7 @@ describe("ChordChartControls", () => {
         value={CHORD_CONTROLS_DEFAULTS}
         onChange={onChange}
         otherAvailable={false}
-      />
+      />,
     );
 
     const showOtherLabel = screen.getByText("Show 'Other' bucket").closest("label");
@@ -158,7 +158,7 @@ describe("ChordChartControls", () => {
           direction: "in",
           showSelfLinks: true,
         },
-        sp
+        sp,
       );
 
       expect(serialized.get("chord.dir")).toBe("in");

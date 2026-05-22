@@ -28,9 +28,7 @@ export function ErrorView({
   return (
     <div className="flex min-h-[50vh] items-center justify-center text-foreground">
       <div className="max-w-md px-6 text-center">
-        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted) mb-3">
-          {label}
-        </p>
+        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted) mb-3">{label}</p>
         <h1 className="font-(--font-display) text-3xl mb-4">{heading}</h1>
         <p className="text-sm text-(--ink-muted) leading-relaxed mb-8">
           {description}

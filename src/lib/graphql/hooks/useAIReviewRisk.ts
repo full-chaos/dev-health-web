@@ -58,7 +58,9 @@ export function toAIQueryInputs(filter: AIFilter): AIInputs {
     buckets: filter.buckets ?? null,
   };
 
-  const hasScope = Object.values(scope).some((value) => Array.isArray(value) ? value.length > 0 : value != null);
+  const hasScope = Object.values(scope).some((value) =>
+    Array.isArray(value) ? value.length > 0 : value != null,
+  );
 
   return {
     dateRange: { startDate: filter.startDate, endDate: filter.endDate },
@@ -74,7 +76,10 @@ export function toAIQueryInputs(filter: AIFilter): AIInputs {
  * enum is uppercase, while persisted/resolver bucket values are lowercase
  * snake_case, so compare canonicalized keys instead of raw strings.
  */
-export function findBucketRow<T extends { bucket: string }>(rows: T[] | undefined, bucket: AIBucket | string = "AI_ASSISTED"): T | undefined {
+export function findBucketRow<T extends { bucket: string }>(
+  rows: T[] | undefined,
+  bucket: AIBucket | string = "AI_ASSISTED",
+): T | undefined {
   const targetBucket = normalizeBucketKey(bucket);
   return rows?.find((row) => normalizeBucketKey(row.bucket) === targetBucket);
 }
@@ -83,18 +88,25 @@ function normalizeBucketKey(bucket: string): string {
   return bucket.trim().toLowerCase();
 }
 
-export function valueDelta(value: number | null | undefined, baseline: number | null | undefined): number | undefined {
+export function valueDelta(
+  value: number | null | undefined,
+  baseline: number | null | undefined,
+): number | undefined {
   if (value == null || baseline == null) return undefined;
   return value - baseline;
 }
 
-export function approvalFriction(row: Pick<AiReviewLoadRow, "changesRequestedPerPr" | "reviewsPerPr"> | undefined): number | undefined {
+export function approvalFriction(
+  row: Pick<AiReviewLoadRow, "changesRequestedPerPr" | "reviewsPerPr"> | undefined,
+): number | undefined {
   if (!row?.reviewsPerPr || row.changesRequestedPerPr == null) return undefined;
   return row.changesRequestedPerPr / row.reviewsPerPr;
 }
 
 export function prViolationRows(summary: AiGovernanceSummary | undefined) {
-  return (summary?.recentViolations ?? []).filter((violation) => violation.subjectType.toLowerCase() === "pr");
+  return (summary?.recentViolations ?? []).filter(
+    (violation) => violation.subjectType.toLowerCase() === "pr",
+  );
 }
 
 export function useAIReviewLoad(filter: AIFilter) {
@@ -189,7 +201,7 @@ function toWorkflowRootType(rootType: string | null): AiWorkflowRootTypeInput | 
 export function useAIWorkflowDrilldown(
   rootType: string | null,
   rootId: string | null,
-  options: { depth?: number; limit?: number } = {}
+  options: { depth?: number; limit?: number } = {},
 ) {
   const orgId = useOrgId();
   const normalizedRootType = toWorkflowRootType(rootType);
@@ -217,7 +229,7 @@ export function useAIWorkflowDrilldown(
 
 export function useAIWorkflowDrilldownForPr(
   rootId: string | null,
-  options: { depth?: number; limit?: number } = {}
+  options: { depth?: number; limit?: number } = {},
 ) {
   return useAIWorkflowDrilldown("PR", rootId, options);
 }

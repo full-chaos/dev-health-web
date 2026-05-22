@@ -22,9 +22,7 @@
 // ============================================================================
 
 /** Discriminated union for typed error handling without exceptions. */
-export type Result<T> =
-  | { data: T; error?: never }
-  | { data?: never; error: string };
+export type Result<T> = { data: T; error?: never } | { data?: never; error: string };
 
 /**
  * @deprecated Alias kept for backward compatibility with existing callers.
@@ -60,8 +58,7 @@ export async function withResult<T>(fn: () => Promise<T>): Promise<Result<T>> {
   try {
     return ok(await fn());
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
+    const message = error instanceof Error ? error.message : "An unexpected error occurred";
     return err(message);
   }
 }

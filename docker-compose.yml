@@ -27,7 +27,7 @@ services:
     volumes:
       - valkey_data:/data
     healthcheck:
-      test: [ "CMD", "valkey-cli", "ping" ]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3

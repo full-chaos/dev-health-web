@@ -73,11 +73,18 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
       className: "px-6 py-4 text-right",
       render: (team) => (
         <div className="flex justify-end gap-3">
-          <Link href={`/admin/teams/${team.team_id}/edit`} className="text-(--accent) hover:underline">
+          <Link
+            href={`/admin/teams/${team.team_id}/edit`}
+            className="text-(--accent) hover:underline"
+          >
             Edit
           </Link>
           {onDelete && (
-            <button type="button" onClick={() => onDelete(team.team_id)} className="text-red-500 hover:underline">
+            <button
+              type="button"
+              onClick={() => onDelete(team.team_id)}
+              className="text-red-500 hover:underline"
+            >
               Delete
             </button>
           )}

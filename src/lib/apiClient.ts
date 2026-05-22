@@ -16,10 +16,7 @@ function generateRequestId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export type ApiQueryParams = Record<
-  string,
-  string | number | boolean | null | undefined
->;
+export type ApiQueryParams = Record<string, string | number | boolean | null | undefined>;
 
 export type ApiFetchInit = RequestInit & {
   next?: {
@@ -57,7 +54,7 @@ const inflightRequests = new Map<string, Promise<Response>>();
 const request = async (
   path: string,
   init?: ApiFetchInit,
-  params?: ApiQueryParams
+  params?: ApiQueryParams,
 ): Promise<Response> => {
   const url = buildUrl(path, params);
   const cacheKey = `${init?.method ?? "GET"}:${url}`;
@@ -73,9 +70,7 @@ const request = async (
   // Callers may supply their own via init.headers; we only generate if absent.
   const existingHeaders = (init?.headers ?? {}) as Record<string, string>;
   const requestId =
-    existingHeaders["X-Request-ID"] ??
-    existingHeaders["x-request-id"] ??
-    generateRequestId();
+    existingHeaders["X-Request-ID"] ?? existingHeaders["x-request-id"] ?? generateRequestId();
 
   const mergedInit: ApiFetchInit = {
     ...init,
@@ -100,7 +95,7 @@ const request = async (
 const fetchJson = async <T>(
   path: string,
   init?: ApiFetchInit,
-  params?: ApiQueryParams
+  params?: ApiQueryParams,
 ): Promise<T> => {
   const response = await request(path, init, params);
   if (!response.ok) {
@@ -114,17 +109,14 @@ const fetchJson = async <T>(
   return JSON.parse(text.trim()) as T;
 };
 
-const getJson = async <T>(
-  path: string,
-  params?: ApiQueryParams,
-  init?: ApiFetchInit
-): Promise<T> => fetchJson<T>(path, init, params);
+const getJson = async <T>(path: string, params?: ApiQueryParams, init?: ApiFetchInit): Promise<T> =>
+  fetchJson<T>(path, init, params);
 
 const postJson = async <T>(
   path: string,
   body: unknown,
   init?: ApiFetchInit,
-  params?: ApiQueryParams
+  params?: ApiQueryParams,
 ): Promise<T> => {
   const headers = {
     "Content-Type": "application/json",
@@ -138,20 +130,15 @@ const postJson = async <T>(
       headers,
       body: JSON.stringify(body),
     },
-    params
+    params,
   );
 };
 
-const sendBeacon = (
-  path: string,
-  body: string | Blob,
-  contentType = "application/json"
-) => {
+const sendBeacon = (path: string, body: string | Blob, contentType = "application/json") => {
   if (typeof navigator === "undefined" || !navigator.sendBeacon) {
     return false;
   }
-  const payload =
-    body instanceof Blob ? body : new Blob([body], { type: contentType });
+  const payload = body instanceof Blob ? body : new Blob([body], { type: contentType });
   return navigator.sendBeacon(buildUrl(path), payload);
 };
 
@@ -172,7 +159,7 @@ const fetchWithFallback = async <T, C>(
   path: string,
   init: ApiFetchInit,
   buildParams: (candidate: C) => ApiQueryParams,
-  candidates: C[]
+  candidates: C[],
 ): Promise<T> => {
   let lastError: unknown;
 

@@ -231,9 +231,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -300,9 +300,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -356,9 +356,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -412,9 +412,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -460,9 +460,9 @@ describe("POST /api/feedback", () => {
           JSON.stringify({
             errors: [{ message: "Authentication failed" }],
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -494,9 +494,11 @@ describe("POST /api/feedback", () => {
     process.env.LINEAR_API_KEY = "key-123";
     process.env.LINEAR_TEAM_ID = "team-123";
 
-    const mockFetch = vi.fn().mockImplementation(() =>
-      Promise.resolve(new Response("Internal Server Error", { status: 500 }))
-    );
+    const mockFetch = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(new Response("Internal Server Error", { status: 500 })),
+      );
 
     global.fetch = mockFetch;
 
@@ -537,9 +539,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -582,9 +584,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -631,9 +633,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -708,9 +710,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -787,9 +789,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;
@@ -832,9 +834,9 @@ describe("POST /api/feedback", () => {
               },
             },
           }),
-          { status: 200 }
-        )
-      )
+          { status: 200 },
+        ),
+      ),
     );
 
     global.fetch = mockFetch;

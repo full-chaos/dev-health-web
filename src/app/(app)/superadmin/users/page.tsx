@@ -16,10 +16,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
   if (error) {
     return (
       <div>
-        <AdminHeader
-          title="Users"
-          description="Manage all users across the platform."
-        />
+        <AdminHeader title="Users" description="Manage all users across the platform." />
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
           Error loading users: {error}
         </div>
@@ -29,10 +26,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
 
   return (
     <div>
-      <AdminHeader
-        title="Users"
-        description="Manage all users across the platform."
-      >
+      <AdminHeader title="Users" description="Manage all users across the platform.">
         <div className="flex flex-wrap items-center gap-3">
           <form action="/superadmin/users" method="get" className="flex items-center gap-2">
             <input

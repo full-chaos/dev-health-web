@@ -1,44 +1,37 @@
-import Link from "next/link"
-import { getBackendUrl } from "@/lib/origin"
-import { extractErrorMessage } from "@/lib/errorMessages"
+import Link from "next/link";
+import { getBackendUrl } from "@/lib/origin";
+import { extractErrorMessage } from "@/lib/errorMessages";
 
-type SearchParams = Promise<{ token?: string }>
+type SearchParams = Promise<{ token?: string }>;
 
-export default async function VerifyEmailPage({
-  searchParams,
-}: {
-  searchParams: SearchParams
-}) {
-  const params = await searchParams
-  const token = params.token
+export default async function VerifyEmailPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const token = params.token;
 
-  let success = false
-  let message = "Missing verification token"
+  let success = false;
+  let message = "Missing verification token";
 
   if (token) {
     try {
-      const backendUrl = getBackendUrl()
+      const backendUrl = getBackendUrl();
       const res = await fetch(
         `${backendUrl}/api/v1/auth/verify?token=${encodeURIComponent(token)}`,
         { cache: "no-store" },
-      )
+      );
 
       if (res.ok) {
-        success = true
-        message = "Email verified successfully"
+        success = true;
+        message = "Email verified successfully";
       } else {
         try {
-          const data = await res.json()
-          message = extractErrorMessage(
-            data.detail,
-            "Invalid or expired verification token",
-          )
+          const data = await res.json();
+          message = extractErrorMessage(data.detail, "Invalid or expired verification token");
         } catch {
-          message = "Invalid or expired verification token"
+          message = "Invalid or expired verification token";
         }
       }
     } catch {
-      message = "Unable to reach the server. Please try again later."
+      message = "Unable to reach the server. Please try again later.";
     }
   }
 
@@ -79,5 +72,5 @@ export default async function VerifyEmailPage({
         </div>
       </div>
     </div>
-  )
+  );
 }

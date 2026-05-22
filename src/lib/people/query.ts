@@ -1,10 +1,7 @@
 export const DEFAULT_RANGE_DAYS = 14;
 export const DEFAULT_COMPARE_DAYS = 14;
 
-const toNumber = (
-  value: string | string[] | undefined,
-  fallback: number
-) => {
+const toNumber = (value: string | string[] | undefined, fallback: number) => {
   if (!value) {
     return fallback;
   }
@@ -16,9 +13,7 @@ const toNumber = (
   return parsed;
 };
 
-export const getRangeParams = (
-  params: Record<string, string | string[] | undefined>
-) => {
+export const getRangeParams = (params: Record<string, string | string[] | undefined>) => {
   return {
     range_days: toNumber(params.range_days, DEFAULT_RANGE_DAYS),
     compare_days: toNumber(params.compare_days, DEFAULT_COMPARE_DAYS),
@@ -29,7 +24,7 @@ export const withRangeParams = (
   path: string,
   rangeDays: number,
   compareDays: number,
-  extras?: Record<string, string | number | undefined>
+  extras?: Record<string, string | number | undefined>,
 ) => {
   const params = new URLSearchParams();
   params.set("range_days", String(rangeDays));

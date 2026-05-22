@@ -8,7 +8,10 @@ type AIViolationsListProps = {
 export function AIViolationsList({ violations, loading }: AIViolationsListProps) {
   if (loading) {
     return (
-      <section className="rounded-3xl border border-(--card-stroke) bg-card p-5" data-testid="ai-violations-list">
+      <section
+        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+        data-testid="ai-violations-list"
+      >
         <h3 className="font-(--font-display) text-lg">Security findings</h3>
         <p className="mt-3 text-sm text-(--ink-muted)">Loading governance findings…</p>
       </section>
@@ -16,7 +19,10 @@ export function AIViolationsList({ violations, loading }: AIViolationsListProps)
   }
 
   return (
-    <section className="rounded-3xl border border-(--card-stroke) bg-card p-5" data-testid="ai-violations-list">
+    <section
+      className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+      data-testid="ai-violations-list"
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="font-(--font-display) text-lg">Security findings</h3>
@@ -36,7 +42,10 @@ export function AIViolationsList({ violations, loading }: AIViolationsListProps)
       ) : (
         <ul className="mt-4 divide-y divide-(--card-stroke)">
           {violations.slice(0, 8).map((violation) => (
-            <li key={`${violation.ruleId}-${violation.subjectId}-${violation.observedAt}`} className="py-3">
+            <li
+              key={`${violation.ruleId}-${violation.subjectId}-${violation.observedAt}`}
+              className="py-3"
+            >
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-semibold uppercase text-red-600">
                   {violation.severity}

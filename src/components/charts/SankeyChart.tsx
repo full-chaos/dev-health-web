@@ -36,14 +36,8 @@ function computeFlowTotals(nodes: SankeyNode[], links: SankeyLink[]) {
   const nodeValueByName = new Map<string, number>();
 
   links.forEach((link) => {
-    outgoingTotals.set(
-      link.source,
-      (outgoingTotals.get(link.source) ?? 0) + link.value
-    );
-    incomingTotals.set(
-      link.target,
-      (incomingTotals.get(link.target) ?? 0) + link.value
-    );
+    outgoingTotals.set(link.source, (outgoingTotals.get(link.source) ?? 0) + link.value);
+    incomingTotals.set(link.target, (incomingTotals.get(link.target) ?? 0) + link.value);
   });
 
   nodes.forEach((node) => {
@@ -61,9 +55,7 @@ function computeFlowTotals(nodes: SankeyNode[], links: SankeyLink[]) {
   }, 0);
 
   const totalFlow =
-    rootTotal > 0
-      ? rootTotal
-      : links.reduce((total, link) => total + link.value, 0);
+    rootTotal > 0 ? rootTotal : links.reduce((total, link) => total + link.value, 0);
 
   return { incomingTotals, outgoingTotals, nodeValueByName, totalFlow };
 }
@@ -97,7 +89,7 @@ export function SankeyChart({
 
   const mergedStyle: CSSProperties = useMemo(
     () => ({ height, width, ...style }),
-    [height, width, style]
+    [height, width, style],
   );
 
   const { chartNodes, chartLinks, labelByKey } = useMemo(() => {
@@ -148,13 +140,13 @@ export function SankeyChart({
       }
       return value;
     },
-    [labelByKey]
+    [labelByKey],
   );
 
   // Memoize flow computations
   const { outgoingTotals, nodeValueByName, totalFlow } = useMemo(
     () => computeFlowTotals(chartNodes, chartLinks),
-    [chartNodes, chartLinks]
+    [chartNodes, chartLinks],
   );
 
   // Memoize click handler
@@ -183,7 +175,7 @@ export function SankeyChart({
         value: data.value,
       });
     },
-    [displayNameForKey, onItemClick]
+    [displayNameForKey, onItemClick],
   );
 
   // Memoize the ECharts option to prevent re-renders
@@ -202,25 +194,21 @@ export function SankeyChart({
         };
         name?: string;
       };
-        const data = entry.data ?? {};
-        if (entry.dataType === "edge") {
-          const sourceLabel = data.source
-            ? displayNameForKey(data.source)
+      const data = entry.data ?? {};
+      if (entry.dataType === "edge") {
+        const sourceLabel = data.source ? displayNameForKey(data.source) : "";
+        const targetLabel = data.target ? displayNameForKey(data.target) : "";
+        const totalFromSource =
+          data.source && outgoingTotals.has(data.source)
+            ? (outgoingTotals.get(data.source) ?? 0)
+            : 0;
+        const unitLabel = unit === "hours" ? "Elapsed" : "Value";
+        const shareLine =
+          totalFromSource > 0 && typeof data.value === "number"
+            ? `<br/><span style="color: ${chartTheme.accent2}">${formatPercent(data.value, totalFromSource)}</span> of source flow`
             : "";
-          const targetLabel = data.target
-            ? displayNameForKey(data.target)
-            : "";
-          const totalFromSource =
-            data.source && outgoingTotals.has(data.source)
-              ? outgoingTotals.get(data.source) ?? 0
-              : 0;
-          const unitLabel = unit === "hours" ? "Elapsed" : "Value";
-          const shareLine =
-            totalFromSource > 0 && typeof data.value === "number"
-              ? `<br/><span style="color: ${chartTheme.accent2}">${formatPercent(data.value, totalFromSource)}</span> of source flow`
-              : "";
 
-          return `
+        return `
           <div style="font-weight: 600; margin-bottom: 4px;">Flow</div>
           <div style="font-size: 11px; color: ${chartTheme.muted}">${sourceLabel} &rarr; ${targetLabel}</div>
           <div style="margin-top: 4px;">
@@ -235,9 +223,7 @@ export function SankeyChart({
       const nodeName = displayNameForKey(rawNodeName);
 
       const nodeValue =
-        typeof data.value === "number"
-          ? data.value
-          : nodeValueByName.get(rawNodeName) ?? 0;
+        typeof data.value === "number" ? data.value : (nodeValueByName.get(rawNodeName) ?? 0);
       const unitLabel = unit === "hours" ? "Total Elapsed" : "Total Value";
       const shareLine =
         totalFlow > 0
@@ -268,7 +254,7 @@ export function SankeyChart({
           _params: unknown,
           _dom: unknown,
           _rect: unknown,
-          size: { contentSize: number[]; viewSize: number[] }
+          size: { contentSize: number[]; viewSize: number[] },
         ): number[] => {
           const [x, y] = point;
           const [tooltipWidth, tooltipHeight] = size.contentSize;
@@ -290,9 +276,7 @@ export function SankeyChart({
           return [newX, newY];
         },
         formatter: (params: unknown) =>
-          tooltipFormatter
-            ? tooltipFormatter(params, unit)
-            : defaultTooltipFormatter(params),
+          tooltipFormatter ? tooltipFormatter(params, unit) : defaultTooltipFormatter(params),
       },
       series: [
         {
@@ -342,7 +326,7 @@ export function SankeyChart({
   // Memoize onEvents to prevent re-renders
   const onEvents = useMemo(
     () => (onItemClick ? { click: handleClick } : undefined),
-    [onItemClick, handleClick]
+    [onItemClick, handleClick],
   );
 
   return (

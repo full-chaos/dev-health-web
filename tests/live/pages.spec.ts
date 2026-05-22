@@ -4,7 +4,7 @@ test("home page shows marketing landing page for unauthenticated users", async (
   await page.goto("/");
   await expect(page).toHaveURL("/");
   await expect(
-    page.getByRole("heading", { name: /where is your engineering effort/i })
+    page.getByRole("heading", { name: /where is your engineering effort/i }),
   ).toBeVisible();
 });
 

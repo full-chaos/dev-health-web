@@ -28,8 +28,7 @@ const BUYERS: ReadonlyArray<Buyer> = [
     slug: "platform-devex",
     eyebrow: "For Platform / DevEx",
     title: "Find systemic friction across the pipeline",
-    description:
-      "CI/CD + TestOps, Review Load, Work Graph, Hotspots, Data Health.",
+    description: "CI/CD + TestOps, Review Load, Work Graph, Hotspots, Data Health.",
     surfaces: "Pipeline + review + data health",
   },
   {
@@ -56,17 +55,13 @@ export default function MarketingHubPage() {
       {/* Hero */}
       <section className="mx-auto max-w-7xl px-6 pb-16 pt-16 sm:pt-24">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Solutions
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Solutions</p>
           <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl">
-            Engineering intelligence,{" "}
-            <span className="text-(--accent)">framed by your role</span>
+            Engineering intelligence, <span className="text-(--accent)">framed by your role</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
-            Same platform, four buyer narratives. Each page maps the operating
-            questions you actually ask to the product surfaces that answer
-            them.
+            Same platform, four buyer narratives. Each page maps the operating questions you
+            actually ask to the product surfaces that answer them.
           </p>
         </div>
       </section>
@@ -80,15 +75,11 @@ export default function MarketingHubPage() {
               href={`/marketing/${buyer.slug}`}
               className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 transition hover:-translate-y-1 hover:border-(--accent)/50"
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
-                {buyer.eyebrow}
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">{buyer.eyebrow}</p>
               <h2 className="mt-4 font-(--font-display) text-2xl group-hover:text-(--accent) transition-colors">
                 {buyer.title}
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-(--ink-muted)">
-                {buyer.description}
-              </p>
+              <p className="mt-4 text-sm leading-relaxed text-(--ink-muted)">{buyer.description}</p>
               <p className="mt-6 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                 {buyer.surfaces}
               </p>
@@ -104,16 +95,13 @@ export default function MarketingHubPage() {
       {/* No surveillance pillar (compact form, links to full buyer pages) */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Our posture
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Our posture</p>
           <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
             No surveillance, just signal
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
-            No per-person scoring. No leaderboards. Individual views are for
-            self-reflection only. Every metric traces to evidence you can
-            inspect.
+            No per-person scoring. No leaderboards. Individual views are for self-reflection only.
+            Every metric traces to evidence you can inspect.
           </p>
           <p className="mx-auto mt-8 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent)">
             Learning, not judgment.
@@ -128,9 +116,8 @@ export default function MarketingHubPage() {
             Ready to see where your effort is going?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
-            Start with the Community plan — free forever. Pick the buyer page
-            that fits your role above to see exactly which surfaces map to your
-            operating questions.
+            Start with the Community plan — free forever. Pick the buyer page that fits your role
+            above to see exactly which surfaces map to your operating questions.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link

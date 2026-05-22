@@ -1,5 +1,8 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { IntegrationCard, IntegrationProvider } from "@/components/admin/integrations/IntegrationCard";
+import {
+  IntegrationCard,
+  IntegrationProvider,
+} from "@/components/admin/integrations/IntegrationCard";
 import { listCredentials } from "@/lib/admin/server";
 import type { ConnectionStatusType } from "@/components/admin/integrations/ConnectionStatus";
 
@@ -33,36 +36,34 @@ const LaunchDarklyIcon = () => (
   </svg>
 );
 
-const PROVIDER_META: Record<
-  string,
-  { name: string; description: string; icon: React.ReactNode }
-> = {
-  github: {
-    name: "GitHub",
-    description: "Connect to GitHub to sync repositories, pull requests, and issues.",
-    icon: <GitHubIcon />,
-  },
-  gitlab: {
-    name: "GitLab",
-    description: "Connect to GitLab to sync projects, merge requests, and issues.",
-    icon: <GitLabIcon />,
-  },
-  jira: {
-    name: "Jira",
-    description: "Connect to Jira to sync issues, epics, and sprints.",
-    icon: <JiraIcon />,
-  },
-  linear: {
-    name: "Linear",
-    description: "Connect to Linear to sync issues, cycles, and projects.",
-    icon: <LinearIcon />,
-  },
-  launchdarkly: {
-    name: "LaunchDarkly",
-    description: "Connect to LaunchDarkly to sync feature flag definitions and rollout signals.",
-    icon: <LaunchDarklyIcon />,
-  },
-};
+const PROVIDER_META: Record<string, { name: string; description: string; icon: React.ReactNode }> =
+  {
+    github: {
+      name: "GitHub",
+      description: "Connect to GitHub to sync repositories, pull requests, and issues.",
+      icon: <GitHubIcon />,
+    },
+    gitlab: {
+      name: "GitLab",
+      description: "Connect to GitLab to sync projects, merge requests, and issues.",
+      icon: <GitLabIcon />,
+    },
+    jira: {
+      name: "Jira",
+      description: "Connect to Jira to sync issues, epics, and sprints.",
+      icon: <JiraIcon />,
+    },
+    linear: {
+      name: "Linear",
+      description: "Connect to Linear to sync issues, cycles, and projects.",
+      icon: <LinearIcon />,
+    },
+    launchdarkly: {
+      name: "LaunchDarkly",
+      description: "Connect to LaunchDarkly to sync feature flag definitions and rollout signals.",
+      icon: <LaunchDarklyIcon />,
+    },
+  };
 
 export default async function IntegrationsPage() {
   const result = await listCredentials();
@@ -80,16 +81,14 @@ export default async function IntegrationsPage() {
     return credentials.filter((c) => c.provider === providerId).length;
   };
 
-  const providers: IntegrationProvider[] = Object.entries(PROVIDER_META).map(
-    ([id, meta]) => ({
-      id,
-      name: meta.name,
-      description: meta.description,
-      icon: meta.icon,
-      status: getStatus(id),
-      credentialCount: getCount(id),
-    })
-  );
+  const providers: IntegrationProvider[] = Object.entries(PROVIDER_META).map(([id, meta]) => ({
+    id,
+    name: meta.name,
+    description: meta.description,
+    icon: meta.icon,
+    status: getStatus(id),
+    credentialCount: getCount(id),
+  }));
 
   return (
     <div>

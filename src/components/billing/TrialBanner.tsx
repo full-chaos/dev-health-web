@@ -75,7 +75,9 @@ export function TrialBanner() {
         if (parsed.protocol === "https:" && ALLOWED_HOSTS.includes(parsed.hostname)) {
           safeUrl = parsed.href;
         }
-      } catch { /* invalid URL — leave safeUrl null */ }
+      } catch {
+        /* invalid URL — leave safeUrl null */
+      }
 
       if (!safeUrl) {
         toast.error("Unexpected billing portal URL");

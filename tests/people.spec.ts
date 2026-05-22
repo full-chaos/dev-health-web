@@ -23,9 +23,7 @@ test("people search opens individual and metric evidence", async ({ page }) => {
   const main = page.getByRole("main");
   await expect(main.getByText("Individual view")).toBeVisible({ timeout: 10000 });
 
-  const cycleTimeLink = main.locator(
-    'a[href*="/people/person-123/metrics/cycle_time"]'
-  );
+  const cycleTimeLink = main.locator('a[href*="/people/person-123/metrics/cycle_time"]');
   await expect(cycleTimeLink.first()).toBeVisible({ timeout: 10000 });
   await gotoLinkHref(page, cycleTimeLink.first());
   await expect(page).toHaveURL(/\/people\/person-123\/metrics\/cycle_time(?:\?|$)/);

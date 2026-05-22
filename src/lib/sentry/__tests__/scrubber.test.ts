@@ -15,7 +15,6 @@ describe("scrubEvent", () => {
     vi.unstubAllEnvs();
   });
 
-
   it("removes request.cookies", () => {
     const event = makeEvent({
       request: {
@@ -134,7 +133,6 @@ describe("scrubEvent", () => {
   });
 });
 
-
 describe("attachBeforeSend", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -153,7 +151,10 @@ describe("attachBeforeSend", () => {
         cookies: { session: "secret" },
       },
     });
-    const result = config.beforeSend!(event, { originalException: null, syntheticException: null }) as ErrorEvent | null;
+    const result = config.beforeSend!(event, {
+      originalException: null,
+      syntheticException: null,
+    }) as ErrorEvent | null;
     expect(result?.request?.cookies).toBeUndefined();
   });
 
@@ -183,7 +184,10 @@ describe("attachBeforeSend", () => {
       },
     });
     const event = makeEvent({ message: "hi" });
-    const result = config.beforeSend!(event, { originalException: null, syntheticException: null }) as ErrorEvent | null;
+    const result = config.beforeSend!(event, {
+      originalException: null,
+      syntheticException: null,
+    }) as ErrorEvent | null;
     expect(result?.tags?.chained).toBe("yes");
   });
 });

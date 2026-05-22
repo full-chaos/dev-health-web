@@ -1,6 +1,16 @@
-import type { AiImpactBucketRow, AiImpactBucketTotals, AiLeverageComponents } from "@/lib/graphql/__generated__/types";
+import type {
+  AiImpactBucketRow,
+  AiImpactBucketTotals,
+  AiLeverageComponents,
+} from "@/lib/graphql/__generated__/types";
 
-export const AI_BUCKETS = ["AI_ASSISTED", "AI_REVIEW", "AGENT_CREATED", "HUMAN", "UNKNOWN"] as const;
+export const AI_BUCKETS = [
+  "AI_ASSISTED",
+  "AI_REVIEW",
+  "AGENT_CREATED",
+  "HUMAN",
+  "UNKNOWN",
+] as const;
 
 export function bucketLabel(bucket: string): string {
   return bucket

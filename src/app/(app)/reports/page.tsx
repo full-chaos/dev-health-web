@@ -16,12 +16,11 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const env = getServerEnv();
-  const isTestMode = env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+  const isTestMode =
+    env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
   const reportsData = await fetchSavedReports("default-org", undefined, undefined, isTestMode);
   const reports = reportsData.items;
 
@@ -32,12 +31,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Reports
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Report Center
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Reports</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Report Center</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Create, manage, and schedule AI-generated reports.
               </p>
@@ -50,11 +45,12 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
             </Link>
           </header>
 
-
           <section className="flex flex-col gap-4">
             {reports.length === 0 ? (
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
-                <p className="text-(--ink-muted)">No saved reports yet. Create your first report to get started.</p>
+                <p className="text-(--ink-muted)">
+                  No saved reports yet. Create your first report to get started.
+                </p>
                 <Link
                   href="/reports/new"
                   className="mt-4 inline-block rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"

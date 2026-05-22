@@ -14,7 +14,7 @@ describe("VoidConfirmDialog", () => {
         isPending={false}
         onCancel={vi.fn()}
         onConfirm={vi.fn()}
-      />
+      />,
     );
 
     expect(container).toBeEmptyDOMElement();
@@ -28,7 +28,7 @@ describe("VoidConfirmDialog", () => {
         isPending={false}
         onCancel={vi.fn()}
         onConfirm={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe("VoidConfirmDialog", () => {
         isPending={false}
         onCancel={onCancel}
         onConfirm={vi.fn()}
-      />
+      />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
@@ -63,7 +63,7 @@ describe("VoidConfirmDialog", () => {
         isPending={false}
         onCancel={vi.fn()}
         onConfirm={onConfirm}
-      />
+      />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /confirm void/i }));
@@ -79,7 +79,7 @@ describe("VoidConfirmDialog", () => {
         isPending
         onCancel={vi.fn()}
         onConfirm={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByRole("button", { name: /voiding/i })).toBeDisabled();

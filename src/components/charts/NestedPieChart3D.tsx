@@ -20,9 +20,7 @@ const adjustHex = (hex: string, amount: number) => {
   const r = clamp((value >> 16) + amount);
   const g = clamp(((value >> 8) & 0xff) + amount);
   const b = clamp((value & 0xff) + amount);
-  return `#${[r, g, b]
-    .map((channel) => channel.toString(16).padStart(2, "0"))
-    .join("")}`;
+  return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 };
 
 type NestedPieChart3DProps = {
@@ -46,7 +44,7 @@ export function NestedPieChart3D({
   const chartColors = useChartColors();
   const categoryColors = chartColors.slice(0, categories.length);
   const categoryColorMap = new Map(
-    categories.map((category, index) => [category.key, categoryColors[index]])
+    categories.map((category, index) => [category.key, categoryColors[index]]),
   );
 
   const innerData = categories.map((category, index) => ({

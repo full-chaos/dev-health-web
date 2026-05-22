@@ -13,8 +13,13 @@ vi.mock("ioredis", () => {
 });
 
 vi.mock("@sentry/nextjs", () => ({
-  withScope: vi.fn((callback: (scope: { setTag: ReturnType<typeof vi.fn>; setContext: ReturnType<typeof vi.fn> }) => void) =>
-    callback({ setTag: vi.fn(), setContext: vi.fn() })
+  withScope: vi.fn(
+    (
+      callback: (scope: {
+        setTag: ReturnType<typeof vi.fn>;
+        setContext: ReturnType<typeof vi.fn>;
+      }) => void,
+    ) => callback({ setTag: vi.fn(), setContext: vi.fn() }),
   ),
   captureException: vi.fn(),
   captureMessage: vi.fn(),
@@ -62,9 +67,8 @@ describe("rate-limit", () => {
     });
 
     it("blocks after RATE_LIMIT_MAX_REQUESTS", async () => {
-      const { isRateLimited, _resetMemoryStore, RATE_LIMIT_MAX_REQUESTS } = await import(
-        "@/lib/rate-limit"
-      );
+      const { isRateLimited, _resetMemoryStore, RATE_LIMIT_MAX_REQUESTS } =
+        await import("@/lib/rate-limit");
       _resetMemoryStore();
 
       for (let i = 0; i < RATE_LIMIT_MAX_REQUESTS; i++) {
@@ -78,9 +82,8 @@ describe("rate-limit", () => {
     });
 
     it("tracks keys independently", async () => {
-      const { isRateLimited, _resetMemoryStore, RATE_LIMIT_MAX_REQUESTS } = await import(
-        "@/lib/rate-limit"
-      );
+      const { isRateLimited, _resetMemoryStore, RATE_LIMIT_MAX_REQUESTS } =
+        await import("@/lib/rate-limit");
       _resetMemoryStore();
 
       // Exhaust limit for user-a
@@ -161,7 +164,9 @@ describe("rate-limit", () => {
       expect(result).toBe(true);
 
       const { checkRateLimit } = await import("@/lib/rate-limit");
-      await expect(checkRateLimit("over-limit-user", { namespace: "custom", maxRequests: 5 })).resolves.toEqual({
+      await expect(
+        checkRateLimit("over-limit-user", { namespace: "custom", maxRequests: 5 }),
+      ).resolves.toEqual({
         limited: true,
         retryAfter: 123,
       });
@@ -219,7 +224,11 @@ describe("rate-limit", () => {
 
       const { checkRateLimit } = await import("@/lib/rate-limit");
       await expect(
-        checkRateLimit("error-user", { failClosed: true, windowMs: 30_000, namespace: "auth-login" }),
+        checkRateLimit("error-user", {
+          failClosed: true,
+          windowMs: 30_000,
+          namespace: "auth-login",
+        }),
       ).resolves.toEqual({ limited: true, retryAfter: 30 });
 
       _resetRedisClient();
@@ -269,9 +278,11 @@ describe("rate-limit", () => {
       _resetRedisClient();
 
       const redis = getRedis();
-      redis!.incr = vi.fn().mockRejectedValue(
-        new Error("Stream isn't writeable and enableOfflineQueue options is false"),
-      );
+      redis!.incr = vi
+        .fn()
+        .mockRejectedValue(
+          new Error("Stream isn't writeable and enableOfflineQueue options is false"),
+        );
 
       const { checkRateLimit, _resetMemoryStore } = await import("@/lib/rate-limit");
       _resetMemoryStore();
@@ -329,4 +340,3 @@ describe("getClientIp trust-proxy gate", () => {
     expect(ip).not.toBe("1.2.3.4");
   });
 });
-

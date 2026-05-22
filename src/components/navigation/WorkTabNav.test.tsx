@@ -4,8 +4,18 @@ import { WorkTabNav } from "./WorkTabNav";
 import type { MetricFilter } from "@/lib/filters/types";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={href} {...props}>{children}</a>
+  default: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -25,7 +35,16 @@ const filters: MetricFilter = {
 describe("WorkTabNav", () => {
   it("renders all tab labels", () => {
     render(<WorkTabNav activeTab="landscape" filters={filters} />);
-    for (const label of ["Landscape", "Heatmap", "Flow", "Investment", "Capacity", "Flame", "Evidence", "Work Graph"]) {
+    for (const label of [
+      "Landscape",
+      "Heatmap",
+      "Flow",
+      "Investment",
+      "Capacity",
+      "Flame",
+      "Evidence",
+      "Work Graph",
+    ]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });

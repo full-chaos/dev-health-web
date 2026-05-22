@@ -26,15 +26,12 @@ function formatDay(iso: string): string {
 }
 
 const OPENED_COLOR = "#ef4444"; // red-500
-const FIXED_COLOR = "#10b981";  // emerald-500
+const FIXED_COLOR = "#10b981"; // emerald-500
 
 export function TrendChart({ points, loading }: TrendChartProps) {
   const chartTheme = useChartTheme();
 
-  const sorted = useMemo(
-    () => [...points].sort((a, b) => a.day.localeCompare(b.day)),
-    [points]
-  );
+  const sorted = useMemo(() => [...points].sort((a, b) => a.day.localeCompare(b.day)), [points]);
 
   const option = useMemo(
     () => ({
@@ -93,18 +90,12 @@ export function TrendChart({ points, loading }: TrendChartProps) {
         },
       ],
     }),
-    [sorted, chartTheme]
+    [sorted, chartTheme],
   );
 
   if (loading) {
     return <SkeletonLine height="h-64" />;
   }
 
-  return (
-    <Chart
-      option={option}
-      style={{ height: 280, width: "100%" }}
-      chartTheme={chartTheme}
-    />
-  );
+  return <Chart option={option} style={{ height: 280, width: "100%" }} chartTheme={chartTheme} />;
 }

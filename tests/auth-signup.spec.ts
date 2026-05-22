@@ -10,9 +10,7 @@ test("signup page renders registration form with tabs", async ({ page }) => {
   await expect(page.getByLabel("Display name")).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByLabel("Password")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Create account" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
 });
 
 test("signup shows password strength indicator", async ({ page }) => {
@@ -26,9 +24,7 @@ test("signup shows password strength indicator", async ({ page }) => {
   await expect(page.getByText("Strong")).toBeVisible();
 });
 
-test("successful registration redirects to signin with banner", async ({
-  page,
-}) => {
+test("successful registration redirects to signin with banner", async ({ page }) => {
   await page.goto("/auth/signup");
 
   await page.getByLabel("Display name").fill("Test User");
@@ -57,14 +53,12 @@ test("password too short shows error toast", async ({ page }) => {
   await page.getByLabel("Email").fill("test@example.com");
   await page.getByLabel("Password").fill("short");
   await page.getByRole("checkbox").check();
-  await page.evaluate(() =>
-    document.querySelector("form")?.setAttribute("novalidate", ""),
-  );
+  await page.evaluate(() => document.querySelector("form")?.setAttribute("novalidate", ""));
   await page.getByRole("button", { name: "Create account" }).click();
 
-  await expect(
-    page.getByText("Password must be at least 8 characters"),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Password must be at least 8 characters")).toBeVisible({
+    timeout: 10_000,
+  });
 });
 
 test("duplicate email shows server error toast", async ({ page }) => {

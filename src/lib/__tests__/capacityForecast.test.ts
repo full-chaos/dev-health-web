@@ -30,17 +30,14 @@ describe("getCapacityForecast", () => {
     await getCapacityForecast({ orgId: "explicit-org" });
     expect(vi.mocked(getCapacityForecastViaGraphQL)).toHaveBeenCalledWith(
       "explicit-org",
-      undefined
+      undefined,
     );
   });
 
   it("falls back to auth session org_id when orgId not in params", async () => {
     mockSession("session-org");
     await getCapacityForecast({});
-    expect(vi.mocked(getCapacityForecastViaGraphQL)).toHaveBeenCalledWith(
-      "session-org",
-      undefined
-    );
+    expect(vi.mocked(getCapacityForecastViaGraphQL)).toHaveBeenCalledWith("session-org", undefined);
   });
 
   it("throws error when orgId not in params and no session", async () => {

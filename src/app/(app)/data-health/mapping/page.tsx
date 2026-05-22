@@ -9,7 +9,7 @@ import { requireSession } from "@/lib/auth";
 
 export default async function MappingHealthPage() {
   const session = await requireSession();
-  
+
   const teamId = session.user.org_id || "default";
 
   let coverageData = null;
@@ -51,9 +51,9 @@ export default async function MappingHealthPage() {
             <p className="text-sm text-(--ink-muted) mb-4">
               Percentage of deployments successfully mapped back to work items.
             </p>
-            <CoverageBar 
-              coveragePercent={coverageData.deployments.coveragePct * 100} 
-              label={`${coverageData.deployments.coveredRepos} of ${coverageData.deployments.totalRepos} Repos`} 
+            <CoverageBar
+              coveragePercent={coverageData.deployments.coveragePct * 100}
+              label={`${coverageData.deployments.coveredRepos} of ${coverageData.deployments.totalRepos} Repos`}
             />
           </div>
 
@@ -62,9 +62,9 @@ export default async function MappingHealthPage() {
             <p className="text-sm text-(--ink-muted) mb-4">
               Percentage of work items successfully mapped back to deployments.
             </p>
-            <CoverageBar 
-              coveragePercent={coverageData.workItems.coveragePct * 100} 
-              label={`${coverageData.workItems.coveredRepos} of ${coverageData.workItems.totalRepos} Repos`} 
+            <CoverageBar
+              coveragePercent={coverageData.workItems.coveragePct * 100}
+              label={`${coverageData.workItems.coveredRepos} of ${coverageData.workItems.totalRepos} Repos`}
             />
           </div>
         </div>

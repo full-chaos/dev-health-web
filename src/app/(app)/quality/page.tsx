@@ -28,9 +28,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   // Run health check in parallel with all data fetches to eliminate the waterfall.
   const [health, home, explain] = await Promise.all([
@@ -38,7 +36,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
     fetchOrNull(getHomeData(filters), "quality/home-data"),
     fetchOrNull(
       getExplainData({ metric: "change_failure_rate", filters }),
-      "quality/explain-change_failure_rate"
+      "quality/explain-change_failure_rate",
     ),
   ]);
 
@@ -63,18 +61,12 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Quality
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Reliability Patterns
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Quality</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Reliability Patterns</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Change failure, CI stability, and rework indicators.
               </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Open a metric to investigate.
-              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">Open a metric to investigate.</p>
             </div>
             <Link
               href={withFilterParam("/", filters, activeRole)}
@@ -121,7 +113,11 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Change Failure Associations</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "change_failure_rate", filters, role: activeRole })}
+                  href={buildExploreUrl({
+                    metric: "change_failure_rate",
+                    filters,
+                    role: activeRole,
+                  })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Evidence
@@ -137,7 +133,11 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                     {drivers.map((driver) => (
                       <Link
                         key={driver.id}
-                        href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
+                        href={buildExploreUrl({
+                          api: driver.evidence_link,
+                          filters,
+                          role: activeRole,
+                        })}
                         className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                       >
                         <span>{driver.label}</span>
@@ -159,7 +159,11 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Contributors</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "change_failure_rate", filters, role: activeRole })}
+                  href={buildExploreUrl({
+                    metric: "change_failure_rate",
+                    filters,
+                    role: activeRole,
+                  })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Evidence
@@ -170,14 +174,16 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                   {contributors.map((contributor) => (
                     <Link
                       key={contributor.id}
-                      href={buildExploreUrl({ api: contributor.evidence_link, filters, role: activeRole })}
+                      href={buildExploreUrl({
+                        api: contributor.evidence_link,
+                        filters,
+                        role: activeRole,
+                      })}
                       className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                     >
                       <span>{contributor.label}</span>
                       <span className="text-xs text-(--ink-muted)">
-                        {explain
-                          ? formatMetricValue(contributor.value, explain.unit)
-                          : "--"}
+                        {explain ? formatMetricValue(contributor.value, explain.unit) : "--"}
                       </span>
                     </Link>
                   ))}

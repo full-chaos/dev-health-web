@@ -8,11 +8,7 @@ export const metadata = {
   description: "Set a new dev-health password",
 };
 
-export default async function ResetPasswordPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function ResetPasswordPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const token = params.token;
 
@@ -24,7 +20,7 @@ export default async function ResetPasswordPage({
             Reset your password
           </h2>
         </div>
-        
+
         <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
           {!token ? (
             <div className="space-y-6">
@@ -32,7 +28,10 @@ export default async function ResetPasswordPage({
                 Missing reset token
               </div>
               <div className="text-center">
-                <Link href="/auth/signin" className="text-sm font-medium text-[var(--accent)] hover:underline">
+                <Link
+                  href="/auth/signin"
+                  className="text-sm font-medium text-[var(--accent)] hover:underline"
+                >
                   Back to Sign in
                 </Link>
               </div>

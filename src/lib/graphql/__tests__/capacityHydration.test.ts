@@ -19,7 +19,7 @@ describe("buildCapacityForecastVariables", () => {
         time: { range_days: 60, compare_days: 30 },
         scope: { level: "team", ids: ["team-42"] },
       }),
-      "org-1"
+      "org-1",
     );
 
     expect(vars).toEqual({
@@ -37,7 +37,7 @@ describe("buildCapacityForecastVariables", () => {
         time: { range_days: 45, compare_days: 30 },
         scope: { level: "org", ids: ["acme"] },
       }),
-      "org-1"
+      "org-1",
     );
 
     expect(vars.orgId).toBe("org-1");
@@ -51,14 +51,14 @@ describe("buildCapacityForecastVariables", () => {
         time: { range_days: 90, compare_days: 30 },
         scope: { level: "team", ids: ["team-a"] },
       }),
-      "org-1"
+      "org-1",
     );
     const vars2 = buildCapacityForecastVariables(
       baseFilters({
         time: { range_days: 90, compare_days: 30 },
         scope: { level: "team", ids: ["team-a"] },
       }),
-      "org-1"
+      "org-1",
     );
 
     expect(JSON.stringify(vars1)).toBe(JSON.stringify(vars2));

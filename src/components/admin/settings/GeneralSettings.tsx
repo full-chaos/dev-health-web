@@ -11,33 +11,33 @@ type GeneralSettingsProps = {
 };
 
 export function GeneralSettings({ org }: GeneralSettingsProps) {
-   const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-     e.preventDefault();
-     setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-     const formData = new FormData(e.currentTarget);
-     const result = await updateOrgProfile({
-       name: formData.get("name") as string,
-       description: (formData.get("description") as string) || undefined,
-     });
+    const formData = new FormData(e.currentTarget);
+    const result = await updateOrgProfile({
+      name: formData.get("name") as string,
+      description: (formData.get("description") as string) || undefined,
+    });
 
-     setIsLoading(false);
+    setIsLoading(false);
 
-     if (result.error) {
-       toast.error(result.error);
-     } else {
-       toast.success("Settings saved successfully");
-     }
-   };
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Settings saved successfully");
+    }
+  };
 
-   return (
-     <SettingsSection
-       title="General Settings"
-       description="Manage your organization's basic information."
-     >
-       <form onSubmit={handleSubmit} className="space-y-4">
+  return (
+    <SettingsSection
+      title="General Settings"
+      description="Manage your organization's basic information."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-(--foreground)">
             Organization Name

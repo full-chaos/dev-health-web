@@ -42,7 +42,7 @@ const prInvestment: WorkUnitInvestmentDistribution = {
 
 export function demoInvestmentForRoot(
   rootType: AIWorkflowRootTypeInput,
-  rootId: string
+  rootId: string,
 ): WorkUnitInvestmentDistribution {
   const base = rootType === "PR" ? prInvestment : issueInvestment;
   return { ...base, workUnitId: rootId };
@@ -51,7 +51,7 @@ export function demoInvestmentForRoot(
 export function demoWorkflowDrilldown(
   rootType: AIWorkflowRootTypeInput,
   rootId: string,
-  orgId = "default-org"
+  orgId = "default-org",
 ): AIWorkflowDrilldownResult {
   const isPr = rootType === "PR";
   const issueId = isPr ? "PROJ-101" : rootId;

@@ -43,7 +43,6 @@ export const runtimeConfig = {
       getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
     // Default to true unless explicitly set to "false"
     return raw !== "false";
-   },
-   docsUrl: (): string =>
-    getPublicEnvValue("NEXT_PUBLIC_DOCS_URL") || "/docs",
+  },
+  docsUrl: (): string => getPublicEnvValue("NEXT_PUBLIC_DOCS_URL") || "/docs",
 };

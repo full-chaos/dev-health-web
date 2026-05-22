@@ -13,13 +13,7 @@
  *   - `graphqlFetch`        — re-exported from `./server` (server-only).
  */
 
-import {
-  createClient,
-  fetchExchange,
-  cacheExchange,
-  mapExchange,
-  type Client,
-} from "@urql/core";
+import { createClient, fetchExchange, cacheExchange, mapExchange, type Client } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 import { graphqlFetch } from "./server";

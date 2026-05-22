@@ -20,10 +20,22 @@ const SURFACES: SurfaceConfig[] = [
   {
     label: "Operating Review",
     title: "Engineering Operating Review",
-    description: "Align engineering outputs with business outcomes. See organizational throughput and delivery pacing at a glance.",
+    description:
+      "Align engineering outputs with business outcomes. See organizational throughput and delivery pacing at a glance.",
     href: "/operating-review",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <path d="M3 3v18h18" />
         <path d="m19 9-5 5-4-4-3 3" />
       </svg>
@@ -32,10 +44,22 @@ const SURFACES: SurfaceConfig[] = [
   {
     label: "Capacity Forecast",
     title: "Predictable Capacity",
-    description: "Forecast delivery constraints based on historical throughput, cycle time trends, and WIP saturation.",
+    description:
+      "Forecast delivery constraints based on historical throughput, cycle time trends, and WIP saturation.",
     href: "/capacity-planning",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <circle cx="12" cy="12" r="10" />
         <path d="M12 6v6l4 2" />
       </svg>
@@ -44,10 +68,22 @@ const SURFACES: SurfaceConfig[] = [
   {
     label: "Bottlenecks",
     title: "Delivery Bottleneck Summary",
-    description: "Spot where work is piling up. Identify high review latency and coordination debt before it impacts ship dates.",
+    description:
+      "Spot where work is piling up. Identify high review latency and coordination debt before it impacts ship dates.",
     href: "/bottleneck",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <path d="M5 22h14" />
         <path d="M5 2h14" />
         <path d="M17 22V2" />
@@ -58,10 +94,22 @@ const SURFACES: SurfaceConfig[] = [
   {
     label: "Investment",
     title: "Investment Allocation",
-    description: "See the exact mix of feature delivery, operational support, maintenance, and technical debt across the organization.",
+    description:
+      "See the exact mix of feature delivery, operational support, maintenance, and technical debt across the organization.",
     href: "/investment",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
         <path d="M22 12A10 10 0 0 0 12 2v10z" />
       </svg>
@@ -70,17 +118,28 @@ const SURFACES: SurfaceConfig[] = [
   {
     label: "Reliability",
     title: "Reliability & Incidents",
-    description: "Connect incident volume to delivery velocity. Understand the cost of poor quality on feature throughput.",
+    description:
+      "Connect incident volume to delivery velocity. Understand the cost of poor quality on feature throughput.",
     href: "/quality",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <path d="m3 11 18-5v12L3 13v-2z" />
         <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
       </svg>
     ),
   },
 ];
-
 
 export default function VPEngineeringPage() {
   return (
@@ -117,9 +176,7 @@ export default function VPEngineeringPage() {
       {/* Primary Surfaces */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="text-center">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Primary Surfaces
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Primary Surfaces</p>
           <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
             Map constraints to reality
           </h2>
@@ -143,9 +200,7 @@ export default function VPEngineeringPage() {
                     </span>
                   )}
                 </div>
-                <h3 className="mt-4 font-(--font-display) text-lg">
-                  {surface.title}
-                </h3>
+                <h3 className="mt-4 font-(--font-display) text-lg">{surface.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
                   {surface.description}
                 </p>
@@ -179,28 +234,49 @@ export default function VPEngineeringPage() {
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-              Our posture
-            </p>
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Our posture</p>
             <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
               No surveillance, just signal
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
-              Engineering intelligence without per-seat surveillance pricing — or
-              per-person scoring. Every metric is a system signal, not a performance
-              rating. Every insight traces to evidence you can inspect.
+              Engineering intelligence without per-seat surveillance pricing — or per-person
+              scoring. Every metric is a system signal, not a performance rating. Every insight
+              traces to evidence you can inspect.
             </p>
           </div>
 
           <ul className="mx-auto mt-10 grid max-w-4xl gap-3 sm:grid-cols-2">
             {[
-              { id: "ns-no-leaderboards", title: "No leaderboards", body: "We do not rank people against each other. Ever." },
-              { id: "ns-team-first", title: "Team and repo first", body: "Aggregation defaults to systems, not individuals." },
-              { id: "ns-reflection-only", title: "Individual views are reflection-only", body: "Single-person surfaces exist for self-reflection and coaching — never peer comparison." },
-              { id: "ns-trends-over-absolutes", title: "Trends over absolutes", body: "Direction matters more than point values. We benchmark you against your own baseline." },
-              { id: "ns-evidence-over-scores", title: "Evidence over scores", body: "Every signal links back to the PRs, reviews, commits, and incidents behind it." },
+              {
+                id: "ns-no-leaderboards",
+                title: "No leaderboards",
+                body: "We do not rank people against each other. Ever.",
+              },
+              {
+                id: "ns-team-first",
+                title: "Team and repo first",
+                body: "Aggregation defaults to systems, not individuals.",
+              },
+              {
+                id: "ns-reflection-only",
+                title: "Individual views are reflection-only",
+                body: "Single-person surfaces exist for self-reflection and coaching — never peer comparison.",
+              },
+              {
+                id: "ns-trends-over-absolutes",
+                title: "Trends over absolutes",
+                body: "Direction matters more than point values. We benchmark you against your own baseline.",
+              },
+              {
+                id: "ns-evidence-over-scores",
+                title: "Evidence over scores",
+                body: "Every signal links back to the PRs, reviews, commits, and incidents behind it.",
+              },
             ].map((pillar) => (
-              <li key={pillar.id} className="rounded-2xl border border-(--card-stroke) bg-(--card) p-5">
+              <li
+                key={pillar.id}
+                className="rounded-2xl border border-(--card-stroke) bg-(--card) p-5"
+              >
                 <p className="font-(--font-display) text-base">{pillar.title}</p>
                 <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">{pillar.body}</p>
               </li>
@@ -216,14 +292,13 @@ export default function VPEngineeringPage() {
       {/* CTA */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Open source
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Open source</p>
           <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
             Built in the open, for everyone
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
-            Full Chaos Dev Health is fully open source. Deploy it on your infrastructure, audit every metric computation, and contribute to the roadmap. Accessibility over extraction.
+            Full Chaos Dev Health is fully open source. Deploy it on your infrastructure, audit
+            every metric computation, and contribute to the roadmap. Accessibility over extraction.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link

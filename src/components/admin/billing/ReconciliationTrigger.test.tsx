@@ -62,7 +62,7 @@ describe("ReconciliationTrigger", () => {
           missing_stripe: [],
         }}
         onRun={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText(/subscriptions:\s*12/i)).toBeInTheDocument();
@@ -75,7 +75,7 @@ describe("ReconciliationTrigger", () => {
 
   it("omits the report grid when report is null", () => {
     const { container } = render(
-      <ReconciliationTrigger running={false} report={null} onRun={vi.fn()} />
+      <ReconciliationTrigger running={false} report={null} onRun={vi.fn()} />,
     );
 
     expect(container.querySelectorAll("p").length).toBe(0);

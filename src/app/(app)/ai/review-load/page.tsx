@@ -12,9 +12,7 @@ type AIReviewLoadPageProps = {
 export default async function AIReviewLoadPage({ searchParams }: AIReviewLoadPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const aiFilter = metricFilterToAIFilter(filters);
 
   return (
@@ -23,7 +21,8 @@ export default async function AIReviewLoadPage({ searchParams }: AIReviewLoadPag
         <PrimaryNav filters={filters} active="ai-review-load" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <AIPageHeader eyebrow="AI workflows" title="AI Review Load">
-            Diagnostic view for AI-generated review pressure, comparing AI-attributed work against the human baseline without person-level rankings.
+            Diagnostic view for AI-generated review pressure, comparing AI-attributed work against
+            the human baseline without person-level rankings.
           </AIPageHeader>
           <FilterBar view="ai" />
           <AIReviewLoadDashboard filter={aiFilter} />

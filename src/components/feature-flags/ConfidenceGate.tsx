@@ -68,9 +68,7 @@ export function ConfidenceGate({
           Reduced confidence
         </div>
         <div className="rounded-3xl bg-(--card-80) p-4">{children}</div>
-        <p className="px-4 pb-3 text-[11px] text-amber-400/80">
-          {GATE_COPY.warnTooltip}
-        </p>
+        <p className="px-4 pb-3 text-[11px] text-amber-400/80">{GATE_COPY.warnTooltip}</p>
       </div>
     );
   }

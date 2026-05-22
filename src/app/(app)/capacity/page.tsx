@@ -25,9 +25,7 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
   const entitlementsPromise = orgPromise.then((orgResult) => {
     const orgId = orgResult?.data?.id;
 
-    return orgId
-      ? fetchOrNull(getOrgEntitlements(orgId), "capacity/entitlements")
-      : null;
+    return orgId ? fetchOrNull(getOrgEntitlements(orgId), "capacity/entitlements") : null;
   });
 
   const [health, , entitlements] = await Promise.all([
@@ -49,9 +47,7 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const graphqlEnabled = runtimeConfig.useGraphQLAnalytics();
   let hydrationOrgId: string | undefined;
@@ -61,12 +57,13 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
     hydrationOrgId = session?.user?.org_id as string | undefined;
   }
 
-  const capacityResult = graphqlEnabled && hydrationOrgId
-    ? await fetchOrNull(
-        getCapacityForecastForHydration(filters, hydrationOrgId),
-        "capacity/forecast-hydration"
-      )
-    : null;
+  const capacityResult =
+    graphqlEnabled && hydrationOrgId
+      ? await fetchOrNull(
+          getCapacityForecastForHydration(filters, hydrationOrgId),
+          "capacity/forecast-hydration",
+        )
+      : null;
 
   const capacityHydrationPayload = capacityResult?.hydrationPayload ?? null;
 
@@ -75,19 +72,11 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="capacity" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
-          <UpgradeGate
-            feature="capacity_planning"
-            requiredTier="team"
-            features={features}
-          >
+          <UpgradeGate feature="capacity_planning" requiredTier="team" features={features}>
             <header className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                  Capacity
-                </p>
-                <h1 className="mt-2 font-(--font-display) text-3xl">
-                  Capacity Planning
-                </h1>
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Capacity</p>
+                <h1 className="mt-2 font-(--font-display) text-3xl">Capacity Planning</h1>
                 <p className="mt-2 text-sm text-(--ink-muted)">
                   Monte Carlo forecasting for work completion based on historical throughput.
                 </p>
@@ -114,8 +103,8 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
               <span className="text-foreground font-semibold uppercase tracking-wider">
                 Perspective:
               </span>{" "}
-              Forecasts use Monte Carlo simulation based on historical throughput data.
-              Adjust the date range to control how much history informs the forecast.
+              Forecasts use Monte Carlo simulation based on historical throughput data. Adjust the
+              date range to control how much history informs the forecast.
             </div>
 
             <ContextStrip filters={filters} origin={activeOrigin} />

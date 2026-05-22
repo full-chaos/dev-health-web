@@ -31,11 +31,7 @@ export const parseDateInput = (value: string) => {
     return null;
   }
   const [year, month, day] = parts.map((part) => Number(part));
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day)
-  ) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
     return null;
   }
   const date = new Date(year, month - 1, day);

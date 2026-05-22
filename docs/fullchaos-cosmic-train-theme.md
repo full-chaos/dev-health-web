@@ -42,8 +42,8 @@ body {
 
 .highlight {
   border: 1px solid var(--fullchaos-starfire);
-  background: radial-gradient(circle at top center, rgba(247,197,72,0.2), transparent 60%);
-  box-shadow: 0 0 25px rgba(255,90,31,0.4);
+  background: radial-gradient(circle at top center, rgba(247, 197, 72, 0.2), transparent 60%);
+  box-shadow: 0 0 25px rgba(255, 90, 31, 0.4);
 }
 
 a {

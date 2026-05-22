@@ -1,9 +1,5 @@
 import { request } from "./_request";
-import type {
-  User,
-  UserCreate,
-  UserUpdate,
-} from "../types";
+import type { User, UserCreate, UserUpdate } from "../types";
 
 export const usersApi = {
   list: (token?: string, orgId?: string, q?: string) => {
@@ -20,19 +16,14 @@ export const usersApi = {
     request<User>(`/users/${userId}`, {}, token, orgId),
 
   create: (data: UserCreate, token?: string, orgId?: string) =>
-    request<User>(
-      "/users",
-      { method: "POST", body: JSON.stringify(data) },
-      token,
-      orgId
-    ),
+    request<User>("/users", { method: "POST", body: JSON.stringify(data) }, token, orgId),
 
   update: (userId: string, data: UserUpdate, token?: string, orgId?: string) =>
     request<User>(
       `/users/${userId}`,
       { method: "PATCH", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   setPassword: (userId: string, password: string, token?: string, orgId?: string) =>
@@ -40,7 +31,7 @@ export const usersApi = {
       `/users/${userId}/password`,
       { method: "POST", body: JSON.stringify({ password }) },
       token,
-      orgId
+      orgId,
     ),
 
   delete: (userId: string, token?: string, orgId?: string) =>

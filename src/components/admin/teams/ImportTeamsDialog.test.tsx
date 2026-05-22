@@ -15,9 +15,7 @@ vi.mock("@/lib/admin/server", () => ({
 describe("ImportTeamsDialog", () => {
   it("renders the import button", () => {
     render(<ImportTeamsDialog />);
-    expect(
-      screen.getByRole("button", { name: /import teams/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /import teams/i })).toBeInTheDocument();
   });
 
   it("shows all four providers including Linear when dialog is opened", async () => {
@@ -40,9 +38,7 @@ describe("ImportTeamsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /import teams/i }));
 
-    expect(
-      screen.getByText(/discover teams from your linear workspace/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/discover teams from your linear workspace/i)).toBeInTheDocument();
   });
 
   it("shows exactly four provider options", async () => {

@@ -12,9 +12,7 @@ export default function UserPreferencesPage() {
           {" / "}
           Preferences
         </p>
-        <h1 className="mt-3 font-(--font-display) text-2xl text-(--foreground)">
-          Preferences
-        </h1>
+        <h1 className="mt-3 font-(--font-display) text-2xl text-(--foreground)">Preferences</h1>
         <p className="mt-2 text-sm text-(--ink-muted)">
           Personal display settings stored in your browser.
         </p>

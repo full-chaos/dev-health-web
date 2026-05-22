@@ -30,12 +30,9 @@ export async function getInvestment(filters: MetricFilter) {
     return getInvestmentViaGraphQL(normalized, orgId);
   }
 
-  return postJson<InvestmentResponse>(
-    "/api/v1/investment",
-    { filters: normalized },
-    300,
-    { f: encodeFilterParam(normalized) }
-  );
+  return postJson<InvestmentResponse>("/api/v1/investment", { filters: normalized }, 300, {
+    f: encodeFilterParam(normalized),
+  });
 }
 
 export async function explainInvestmentMix(params: {
@@ -56,7 +53,7 @@ export async function explainInvestmentMix(params: {
     {
       f: encodeFilterParam(normalized),
       llm_provider: params.llm_provider ?? "auto",
-    }
+    },
   );
 }
 
@@ -68,11 +65,7 @@ export async function getSankey(params: {
   window_end?: string;
 }) {
   const normalized = normalizeFilters(params.filters);
-  const withWindow = applyWindowToFilters(
-    normalized,
-    params.window_start,
-    params.window_end
-  );
+  const withWindow = applyWindowToFilters(normalized, params.window_start, params.window_end);
   return postJson<SankeyResponse>(
     "/api/v1/sankey",
     {
@@ -83,17 +76,14 @@ export async function getSankey(params: {
       window_end: params.window_end,
     },
     60,
-    { mode: params.mode, f: encodeFilterParam(withWindow) }
+    { mode: params.mode, f: encodeFilterParam(withWindow) },
   );
 }
 
 export async function getInvestmentFlow(params: {
   filters: MetricFilter;
   theme?: string | null;
-  flow_mode?:
-  | "team_category_repo"
-  | "team_subcategory_repo"
-  | "team_category_subcategory_repo";
+  flow_mode?: "team_category_repo" | "team_subcategory_repo" | "team_category_subcategory_repo";
   drill_category?: string | null;
   top_n_repos?: number;
 }) {
@@ -121,7 +111,7 @@ export async function getInvestmentFlow(params: {
       top_n_repos: params.top_n_repos,
     },
     60,
-    { f: encodeFilterParam(normalized) }
+    { f: encodeFilterParam(normalized) },
   );
 
   // Clean labels (strip prefixes) to match frontend expectations
@@ -159,7 +149,7 @@ export async function getInvestmentRepoTeamFlow(params: {
     "/api/v1/investment/flow/repo-team",
     { filters: normalized, theme: params.theme ?? null },
     60,
-    { f: encodeFilterParam(normalized) }
+    { f: encodeFilterParam(normalized) },
   );
 }
 
@@ -180,21 +170,17 @@ export async function getWorkUnits(params: {
     {
       f: encodeFilterParam(normalized),
       include_textual: params.include_textual ? "true" : "false",
-    }
+    },
   );
 }
 
 export async function getDrilldown(
   path: "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues",
   filters: MetricFilter,
-  limit = 50
+  limit = 50,
 ) {
   const normalized = normalizeFilters(filters);
-  return postJson<DrilldownResponse>(
-    path,
-    { filters: normalized, limit },
-    30
-  );
+  return postJson<DrilldownResponse>(path, { filters: normalized, limit }, 30);
 }
 
 export async function getWorkUnitExplanation(params: {
@@ -212,6 +198,6 @@ export async function getWorkUnitExplanation(params: {
       scope_id: normalized.scope.ids[0] ?? "",
       range_days: normalized.time.range_days,
       llm_provider: params.llmProvider ?? "auto",
-    }
+    },
   );
 }

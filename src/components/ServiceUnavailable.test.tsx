@@ -15,9 +15,7 @@ vi.mock("next/link", () => ({
 describe("ServiceUnavailable", () => {
   it("renders the error heading", () => {
     render(<ServiceUnavailable />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Data service unavailable"
-    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Data service unavailable");
   });
 
   it("displays the API base URL in the quick checks list", () => {

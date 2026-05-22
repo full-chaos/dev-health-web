@@ -26,7 +26,7 @@ export const toRangeDays = (start?: string, end?: string): number | null => {
 export const applyWindowToFilters = (
   filters: MetricFilter,
   windowStart?: string,
-  windowEnd?: string
+  windowEnd?: string,
 ): MetricFilter => {
   if (!windowStart && !windowEnd) {
     return filters;

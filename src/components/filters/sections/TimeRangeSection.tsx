@@ -1,9 +1,4 @@
-import {
-  diffDaysInclusive,
-  formatDateInput,
-  parseDateInput,
-  toLocalDate,
-} from "@/lib/dateUtils";
+import { diffDaysInclusive, formatDateInput, parseDateInput, toLocalDate } from "@/lib/dateUtils";
 import type { MetricFilter } from "@/lib/filters/types";
 import { DATE_PRESETS } from "../filterBarUtils";
 
@@ -62,9 +57,7 @@ export function TimeRangeSection({
           <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
             <div className="grid gap-3 text-xs">
               <label className="flex flex-col gap-2">
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Start date
-                </span>
+                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">Start date</span>
                 <input
                   className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
                   type="date"
@@ -94,9 +87,7 @@ export function TimeRangeSection({
                 />
               </label>
               <label className="flex flex-col gap-2">
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                  End date
-                </span>
+                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">End date</span>
                 <input
                   className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
                   type="date"

@@ -54,7 +54,11 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
         return teamIds.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {teamIds.map((teamId) => (
-              <Link key={teamId} href={`/admin/teams/${teamId}/edit`} className="text-(--accent) hover:underline">
+              <Link
+                key={teamId}
+                href={`/admin/teams/${teamId}/edit`}
+                className="text-(--accent) hover:underline"
+              >
                 {teamId}
               </Link>
             ))}
@@ -80,7 +84,7 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
                   provider={provider}
                   username={username}
                 />
-              ))
+              )),
             )}
           </div>
         );
@@ -93,11 +97,18 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
       className: "px-6 py-4 text-right",
       render: (identity) => (
         <div className="flex justify-end gap-3">
-          <Link href={`/admin/identities/${identity.canonical_id}/edit`} className="text-(--accent) hover:underline">
+          <Link
+            href={`/admin/identities/${identity.canonical_id}/edit`}
+            className="text-(--accent) hover:underline"
+          >
             Edit
           </Link>
           {onDelete && (
-            <button type="button" onClick={() => onDelete(identity.canonical_id)} className="text-red-500 hover:underline">
+            <button
+              type="button"
+              onClick={() => onDelete(identity.canonical_id)}
+              className="text-red-500 hover:underline"
+            >
               Delete
             </button>
           )}

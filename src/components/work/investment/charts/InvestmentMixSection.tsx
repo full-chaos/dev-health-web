@@ -1,13 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChartTypeToggle, TREEMAP_SUNBURST_OPTIONS, type TreemapSunburstType } from "@/components/charts/ChartTypeToggle";
+import {
+  ChartTypeToggle,
+  TREEMAP_SUNBURST_OPTIONS,
+  type TreemapSunburstType,
+} from "@/components/charts/ChartTypeToggle";
 import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
 import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
-import { adjustHex, clamp, formatQuality, formatSubcategoryLabel, titleCase } from "@/lib/investment";
+import {
+  adjustHex,
+  clamp,
+  formatQuality,
+  formatSubcategoryLabel,
+  titleCase,
+} from "@/lib/investment";
 import { getSortedSubcategories, getSortedThemes } from "@/lib/investmentMix";
 import type { WorkUnitInvestment } from "@/lib/types";
 import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
@@ -48,9 +58,18 @@ export function InvestmentMixSection({
   const [mixChartType, setMixChartType] = useState<TreemapSunburstType>("treemap");
   const [treemapSelection, setTreemapSelection] = useState<TreemapSelection | null>(null);
 
-  const mixThemes = useMemo(() => (investmentMix ? getSortedThemes(investmentMix) : []), [investmentMix]);
-  const mixSubcategories = useMemo(() => (investmentMix ? getSortedSubcategories(investmentMix) : []), [investmentMix]);
-  const mixTotalValue = useMemo(() => mixThemes.reduce((sum, entry) => sum + entry.value, 0), [mixThemes]);
+  const mixThemes = useMemo(
+    () => (investmentMix ? getSortedThemes(investmentMix) : []),
+    [investmentMix],
+  );
+  const mixSubcategories = useMemo(
+    () => (investmentMix ? getSortedSubcategories(investmentMix) : []),
+    [investmentMix],
+  );
+  const mixTotalValue = useMemo(
+    () => mixThemes.reduce((sum, entry) => sum + entry.value, 0),
+    [mixThemes],
+  );
   const focusedThemeTotalValue = useMemo(() => {
     if (!focusTheme || !investmentMix) return 0;
     return investmentMix.theme_distribution[focusTheme] ?? 0;
@@ -74,7 +93,8 @@ export function InvestmentMixSection({
       filters,
       role: activeRole,
       themeKey: treemapSelection.themeKey,
-      subcategoryKey: treemapSelection.type === "subcategory" ? treemapSelection.subcategoryId : null,
+      subcategoryKey:
+        treemapSelection.type === "subcategory" ? treemapSelection.subcategoryId : null,
     });
   }, [activeRole, filters, treemapSelection]);
 
@@ -82,7 +102,7 @@ export function InvestmentMixSection({
     (themeKey: string) => {
       setFocusTheme(focusTheme === themeKey ? null : themeKey);
     },
-    [focusTheme, setFocusTheme]
+    [focusTheme, setFocusTheme],
   );
 
   const handleSubcategoryClick = useCallback(
@@ -91,40 +111,47 @@ export function InvestmentMixSection({
       setFocusTheme(themeKey || null);
       setFocusSubcategory(subcategoryKey);
     },
-    [setFocusSubcategory, setFocusTheme]
+    [setFocusSubcategory, setFocusTheme],
   );
 
-  const handleTreemapSelection = useCallback((node: { name: string; path: string[]; data?: TreemapNode }) => {
-    const nodeData = node.data as
-      | (TreemapNode & {
-          nodeType?: "theme" | "subcategory";
-          themeKey?: string;
-          categoryId?: string;
-          categoryLabel?: string;
-        })
-      | undefined;
+  const handleTreemapSelection = useCallback(
+    (node: { name: string; path: string[]; data?: TreemapNode }) => {
+      const nodeData = node.data as
+        | (TreemapNode & {
+            nodeType?: "theme" | "subcategory";
+            themeKey?: string;
+            categoryId?: string;
+            categoryLabel?: string;
+          })
+        | undefined;
 
-    const nodeType = nodeData?.nodeType === "subcategory" ? "subcategory" : "theme";
-    const categoryId = nodeData?.categoryId ?? null;
-    const themeKey = nodeData?.themeKey ?? (categoryId ? categoryId.split(".", 1)[0] : null);
-    const themeLabel = themeKey ? titleCase(themeKey) : (node.path[0] ?? node.name);
-    const subcategoryLabel = nodeType === "subcategory" ? (nodeData?.categoryLabel ?? node.name) : undefined;
-    const selectionKey = nodeType === "subcategory" ? `subcategory:${categoryId ?? node.name}` : `theme:${themeKey ?? node.name}`;
+      const nodeType = nodeData?.nodeType === "subcategory" ? "subcategory" : "theme";
+      const categoryId = nodeData?.categoryId ?? null;
+      const themeKey = nodeData?.themeKey ?? (categoryId ? categoryId.split(".", 1)[0] : null);
+      const themeLabel = themeKey ? titleCase(themeKey) : (node.path[0] ?? node.name);
+      const subcategoryLabel =
+        nodeType === "subcategory" ? (nodeData?.categoryLabel ?? node.name) : undefined;
+      const selectionKey =
+        nodeType === "subcategory"
+          ? `subcategory:${categoryId ?? node.name}`
+          : `theme:${themeKey ?? node.name}`;
 
-    setTreemapSelection((current) => {
-      if (current?.key === selectionKey) {
-        return null;
-      }
-      return {
-        key: selectionKey,
-        type: nodeType,
-        themeLabel,
-        themeKey,
-        subcategoryLabel,
-        subcategoryId: categoryId,
-      };
-    });
-  }, []);
+      setTreemapSelection((current) => {
+        if (current?.key === selectionKey) {
+          return null;
+        }
+        return {
+          key: selectionKey,
+          type: nodeType,
+          themeLabel,
+          themeKey,
+          subcategoryLabel,
+          subcategoryId: categoryId,
+        };
+      });
+    },
+    [],
+  );
 
   const clearTreemapSelection = useCallback(() => {
     setTreemapSelection(null);
@@ -210,7 +237,10 @@ export function InvestmentMixSection({
   const formatTreemapTooltip = useCallback(
     (params: unknown, _totalValue: number, unitLabel: string) => {
       if (!params || typeof params !== "object") return "";
-      const entry = params as { data?: Record<string, unknown>; treePathInfo?: Array<{ name: string }> };
+      const entry = params as {
+        data?: Record<string, unknown>;
+        treePathInfo?: Array<{ name: string }>;
+      };
       const data = entry.data ?? {};
       const treePath = entry.treePathInfo ?? [];
       const pathSegments = treePath.slice(1).map((p) => p.name);
@@ -234,7 +264,7 @@ export function InvestmentMixSection({
         extra: qualityExtra,
       });
     },
-    [chartTheme.accent2, chartTheme.muted, mixTotalValue]
+    [chartTheme.accent2, chartTheme.muted, mixTotalValue],
   );
 
   const categoryScopeLabel = focusTheme ? "Subcategory" : "Theme";
@@ -243,9 +273,13 @@ export function InvestmentMixSection({
     <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h3 className="font-(--font-display) text-lg">{mixChartType === "treemap" ? "Treemap" : "Investment mix"}</h3>
+          <h3 className="font-(--font-display) text-lg">
+            {mixChartType === "treemap" ? "Treemap" : "Investment mix"}
+          </h3>
           <span className="text-xs text-(--ink-muted)">
-            {mixChartType === "treemap" ? `Effort size - Evidence quality opacity - ${categoryScopeLabel} view` : "Theme to Subcategory (depth 2)"}
+            {mixChartType === "treemap"
+              ? `Effort size - Evidence quality opacity - ${categoryScopeLabel} view`
+              : "Theme to Subcategory (depth 2)"}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -258,7 +292,11 @@ export function InvestmentMixSection({
               Clear theme
             </button>
           )}
-          <ChartTypeToggle options={TREEMAP_SUNBURST_OPTIONS} value={mixChartType} onChange={setMixChartType} />
+          <ChartTypeToggle
+            options={TREEMAP_SUNBURST_OPTIONS}
+            value={mixChartType}
+            onChange={setMixChartType}
+          />
         </div>
       </div>
       <div className="mt-4">
@@ -284,18 +322,25 @@ export function InvestmentMixSection({
                       {treemapSelection.themeLabel}
                     </button>
                   ) : (
-                    <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[11px] text-foreground">{treemapSelection.themeLabel}</span>
+                    <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[11px] text-foreground">
+                      {treemapSelection.themeLabel}
+                    </span>
                   )}
                   {treemapSelection.type === "subcategory" && treemapSelection.subcategoryLabel && (
                     <>
                       <span className="text-(--ink-muted)">/</span>
-                      <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[11px] text-foreground">{treemapSelection.subcategoryLabel}</span>
+                      <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[11px] text-foreground">
+                        {treemapSelection.subcategoryLabel}
+                      </span>
                     </>
                   )}
                 </>
               )}
               {treemapWorkGraphUrl && (
-                <Link href={treemapWorkGraphUrl} className="ml-auto rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40">
+                <Link
+                  href={treemapWorkGraphUrl}
+                  className="ml-auto rounded-full border border-(--card-stroke) px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40"
+                >
                   Open in Work Graph ↗
                 </Link>
               )}
@@ -335,8 +380,14 @@ export function InvestmentMixSection({
             />
             <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">{focusTheme ? "Subcategory breakdown" : "Themes"}</p>
-                {focusTheme && <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">{titleCase(focusTheme)}</span>}
+                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                  {focusTheme ? "Subcategory breakdown" : "Themes"}
+                </p>
+                {focusTheme && (
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                    {titleCase(focusTheme)}
+                  </span>
+                )}
               </div>
               {focusedWorkGraphUrl && (
                 <Link
@@ -344,14 +395,18 @@ export function InvestmentMixSection({
                   className="mt-3 flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
                 >
                   <span>Open in Work Graph</span>
-                  <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">↗</span>
+                  <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
+                    ↗
+                  </span>
                 </Link>
               )}
               <div className="mt-3 space-y-2 text-sm">
                 {focusTheme ? (
                   focusedThemeSubcategories.length ? (
                     focusedThemeSubcategories.map((entry) => {
-                      const pctOfTheme = focusedThemeTotalValue ? (entry.value / focusedThemeTotalValue) * 100 : 0;
+                      const pctOfTheme = focusedThemeTotalValue
+                        ? (entry.value / focusedThemeTotalValue) * 100
+                        : 0;
                       return (
                         <button
                           key={entry.key}
@@ -360,15 +415,23 @@ export function InvestmentMixSection({
                           className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
                         >
                           <div className="min-w-0">
-                            <div className="truncate text-sm text-foreground">{formatSubcategoryLabel(entry.key, false)}</div>
-                            <div className="mt-1 text-xs text-(--ink-muted)">{formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}</div>
-                            <div className="text-xs text-(--accent-2)">{formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}% of theme</div>
+                            <div className="truncate text-sm text-foreground">
+                              {formatSubcategoryLabel(entry.key, false)}
+                            </div>
+                            <div className="mt-1 text-xs text-(--ink-muted)">
+                              {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
+                            </div>
+                            <div className="text-xs text-(--accent-2)">
+                              {formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}% of theme
+                            </div>
                           </div>
                         </button>
                       );
                     })
                   ) : (
-                    <p className="text-sm text-(--ink-muted)">No subcategories observed for this theme.</p>
+                    <p className="text-sm text-(--ink-muted)">
+                      No subcategories observed for this theme.
+                    </p>
                   )
                 ) : (
                   mixThemes.slice(0, 8).map((entry) => {
@@ -381,9 +444,15 @@ export function InvestmentMixSection({
                         className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
                       >
                         <div className="min-w-0">
-                          <div className="truncate text-sm text-foreground">{titleCase(entry.key)}</div>
-                          <div className="mt-1 text-xs text-(--ink-muted)">{formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}</div>
-                          <div className="text-xs text-(--accent-2)">{formatNumber(pct, { maximumFractionDigits: 1 })}% of total</div>
+                          <div className="truncate text-sm text-foreground">
+                            {titleCase(entry.key)}
+                          </div>
+                          <div className="mt-1 text-xs text-(--ink-muted)">
+                            {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
+                          </div>
+                          <div className="text-xs text-(--accent-2)">
+                            {formatNumber(pct, { maximumFractionDigits: 1 })}% of total
+                          </div>
                         </div>
                       </button>
                     );

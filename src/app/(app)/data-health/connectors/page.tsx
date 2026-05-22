@@ -1,5 +1,8 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { ConnectorStatusTable, type ConnectorStatusItem } from "../_components/ConnectorStatusTable";
+import {
+  ConnectorStatusTable,
+  type ConnectorStatusItem,
+} from "../_components/ConnectorStatusTable";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import {
   GetConnectorsDataHealthDocument,
@@ -9,7 +12,7 @@ import { requireSession } from "@/lib/auth";
 
 export default async function ConnectorsHealthPage() {
   const session = await requireSession();
-  
+
   // Need to get team. For admin operator level, there's no single team ID,
   // but if the schema requires a team, we might need a default team from session or hardcoded for now,
   // or maybe the schema means orgId instead of team, but we'll pass a default if needed.
@@ -23,7 +26,7 @@ export default async function ConnectorsHealthPage() {
   try {
     const res = await graphqlFetch<GetConnectorsDataHealthQuery>(
       GetConnectorsDataHealthDocument.toString(),
-      { teamId }
+      { teamId },
     );
     data = res.dataHealth.connectors as ConnectorStatusItem[];
   } catch (e) {

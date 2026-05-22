@@ -26,7 +26,11 @@ export function BackendBanner({ meta }: BackendBannerProps) {
       {meta.last_ingest_at && (
         <>
           <span className="text-(--ink-muted)">•</span>
-          <ClientTimestamp value={meta.last_ingest_at} prefix="Synced " className="text-(--ink-muted)" />
+          <ClientTimestamp
+            value={meta.last_ingest_at}
+            prefix="Synced "
+            className="text-(--ink-muted)"
+          />
         </>
       )}
       {coverageItems.length > 0 && (

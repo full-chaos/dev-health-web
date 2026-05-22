@@ -8,11 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act } from "@testing-library/react";
 import { render, screen, fireEvent, cleanup } from "@/test/utils";
-import {
-  FilterBarClient,
-  resolveVisibility,
-  type FilterBarView,
-} from "./FilterBarClient";
+import { FilterBarClient, resolveVisibility, type FilterBarView } from "./FilterBarClient";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -157,9 +153,7 @@ describe("resolveVisibility (pure)", () => {
   });
 
   it("treats opportunities as WORK_VISIBILITY", () => {
-    expect(resolveVisibility("opportunities")).toEqual(
-      resolveVisibility("work")
-    );
+    expect(resolveVisibility("opportunities")).toEqual(resolveVisibility("work"));
   });
 
   it("returns PEOPLE visibility (developer on, repo/workType off)", () => {
@@ -236,15 +230,9 @@ describe("Active filter pills", () => {
     expect(screen.getByText("alice")).toBeInTheDocument();
     expect(screen.getByText("feature")).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("button", { name: /remove repo filter/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /remove dev filter/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /remove work filter/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /remove repo filter/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /remove dev filter/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /remove work filter/i })).toBeInTheDocument();
   });
 
   it("renders no pills when filter is the default (no selections)", async () => {
@@ -290,8 +278,6 @@ describe("Per-view-type rendering smoke", () => {
   it("hides the Filters (advanced) toggle on view=people", async () => {
     setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
     await renderFB(<FilterBarClient view="people" />);
-    expect(
-      screen.queryByRole("button", { name: /^filters$/i })
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /^filters$/i })).toBeNull();
   });
 });

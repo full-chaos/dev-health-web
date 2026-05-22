@@ -3,7 +3,8 @@ import { SuperadminSidebar } from "@/components/superadmin/SuperadminSidebar";
 
 export default async function SuperadminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSuperuser("/superadmin");
-  const hasOrgAccess = !!session.user.org_id && (session.user.role === "admin" || session.user.role === "owner");
+  const hasOrgAccess =
+    !!session.user.org_id && (session.user.role === "admin" || session.user.role === "owner");
 
   return (
     <div className="min-h-screen">

@@ -59,7 +59,7 @@ function renderSelector(overrides: Partial<React.ComponentProps<typeof RepoSelec
       selectedRepos={[]}
       onSelectionChange={onSelectionChange}
       {...overrides}
-    />
+    />,
   );
   return { onSelectionChange };
 }
@@ -74,10 +74,10 @@ describe("RepoSelector", () => {
       render(
         <RepoSelector
           credentialId=""
-              owner="myorg"
+          owner="myorg"
           selectedRepos={[]}
           onSelectionChange={vi.fn()}
-        />
+        />,
       );
       expect(screen.getByText(/Select a credential and enter an owner/i)).toBeInTheDocument();
     });
@@ -86,10 +86,10 @@ describe("RepoSelector", () => {
       render(
         <RepoSelector
           credentialId="cred-123"
-              owner=""
+          owner=""
           selectedRepos={[]}
           onSelectionChange={vi.fn()}
-        />
+        />,
       );
       expect(screen.getByText(/Select a credential and enter an owner/i)).toBeInTheDocument();
     });
@@ -273,10 +273,10 @@ describe("RepoSelector", () => {
       const { rerender } = render(
         <RepoSelector
           credentialId="cred-123"
-              owner="myorg"
+          owner="myorg"
           selectedRepos={[]}
           onSelectionChange={vi.fn()}
-        />
+        />,
       );
 
       await waitFor(() => screen.getByText("repo-alpha"));
@@ -289,10 +289,10 @@ describe("RepoSelector", () => {
       rerender(
         <RepoSelector
           credentialId="cred-123"
-              owner="otherorg"
+          owner="otherorg"
           selectedRepos={[]}
           onSelectionChange={vi.fn()}
-        />
+        />,
       );
 
       await waitFor(() => expect(mockListRepos).toHaveBeenCalledTimes(2));

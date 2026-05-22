@@ -1,6 +1,6 @@
 /**
  * Admin API Types
- * 
+ *
  * TypeScript interfaces matching dev-health-ops/api/admin/schemas.py
  */
 
@@ -285,7 +285,7 @@ export interface TeamImportResponse {
 export interface FlaggedChange {
   team_id: string;
   team_name: string;
-  change_type: 'field_changed' | 'provider_removed' | 'new_team_available';
+  change_type: "field_changed" | "provider_removed" | "new_team_available";
   field?: string | null;
   old_value?: unknown;
   new_value?: unknown;
@@ -515,24 +515,24 @@ export interface RetentionExecuteResponse {
 
 // ---- Provider types ----
 
-export type Provider = 'github' | 'gitlab' | 'jira' | 'linear' | 'launchdarkly';
+export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly";
 
-export const PROVIDERS: Provider[] = ['github', 'gitlab', 'jira', 'linear', 'launchdarkly'];
+export const PROVIDERS: Provider[] = ["github", "gitlab", "jira", "linear", "launchdarkly"];
 
 export const PROVIDER_LABELS: Record<Provider, string> = {
-  github: 'GitHub',
-  gitlab: 'GitLab',
-  jira: 'Jira',
-  linear: 'Linear',
-  launchdarkly: 'LaunchDarkly',
+  github: "GitHub",
+  gitlab: "GitLab",
+  jira: "Jira",
+  linear: "Linear",
+  launchdarkly: "LaunchDarkly",
 };
 
 export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
-  github: ['git', 'prs', 'cicd', 'deployments', 'incidents', 'work-items'],
-  gitlab: ['git', 'prs', 'cicd', 'deployments', 'incidents', 'work-items', 'feature-flags'],
-  jira: ['work-items'],
-  linear: ['work-items'],
-  launchdarkly: ['feature-flags'],
+  github: ["git", "prs", "cicd", "deployments", "incidents", "work-items"],
+  gitlab: ["git", "prs", "cicd", "deployments", "incidents", "work-items", "feature-flags"],
+  jira: ["work-items"],
+  linear: ["work-items"],
+  launchdarkly: ["feature-flags"],
 };
 
 // ---- Platform Stats ----

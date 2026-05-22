@@ -1,9 +1,4 @@
-import {
-  fetchExchange,
-  cacheExchange,
-  mapExchange,
-  type SSRExchange,
-} from "@urql/core";
+import { fetchExchange, cacheExchange, mapExchange, type SSRExchange } from "@urql/core";
 import { resolveOrigin } from "@/lib/origin";
 import { errorExchange, timingExchange } from "./urqlExchanges";
 
@@ -14,10 +9,7 @@ export interface GraphQLClientOptionsArgs {
   ssr: SSRExchange;
 }
 
-export function createGraphQLClientOptions({
-  orgId,
-  ssr,
-}: GraphQLClientOptionsArgs) {
+export function createGraphQLClientOptions({ orgId, ssr }: GraphQLClientOptionsArgs) {
   const url = new URL(GRAPHQL_PATH, resolveOrigin());
   if (orgId) url.searchParams.set("org_id", orgId);
 

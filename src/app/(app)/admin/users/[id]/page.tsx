@@ -4,11 +4,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getUser } from "@/lib/admin/server";
 import { DeleteUserButton } from "./DeleteUserButton";
 
-export default async function UserDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await getUser(id);
 
@@ -21,8 +17,8 @@ export default async function UserDetailPage({
   const statusClass = !user.is_active
     ? "bg-red-500/10 text-red-500"
     : !user.is_verified
-    ? "bg-yellow-500/10 text-yellow-500"
-    : "bg-green-500/10 text-green-500";
+      ? "bg-yellow-500/10 text-yellow-500"
+      : "bg-green-500/10 text-green-500";
 
   return (
     <div>

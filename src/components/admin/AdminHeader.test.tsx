@@ -12,23 +12,18 @@ describe("AdminHeader", () => {
 
   it("renders with title and description", () => {
     render(
-      <AdminHeader
-        title="Billing"
-        description="Manage plan, invoices, and payment methods."
-      />
+      <AdminHeader title="Billing" description="Manage plan, invoices, and payment methods." />,
     );
 
     expect(screen.getByRole("heading", { name: "Billing" })).toBeInTheDocument();
-    expect(
-      screen.getByText("Manage plan, invoices, and payment methods.")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Manage plan, invoices, and payment methods.")).toBeInTheDocument();
   });
 
   it("handles optional children gracefully", () => {
     render(
       <AdminHeader title="Billing">
         <button type="button">Upgrade plan</button>
-      </AdminHeader>
+      </AdminHeader>,
     );
 
     expect(screen.getByRole("button", { name: "Upgrade plan" })).toBeInTheDocument();

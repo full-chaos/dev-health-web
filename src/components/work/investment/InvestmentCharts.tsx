@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
-import { ChartTypeToggle, INVESTMENT_SANKEY_CHORD_OPTIONS, type InvestmentFlowChartType } from "@/components/charts/ChartTypeToggle";
+import {
+  ChartTypeToggle,
+  INVESTMENT_SANKEY_CHORD_OPTIONS,
+  type InvestmentFlowChartType,
+} from "@/components/charts/ChartTypeToggle";
 import { formatEffortUnit } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
@@ -59,7 +63,13 @@ export function InvestmentCharts({
   showSubcategories,
 }: InvestmentChartsProps) {
   const [chartType, setChartType] = useState<InvestmentFlowChartType>("sankey");
-  const { themeColorMap, categoryColorMap, prepareSankeyFlow, resolveSubcategoryIdFromLabel, buildSankeyTooltipFormatter } = useInvestmentColorMaps({
+  const {
+    themeColorMap,
+    categoryColorMap,
+    prepareSankeyFlow,
+    resolveSubcategoryIdFromLabel,
+    buildSankeyTooltipFormatter,
+  } = useInvestmentColorMaps({
     investmentMix,
     workUnits,
     selectedThemeKey,
@@ -106,7 +116,11 @@ export function InvestmentCharts({
       />
 
       <div className="flex justify-end">
-        <ChartTypeToggle options={INVESTMENT_SANKEY_CHORD_OPTIONS} value={chartType} onChange={setChartType} />
+        <ChartTypeToggle
+          options={INVESTMENT_SANKEY_CHORD_OPTIONS}
+          value={chartType}
+          onChange={setChartType}
+        />
       </div>
 
       {chartType === "chord" ? (

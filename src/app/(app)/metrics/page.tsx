@@ -20,7 +20,11 @@ type MetricsPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-type QuadrantType = "churn_throughput" | "cycle_throughput" | "wip_throughput" | "review_load_latency";
+type QuadrantType =
+  | "churn_throughput"
+  | "cycle_throughput"
+  | "wip_throughput"
+  | "review_load_latency";
 
 type MetricTab = {
   id: string;
@@ -40,12 +44,7 @@ const METRIC_TABS: MetricTab[] = [
     id: "dora",
     label: "DORA",
     description: "Release speed and stability.",
-    metrics: [
-      "deploy_freq",
-      "cycle_time",
-      "change_failure_rate",
-      "review_latency",
-    ],
+    metrics: ["deploy_freq", "cycle_time", "change_failure_rate", "review_latency"],
     highlight: "deploy_freq",
     quadrant: {
       type: "churn_throughput",
@@ -57,12 +56,7 @@ const METRIC_TABS: MetricTab[] = [
     id: "flow",
     label: "Flow",
     description: "From idea to merge.",
-    metrics: [
-      "cycle_time",
-      "review_latency",
-      "throughput",
-      "wip_saturation",
-    ],
+    metrics: ["cycle_time", "review_latency", "throughput", "wip_saturation"],
     highlight: "cycle_time",
     quadrant: {
       type: "cycle_throughput",
@@ -74,12 +68,7 @@ const METRIC_TABS: MetricTab[] = [
     id: "quality",
     label: "Quality",
     description: "Reliability and rework.",
-    metrics: [
-      "change_failure_rate",
-      "churn",
-      "blocked_work",
-      "review_latency",
-    ],
+    metrics: ["change_failure_rate", "churn", "blocked_work", "review_latency"],
     highlight: "change_failure_rate",
     quadrant: {
       type: "review_load_latency",
@@ -91,12 +80,7 @@ const METRIC_TABS: MetricTab[] = [
     id: "throughput",
     label: "Throughput",
     description: "Delivery volume and pacing.",
-    metrics: [
-      "throughput",
-      "deploy_freq",
-      "wip_saturation",
-      "blocked_work",
-    ],
+    metrics: ["throughput", "deploy_freq", "wip_saturation", "blocked_work"],
     highlight: "throughput",
     quadrant: {
       type: "wip_throughput",
@@ -113,16 +97,13 @@ const getMetric = (deltas: MetricDelta[], metric: string) =>
 export default async function MetricsPage({ searchParams }: MetricsPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
   const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-  const activeTab =
-    METRIC_TABS.find((tab) => tab.id === tabParam) ?? METRIC_TABS[0];
+  const activeTab = METRIC_TABS.find((tab) => tab.id === tabParam) ?? METRIC_TABS[0];
 
   const quadrantScope: "org" | "team" | "repo" | "developer" =
     filters.scope.level === "developer"
@@ -137,7 +118,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     fetchOrNull(getHomeData(filters), "metrics/home-data"),
     fetchOrNull(
       getExplainData({ metric: activeTab.highlight, filters }),
-      `metrics/explain-${activeTab.highlight}`
+      `metrics/explain-${activeTab.highlight}`,
     ),
     fetchOrNull(
       getQuadrant({
@@ -149,7 +130,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
         start_date: filters.time.start_date,
         end_date: filters.time.end_date,
       }),
-      "metrics/quadrant"
+      "metrics/quadrant",
     ),
   ]);
 
@@ -172,18 +153,10 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Metrics
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Monitoring view
-              </h1>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Trends over the selected window.
-              </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Open a metric to investigate.
-              </p>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Metrics</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Monitoring view</h1>
+              <p className="mt-2 text-sm text-(--ink-muted)">Trends over the selected window.</p>
+              <p className="mt-2 text-sm text-(--ink-muted)">Open a metric to investigate.</p>
             </div>
             <Link
               href={withFilterParam("/", filters, activeRole)}
@@ -202,10 +175,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 <Link
                   key={tab.id}
                   href={withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole)}
-                  className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition ${isActive
-                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                    : "border-(--card-stroke) text-(--ink-muted) hover:text-foreground"
-                    }`}
+                  className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition ${
+                    isActive
+                      ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                      : "border-(--card-stroke) text-(--ink-muted) hover:text-foreground"
+                  }`}
                 >
                   {tab.label}
                 </Link>
@@ -219,9 +193,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                   {activeTab.label} monitoring
                 </p>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                  {activeTab.description}
-                </p>
+                <p className="mt-1 text-sm text-(--ink-muted)">{activeTab.description}</p>
               </div>
               <Link
                 href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
@@ -262,7 +234,10 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               data={quadrant}
               filters={filters}
               relatedLinks={[
-                { label: "Open landscapes", href: withFilterParam("/explore/landscape", filters, activeRole) },
+                {
+                  label: "Open landscapes",
+                  href: withFilterParam("/explore/landscape", filters, activeRole),
+                },
               ]}
               emptyState="Quadrant data unavailable for this scope."
             />
@@ -292,7 +267,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     {drivers.map((driver) => (
                       <Link
                         key={driver.id}
-                        href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
+                        href={buildExploreUrl({
+                          api: driver.evidence_link,
+                          filters,
+                          role: activeRole,
+                        })}
                         className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                       >
                         <span>{driver.label}</span>
@@ -333,14 +312,16 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     {contributors.map((contributor) => (
                       <Link
                         key={contributor.id}
-                        href={buildExploreUrl({ api: contributor.evidence_link, filters, role: activeRole })}
+                        href={buildExploreUrl({
+                          api: contributor.evidence_link,
+                          filters,
+                          role: activeRole,
+                        })}
                         className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                       >
                         <span>{contributor.label}</span>
                         <span className="text-xs text-(--ink-muted)">
-                          {highlight
-                            ? formatMetricValue(contributor.value, highlight.unit)
-                            : "--"}
+                          {highlight ? formatMetricValue(contributor.value, highlight.unit) : "--"}
                         </span>
                       </Link>
                     ))}
@@ -376,10 +357,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     const data = getMetric(deltas, metric);
                     const href = buildExploreUrl({ metric, filters, role: activeRole });
                     return (
-                      <tr
-                        key={metric}
-                        className="border-b border-(--card-stroke)"
-                      >
+                      <tr key={metric} className="border-b border-(--card-stroke)">
                         <td className="py-3 pr-4 font-medium">
                           <Link href={href} className="block">
                             {data?.label ?? metric}
@@ -394,9 +372,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                         </td>
                         <td className="py-3 pr-4 text-(--ink-muted)">
                           <Link href={href} className="block">
-                            {placeholderDeltas || !data
-                              ? "--"
-                              : formatDelta(data.delta_pct)}
+                            {placeholderDeltas || !data ? "--" : formatDelta(data.delta_pct)}
                           </Link>
                         </td>
                         <td className="py-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
@@ -412,7 +388,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             </div>
           </section>
         </main>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }

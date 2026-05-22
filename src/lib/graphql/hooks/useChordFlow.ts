@@ -6,7 +6,12 @@ import type { ChordGroupingDimension, ChordRecord } from "@/lib/types";
 import { adaptSankeyToChord } from "../chordAdapter";
 import { useOrgId } from "../provider";
 import { FLOW_MATRIX_QUERY } from "../queries";
-import type { AnalyticsQueryResponse, AnalyticsRequestInput, DimensionInput, MeasureInput } from "../types";
+import type {
+  AnalyticsQueryResponse,
+  AnalyticsRequestInput,
+  DimensionInput,
+  MeasureInput,
+} from "../types";
 
 type UseChordFlowArgs = {
   orgId?: string;

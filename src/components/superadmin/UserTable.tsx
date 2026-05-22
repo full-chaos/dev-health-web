@@ -105,7 +105,8 @@ export function UserTable({ users }: UserTableProps) {
           header: "Last Login",
           headerClassName: "px-6 py-4 font-medium",
           className: "px-6 py-4 text-(--ink-muted)",
-          render: (user) => (user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : "-"),
+          render: (user) =>
+            user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : "-",
         },
         {
           key: "actions",
@@ -124,7 +125,10 @@ export function UserTable({ users }: UserTableProps) {
                   {impersonatingId === user.id ? "Impersonating..." : "Impersonate"}
                 </button>
               )}
-              <Link href={`/superadmin/users/${user.id}`} className="text-(--accent) hover:underline">
+              <Link
+                href={`/superadmin/users/${user.id}`}
+                className="text-(--accent) hover:underline"
+              >
                 Edit
               </Link>
             </>

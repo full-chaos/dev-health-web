@@ -4,9 +4,9 @@
  * "is consistent with".
  */
 
-export const CONFIDENCE_SHOW_THRESHOLD = 0.70;
-export const CONFIDENCE_WARN_THRESHOLD = 0.50;
-export const DATA_COMPLETENESS_THRESHOLD = 0.80;
+export const CONFIDENCE_SHOW_THRESHOLD = 0.7;
+export const CONFIDENCE_WARN_THRESHOLD = 0.5;
+export const DATA_COMPLETENESS_THRESHOLD = 0.8;
 
 type Direction = "higher" | "lower";
 

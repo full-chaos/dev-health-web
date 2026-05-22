@@ -33,15 +33,33 @@ test.describe("AI Impact dashboard", () => {
     // eyebrow on a headline card and once as the heading on the matching
     // detailed panel — so we scope to the panel heading specifically.
     const dashboard = page.getByTestId("ai-impact-dashboard");
-    await expect(dashboard.getByRole("heading", { name: "AI-assisted work share", exact: true })).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: "Agent-created work share", exact: true })).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: "Net delivery lift", exact: true })).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: "Review amplification", exact: true })).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: "Rework drag", exact: true })).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: "Test gap rate", exact: true })).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: "Revert + incident drag", exact: true })).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: "Top affected repos and teams", exact: true })).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: "Best-fit automation opportunities", exact: true })).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "AI-assisted work share", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Agent-created work share", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Net delivery lift", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Review amplification", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Rework drag", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Test gap rate", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Revert + incident drag", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Top affected repos and teams", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Best-fit automation opportunities", exact: true }),
+    ).toBeVisible();
 
     // Unknown attribution bucket must remain visible (data coverage transparency).
     await expect(dashboard.getByText("Unknown attribution")).toBeVisible();

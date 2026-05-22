@@ -113,9 +113,7 @@ describe("PlanManager", () => {
     await userEvent.click(screen.getByRole("button", { name: /create plan/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Unexpected token|Invalid prices JSON/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Unexpected token|Invalid prices JSON/i)).toBeInTheDocument();
     });
     expect(mockCreateBillingPlan).not.toHaveBeenCalled();
   });

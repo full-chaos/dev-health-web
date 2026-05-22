@@ -65,8 +65,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
     metrics: ["churn", "throughput"],
     influence: {
       lens: "Change and throughput pressure",
-      framing:
-        "Operating modes under change volume and delivery pace.",
+      framing: "Operating modes under change volume and delivery pace.",
       habits: [
         "Architectural evolution and system shifts",
         "Technical debt repayment cadence",
@@ -79,8 +78,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         "Is rework discovered early or late?",
         "Does change convert into durable progress?",
       ],
-      next:
-        "Next investigation: code and work heatmaps, flame diagrams, and metric explain views.",
+      next: "Next investigation: code and work heatmaps, flame diagrams, and metric explain views.",
       notes: [...SHARED_NOTES],
     },
     zones: [
@@ -140,8 +138,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
     metrics: ["cycle_time", "throughput"],
     influence: {
       lens: "Cycle time and throughput pressure",
-      framing:
-        "Operating modes where time in flight and delivery pace move together.",
+      framing: "Operating modes where time in flight and delivery pace move together.",
       habits: [
         "Requirement clarity and ready backlog",
         "Defect and rework rate",
@@ -154,8 +151,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         "Are defects or unclear requirements elongating cycles?",
         "Is delivery speed constrained by tooling or process?",
       ],
-      next:
-        "Next investigation: work heatmaps, flame diagrams, and metric explain views.",
+      next: "Next investigation: work heatmaps, flame diagrams, and metric explain views.",
       notes: [...SHARED_NOTES],
     },
     zones: [
@@ -215,8 +211,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
     metrics: ["wip", "throughput"],
     influence: {
       lens: "WIP and throughput pressure",
-      framing:
-        "Operating modes where work in flight and delivery pace move together.",
+      framing: "Operating modes where work in flight and delivery pace move together.",
       habits: [
         "Well-defined product intent",
         "Limited prototyping churn",
@@ -229,8 +224,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         "Are people context-switching due to unclear scope?",
         "Is prototyping bleeding into execution?",
       ],
-      next:
-        "Next investigation: work heatmaps, flame diagrams, and metric explain views.",
+      next: "Next investigation: work heatmaps, flame diagrams, and metric explain views.",
       notes: [...SHARED_NOTES],
     },
     zones: [
@@ -264,10 +258,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         description: "High WIP with lower throughput in the selected window.",
         levels: { wip: "high", throughput: "low" },
         signals: ["Context switching", "Prototype churn", "Blurred scope"],
-        investigations: [
-          "Are owners clear as load rises?",
-          "Is intake intentionally prioritized?",
-        ],
+        investigations: ["Are owners clear as load rises?", "Is intake intentionally prioritized?"],
         color: "rgba(244, 63, 94, 0.12)",
       },
       {
@@ -276,10 +267,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         description: "Low WIP with lower throughput in the selected window.",
         levels: { wip: "low", throughput: "low" },
         signals: ["Low WIP", "Blocked intake", "Light demand"],
-        investigations: [
-          "Is demand muted or undefined?",
-          "Are external dependencies gating flow?",
-        ],
+        investigations: ["Is demand muted or undefined?", "Are external dependencies gating flow?"],
         color: "rgba(249, 115, 22, 0.12)",
       },
     ],
@@ -290,8 +278,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
     metrics: ["review_load", "review_latency"],
     influence: {
       lens: "Review load and latency",
-      framing:
-        "Operating modes under review demand and turnaround.",
+      framing: "Operating modes under review demand and turnaround.",
       habits: [
         "Appropriately sized changes",
         "Review practices and expectations",
@@ -304,8 +291,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         "Is review load concentrated on a few people?",
         "Where does review load concentrate?",
       ],
-      next:
-        "Next investigation: review heatmaps, flame diagrams, and metric explain views.",
+      next: "Next investigation: review heatmaps, flame diagrams, and metric explain views.",
       notes: [
         ...SHARED_NOTES,
         "Patterns can surface at individual, team, or portfolio scope without comparison.",
@@ -330,10 +316,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         description: "High review load with short review latency in the selected window.",
         levels: { review_load: "high", review_latency: "low" },
         signals: ["Shared load", "Low latency", "High throughput"],
-        investigations: [
-          "Is review load fairly distributed?",
-          "Are SMEs scaling support?",
-        ],
+        investigations: ["Is review load fairly distributed?", "Are SMEs scaling support?"],
         color: "rgba(59, 130, 246, 0.12)",
       },
       {
@@ -354,10 +337,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
         description: "Low review load with long review latency in the selected window.",
         levels: { review_load: "low", review_latency: "high" },
         signals: ["Slow turnaround", "Light load", "Split attention"],
-        investigations: [
-          "Are reviews blocked by commitments?",
-          "Are expectations explicit?",
-        ],
+        investigations: ["Are reviews blocked by commitments?", "Are expectations explicit?"],
         color: "rgba(249, 115, 22, 0.12)",
       },
     ],
@@ -390,13 +370,8 @@ const percentileFromSorted = (sorted: number[], percentile: number) => {
   return lowerValue + (upperValue - lowerValue) * weight;
 };
 
-const buildAxisBands = (
-  points: QuadrantPoint[],
-  key: "x" | "y"
-): AxisBands | null => {
-  const values = points
-    .map((point) => point[key])
-    .filter((value) => Number.isFinite(value));
+const buildAxisBands = (points: QuadrantPoint[], key: "x" | "y"): AxisBands | null => {
+  const values = points.map((point) => point[key]).filter((value) => Number.isFinite(value));
   if (values.length < 2) {
     return null;
   }
@@ -420,7 +395,7 @@ const resolveQuadrantDefinition = (axes: QuadrantResponse["axes"]) => {
   const xMetric = normalizeMetric(axes.x.metric);
   const yMetric = normalizeMetric(axes.y.metric);
   const definition = QUADRANT_DEFINITIONS.find(
-    (item) => item.metrics.includes(xMetric) && item.metrics.includes(yMetric)
+    (item) => item.metrics.includes(xMetric) && item.metrics.includes(yMetric),
   );
   if (!definition) {
     return null;
@@ -431,9 +406,7 @@ const resolveQuadrantDefinition = (axes: QuadrantResponse["axes"]) => {
 export const getQuadrantDefinition = (axes: QuadrantResponse["axes"]) =>
   resolveQuadrantDefinition(axes)?.definition ?? null;
 
-export const getZoneOverlay = (
-  data: QuadrantResponse | null | undefined
-): ZoneOverlay | null => {
+export const getZoneOverlay = (data: QuadrantResponse | null | undefined): ZoneOverlay | null => {
   if (!data?.points?.length) {
     return null;
   }
@@ -448,8 +421,7 @@ export const getZoneOverlay = (
   }
 
   const { definition, xMetric, yMetric } = resolved;
-  const rangesByMetric: Record<string, { low: [number, number]; high: [number, number] }> =
-  {
+  const rangesByMetric: Record<string, { low: [number, number]; high: [number, number] }> = {
     [xMetric]: {
       low: [xBands.min, xBands.lowMax],
       high: [xBands.highMin, xBands.max],
@@ -487,14 +459,11 @@ export const getZoneOverlay = (
   };
 };
 
-export const findZoneMatches = (
-  overlay: ZoneOverlay,
-  point: QuadrantPoint
-): ZoneRegion[] =>
+export const findZoneMatches = (overlay: ZoneOverlay, point: QuadrantPoint): ZoneRegion[] =>
   overlay.zones.filter(
     (zone) =>
       point.x >= zone.xRange[0] &&
       point.x <= zone.xRange[1] &&
       point.y >= zone.yRange[0] &&
-      point.y <= zone.yRange[1]
+      point.y <= zone.yRange[1],
   );

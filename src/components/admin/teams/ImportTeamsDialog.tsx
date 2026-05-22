@@ -58,7 +58,7 @@ export function ImportTeamsDialog() {
   const handleDiscover = (provider: string) => {
     setSelectedProvider(provider);
     setStep("discovering");
-    
+
     startTransition(async () => {
       try {
         const result = await discoverTeams(provider);
@@ -67,7 +67,7 @@ export function ImportTeamsDialog() {
           setStep("provider");
         } else if (result.data) {
           setDiscoveredTeams(result.data.teams);
-          setSelectedTeams(new Set(result.data.teams.map(t => t.provider_team_id)));
+          setSelectedTeams(new Set(result.data.teams.map((t) => t.provider_team_id)));
           setStep("select");
         }
       } catch {
@@ -79,10 +79,10 @@ export function ImportTeamsDialog() {
 
   const handleImport = () => {
     if (selectedTeams.size === 0) return;
-    
+
     setStep("importing");
-    const teamsToImport = discoveredTeams.filter(t => selectedTeams.has(t.provider_team_id));
-    
+    const teamsToImport = discoveredTeams.filter((t) => selectedTeams.has(t.provider_team_id));
+
     startTransition(async () => {
       try {
         const result = await importTeams(teamsToImport, onConflict);
@@ -115,7 +115,7 @@ export function ImportTeamsDialog() {
     if (selectedTeams.size === discoveredTeams.length) {
       setSelectedTeams(new Set());
     } else {
-      setSelectedTeams(new Set(discoveredTeams.map(t => t.provider_team_id)));
+      setSelectedTeams(new Set(discoveredTeams.map((t) => t.provider_team_id)));
     }
   };
 
@@ -165,7 +165,9 @@ export function ImportTeamsDialog() {
           {step === "discovering" && (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-(--accent) border-t-transparent" />
-              <p className="mt-4 text-(--ink-muted)">Discovering teams from {selectedProvider}...</p>
+              <p className="mt-4 text-(--ink-muted)">
+                Discovering teams from {selectedProvider}...
+              </p>
             </div>
           )}
 
@@ -180,11 +182,9 @@ export function ImportTeamsDialog() {
                   >
                     {selectedTeams.size === discoveredTeams.length ? "Deselect All" : "Select All"}
                   </button>
-                  <span className="text-sm text-(--ink-muted)">
-                    {selectedTeams.size} selected
-                  </span>
+                  <span className="text-sm text-(--ink-muted)">{selectedTeams.size} selected</span>
                 </div>
-                
+
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-(--ink-muted)">Conflict strategy:</span>
                   <select
@@ -200,9 +200,7 @@ export function ImportTeamsDialog() {
 
               <div className="max-h-[400px] overflow-y-auto rounded-lg border border-(--card-stroke)">
                 {discoveredTeams.length === 0 ? (
-                  <div className="p-8 text-center text-(--ink-muted)">
-                    No teams found.
-                  </div>
+                  <div className="p-8 text-center text-(--ink-muted)">No teams found.</div>
                 ) : (
                   <table className="w-full text-left text-sm">
                     <thead className="bg-(--card-80) text-(--ink-muted)">
@@ -210,7 +208,10 @@ export function ImportTeamsDialog() {
                         <th className="w-10 p-3">
                           <input
                             type="checkbox"
-                            checked={selectedTeams.size === discoveredTeams.length && discoveredTeams.length > 0}
+                            checked={
+                              selectedTeams.size === discoveredTeams.length &&
+                              discoveredTeams.length > 0
+                            }
                             onChange={toggleAll}
                             className="cursor-pointer rounded border-(--card-stroke) bg-(--card) text-(--accent) focus:ring-(--accent)"
                           />
@@ -222,8 +223,8 @@ export function ImportTeamsDialog() {
                     </thead>
                     <tbody className="divide-y divide-(--card-stroke)">
                       {discoveredTeams.map((team) => (
-                        <tr 
-                          key={team.provider_team_id} 
+                        <tr
+                          key={team.provider_team_id}
                           className="hover:bg-(--card-80)/50 cursor-pointer"
                           onClick={() => toggleTeam(team.provider_team_id)}
                         >
@@ -281,7 +282,7 @@ export function ImportTeamsDialog() {
                   Successfully processed {selectedTeams.size} teams.
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-4 rounded-lg border border-(--card-stroke) bg-(--card-80) p-4">
                 <div>
                   <div className="text-2xl font-bold text-foreground">{importResult.imported}</div>

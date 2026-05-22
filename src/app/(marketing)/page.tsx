@@ -7,7 +7,18 @@ const FEATURES = [
     description:
       "Automatically categorize work into Feature Delivery, Maintenance, Operational Support, Quality, and Risk — so you can see the real allocation, not what was planned.",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
         <path d="M22 12A10 10 0 0 0 12 2v10z" />
       </svg>
@@ -19,7 +30,18 @@ const FEATURES = [
     description:
       "Track cycle time, review latency, WIP saturation, and throughput — the signals that reveal coordination debt before it becomes a crisis.",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
       </svg>
     ),
@@ -30,7 +52,18 @@ const FEATURES = [
     description:
       "Deploy frequency, lead time, change failure rate, and recovery time — the four keys to software delivery performance, computed automatically from your existing tools.",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <path d="m3 11 18-5v12L3 13v-2z" />
         <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
       </svg>
@@ -42,7 +75,18 @@ const FEATURES = [
     description:
       "Churn × Throughput, Cycle Time × Throughput, WIP × Throughput, Review Load × Latency — four diagnostic views that surface problems before they surface in retros.",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <rect width="18" height="18" x="3" y="3" rx="2" />
         <path d="M3 12h18" />
         <path d="M12 3v18" />
@@ -55,7 +99,18 @@ const FEATURES = [
     description:
       "After-hours work ratio, weekend commits, context-switching patterns — signals that help engineering leaders intervene before burnout takes hold.",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
       </svg>
     ),
@@ -67,7 +122,7 @@ const STEPS = [
     number: "01",
     title: "Connect your tools",
     description:
-        "Point Full Chaos Dev Health at your GitHub, GitLab, or Jira instance. Connectors pull commits, PRs, deployments, and work items automatically.",
+      "Point Full Chaos Dev Health at your GitHub, GitLab, or Jira instance. Connectors pull commits, PRs, deployments, and work items automatically.",
   },
   {
     number: "02",
@@ -124,13 +179,12 @@ export default function MarketingPage() {
             Engineering effort analytics
           </p>
           <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
-            Where is your engineering effort{" "}
-            <span className="text-(--accent)">actually</span> going?
+            Where is your engineering effort <span className="text-(--accent)">actually</span>{" "}
+            going?
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
-            Full Chaos Dev Health is an open-source analytics platform for team operating
-            modes and developer health. See where effort is invested and what
-            it costs your people.
+            Full Chaos Dev Health is an open-source analytics platform for team operating modes and
+            developer health. See where effort is invested and what it costs your people.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
@@ -167,9 +221,7 @@ export default function MarketingPage() {
                   key={tab}
                   className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4"
                 >
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-                    {tab}
-                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">{tab}</p>
                   <div className="mt-3 flex items-end gap-1">
                     {Array.from({ length: 7 }).map((_, i) => (
                       <div
@@ -191,16 +243,13 @@ export default function MarketingPage() {
       {/* Features */}
       <section id="features" className="mx-auto max-w-7xl px-6 pb-24">
         <div className="text-center">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Capabilities
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Capabilities</p>
           <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
             Signals, not surveillance
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
-            Every metric traces to evidence. Every insight is a hypothesis
-            starter, not a verdict. Trends over absolutes — direction matters
-            more than point values.
+            Every metric traces to evidence. Every insight is a hypothesis starter, not a verdict.
+            Trends over absolutes — direction matters more than point values.
           </p>
         </div>
 
@@ -218,9 +267,7 @@ export default function MarketingPage() {
                   {feature.label}
                 </p>
               </div>
-              <h3 className="mt-4 font-(--font-display) text-lg">
-                {feature.title}
-              </h3>
+              <h3 className="mt-4 font-(--font-display) text-lg">{feature.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
                 {feature.description}
               </p>
@@ -232,9 +279,7 @@ export default function MarketingPage() {
       {/* How it works */}
       <section id="how-it-works" className="mx-auto max-w-7xl px-6 pb-24">
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            How it works
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">How it works</p>
           <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
             From zero to insights in minutes
           </h2>
@@ -249,9 +294,7 @@ export default function MarketingPage() {
                   <span className="font-(--font-mono) text-3xl font-semibold text-(--accent)/30">
                     {step.number}
                   </span>
-                  <h3 className="mt-3 font-(--font-display) text-lg">
-                    {step.title}
-                  </h3>
+                  <h3 className="mt-3 font-(--font-display) text-lg">{step.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
                     {step.description}
                   </p>
@@ -272,8 +315,8 @@ export default function MarketingPage() {
             One platform, four perspectives
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
-            The cockpit adapts to your role — surfacing the metrics and
-            investigation paths that matter most to you.
+            The cockpit adapts to your role — surfacing the metrics and investigation paths that
+            matter most to you.
           </p>
         </div>
 
@@ -291,9 +334,7 @@ export default function MarketingPage() {
                   {persona.focus}
                 </span>
               </div>
-              <h3 className="mt-4 font-(--font-display) text-lg">
-                {persona.role}
-              </h3>
+              <h3 className="mt-4 font-(--font-display) text-lg">{persona.role}</h3>
               <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
                 {persona.description}
               </p>
@@ -305,16 +346,13 @@ export default function MarketingPage() {
       {/* CTA */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Open source
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Open source</p>
           <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
             Built in the open, for everyone
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-sm text-(--ink-muted)">
-            Full Chaos Dev Health is fully open source. Deploy it on your infrastructure,
-            audit every metric computation, and contribute to the roadmap.
-            Accessibility over extraction.
+            Full Chaos Dev Health is fully open source. Deploy it on your infrastructure, audit
+            every metric computation, and contribute to the roadmap. Accessibility over extraction.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link

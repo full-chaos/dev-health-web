@@ -36,17 +36,13 @@ describe("PreferencesSettings", () => {
   it("shows the infinity knot palette in preferences", () => {
     render(<PreferencesSettings />);
 
-    expect(
-      screen.getByRole("button", { name: "Infinity Knot" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Infinity Knot" })).toBeInTheDocument();
   });
 
   it("shows the infinity knot redux palette in preferences", () => {
     render(<PreferencesSettings />);
 
-    expect(
-      screen.getByRole("button", { name: "Infinity Knot Redux" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Infinity Knot Redux" })).toBeInTheDocument();
   });
 
   it("applies the infinity knot palette from preferences", async () => {

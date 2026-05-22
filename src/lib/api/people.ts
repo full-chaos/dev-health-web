@@ -10,7 +10,7 @@ export async function searchPeople(query: string, limit = 20) {
   return apiClient.getJson<PeopleSearchResult[]>(
     "/api/v1/people",
     { q: query, limit },
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 }
 
@@ -25,7 +25,7 @@ export async function getPersonSummary(params: {
       range_days: params.range_days,
       compare_days: params.compare_days,
     },
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 }
 
@@ -42,7 +42,7 @@ export async function getPersonMetric(params: {
       range_days: params.range_days,
       compare_days: params.compare_days,
     },
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 }
 
@@ -64,6 +64,6 @@ export async function getPersonDrilldown(params: {
       range_days: params.range_days ?? "",
       compare_days: params.compare_days ?? "",
     },
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 }

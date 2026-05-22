@@ -11,11 +11,9 @@ vi.mock("@/lib/graphql/hooks/useSecurity", () => ({
 }));
 
 vi.mock("./SecurityAlertRow", () => ({
-  SecurityAlertRow: ({
-    alert,
-  }: {
-    alert: { alertId: string; title?: string };
-  }) => <div data-testid="alert-row">{alert.title ?? alert.alertId}</div>,
+  SecurityAlertRow: ({ alert }: { alert: { alertId: string; title?: string } }) => (
+    <div data-testid="alert-row">{alert.title ?? alert.alertId}</div>
+  ),
 }));
 
 import { SecurityAlertQueue } from "./SecurityAlertQueue";

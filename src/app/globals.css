@@ -40,13 +40,12 @@
   --chart-color-8: #fb8c00;
   --chart-color-9: #f4511e;
   --chart-color-10: #e53935;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #ffffff 0%,
-    #f2edf8 45%,
-    #eaddff 100%
+  --hero-gradient: radial-gradient(circle_at_top, #ffffff 0%, #f2edf8 45%, #eaddff 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 10% 0%,
+    color-mix(in srgb, var(--accent) 4%, var(--background)) 0%,
+    var(--background) 60%
   );
-  --app-gradient: radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--accent) 4%, var(--background)) 0%, var(--background) 60%);
 }
 
 /* ============================================================
@@ -75,13 +74,12 @@
     --chart-color-8: #ffcc80;
     --chart-color-9: #ffab91;
     --chart-color-10: #ef9a9a;
-    --hero-gradient: radial-gradient(
-      circle_at_top,
-      #2a2831 0%,
-      #1c1b1f 45%,
-      #15131a 100%
+    --hero-gradient: radial-gradient(circle_at_top, #2a2831 0%, #1c1b1f 45%, #15131a 100%);
+    --app-gradient: radial-gradient(
+      ellipse at 50% -10%,
+      color-mix(in srgb, var(--accent) 6%, var(--background)) 0%,
+      var(--background) 50%
     );
-    --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 6%, var(--background)) 0%, var(--background) 50%);
   }
 }
 
@@ -110,13 +108,12 @@
   --chart-color-8: #fb8c00;
   --chart-color-9: #f4511e;
   --chart-color-10: #e53935;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #ffffff 0%,
-    #f2edf8 45%,
-    #eaddff 100%
+  --hero-gradient: radial-gradient(circle_at_top, #ffffff 0%, #f2edf8 45%, #eaddff 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 10% 0%,
+    color-mix(in srgb, var(--accent) 4%, var(--background)) 0%,
+    var(--background) 60%
   );
-  --app-gradient: radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--accent) 4%, var(--background)) 0%, var(--background) 60%);
 }
 
 :root[data-palette="material"][data-theme="dark"] {
@@ -141,13 +138,12 @@
   --chart-color-8: #ffcc80;
   --chart-color-9: #ffab91;
   --chart-color-10: #ef9a9a;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #2a2831 0%,
-    #1c1b1f 45%,
-    #15131a 100%
+  --hero-gradient: radial-gradient(circle_at_top, #2a2831 0%, #1c1b1f 45%, #15131a 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 50% -10%,
+    color-mix(in srgb, var(--accent) 6%, var(--background)) 0%,
+    var(--background) 50%
   );
-  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 6%, var(--background)) 0%, var(--background) 50%);
 }
 
 /* ============================================================
@@ -176,13 +172,12 @@
   --chart-color-8: #f472b6;
   --chart-color-9: #a78bfa;
   --chart-color-10: #60a5fa;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #ffffff 0%,
-    #f1f5f9 45%,
-    #e2e8f0 100%
+  --hero-gradient: radial-gradient(circle_at_top, #ffffff 0%, #f1f5f9 45%, #e2e8f0 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 10% 0%,
+    color-mix(in srgb, var(--accent) 4%, var(--background)) 0%,
+    var(--background) 60%
   );
-  --app-gradient: radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--accent) 4%, var(--background)) 0%, var(--background) 60%);
 }
 
 :root[data-palette="echarts"][data-theme="dark"] {
@@ -207,13 +202,12 @@
   --chart-color-8: #f472b6;
   --chart-color-9: #a78bfa;
   --chart-color-10: #60a5fa;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #1e293b 0%,
-    #0f172a 45%,
-    #0b1120 100%
+  --hero-gradient: radial-gradient(circle_at_top, #1e293b 0%, #0f172a 45%, #0b1120 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 50% -10%,
+    color-mix(in srgb, var(--accent) 6%, var(--background)) 0%,
+    var(--background) 50%
   );
-  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 6%, var(--background)) 0%, var(--background) 50%);
 }
 
 /* ============================================================
@@ -244,13 +238,12 @@
   --chart-color-8: #7f7f7f;
   --chart-color-9: #bcbd22;
   --chart-color-10: #17becf;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #ffffff 0%,
-    #f1f5f9 45%,
-    #e2e8f0 100%
+  --hero-gradient: radial-gradient(circle_at_top, #ffffff 0%, #f1f5f9 45%, #e2e8f0 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 10% 0%,
+    color-mix(in srgb, var(--accent) 4%, var(--background)) 0%,
+    var(--background) 60%
   );
-  --app-gradient: radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--accent) 4%, var(--background)) 0%, var(--background) 60%);
 }
 
 :root[data-palette="fullchaos"][data-theme="dark"] {
@@ -275,13 +268,12 @@
   --chart-color-8: #7f7f7f;
   --chart-color-9: #bcbd22;
   --chart-color-10: #17becf;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #1e293b 0%,
-    #0f172a 45%,
-    #0b1120 100%
+  --hero-gradient: radial-gradient(circle_at_top, #1e293b 0%, #0f172a 45%, #0b1120 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 50% -10%,
+    color-mix(in srgb, var(--accent) 6%, var(--background)) 0%,
+    var(--background) 50%
   );
-  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 6%, var(--background)) 0%, var(--background) 50%);
 }
 
 /* ============================================================
@@ -317,7 +309,11 @@
     #63d7ff 60%,
     #090b1d 100%
   );
-  --app-gradient: radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--accent) 4%, var(--background)) 0%, var(--background) 60%);
+  --app-gradient: radial-gradient(
+    ellipse at 10% 0%,
+    color-mix(in srgb, var(--accent) 4%, var(--background)) 0%,
+    var(--background) 60%
+  );
 }
 
 :root[data-palette="fullchaos-cosmic-train"][data-theme="dark"] {
@@ -349,7 +345,11 @@
     #63d7ff 60%,
     #090b1d 100%
   );
-  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 6%, var(--background)) 0%, var(--background) 50%);
+  --app-gradient: radial-gradient(
+    ellipse at 50% -10%,
+    color-mix(in srgb, var(--accent) 6%, var(--background)) 0%,
+    var(--background) 50%
+  );
 }
 
 /* ============================================================
@@ -386,7 +386,12 @@
     #14bdd6 70%,
     #131722 100%
   );
-  --app-gradient: radial-gradient(ellipse at 14% 0%, color-mix(in srgb, var(--accent) 8%, var(--background)) 0%, color-mix(in srgb, var(--accent-2) 4%, var(--background)) 38%, var(--background) 72%);
+  --app-gradient: radial-gradient(
+    ellipse at 14% 0%,
+    color-mix(in srgb, var(--accent) 8%, var(--background)) 0%,
+    color-mix(in srgb, var(--accent-2) 4%, var(--background)) 38%,
+    var(--background) 72%
+  );
 }
 
 :root[data-palette="fullchaos-infinity-knot"][data-theme="dark"] {
@@ -418,7 +423,12 @@
     #22d3ee 58%,
     #101722 100%
   );
-  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 10%, var(--background)) 0%, color-mix(in srgb, var(--accent-2) 6%, var(--background)) 36%, var(--background) 68%);
+  --app-gradient: radial-gradient(
+    ellipse at 50% -10%,
+    color-mix(in srgb, var(--accent) 10%, var(--background)) 0%,
+    color-mix(in srgb, var(--accent-2) 6%, var(--background)) 36%,
+    var(--background) 68%
+  );
 }
 
 /* ============================================================
@@ -461,7 +471,12 @@
     #0ea5c9 72%,
     #0d1117 100%
   );
-  --app-gradient: radial-gradient(ellipse at 14% 0%, color-mix(in srgb, var(--accent) 8%, var(--background)) 0%, color-mix(in srgb, var(--accent-2) 4%, var(--background)) 38%, var(--background) 72%);
+  --app-gradient: radial-gradient(
+    ellipse at 14% 0%,
+    color-mix(in srgb, var(--accent) 8%, var(--background)) 0%,
+    color-mix(in srgb, var(--accent-2) 4%, var(--background)) 38%,
+    var(--background) 72%
+  );
 }
 
 :root[data-palette="fullchaos-infinity-knot-redux"][data-theme="dark"] {
@@ -494,7 +509,12 @@
     #22d3ee 65%,
     #0d1117 100%
   );
-  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 10%, var(--background)) 0%, color-mix(in srgb, var(--accent-2) 6%, var(--background)) 36%, var(--background) 68%);
+  --app-gradient: radial-gradient(
+    ellipse at 50% -10%,
+    color-mix(in srgb, var(--accent) 10%, var(--background)) 0%,
+    color-mix(in srgb, var(--accent-2) 6%, var(--background)) 36%,
+    var(--background) 68%
+  );
 }
 
 /* ============================================================
@@ -522,13 +542,12 @@
   --chart-color-8: #95a5a6;
   --chart-color-9: #16a085;
   --chart-color-10: #2980b9;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #ffffff 0%,
-    #e8edf0 45%,
-    #dde3e7 100%
+  --hero-gradient: radial-gradient(circle_at_top, #ffffff 0%, #e8edf0 45%, #dde3e7 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 10% 0%,
+    color-mix(in srgb, var(--accent) 4%, var(--background)) 0%,
+    var(--background) 60%
   );
-  --app-gradient: radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--accent) 4%, var(--background)) 0%, var(--background) 60%);
 }
 
 :root[data-palette="flat"][data-theme="dark"] {
@@ -553,13 +572,12 @@
   --chart-color-8: #95a5a6;
   --chart-color-9: #16a085;
   --chart-color-10: #2980b9;
-  --hero-gradient: radial-gradient(
-    circle_at_top,
-    #3a5167 0%,
-    #2c3e50 45%,
-    #243240 100%
+  --hero-gradient: radial-gradient(circle_at_top, #3a5167 0%, #2c3e50 45%, #243240 100%);
+  --app-gradient: radial-gradient(
+    ellipse at 50% -10%,
+    color-mix(in srgb, var(--accent) 6%, var(--background)) 0%,
+    var(--background) 50%
   );
-  --app-gradient: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 6%, var(--background)) 0%, var(--background) 50%);
 }
 
 /* ============================================================
@@ -601,8 +619,14 @@ body {
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-up {

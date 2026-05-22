@@ -71,7 +71,12 @@ const navGroups: NavGroup[] = [
     placement: "main",
     items: [
       { id: "home", label: "Home", href: "/dashboard", description: "Overview" },
-      { id: "operating-review", label: "Operating Review", href: "/operating-review", description: "Weekly" },
+      {
+        id: "operating-review",
+        label: "Operating Review",
+        href: "/operating-review",
+        description: "Weekly",
+      },
     ],
   },
   {
@@ -83,7 +88,12 @@ const navGroups: NavGroup[] = [
       { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Trends" },
       { id: "people", label: "People", href: "/people", description: "Individual" },
       { id: "landscape", label: "Landscape", href: "/explore/landscape", description: "Quadrants" },
-      { id: "capacity-planning", label: "Capacity Planning", href: "/capacity-planning", description: "Forecast" },
+      {
+        id: "capacity-planning",
+        label: "Capacity Planning",
+        href: "/capacity-planning",
+        description: "Forecast",
+      },
       { id: "ai-impact", label: "AI Impact", href: "/ai/impact", description: "Leverage" },
     ],
   },
@@ -92,14 +102,39 @@ const navGroups: NavGroup[] = [
     label: "Spot Pressure Early",
     placement: "main",
     items: [
-      { id: "cognitive-load", label: "Cognitive Load", href: "/cognitive-load", description: "Focus" },
+      {
+        id: "cognitive-load",
+        label: "Cognitive Load",
+        href: "/cognitive-load",
+        description: "Focus",
+      },
       { id: "bottleneck", label: "Bottlenecks", href: "/bottleneck", description: "WIP + review" },
-      { id: "ai-review-load", label: "Review Load", href: "/ai/review-load", description: "Pressure" },
+      {
+        id: "ai-review-load",
+        label: "Review Load",
+        href: "/ai/review-load",
+        description: "Pressure",
+      },
       { id: "code", label: "Code", href: "/code", description: "Ownership" },
       { id: "complexity", label: "Complexity", href: "/complexity", description: "Hotspots" },
-      { id: "risk-compounding", label: "Compounding Risk", href: "/risk/compounding", description: "Composite" },
-      { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
-      { id: "ai-opportunities", label: "Automations", href: "/ai/automations", description: "Candidates" },
+      {
+        id: "risk-compounding",
+        label: "Compounding Risk",
+        href: "/risk/compounding",
+        description: "Composite",
+      },
+      {
+        id: "opportunities",
+        label: "Opportunities",
+        href: "/opportunities",
+        description: "Threads",
+      },
+      {
+        id: "ai-opportunities",
+        label: "Automations",
+        href: "/ai/automations",
+        description: "Candidates",
+      },
     ],
   },
   {
@@ -113,7 +148,12 @@ const navGroups: NavGroup[] = [
       { id: "quality", label: "Quality", href: "/quality", description: "Reliability" },
       { id: "coverage", label: "Coverage", href: "/testops/coverage", description: "Quality" },
       { id: "risk", label: "Delivery Risk", href: "/testops/risk", description: "Confidence" },
-      { id: "incident-correlation", label: "Incident Correlation", href: "/incident-correlation", description: "Change failure" },
+      {
+        id: "incident-correlation",
+        label: "Incident Correlation",
+        href: "/incident-correlation",
+        description: "Change failure",
+      },
       { id: "security", label: "Security", href: "/security", description: "Alerts" },
       { id: "feature-flags", label: "Feature Flags", href: "/feature-flags", description: "Flags" },
       { id: "ai-risk", label: "AI Risk", href: "/ai/risk", description: "Quality" },
@@ -124,17 +164,13 @@ const navGroups: NavGroup[] = [
     id: "reports",
     label: "Reports",
     placement: "utility",
-    items: [
-      { id: "reports", label: "Report Center", href: "/reports", description: "AI Reports" },
-    ],
+    items: [{ id: "reports", label: "Report Center", href: "/reports", description: "AI Reports" }],
   },
   {
     id: "admin",
     label: "Admin",
     placement: "utility",
-    items: [
-      { id: "admin", label: "Settings", href: "/admin", description: "Settings" },
-    ],
+    items: [{ id: "admin", label: "Settings", href: "/admin", description: "Settings" }],
   },
 ];
 
@@ -152,7 +188,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
   const collapsed = useSyncExternalStore(
     subscribeToStorage,
     getCollapsedState,
-    () => EMPTY_COLLAPSED
+    () => EMPTY_COLLAPSED,
   );
 
   useEffect(() => {
@@ -171,16 +207,13 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
    * state so the stored value always reflects the user's intent, even when
    * the group was previously using a smart default.
    */
-  const toggleGroup = useCallback(
-    (groupId: string, currentlyCollapsed: boolean) => {
-      const current = getCollapsedState();
-      const next = { ...current, [groupId]: !currentlyCollapsed };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      // Trigger storage event for useSyncExternalStore
-      window.dispatchEvent(new Event("storage"));
-    },
-    []
-  );
+  const toggleGroup = useCallback((groupId: string, currentlyCollapsed: boolean) => {
+    const current = getCollapsedState();
+    const next = { ...current, [groupId]: !currentlyCollapsed };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    // Trigger storage event for useSyncExternalStore
+    window.dispatchEvent(new Event("storage"));
+  }, []);
 
   /**
    * Determine whether a group should be shown as collapsed.
@@ -191,11 +224,10 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     (group: NavGroup): boolean => {
       if (group.id in collapsed) return collapsed[group.id];
       // Smart default: expand cockpit and the active-route group
-      const isDefaultExpanded =
-        group.id === "cockpit" || groupContainsPath(group, pathname);
+      const isDefaultExpanded = group.id === "cockpit" || groupContainsPath(group, pathname);
       return !isDefaultExpanded;
     },
-    [collapsed, pathname]
+    [collapsed, pathname],
   );
 
   const mainGroups = navGroups.filter((g) => g.placement === "main");
@@ -234,11 +266,8 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
           {group.items.map((item) => {
             const [itemPath, itemHash] = item.href.split("#", 2);
             const hashMatchesItem =
-              Boolean(itemHash) &&
-              pathname === itemPath &&
-              hash === `#${itemHash}`;
-            const pageMatchesItem =
-              active === item.id && !(hash && pathname === itemPath);
+              Boolean(itemHash) && pathname === itemPath && hash === `#${itemHash}`;
+            const pageMatchesItem = active === item.id && !(hash && pathname === itemPath);
             const isActive = hashMatchesItem || pageMatchesItem;
             return (
               <Link

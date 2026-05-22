@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
             Enter your email and we&apos;ll send you a reset link
           </p>
         </div>
-        
+
         <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
           <ForgotPasswordForm />
         </div>

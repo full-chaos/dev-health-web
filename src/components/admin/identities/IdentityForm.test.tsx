@@ -104,7 +104,12 @@ describe("IdentityForm", () => {
     };
 
     render(
-      <IdentityForm teams={mockTeams} initialData={initialData} onSubmit={mockOnSubmit} isEditing />
+      <IdentityForm
+        teams={mockTeams}
+        initialData={initialData}
+        onSubmit={mockOnSubmit}
+        isEditing
+      />,
     );
 
     expect(screen.getByLabelText("Canonical ID")).toBeDisabled();

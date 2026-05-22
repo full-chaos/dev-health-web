@@ -14,7 +14,13 @@ import { ToolbarActions } from "./sections/ToolbarActions";
 export { resolveVisibility } from "./filterBarConfig";
 export type { FilterBarView } from "./filterBarConfig";
 
-export function FilterBarClient({ condensed, view, tab, resolvedVisibility, resolvedScopeLock }: FilterBarClientProps) {
+export function FilterBarClient({
+  condensed,
+  view,
+  tab,
+  resolvedVisibility,
+  resolvedScopeLock,
+}: FilterBarClientProps) {
   const {
     allowAdvanced,
     artifacts,

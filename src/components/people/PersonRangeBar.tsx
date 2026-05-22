@@ -28,11 +28,7 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const isClient = useSyncExternalStore(
-    subscribe,
-    getIsClientSnapshot,
-    getServerSnapshot,
-  );
+  const isClient = useSyncExternalStore(subscribe, getIsClientSnapshot, getServerSnapshot);
 
   const rangeParam = Number(searchParams.get("range_days") ?? rangeDays);
   const range = Number.isFinite(rangeParam) && rangeParam > 0 ? rangeParam : 14;
@@ -44,9 +40,7 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
   const parsedStart = startDateParam ? parseDateInput(startDateParam) : null;
   const parsedEnd = endDateParam ? parseDateInput(endDateParam) : null;
   const resolvedEnd = toLocalDate(parsedEnd ?? today);
-  const resolvedStart = toLocalDate(
-    parsedStart ?? addDays(resolvedEnd, -(range - 1))
-  );
+  const resolvedStart = toLocalDate(parsedStart ?? addDays(resolvedEnd, -(range - 1)));
   const startDate = resolvedStart > resolvedEnd ? resolvedEnd : resolvedStart;
   const endDate = resolvedStart > resolvedEnd ? resolvedStart : resolvedEnd;
 
@@ -64,12 +58,8 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
     <section className="rounded-3xl border border-(--card-stroke) bg-(--card-90) p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            Date range
-          </p>
-          <p className="mt-1 text-sm text-(--ink-muted)">
-            Applies to this individual only.
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Date range</p>
+          <p className="mt-1 text-sm text-(--ink-muted)">Applies to this individual only.</p>
         </div>
       </div>
       {isClient ? (

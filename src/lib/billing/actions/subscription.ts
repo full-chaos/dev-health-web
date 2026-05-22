@@ -150,7 +150,9 @@ export async function getSubscriptionHistory(
     if (orgResult.data) {
       params.set("org_id", orgResult.data);
     }
-    return apiRequest<SubscriptionHistoryResponse>(`/api/v1/billing/subscriptions/history?${params.toString()}`);
+    return apiRequest<SubscriptionHistoryResponse>(
+      `/api/v1/billing/subscriptions/history?${params.toString()}`,
+    );
   });
 }
 

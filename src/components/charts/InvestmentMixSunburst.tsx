@@ -62,12 +62,12 @@ export function InvestmentMixSunburst({
         .map(([key, value]) => ({ key, value: typeof value === "number" ? value : 0 }))
         .filter((entry) => entry.value > 0)
         .sort((a, b) => b.value - a.value),
-    [themeDistribution]
+    [themeDistribution],
   );
 
   const totalValue = useMemo(
     () => sortedThemes.reduce((sum, entry) => sum + entry.value, 0),
-    [sortedThemes]
+    [sortedThemes],
   );
 
   const legendValueByName = useMemo(() => {
@@ -99,22 +99,22 @@ export function InvestmentMixSunburst({
         focusedTheme && focusedTheme !== theme.key
           ? undefined
           : subEntries
-            .filter((entry) => entry.key.startsWith(`${theme.key}.`))
-            .sort((a, b) => b.value - a.value)
-            .map((entry, idx) => {
-              const childOpacity = evidenceQualityDistribution?.[entry.key];
-              return {
-                name: formatSubcategoryLabel(entry.key, true),
-                value: entry.value,
-                itemStyle: {
-                  color: adjustHex(baseColor, 18 + (idx % 3) * 10),
-                  opacity: typeof childOpacity === "number" ? childOpacity : undefined,
-                },
-                nodeType: "subcategory",
-                themeKey: theme.key,
-                subcategoryKey: entry.key,
-              };
-            });
+              .filter((entry) => entry.key.startsWith(`${theme.key}.`))
+              .sort((a, b) => b.value - a.value)
+              .map((entry, idx) => {
+                const childOpacity = evidenceQualityDistribution?.[entry.key];
+                return {
+                  name: formatSubcategoryLabel(entry.key, true),
+                  value: entry.value,
+                  itemStyle: {
+                    color: adjustHex(baseColor, 18 + (idx % 3) * 10),
+                    opacity: typeof childOpacity === "number" ? childOpacity : undefined,
+                  },
+                  nodeType: "subcategory",
+                  themeKey: theme.key,
+                  subcategoryKey: entry.key,
+                };
+              });
 
       return {
         name: themeLabel,
@@ -144,8 +144,7 @@ export function InvestmentMixSunburst({
       const node = entry.data ?? {};
       const nodeType = typeof node.nodeType === "string" ? node.nodeType : "";
       const themeKey = typeof node.themeKey === "string" ? node.themeKey : "";
-      const subcategoryKey =
-        typeof node.subcategoryKey === "string" ? node.subcategoryKey : "";
+      const subcategoryKey = typeof node.subcategoryKey === "string" ? node.subcategoryKey : "";
 
       if (nodeType === "theme" && themeKey && onThemeClick) {
         onThemeClick(themeKey);
@@ -154,7 +153,7 @@ export function InvestmentMixSunburst({
         onSubcategoryClick(subcategoryKey);
       }
     },
-    [onSubcategoryClick, onThemeClick]
+    [onSubcategoryClick, onThemeClick],
   );
 
   const option = useMemo(
@@ -172,8 +171,7 @@ export function InvestmentMixSunburst({
           const node = entry.data ?? {};
           const nodeType = typeof node.nodeType === "string" ? node.nodeType : "";
           const themeKey = typeof node.themeKey === "string" ? node.themeKey : "";
-          const subcategoryKey =
-            typeof node.subcategoryKey === "string" ? node.subcategoryKey : "";
+          const subcategoryKey = typeof node.subcategoryKey === "string" ? node.subcategoryKey : "";
           const value = typeof node.value === "number" ? node.value : 0;
           const percent = calcPercent(value, totalValue);
 
@@ -269,7 +267,7 @@ export function InvestmentMixSunburst({
         },
       ],
     }),
-    [chartTheme, data, legendValueByName, totalValue, unit]
+    [chartTheme, data, legendValueByName, totalValue, unit],
   );
 
   return (

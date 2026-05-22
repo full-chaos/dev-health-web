@@ -15,26 +15,12 @@ import { getMetricLabel } from "@/lib/metrics/catalog";
 
 const getItemTitle = (item: Record<string, unknown>, index: number) => {
   const title =
-    item.title ??
-    item.name ??
-    item.work_item_id ??
-    item.number ??
-    item.id ??
-    `Item ${index + 1}`;
+    item.title ?? item.name ?? item.work_item_id ?? item.number ?? item.id ?? `Item ${index + 1}`;
   return String(title);
 };
 
-const getItemHref = (
-  item: Record<string, unknown>,
-  fallback: string
-) => {
-  const candidates = [
-    item.url,
-    item.link,
-    item.html_url,
-    item.web_url,
-    item.api_url,
-  ];
+const getItemHref = (item: Record<string, unknown>, fallback: string) => {
+  const candidates = [item.url, item.link, item.html_url, item.web_url, item.api_url];
   for (const candidate of candidates) {
     if (typeof candidate === "string" && candidate.length) {
       return candidate;
@@ -53,9 +39,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const metric = (params.metric as string) ?? "cycle_time";
   const apiParam = (Array.isArray(params.api) ? params.api[0] : params.api) ?? "";
@@ -77,11 +61,8 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
   if (endpoint === "/api/v1/drilldown/prs" || endpoint === "/api/v1/drilldown/issues") {
     view = "drilldown";
     dataPromise = fetchOrNull(
-      getDrilldown(
-        endpoint as "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues",
-        filters
-      ),
-      `explore/drilldown-${endpoint}`
+      getDrilldown(endpoint as "/api/v1/drilldown/prs" | "/api/v1/drilldown/issues", filters),
+      `explore/drilldown-${endpoint}`,
     );
   } else if (endpoint === "/api/v1/home") {
     view = "home";
@@ -90,7 +71,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     view = "explain";
     dataPromise = fetchOrNull(
       getExplainData({ metric: metricFromApi, filters }),
-      `explore/explain-${metricFromApi}`
+      `explore/explain-${metricFromApi}`,
     );
   } else {
     view = "unknown";
@@ -129,9 +110,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     filters.scope.ids.length ? `IDs: ${filters.scope.ids.join(", ")}` : "All IDs",
     `Range: ${filters.time.range_days}d`,
     `Compare: ${filters.time.compare_days}d`,
-    developers.length
-      ? `Devs: ${developers.join(", ")}`
-      : null,
+    developers.length ? `Devs: ${developers.join(", ")}` : null,
     roles.length ? `Roles: ${roles.join(", ")}` : null,
     repos.length ? `Repos: ${repos.join(", ")}` : null,
     artifacts.length ? `Artifacts: ${artifacts.join(", ")}` : null,
@@ -161,18 +140,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Explore
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                {metricLabel}
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Explore</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">{metricLabel}</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Evidence detail for the selected metric.
               </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Select evidence to investigate.
-              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">Select evidence to investigate.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
@@ -207,9 +180,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                  Context
-                </p>
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Context</p>
                 <p className="mt-1 text-sm font-semibold">{metricLabel}</p>
               </div>
               <span className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -219,13 +190,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
               <div>
                 <p className="text-sm text-(--ink-muted)">{explanation}</p>
-                <p className="mt-2 text-xs text-(--ink-muted)">
-                  Source: {sourceLabel}
-                </p>
+                <p className="mt-2 text-xs text-(--ink-muted)">Source: {sourceLabel}</p>
                 {breakdownNote ? (
-                  <p className="mt-2 text-xs text-(--ink-muted)">
-                    {breakdownNote}
-                  </p>
+                  <p className="mt-2 text-xs text-(--ink-muted)">{breakdownNote}</p>
                 ) : null}
               </div>
               <div>
@@ -260,9 +227,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
           {view === "explain" && (
             <section id="evidence" className="grid gap-6 lg:grid-cols-3">
               <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                  Snapshot
-                </p>
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Snapshot</p>
                 <div className="mt-3 flex flex-wrap items-baseline gap-3">
                   <span className="text-3xl font-semibold metric-hero">
                     {data ? formatMetricValue(data.value, data.unit) : "--"}
@@ -296,7 +261,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       {drivers.map((driver) => (
                         <Link
                           key={driver.id}
-                          href={buildExploreUrl({ api: driver.evidence_link, filters, role: activeRole })}
+                          href={buildExploreUrl({
+                            api: driver.evidence_link,
+                            filters,
+                            role: activeRole,
+                          })}
                           className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                         >
                           <span>{driver.label}</span>
@@ -334,14 +303,16 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       {contributors.map((contributor) => (
                         <Link
                           key={contributor.id}
-                          href={buildExploreUrl({ api: contributor.evidence_link, filters, role: activeRole })}
+                          href={buildExploreUrl({
+                            api: contributor.evidence_link,
+                            filters,
+                            role: activeRole,
+                          })}
                           className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                         >
                           <span>{contributor.label}</span>
                           <span className="text-xs text-(--ink-muted)">
-                            {data
-                              ? formatMetricValue(contributor.value, data.unit)
-                              : "--"}
+                            {data ? formatMetricValue(contributor.value, data.unit) : "--"}
                           </span>
                         </Link>
                       ))}
@@ -384,8 +355,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                       });
                       const href = getItemHref(item, fallbackHref);
                       const prFlameHref =
-                        typeof item.repo_id === "string" &&
-                          typeof item.number === "number"
+                        typeof item.repo_id === "string" && typeof item.number === "number"
                           ? `/prs/${item.repo_id}:${item.number}`
                           : null;
                       const issueFlameHref =
@@ -394,15 +364,9 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                           : null;
                       const flameHref = prFlameHref ?? issueFlameHref;
                       return (
-                        <tr
-                          key={`item-${idx}`}
-                          className="border-b border-(--card-stroke)"
-                        >
+                        <tr key={`item-${idx}`} className="border-b border-(--card-stroke)">
                           <td className="py-2 pr-4 font-medium">
-                            <a
-                              href={href}
-                              className="block text-foreground"
-                            >
+                            <a href={href} className="block text-foreground">
                               {getItemTitle(item, idx)}
                             </a>
                           </td>

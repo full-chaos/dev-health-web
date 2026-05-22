@@ -8,7 +8,7 @@ type CoverageBarProps = {
 
 export function CoverageBar({ coveragePercent, label, className = "" }: CoverageBarProps) {
   const percent = Math.max(0, Math.min(100, Math.round(coveragePercent)));
-  
+
   // Color code based on coverage
   let barColor = "bg-red-500";
   if (percent >= 90) barColor = "bg-green-500";
@@ -21,8 +21,8 @@ export function CoverageBar({ coveragePercent, label, className = "" }: Coverage
         <span className="text-(--ink-muted) font-semibold">{percent}%</span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-(--card-stroke)">
-        <div 
-          className={`h-full ${barColor} transition-all duration-500 ease-in-out`} 
+        <div
+          className={`h-full ${barColor} transition-all duration-500 ease-in-out`}
           style={{ width: `${percent}%` }}
         />
       </div>

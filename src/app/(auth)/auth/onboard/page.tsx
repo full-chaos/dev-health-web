@@ -1,26 +1,22 @@
-import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
-import { OnboardForm } from "@/components/auth/OnboardForm"
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { OnboardForm } from "@/components/auth/OnboardForm";
 
-type SearchParams = Promise<{ plan?: string; trial?: string }>
+type SearchParams = Promise<{ plan?: string; trial?: string }>;
 
-export default async function OnboardPage({
-  searchParams,
-}: {
-  searchParams: SearchParams
-}) {
-  const params = await searchParams
-  const plan = params.plan?.toLowerCase()
-  const trialIntent = plan === "team" && params.trial === "true"
+export default async function OnboardPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const plan = params.plan?.toLowerCase();
+  const trialIntent = plan === "team" && params.trial === "true";
 
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user) {
-    redirect("/auth/signin")
+    redirect("/auth/signin");
   }
 
   if (session.user.org_id && !session.user.needs_onboarding) {
-    redirect(trialIntent ? "/auth/trial-checkout?plan=team&trial=true" : "/dashboard")
+    redirect(trialIntent ? "/auth/trial-checkout?plan=team&trial=true" : "/dashboard");
   }
 
   return (
@@ -39,5 +35,5 @@ export default async function OnboardPage({
         </div>
       </div>
     </div>
-  )
+  );
 }

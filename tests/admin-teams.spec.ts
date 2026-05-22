@@ -50,7 +50,10 @@ test("name required validation", async ({ page }) => {
 test("cancel returns to team list", async ({ page }) => {
   await page.goto("/admin/teams/new");
 
-  await page.getByRole("button", { name: "Cancel" }).or(page.getByRole("link", { name: "Cancel" })).click();
+  await page
+    .getByRole("button", { name: "Cancel" })
+    .or(page.getByRole("link", { name: "Cancel" }))
+    .click();
 
   await expect(page).toHaveURL(/\/admin\/teams/);
 });

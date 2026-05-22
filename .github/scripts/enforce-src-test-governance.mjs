@@ -3,8 +3,9 @@
 import fs from "node:fs";
 import { execSync } from "node:child_process";
 
-const baseRef = process.env.GOVERNANCE_DIFF_BASE
-  || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "HEAD~1");
+const baseRef =
+  process.env.GOVERNANCE_DIFF_BASE ||
+  (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "HEAD~1");
 const diffRange = `${baseRef}...HEAD`;
 
 function run(command) {
@@ -14,7 +15,10 @@ function run(command) {
 function getChangedFiles() {
   try {
     const output = run(`git diff --name-only "${diffRange}"`);
-    return output.split("\n").map((line) => line.trim()).filter(Boolean);
+    return output
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
   } catch (error) {
     console.error(`Unable to compute changed files for range "${diffRange}".`);
     console.error("Ensure the PR base ref is fetched before running this check.");
@@ -65,7 +69,9 @@ if (touchedTestFiles.length > 0) {
 const prBody = readPullRequestBody();
 const waiverReason = getWaiverReason(prBody);
 if (waiverReason) {
-  console.log("src/ changes detected without test file edits, but explicit TEST-WAIVER was provided.");
+  console.log(
+    "src/ changes detected without test file edits, but explicit TEST-WAIVER was provided.",
+  );
   console.log(`Waiver reason: ${waiverReason}`);
   process.exit(0);
 }

@@ -76,7 +76,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           Your password has been reset successfully.
         </div>
         <div className="text-center">
-          <Link href="/auth/signin" className="text-sm font-medium text-[var(--accent)] hover:opacity-90">
+          <Link
+            href="/auth/signin"
+            className="text-sm font-medium text-[var(--accent)] hover:opacity-90"
+          >
             Sign in
           </Link>
         </div>
@@ -87,7 +90,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label htmlFor="new_password" className="block text-sm font-medium text-[var(--foreground)]">
+        <label
+          htmlFor="new_password"
+          className="block text-sm font-medium text-[var(--foreground)]"
+        >
           New password
         </label>
         <div className="mt-2">
@@ -107,7 +113,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       </div>
 
       <div>
-        <label htmlFor="confirm_password" className="block text-sm font-medium text-[var(--foreground)]">
+        <label
+          htmlFor="confirm_password"
+          className="block text-sm font-medium text-[var(--foreground)]"
+        >
           Confirm new password
         </label>
         <div className="mt-2">

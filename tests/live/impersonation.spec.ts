@@ -1,9 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
 const liveBackendUrl =
-  process.env.PLAYWRIGHT_LIVE_BACKEND_URL ??
-  process.env.BACKEND_URL ??
-  "http://127.0.0.1:8000";
+  process.env.PLAYWRIGHT_LIVE_BACKEND_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 const superuserEmail = process.env.TEST_SUPERUSER_EMAIL ?? "admin@test.com";
 const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD ?? "secret";
@@ -187,7 +185,7 @@ test("cannot impersonate another superuser — expects 403", async ({ request })
   if (!superuserTargetUserId) {
     test.skip(
       true,
-      "TEST_SUPERUSER_TARGET_USER_ID not set — skipping superuser-to-superuser impersonation test"
+      "TEST_SUPERUSER_TARGET_USER_ID not set — skipping superuser-to-superuser impersonation test",
     );
     return;
   }

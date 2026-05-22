@@ -43,7 +43,9 @@ export function RepoTeamSankeySection({
   buildSankeyTooltipFormatter,
   resolveSubcategoryIdFromLabel,
 }: RepoTeamSankeySectionProps) {
-  const rawRepoTeamSankey = useMemo<(SankeyResponse & { hasTeamAssociations: boolean }) | null>(() => {
+  const rawRepoTeamSankey = useMemo<
+    (SankeyResponse & { hasTeamAssociations: boolean }) | null
+  >(() => {
     if (repoTeamFlow) {
       const hasTeams = repoTeamFlow.nodes.some((node) => node.group === "team");
       return { ...repoTeamFlow, hasTeamAssociations: hasTeams };
@@ -57,7 +59,10 @@ export function RepoTeamSankeySection({
     return buildRepoTeamSankey(workUnits, {}, categoryColorMap);
   }, [repoTeamFlow, repoTeamFlowFailed, workUnits, categoryColorMap]);
 
-  const repoTeamSankey = useMemo(() => prepareSankeyFlow(rawRepoTeamSankey, TOP_N_REPOS), [prepareSankeyFlow, rawRepoTeamSankey]);
+  const repoTeamSankey = useMemo(
+    () => prepareSankeyFlow(rawRepoTeamSankey, TOP_N_REPOS),
+    [prepareSankeyFlow, rawRepoTeamSankey],
+  );
   const repoTeamLinks = repoTeamSankey?.links ?? [];
   const repoTeamNodes = repoTeamSankey?.nodes ?? [];
   const repoTeamHasTeams = rawRepoTeamSankey?.hasTeamAssociations ?? false;
@@ -70,7 +75,11 @@ export function RepoTeamSankeySection({
     return map;
   }, [repoTeamSankey]);
 
-  const repoTeamMetrics = useMemo(() => (repoTeamSankey ? computeSankeyMetrics(repoTeamSankey.nodes, repoTeamSankey.links) : null), [repoTeamSankey]);
+  const repoTeamMetrics = useMemo(
+    () =>
+      repoTeamSankey ? computeSankeyMetrics(repoTeamSankey.nodes, repoTeamSankey.links) : null,
+    [repoTeamSankey],
+  );
 
   const repoTeamTooltipFormatter = useMemo(
     () =>
@@ -79,7 +88,7 @@ export function RepoTeamSankeySection({
         metrics: repoTeamMetrics,
         timeRange: filters.time,
       }),
-    [buildSankeyTooltipFormatter, filters.time, repoTeamMetrics, repoTeamNodeMap]
+    [buildSankeyTooltipFormatter, filters.time, repoTeamMetrics, repoTeamNodeMap],
   );
 
   return (
@@ -89,10 +98,13 @@ export function RepoTeamSankeySection({
           <h3 className="font-(--font-display) text-lg">Where effort lands</h3>
           <p className="mt-1 text-xs text-(--ink-muted)">Subcategory to Repo to Team</p>
         </div>
-        <span className="text-xs text-(--ink-muted)">Two-hop allocation to highlight team ownership behind repos.</span>
+        <span className="text-xs text-(--ink-muted)">
+          Two-hop allocation to highlight team ownership behind repos.
+        </span>
       </div>
       <div className="mt-2 mb-4 border-l-2 border-(--card-stroke) py-1 pl-3 text-[11px] leading-relaxed text-(--ink-muted)">
-        This view uses repo-to-team mapping when available. Missing repo associations flow through an unassigned repo node.
+        This view uses repo-to-team mapping when available. Missing repo associations flow through
+        an unassigned repo node.
       </div>
       <div className="mt-0">
         {isRepoTeamLoading ? (
@@ -107,7 +119,9 @@ export function RepoTeamSankeySection({
             onItemClick={(item) => {
               if (item.type === "node") {
                 const normalized = stripSankeyPrefix(item.name ?? "");
-                const node = repoTeamNodes.find((entry) => stripSankeyPrefix(entry.name) === normalized);
+                const node = repoTeamNodes.find(
+                  (entry) => stripSankeyPrefix(entry.name) === normalized,
+                );
                 if (node?.group === "subcategory") {
                   const subId = resolveSubcategoryIdFromLabel(node.name);
                   if (subId) setFocusSubcategory(subId);
@@ -122,7 +136,9 @@ export function RepoTeamSankeySection({
           <div className="flex h-[220px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
             <div>
               <p>We currently have no teams associated with work items.</p>
-              <p className="mt-2 text-[11px] text-(--ink-muted)">Investment categories still compute from evidence.</p>
+              <p className="mt-2 text-[11px] text-(--ink-muted)">
+                Investment categories still compute from evidence.
+              </p>
             </div>
           </div>
         )}

@@ -1,16 +1,19 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type AuthTabsProps = {
-  signInHref?: string
-  signUpHref?: string
-}
+  signInHref?: string;
+  signUpHref?: string;
+};
 
-export function AuthTabs({ signInHref = "/auth/signin", signUpHref = "/auth/signup" }: AuthTabsProps) {
-  const pathname = usePathname()
-  const isSignIn = pathname === "/auth/signin"
+export function AuthTabs({
+  signInHref = "/auth/signin",
+  signUpHref = "/auth/signup",
+}: AuthTabsProps) {
+  const pathname = usePathname();
+  const isSignIn = pathname === "/auth/signin";
 
   return (
     <div className="flex rounded-lg border border-[var(--card-stroke)] overflow-hidden">
@@ -35,5 +38,5 @@ export function AuthTabs({ signInHref = "/auth/signin", signUpHref = "/auth/sign
         Create account
       </Link>
     </div>
-  )
+  );
 }

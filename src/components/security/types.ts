@@ -10,19 +10,12 @@ import type {
   RepoAlertCount,
   TrendPoint,
 } from "@/lib/graphql/__generated__/types";
-import type {
-  SecuritySeverity,
-  SecuritySource,
-  SecurityState,
-} from "@/lib/filters/security";
+import type { SecuritySeverity, SecuritySource, SecurityState } from "@/lib/filters/security";
 
 // SecurityAlertRowData narrows the plain-string severity/source/state fields
 // back to the union literals the badge components expect. At runtime these will
 // always match because the backend emits lowercase values.
-export type SecurityAlertRowData = Omit<
-  SecurityAlertNode,
-  "severity" | "source" | "state"
-> & {
+export type SecurityAlertRowData = Omit<SecurityAlertNode, "severity" | "source" | "state"> & {
   severity: SecuritySeverity;
   source: SecuritySource;
   state: SecurityState;

@@ -43,13 +43,13 @@ export function DataStatusBanner({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {isUnavailable ? (
           <p>
-            <span>Data unavailable. Last cached: <ClientTimestamp value={lastIngestedAt ?? cachedAt} suffix="." /></span>
+            <span>
+              Data unavailable. Last cached:{" "}
+              <ClientTimestamp value={lastIngestedAt ?? cachedAt} suffix="." />
+            </span>
           </p>
         ) : (
-          <p>
-            Evidence density is low. Trend reliability may be reduced for the
-            selected window.
-          </p>
+          <p>Evidence density is low. Trend reliability may be reduced for the selected window.</p>
         )}
         <Link
           href={exploreHref}

@@ -46,9 +46,7 @@ export function ScopeSection({
         <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
           {!scopeLock && (
             <label className="flex flex-col gap-2 text-xs">
-              <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
-                Scope level
-              </span>
+              <span className="uppercase tracking-[0.2em] text-(--ink-muted)">Scope level</span>
               <select
                 className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
                 value={scopeLevel}

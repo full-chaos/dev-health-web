@@ -103,9 +103,7 @@ describe("SecurityDashboard", () => {
             { severity: "critical", count: 4 },
             { severity: "high", count: 10 },
           ],
-          topRepos: [
-            { repoId: "r1", repoName: "org/repo-a", count: 12 },
-          ],
+          topRepos: [{ repoId: "r1", repoName: "org/repo-a", count: 12 }],
           trend: [
             { day: "2024-03-01", opened: 2, fixed: 1 },
             { day: "2024-03-02", opened: 3, fixed: 2 },

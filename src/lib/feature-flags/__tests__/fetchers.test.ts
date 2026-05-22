@@ -23,7 +23,13 @@ describe("feature flag fetcher helpers", () => {
     const registryEdges = getRegistryEdges([
       makeEdge({ edgeId: "registry-1", sourceId: "flag-a" }),
       makeEdge({ edgeId: "registry-2", sourceId: "flag-a" }),
-      makeEdge({ edgeId: "pr-link", sourceId: "flag-a", targetType: "PR", targetId: "repo#pr1", edgeType: "REFERENCES" }),
+      makeEdge({
+        edgeId: "pr-link",
+        sourceId: "flag-a",
+        targetType: "PR",
+        targetId: "repo#pr1",
+        edgeType: "REFERENCES",
+      }),
       makeEdge({ edgeId: "registry-3", sourceId: "flag-b", targetId: "flag-b" }),
     ]);
 
@@ -43,10 +49,37 @@ describe("feature flag fetcher helpers", () => {
 
   it("counts distinct release sources for impact coverage", () => {
     const edges = [
-      makeEdge({ sourceType: "RELEASE", sourceId: "release-a", targetType: "RELEASE", targetId: "release-a", edgeType: "RELATES" }),
-      makeEdge({ edgeId: "impact-a-1", sourceType: "RELEASE", sourceId: "release-a", targetType: "FEATURE_FLAG", targetId: "flag-a", edgeType: "IMPACTS" }),
-      makeEdge({ edgeId: "impact-a-2", sourceType: "RELEASE", sourceId: "release-a", targetType: "FEATURE_FLAG", targetId: "flag-b", edgeType: "IMPACTS" }),
-      makeEdge({ edgeId: "release-b", sourceType: "RELEASE", sourceId: "release-b", targetType: "RELEASE", targetId: "release-b", edgeType: "RELATES" }),
+      makeEdge({
+        sourceType: "RELEASE",
+        sourceId: "release-a",
+        targetType: "RELEASE",
+        targetId: "release-a",
+        edgeType: "RELATES",
+      }),
+      makeEdge({
+        edgeId: "impact-a-1",
+        sourceType: "RELEASE",
+        sourceId: "release-a",
+        targetType: "FEATURE_FLAG",
+        targetId: "flag-a",
+        edgeType: "IMPACTS",
+      }),
+      makeEdge({
+        edgeId: "impact-a-2",
+        sourceType: "RELEASE",
+        sourceId: "release-a",
+        targetType: "FEATURE_FLAG",
+        targetId: "flag-b",
+        edgeType: "IMPACTS",
+      }),
+      makeEdge({
+        edgeId: "release-b",
+        sourceType: "RELEASE",
+        sourceId: "release-b",
+        targetType: "RELEASE",
+        targetId: "release-b",
+        edgeType: "RELATES",
+      }),
     ];
 
     expect(getDistinctSourceIds(edges).size).toBe(2);

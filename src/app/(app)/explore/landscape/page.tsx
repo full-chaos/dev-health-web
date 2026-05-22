@@ -37,7 +37,6 @@ const QUADRANT_CARDS = [
   },
 ];
 
-
 type LandscapePageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
@@ -53,9 +52,7 @@ const scopeTypeMap: Record<string, "org" | "team" | "repo" | "person"> = {
 export default async function LandscapePage({ searchParams }: LandscapePageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const roleConfig = getRoleConfig(roleParam);
@@ -85,36 +82,29 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             end_date: filters.time.end_date,
             bucket,
           }),
-          `landscape/quadrant-${card.type}`
-        )
+          `landscape/quadrant-${card.type}`,
+        ),
       )
     : QUADRANT_CARDS.map(() => Promise.resolve(null));
 
-  const [health, ...quadrantData] = await Promise.all([
-    checkApiHealth(),
-    ...quadrantPromises,
-  ]);
+  const [health, ...quadrantData] = await Promise.all([checkApiHealth(), ...quadrantPromises]);
 
   if (!health.ok) {
     return <ServiceUnavailable />;
   }
 
-  const primaryCardIndex = QUADRANT_CARDS.findIndex(
-    (card) => card.type === primaryType
-  );
-  const primaryCard =
-    primaryCardIndex >= 0 ? QUADRANT_CARDS[primaryCardIndex] : QUADRANT_CARDS[0];
-  const primaryData =
-    quadrantData[primaryCardIndex >= 0 ? primaryCardIndex : 0];
+  const primaryCardIndex = QUADRANT_CARDS.findIndex((card) => card.type === primaryType);
+  const primaryCard = primaryCardIndex >= 0 ? QUADRANT_CARDS[primaryCardIndex] : QUADRANT_CARDS[0];
+  const primaryData = quadrantData[primaryCardIndex >= 0 ? primaryCardIndex : 0];
 
   // Order remaining cards: secondary first, then others
-  const otherCards = QUADRANT_CARDS.filter(
-    (card) => card.type !== primaryCard.type
-  ).sort((a, b) => {
-    if (a.type === secondaryType) return -1;
-    if (b.type === secondaryType) return 1;
-    return 0;
-  });
+  const otherCards = QUADRANT_CARDS.filter((card) => card.type !== primaryCard.type).sort(
+    (a, b) => {
+      if (a.type === secondaryType) return -1;
+      if (b.type === secondaryType) return 1;
+      return 0;
+    },
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -123,18 +113,12 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Explore
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Landscape Quadrants
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Explore</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Landscape Quadrants</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Operating modes across paired pressures.
               </p>
-              <p className="mt-3 text-sm text-(--ink-muted)">
-                Select a dot to investigate.
-              </p>
+              <p className="mt-3 text-sm text-(--ink-muted)">Select a dot to investigate.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
@@ -158,19 +142,25 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             <span>Bucket</span>
             <Link
               href={withFilterParam(`/explore/landscape?bucket=week`, filters, roleParam as string)}
-              className={`rounded-full border px-3 py-1 ${bucket === "week"
-                ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                : "border-(--card-stroke)"
-                }`}
+              className={`rounded-full border px-3 py-1 ${
+                bucket === "week"
+                  ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                  : "border-(--card-stroke)"
+              }`}
             >
               Week
             </Link>
             <Link
-              href={withFilterParam(`/explore/landscape?bucket=month`, filters, roleParam as string)}
-              className={`rounded-full border px-3 py-1 ${bucket === "month"
-                ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                : "border-(--card-stroke)"
-                }`}
+              href={withFilterParam(
+                `/explore/landscape?bucket=month`,
+                filters,
+                roleParam as string,
+              )}
+              className={`rounded-full border px-3 py-1 ${
+                bucket === "month"
+                  ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                  : "border-(--card-stroke)"
+              }`}
             >
               Month
             </Link>
@@ -202,14 +192,16 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
 
             <div className="flex flex-col gap-8">
               {otherCards.map((card) => {
-                const cardIndex = QUADRANT_CARDS.findIndex(
-                  (item) => item.type === card.type
-                );
+                const cardIndex = QUADRANT_CARDS.findIndex((item) => item.type === card.type);
                 const isSecondary = card.type === secondaryType;
                 return (
                   <div
                     key={card.type}
-                    className={isSecondary ? "rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-4" : ""}
+                    className={
+                      isSecondary
+                        ? "rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-4"
+                        : ""
+                    }
                   >
                     {isSecondary && (
                       <div className="mb-4 px-2">

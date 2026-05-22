@@ -15,18 +15,12 @@ import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
-import type {
-  ComplexityPoint,
-  HotspotRow,
-} from "@/components/complexity/ComplexityDashboard";
+import type { ComplexityPoint, HotspotRow } from "@/components/complexity/ComplexityDashboard";
 import { requireSession } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { graphqlFetch } from "@/lib/graphql/server";
-import {
-  COMPLEXITY_TIMESERIES_QUERY,
-  HOTSPOTS_QUERY,
-} from "@/lib/graphql/queries";
+import { COMPLEXITY_TIMESERIES_QUERY, HOTSPOTS_QUERY } from "@/lib/graphql/queries";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -116,17 +110,12 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
 
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-  const originParam = Array.isArray(params.origin)
-    ? params.origin[0]
-    : params.origin;
+  const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
 
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
-  const activeOrigin =
-    typeof originParam === "string" ? originParam : undefined;
+  const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const orgId = session.user?.org_id ?? "demo-org";
 
@@ -147,18 +136,11 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="complexity" role={activeRole} />
-        <main
-          className="flex min-w-0 flex-1 flex-col gap-8"
-          data-testid="complexity-page"
-        >
+        <main className="flex min-w-0 flex-1 flex-col gap-8" data-testid="complexity-page">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Investigate
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Complexity Trends
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Investigate</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Complexity Trends</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Code complexity over time, file hotspots, and high-risk areas.
               </p>
@@ -178,11 +160,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
 
           <ContextStrip filters={filters} origin={activeOrigin} />
 
-          <ComplexityDashboard
-            orgId={orgId}
-            points={points}
-            hotspotRows={hotspotRows}
-          />
+          <ComplexityDashboard orgId={orgId} points={points} hotspotRows={hotspotRows} />
         </main>
       </div>
     </div>

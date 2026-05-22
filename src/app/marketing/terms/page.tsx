@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import {
-  LegalDocument,
-  type LegalSection,
-} from "@/components/shared/LegalDocument";
+import { LegalDocument, type LegalSection } from "@/components/shared/LegalDocument";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Full Chaos Dev Health",
@@ -15,7 +12,7 @@ const sections: LegalSection[] = [
     title: "Acceptance of these terms",
     paragraphs: [
       "These Terms of Service govern your access to and use of the Full Chaos Dev Health website, hosted application, APIs, trial environments, and related services provided by Full Chaos Studios.",
-      "By accessing or using Full Chaos Dev Health, you agree to these Terms. If you use the service on behalf of an organization, you represent that you have authority to bind that organization, and \"you\" includes both you and that organization.",
+      'By accessing or using Full Chaos Dev Health, you agree to these Terms. If you use the service on behalf of an organization, you represent that you have authority to bind that organization, and "you" includes both you and that organization.',
     ],
   },
   {
@@ -81,7 +78,7 @@ const sections: LegalSection[] = [
   {
     title: "Disclaimers and limitation of liability",
     paragraphs: [
-      "To the maximum extent permitted by law, Full Chaos Dev Health is provided \"as is\" and \"as available\" without warranties of any kind, whether express, implied, or statutory, including implied warranties of merchantability, fitness for a particular purpose, title, and non-infringement.",
+      'To the maximum extent permitted by law, Full Chaos Dev Health is provided "as is" and "as available" without warranties of any kind, whether express, implied, or statutory, including implied warranties of merchantability, fitness for a particular purpose, title, and non-infringement.',
       "To the maximum extent permitted by law, Full Chaos Studios will not be liable for any indirect, incidental, special, consequential, exemplary, or punitive damages, or for any loss of profits, revenues, goodwill, data, or business opportunities arising from or related to the service.",
       "Our total liability for claims arising out of or relating to Full Chaos Dev Health will not exceed the amount you paid us for the service during the twelve months before the event giving rise to the claim, or one hundred U.S. dollars if you have not paid any fees.",
     ],
