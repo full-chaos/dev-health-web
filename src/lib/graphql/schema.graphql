@@ -218,12 +218,6 @@ type AIRiskBreakdownRow {
   incidentRate: Float
 }
 
-type AIWorkGraphDrilldownRef {
-  rootType: String!
-  rootId: String!
-  label: String!
-}
-
 input AIScopeInput {
   repoId: String = null
   teamId: String = null
