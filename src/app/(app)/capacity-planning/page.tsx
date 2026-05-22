@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
-import { FilterBar } from "@/components/filters/FilterBar";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -115,11 +114,11 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
   const encodedFilter = firstParam(params.f);
   const roleParam = firstParam(params.role);
   const originParam = firstParam(params.origin);
-  const team = firstParam(params.team);
   const workScopeId = firstParam(params.scope);
   const backlog = parseBacklog(firstParam(params.backlog));
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+  const team = filters.scope.level === "team" ? filters.scope.ids[0] : undefined;
 
   const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
   if (!health.ok) return <ServiceUnavailable />;
@@ -165,21 +164,9 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
             </Link>
           </header>
 
-          <FilterBar view="work" />
           <ContextStrip filters={filters} origin={originParam} />
 
-          <form className="grid gap-4 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 md:grid-cols-[1fr_160px_auto]">
-            <label className="text-sm">
-              <span className="mb-2 block text-xs uppercase tracking-[0.16em] text-(--ink-muted)">
-                Team ID
-              </span>
-              <input
-                name="team"
-                defaultValue={team ?? ""}
-                placeholder="team-123"
-                className="w-full rounded-xl border border-(--card-stroke) bg-background px-4 py-3"
-              />
-            </label>
+          <form className="grid gap-4 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 md:grid-cols-[1fr_auto]">
             <label className="text-sm">
               <span className="mb-2 block text-xs uppercase tracking-[0.16em] text-(--ink-muted)">
                 Backlog items
@@ -203,7 +190,7 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
 
           {isSample ? (
             <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-              Showing sample data. Add <code>?team=&lt;id&gt;&backlog=&lt;items&gt;</code> to fetch a live forecast.
+              Showing sample data. Select a <strong>team</strong> in the scope bar above and set a backlog size to fetch a live forecast.
             </div>
           ) : null}
 
