@@ -145,6 +145,7 @@ export type AiImpactSummary = {
   dataAvailable: Scalars['Boolean']['output'];
   endDate: Scalars['Date']['output'];
   humanPrs: Scalars['Int']['output'];
+  missingStates: Array<AiMissingState>;
   orgId: Scalars['String']['output'];
   startDate: Scalars['Date']['output'];
   totalPrs: Scalars['Int']['output'];
@@ -159,6 +160,13 @@ export type AiLeverageComponents = {
   reviewComponent?: Maybe<Scalars['Float']['output']>;
   reworkComponent?: Maybe<Scalars['Float']['output']>;
   testComponent?: Maybe<Scalars['Float']['output']>;
+};
+
+export type AiMissingState = {
+  __typename?: 'AIMissingState';
+  guidance: Scalars['String']['output'];
+  key: Scalars['String']['output'];
+  title: Scalars['String']['output'];
 };
 
 export type AiOpportunitiesResult = {
@@ -178,6 +186,7 @@ export type AiOpportunity = {
   score: Scalars['Float']['output'];
   teamId?: Maybe<Scalars['String']['output']>;
   title: Scalars['String']['output'];
+  workGraphDrilldowns: Array<AiWorkGraphDrilldownRef>;
 };
 
 export type AiOpportunityKind =
@@ -193,7 +202,9 @@ export type AiReviewLoadResult = {
   daily: Array<AiReviewLoadRow>;
   dataAvailable: Scalars['Boolean']['output'];
   endDate: Scalars['Date']['output'];
+  missingStates: Array<AiMissingState>;
   orgId: Scalars['String']['output'];
+  reviewerConcentration: AiReviewerConcentrationSummary;
   startDate: Scalars['Date']['output'];
 };
 
@@ -201,10 +212,19 @@ export type AiReviewLoadRow = {
   __typename?: 'AIReviewLoadRow';
   bucket: Scalars['String']['output'];
   changesRequestedPerPr?: Maybe<Scalars['Float']['output']>;
+  postFirstReviewPushesCount: Scalars['Int']['output'];
+  postFirstReviewPushesPerPr?: Maybe<Scalars['Float']['output']>;
   prsTotal: Scalars['Int']['output'];
   reviewAmplification?: Maybe<Scalars['Float']['output']>;
   reviewsPerPr?: Maybe<Scalars['Float']['output']>;
   reviewsTotal: Scalars['Int']['output'];
+};
+
+export type AiReviewerConcentrationSummary = {
+  __typename?: 'AIReviewerConcentrationSummary';
+  dataAvailable: Scalars['Boolean']['output'];
+  reviewerCount: Scalars['Int']['output'];
+  reviewerGini?: Maybe<Scalars['Float']['output']>;
 };
 
 export type AiRiskBreakdownResult = {
@@ -212,6 +232,7 @@ export type AiRiskBreakdownResult = {
   byBucket: Array<AiRiskBreakdownRow>;
   dataAvailable: Scalars['Boolean']['output'];
   endDate: Scalars['Date']['output'];
+  missingStates: Array<AiMissingState>;
   orgId: Scalars['String']['output'];
   startDate: Scalars['Date']['output'];
 };
@@ -235,6 +256,13 @@ export type AiScopeInput = {
   repoId?: InputMaybe<Scalars['String']['input']>;
   teamId?: InputMaybe<Scalars['String']['input']>;
   workType?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AiWorkGraphDrilldownRef = {
+  __typename?: 'AIWorkGraphDrilldownRef';
+  label: Scalars['String']['output'];
+  rootId: Scalars['String']['output'];
+  rootType: Scalars['String']['output'];
 };
 
 export type AiWorkflowDrilldownResult = {
