@@ -6,8 +6,7 @@ import { encodeAIFilterParam } from "../src/lib/filters/ai";
  * CHAOS-1588: AI Review Load dashboard e2e.
  *
  * Verifies populated / missing-data UX states and surveillance guardrails
- * (reviewer concentration intentionally deferred per CHAOS-1585 anti-
- * surveillance posture).
+ * (reviewer concentration is aggregate-only: no names or rankings).
  */
 
 const populatedFilter = encodeAIFilterParam({
@@ -36,27 +35,20 @@ test.describe("AI Review Load dashboard", () => {
     await expect(dashboard.getByRole("heading", { name: "Review amplification", exact: true })).toBeVisible();
   });
 
-  test("reviewer concentration is intentionally deferred without person-level ranking", async ({ page }) => {
+  test("reviewer concentration renders only aggregate distribution values", async ({ page }) => {
     await page.goto(`/ai/review-load?f=${populatedFilter}`);
 
-    // The spec explicitly defers reviewer concentration until aggregate-only
-    // distribution ships. The page must render the missing-data card and
-    // call out the no-ranking posture.
-    const reviewerCard = page.getByTestId("ai-missing-data-panel").filter({
-      hasText: "Reviewer concentration",
-    });
+    const reviewerCard = page.getByTestId("ai-reviewer-concentration");
     await expect(reviewerCard).toBeVisible();
-    await expect(reviewerCard).toContainText(/person-level ranking/i);
+    await expect(reviewerCard).toContainText(/Aggregate-only/i);
+    await expect(reviewerCard).toContainText(/No reviewer names, ranks, or person-level counts/i);
   });
 
-  test("push-iterations metric is honestly stubbed", async ({ page }) => {
+  test("push-iterations metric renders post-first-review signal", async ({ page }) => {
     await page.goto(`/ai/review-load?f=${populatedFilter}`);
 
-    const pushIterCard = page.getByTestId("ai-missing-data-panel").filter({
-      hasText: "Push iterations after first review",
-    });
-    await expect(pushIterCard).toBeVisible();
-    await expect(pushIterCard).toContainText(/Not yet instrumented/i);
+    await expect(page.getByText("Push iterations after first review")).toBeVisible();
+    await expect(page.getByText(/Average pushes after the first review/i)).toBeVisible();
   });
 
   test("drill-into-evidence button opens the PR selector modal (CHAOS-1739)", async ({ page }) => {
