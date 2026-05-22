@@ -23,11 +23,12 @@ const defaultFilter = encodeFilter({
 // PrimaryNav links carry the label + description in their accessible name
 // (e.g. "Review Load Pressure"), so a `/^Review Load$/` regex misses them
 // and `/^Risk/` also matches the TestOps "Risk Confidence" entry. Target the
-// AI sidebar links by their href to stay unambiguous.
-const aiImpactLink = (page: Page) => page.locator('a[href^="/ai/impact"]').first();
-const aiReviewLoadLink = (page: Page) => page.locator('a[href^="/ai/review-load"]').first();
-const aiRiskLink = (page: Page) => page.locator('a[href^="/ai/risk"]').first();
-const aiAutomationsLink = (page: Page) => page.locator('a[href^="/ai/automations"]').first();
+// full accessible names to stay unambiguous.
+const aiImpactLink = (page: Page) => page.getByRole("link", { name: /^AI Impact Leverage$/ });
+const aiReviewLoadLink = (page: Page) => page.getByRole("link", { name: /^Review Load Pressure$/ });
+const aiRiskLink = (page: Page) => page.getByRole("link", { name: /^AI Risk Quality$/ });
+const aiAutomationsLink = (page: Page) =>
+  page.getByRole("link", { name: /^Automations Candidates$/ });
 
 test.describe("AI workflow primary navigation", () => {
   test("Home exposes the guided AI Workflow Intelligence entry path", async ({ page }) => {
