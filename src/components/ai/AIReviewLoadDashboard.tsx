@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import type { AIFilter } from "@/lib/filters/ai";
-import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
+import type { AiMissingState, AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
 import { approvalFriction, findBucketRow, useAIReviewLoad, valueDelta } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
 import { AIDrilldownModal } from "./AIDrilldownModal";
@@ -14,6 +14,10 @@ import { AIReviewAmplificationTrend } from "./AIReviewAmplificationTrend";
 type AIReviewLoadDashboardProps = {
   filter: AIFilter;
 };
+
+function missingState(states: AiMissingState[] | undefined, key: string): AiMissingState | undefined {
+  return states?.find((state) => state.key === key);
+}
 
 export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
   const { data, fetching, error } = useAIReviewLoad(filter);
@@ -25,6 +29,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
   const humanBucket = findBucketRow<AiReviewLoadRow>(reviewLoad?.byBucket, "HUMAN");
   const aiFriction = approvalFriction(aiBucket);
   const humanFriction = approvalFriction(humanBucket);
+  const reviewerMissing = missingState(reviewLoad?.missingStates, "reviewer_concentration");
 
   if (error) {
     return <ErrorCard title="Failed to load AI review load" message={error.message} />;
@@ -80,8 +85,41 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <AIMissingDataPanel title="Push iterations after first review" reason="Not yet instrumented in the AI review-load schema." needed="Post-first-review push iteration events linked to PR review timestamps." />
-        <AIMissingDataPanel title="Reviewer concentration" reason="Reviewer concentration is intentionally unavailable until reviewer aggregation ships without person-level ranking." needed="Aggregated reviewer distribution buckets, not individual leaderboards." />
+        <AIComparisonMetricCard
+          title="Push iterations after first review"
+          value={aiBucket?.postFirstReviewPushesPerPr}
+          delta={valueDelta(aiBucket?.postFirstReviewPushesPerPr, humanBucket?.postFirstReviewPushesPerPr)}
+          description="Average pushes after the first review for AI-attributed PRs. This exposes review churn without naming reviewers."
+          loading={fetching}
+          onDrilldown={() => setDrilldownMetric("Push iterations after first review")}
+        />
+        {reviewLoad?.reviewerConcentration.dataAvailable ? (
+          <section className="rounded-3xl border border-(--card-stroke) bg-card p-5" data-testid="ai-reviewer-concentration">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)">Aggregate-only</p>
+            <h3 className="mt-2 font-(--font-display) text-lg">Reviewer concentration</h3>
+            <p className="mt-2 text-sm text-(--ink-muted)">
+              Distribution-level review spread only. No reviewer names, ranks, or person-level counts are exposed.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-background/60 px-3 py-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-(--ink-muted)">Gini</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {reviewLoad.reviewerConcentration.reviewerGini?.toFixed(2) ?? "—"}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-background/60 px-3 py-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-(--ink-muted)">Reviewers</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{reviewLoad.reviewerConcentration.reviewerCount}</p>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <AIMissingDataPanel
+            title={reviewerMissing?.title ?? "Reviewer concentration"}
+            reason={reviewerMissing?.guidance ?? "Reviewer concentration is unavailable until aggregate-only reviewer distribution data is present."}
+            needed="Aggregated reviewer distribution buckets only; never individual reviewer leaderboards."
+          />
+        )}
         <AIComparisonMetricCard
           title="Review amplification"
           value={aiBucket?.reviewAmplification}
