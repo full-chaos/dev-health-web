@@ -197,7 +197,19 @@ describe("proxy rate limiting", () => {
 
     expect(res.status).toBe(429);
     expect(mockCheckRateLimit).toHaveBeenCalledWith(
-      expect.stringMatching(/^proxy:POST:auth-password-reset:ip:anon:/),
+      expect.stringMatching(/^proxy:POST:auth-pwreset:ip:anon:/),
+      { failClosed: true, namespace: "auth-pwreset", windowMs: 60 * 60_000, maxRequests: 3 },
+    );
+  });
+
+  it("limits forgot-password with the auth-pwreset route options (CHAOS-1768)", async () => {
+    mockCheckRateLimit.mockResolvedValue({ limited: true, retryAfter: 120 });
+
+    const res = await proxy(makeRequest("/api/v1/auth/forgot-password"));
+
+    expect(res.status).toBe(429);
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(
+      expect.stringMatching(/^proxy:POST:auth-pwreset:ip:anon:/),
       { failClosed: true, namespace: "auth-pwreset", windowMs: 60 * 60_000, maxRequests: 3 },
     );
   });
