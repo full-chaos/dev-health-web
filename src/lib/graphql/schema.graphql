@@ -440,6 +440,39 @@ input CloneSavedReportInput {
   parameterOverrides: JSON = null
 }
 
+type ComplexityPoint {
+  date: Date!
+  scopeId: String!
+  scopeName: String!
+  locTotal: Int
+  cyclomaticPerKloc: Float
+  cyclomaticTotal: Int
+  cyclomaticAvg: Float
+  highComplexityFunctions: Int
+  veryHighComplexityFunctions: Int
+}
+
+enum ComplexityScope {
+  REPO
+  FILE
+}
+
+input ComplexityTimeseriesInput {
+  orgId: String!
+  sinceUtc: DateTime!
+  untilUtc: DateTime!
+  granularity: TimeGranularity!
+  scope: ComplexityScope!
+  repoIds: [String!] = null
+  teamIds: [String!] = null
+  limit: Int = null
+}
+
+type ComplexityTimeseriesResult {
+  points: [ComplexityPoint!]!
+  totalScope: Int!
+}
+
 type CompoundingRiskComponents {
   churnNorm: Float
   complexityNorm: Float
@@ -615,6 +648,32 @@ type Freshness {
 type HomeResult {
   freshness: Freshness!
   deltas: [MetricDelta!]!
+}
+
+type HotspotRow {
+  filePath: String!
+  repoId: String!
+  repoName: String!
+  churnLoc30d: Int!
+  churnCommits30d: Int!
+  cyclomaticTotal: Int!
+  cyclomaticAvg: Float!
+  blameConcentration: Float
+  riskScore: Float!
+  evidenceUrl: String
+}
+
+input HotspotsInput {
+  orgId: String!
+  sinceUtc: DateTime!
+  untilUtc: DateTime!
+  repoIds: [String!] = null
+  teamIds: [String!] = null
+  limit: Int = null
+}
+
+type HotspotsResult {
+  rows: [HotspotRow!]!
 }
 
 input HowFilterInput {
@@ -808,6 +867,16 @@ type Query {
   Compounding Risk composite: churn × complexity × ownership × review-latency. Inspectable score with persisted weights, thresholds, raw inputs, and normalized components.
   """
   compoundingRisk(orgId: String!, filter: CompoundingRiskFilterInput = null): CompoundingRiskResult!
+
+  """
+  Cyclomatic complexity trend by repo or file. Reads from append-only ``repo_complexity_daily`` / ``file_complexity_snapshots`` tables — no recomputation, pure surface of persisted data.
+  """
+  complexityTimeseries(input: ComplexityTimeseriesInput!): ComplexityTimeseriesResult!
+
+  """
+  Top file hotspots ranked by risk_score (churn x complexity x ownership concentration). Reads from the append-only ``file_hotspot_daily`` table.
+  """
+  hotspots(input: HotspotsInput!): HotspotsResult!
 
   """Latest rule-based recommendations for a team within a lookback window."""
   recommendations(orgId: String!, team: ID!, window: WindowInput!): [Recommendation!]!
@@ -1130,6 +1199,11 @@ type ThroughputRollingWindow {
   meanWeeklyThroughput: Float!
   sampleCount: Int!
   insufficientHistory: Boolean!
+}
+
+enum TimeGranularity {
+  DAY
+  WEEK
 }
 
 type TimeseriesBucket {
