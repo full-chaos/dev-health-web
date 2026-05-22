@@ -173,14 +173,29 @@ type WorkflowDrilldownData = {
   aiWorkflowDrilldown: AiWorkflowDrilldownResult;
 };
 
-export function useAIWorkflowDrilldownForPr(
+function toWorkflowRootType(rootType: string | null): AiWorkflowRootTypeInput | null {
+  switch (rootType?.trim().toUpperCase()) {
+    case "ISSUE":
+      return "ISSUE";
+    case "PR":
+      return "PR";
+    case "WORK_UNIT":
+      return "WORK_UNIT";
+    default:
+      return null;
+  }
+}
+
+export function useAIWorkflowDrilldown(
+  rootType: string | null,
   rootId: string | null,
   options: { depth?: number; limit?: number } = {}
 ) {
   const orgId = useOrgId();
+  const normalizedRootType = toWorkflowRootType(rootType);
   const variables = {
     orgId: orgId ?? "",
-    rootType: "PR" as AiWorkflowRootTypeInput,
+    rootType: normalizedRootType ?? "PR",
     rootId: rootId ?? "",
     depth: options.depth ?? 3,
     limit: options.limit ?? 100,
@@ -189,7 +204,7 @@ export function useAIWorkflowDrilldownForPr(
   const [result] = useQuery<WorkflowDrilldownData>({
     query: AI_WORKFLOW_DRILLDOWN_QUERY,
     variables,
-    pause: !orgId || !rootId,
+    pause: !orgId || !rootId || !normalizedRootType,
     requestPolicy: "cache-and-network",
   });
 
@@ -198,6 +213,13 @@ export function useAIWorkflowDrilldownForPr(
     fetching: result.fetching,
     error: result.error,
   };
+}
+
+export function useAIWorkflowDrilldownForPr(
+  rootId: string | null,
+  options: { depth?: number; limit?: number } = {}
+) {
+  return useAIWorkflowDrilldown("PR", rootId, options);
 }
 
 export type { AiReviewLoadRow, AiRiskBreakdownRow };

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import type { AIFilter } from "@/lib/filters/ai";
-import type { AiRiskBreakdownRow } from "@/lib/graphql/__generated__/types";
+import type { AiMissingState, AiRiskBreakdownRow } from "@/lib/graphql/__generated__/types";
 import { findBucketRow, prViolationRows, useAIGovernanceSummary, useAIRiskBreakdown } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
 import { AIDrilldownModal } from "./AIDrilldownModal";
@@ -15,6 +15,14 @@ type AIRiskDashboardProps = {
   filter: AIFilter;
 };
 
+function missingState(states: AiMissingState[] | undefined, key: string, fallbackTitle: string, fallbackGuidance: string) {
+  const state = states?.find((item) => item.key === key);
+  return {
+    title: state?.title ?? fallbackTitle,
+    guidance: state?.guidance ?? fallbackGuidance,
+  };
+}
+
 export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
   const risk = useAIRiskBreakdown(filter);
   const governance = useAIGovernanceSummary(filter, 50);
@@ -24,6 +32,18 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
   const comparison = risk.data?.aiComparison;
   const aiBucket = findBucketRow<AiRiskBreakdownRow>(riskData?.byBucket);
   const violations = prViolationRows(governance.data?.aiGovernanceSummary);
+  const hotspotMissing = missingState(
+    riskData?.missingStates,
+    "hotspot_overlap",
+    "Hotspot file overlap",
+    "Hotspot overlap is not available for the selected scope yet."
+  );
+  const complexityMissing = missingState(
+    riskData?.missingStates,
+    "complexity_overlap",
+    "High-complexity file overlap",
+    "Complexity overlap is not available for the selected scope yet."
+  );
 
   if (risk.error) {
     return <ErrorCard title="Failed to load AI risk" message={risk.error.message} />;
@@ -49,8 +69,8 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <AIMissingDataPanel title="Hotspot file overlap" reason="Coming when the hotspot detector ships." needed="Hotspot file detector output joined to AI-attributed PR changed files." />
-        <AIMissingDataPanel title="High-complexity file overlap" reason="Complexity overlap is not in the current schema." needed="Complexity-indexed file metadata linked to PR file changes." />
+        <AIMissingDataPanel title={hotspotMissing.title} reason={hotspotMissing.guidance} needed="Hotspot file detector output joined to AI-attributed PR changed files." />
+        <AIMissingDataPanel title={complexityMissing.title} reason={complexityMissing.guidance} needed="Complexity-indexed file metadata linked to PR file changes." />
         <section className="rounded-3xl border border-(--card-stroke) bg-card p-5" data-testid="ai-linked-incidents">
           <h3 className="font-(--font-display) text-lg">Linked incidents</h3>
           <p className="mt-2 text-sm text-(--ink-muted)">Summary count from AI-attributed PR incident rollups. Open evidence on any tile to inspect Work Graph edges per PR.</p>

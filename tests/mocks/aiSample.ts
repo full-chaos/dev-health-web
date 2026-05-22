@@ -177,6 +177,7 @@ export function aiImpactSummaryResponse(orgId: string, startDate: string, endDat
       computedAt: COMPUTED_AT,
       byBucket: [],
       daily: [],
+      missingStates: [{ key: "unknown_attribution", title: "Attribution unavailable", guidance: "AI attribution coverage is not available for this scope yet." }],
     };
   }
 
@@ -195,6 +196,7 @@ export function aiImpactSummaryResponse(orgId: string, startDate: string, endDat
       computedAt: COMPUTED_AT,
       byBucket: [],
       daily: [],
+      missingStates: [],
     };
   }
 
@@ -210,6 +212,7 @@ export function aiImpactSummaryResponse(orgId: string, startDate: string, endDat
     aiAssistedPrRatio: 0.26,
     dataAvailable: true,
     computedAt: COMPUTED_AT,
+    missingStates: [],
     byBucket: [
       impactBucket("AI_ASSISTED", {
         prsTotal: 42,
@@ -259,6 +262,8 @@ export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: 
       dataAvailable: false,
       byBucket: [],
       daily: [],
+      reviewerConcentration: { dataAvailable: false, reviewerCount: 0, reviewerGini: null },
+      missingStates: [{ key: "reviewer_concentration", title: "Reviewer concentration", guidance: "Reviewer distribution is unavailable for this scope." }],
     };
   }
 
@@ -270,6 +275,8 @@ export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: 
       dataAvailable: true,
       byBucket: [],
       daily: [],
+      reviewerConcentration: { dataAvailable: false, reviewerCount: 0, reviewerGini: null },
+      missingStates: [{ key: "reviewer_concentration", title: "Reviewer concentration", guidance: "Reviewer distribution is unavailable for this scope." }],
     };
   }
 
@@ -286,6 +293,8 @@ export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: 
         reviewsPerPr: 2.6,
         changesRequestedPerPr: 0.9,
         reviewAmplification: 1.4,
+        postFirstReviewPushesCount: 12,
+        postFirstReviewPushesPerPr: 0.29,
       },
       {
         bucket: "HUMAN",
@@ -294,6 +303,8 @@ export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: 
         reviewsPerPr: 1.9,
         changesRequestedPerPr: 0.5,
         reviewAmplification: 1.0,
+        postFirstReviewPushesCount: 14,
+        postFirstReviewPushesPerPr: 0.15,
       },
     ],
     daily: Array.from({ length: 7 }, (_, i) => ({
@@ -303,7 +314,11 @@ export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: 
       reviewsPerPr: 2.4 + i * 0.05,
       changesRequestedPerPr: 0.9,
       reviewAmplification: 1.3 + i * 0.02,
+      postFirstReviewPushesCount: 2,
+      postFirstReviewPushesPerPr: 0.25,
     })),
+    reviewerConcentration: { dataAvailable: true, reviewerCount: 5, reviewerGini: 0.42 },
+    missingStates: [],
   };
 }
 
@@ -315,6 +330,10 @@ export function aiRiskBreakdownResponse(orgId: string, startDate: string, endDat
       endDate,
       dataAvailable: false,
       byBucket: [],
+      missingStates: [
+        { key: "hotspot_overlap", title: "Hotspot file overlap", guidance: "Hotspot overlap needs changed-file coverage for this scope." },
+        { key: "complexity_overlap", title: "High-complexity file overlap", guidance: "Complexity overlap needs file complexity coverage for this scope." },
+      ],
     };
   }
 
@@ -325,6 +344,10 @@ export function aiRiskBreakdownResponse(orgId: string, startDate: string, endDat
       endDate,
       dataAvailable: true,
       byBucket: [],
+      missingStates: [
+        { key: "hotspot_overlap", title: "Hotspot file overlap", guidance: "Hotspot overlap needs changed-file coverage for this scope." },
+        { key: "complexity_overlap", title: "High-complexity file overlap", guidance: "Complexity overlap needs file complexity coverage for this scope." },
+      ],
     };
   }
 
@@ -333,6 +356,10 @@ export function aiRiskBreakdownResponse(orgId: string, startDate: string, endDat
     startDate,
     endDate,
     dataAvailable: true,
+    missingStates: [
+      { key: "hotspot_overlap", title: "Hotspot file overlap", guidance: "Hotspot overlap needs changed-file coverage for this scope." },
+      { key: "complexity_overlap", title: "High-complexity file overlap", guidance: "Complexity overlap needs file complexity coverage for this scope." },
+    ],
     byBucket: [
       {
         bucket: "AI_ASSISTED",
@@ -378,7 +405,11 @@ export function aiOpportunitiesResponse(orgId: string, mode: AIMode) {
         title: "Automate dependency updates in platform repo",
         rationale: "Recurring weekly dependency PRs match the AI-assisted heuristic.",
         score: 0.78,
-        evidenceRefs: ["pr:1001", "pr:1009", "pr:1014"],
+        evidenceRefs: ["git_pull_requests:repo-1:1001", "git_pull_requests:repo-1:1009", "git_pull_requests:repo-1:1014"],
+        workGraphDrilldowns: [
+          { rootType: "pr", rootId: "repo-1#1001", label: "PR 1001" },
+          { rootType: "pr", rootId: "repo-1#1009", label: "PR 1009" },
+        ],
       },
       {
         opportunityId: "opp-2",
@@ -388,7 +419,8 @@ export function aiOpportunitiesResponse(orgId: string, mode: AIMode) {
         title: "Generate tests for legacy module",
         rationale: "Low test-delta on AI-attributed PRs flagged this module for follow-up.",
         score: 0.62,
-        evidenceRefs: ["pr:1020", "pr:1024"],
+        evidenceRefs: ["git_pull_requests:repo-2:1020", "git_pull_requests:repo-2:1024"],
+        workGraphDrilldowns: [{ rootType: "pr", rootId: "repo-2#1020", label: "PR 1020" }],
       },
     ],
   };

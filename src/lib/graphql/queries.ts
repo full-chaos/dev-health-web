@@ -521,6 +521,11 @@ query AIOpportunities($orgId: String!, $scope: AIScopeInput, $limit: Int! = 5) {
       rationale
       score
       evidenceRefs
+      workGraphDrilldowns {
+        rootType
+        rootId
+        label
+      }
     }
   }
 }
@@ -607,6 +612,8 @@ query AIReviewLoad($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AISco
       reviewsPerPr
       changesRequestedPerPr
       reviewAmplification
+      postFirstReviewPushesCount
+      postFirstReviewPushesPerPr
     }
     daily {
       bucket
@@ -615,6 +622,18 @@ query AIReviewLoad($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AISco
       reviewsPerPr
       changesRequestedPerPr
       reviewAmplification
+      postFirstReviewPushesCount
+      postFirstReviewPushesPerPr
+    }
+    reviewerConcentration {
+      dataAvailable
+      reviewerCount
+      reviewerGini
+    }
+    missingStates {
+      key
+      title
+      guidance
     }
   }
   aiComparison(orgId: $orgId, dateRange: $dateRange, scope: $scope) {
@@ -674,6 +693,11 @@ query AIRiskBreakdown($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
       testGapRate
       incidentsCount
       incidentRate
+    }
+    missingStates {
+      key
+      title
+      guidance
     }
   }
   aiComparison(orgId: $orgId, dateRange: $dateRange, scope: $scope) {

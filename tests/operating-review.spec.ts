@@ -23,14 +23,25 @@ test.describe("Operating Review", () => {
     // signal that the rendered payload is org-wide, not single-team.
     await expect(page.getByText(/Showing the cross-team aggregate/)).toBeVisible();
 
-    // The body lands on either the agenda (when the backend returns data)
-    // or the empty-state (when the mock returns nothing). Both are valid
-    // terminal states for the aggregate path.
-    const agenda = page.getByRole("heading", { name: "Recommendations" });
-    const emptyState = page.getByRole("heading", {
-      name: "No operating review data yet",
-    });
-    await expect(agenda.or(emptyState)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recommendations" })).toBeVisible();
+  });
+
+  test("renders branded AI Workflow Intelligence section with safe follow-up links", async ({
+    page,
+  }) => {
+    await page.goto("/operating-review?week=2026-05-18");
+
+    const aiSection = page.locator("#ai_workflow_intelligence");
+    await expect(aiSection.getByRole("heading", { name: "AI Workflow Intelligence" })).toBeVisible();
+    await expect(aiSection).toContainText("AI workflow intelligence");
+    await expect(aiSection).toContainText(/operating patterns, not individual performance/i);
+    await expect(aiSection).toContainText("AI-assisted PR ratio");
+    await expect(aiSection).toContainText("Review amplification");
+    await expect(aiSection).toContainText("AI test gap rate");
+    await expect(aiSection.getByRole("link", { name: "Impact" })).toHaveAttribute("href", "/ai/impact");
+    await expect(aiSection.getByRole("link", { name: "Review Load" })).toHaveAttribute("href", "/ai/review-load");
+    await expect(aiSection.getByRole("link", { name: "Risk" })).toHaveAttribute("href", "/ai/risk");
+    await expect(aiSection.getByRole("link", { name: "Automations" })).toHaveAttribute("href", "/ai/automations");
   });
 
   test("pinned team in URL switches off the All Teams aggregate", async ({

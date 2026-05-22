@@ -45,10 +45,12 @@ describe("AIReviewLoadDashboard", () => {
           endDate: "2026-05-01",
           dataAvailable: true,
           byBucket: [
-            { bucket: "ai_assisted", prsTotal: 10, reviewsTotal: 30, reviewsPerPr: 3, changesRequestedPerPr: 1.5, reviewAmplification: 1.8 },
-            { bucket: "human", prsTotal: 10, reviewsTotal: 20, reviewsPerPr: 2, changesRequestedPerPr: 0.5, reviewAmplification: 1.1 },
+            { bucket: "ai_assisted", prsTotal: 10, reviewsTotal: 30, reviewsPerPr: 3, changesRequestedPerPr: 1.5, reviewAmplification: 1.8, postFirstReviewPushesCount: 4, postFirstReviewPushesPerPr: 0.4 },
+            { bucket: "human", prsTotal: 10, reviewsTotal: 20, reviewsPerPr: 2, changesRequestedPerPr: 0.5, reviewAmplification: 1.1, postFirstReviewPushesCount: 2, postFirstReviewPushesPerPr: 0.2 },
           ],
           daily: [],
+          reviewerConcentration: { dataAvailable: true, reviewerCount: 5, reviewerGini: 0.42 },
+          missingStates: [],
         },
         aiComparison: {
           orgId: "org",
@@ -71,13 +73,16 @@ describe("AIReviewLoadDashboard", () => {
     expect(screen.getByText("1.50")).toBeInTheDocument();
     expect(screen.getByText("Approval friction")).toBeInTheDocument();
     expect(screen.getByText("0.50")).toBeInTheDocument();
+    expect(screen.getByText("Push iterations after first review")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-reviewer-concentration")).toHaveTextContent("0.42");
+    expect(screen.getByTestId("ai-reviewer-concentration")).toHaveTextContent("5");
   });
 
   it("renders data_available false empty state", () => {
     mockUseAIReviewLoad.mockReturnValue({
       fetching: false,
       error: undefined,
-      data: { aiReviewLoad: { orgId: "org", startDate: "2026-04-01", endDate: "2026-05-01", dataAvailable: false, byBucket: [], daily: [] } },
+      data: { aiReviewLoad: { orgId: "org", startDate: "2026-04-01", endDate: "2026-05-01", dataAvailable: false, byBucket: [], daily: [], reviewerConcentration: { dataAvailable: false, reviewerCount: 0, reviewerGini: null }, missingStates: [] } },
     });
     render(<AIReviewLoadDashboard filter={filter} />);
     expect(screen.getByText("AI review load data is not available")).toBeInTheDocument();

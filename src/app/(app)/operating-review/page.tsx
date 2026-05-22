@@ -25,7 +25,10 @@ const sectionDescriptions: Record<string, string> = {
   risk: "Hotspots, ownership concentration, complexity, and bus-factor exposure.",
   reliability: "DORA-adjacent delivery and incident reliability signals.",
   investment: "KTLO, new-value, security, and infrastructure allocation.",
+  ai_workflow_intelligence: "AI-assisted work patterns, review pressure, and quality guardrails with no person-level ranking.",
 };
+
+const AI_WORKFLOW_SECTION_KEY = "ai_workflow_intelligence";
 
 export default async function OperatingReviewPage({ searchParams }: OperatingReviewPageProps) {
   const params = (await searchParams) ?? {};
@@ -180,10 +183,10 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
           <a
             key={section.key}
             href={`#${section.key}`}
-            className="rounded-2xl border border-border bg-card p-4 transition hover:border-primary/50"
+            className={`rounded-2xl border bg-card p-4 transition hover:border-primary/50 ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sm shadow-sky-500/10" : "border-border"}`}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Section
+              {section.key === AI_WORKFLOW_SECTION_KEY ? "AI section" : "Section"}
             </p>
             <h2 className="mt-2 text-base font-semibold">{section.title}</h2>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -197,12 +200,12 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
         <section
           id={section.key}
           key={section.key}
-          className="rounded-[1.75rem] border border-border bg-card/90 p-6 shadow-sm"
+          className={`rounded-[1.75rem] border bg-card/90 p-6 shadow-sm ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sky-500/10" : "border-border"}`}
         >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Fixed agenda section
+                {section.key === AI_WORKFLOW_SECTION_KEY ? "AI workflow intelligence" : "Fixed agenda section"}
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">{section.title}</h2>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -211,6 +214,8 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
             </div>
             <DeltaPill improved={section.improved.length} worsened={section.worsened.length} changed={section.changed.length} />
           </div>
+
+          {section.key === AI_WORKFLOW_SECTION_KEY ? <AIWorkflowIntelligenceCallout /> : null}
 
           <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {section.metrics.map((metric) => (
@@ -245,6 +250,31 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function AIWorkflowIntelligenceCallout() {
+  return (
+    <div className="mt-5 rounded-2xl border border-sky-400/30 bg-sky-500/5 p-4" data-testid="operating-review-ai-workflow-callout">
+      <p className="text-sm text-muted-foreground">
+        Review these signals as operating patterns, not individual performance. Drill into the dedicated AI surfaces when review pressure,
+        quality drag, or automation candidates need evidence-level follow-up.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+        <Link className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground" href="/ai/impact">
+          Impact
+        </Link>
+        <Link className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground" href="/ai/review-load">
+          Review Load
+        </Link>
+        <Link className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground" href="/ai/risk">
+          Risk
+        </Link>
+        <Link className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground" href="/ai/automations">
+          Automations
+        </Link>
+      </div>
     </div>
   );
 }

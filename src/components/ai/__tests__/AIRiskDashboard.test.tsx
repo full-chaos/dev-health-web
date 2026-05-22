@@ -42,6 +42,10 @@ describe("AIRiskDashboard", () => {
           startDate: "2026-04-01",
           endDate: "2026-05-01",
           dataAvailable: true,
+          missingStates: [
+            { key: "hotspot_overlap", title: "Hotspot file overlap", guidance: "Hotspot overlap needs changed-file coverage." },
+            { key: "complexity_overlap", title: "High-complexity file overlap", guidance: "Complexity overlap needs file complexity coverage." },
+          ],
           byBucket: [{ bucket: "AI_ASSISTED", prsTotal: 10, reworkPrs: 2, reworkRate: 0.2, revertPrs: 1, revertRate: 0.1, testGapPrs: 3, testGapRate: 0.3, incidentsCount: 1, incidentRate: 0.1 }],
         },
         aiComparison: {
@@ -72,7 +76,7 @@ describe("AIRiskDashboard", () => {
     mockUseAIRiskBreakdown.mockReturnValue({
       fetching: false,
       error: undefined,
-      data: { aiRiskBreakdown: { orgId: "org", startDate: "2026-04-01", endDate: "2026-05-01", dataAvailable: false, byBucket: [] } },
+      data: { aiRiskBreakdown: { orgId: "org", startDate: "2026-04-01", endDate: "2026-05-01", dataAvailable: false, byBucket: [], missingStates: [] } },
     });
     render(<AIRiskDashboard filter={filter} />);
     expect(screen.getByText("AI risk data is not available")).toBeInTheDocument();
