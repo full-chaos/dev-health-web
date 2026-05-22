@@ -191,6 +191,57 @@ const sampleCapacityForecast = {
   highVariance: false,
 };
 
+function operatingReviewMetric(key: string, label: string, value: number, unit: string, priorValue: number, status: "changed" | "improved" | "worsened" | "unchanged") {
+  const absolute = value - priorValue;
+  return {
+    key,
+    label,
+    value,
+    unit,
+    delta: {
+      value,
+      priorValue,
+      absolute,
+      percent: priorValue === 0 ? null : absolute / priorValue,
+      status,
+    },
+  };
+}
+
+function operatingReviewResponse(orgId: string, input?: { teamId?: string | null; weekStart?: string }) {
+  const weekStart = input?.weekStart ?? "2026-05-18";
+  return {
+    orgId,
+    teamId: input?.teamId ?? null,
+    weekStart,
+    priorWeekStart: "2026-05-11",
+    sections: [
+      {
+        key: "delivery_movement",
+        title: "Delivery movement",
+        metrics: [operatingReviewMetric("throughput", "Throughput", 42, "items", 38, "improved")],
+        improved: ["Throughput increased without expanding WIP."],
+        worsened: [],
+        changed: ["Cycle time held steady week over week."],
+      },
+      {
+        key: "ai_workflow_intelligence",
+        title: "AI Workflow Intelligence",
+        metrics: [
+          operatingReviewMetric("ai_assisted_pr_ratio", "AI-assisted PR ratio", 26, "%", 22, "changed"),
+          operatingReviewMetric("ai_review_amplification", "Review amplification", 1.4, "×", 1.2, "worsened"),
+          operatingReviewMetric("ai_test_gap_rate", "AI test gap rate", 18, "%", 21, "improved"),
+        ],
+        improved: ["AI-attributed test gap rate moved down while attribution coverage stayed available."],
+        worsened: ["Review amplification rose for AI-attributed pull requests."],
+        changed: ["Automation candidates are available with Work Graph evidence drilldowns."],
+      },
+    ],
+    recommendations: ["Review AI workflow evidence for high-amplification PRs before adding more automation."],
+    recommendationsEmptyState: "No rule-engine recommendations for this week.",
+  };
+}
+
 // ---------------------------------------------------------------------------
 // People search
 // ---------------------------------------------------------------------------
@@ -528,6 +579,14 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
   // Capacity forecast.
   if (query.includes("capacityForecast") || query.includes("CapacityForecast")) {
     return HttpResponse.json({ data: { capacityForecast: sampleCapacityForecast } });
+  }
+
+  if (query.includes("OperatingReview") || query.includes("operatingReview")) {
+    return HttpResponse.json({
+      data: {
+        operatingReview: operatingReviewResponse(vars.orgId ?? "org-e2e", (variables as { input?: { teamId?: string | null; weekStart?: string } }).input),
+      },
+    });
   }
 
   // Investment flow.
