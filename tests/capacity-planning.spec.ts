@@ -64,4 +64,12 @@ test.describe("Capacity Planning page", () => {
     const link = page.getByRole("link", { name: /Monte Carlo view/i });
     await expect(link).toBeVisible();
   });
+
+  test("renders the canonical FilterBar above the forecast (CHAOS-1773)", async ({ page }) => {
+    await page.goto("/capacity-planning");
+
+    const filterBar = page.getByTestId("filter-bar");
+    await expect(filterBar).toBeVisible();
+    await expect(filterBar).toHaveAttribute("data-view", "capacity-planning");
+  });
 });

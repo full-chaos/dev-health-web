@@ -54,6 +54,8 @@ export function FilterBarClient({ condensed, view, tab, resolvedVisibility, reso
   return (
     <section
       ref={barRef}
+      data-testid="filter-bar"
+      data-view={view ?? "default"}
       className={`w-full border-b border-(--card-stroke) bg-(--card-90)/80 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
     >
       <div className="flex w-full flex-col gap-4">

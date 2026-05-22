@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-import { encodeAIFilterParam } from "../src/lib/filters/ai";
+import { defaultMetricFilter } from "../src/lib/filters/defaults";
+import { encodeFilter } from "../src/lib/filters/encode";
 
 /**
  * CHAOS-1588: AI Review Load dashboard e2e.
@@ -9,15 +10,15 @@ import { encodeAIFilterParam } from "../src/lib/filters/ai";
  * (reviewer concentration is aggregate-only: no names or rankings).
  */
 
-const populatedFilter = encodeAIFilterParam({
-  startDate: "2026-04-20",
-  endDate: "2026-05-19",
+const populatedFilter = encodeFilter({
+  ...defaultMetricFilter,
+  time: { range_days: 30, compare_days: 30 },
 });
 
-const missingDataFilter = encodeAIFilterParam({
-  startDate: "2026-04-20",
-  endDate: "2026-05-19",
-  teamId: "team-missing",
+const missingDataFilter = encodeFilter({
+  ...defaultMetricFilter,
+  scope: { level: "team", ids: ["team-missing"] },
+  time: { range_days: 30, compare_days: 30 },
 });
 
 test.describe("AI Review Load dashboard", () => {

@@ -12,7 +12,12 @@ export type FilterBarView =
   | "explore"
   | "testops"
   | "security"
-  | "feature-flags";
+  | "feature-flags"
+  | "capacity-planning"
+  | "complexity"
+  | "cognitive-load"
+  | "risk-compounding"
+  | "ai";
 
 export type FilterVisibility = {
   scope?: boolean;
@@ -94,6 +99,60 @@ const EXPLORE_VISIBILITY: FilterVisibility = {
   date: true,
 };
 
+// Capacity planning derives team from filters.scope; backlog is collected
+// inline on the page. No repo/developer/workType breakdown.
+const CAPACITY_PLANNING_VISIBILITY: FilterVisibility = {
+  scope: true,
+  repo: false,
+  developer: false,
+  workType: false,
+  flowStage: false,
+  date: true,
+};
+
+// Complexity is repo-centric (hotspots) but never breaks down by person.
+const COMPLEXITY_VISIBILITY: FilterVisibility = {
+  scope: true,
+  repo: true,
+  developer: false,
+  workType: false,
+  flowStage: false,
+  date: true,
+};
+
+// Cognitive load preserves the no-surveillance contract — team/repo scope
+// only. Developer scope is gated separately at the page level (self-only).
+const COGNITIVE_LOAD_VISIBILITY: FilterVisibility = {
+  scope: true,
+  repo: false,
+  developer: false,
+  workType: false,
+  flowStage: false,
+  date: true,
+};
+
+// Compounding risk is a team/repo signal — developer scope is forbidden
+// by the no-surveillance contract on this surface.
+const RISK_COMPOUNDING_VISIBILITY: FilterVisibility = {
+  scope: true,
+  repo: true,
+  developer: false,
+  workType: false,
+  flowStage: false,
+  date: true,
+};
+
+// AI workflow surfaces expose team / repo / work-type scoping but never
+// person-level breakdowns (aggregated reviewer distribution only).
+const AI_VISIBILITY: FilterVisibility = {
+  scope: true,
+  repo: true,
+  developer: false,
+  workType: true,
+  flowStage: false,
+  date: true,
+};
+
 export const resolveVisibility = (
   view?: FilterBarView,
   tab?: string
@@ -132,6 +191,21 @@ export const resolveVisibility = (
       date: false,
     };
   }
+  if (view === "capacity-planning") {
+    return CAPACITY_PLANNING_VISIBILITY;
+  }
+  if (view === "complexity") {
+    return COMPLEXITY_VISIBILITY;
+  }
+  if (view === "cognitive-load") {
+    return COGNITIVE_LOAD_VISIBILITY;
+  }
+  if (view === "risk-compounding") {
+    return RISK_COMPOUNDING_VISIBILITY;
+  }
+  if (view === "ai") {
+    return AI_VISIBILITY;
+  }
   return DEFAULT_VISIBILITY;
 };
 
@@ -147,6 +221,11 @@ export const resolveScopeLock = (
     "opportunities",
     "home",
     "people",
+    "capacity-planning",
+    "complexity",
+    "cognitive-load",
+    "risk-compounding",
+    "ai",
   ];
 
   return view && lockedViews.includes(view) ? "team" : null;

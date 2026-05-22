@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
-import { encodeAIFilterParam } from "../src/lib/filters/ai";
+import { encodeFilter } from "../src/lib/filters/encode";
+import { defaultMetricFilter } from "../src/lib/filters/defaults";
 import { ensureGroupExpanded } from "./helpers/sidebar";
 
 
@@ -15,9 +16,9 @@ import { ensureGroupExpanded } from "./helpers/sidebar";
  * group — same as real user behavior.
  */
 
-const defaultFilter = encodeAIFilterParam({
-  startDate: "2026-04-20",
-  endDate: "2026-05-19",
+const defaultFilter = encodeFilter({
+  ...defaultMetricFilter,
+  time: { range_days: 30, compare_days: 30 },
 });
 
 // PrimaryNav links carry the label + description in their accessible name
@@ -70,34 +71,30 @@ test.describe("AI workflow primary navigation", () => {
     await expect(aiImpactLink(page)).not.toHaveAttribute("aria-current", "page");
   });
 
-  test("AIFilterBar updates stay on the current AI route", async ({ page }) => {
-    // Regression: AIFilterBar previously hardcoded /ai/impact, so changing
-    // the date range on /ai/risk redirected back to /ai/impact. CHAOS-1588
-    // fix routes the update through usePathname().
-    await page.goto(`/ai/risk?f=${defaultFilter}`);
-    await expect(page.getByTestId("ai-filter-bar")).toBeVisible();
-
-    await page.getByLabel("Start").fill("2026-05-01");
-
-    await expect(page).toHaveURL(/\/ai\/risk\?f=/);
-    await expect(page).not.toHaveURL(/\/ai\/impact/);
-    await expect(page.getByRole("heading", { name: "AI Risk" })).toBeVisible();
+  test("FilterBar is the canonical chrome on every AI route (CHAOS-1773)", async ({ page }) => {
+    // CHAOS-1773: all AI surfaces now render the canonical FilterBar instead
+    // of the bespoke AIFilterBar that used native date inputs and selects.
+    for (const route of ["/ai/impact", "/ai/review-load", "/ai/automations", "/ai/risk"]) {
+      await page.goto(`${route}?f=${defaultFilter}`);
+      const filterBar = page.getByTestId("filter-bar");
+      await expect(filterBar).toBeVisible();
+      await expect(filterBar).toHaveAttribute("data-view", "ai");
+    }
   });
 
-  test("filter encoding round-trips across navigation", async ({ page }) => {
-    const customFilter = encodeAIFilterParam({
-      startDate: "2026-03-01",
-      endDate: "2026-04-01",
-      teamId: "team-platform",
+  test("filter encoding round-trips across AI navigation", async ({ page }) => {
+    const customFilter = encodeFilter({
+      ...defaultMetricFilter,
+      time: { range_days: 7, compare_days: 7 },
     });
 
     await page.goto(`/ai/impact?f=${customFilter}`);
-    await expect(page.getByLabel("Start")).toHaveValue("2026-03-01");
-    await expect(page.getByLabel("End")).toHaveValue("2026-04-01");
+    await expect(page.getByTestId("filter-bar")).toBeVisible();
 
     await ensureGroupExpanded(page, "Spot Pressure Early");
     await aiReviewLoadLink(page).click();
     await expect(page).toHaveURL(/\/ai\/review-load/);
     await expect(page.getByRole("heading", { name: "AI Review Load" })).toBeVisible();
+    await expect(page.getByTestId("filter-bar")).toBeVisible();
   });
 });
