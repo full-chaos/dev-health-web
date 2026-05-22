@@ -785,3 +785,47 @@ query AIAttributedPrs($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
   }
 }
 `;
+
+// ==== Complexity Queries (CHAOS-1745) ====
+
+// Query for complexity timeseries — repo-level cyclomatic complexity over time.
+// Backed by repo_complexity_daily (CHAOS-1756).
+export const COMPLEXITY_TIMESERIES_QUERY = `
+query ComplexityTimeseries($input: ComplexityTimeseriesInput!) {
+  complexityTimeseries(input: $input) {
+    points {
+      date
+      scopeId
+      scopeName
+      locTotal
+      cyclomaticPerKloc
+      cyclomaticTotal
+      cyclomaticAvg
+      highComplexityFunctions
+      veryHighComplexityFunctions
+    }
+    totalScope
+  }
+}
+`;
+
+// Query for file hotspots — top N files ranked by risk_score (churn × complexity).
+// Backed by file_hotspot_daily (CHAOS-1756).
+export const HOTSPOTS_QUERY = `
+query Hotspots($input: HotspotsInput!) {
+  hotspots(input: $input) {
+    rows {
+      filePath
+      repoId
+      repoName
+      churnLoc30d
+      churnCommits30d
+      cyclomaticTotal
+      cyclomaticAvg
+      blameConcentration
+      riskScore
+      evidenceUrl
+    }
+  }
+}
+`;
