@@ -10,6 +10,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     "This email is already registered with a different sign-in method. Please sign in with your original method.",
   OAuthCallbackError: "An error occurred during social login. Please try again.",
   AccessDenied: "Access was denied. Please try again.",
+  refresh_failed: "Your previous session expired. Please sign in again with your email and password.",
 }
 
 export function SocialLoginError({ error }: SocialLoginErrorProps) {
