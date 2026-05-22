@@ -148,8 +148,8 @@ export const config = {
       // Lazy getter to avoid a top-level import cycle with runtimeConfig.
       // The runtimeConfig module itself depends on this file for
       // `getServerEnv`, so we must not eagerly import it at module load.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { runtimeConfig } =
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         require("@/lib/runtimeConfig") as typeof import("@/lib/runtimeConfig");
       return runtimeConfig.docsUrl();
     },
