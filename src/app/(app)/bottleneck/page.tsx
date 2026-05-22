@@ -207,7 +207,7 @@ export default async function BottleneckPage({
           </section>
 
           {/* Quadrant panels */}
-          <section className="grid gap-6 lg:grid-cols-2">
+          <section className="grid gap-6">
             <QuadrantPanel
               title="WIP × Throughput"
               description="Operating modes under work in flight and delivery pace."
