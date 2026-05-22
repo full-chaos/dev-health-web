@@ -65,8 +65,6 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="cognitive-load" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-6" data-testid="cognitive-load-dashboard">
-          <ContextStrip filters={filters} origin={activeOrigin} />
-
           <section className="overflow-hidden rounded-[2rem] border border-(--card-stroke) bg-(--card-80) shadow-sm">
             <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
               <div className="p-8">
@@ -91,6 +89,8 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
               </div>
             </div>
           </section>
+
+          <ContextStrip filters={filters} origin={activeOrigin} />
 
           {!canShowSelectedScope ? (
             <section className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm">
