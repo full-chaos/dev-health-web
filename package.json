@@ -73,10 +73,12 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16",
+    "eslint-config-prettier": "^10.1.8",
     "express": "^5.2.1",
     "jsdom": "^29.1.1",
     "lightningcss": "^1",
     "msw": "^2.14.6",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "typescript": "^6",
     "vitest": "^4.1.6"
