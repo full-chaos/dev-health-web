@@ -81,6 +81,7 @@ const navGroups: NavGroup[] = [
       { id: "code", label: "Code", href: "/code", description: "Ownership" },
       { id: "risk-compounding", label: "Compounding Risk", href: "/risk/compounding", description: "Composite" },
       { id: "incident-correlation", label: "Incident Correlation", href: "/incident-correlation", description: "DORA change-failure" },
+      { id: "complexity", label: "Complexity", href: "/complexity", description: "Hotspots + trend" },
       { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
       { id: "security", label: "Security", href: "/security", description: "Alerts" },
     ],

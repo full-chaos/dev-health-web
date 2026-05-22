@@ -87,3 +87,17 @@ describe("PrimaryNav — section composition", () => {
     );
   });
 });
+
+  it("renders the 'Complexity' nav item under Investigate (CHAOS-1745)", () => {
+    render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
+
+    const complexityLinks = screen.getAllByRole("link", {
+      name: /complexity/i,
+    });
+    // Exactly one Complexity link — under the Investigate section.
+    expect(complexityLinks).toHaveLength(1);
+    expect(complexityLinks[0]).toHaveAttribute(
+      "href",
+      expect.stringContaining("/complexity")
+    );
+  });
