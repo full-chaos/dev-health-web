@@ -1514,6 +1514,10 @@ export const handlers = [
     return HttpResponse.json({ registered: true }, { status: 201 });
   }),
 
+  http.post("*/api/v1/auth/forgot-password", () =>
+    HttpResponse.json({ message: "If an account exists, a reset email was sent." }),
+  ),
+
   http.get("*/api/v1/auth/verify", ({ request }) => {
     const url = new URL(request.url);
     const token = url.searchParams.get("token");

@@ -4,7 +4,7 @@ import { LoginForm } from "@/components/auth/LoginForm"
 import { AuthCard } from "@/components/auth/AuthCard"
 import { SocialLoginError } from "@/components/auth/SocialLoginError"
 
-type SearchParams = Promise<{ registered?: string; plan?: string; trial?: string; error?: string }>
+type SearchParams = Promise<{ registered?: string; plan?: string; trial?: string; error?: string; from?: string }>
 
 export default async function SignInPage({
   searchParams,
@@ -17,7 +17,7 @@ export default async function SignInPage({
   const signupHref = trialIntent ? "/auth/signup?plan=team&trial=true" : "/auth/signup"
 
   const session = await auth()
-  if (session?.user) {
+  if (session?.user && params.from !== "reset") {
     if (session.user.needs_onboarding) {
       redirect(trialIntent ? "/auth/onboard?plan=team&trial=true" : "/auth/onboard")
     }
