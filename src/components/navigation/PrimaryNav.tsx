@@ -72,6 +72,12 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "home", label: "Home", href: "/dashboard", description: "Overview" },
       {
+        id: "ai-workflow",
+        label: "AI Workflow",
+        href: "/ai/impact",
+        description: "Intelligence",
+      },
+      {
         id: "operating-review",
         label: "Operating Review",
         href: "/operating-review",
@@ -238,11 +244,13 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     return (
       <div key={group.id}>
         <button
+          type="button"
           onClick={() => toggleGroup(group.id, groupIsCollapsed)}
           className="primary-nav-group-button flex w-full items-center justify-between rounded-xl py-2 text-xs uppercase tracking-wider text-(--ink-muted) transition-colors hover:text-foreground"
         >
           <span>{group.label}</span>
           <svg
+            aria-hidden="true"
             xmlns="http://www.w3.org/2000/svg"
             width="12"
             height="12"

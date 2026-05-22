@@ -72,7 +72,7 @@ test.describe("filter propagation", () => {
       { label: /People/i, path: "/people" },
       { label: /Metrics/i, path: "/metrics" },
       { label: /Landscape/i, path: "/explore/landscape" },
-      { label: /Work/i, path: "/work" },
+      { label: /^Work Investment$/, path: "/work" },
       { label: /Code/i, path: "/code" },
       { label: /Opportunities/i, path: "/opportunities" },
       { label: /Home/i, path: "/dashboard" },
@@ -94,7 +94,7 @@ test.describe("filter propagation", () => {
     expect(updatedFilter).not.toBe(initialFilter);
 
     const nav = page.locator("aside nav");
-    await nav.getByRole("link", { name: /Work/i }).click();
+    await nav.getByRole("link", { name: /^Work Investment$/ }).click();
     await expect.poll(() => new URL(page.url()).pathname).toBe("/work");
     await expectFilterParam(page, updatedFilter);
     await expectDeveloperFilter(page, "metrics-owner");

@@ -47,6 +47,30 @@ const MONITORING_VIEWS = [
   },
 ];
 
+const AI_WORKFLOW_STEPS = [
+  {
+    label: "AI Impact",
+    description: "Start with delivery lift versus review, rework, test, and incident drag.",
+    href: "/ai/impact",
+  },
+  {
+    label: "Review Load / Risk",
+    description:
+      "Check whether AI-attributed work is shifting cost into review or quality signals.",
+    href: "/ai/review-load",
+  },
+  {
+    label: "Governance gaps",
+    description: "Treat unknown attribution and policy violations as trust signals to investigate.",
+    href: "/ai/risk",
+  },
+  {
+    label: "Evidence + intervention",
+    description: "Move from recommendations into the evidence trail and weekly operating review.",
+    href: "/operating-review#ai-workflow-intelligence",
+  },
+];
+
 const loadHome = async (
   filters: Parameters<typeof getHomeData>[0],
 ): Promise<HomeResponse | null> => {
@@ -156,6 +180,58 @@ export default async function Home({ searchParams }: HomePageProps) {
           <FilterBar view="home" />
 
           {/* Minimal freshness indicator only — no integration status UI */}
+
+          <section className="overflow-hidden rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-5 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.55)]">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
+                  Market entry path
+                </p>
+                <h2 className="mt-3 font-(--font-display) text-3xl leading-tight">
+                  AI Workflow Intelligence
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
+                  Answer the AI adoption question without turning Dev Health into surveillance: are
+                  AI-assisted workflows improving delivery, or shifting cost into review, rework,
+                  quality risk, and governance gaps?
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em]">
+                  <Link
+                    href={withFilterParam("/ai/impact", filters, activeRole)}
+                    className="rounded-full bg-(--accent) px-4 py-2 font-semibold text-white transition hover:-translate-y-0.5"
+                  >
+                    Start with AI Impact
+                  </Link>
+                  <Link
+                    href={withFilterParam(
+                      "/operating-review#ai-workflow-intelligence",
+                      filters,
+                      activeRole,
+                    )}
+                    className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2 text-(--accent-2) transition hover:-translate-y-0.5"
+                  >
+                    Weekly review
+                  </Link>
+                </div>
+              </div>
+              <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
+                {AI_WORKFLOW_STEPS.map((step, index) => (
+                  <Link
+                    key={step.label}
+                    href={withFilterParam(step.href, filters, activeRole)}
+                    className="group rounded-2xl border border-(--card-stroke) bg-(--card) p-4 transition hover:-translate-y-1"
+                  >
+                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      <span className="text-(--accent-2)">Open</span>
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-foreground">{step.label}</p>
+                    <p className="mt-2 text-xs leading-5 text-(--ink-muted)">{step.description}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
 
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
