@@ -39,4 +39,3 @@ jobs:
         env:
           GOVERNANCE_DIFF_BASE: FETCH_HEAD
         run: node .github/scripts/enforce-src-test-governance.mjs
-

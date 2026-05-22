@@ -31,7 +31,7 @@ vi.mock("next-auth", () => ({
     signOut: vi.fn(),
   })),
   CredentialsSignin: class CredentialsSignin extends Error {
-    code = "credentials"
+    code = "credentials";
   },
 }));
 
@@ -80,9 +80,7 @@ describe("requireSession", () => {
     } catch (error: unknown) {
       const redirectErr = error as RedirectError;
       expect(redirectErr.digest).toBe("NEXT_REDIRECT");
-      expect(redirectErr.url).toBe(
-        `/auth/signin?callbackUrl=${encodeURIComponent("/dashboard")}`
-      );
+      expect(redirectErr.url).toBe(`/auth/signin?callbackUrl=${encodeURIComponent("/dashboard")}`);
     }
   });
 

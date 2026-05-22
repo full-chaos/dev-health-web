@@ -15,10 +15,19 @@ type AIComparisonCardProps = {
   percent?: boolean;
 };
 
-export function AIComparisonCard({ label, aiSide, baselineSide, delta, metric, percent = true }: AIComparisonCardProps) {
+export function AIComparisonCard({
+  label,
+  aiSide,
+  baselineSide,
+  delta,
+  metric,
+  percent = true,
+}: AIComparisonCardProps) {
   const aiValue = aiSide?.[metric] ?? null;
   const baselineValue = baselineSide?.[metric] ?? null;
-  const format = percent ? formatPercent : (value?: number | null) => (value == null ? "—" : value.toFixed(2));
+  const format = percent
+    ? formatPercent
+    : (value?: number | null) => (value == null ? "—" : value.toFixed(2));
   const spark = [baselineValue ?? 0, aiValue ?? 0];
 
   return (
@@ -28,14 +37,18 @@ export function AIComparisonCard({ label, aiSide, baselineSide, delta, metric, p
           <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">{label}</p>
           <p className="mt-2 text-3xl font-semibold tabular-nums">{format(aiValue)}</p>
         </div>
-        <span className={`rounded-full px-2 py-1 text-xs ${delta && delta > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
+        <span
+          className={`rounded-full px-2 py-1 text-xs ${delta && delta > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}
+        >
           {formatSigned(delta, percent ? " pts" : "")}
         </span>
       </div>
       <div className="mt-3 h-16">
         <SparklineChart data={spark} categories={["Baseline", "AI"]} height={64} />
       </div>
-      <p className="mt-2 text-xs text-(--ink-muted)">Baseline {format(baselineValue)} · AI side {format(aiValue)}</p>
+      <p className="mt-2 text-xs text-(--ink-muted)">
+        Baseline {format(baselineValue)} · AI side {format(aiValue)}
+      </p>
     </div>
   );
 }

@@ -12,19 +12,12 @@ type RepoSecurityPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function RepoSecurityPage({
-  params,
-  searchParams,
-}: RepoSecurityPageProps) {
+export default async function RepoSecurityPage({ params, searchParams }: RepoSecurityPageProps) {
   const { repoId } = await params;
   const queryParams = (await searchParams) ?? {};
-  const encodedFilter = Array.isArray(queryParams.f)
-    ? queryParams.f[0]
-    : queryParams.f;
+  const encodedFilter = Array.isArray(queryParams.f) ? queryParams.f[0] : queryParams.f;
 
-  const baseFilter = encodedFilter
-    ? decodeSecurityFilter(encodedFilter)
-    : defaultSecurityFilter();
+  const baseFilter = encodedFilter ? decodeSecurityFilter(encodedFilter) : defaultSecurityFilter();
 
   const lockedFilter = applyLockedRepoId(baseFilter, repoId);
 
@@ -39,9 +32,7 @@ export default async function RepoSecurityPage({
             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
               Security / Repo
             </p>
-            <h1 className="mt-2 font-(--font-display) text-3xl">
-              {repoId}
-            </h1>
+            <h1 className="mt-2 font-(--font-display) text-3xl">{repoId}</h1>
             <p className="mt-2 text-sm text-(--ink-muted)">
               Security alerts scoped to this repository.
             </p>

@@ -22,19 +22,15 @@ interface UseWorkGraphEdgesResult {
   refetch: () => void;
 }
 
-export function useWorkGraphEdges(
-  options: UseWorkGraphEdgesOptions
-): UseWorkGraphEdgesResult {
+export function useWorkGraphEdges(options: UseWorkGraphEdgesOptions): UseWorkGraphEdgesResult {
   const { orgId, filters, pause = false } = options;
 
-  const [result, reexecute] = useQuery<{ workGraphEdges: WorkGraphEdgesResult }>(
-    {
-      query: WORK_GRAPH_EDGES_QUERY,
-      variables: { orgId, filters },
-      pause,
-      requestPolicy: "cache-and-network",
-    }
-  );
+  const [result, reexecute] = useQuery<{ workGraphEdges: WorkGraphEdgesResult }>({
+    query: WORK_GRAPH_EDGES_QUERY,
+    variables: { orgId, filters },
+    pause,
+    requestPolicy: "cache-and-network",
+  });
 
   return {
     edges: result.data?.workGraphEdges?.edges ?? [],
@@ -54,9 +50,7 @@ interface UseNodeEdgesOptions {
   pause?: boolean;
 }
 
-export function useNodeEdges(
-  options: UseNodeEdgesOptions
-): UseWorkGraphEdgesResult {
+export function useNodeEdges(options: UseNodeEdgesOptions): UseWorkGraphEdgesResult {
   const { orgId, nodeId, limit = 100, pause = false } = options;
 
   return useWorkGraphEdges({

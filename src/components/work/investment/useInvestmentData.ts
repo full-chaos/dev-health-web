@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useInvestmentFlow, useInvestmentMix, useInvestmentRepoTeamFlow } from "@/lib/graphql/hooks";
+import {
+  useInvestmentFlow,
+  useInvestmentMix,
+  useInvestmentRepoTeamFlow,
+} from "@/lib/graphql/hooks";
 import { explainInvestmentMix, getWorkUnitExplanation, getWorkUnits } from "@/lib/api/investment";
 import { formatWorkUnitTypeLabel, getBaselineFilters } from "@/lib/investment";
 import { normalizeInvestmentMix } from "@/lib/investmentMix";
@@ -23,7 +27,10 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
   const [isLoading, setIsLoading] = useState(true);
 
   const { data: mixData, loading: mixLoading } = useInvestmentMix({ filters });
-  const investmentMix = useMemo(() => (mixData ? normalizeInvestmentMix(mixData) : null), [mixData]);
+  const investmentMix = useMemo(
+    () => (mixData ? normalizeInvestmentMix(mixData) : null),
+    [mixData],
+  );
   const isMixLoading = mixLoading;
 
   const [mixExplanation, setMixExplanation] = useState<MixExplanationState>({
@@ -224,7 +231,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
       params.set("work_unit_id", workUnitId);
       router.replace(`/work?${params.toString()}`);
     },
-    [router, searchParams]
+    [router, searchParams],
   );
 
   return {

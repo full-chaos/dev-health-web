@@ -4,10 +4,7 @@ import { logger } from "@/lib/logger";
 
 type TelemetryPayload = Record<string, string | number | boolean | null>;
 
-export const trackTelemetryEvent = (
-  event: string,
-  payload: TelemetryPayload = {}
-) => {
+export const trackTelemetryEvent = (event: string, payload: TelemetryPayload = {}) => {
   if (isServer) {
     return;
   }

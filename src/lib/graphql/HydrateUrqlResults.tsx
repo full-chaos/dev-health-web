@@ -15,11 +15,7 @@ import { useState } from "react";
 import type { SSRData } from "@urql/core";
 import { useSsr } from "./provider";
 
-export function HydrateUrqlResults({
-  payload,
-}: {
-  payload: SSRData | null | undefined;
-}): null {
+export function HydrateUrqlResults({ payload }: { payload: SSRData | null | undefined }): null {
   const ssr = useSsr();
 
   useState(() => {

@@ -29,7 +29,7 @@ describe("AuditDetailPanel", () => {
     render(<AuditDetailPanel entry={null} onResolveAction={vi.fn()} />);
 
     expect(
-      screen.getByText(/Select an audit entry to inspect local vs Stripe state/i)
+      screen.getByText(/Select an audit entry to inspect local vs Stripe state/i),
     ).toBeInTheDocument();
   });
 
@@ -48,7 +48,7 @@ describe("AuditDetailPanel", () => {
       <AuditDetailPanel
         entry={makeEntry({ local_state: {}, stripe_state: {} })}
         onResolveAction={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText(/No state data available/i)).toBeInTheDocument();

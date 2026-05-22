@@ -14,9 +14,7 @@ import { getSuperuserToken, liveBackendUrl, testEmail, verifyUser } from "./help
 // 1. Signup form submits successfully
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("signup form submits successfully and redirects with registered banner", async ({
-  page,
-  }) => {
+test("signup form submits successfully and redirects with registered banner", async ({ page }) => {
   const email = testEmail("ui-signup");
 
   await page.goto("/auth/signup");
@@ -29,8 +27,8 @@ test("signup form submits successfully and redirects with registered banner", as
 
   // Capture the register API response so we can assert status and diagnose
   // failures caused by rate-limiting (429) or CSRF (403).
-  const registerResponsePromise = page.waitForResponse(
-    (resp) => resp.url().includes("/api/v1/auth/register"),
+  const registerResponsePromise = page.waitForResponse((resp) =>
+    resp.url().includes("/api/v1/auth/register"),
   );
   await page.getByRole("button", { name: "Create account" }).click();
   const registerResponse = await registerResponsePromise;
@@ -40,7 +38,10 @@ test("signup form submits successfully and redirects with registered banner", as
     test.skip(true, "Register rate-limited (429) \u2014 skipping browser signup test");
     return;
   }
-  expect(registerResponse.status(), `Unexpected register status: ${await registerResponse.text()}`).toBe(201);
+  expect(
+    registerResponse.status(),
+    `Unexpected register status: ${await registerResponse.text()}`,
+  ).toBe(201);
 
   // Should redirect to signin with registered=true banner
   await expect(page).toHaveURL(/\/auth\/signin\?registered=true/, { timeout: 15_000 });
@@ -52,7 +53,7 @@ test("signup form submits successfully and redirects with registered banner", as
 //    (Registration auto-creates an org + membership, so needs_onboarding=false)
 // ──────────────────────────────────────────────────────────────────────────────
 
-  test("login with verified user redirects to dashboard", async ({ page, request }) => {
+test("login with verified user redirects to dashboard", async ({ page, request }) => {
   const email = testEmail("ui-login");
   const password = "TestPass123!";
 
@@ -77,13 +78,16 @@ test("signup form submits successfully and redirects with registered banner", as
     test.skip(
       true,
       "Superuser credentials not usable against this backend \u2014 cannot verify the test user. " +
-      "The workflow seeds a superuser; check the 'Seed test superuser' step logs.",
+        "The workflow seeds a superuser; check the 'Seed test superuser' step logs.",
     );
     return;
   }
   const verified = await verifyUser(request, userId, suToken);
   if (!verified) {
-    test.skip(true, "verifyUser() returned non-OK \u2014 admin API rejected the PATCH; skipping login test.");
+    test.skip(
+      true,
+      "verifyUser() returned non-OK \u2014 admin API rejected the PATCH; skipping login test.",
+    );
     return;
   }
 
@@ -125,13 +129,16 @@ test("full signup then login reaches dashboard", async ({ page, request }) => {
     test.skip(
       true,
       "Superuser credentials not usable against this backend \u2014 cannot verify the test user. " +
-      "The workflow seeds a superuser; check the 'Seed test superuser' step logs.",
+        "The workflow seeds a superuser; check the 'Seed test superuser' step logs.",
     );
     return;
   }
   const verified = await verifyUser(request, userId, suToken);
   if (!verified) {
-    test.skip(true, "verifyUser() returned non-OK \u2014 admin API rejected the PATCH; skipping login test.");
+    test.skip(
+      true,
+      "verifyUser() returned non-OK \u2014 admin API rejected the PATCH; skipping login test.",
+    );
     return;
   }
 
@@ -144,5 +151,7 @@ test("full signup then login reaches dashboard", async ({ page, request }) => {
   // Should reach dashboard and see main navigation
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
   // Verify the page has rendered (not just a redirect)
-  await expect(page.getByRole("heading", { name: "Developer Health Ops Cockpit" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Developer Health Ops Cockpit" })).toBeVisible({
+    timeout: 10_000,
+  });
 });

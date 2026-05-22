@@ -79,7 +79,7 @@ async function withAuthHeaders(): Promise<HeadersInit | null> {
 }
 
 export async function getAuditLog(
-  filters: BillingAuditFilters = {}
+  filters: BillingAuditFilters = {},
 ): Promise<ActionResult<BillingAuditListResponse>> {
   try {
     const headers = await withAuthHeaders();
@@ -141,7 +141,7 @@ export async function getAuditEntry(id: string): Promise<ActionResult<BillingAud
 
 export async function resolveAuditMismatch(
   id: string,
-  resolution: string
+  resolution: string,
 ): Promise<ActionResult<BillingAuditEntry>> {
   try {
     const headers = await withAuthHeaders();
@@ -165,7 +165,7 @@ export async function resolveAuditMismatch(
 }
 
 export async function triggerReconciliation(
-  orgId?: string
+  orgId?: string,
 ): Promise<ActionResult<ReconciliationReport>> {
   try {
     const headers = await withAuthHeaders();

@@ -1,10 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition, type ChangeEvent, type SyntheticEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type ChangeEvent,
+  type SyntheticEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { SyncConfig, IntegrationCredential, Provider, PROVIDERS, PROVIDER_LABELS, PROVIDER_SYNC_TARGETS } from "@/lib/admin/types";
+import {
+  SyncConfig,
+  IntegrationCredential,
+  Provider,
+  PROVIDERS,
+  PROVIDER_LABELS,
+  PROVIDER_SYNC_TARGETS,
+} from "@/lib/admin/types";
 import { batchCreateSyncConfigs, createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
@@ -30,7 +45,8 @@ const ALL_SYNC_TARGETS = [
 ];
 
 function getSyncTargetsForProvider(provider: string) {
-  const allowed = PROVIDER_SYNC_TARGETS[provider as Provider] ?? Object.values(PROVIDER_SYNC_TARGETS).flat();
+  const allowed =
+    PROVIDER_SYNC_TARGETS[provider as Provider] ?? Object.values(PROVIDER_SYNC_TARGETS).flat();
   return ALL_SYNC_TARGETS.filter((t) => allowed.includes(t.id));
 }
 
@@ -42,7 +58,11 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
   const { features, minSyncIntervalHours, limits } = useAdminTier();
   const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
 
-  const { formData, setFormData, handleChange: handleBaseChange } = useBaseFormState({
+  const {
+    formData,
+    setFormData,
+    handleChange: handleBaseChange,
+  } = useBaseFormState({
     name: initialData?.name || "",
     provider: initialData?.provider || "github",
     credential_id: initialData?.credential_id || "",
@@ -62,43 +82,49 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
 
   const filteredCredentials = useMemo(
     () => localCredentials.filter((c) => c.provider === formData.provider),
-    [localCredentials, formData.provider]
+    [localCredentials, formData.provider],
   );
 
   const availableTargets = useMemo(
     () => getSyncTargetsForProvider(formData.provider),
-    [formData.provider]
+    [formData.provider],
   );
 
-  const handleChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    
-    if (type === "checkbox" && name === "is_active") {
-      setFormData((prev) => ({ ...prev, is_active: (e.target as HTMLInputElement).checked }));
-    } else if (name === "provider") {
-      const newAllowed = PROVIDER_SYNC_TARGETS[value as Provider] ?? [];
-      setFormData((prev) => ({
-        ...prev,
-        provider: value,
-        sync_targets: prev.sync_targets.filter((t) => newAllowed.includes(t)),
-        credential_id: "",
-        owner: "",
-        repos: [],
-        gitlab_url: "",
-      }));
-    } else {
-      handleBaseChange(e);
-    }
-  }, [handleBaseChange, setFormData]);
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value, type } = e.target;
 
-  const handleTargetChange = useCallback((targetId: string, checked: boolean) => {
-    setFormData((prev) => {
-      const newTargets = checked
-        ? [...prev.sync_targets, targetId]
-        : prev.sync_targets.filter((t) => t !== targetId);
-      return { ...prev, sync_targets: newTargets };
-    });
-  }, [setFormData]);
+      if (type === "checkbox" && name === "is_active") {
+        setFormData((prev) => ({ ...prev, is_active: (e.target as HTMLInputElement).checked }));
+      } else if (name === "provider") {
+        const newAllowed = PROVIDER_SYNC_TARGETS[value as Provider] ?? [];
+        setFormData((prev) => ({
+          ...prev,
+          provider: value,
+          sync_targets: prev.sync_targets.filter((t) => newAllowed.includes(t)),
+          credential_id: "",
+          owner: "",
+          repos: [],
+          gitlab_url: "",
+        }));
+      } else {
+        handleBaseChange(e);
+      }
+    },
+    [handleBaseChange, setFormData],
+  );
+
+  const handleTargetChange = useCallback(
+    (targetId: string, checked: boolean) => {
+      setFormData((prev) => {
+        const newTargets = checked
+          ? [...prev.sync_targets, targetId]
+          : prev.sync_targets.filter((t) => t !== targetId);
+        return { ...prev, sync_targets: newTargets };
+      });
+    },
+    [setFormData],
+  );
 
   const buildSyncOptions = useCallback((): Record<string, unknown> => {
     const opts: Record<string, unknown> = {};
@@ -109,51 +135,27 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     return opts;
   }, [formData.owner, formData.provider, formData.gitlab_url]);
 
-  const handleSubmit = useCallback((e: SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    (e: SyntheticEvent<HTMLFormElement>) => {
+      e.preventDefault();
 
-    startTransition(async () => {
-      try {
-        let result: { error?: string } | undefined;
-        const syncOptions = buildSyncOptions();
-        if (initialData) {
-          result = await updateSyncConfig(initialData.id, {
-            sync_targets: formData.sync_targets,
-            is_active: formData.is_active,
-            schedule_cron: formData.schedule_cron,
-            timezone: formData.timezone,
-            initial_sync_depth: formData.initial_sync_depth,
-            sync_options: syncOptions,
-          });
-          if (result?.error) {
-            toast.error(result.error);
-          } else {
-            toast.success("Config updated");
-            if (onSuccessAction) {
-              onSuccessAction();
-            } else {
-              router.push("/admin/sync");
-            }
-          }
-        } else {
-          const base = {
-            name: formData.name,
-            provider: formData.provider,
-            credential_id: formData.credential_id || null,
-            sync_targets: formData.sync_targets,
-            schedule_cron: formData.schedule_cron,
-            timezone: formData.timezone,
-            initial_sync_depth: formData.initial_sync_depth,
-            sync_options: syncOptions,
-          };
-
-          if (formData.repos.length > 0) {
-            result = await batchCreateSyncConfigs({ ...base, repos: formData.repos });
+      startTransition(async () => {
+        try {
+          let result: { error?: string } | undefined;
+          const syncOptions = buildSyncOptions();
+          if (initialData) {
+            result = await updateSyncConfig(initialData.id, {
+              sync_targets: formData.sync_targets,
+              is_active: formData.is_active,
+              schedule_cron: formData.schedule_cron,
+              timezone: formData.timezone,
+              initial_sync_depth: formData.initial_sync_depth,
+              sync_options: syncOptions,
+            });
             if (result?.error) {
               toast.error(result.error);
             } else {
-              const count = (result as { data?: { count?: number } })?.data?.count ?? formData.repos.length;
-              toast.success(`Created config with ${count} repos`);
+              toast.success("Config updated");
               if (onSuccessAction) {
                 onSuccessAction();
               } else {
@@ -161,31 +163,61 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
               }
             }
           } else {
-            result = await createSyncConfig(base);
-            if (result?.error) {
-              toast.error(result.error);
-            } else {
-              toast.success("Config created");
-              if (onSuccessAction) {
-                onSuccessAction();
+            const base = {
+              name: formData.name,
+              provider: formData.provider,
+              credential_id: formData.credential_id || null,
+              sync_targets: formData.sync_targets,
+              schedule_cron: formData.schedule_cron,
+              timezone: formData.timezone,
+              initial_sync_depth: formData.initial_sync_depth,
+              sync_options: syncOptions,
+            };
+
+            if (formData.repos.length > 0) {
+              result = await batchCreateSyncConfigs({ ...base, repos: formData.repos });
+              if (result?.error) {
+                toast.error(result.error);
               } else {
-                router.push("/admin/sync");
+                const count =
+                  (result as { data?: { count?: number } })?.data?.count ?? formData.repos.length;
+                toast.success(`Created config with ${count} repos`);
+                if (onSuccessAction) {
+                  onSuccessAction();
+                } else {
+                  router.push("/admin/sync");
+                }
+              }
+            } else {
+              result = await createSyncConfig(base);
+              if (result?.error) {
+                toast.error(result.error);
+              } else {
+                toast.success("Config created");
+                if (onSuccessAction) {
+                  onSuccessAction();
+                } else {
+                  router.push("/admin/sync");
+                }
               }
             }
           }
+        } catch {
+          toast.error("An unexpected error occurred");
         }
-      } catch {
-        toast.error("An unexpected error occurred");
-      }
-    });
-  }, [initialData, formData, buildSyncOptions, onSuccessAction, router]);
+      });
+    },
+    [initialData, formData, buildSyncOptions, onSuccessAction, router],
+  );
 
   return (
     <>
       <BaseForm
         onSubmitAction={handleSubmit}
         isLoading={isPending}
-        submitLabel={isPending ? "Saving..." : initialData ? "Update Configuration" : "Create Configuration"}
+        submitLabel={
+          isPending ? "Saving..." : initialData ? "Update Configuration" : "Create Configuration"
+        }
         className="max-w-2xl space-y-6"
         contentClassName="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
         actionsClassName="flex items-center gap-4"
@@ -198,7 +230,6 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
           </Link>
         }
       >
-        
         {/* Name */}
         <div>
           <label htmlFor="name" className="mb-1.5 block text-sm font-medium">
@@ -238,20 +269,20 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
           </select>
         </div>
 
-          {/* Credential */}
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label htmlFor="credential_id" className="block text-sm font-medium">
-                Credential
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowCredentialModal(true)}
-                className="rounded-md border border-(--card-stroke) px-2 py-1 text-xs font-medium text-(--foreground) hover:bg-(--card-70)"
-              >
-                + New
-              </button>
-            </div>
+        {/* Credential */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label htmlFor="credential_id" className="block text-sm font-medium">
+              Credential
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowCredentialModal(true)}
+              className="rounded-md border border-(--card-stroke) px-2 py-1 text-xs font-medium text-(--foreground) hover:bg-(--card-70)"
+            >
+              + New
+            </button>
+          </div>
           <select
             id="credential_id"
             name="credential_id"
@@ -284,14 +315,17 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
               <span>.</span>
             </div>
           )}
-          </div>
+        </div>
 
         {/* Repository Settings */}
         {(formData.provider === "github" || formData.provider === "gitlab") && (
           <div className="space-y-4">
             <span className="mb-2 block text-sm font-medium">Repository</span>
             <div>
-              <label htmlFor="owner" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
+              <label
+                htmlFor="owner"
+                className="mb-1.5 block text-sm font-medium text-(--ink-muted)"
+              >
                 Owner / Organization
               </label>
               <input
@@ -306,7 +340,10 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             </div>
             {formData.provider === "gitlab" && (
               <div>
-                <label htmlFor="gitlab_url" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
+                <label
+                  htmlFor="gitlab_url"
+                  className="mb-1.5 block text-sm font-medium text-(--ink-muted)"
+                >
                   GitLab URL
                 </label>
                 <input
@@ -329,9 +366,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                   credentialId={formData.credential_id}
                   owner={formData.owner}
                   selectedRepos={formData.repos}
-                  onSelectionChange={(repos) =>
-                    setFormData((prev) => ({ ...prev, repos }))
-                  }
+                  onSelectionChange={(repos) => setFormData((prev) => ({ ...prev, repos }))}
                   maxRepos={maxRepos}
                 />
               </div>
@@ -368,9 +403,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
 
         {/* Initial Sync Depth */}
         <div className="space-y-3">
-          <span className="text-sm font-medium text-[var(--text-primary)]">
-            Initial Sync Depth
-          </span>
+          <span className="text-sm font-medium text-[var(--text-primary)]">Initial Sync Depth</span>
           <p className="text-xs text-[var(--text-secondary)]">
             How far back to pull historical data when first connecting.
           </p>
@@ -389,13 +422,15 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                   key={opt.value}
                   type="button"
                   disabled={isGated}
-                  onClick={() => setFormData(prev => ({ ...prev, initial_sync_depth: opt.value }))}
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, initial_sync_depth: opt.value }))
+                  }
                   className={`rounded-md border px-3 py-2 text-sm transition-colors ${
                     isSelected
                       ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
                       : isGated
-                      ? "cursor-not-allowed border-[var(--card-stroke)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-50"
-                      : "border-[var(--card-stroke)] hover:border-[var(--accent)]/50"
+                        ? "cursor-not-allowed border-[var(--card-stroke)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-50"
+                        : "border-[var(--card-stroke)] hover:border-[var(--accent)]/50"
                   }`}
                 >
                   {opt.label}
@@ -431,7 +466,6 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
             minIntervalHours={minSyncIntervalHours}
           />
         </UpgradeGate>
-
       </BaseForm>
 
       {showCredentialModal && (

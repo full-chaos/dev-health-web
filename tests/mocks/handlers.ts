@@ -91,9 +91,41 @@ const workUnitInvestmentsSample = [
     key: "PROJ-123",
     time_range: { start: "2025-02-01T12:00:00Z", end: "2025-02-03T18:00:00Z" },
     effort: { metric: "churn_loc", value: 820 },
-    investment: { themes: { feature_delivery: 0.52, maintenance: 0.18, operational: 0.16, quality: 0.1, risk: 0.04 }, subcategories: { "feature_delivery.customer": 0.32, "feature_delivery.roadmap": 0.2, "maintenance.refactor": 0.12, "maintenance.debt": 0.06, "operational.incident_response": 0.1, "operational.support": 0.06, "quality.testing": 0.1, "risk.security": 0.04 } },
+    investment: {
+      themes: {
+        feature_delivery: 0.52,
+        maintenance: 0.18,
+        operational: 0.16,
+        quality: 0.1,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.customer": 0.32,
+        "feature_delivery.roadmap": 0.2,
+        "maintenance.refactor": 0.12,
+        "maintenance.debt": 0.06,
+        "operational.incident_response": 0.1,
+        "operational.support": 0.06,
+        "quality.testing": 0.1,
+        "risk.security": 0.04,
+      },
+    },
     evidence_quality: { value: 0.78, band: "moderate" },
-    evidence: { textual: [{ type: "text_phrase", phrase: "feature launch", source: "issue_title" }], structural: [{ type: "work_item_type", work_item_type: "story", count: 3 }], contextual: [{ type: "time_range", start: "2025-02-01T12:00:00Z", end: "2025-02-03T18:00:00Z", span_days: 2.25, score: 0.64 }, { type: "repo_scope", repo_ids: ["repo:web-app"] }, { type: "team_scope", team_ids: ["growth"], team_names: ["Growth"] }] },
+    evidence: {
+      textual: [{ type: "text_phrase", phrase: "feature launch", source: "issue_title" }],
+      structural: [{ type: "work_item_type", work_item_type: "story", count: 3 }],
+      contextual: [
+        {
+          type: "time_range",
+          start: "2025-02-01T12:00:00Z",
+          end: "2025-02-03T18:00:00Z",
+          span_days: 2.25,
+          score: 0.64,
+        },
+        { type: "repo_scope", repo_ids: ["repo:web-app"] },
+        { type: "team_scope", team_ids: ["growth"], team_names: ["Growth"] },
+      ],
+    },
   },
   {
     work_unit_id: "wu-53a17",
@@ -105,9 +137,41 @@ const workUnitInvestmentsSample = [
     key: "#482",
     time_range: { start: "2025-02-02T09:00:00Z", end: "2025-02-04T16:30:00Z" },
     effort: { metric: "churn_loc", value: 540 },
-    investment: { themes: { feature_delivery: 0.12, maintenance: 0.58, operational: 0.08, quality: 0.18, risk: 0.04 }, subcategories: { "feature_delivery.enablement": 0.12, "maintenance.debt": 0.3, "maintenance.refactor": 0.18, "maintenance.upgrade": 0.1, "operational.support": 0.08, "quality.bugfix": 0.12, "quality.reliability": 0.06, "risk.compliance": 0.04 } },
+    investment: {
+      themes: {
+        feature_delivery: 0.12,
+        maintenance: 0.58,
+        operational: 0.08,
+        quality: 0.18,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.enablement": 0.12,
+        "maintenance.debt": 0.3,
+        "maintenance.refactor": 0.18,
+        "maintenance.upgrade": 0.1,
+        "operational.support": 0.08,
+        "quality.bugfix": 0.12,
+        "quality.reliability": 0.06,
+        "risk.compliance": 0.04,
+      },
+    },
     evidence_quality: { value: 0.84, band: "high" },
-    evidence: { textual: [], structural: [{ type: "work_item_type", work_item_type: "chore", count: 2 }], contextual: [{ type: "time_range", start: "2025-02-02T09:00:00Z", end: "2025-02-04T16:30:00Z", span_days: 2.3, score: 0.72 }, { type: "repo_scope", repo_ids: ["repo:core-api"] }, { type: "team_scope", team_ids: ["core"], team_names: ["Core"] }] },
+    evidence: {
+      textual: [],
+      structural: [{ type: "work_item_type", work_item_type: "chore", count: 2 }],
+      contextual: [
+        {
+          type: "time_range",
+          start: "2025-02-02T09:00:00Z",
+          end: "2025-02-04T16:30:00Z",
+          span_days: 2.3,
+          score: 0.72,
+        },
+        { type: "repo_scope", repo_ids: ["repo:core-api"] },
+        { type: "team_scope", team_ids: ["core"], team_names: ["Core"] },
+      ],
+    },
   },
   {
     work_unit_id: "wu-7ed90",
@@ -119,9 +183,41 @@ const workUnitInvestmentsSample = [
     key: "INC-77",
     time_range: { start: "2025-02-05T08:00:00Z", end: "2025-02-06T20:00:00Z" },
     effort: { metric: "churn_loc", value: 310 },
-    investment: { themes: { feature_delivery: 0.06, maintenance: 0.12, operational: 0.6, quality: 0.18, risk: 0.04 }, subcategories: { "feature_delivery.customer": 0.06, "maintenance.debt": 0.12, "operational.incident_response": 0.4, "operational.on_call": 0.12, "operational.support": 0.08, "quality.reliability": 0.1, "quality.bugfix": 0.08, "risk.vulnerability": 0.04 } },
+    investment: {
+      themes: {
+        feature_delivery: 0.06,
+        maintenance: 0.12,
+        operational: 0.6,
+        quality: 0.18,
+        risk: 0.04,
+      },
+      subcategories: {
+        "feature_delivery.customer": 0.06,
+        "maintenance.debt": 0.12,
+        "operational.incident_response": 0.4,
+        "operational.on_call": 0.12,
+        "operational.support": 0.08,
+        "quality.reliability": 0.1,
+        "quality.bugfix": 0.08,
+        "risk.vulnerability": 0.04,
+      },
+    },
     evidence_quality: { value: 0.55, band: "low" },
-    evidence: { textual: [{ type: "text_phrase", phrase: "hotfix", source: "pr_title" }], structural: [{ type: "work_item_type", work_item_type: "incident", count: 1 }], contextual: [{ type: "time_range", start: "2025-02-05T08:00:00Z", end: "2025-02-06T20:00:00Z", span_days: 1.5, score: 0.44 }, { type: "repo_scope", repo_ids: ["repo:infra"] }, { type: "team_scope", team_ids: ["infra"], team_names: ["Infra"] }] },
+    evidence: {
+      textual: [{ type: "text_phrase", phrase: "hotfix", source: "pr_title" }],
+      structural: [{ type: "work_item_type", work_item_type: "incident", count: 1 }],
+      contextual: [
+        {
+          type: "time_range",
+          start: "2025-02-05T08:00:00Z",
+          end: "2025-02-06T20:00:00Z",
+          span_days: 1.5,
+          score: 0.44,
+        },
+        { type: "repo_scope", repo_ids: ["repo:infra"] },
+        { type: "team_scope", team_ids: ["infra"], team_names: ["Infra"] },
+      ],
+    },
   },
 ];
 
@@ -132,12 +228,40 @@ const cycleBreakdownFlameSample = {
     name: "Total Cycle Time",
     value: 847.2,
     children: [
-      { name: "In Progress", value: 412.5, children: [{ name: "Development", value: 245.3 }, { name: "Code Review", value: 98.7 }, { name: "Testing", value: 68.5 }] },
-      { name: "Waiting", value: 312.4, children: [{ name: "Waiting for Review", value: 156.2 }, { name: "Blocked", value: 89.1 }, { name: "Waiting for Deploy", value: 67.1 }] },
-      { name: "Review", value: 122.3, children: [{ name: "Initial Review", value: 78.4 }, { name: "Re-review", value: 43.9 }] },
+      {
+        name: "In Progress",
+        value: 412.5,
+        children: [
+          { name: "Development", value: 245.3 },
+          { name: "Code Review", value: 98.7 },
+          { name: "Testing", value: 68.5 },
+        ],
+      },
+      {
+        name: "Waiting",
+        value: 312.4,
+        children: [
+          { name: "Waiting for Review", value: 156.2 },
+          { name: "Blocked", value: 89.1 },
+          { name: "Waiting for Deploy", value: 67.1 },
+        ],
+      },
+      {
+        name: "Review",
+        value: 122.3,
+        children: [
+          { name: "Initial Review", value: 78.4 },
+          { name: "Re-review", value: 43.9 },
+        ],
+      },
     ],
   },
-  meta: { window_start: "2025-01-01", window_end: "2025-01-30", filters: {}, notes: ["Sample data for demonstration"] },
+  meta: {
+    window_start: "2025-01-01",
+    window_end: "2025-01-30",
+    filters: {},
+    notes: ["Sample data for demonstration"],
+  },
 };
 
 const codeHotspotsFlameSample = {
@@ -147,12 +271,71 @@ const codeHotspotsFlameSample = {
     name: "All Repositories",
     value: 1247,
     children: [
-      { name: "dev-health-ops", value: 523, children: [{ name: "src/api", value: 234, children: [{ name: "routes.py", value: 89 }, { name: "services/", value: 78 }, { name: "middleware.py", value: 67 }] }, { name: "src/processors", value: 178, children: [{ name: "sync.py", value: 92 }, { name: "local.py", value: 86 }] }, { name: "src/metrics", value: 111 }] },
-      { name: "dev-health-web", value: 412, children: [{ name: "src/components", value: 245, children: [{ name: "charts/", value: 134 }, { name: "work/", value: 78 }, { name: "navigation/", value: 33 }] }, { name: "src/lib", value: 167, children: [{ name: "api.ts", value: 56 }, { name: "graphql/", value: 62 }, { name: "filters/", value: 49 }] }] },
-      { name: "atlassian", value: 312, children: [{ name: "src/client", value: 156 }, { name: "src/schema", value: 98 }, { name: "tests/", value: 58 }] },
+      {
+        name: "dev-health-ops",
+        value: 523,
+        children: [
+          {
+            name: "src/api",
+            value: 234,
+            children: [
+              { name: "routes.py", value: 89 },
+              { name: "services/", value: 78 },
+              { name: "middleware.py", value: 67 },
+            ],
+          },
+          {
+            name: "src/processors",
+            value: 178,
+            children: [
+              { name: "sync.py", value: 92 },
+              { name: "local.py", value: 86 },
+            ],
+          },
+          { name: "src/metrics", value: 111 },
+        ],
+      },
+      {
+        name: "dev-health-web",
+        value: 412,
+        children: [
+          {
+            name: "src/components",
+            value: 245,
+            children: [
+              { name: "charts/", value: 134 },
+              { name: "work/", value: 78 },
+              { name: "navigation/", value: 33 },
+            ],
+          },
+          {
+            name: "src/lib",
+            value: 167,
+            children: [
+              { name: "api.ts", value: 56 },
+              { name: "graphql/", value: 62 },
+              { name: "filters/", value: 49 },
+            ],
+          },
+        ],
+      },
+      {
+        name: "atlassian",
+        value: 312,
+        children: [
+          { name: "src/client", value: 156 },
+          { name: "src/schema", value: 98 },
+          { name: "tests/", value: 58 },
+        ],
+      },
     ],
   },
-  meta: { window_start: "2025-01-01", window_end: "2025-01-30", filters: {}, notes: ["Sample data for demonstration"] },
+  meta: {
+    window_start: "2025-01-01",
+    window_end: "2025-01-30",
+    filters: {},
+    notes: ["Sample data for demonstration"],
+  },
 };
 
 const throughputFlameSample = {
@@ -162,13 +345,49 @@ const throughputFlameSample = {
     name: "Completed Work",
     value: 156,
     children: [
-      { name: "Features", value: 67, children: [{ name: "Customer Requests", value: 34 }, { name: "Roadmap Items", value: 22 }, { name: "Internal Tools", value: 11 }] },
-      { name: "Bug Fixes", value: 48, children: [{ name: "Critical", value: 8 }, { name: "High Priority", value: 18 }, { name: "Normal", value: 22 }] },
-      { name: "Maintenance", value: 28, children: [{ name: "Dependency Updates", value: 12 }, { name: "Refactoring", value: 10 }, { name: "Documentation", value: 6 }] },
-      { name: "Tech Debt", value: 13, children: [{ name: "Performance", value: 7 }, { name: "Code Quality", value: 6 }] },
+      {
+        name: "Features",
+        value: 67,
+        children: [
+          { name: "Customer Requests", value: 34 },
+          { name: "Roadmap Items", value: 22 },
+          { name: "Internal Tools", value: 11 },
+        ],
+      },
+      {
+        name: "Bug Fixes",
+        value: 48,
+        children: [
+          { name: "Critical", value: 8 },
+          { name: "High Priority", value: 18 },
+          { name: "Normal", value: 22 },
+        ],
+      },
+      {
+        name: "Maintenance",
+        value: 28,
+        children: [
+          { name: "Dependency Updates", value: 12 },
+          { name: "Refactoring", value: 10 },
+          { name: "Documentation", value: 6 },
+        ],
+      },
+      {
+        name: "Tech Debt",
+        value: 13,
+        children: [
+          { name: "Performance", value: 7 },
+          { name: "Code Quality", value: 6 },
+        ],
+      },
     ],
   },
-  meta: { window_start: "2025-01-01", window_end: "2025-01-30", filters: {}, notes: ["Sample data for demonstration"] },
+  meta: {
+    window_start: "2025-01-01",
+    window_end: "2025-01-30",
+    filters: {},
+    notes: ["Sample data for demonstration"],
+  },
 };
 
 const sampleCapacityForecast = {
@@ -191,7 +410,14 @@ const sampleCapacityForecast = {
   highVariance: false,
 };
 
-function operatingReviewMetric(key: string, label: string, value: number, unit: string, priorValue: number, status: "changed" | "improved" | "worsened" | "unchanged") {
+function operatingReviewMetric(
+  key: string,
+  label: string,
+  value: number,
+  unit: string,
+  priorValue: number,
+  status: "changed" | "improved" | "worsened" | "unchanged",
+) {
   const absolute = value - priorValue;
   return {
     key,
@@ -208,7 +434,10 @@ function operatingReviewMetric(key: string, label: string, value: number, unit: 
   };
 }
 
-function operatingReviewResponse(orgId: string, input?: { teamId?: string | null; weekStart?: string }) {
+function operatingReviewResponse(
+  orgId: string,
+  input?: { teamId?: string | null; weekStart?: string },
+) {
   const weekStart = input?.weekStart ?? "2026-05-18";
   return {
     orgId,
@@ -228,16 +457,34 @@ function operatingReviewResponse(orgId: string, input?: { teamId?: string | null
         key: "ai_workflow_intelligence",
         title: "AI Workflow Intelligence",
         metrics: [
-          operatingReviewMetric("ai_assisted_pr_ratio", "AI-assisted PR ratio", 26, "%", 22, "changed"),
-          operatingReviewMetric("ai_review_amplification", "Review amplification", 1.4, "×", 1.2, "worsened"),
+          operatingReviewMetric(
+            "ai_assisted_pr_ratio",
+            "AI-assisted PR ratio",
+            26,
+            "%",
+            22,
+            "changed",
+          ),
+          operatingReviewMetric(
+            "ai_review_amplification",
+            "Review amplification",
+            1.4,
+            "×",
+            1.2,
+            "worsened",
+          ),
           operatingReviewMetric("ai_test_gap_rate", "AI test gap rate", 18, "%", 21, "improved"),
         ],
-        improved: ["AI-attributed test gap rate moved down while attribution coverage stayed available."],
+        improved: [
+          "AI-attributed test gap rate moved down while attribution coverage stayed available.",
+        ],
         worsened: ["Review amplification rose for AI-attributed pull requests."],
         changed: ["Automation candidates are available with Work Graph evidence drilldowns."],
       },
     ],
-    recommendations: ["Review AI workflow evidence for high-amplification PRs before adding more automation."],
+    recommendations: [
+      "Review AI workflow evidence for high-amplification PRs before adding more automation.",
+    ],
     recommendationsEmptyState: "No rule-engine recommendations for this week.",
   };
 }
@@ -271,12 +518,17 @@ const SAMPLE_PEOPLE = [
 // Sankey mode → response mapping
 // ---------------------------------------------------------------------------
 
-const SANKEY_RESPONSES: Record<string, { nodes: unknown[]; links: unknown[]; label: string; unit: string }> = {
+const SANKEY_RESPONSES: Record<
+  string,
+  { nodes: unknown[]; links: unknown[]; label: string; unit: string }
+> = {
   state: {
-    nodes: sankeyStateTransitionSample.flatMap((t) => [
-      { name: t.fromStatus, group: "status" },
-      { name: t.toStatus, group: "status" },
-    ]).filter((n, i, arr) => arr.findIndex((x) => x.name === n.name) === i),
+    nodes: sankeyStateTransitionSample
+      .flatMap((t) => [
+        { name: t.fromStatus, group: "status" },
+        { name: t.toStatus, group: "status" },
+      ])
+      .filter((n, i, arr) => arr.findIndex((x) => x.name === n.name) === i),
     links: sankeyStateTransitionSample.map((t) => ({
       source: t.fromStatus,
       target: t.toStatus,
@@ -403,7 +655,6 @@ const SAMPLE_BILLING_AUDIT = {
   created_at: "2026-02-02T09:00:00.000Z",
 };
 
-
 const MOCK_BILLING_PLANS: MockBillingPlan[] = [
   {
     id: "plan-team",
@@ -452,7 +703,6 @@ const MOCK_BILLING_PLANS: MockBillingPlan[] = [
     bundles: [],
   },
 ];
-
 
 const MOCK_CREDENTIALS: MockCredential[] = [
   {
@@ -534,9 +784,10 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
             {
               dimension: "THEME",
               measure: "COUNT",
-              items: Object.entries(investmentMixSample.theme_distribution).map(
-                ([key, value]) => ({ key, value }),
-              ),
+              items: Object.entries(investmentMixSample.theme_distribution).map(([key, value]) => ({
+                key,
+                value,
+              })),
             },
             {
               dimension: "SUBCATEGORY",
@@ -557,12 +808,72 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
       data: {
         workGraphEdges: {
           edges: [
-            { edgeId: "e1", sourceType: "ISSUE", sourceId: "PROJ-101", targetType: "PR", targetId: "PR-201", edgeType: "FIXES", provenance: "NATIVE", confidence: 1.0, evidence: "Fixes #101" },
-            { edgeId: "e2", sourceType: "ISSUE", sourceId: "PROJ-102", targetType: "ISSUE", targetId: "PROJ-101", edgeType: "BLOCKS", provenance: "EXPLICIT_TEXT", confidence: 0.9, evidence: "is blocked by PROJ-102" },
-            { edgeId: "e3", sourceType: "PR", sourceId: "PR-201", targetType: "COMMIT", targetId: "abc123", edgeType: "CONTAINS", provenance: "NATIVE", confidence: 1.0, evidence: "" },
-            { edgeId: "e4", sourceType: "COMMIT", sourceId: "abc123", targetType: "FILE", targetId: "src/api/handler.ts", edgeType: "TOUCHES", provenance: "NATIVE", confidence: 1.0, evidence: "" },
-            { edgeId: "e5", sourceType: "ISSUE", sourceId: "PROJ-103", targetType: "ISSUE", targetId: "PROJ-101", edgeType: "RELATES", provenance: "HEURISTIC", confidence: 0.7, evidence: "similar labels" },
-            { edgeId: "e6", sourceType: "ISSUE", sourceId: "PROJ-104", targetType: "PR", targetId: "PR-202", edgeType: "IMPLEMENTS", provenance: "EXPLICIT_TEXT", confidence: 0.95, evidence: "Implements PROJ-104" },
+            {
+              edgeId: "e1",
+              sourceType: "ISSUE",
+              sourceId: "PROJ-101",
+              targetType: "PR",
+              targetId: "PR-201",
+              edgeType: "FIXES",
+              provenance: "NATIVE",
+              confidence: 1.0,
+              evidence: "Fixes #101",
+            },
+            {
+              edgeId: "e2",
+              sourceType: "ISSUE",
+              sourceId: "PROJ-102",
+              targetType: "ISSUE",
+              targetId: "PROJ-101",
+              edgeType: "BLOCKS",
+              provenance: "EXPLICIT_TEXT",
+              confidence: 0.9,
+              evidence: "is blocked by PROJ-102",
+            },
+            {
+              edgeId: "e3",
+              sourceType: "PR",
+              sourceId: "PR-201",
+              targetType: "COMMIT",
+              targetId: "abc123",
+              edgeType: "CONTAINS",
+              provenance: "NATIVE",
+              confidence: 1.0,
+              evidence: "",
+            },
+            {
+              edgeId: "e4",
+              sourceType: "COMMIT",
+              sourceId: "abc123",
+              targetType: "FILE",
+              targetId: "src/api/handler.ts",
+              edgeType: "TOUCHES",
+              provenance: "NATIVE",
+              confidence: 1.0,
+              evidence: "",
+            },
+            {
+              edgeId: "e5",
+              sourceType: "ISSUE",
+              sourceId: "PROJ-103",
+              targetType: "ISSUE",
+              targetId: "PROJ-101",
+              edgeType: "RELATES",
+              provenance: "HEURISTIC",
+              confidence: 0.7,
+              evidence: "similar labels",
+            },
+            {
+              edgeId: "e6",
+              sourceType: "ISSUE",
+              sourceId: "PROJ-104",
+              targetType: "PR",
+              targetId: "PR-202",
+              edgeType: "IMPLEMENTS",
+              provenance: "EXPLICIT_TEXT",
+              confidence: 0.95,
+              evidence: "Implements PROJ-104",
+            },
           ],
           totalCount: 6,
           pageInfo: {
@@ -584,7 +895,10 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
   if (query.includes("OperatingReview") || query.includes("operatingReview")) {
     return HttpResponse.json({
       data: {
-        operatingReview: operatingReviewResponse(vars.orgId ?? "org-e2e", (variables as { input?: { teamId?: string | null; weekStart?: string } }).input),
+        operatingReview: operatingReviewResponse(
+          vars.orgId ?? "org-e2e",
+          (variables as { input?: { teamId?: string | null; weekStart?: string } }).input,
+        ),
       },
     });
   }
@@ -594,7 +908,12 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
     return HttpResponse.json({
       data: {
         investmentFlow: {
-          nodes: sankeyInvestmentNodes.map((n, i) => ({ id: `n${i}`, label: n.name, dimension: n.group, value: 10 })),
+          nodes: sankeyInvestmentNodes.map((n, i) => ({
+            id: `n${i}`,
+            label: n.name,
+            dimension: n.group,
+            value: 10,
+          })),
           edges: sankeyInvestmentLinks.map((l, i) => ({
             id: `e${i}`,
             source: `n${sankeyInvestmentNodes.findIndex((n) => n.name === l.source)}`,
@@ -643,12 +962,12 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                 weights,
                 thresholds,
                 computedAt: "2026-05-21T12:00:00Z",
-              }
+              },
             ],
             trend: [],
             generatedAt: "2026-05-21T12:00:00Z",
-          }
-        }
+          },
+        },
       });
     }
 
@@ -684,7 +1003,13 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         scopeLabel: "acme/frontend",
         score: 0.42,
         severity: "ELEVATED",
-        components: { ...baseComponents, churnNorm: 0.4, complexityNorm: 0.4, ownershipNorm: 0.4, reviewNorm: 0.45 },
+        components: {
+          ...baseComponents,
+          churnNorm: 0.4,
+          complexityNorm: 0.4,
+          ownershipNorm: 0.4,
+          reviewNorm: 0.45,
+        },
         weights,
         thresholds,
         computedAt: "2026-05-21T12:00:00Z",
@@ -696,7 +1021,13 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         scopeLabel: "acme/infra",
         score: 0.25,
         severity: "LOW",
-        components: { ...baseComponents, churnNorm: 0.2, complexityNorm: 0.2, ownershipNorm: 0.3, reviewNorm: 0.25 },
+        components: {
+          ...baseComponents,
+          churnNorm: 0.2,
+          complexityNorm: 0.2,
+          ownershipNorm: 0.3,
+          reviewNorm: 0.25,
+        },
         weights,
         thresholds,
         computedAt: "2026-05-21T12:00:00Z",
@@ -726,8 +1057,8 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
             { day: "2026-05-15", score: 0.62, severity: "ELEVATED" },
             { day: "2026-05-16", score: 0.66, severity: "HIGH" },
             { day: "2026-05-17", score: 0.68, severity: "HIGH" },
-            { day: "2026-05-18", score: 0.70, severity: "HIGH" },
-            { day: "2026-05-19", score: 0.70, severity: "HIGH" },
+            { day: "2026-05-18", score: 0.7, severity: "HIGH" },
+            { day: "2026-05-19", score: 0.7, severity: "HIGH" },
             { day: "2026-05-20", score: 0.71, severity: "HIGH" },
           ],
           generatedAt: "2026-05-21T12:00:00Z",
@@ -743,7 +1074,9 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
   const aiMode = resolveAIMode(vars.scope ?? null);
 
   if (query.includes("AIImpactSummary")) {
-    return HttpResponse.json({ data: { aiImpactSummary: aiImpactSummaryResponse(orgId, startDate, endDate, aiMode) } });
+    return HttpResponse.json({
+      data: { aiImpactSummary: aiImpactSummaryResponse(orgId, startDate, endDate, aiMode) },
+    });
   }
   if (query.includes("AIReviewLoad")) {
     return HttpResponse.json({
@@ -762,16 +1095,22 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
     });
   }
   if (query.includes("AIComparison")) {
-    return HttpResponse.json({ data: { aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode) } });
+    return HttpResponse.json({
+      data: { aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode) },
+    });
   }
   if (query.includes("AIOpportunities")) {
     return HttpResponse.json({ data: { aiOpportunities: aiOpportunitiesResponse(orgId, aiMode) } });
   }
   if (query.includes("AIGovernanceSummary")) {
-    return HttpResponse.json({ data: { aiGovernanceSummary: aiGovernanceSummaryResponse(orgId, startDate, endDate, aiMode) } });
+    return HttpResponse.json({
+      data: { aiGovernanceSummary: aiGovernanceSummaryResponse(orgId, startDate, endDate, aiMode) },
+    });
   }
   if (query.includes("AIAttributedPrs")) {
-    return HttpResponse.json({ data: { aiAttributedPrs: aiAttributedPrsResponse(orgId, startDate, endDate, aiMode) } });
+    return HttpResponse.json({
+      data: { aiAttributedPrs: aiAttributedPrsResponse(orgId, startDate, endDate, aiMode) },
+    });
   }
   if (query.includes("AIWorkflowDrilldown")) {
     const rootType = (variables.rootType as string | undefined) ?? "PR";
@@ -795,11 +1134,71 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
             { nodeType: "INCIDENT", nodeId: "inc-42" },
           ],
           edges: [
-            { edgeId: "demo-issue-pr", sourceType: "ISSUE", sourceId: issueId, targetType: "PR", targetId: prId, edgeType: "FIXES", confidence: 1, source: "msw", evidence: `Fixes ${issueId}`, provider: "github", repoId: "repo:web-app" },
-            { edgeId: "demo-pr-review", sourceType: "PR", sourceId: prId, targetType: "REVIEW_OUTCOME", targetId: "review-approved", edgeType: "HAS_REVIEW_OUTCOME", confidence: 0.96, source: "msw", evidence: "Approved after accessibility copy updates.", provider: "github", repoId: "repo:web-app" },
-            { edgeId: "demo-pr-commit", sourceType: "PR", sourceId: prId, targetType: "COMMIT", targetId: "abc123", edgeType: "CONTAINS", confidence: 1, source: "msw", evidence: "Merge commit abc123", provider: "github", repoId: "repo:web-app" },
-            { edgeId: "demo-pr-deploy", sourceType: "PR", sourceId: prId, targetType: "DEPLOYMENT", targetId: "deploy-123", edgeType: "DEPLOYS", confidence: 0.91, source: "msw", evidence: "Staging deployment completed 45 minutes after merge.", provider: "github", repoId: "repo:web-app" },
-            { edgeId: "demo-deploy-incident", sourceType: "DEPLOYMENT", sourceId: "deploy-123", targetType: "INCIDENT", targetId: "inc-42", edgeType: "LINKED_INCIDENT", confidence: 0.74, source: "msw", evidence: "Incident opened inside the post-deploy observation window.", provider: "github", repoId: "repo:web-app" },
+            {
+              edgeId: "demo-issue-pr",
+              sourceType: "ISSUE",
+              sourceId: issueId,
+              targetType: "PR",
+              targetId: prId,
+              edgeType: "FIXES",
+              confidence: 1,
+              source: "msw",
+              evidence: `Fixes ${issueId}`,
+              provider: "github",
+              repoId: "repo:web-app",
+            },
+            {
+              edgeId: "demo-pr-review",
+              sourceType: "PR",
+              sourceId: prId,
+              targetType: "REVIEW_OUTCOME",
+              targetId: "review-approved",
+              edgeType: "HAS_REVIEW_OUTCOME",
+              confidence: 0.96,
+              source: "msw",
+              evidence: "Approved after accessibility copy updates.",
+              provider: "github",
+              repoId: "repo:web-app",
+            },
+            {
+              edgeId: "demo-pr-commit",
+              sourceType: "PR",
+              sourceId: prId,
+              targetType: "COMMIT",
+              targetId: "abc123",
+              edgeType: "CONTAINS",
+              confidence: 1,
+              source: "msw",
+              evidence: "Merge commit abc123",
+              provider: "github",
+              repoId: "repo:web-app",
+            },
+            {
+              edgeId: "demo-pr-deploy",
+              sourceType: "PR",
+              sourceId: prId,
+              targetType: "DEPLOYMENT",
+              targetId: "deploy-123",
+              edgeType: "DEPLOYS",
+              confidence: 0.91,
+              source: "msw",
+              evidence: "Staging deployment completed 45 minutes after merge.",
+              provider: "github",
+              repoId: "repo:web-app",
+            },
+            {
+              edgeId: "demo-deploy-incident",
+              sourceType: "DEPLOYMENT",
+              sourceId: "deploy-123",
+              targetType: "INCIDENT",
+              targetId: "inc-42",
+              edgeType: "LINKED_INCIDENT",
+              confidence: 0.74,
+              source: "msw",
+              evidence: "Incident opened inside the post-deploy observation window.",
+              provider: "github",
+              repoId: "repo:web-app",
+            },
           ],
         },
       },
@@ -808,7 +1207,8 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
 
   // Catalog dimension values for AI filter bar dropdowns.
   if (query.includes("CatalogValues") || query.includes("catalog(")) {
-    const dim = typeof vars.dimension === "string" ? vars.dimension : (vars.dimension?.dimension ?? "TEAM");
+    const dim =
+      typeof vars.dimension === "string" ? vars.dimension : (vars.dimension?.dimension ?? "TEAM");
     return HttpResponse.json({ data: { catalog: catalogValuesResponse(dim) } });
   }
 
@@ -1016,9 +1416,7 @@ export const handlers = [
     });
   }),
 
-  http.post("*/api/v1/billing/refunds", () =>
-    HttpResponse.json(SAMPLE_REFUND),
-  ),
+  http.post("*/api/v1/billing/refunds", () => HttpResponse.json(SAMPLE_REFUND)),
 
   http.get("*/api/v1/billing/audit", ({ request }) => {
     const url = new URL(request.url);
@@ -1061,9 +1459,7 @@ export const handlers = [
   ),
 
   // ---- Health & Meta ----
-  http.get("*/health", () =>
-    HttpResponse.json({ status: "ok", services: { api: "mock" } }),
-  ),
+  http.get("*/health", () => HttpResponse.json({ status: "ok", services: { api: "mock" } })),
 
   http.get("*/api/v1/meta", () =>
     HttpResponse.json({
@@ -1195,22 +1591,30 @@ export const handlers = [
       deltas: [
         { metric: "cycle_time", label: "Cycle Time", unit: "hours", value: 48, delta_pct: -12 },
         { metric: "throughput", label: "Throughput", unit: "PRs/week", value: 15, delta_pct: 8 },
-        { metric: "review_latency", label: "Review Latency", unit: "hours", value: 6, delta_pct: -5 },
+        {
+          metric: "review_latency",
+          label: "Review Latency",
+          unit: "hours",
+          value: 6,
+          delta_pct: -5,
+        },
         { metric: "churn", label: "Churn", unit: "%", value: 18, delta_pct: 3 },
       ],
-      summary: [
-        { text: "Team velocity appears stable over the past 14 days." },
-      ],
+      summary: [{ text: "Team velocity appears stable over the past 14 days." }],
       tiles: {},
-      constraint: { label: "WIP Saturation", metric: "wip_saturation", value: 0.6, threshold: 0.8, status: "ok" },
+      constraint: {
+        label: "WIP Saturation",
+        metric: "wip_saturation",
+        value: 0.6,
+        threshold: 0.8,
+        status: "ok",
+      },
       events: [],
     }),
   ),
 
   // ---- Investment ----
-  http.post("*/api/v1/investment", () =>
-    HttpResponse.json(investmentMixSample),
-  ),
+  http.post("*/api/v1/investment", () => HttpResponse.json(investmentMixSample)),
 
   http.post("*/api/v1/investment/explain", () =>
     HttpResponse.json({
@@ -1218,19 +1622,15 @@ export const handlers = [
         "This view suggests effort leans toward a small number of dominant themes, with subcategories providing the specific intent behind that allocation.",
       top_findings: [
         {
-          finding:
-            "Subcategory distribution appears concentrated in the leading theme families.",
+          finding: "Subcategory distribution appears concentrated in the leading theme families.",
           evidence: {
-            theme:
-              Object.keys(investmentMixSample.theme_distribution)[0] ||
-              "Unknown",
+            theme: Object.keys(investmentMixSample.theme_distribution)[0] || "Unknown",
             share_pct: 40,
             evidence_quality_band: "moderate",
           },
         },
         {
-          finding:
-            "Repo scope destinations are derived from connected work-unit evidence only.",
+          finding: "Repo scope destinations are derived from connected work-unit evidence only.",
           evidence: { theme: "Cross-cutting", share_pct: 15 },
         },
       ],
@@ -1258,26 +1658,23 @@ export const handlers = [
           name: r.replace("repo:", ""),
           group: "repo",
         })),
-        ...Array.from(new Set(Object.values(investmentRepoTeamMapSample))).map(
-          (t) => ({ name: t, group: "team" }),
-        ),
+        ...Array.from(new Set(Object.values(investmentRepoTeamMapSample))).map((t) => ({
+          name: t,
+          group: "team",
+        })),
       ],
-      links: Object.entries(investmentRepoTeamMapSample).map(
-        ([repo, team]) => ({
-          source: repo.replace("repo:", ""),
-          target: team,
-          value: 10,
-        }),
-      ),
+      links: Object.entries(investmentRepoTeamMapSample).map(([repo, team]) => ({
+        source: repo.replace("repo:", ""),
+        target: team,
+        value: 10,
+      })),
       label: "Repo → Team",
       unit: "units",
     }),
   ),
 
   // ---- Work Units ----
-  http.post("*/api/v1/work-units", () =>
-    HttpResponse.json(workUnitInvestmentsSample),
-  ),
+  http.post("*/api/v1/work-units", () => HttpResponse.json(workUnitInvestmentsSample)),
 
   http.post("*/api/v1/work-units/:id/explain", () =>
     HttpResponse.json({
@@ -1296,9 +1693,7 @@ export const handlers = [
   }),
 
   // ---- Heatmap ----
-  http.get("*/api/v1/heatmap", () =>
-    HttpResponse.json(reviewHeatmapSample),
-  ),
+  http.get("*/api/v1/heatmap", () => HttpResponse.json(reviewHeatmapSample)),
 
   // ---- Flame ----
   http.get("*/api/v1/flame/aggregated", ({ request }) => {
@@ -1329,7 +1724,13 @@ export const handlers = [
     const url = new URL(request.url);
     const type = url.searchParams.get("type") ?? "cycle_throughput";
 
-    const QUADRANT_AXES: Record<string, { x: { metric: string; label: string; unit: string }; y: { metric: string; label: string; unit: string } }> = {
+    const QUADRANT_AXES: Record<
+      string,
+      {
+        x: { metric: string; label: string; unit: string };
+        y: { metric: string; label: string; unit: string };
+      }
+    > = {
       cycle_throughput: {
         x: { metric: "cycle_time", label: "Cycle Time", unit: "hours" },
         y: { metric: "throughput", label: "Throughput", unit: "PRs/week" },
@@ -1393,15 +1794,19 @@ export const handlers = [
       identity_coverage_pct: 100,
       deltas: [
         { metric: "cycle_time", label: "Cycle Time", unit: "hours", value: 36, delta_pct: -10 },
-        { metric: "review_latency", label: "Review Latency", unit: "hours", value: 4, delta_pct: -15 },
+        {
+          metric: "review_latency",
+          label: "Review Latency",
+          unit: "hours",
+          value: 4,
+          delta_pct: -15,
+        },
         { metric: "throughput", label: "Throughput", unit: "PRs/week", value: 8, delta_pct: 5 },
         { metric: "churn", label: "Churn", unit: "%", value: 12, delta_pct: -3 },
         { metric: "wip_overlap", label: "WIP Overlap", unit: "items", value: 2, delta_pct: 0 },
         { metric: "blocked_work", label: "Blocked Work", unit: "%", value: 8, delta_pct: -2 },
       ],
-      narrative: [
-        { text: "This person appears to maintain a steady delivery pace." },
-      ],
+      narrative: [{ text: "This person appears to maintain a steady delivery pace." }],
       sections: {
         work_mix: {
           themes: { feature_delivery: 0.6, maintenance: 0.25, operational: 0.15 },
@@ -1414,9 +1819,7 @@ export const handlers = [
           meeting_pct: 0.15,
         },
         collaboration: {
-          reviewers: [
-            { person_id: "person-456", display_name: "Jordan Lee", review_count: 12 },
-          ],
+          reviewers: [{ person_id: "person-456", display_name: "Jordan Lee", review_count: 12 }],
           authors_reviewed: [
             { person_id: "person-789", display_name: "Sam Rivera", review_count: 8 },
           ],
@@ -1467,18 +1870,12 @@ export const handlers = [
   }),
 
   // ---- Drilldown ----
-  http.post("*/api/v1/drilldown/prs", () =>
-    HttpResponse.json({ items: [], total: 0 }),
-  ),
+  http.post("*/api/v1/drilldown/prs", () => HttpResponse.json({ items: [], total: 0 })),
 
-  http.post("*/api/v1/drilldown/issues", () =>
-    HttpResponse.json({ items: [], total: 0 }),
-  ),
+  http.post("*/api/v1/drilldown/issues", () => HttpResponse.json({ items: [], total: 0 })),
 
   // ---- Opportunities ----
-  http.post("*/api/v1/opportunities", () =>
-    HttpResponse.json({ opportunities: [] }),
-  ),
+  http.post("*/api/v1/opportunities", () => HttpResponse.json({ opportunities: [] })),
 
   // ---- GraphQL ----
   http.post("*/graphql", async ({ request }) => {
@@ -1628,13 +2025,9 @@ export const handlers = [
     HttpResponse.json({ status: "triggered" }),
   ),
 
-  http.get("*/api/v1/admin/sync-configs/:id/jobs", () =>
-    HttpResponse.json([]),
-  ),
+  http.get("*/api/v1/admin/sync-configs/:id/jobs", () => HttpResponse.json([])),
 
-  http.get("*/api/v1/admin/teams", () =>
-    HttpResponse.json(MOCK_TEAMS),
-  ),
+  http.get("*/api/v1/admin/teams", () => HttpResponse.json(MOCK_TEAMS)),
 
   http.post("*/api/v1/admin/teams", async ({ request }) => {
     const body = (await request.json()) as Partial<MockTeam> | null;
@@ -1659,9 +2052,7 @@ export const handlers = [
     }),
   ),
 
-  http.get("*/api/v1/admin/identities", () =>
-    HttpResponse.json(MOCK_IDENTITIES),
-  ),
+  http.get("*/api/v1/admin/identities", () => HttpResponse.json(MOCK_IDENTITIES)),
 
   http.post("*/api/v1/admin/identities", async ({ request }) => {
     const body = (await request.json()) as Partial<MockIdentity> | null;
@@ -1682,9 +2073,7 @@ export const handlers = [
     }),
   ),
 
-  http.get("*/api/v1/admin/settings/categories", () =>
-    HttpResponse.json(["general", "security"]),
-  ),
+  http.get("*/api/v1/admin/settings/categories", () => HttpResponse.json(["general", "security"])),
 
   http.get("*/api/v1/admin/impersonate/status", () =>
     HttpResponse.json({ is_impersonating: false, target_user_id: null }),

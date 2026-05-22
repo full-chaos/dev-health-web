@@ -8,10 +8,10 @@ Rate limiting uses a **Redis fixed-window** strategy when Redis is available, wi
 
 ## Defaults
 
-| Constant | Value | Source |
-|---|---|---|
-| `RATE_LIMIT_WINDOW_MS` | `3 600 000` ms (1 hour) | [`rate-limit.ts:25`](../src/lib/rate-limit.ts#L25) |
-| `RATE_LIMIT_MAX_REQUESTS` | `5` | [`rate-limit.ts:28`](../src/lib/rate-limit.ts#L28) |
+| Constant                  | Value                   | Source                                             |
+| ------------------------- | ----------------------- | -------------------------------------------------- |
+| `RATE_LIMIT_WINDOW_MS`    | `3 600 000` ms (1 hour) | [`rate-limit.ts:25`](../src/lib/rate-limit.ts#L25) |
+| `RATE_LIMIT_MAX_REQUESTS` | `5`                     | [`rate-limit.ts:28`](../src/lib/rate-limit.ts#L28) |
 
 ## Strategies
 
@@ -27,10 +27,10 @@ Stores a per-key timestamp array in a module-level `Map`. Timestamps older than 
 
 ```ts
 type RateLimitOptions = {
-  failClosed?: boolean;   // default: false
-  windowMs?: number;      // default: RATE_LIMIT_WINDOW_MS (1h)
-  maxRequests?: number;   // default: RATE_LIMIT_MAX_REQUESTS (5)
-  namespace?: string;     // prefixes the Redis key
+  failClosed?: boolean; // default: false
+  windowMs?: number; // default: RATE_LIMIT_WINDOW_MS (1h)
+  maxRequests?: number; // default: RATE_LIMIT_MAX_REQUESTS (5)
+  namespace?: string; // prefixes the Redis key
 };
 ```
 
@@ -42,15 +42,16 @@ When `failClosed: true`, a missing or unreachable Redis backend causes the limit
 
 Routes that set `failClosed: true` ([`proxy.ts:17–38`](../src/proxy.ts#L17)):
 
-| Namespace | Method + Path | Window | Max |
-|---|---|---|---|
-| `auth-login` | `POST /api/v1/auth/login` | 15 min | 10 |
-| `auth-pwreset` | `POST /api/v1/auth/password-reset` | 60 min | 3 |
-| `auth-register` | `POST /api/v1/auth/register` | 60 min | 5 |
-| `auth-other` | `MUTATING /api/v1/auth/*` | 15 min | 20 |
-| `admin-cred-test` | `POST /api/v1/admin/credentials/test-connection` | 60 min | 10 |
+| Namespace         | Method + Path                                    | Window | Max |
+| ----------------- | ------------------------------------------------ | ------ | --- |
+| `auth-login`      | `POST /api/v1/auth/login`                        | 15 min | 10  |
+| `auth-pwreset`    | `POST /api/v1/auth/password-reset`               | 60 min | 3   |
+| `auth-register`   | `POST /api/v1/auth/register`                     | 60 min | 5   |
+| `auth-other`      | `MUTATING /api/v1/auth/*`                        | 15 min | 20  |
+| `admin-cred-test` | `POST /api/v1/admin/credentials/test-connection` | 60 min | 10  |
 
 When Redis is unavailable and `failClosed` is set, the limiter:
+
 1. Logs an error (deduplicated to once per 60 s per namespace+reason, [`rate-limit.ts:68–106`](../src/lib/rate-limit.ts#L68)).
 2. Captures a Sentry exception/message.
 3. Returns `{ limited: true, retryAfter: <windowSeconds> }`.

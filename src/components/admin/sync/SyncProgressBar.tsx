@@ -47,7 +47,6 @@ export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
     },
   });
 
-
   useEffect(() => {
     if (progress?.status !== "RUNNING") {
       return;
@@ -83,16 +82,25 @@ export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
   const elapsedRemainderSeconds = elapsedSeconds % 60;
   const elapsedText = `${String(elapsedMinutes).padStart(2, "0")}:${String(elapsedRemainderSeconds).padStart(2, "0")}`;
 
-  const hasEtaData = progress.itemsProcessed >= 2 && elapsedSeconds > 0 && progress.itemsTotal > progress.itemsProcessed;
+  const hasEtaData =
+    progress.itemsProcessed >= 2 &&
+    elapsedSeconds > 0 &&
+    progress.itemsTotal > progress.itemsProcessed;
   const estimatedSecondsRemaining = hasEtaData
     ? Math.max(
         0,
-        Math.round((progress.itemsTotal - progress.itemsProcessed) * (elapsedSeconds / progress.itemsProcessed))
+        Math.round(
+          (progress.itemsTotal - progress.itemsProcessed) *
+            (elapsedSeconds / progress.itemsProcessed),
+        ),
       )
     : null;
   const etaMinutes = estimatedSecondsRemaining ? Math.floor(estimatedSecondsRemaining / 60) : 0;
   const etaSeconds = estimatedSecondsRemaining ? estimatedSecondsRemaining % 60 : 0;
-  const etaText = estimatedSecondsRemaining === null ? "Calculating..." : `~${etaMinutes}m ${etaSeconds}s remaining`;
+  const etaText =
+    estimatedSecondsRemaining === null
+      ? "Calculating..."
+      : `~${etaMinutes}m ${etaSeconds}s remaining`;
 
   const stageLabel = progress.stage || progress.currentStep || `${percentage}% complete`;
 
@@ -106,7 +114,7 @@ export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
           {progress.itemsProcessed} / {progress.itemsTotal} ({percentage}%)
         </span>
       </div>
-      
+
       <div className="h-2 w-full overflow-hidden rounded-full bg-(--card-70)">
         <div
           className="h-full bg-(--accent) transition-all duration-500 ease-out"
@@ -120,10 +128,8 @@ export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
         </span>
         <span>{etaText}</span>
       </div>
-      
-      {progress.message && (
-        <p className="mt-2 text-xs text-(--ink-muted)">{progress.message}</p>
-      )}
+
+      {progress.message && <p className="mt-2 text-xs text-(--ink-muted)">{progress.message}</p>}
     </div>
   );
 }

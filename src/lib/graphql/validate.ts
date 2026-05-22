@@ -34,10 +34,7 @@ export interface ValidationError {
  * @param data - Data to validate
  * @returns Validation result with typed data or error
  */
-export function validate<T>(
-  schema: ZodSchema<T>,
-  data: unknown
-): ValidationResult<T> {
+export function validate<T>(schema: ZodSchema<T>, data: unknown): ValidationResult<T> {
   try {
     const parsed = schema.parse(data);
     return { success: true, data: parsed };
@@ -75,10 +72,10 @@ export function validate<T>(
 export function validateOrThrow<T>(schema: ZodSchema<T>, data: unknown): T {
   const result = validate(schema, data);
   if (!result.success) {
-    const issues = result.error?.issues
-      .map((i) => `${i.path}: ${i.message}`)
-      .join("; ");
-    throw new Error(validationFailedMessage(issues || result.error?.message || "Unknown validation error"));
+    const issues = result.error?.issues.map((i) => `${i.path}: ${i.message}`).join("; ");
+    throw new Error(
+      validationFailedMessage(issues || result.error?.message || "Unknown validation error"),
+    );
   }
   return result.data!;
 }
@@ -89,9 +86,7 @@ export function validateOrThrow<T>(schema: ZodSchema<T>, data: unknown): T {
  * @param data - Raw analytics response data
  * @returns Validation result
  */
-export function validateAnalyticsResponse(
-  data: unknown
-): ValidationResult<AnalyticsResult> {
+export function validateAnalyticsResponse(data: unknown): ValidationResult<AnalyticsResult> {
   return validate(AnalyticsResultSchema, data);
 }
 
@@ -101,9 +96,7 @@ export function validateAnalyticsResponse(
  * @param data - Raw catalog response data
  * @returns Validation result
  */
-export function validateCatalogResponse(
-  data: unknown
-): ValidationResult<CatalogResult> {
+export function validateCatalogResponse(data: unknown): ValidationResult<CatalogResult> {
   return validate(CatalogResultSchema, data);
 }
 
@@ -114,10 +107,7 @@ export function validateCatalogResponse(
  * @param data - Data to validate
  * @returns Parsed data or undefined
  */
-export function safeParse<T>(
-  schema: ZodSchema<T>,
-  data: unknown
-): T | undefined {
+export function safeParse<T>(schema: ZodSchema<T>, data: unknown): T | undefined {
   const result = schema.safeParse(data);
   return result.success ? result.data : undefined;
 }

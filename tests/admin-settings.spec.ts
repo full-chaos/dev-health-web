@@ -3,9 +3,7 @@ import { expect, test } from "@playwright/test";
 test("settings page renders all sections", async ({ page }) => {
   await page.goto("/admin/settings");
 
-  await expect(
-    page.getByRole("heading", { name: "Organization Settings" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Organization Settings" })).toBeVisible();
   await expect(page.getByText("General")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
@@ -32,16 +30,12 @@ test("billing section is visible", async ({ page }) => {
   await page.goto("/admin/settings");
 
   await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Upgrade|Change Plan/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Upgrade|Change Plan/i })).toBeVisible();
 });
 
 test("danger zone section is visible", async ({ page }) => {
   await page.goto("/admin/settings");
 
   await expect(page.getByText("Danger Zone")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Delete Organization" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete Organization" })).toBeVisible();
 });

@@ -26,7 +26,8 @@ const signals = [
     label: "Review request load",
     value: "11",
     delta: "+4 requests",
-    description: "Aggregate review requests handled by the team, never a person-level queue ranking.",
+    description:
+      "Aggregate review requests handled by the team, never a person-level queue ranking.",
   },
   {
     label: "After-hours trend",
@@ -55,9 +56,10 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const isDeveloperScope = filters.scope.level === "developer";
   const selectedDeveloperId = isDeveloperScope ? filters.scope.ids[0] : undefined;
-  const effectiveSelfId = session.user.is_impersonating && session.user.impersonated_user_id
-    ? session.user.impersonated_user_id
-    : session.user.id;
+  const effectiveSelfId =
+    session.user.is_impersonating && session.user.impersonated_user_id
+      ? session.user.impersonated_user_id
+      : session.user.id;
   const isIndividualScope = Boolean(selectedDeveloperId && selectedDeveloperId === effectiveSelfId);
   const canShowSelectedScope = !isDeveloperScope || isIndividualScope;
 
@@ -76,7 +78,9 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                   Focus fragmentation, not surveillance.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
-                  This surface uses existing PR, review, work-item, and commit-time rollups to show where attention is being split. It does not collect IDE, keystroke, prompt, or session telemetry.
+                  This surface uses existing PR, review, work-item, and commit-time rollups to show
+                  where attention is being split. It does not collect IDE, keystroke, prompt, or
+                  session telemetry.
                 </p>
               </div>
               <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
@@ -85,7 +89,9 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 </p>
                 <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
                   <p>No leaderboards. No peer rankings. Team and repo aggregation comes first.</p>
-                  <p>Single-person views are limited to explicit self-reflection or coaching context.</p>
+                  <p>
+                    Single-person views are limited to explicit self-reflection or coaching context.
+                  </p>
                 </div>
               </div>
             </div>
@@ -104,7 +110,9 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 Individual cognitive load is self-only.
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-6">
-                Person-scoped cognitive-load signals are available only when the selected identity matches the current session. Use team or repo aggregation for coaching, planning, and operational review.
+                Person-scoped cognitive-load signals are available only when the selected identity
+                matches the current session. Use team or repo aggregation for coaching, planning,
+                and operational review.
               </p>
               <Link
                 href="/cognitive-load"
@@ -121,59 +129,82 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                     Self-reflection mode
                   </p>
                   <p className="mt-2 text-sm leading-6 text-(--ink-muted)">
-                    Only you can open this individual cognitive-load view. These signals are for reflection on focus pressure, not manager review or peer comparison.
+                    Only you can open this individual cognitive-load view. These signals are for
+                    reflection on focus pressure, not manager review or peer comparison.
                   </p>
                 </section>
               )}
 
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 {signals.map((signal) => (
-                  <article key={signal.label} className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm">
+                  <article
+                    key={signal.label}
+                    className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+                  >
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
                       {signal.label}
                     </p>
                     <p className="mt-5 text-4xl font-semibold tabular-nums">{signal.value}</p>
                     <p className="mt-2 text-xs font-medium text-emerald-600">{signal.delta}</p>
-                    <p className="mt-4 text-sm leading-6 text-(--ink-muted)">{signal.description}</p>
+                    <p className="mt-4 text-sm leading-6 text-(--ink-muted)">
+                      {signal.description}
+                    </p>
                   </article>
                 ))}
               </section>
             </>
           )}
 
-          {canShowSelectedScope && <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                Aggregation contract
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight">Team/repo-first by default</h2>
-              <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
-                Cognitive-load signals are presented as system pressure: review queues, context spread, after-hours trend, and weekend trend. They are coaching prompts, not performance judgments.
-              </p>
-            </div>
+          {canShowSelectedScope && (
+            <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
+                  Aggregation contract
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                  Team/repo-first by default
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
+                  Cognitive-load signals are presented as system pressure: review queues, context
+                  spread, after-hours trend, and weekend trend. They are coaching prompts, not
+                  performance judgments.
+                </p>
+              </div>
 
-            <div className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                    Fragmentation trend
-                  </p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight">Seven-day load index</h2>
-                </div>
-                <span className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs text-(--ink-muted)">
-                  Sample data
-                </span>
-              </div>
-              <div className="mt-8 flex h-32 items-end gap-3" aria-label="Seven-day load index sample bars">
-                {trend.map((value, index) => (
-                  <div key={`${value}-${index}`} className="flex flex-1 flex-col items-center gap-2">
-                    <div className="w-full rounded-t-2xl bg-(--accent)" style={{ height: `${value * 3}px` }} />
-                    <span className="text-[0.65rem] text-(--ink-muted)">D{index + 1}</span>
+              <div className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
+                      Fragmentation trend
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                      Seven-day load index
+                    </h2>
                   </div>
-                ))}
+                  <span className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs text-(--ink-muted)">
+                    Sample data
+                  </span>
+                </div>
+                <div
+                  className="mt-8 flex h-32 items-end gap-3"
+                  aria-label="Seven-day load index sample bars"
+                >
+                  {trend.map((value, index) => (
+                    <div
+                      key={`${value}-${index}`}
+                      className="flex flex-1 flex-col items-center gap-2"
+                    >
+                      <div
+                        className="w-full rounded-t-2xl bg-(--accent)"
+                        style={{ height: `${value * 3}px` }}
+                      />
+                      <span className="text-[0.65rem] text-(--ink-muted)">D{index + 1}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          </section>}
+            </section>
+          )}
         </main>
       </div>
     </div>

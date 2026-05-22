@@ -156,7 +156,9 @@ export function BugReportButton() {
                     placeholder="Brief summary..."
                     className={inputClassName}
                     value={formState.title}
-                    onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, title: event.target.value }))
+                    }
                   />
                 </label>
 
@@ -186,7 +188,9 @@ export function BugReportButton() {
                     placeholder="What happened? Steps to reproduce..."
                     className={inputClassName}
                     value={formState.description}
-                    onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
+                    onChange={(event) =>
+                      setFormState((current) => ({ ...current, description: event.target.value }))
+                    }
                   />
                 </label>
 
@@ -196,7 +200,9 @@ export function BugReportButton() {
                     disabled={isLoading}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-(--accent-highlight) bg-(--card-70) px-4 py-2.5 text-sm font-medium text-foreground transition hover:border-(--accent) disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {isLoading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : null}
+                    {isLoading ? (
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : null}
                     {isLoading ? "Submitting..." : "Submit Report"}
                   </button>
                 </div>

@@ -47,7 +47,7 @@ interface UseCapacityForecastResult {
  * ```
  */
 export function useCapacityForecast(
-  options: UseCapacityForecastOptions
+  options: UseCapacityForecastOptions,
 ): UseCapacityForecastResult {
   const { orgId, input, pause = false } = options;
 

@@ -19,9 +19,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   // Run health check and data fetch in parallel to eliminate the waterfall.
   const [health, data] = await Promise.all([
@@ -43,15 +41,11 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Opportunities
               </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Focus Cards
-              </h1>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Focus Cards</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Evidence-linked threads with candidate experiments.
               </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Open a card to review evidence.
-              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">Open a card to review evidence.</p>
             </div>
             <Link
               href={withFilterParam("/", filters, activeRole)}
@@ -70,9 +64,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                 className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
               >
                 <h2 className="font-(--font-display) text-xl">{card.title}</h2>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                  {card.rationale}
-                </p>
+                <p className="mt-2 text-sm text-(--ink-muted)">{card.rationale}</p>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs">
                   {card.evidence_links.map((link) => (
                     <Link

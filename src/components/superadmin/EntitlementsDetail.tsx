@@ -106,16 +106,15 @@ export function EntitlementsDetail({
             </thead>
             <tbody className="divide-y divide-(--card-stroke)">
               {Object.entries(entitlements.features).map(([key, enabled]) => {
-                const isOverridden = entitlements.features_override && key in entitlements.features_override;
+                const isOverridden =
+                  entitlements.features_override && key in entitlements.features_override;
                 return (
                   <tr key={key}>
                     <td className="px-4 py-3 font-mono text-xs">{key}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          enabled
-                            ? "bg-green-500/10 text-green-500"
-                            : "bg-red-500/10 text-red-500"
+                          enabled ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
                         }`}
                       >
                         {enabled ? "Enabled" : "Disabled"}
@@ -150,10 +149,18 @@ export function EntitlementsDetail({
         </div>
 
         {isCreating && (
-          <form onSubmit={handleCreateOverride} className="mb-6 rounded-xl border border-(--card-stroke) bg-(--card-70) p-4">
+          <form
+            onSubmit={handleCreateOverride}
+            className="mb-6 rounded-xl border border-(--card-stroke) bg-(--card-70) p-4"
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="feature-select" className="mb-1 block text-xs font-medium text-(--ink-muted)">Feature</label>
+                <label
+                  htmlFor="feature-select"
+                  className="mb-1 block text-xs font-medium text-(--ink-muted)"
+                >
+                  Feature
+                </label>
                 <select
                   id="feature-select"
                   value={selectedFeatureId}
@@ -170,7 +177,12 @@ export function EntitlementsDetail({
                 </select>
               </div>
               <div>
-                <label htmlFor="state-select" className="mb-1 block text-xs font-medium text-(--ink-muted)">State</label>
+                <label
+                  htmlFor="state-select"
+                  className="mb-1 block text-xs font-medium text-(--ink-muted)"
+                >
+                  State
+                </label>
                 <select
                   id="state-select"
                   value={overrideEnabled ? "true" : "false"}
@@ -182,7 +194,12 @@ export function EntitlementsDetail({
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label htmlFor="reason-input" className="mb-1 block text-xs font-medium text-(--ink-muted)">Reason</label>
+                <label
+                  htmlFor="reason-input"
+                  className="mb-1 block text-xs font-medium text-(--ink-muted)"
+                >
+                  Reason
+                </label>
                 <input
                   id="reason-input"
                   type="text"

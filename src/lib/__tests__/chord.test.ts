@@ -62,11 +62,7 @@ describe("buildChordMatrix", () => {
   });
 
   it("sorts nodes by (row_sum + col_sum) desc and builds an N×N matrix", () => {
-    const records = [
-      edge("A", "B", 5),
-      edge("B", "A", 1),
-      edge("C", "A", 2),
-    ];
+    const records = [edge("A", "B", 5), edge("B", "A", 1), edge("C", "A", 2)];
     const { nodes, matrix } = buildChordMatrix(records);
     expect(nodes.map((n) => n.id)).toEqual(["A", "B", "C"]);
     expect(matrix).toEqual([
@@ -112,11 +108,7 @@ describe("limitChordNodesTopN", () => {
   });
 
   it("honors a custom otherLabel", () => {
-    const records = [
-      edge("A", "B", 1),
-      edge("C", "D", 1),
-      edge("E", "F", 1),
-    ];
+    const records = [edge("A", "B", 1), edge("C", "D", 1), edge("E", "F", 1)];
     const { nodes, matrix } = buildChordMatrix(records);
     const limited = limitChordNodesTopN(nodes, matrix, 3, { otherLabel: "Rest" });
     expect(limited.nodes[limited.nodes.length - 1].label).toBe("Rest");
@@ -163,11 +155,7 @@ describe("applyChordDirection", () => {
 
 describe("computeChordSummary", () => {
   it("places a pure importer in topImporters (net > 0) and excludes it from topExporters", () => {
-    const records = [
-      edge("A", "C", 50),
-      edge("B", "C", 50),
-      edge("C", "A", 10),
-    ];
+    const records = [edge("A", "C", 50), edge("B", "C", 50), edge("C", "A", 10)];
     const { nodes, matrix } = buildChordMatrix(records);
     const summary = computeChordSummary(nodes, matrix);
     const importerIds = summary.topImporters.map((e) => e.id);
@@ -179,11 +167,7 @@ describe("computeChordSummary", () => {
   });
 
   it("ranks strongest bilateral pairs by (m[i][j] + m[j][i]) desc, excluding self-pairs", () => {
-    const records = [
-      edge("A", "B", 5),
-      edge("B", "A", 5),
-      edge("A", "C", 1),
-    ];
+    const records = [edge("A", "B", 5), edge("B", "A", 5), edge("A", "C", 1)];
     const { nodes, matrix } = buildChordMatrix(records);
     const summary = computeChordSummary(nodes, matrix);
     expect(summary.strongestBilateral[0]).toMatchObject({
@@ -233,11 +217,7 @@ describe("buildChordDataset", () => {
   });
 
   it("reports otherShare=0 and emits no isOther node when N <= topN", () => {
-    const records = [
-      edge("A", "B", 10),
-      edge("C", "D", 5),
-      edge("E", "F", 3),
-    ];
+    const records = [edge("A", "B", 10), edge("C", "D", 5), edge("E", "F", 3)];
     const dataset = buildChordDataset(records, {
       grouping: "team",
       topN: 8,
@@ -278,9 +258,7 @@ describe("buildChordDataset", () => {
     ];
     const teamDs = buildChordDataset(teamRecords, { grouping: "team" });
     const repoDs = buildChordDataset(repoRecords, { grouping: "repo" });
-    expect(teamDs.nodes.map((n) => n.id).sort()).not.toEqual(
-      repoDs.nodes.map((n) => n.id).sort(),
-    );
+    expect(teamDs.nodes.map((n) => n.id).sort()).not.toEqual(repoDs.nodes.map((n) => n.id).sort());
     expect(teamDs.grouping).toBe("team");
     expect(repoDs.grouping).toBe("repo");
   });

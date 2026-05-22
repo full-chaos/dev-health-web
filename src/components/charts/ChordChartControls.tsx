@@ -26,7 +26,7 @@ export const CHORD_CONTROLS_DEFAULTS: ChordControlsValue = {
 };
 
 export function parseChordControlsFromSearchParams(
-  sp: URLSearchParams | ReadonlyURLSearchParams
+  sp: URLSearchParams | ReadonlyURLSearchParams,
 ): ChordControlsValue {
   const dir = sp.get("chord.dir");
   const group = sp.get("chord.group");
@@ -34,13 +34,17 @@ export function parseChordControlsFromSearchParams(
   const self = sp.get("chord.self");
   const other = sp.get("chord.other");
 
-  const direction = (["bilateral", "in", "out", "net"].includes(dir as string)
-    ? dir
-    : CHORD_CONTROLS_DEFAULTS.direction) as ChordDirection;
+  const direction = (
+    ["bilateral", "in", "out", "net"].includes(dir as string)
+      ? dir
+      : CHORD_CONTROLS_DEFAULTS.direction
+  ) as ChordDirection;
 
-  const grouping = (["team", "repo", "work_type"].includes(group as string)
-    ? group
-    : CHORD_CONTROLS_DEFAULTS.grouping) as ChordGroupingDimension;
+  const grouping = (
+    ["team", "repo", "work_type"].includes(group as string)
+      ? group
+      : CHORD_CONTROLS_DEFAULTS.grouping
+  ) as ChordGroupingDimension;
 
   let topN = CHORD_CONTROLS_DEFAULTS.topN;
   if (n) {
@@ -59,7 +63,7 @@ export function parseChordControlsFromSearchParams(
 
 export function serializeChordControlsToSearchParams(
   value: ChordControlsValue,
-  sp: URLSearchParams
+  sp: URLSearchParams,
 ): URLSearchParams {
   if (value.direction !== CHORD_CONTROLS_DEFAULTS.direction) {
     sp.set("chord.dir", value.direction);
@@ -151,7 +155,10 @@ export function ChordChartControls({
     <div className={`flex flex-wrap gap-4 items-end ${className}`}>
       {/* Direction Segmented Control */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-300" id="chord-dir-label">
+        <label
+          className="text-sm font-medium text-slate-700 dark:text-slate-300"
+          id="chord-dir-label"
+        >
           Flow
         </label>
         <div
@@ -184,13 +191,18 @@ export function ChordChartControls({
 
       {/* Grouping Select */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="chord-grouping" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+        <label
+          htmlFor="chord-grouping"
+          className="text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
           Group by
         </label>
         <select
           id="chord-grouping"
           value={value.grouping}
-          onChange={(e) => onChange({ ...value, grouping: e.target.value as ChordGroupingDimension })}
+          onChange={(e) =>
+            onChange({ ...value, grouping: e.target.value as ChordGroupingDimension })
+          }
           className="h-9 px-3 py-1.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="team">Team</option>
@@ -201,7 +213,10 @@ export function ChordChartControls({
 
       {/* Top-N Stepper */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="chord-topn" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+        <label
+          htmlFor="chord-topn"
+          className="text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
           Entities
         </label>
         <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 overflow-hidden h-9">

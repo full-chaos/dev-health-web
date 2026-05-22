@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  getQuadrantDefinition,
-  getZoneOverlay,
-  findZoneMatches,
-} from "../quadrantZones";
+import { getQuadrantDefinition, getZoneOverlay, findZoneMatches } from "../quadrantZones";
 import type { QuadrantResponse } from "../types";
 
 // Helper to build a minimal QuadrantResponse
@@ -22,7 +18,7 @@ function makePoint(x: number, y: number, idx: number) {
 function makeQuadrantResponse(
   xMetric: string,
   yMetric: string,
-  points: Array<{ x: number; y: number }>
+  points: Array<{ x: number; y: number }>,
 ): QuadrantResponse {
   return {
     axes: {

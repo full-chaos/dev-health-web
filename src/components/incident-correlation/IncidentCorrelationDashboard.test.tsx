@@ -29,13 +29,7 @@ vi.mock("@/components/charts/SankeyChart", () => ({
   }: {
     nodes: { name: string }[];
     links: { source: string; target: string; value: number }[];
-  }) => (
-    <div
-      data-testid="sankey-chart"
-      data-nodes={nodes.length}
-      data-links={links.length}
-    />
-  ),
+  }) => <div data-testid="sankey-chart" data-nodes={nodes.length} data-links={links.length} />,
 }));
 
 vi.mock("@/components/charts/HorizontalBarChart", () => ({
@@ -45,9 +39,7 @@ vi.mock("@/components/charts/HorizontalBarChart", () => ({
 }));
 
 vi.mock("@/components/metrics/MetricCard", () => ({
-  MetricCard: ({ label }: { label: string }) => (
-    <div data-testid="metric-card">{label}</div>
-  ),
+  MetricCard: ({ label }: { label: string }) => <div data-testid="metric-card">{label}</div>,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -134,12 +126,8 @@ describe("joinEdges", () => {
   });
 
   it("joins deployment and work-item edges by shared incident ID", () => {
-    const deploys: WorkGraphEdge[] = [
-      makeEdge("d1", "dep-a", "inc-1", "DEPLOYS"),
-    ];
-    const incidents: WorkGraphEdge[] = [
-      makeEdge("l1", "inc-1", "wi-a", "LINKED_INCIDENT"),
-    ];
+    const deploys: WorkGraphEdge[] = [makeEdge("d1", "dep-a", "inc-1", "DEPLOYS")];
+    const incidents: WorkGraphEdge[] = [makeEdge("l1", "inc-1", "wi-a", "LINKED_INCIDENT")];
     const rows = joinEdges(deploys, incidents);
     expect(rows).toHaveLength(1);
     expect(rows[0].incidentId).toBe("inc-1");
@@ -219,9 +207,7 @@ describe("IncidentCorrelationDashboard", () => {
   it("renders empty state when no data is available", () => {
     render(<IncidentCorrelationDashboard {...baseProps} />);
     expect(screen.getByTestId("empty-state")).toBeInTheDocument();
-    expect(
-      screen.getByText(/no incident-correlation evidence/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/no incident-correlation evidence/i)).toBeInTheDocument();
   });
 
   it("includes orgId in empty state", () => {

@@ -37,7 +37,7 @@ export async function getTeam(teamId: string): Promise<ActionResult<TeamMapping>
 
 export async function updateTeam(
   teamId: string,
-  data: TeamMappingUpdate
+  data: TeamMappingUpdate,
 ): Promise<ActionResult<TeamMapping>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -61,7 +61,7 @@ export async function discoverTeams(provider: string): Promise<ActionResult<Team
 
 export async function importTeams(
   teams: DiscoveredTeam[],
-  onConflict: "skip" | "merge"
+  onConflict: "skip" | "merge",
 ): Promise<ActionResult<TeamImportResponse>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -79,12 +79,18 @@ export async function getPendingTeamChanges(): Promise<ActionResult<PendingChang
 export async function approveTeamChanges(
   teamId: string,
   changeIndices?: number[],
-  approveAll = false
+  approveAll = false,
 ): Promise<ActionResult<{ approved: number }>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
-    const result = await adminApi.teams.approveChanges(teamId, changeIndices, approveAll, token, orgId);
-    revalidatePath('/admin/teams');
+    const result = await adminApi.teams.approveChanges(
+      teamId,
+      changeIndices,
+      approveAll,
+      token,
+      orgId,
+    );
+    revalidatePath("/admin/teams");
     return result;
   });
 }
@@ -92,12 +98,18 @@ export async function approveTeamChanges(
 export async function dismissTeamChanges(
   teamId: string,
   changeIndices?: number[],
-  dismissAll = false
+  dismissAll = false,
 ): Promise<ActionResult<{ dismissed: number }>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
-    const result = await adminApi.teams.dismissChanges(teamId, changeIndices, dismissAll, token, orgId);
-    revalidatePath('/admin/teams');
+    const result = await adminApi.teams.dismissChanges(
+      teamId,
+      changeIndices,
+      dismissAll,
+      token,
+      orgId,
+    );
+    revalidatePath("/admin/teams");
     return result;
   });
 }

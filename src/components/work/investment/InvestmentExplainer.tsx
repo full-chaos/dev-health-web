@@ -43,8 +43,8 @@ export function InvestmentExplainer({
         <div className="mt-4 space-y-4">
           {mixExplanation.data?.status === "llm_unavailable" ? (
             <p className="text-sm text-(--ink-muted)">
-              Investment distribution uses metadata-based categorization. Connect an LLM provider in settings to
-              enable AI-generated explanations.
+              Investment distribution uses metadata-based categorization. Connect an LLM provider in
+              settings to enable AI-generated explanations.
             </p>
           ) : !mixExplanation.data || mixExplanation.filtersKey !== mixExplainKey ? (
             <p className="text-sm text-(--ink-muted)">
@@ -67,10 +67,14 @@ export function InvestmentExplainer({
                       >
                         <p className="text-sm">{finding.finding}</p>
                         <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-(--ink-muted)">
-                          <span className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5">{finding.evidence.theme}</span>
+                          <span className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5">
+                            {finding.evidence.theme}
+                          </span>
                           <span>{finding.evidence.share_pct}%</span>
                           {finding.evidence.evidence_quality_band && (
-                            <span className="opacity-70">Quality: {finding.evidence.evidence_quality_band}</span>
+                            <span className="opacity-70">
+                              Quality: {finding.evidence.evidence_quality_band}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -81,7 +85,9 @@ export function InvestmentExplainer({
 
               <div className="rounded-lg border border-(--card-stroke) bg-background/30 p-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Confidence</span>
+                  <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                    Confidence
+                  </span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${
                       mixExplanation.data.confidence?.level === "high"
@@ -130,13 +136,17 @@ export function InvestmentExplainer({
 
               {(mixExplanation.data.what_to_check_next?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">What to check next</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                    What to check next
+                  </p>
                   <ul className="mt-2 space-y-2">
                     {mixExplanation.data.what_to_check_next.slice(0, 3).map((action) => (
                       <li key={`${action.action}-${action.where}`} className="text-sm">
                         <span className="font-medium">{action.action}</span>
                         <span className="text-(--ink-muted)"> - {action.why}</span>
-                        <span className="block text-[11px] text-(--ink-muted) opacity-70">{action.where}</span>
+                        <span className="block text-[11px] text-(--ink-muted) opacity-70">
+                          {action.where}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -155,7 +165,9 @@ export function InvestmentExplainer({
               )}
 
               {mixExplanation.data.status && mixExplanation.data.status !== "valid" && (
-                <p className="text-[10px] italic text-(--ink-muted)">Fallback explanation shown ({mixExplanation.data.status})</p>
+                <p className="text-[10px] italic text-(--ink-muted)">
+                  Fallback explanation shown ({mixExplanation.data.status})
+                </p>
               )}
             </>
           )}
@@ -163,7 +175,9 @@ export function InvestmentExplainer({
       </details>
 
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
-        <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Evidence quality bands</span>
+        <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+          Evidence quality bands
+        </span>
         {EVIDENCE_QUALITY_BANDS.map((band) => (
           <div key={band.id} className="flex items-center gap-2 text-xs text-(--ink-muted)">
             <span className={`h-2.5 w-2.5 rounded-full bg-(--accent-2) ${band.opacityClass}`} />

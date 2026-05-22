@@ -17,10 +17,19 @@ vi.mock("@/lib/graphql/hooks/useChordFlow", () => ({
 }));
 
 vi.mock("@/components/charts/ChordChart", () => ({
-  ChordChart: ({ dataset, onItemClick }: { dataset: { nodes: Array<{ label: string }> }; onItemClick?: (item: { type: "node"; name: string }) => void }) => (
+  ChordChart: ({
+    dataset,
+    onItemClick,
+  }: {
+    dataset: { nodes: Array<{ label: string }> };
+    onItemClick?: (item: { type: "node"; name: string }) => void;
+  }) => (
     <div data-testid="mock-chord-chart">
       <span>nodes:{dataset.nodes.length}</span>
-      <button type="button" onClick={() => onItemClick?.({ type: "node", name: dataset.nodes[0]?.label ?? "" })}>
+      <button
+        type="button"
+        onClick={() => onItemClick?.({ type: "node", name: dataset.nodes[0]?.label ?? "" })}
+      >
         click-chart
       </button>
     </div>
@@ -28,7 +37,13 @@ vi.mock("@/components/charts/ChordChart", () => ({
 }));
 
 vi.mock("@/components/charts/ChordSummaryPanel", () => ({
-  ChordSummaryPanel: ({ loading, onEntitySelect }: { loading?: boolean; onEntitySelect?: (id: string) => void }) => (
+  ChordSummaryPanel: ({
+    loading,
+    onEntitySelect,
+  }: {
+    loading?: boolean;
+    onEntitySelect?: (id: string) => void;
+  }) => (
     <div data-testid="mock-chord-summary">
       {loading ? <span>summary-loading</span> : <span>summary-ready</span>}
       <button type="button" onClick={() => onEntitySelect?.("team-b")}>
@@ -67,7 +82,7 @@ describe("TeamExchangeChordSection", () => {
         }}
         dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
         effortUnit="hours"
-      />
+      />,
     );
 
     expect(screen.getByRole("heading", { name: /team exchange chord/i })).toBeInTheDocument();
@@ -93,13 +108,13 @@ describe("TeamExchangeChordSection", () => {
         }}
         dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
         effortUnit="hours"
-      />
+      />,
     );
 
     await user.selectOptions(screen.getByLabelText(/group by/i), "repo");
 
     expect(mockUseChordFlow).toHaveBeenLastCalledWith(
-      expect.objectContaining({ grouping: "repo", orgId: "org-123" })
+      expect.objectContaining({ grouping: "repo", orgId: "org-123" }),
     );
   });
 
@@ -120,12 +135,15 @@ describe("TeamExchangeChordSection", () => {
         }}
         dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
         effortUnit="hours"
-      />
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: /highlight-team-b/i }));
 
-    expect(screen.getByTestId("team-exchange-chord-chart")).toHaveAttribute("data-highlighted-entity", "team-b");
+    expect(screen.getByTestId("team-exchange-chord-chart")).toHaveAttribute(
+      "data-highlighted-entity",
+      "team-b",
+    );
   });
 
   it("shows skeleton loading state", () => {
@@ -143,7 +161,7 @@ describe("TeamExchangeChordSection", () => {
         }}
         dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
         effortUnit="hours"
-      />
+      />,
     );
 
     expect(screen.getByText(/summary-loading/i)).toBeInTheDocument();
@@ -166,7 +184,7 @@ describe("TeamExchangeChordSection", () => {
         }}
         dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
         effortUnit="hours"
-      />
+      />,
     );
 
     expect(screen.getByText(/unable to load exchange view/i)).toBeInTheDocument();

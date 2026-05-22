@@ -18,7 +18,7 @@ export async function listCredentials(): Promise<ActionResult<IntegrationCredent
 }
 
 export async function createCredential(
-  data: IntegrationCredentialCreate
+  data: IntegrationCredentialCreate,
 ): Promise<ActionResult<IntegrationCredential>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();
@@ -42,7 +42,7 @@ export async function testConnection(
 
 export async function deleteCredential(
   provider: string,
-  name: string
+  name: string,
 ): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
     const { token, orgId } = await getSessionContext();

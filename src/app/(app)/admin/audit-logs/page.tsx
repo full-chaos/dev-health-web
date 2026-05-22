@@ -51,10 +51,7 @@ export default function OrgAuditLogPage() {
   };
 
   return (
-    <UpgradeGate
-      feature="audit_log"
-      requiredTier="enterprise"
-    >
+    <UpgradeGate feature="audit_log" requiredTier="enterprise">
       <div>
         <AdminHeader
           title="Audit Logs"

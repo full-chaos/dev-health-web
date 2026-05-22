@@ -2,9 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test("home loads and navigates to explore via panel", async ({ page }) => {
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Developer Health Ops Cockpit" })
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Developer Health Ops Cockpit" })).toBeVisible();
 
   await page.waitForFunction(() => {
     return new URL(window.location.href).searchParams.get("f");

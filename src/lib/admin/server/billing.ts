@@ -25,7 +25,9 @@ export async function listFeatureFlags(): Promise<ActionResult<FeatureFlag[]>> {
   });
 }
 
-export async function listFeatureOverrides(orgId: string): Promise<ActionResult<FeatureOverride[]>> {
+export async function listFeatureOverrides(
+  orgId: string,
+): Promise<ActionResult<FeatureOverride[]>> {
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();
     return adminApi.licensing.overrides.list(orgId, token);
@@ -34,7 +36,7 @@ export async function listFeatureOverrides(orgId: string): Promise<ActionResult<
 
 export async function createFeatureOverride(
   orgId: string,
-  data: FeatureOverrideCreate
+  data: FeatureOverrideCreate,
 ): Promise<ActionResult<FeatureOverride>> {
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();
@@ -46,7 +48,7 @@ export async function createFeatureOverride(
 
 export async function deleteFeatureOverride(
   orgId: string,
-  overrideId: string
+  overrideId: string,
 ): Promise<ActionResult<void>> {
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();

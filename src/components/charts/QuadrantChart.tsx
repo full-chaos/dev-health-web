@@ -35,15 +35,11 @@ const formatValue = (value: number, unit: string) => {
   return `${value.toFixed(1)} ${unit}`.trim();
 };
 
-
-
-
 const normalizeScopeType = (
-  scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string
-) => (scopeType === "developer" ? "person" : scopeType ?? "org");
+  scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string,
+) => (scopeType === "developer" ? "person" : (scopeType ?? "org"));
 
-const rgbaPattern =
-  /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
+const rgbaPattern = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
 const hexPattern = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 const clampAlpha = (alpha: number) => Math.min(1, Math.max(0, alpha));
@@ -67,7 +63,12 @@ const withAlpha = (color: string, alpha: number) => {
   }
   const hex = hexMatch[1];
   const normalized =
-    hex.length === 3 ? hex.split("").map((item) => item + item).join("") : hex;
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((item) => item + item)
+          .join("")
+      : hex;
   const value = Number.parseInt(normalized, 16);
   if (Number.isNaN(value)) {
     return color;
@@ -97,7 +98,7 @@ const buildZoneSurfaceStyle = (
     glowAlpha?: number;
     radius?: number;
     active?: boolean;
-  }
+  },
 ) => {
   const outlineAlpha = options?.outlineAlpha ?? 0.32;
   const glowAlpha = options?.glowAlpha ?? 0.22;
@@ -174,9 +175,7 @@ export const buildQuadrantOption = ({
     ? data.points.filter((point) => focusSet.has(point.entity_id))
     : [];
   const focusPoints =
-    isPersonScope && directFocusPoints.length === 0
-      ? data.points.slice(0, 1)
-      : directFocusPoints;
+    isPersonScope && directFocusPoints.length === 0 ? data.points.slice(0, 1) : directFocusPoints;
   const focusPointIds = new Set(focusPoints.map((point) => point.entity_id));
   const hasFocus = focusPoints.length > 0;
   const backgroundPoints = isPersonScope
@@ -200,42 +199,41 @@ export const buildQuadrantOption = ({
   const annotationColor = "rgba(148, 163, 184, 0.2)";
   const annotationAreas: MarkAreaComponentOption["data"] = showInterpretation
     ? (data.annotations ?? []).map((annotation, index) => {
-      const isActive =
-        highlightOverlayKey === `annotation:${index}`;
-      return [
-        {
-          name: `Condition: ${annotation.description}`,
-          xAxis: annotation.x_range[0],
-          yAxis: annotation.y_range[0],
-          itemStyle: buildZoneSurfaceStyle(annotationColor, {
-            outlineAlpha: 0.24,
-            glowAlpha: 0.18,
-            radius: 28,
-            active: isActive,
-          }),
-        },
-        {
-          xAxis: annotation.x_range[1],
-          yAxis: annotation.y_range[1],
-        },
-      ];
-    })
+        const isActive = highlightOverlayKey === `annotation:${index}`;
+        return [
+          {
+            name: `Condition: ${annotation.description}`,
+            xAxis: annotation.x_range[0],
+            yAxis: annotation.y_range[0],
+            itemStyle: buildZoneSurfaceStyle(annotationColor, {
+              outlineAlpha: 0.24,
+              glowAlpha: 0.18,
+              radius: 28,
+              active: isActive,
+            }),
+          },
+          {
+            xAxis: annotation.x_range[1],
+            yAxis: annotation.y_range[1],
+          },
+        ];
+      })
     : [];
   const zoneAreas: MarkAreaComponentOption["data"] = showInterpretation
     ? (activeZoneOverlay?.zones ?? []).map((zone: import("@/lib/quadrantZones").ZoneRegion) => [
-      {
-        name: zone.label,
-        xAxis: zone.xRange[0],
-        yAxis: zone.yRange[0],
-        itemStyle: buildZoneSurfaceStyle(zone.color, {
-          active: highlightOverlayKey === `zone:${zone.id}`,
-        }),
-      },
-      {
-        xAxis: zone.xRange[1],
-        yAxis: zone.yRange[1],
-      },
-    ])
+        {
+          name: zone.label,
+          xAxis: zone.xRange[0],
+          yAxis: zone.yRange[0],
+          itemStyle: buildZoneSurfaceStyle(zone.color, {
+            active: highlightOverlayKey === `zone:${zone.id}`,
+          }),
+        },
+        {
+          xAxis: zone.xRange[1],
+          yAxis: zone.yRange[1],
+        },
+      ])
     : [];
   const markAreaData: MarkAreaComponentOption["data"] = [
     ...(annotationAreas ?? []),
@@ -243,12 +241,12 @@ export const buildQuadrantOption = ({
   ];
   const markArea: MarkAreaComponentOption | undefined = markAreaData.length
     ? {
-      silent: true,
-      z: 1,
-      label: { show: false },
-      tooltip: { show: false },
-      data: markAreaData,
-    }
+        silent: true,
+        z: 1,
+        label: { show: false },
+        tooltip: { show: false },
+        data: markAreaData,
+      }
     : undefined;
   const gridLineStyle = { color: chartTheme.grid, opacity: 0.16 };
   const axisLineStyle = { color: chartTheme.grid, opacity: 0.28 };
@@ -265,8 +263,7 @@ export const buildQuadrantOption = ({
       },
       formatter: (params: TooltipComponentFormatterCallbackParams) => {
         const entry = getParamsEntry(params);
-        const isMarkArea =
-          entry?.componentType === "markArea" || Array.isArray(entry?.data);
+        const isMarkArea = entry?.componentType === "markArea" || Array.isArray(entry?.data);
         if (isMarkArea) {
           return "";
         }
@@ -284,7 +281,7 @@ export const buildQuadrantOption = ({
           `<div style="font-weight: 600; margin-bottom: 4px;">${entityLabel}</div>`,
           `<div style="display: flex; justify-content: space-between; gap: 12px; opacity: 0.8;"><span>${xLabel}</span> <span style="font-weight: 500;">${xValue}</span></div>`,
           `<div style="display: flex; justify-content: space-between; gap: 12px; opacity: 0.8;"><span>${yLabel}</span> <span style="font-weight: 500;">${yValue}</span></div>`,
-          `<div style="margin-top: 6px; font-size: 10px; opacity: 0.6;">Click to investigate pattern</div>`
+          `<div style="margin-top: 6px; font-size: 10px; opacity: 0.6;">Click to investigate pattern</div>`,
         ].join("");
       },
     },
@@ -321,15 +318,15 @@ export const buildQuadrantOption = ({
         },
         label: showTeamLabels
           ? {
-            show: true,
-            formatter: (params: DefaultLabelFormatterCallbackParams) => {
-              const point = toPoint(params.data);
-              return point?.entity_label ?? "";
-            },
-            color: chartTheme.muted,
-            fontSize: 10,
-            position: "top",
-          }
+              show: true,
+              formatter: (params: DefaultLabelFormatterCallbackParams) => {
+                const point = toPoint(params.data);
+                return point?.entity_label ?? "";
+              },
+              color: chartTheme.muted,
+              fontSize: 10,
+              position: "top",
+            }
           : undefined,
         labelLayout: showTeamLabels ? { hideOverlap: true } : undefined,
         markArea: backgroundData.length ? markArea : undefined,
@@ -341,34 +338,34 @@ export const buildQuadrantOption = ({
       },
       ...(hasFocus
         ? [
-          {
-            type: "scatter" as const,
-            data: focusData,
-            symbol: "circle",
-            symbolSize: 14,
-            itemStyle: {
-              color: colors[0] ?? "#2563eb",
-            },
-            label: {
-              show: true,
-              formatter: (params: DefaultLabelFormatterCallbackParams) => {
-                const point = toPoint(params.data);
-                return point?.entity_label ?? "";
+            {
+              type: "scatter" as const,
+              data: focusData,
+              symbol: "circle",
+              symbolSize: 14,
+              itemStyle: {
+                color: colors[0] ?? "#2563eb",
               },
-              color: chartTheme.text,
-              fontSize: 11,
-              fontWeight: 600,
-              position: "top" as const,
+              label: {
+                show: true,
+                formatter: (params: DefaultLabelFormatterCallbackParams) => {
+                  const point = toPoint(params.data);
+                  return point?.entity_label ?? "";
+                },
+                color: chartTheme.text,
+                fontSize: 11,
+                fontWeight: 600,
+                position: "top" as const,
+              },
+              labelLayout: { hideOverlap: true },
+              markArea: !backgroundData.length ? markArea : undefined,
+              emphasis: {
+                scale: true,
+                itemStyle: { borderColor: chartTheme.text, borderWidth: 2 },
+              },
+              z: 6,
             },
-            labelLayout: { hideOverlap: true },
-            markArea: !backgroundData.length ? markArea : undefined,
-            emphasis: {
-              scale: true,
-              itemStyle: { borderColor: chartTheme.text, borderWidth: 2 },
-            },
-            z: 6,
-          },
-        ]
+          ]
         : []),
     ],
   };

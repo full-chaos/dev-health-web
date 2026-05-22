@@ -11,7 +11,15 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...props }: { href: string; children: ReactNode; [key: string]: unknown }) => (
+  default: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string;
+    children: ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -34,7 +42,7 @@ describe("AdminSidebar", () => {
     expect(screen.getByTestId("org-switcher")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /dashboardoverview/i })).toHaveAttribute(
       "aria-current",
-      "page"
+      "page",
     );
   });
 
@@ -54,7 +62,7 @@ describe("AdminSidebar", () => {
           ip_allowlist: false,
           retention_policies: true,
         }}
-      />
+      />,
     );
 
     expect(screen.getByRole("link", { name: /audit logsenterprise/i })).toBeInTheDocument();

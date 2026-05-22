@@ -105,17 +105,14 @@ export async function fetchReleaseImpact(
   const orgId = await resolveOrgId(orgIdOverride);
 
   try {
-    const res = await graphqlFetch<{ workGraphEdges: WorkGraphEdgesResult }>(
-      RELEASE_IMPACT_QUERY,
-      {
-        orgId,
-        filters: {
-          nodeId: releaseId,
-          sourceType: "RELEASE",
-          limit,
-        },
+    const res = await graphqlFetch<{ workGraphEdges: WorkGraphEdgesResult }>(RELEASE_IMPACT_QUERY, {
+      orgId,
+      filters: {
+        nodeId: releaseId,
+        sourceType: "RELEASE",
+        limit,
       },
-    );
+    });
 
     return {
       edges: res.workGraphEdges.edges,
@@ -210,12 +207,15 @@ export async function fetchFeatureFlagsData(
     const frictionEdges = impactEdges.filter((edge) => edge.evidence?.includes("friction"));
     const errorEdges = impactEdges.filter((edge) => edge.evidence?.includes("error"));
 
-    const avgFriction = frictionEdges.length > 0
-      ? frictionEdges.reduce((sum, e) => sum + (e.confidence ?? 0), 0) / frictionEdges.length * 100
-      : 0;
-    const avgError = errorEdges.length > 0
-      ? errorEdges.reduce((sum, e) => sum + (e.confidence ?? 0), 0) / errorEdges.length * 100
-      : 0;
+    const avgFriction =
+      frictionEdges.length > 0
+        ? (frictionEdges.reduce((sum, e) => sum + (e.confidence ?? 0), 0) / frictionEdges.length) *
+          100
+        : 0;
+    const avgError =
+      errorEdges.length > 0
+        ? (errorEdges.reduce((sum, e) => sum + (e.confidence ?? 0), 0) / errorEdges.length) * 100
+        : 0;
 
     const totalReleases = getDistinctSourceIds(impact.edges).size || 1;
     const withTelemetry = getDistinctSourceIds(impactEdges).size;
@@ -312,9 +312,7 @@ export async function fetchFeatureFlagList(
   }
 }
 
-export async function fetchFeatureFlagData(
-  orgIdOverride?: string,
-): Promise<FeatureFlagData> {
+export async function fetchFeatureFlagData(orgIdOverride?: string): Promise<FeatureFlagData> {
   const orgId = await resolveOrgId(orgIdOverride);
 
   try {

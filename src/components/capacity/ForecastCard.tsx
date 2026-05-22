@@ -30,9 +30,7 @@ function SkeletonCard() {
 function ErrorCard({ error }: { error: Error }) {
   return (
     <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-6">
-      <h3 className="text-lg font-semibold text-red-400 mb-2">
-        Forecast Unavailable
-      </h3>
+      <h3 className="text-lg font-semibold text-red-400 mb-2">Forecast Unavailable</h3>
       <p className="text-sm text-red-400/80">{error.message}</p>
     </div>
   );
@@ -41,9 +39,7 @@ function ErrorCard({ error }: { error: Error }) {
 function EmptyCard() {
   return (
     <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
-      <h3 className="text-lg font-semibold text-foreground mb-2">
-        No Forecast Available
-      </h3>
+      <h3 className="text-lg font-semibold text-foreground mb-2">No Forecast Available</h3>
       <p className="text-sm text-(--ink-muted)">
         Insufficient throughput history to generate a forecast. Need at least 14 days of data.
       </p>
@@ -68,9 +64,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
     <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
       <div className="mb-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">
-            Capacity Forecast
-          </h3>
+          <h3 className="text-lg font-semibold text-foreground">Capacity Forecast</h3>
         </div>
         <p className="mt-1 text-sm text-(--ink-muted)">
           Scope: <span className="font-medium text-foreground">{scopeLabel}</span>
@@ -88,29 +82,19 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
         <div className="flex items-center justify-between py-2 border-b border-(--card-stroke)">
           <span className="text-sm text-(--ink-muted)">50% chance</span>
           <div className="text-right">
-            <span className="font-medium text-green-500">
-              {formatDate(forecast.p50Date)}
-            </span>
+            <span className="font-medium text-green-500">{formatDate(forecast.p50Date)}</span>
             {forecast.p50Days && (
-              <span className="text-xs text-(--ink-muted) ml-2">
-                ({forecast.p50Days} days)
-              </span>
+              <span className="text-xs text-(--ink-muted) ml-2">({forecast.p50Days} days)</span>
             )}
           </div>
         </div>
 
         <div className="flex items-center justify-between py-2 border-b border-(--card-stroke) bg-amber-500/10 -mx-2 px-2 rounded">
-          <span className="text-sm font-medium text-amber-400">
-            85% chance
-          </span>
+          <span className="text-sm font-medium text-amber-400">85% chance</span>
           <div className="text-right flex items-center">
-            <span className="font-bold text-amber-400">
-              {formatDate(forecast.p85Date)}
-            </span>
+            <span className="font-bold text-amber-400">{formatDate(forecast.p85Date)}</span>
             {forecast.p85Days && (
-              <span className="text-xs text-amber-400/70 ml-2">
-                ({forecast.p85Days} days)
-              </span>
+              <span className="text-xs text-amber-400/70 ml-2">({forecast.p85Days} days)</span>
             )}
             <span className="ml-2 text-xs bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">
               Target
@@ -121,13 +105,9 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
         <div className="flex items-center justify-between py-2">
           <span className="text-sm text-(--ink-muted)">95% chance</span>
           <div className="text-right">
-            <span className="font-medium text-red-400">
-              {formatDate(forecast.p95Date)}
-            </span>
+            <span className="font-medium text-red-400">{formatDate(forecast.p95Date)}</span>
             {forecast.p95Days && (
-              <span className="text-xs text-(--ink-muted) ml-2">
-                ({forecast.p95Days} days)
-              </span>
+              <span className="text-xs text-(--ink-muted) ml-2">({forecast.p95Days} days)</span>
             )}
           </div>
         </div>

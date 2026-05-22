@@ -4,7 +4,6 @@ import { encodeFilter } from "../src/lib/filters/encode";
 import { defaultMetricFilter } from "../src/lib/filters/defaults";
 import { ensureGroupExpanded } from "./helpers/sidebar";
 
-
 /**
  * CHAOS-1588 / CHAOS-1767: AI workflow navigation e2e.
  *
@@ -25,15 +24,10 @@ const defaultFilter = encodeFilter({
 // (e.g. "Review Load Pressure"), so a `/^Review Load$/` regex misses them
 // and `/^Risk/` also matches the TestOps "Risk Confidence" entry. Target the
 // AI sidebar links by their href to stay unambiguous.
-const aiImpactLink = (page: Page) =>
-  page.locator('a[href^="/ai/impact"]').first();
-const aiReviewLoadLink = (page: Page) =>
-  page.locator('a[href^="/ai/review-load"]').first();
-const aiRiskLink = (page: Page) =>
-  page.locator('a[href^="/ai/risk"]').first();
-const aiAutomationsLink = (page: Page) =>
-  page.locator('a[href^="/ai/automations"]').first();
-
+const aiImpactLink = (page: Page) => page.locator('a[href^="/ai/impact"]').first();
+const aiReviewLoadLink = (page: Page) => page.locator('a[href^="/ai/review-load"]').first();
+const aiRiskLink = (page: Page) => page.locator('a[href^="/ai/risk"]').first();
+const aiAutomationsLink = (page: Page) => page.locator('a[href^="/ai/automations"]').first();
 
 test.describe("AI workflow primary navigation", () => {
   test("nav links route between the three AI views", async ({ page }) => {

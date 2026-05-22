@@ -3,11 +3,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { EditTeamFormWrapper } from "./EditTeamFormWrapper";
 import { getTeam } from "@/lib/admin/server";
 
-export default async function EditTeamPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditTeamPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await getTeam(id);
 
@@ -19,10 +15,7 @@ export default async function EditTeamPage({
 
   return (
     <div>
-      <AdminHeader
-        title="Edit Team"
-        description={`Edit configuration for ${team.name}`}
-      />
+      <AdminHeader title="Edit Team" description={`Edit configuration for ${team.name}`} />
       <EditTeamFormWrapper team={team} />
     </div>
   );

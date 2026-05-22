@@ -22,12 +22,8 @@ export default function Error({ error, reset }: ErrorProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
       <div className="max-w-md px-6 text-center">
-        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted) mb-3">
-          Error
-        </p>
-        <h1 className="font-(--font-display) text-3xl mb-4">
-          Something went wrong
-        </h1>
+        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted) mb-3">Error</p>
+        <h1 className="font-(--font-display) text-3xl mb-4">Something went wrong</h1>
         <p className="text-sm text-(--ink-muted) leading-relaxed mb-8">
           An unexpected error occurred while rendering this page.
           {error.digest && (

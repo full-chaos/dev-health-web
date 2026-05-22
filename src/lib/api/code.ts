@@ -5,9 +5,7 @@ import type { BusFactor, BusFactorScopeInput } from "@/lib/graphql/types";
 
 import { getAuth } from "./_shared";
 
-export async function getBusFactorData(
-  filters: MetricFilter
-): Promise<BusFactor | null> {
+export async function getBusFactorData(filters: MetricFilter): Promise<BusFactor | null> {
   const auth = await getAuth();
   const session = await auth();
   const orgId = session?.user?.org_id;
@@ -21,7 +19,7 @@ export async function getBusFactorData(
       ? { repoId: filters.scope.ids[0] }
       : filters.scope.level === "team" && filters.scope.ids[0]
         ? { teamId: filters.scope.ids[0] }
-      : undefined;
+        : undefined;
 
   return getBusFactorViaGraphQL(orgId, scope);
 }

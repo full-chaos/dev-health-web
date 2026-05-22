@@ -75,7 +75,11 @@ describe("encodeSecurityFilter / decodeSecurityFilter round-trip", () => {
 describe("decodeSecurityFilter — forward-compat", () => {
   it("drops unknown field keys from the encoded payload", () => {
     // Manually encode a payload with an extra unknown field
-    const payloadWithExtra = { openOnly: true, unknownFutureField: "ignore-me", severities: ["critical"] };
+    const payloadWithExtra = {
+      openOnly: true,
+      unknownFutureField: "ignore-me",
+      severities: ["critical"],
+    };
     const encoded = btoa(JSON.stringify(payloadWithExtra))
       .replace(/\+/g, "-")
       .replace(/\//g, "_")

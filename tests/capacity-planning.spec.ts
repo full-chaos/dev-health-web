@@ -13,12 +13,8 @@ test.describe("Capacity Planning page", () => {
   test("shows sample data banner when no team scope is set", async ({ page }) => {
     await page.goto("/capacity-planning");
 
-    await expect(
-      page.getByText(/Showing sample data/i),
-    ).toBeVisible();
-    await expect(
-      page.getByText(/Select a team in the scope bar above/i),
-    ).toBeVisible();
+    await expect(page.getByText(/Showing sample data/i)).toBeVisible();
+    await expect(page.getByText(/Select a team in the scope bar above/i)).toBeVisible();
   });
 
   test("does not show team ID input — team comes from global scope bar", async ({ page }) => {

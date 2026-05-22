@@ -70,7 +70,7 @@ export function PrTestOpsSummary({
         {pipelineStatus && (
           <div
             className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${getStatusColor(
-              pipelineStatus.status
+              pipelineStatus.status,
             )}`}
             data-testid="pipeline-status"
           >
@@ -103,7 +103,10 @@ export function PrTestOpsSummary({
         <div className="flex flex-col gap-1">
           <span className="text-xs uppercase tracking-wider text-(--ink-muted)">Flaky</span>
           {testResults ? (
-            <span className={`text-xl font-medium ${testResults.flaky > 0 ? "text-amber-500" : ""}`} data-testid="test-flaky">
+            <span
+              className={`text-xl font-medium ${testResults.flaky > 0 ? "text-amber-500" : ""}`}
+              data-testid="test-flaky"
+            >
               {testResults.flaky}
             </span>
           ) : (
@@ -114,7 +117,10 @@ export function PrTestOpsSummary({
         <div className="flex flex-col gap-1">
           <span className="text-xs uppercase tracking-wider text-(--ink-muted)">Coverage</span>
           {coverageDelta !== undefined ? (
-            <span className={`text-xl font-medium ${getCoverageColor(coverageDelta)}`} data-testid="coverage-delta">
+            <span
+              className={`text-xl font-medium ${getCoverageColor(coverageDelta)}`}
+              data-testid="coverage-delta"
+            >
               {coverageDelta > 0 ? "+" : ""}
               {coverageDelta}%
             </span>
@@ -126,7 +132,10 @@ export function PrTestOpsSummary({
         <div className="flex flex-col gap-1">
           <span className="text-xs uppercase tracking-wider text-(--ink-muted)">Confidence</span>
           {releaseConfidence !== undefined ? (
-            <span className={`text-xl font-medium ${getConfidenceColor(releaseConfidence)}`} data-testid="release-confidence">
+            <span
+              className={`text-xl font-medium ${getConfidenceColor(releaseConfidence)}`}
+              data-testid="release-confidence"
+            >
               {Math.round(releaseConfidence * 100)}%
             </span>
           ) : (

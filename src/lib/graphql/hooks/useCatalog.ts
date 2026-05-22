@@ -72,9 +72,7 @@ interface UseDimensionValuesResult {
  * @param options - Query options
  * @returns Dimension values, loading state, and error
  */
-export function useDimensionValues(
-  options: UseDimensionValuesOptions
-): UseDimensionValuesResult {
+export function useDimensionValues(options: UseDimensionValuesOptions): UseDimensionValuesResult {
   const { orgId, dimension, pause = false } = options;
 
   const [result, reexecute] = useQuery<{ catalog: CatalogResult }>({

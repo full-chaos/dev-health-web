@@ -23,7 +23,7 @@ type ThroughputHistogramProps = {
 function generateHistogramData(
   mean: number,
   stddev: number,
-  bins: number = 10
+  bins: number = 10,
 ): { labels: string[]; values: number[]; binEdges: number[] } {
   const minVal = Math.max(0, mean - 3 * stddev);
   const maxVal = mean + 3 * stddev;
@@ -65,7 +65,7 @@ export function ThroughputHistogram({
 
   const { labels, values, binEdges } = useMemo(
     () => generateHistogramData(throughputMean, throughputStddev),
-    [throughputMean, throughputStddev]
+    [throughputMean, throughputStddev],
   );
 
   const meanIndex = useMemo(() => {
@@ -163,14 +163,16 @@ export function ThroughputHistogram({
             data: [
               [
                 { xAxis: labels.findIndex((l) => parseFloat(l) >= stddevLow) },
-                { xAxis: labels.findIndex((l) => parseFloat(l) >= stddevHigh) || labels.length - 1 },
+                {
+                  xAxis: labels.findIndex((l) => parseFloat(l) >= stddevHigh) || labels.length - 1,
+                },
               ],
             ] as [[{ xAxis: number }, { xAxis: number }]],
           },
         },
       ],
     }),
-    [labels, values, meanIndex, throughputMean, stddevLow, stddevHigh, chartTheme]
+    [labels, values, meanIndex, throughputMean, stddevLow, stddevHigh, chartTheme],
   );
 
   return (

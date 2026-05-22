@@ -34,33 +34,37 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const env = getServerEnv();
-  const isTestMode = env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+  const isTestMode =
+    env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
   const rangeDays = filters?.time?.range_days ?? 14;
   const today = new Date();
   const endDate = filters?.time?.end_date ?? today.toISOString().slice(0, 10);
-  const startDate = filters?.time?.start_date ?? new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
+  const startDate =
+    filters?.time?.start_date ??
+    new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
   const dateRange = { startDate, endDate };
 
   const [health, testOpsData] = await Promise.all([
     checkApiHealth(),
-    fetchTestOpsData({
-      timeseries: [
-        { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "PIPELINE_FAILURE_RATE", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "PIPELINE_DURATION_P95", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "PIPELINE_QUEUE_TIME", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "PIPELINE_RERUN_RATE", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange },
-      ],
-      breakdowns: [],
-    }, isTestMode),
+    fetchTestOpsData(
+      {
+        timeseries: [
+          { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "PIPELINE_FAILURE_RATE", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "PIPELINE_DURATION_P95", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "PIPELINE_QUEUE_TIME", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "PIPELINE_RERUN_RATE", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange },
+        ],
+        breakdowns: [],
+      },
+      isTestMode,
+    ),
   ]);
 
   if (!health.ok && !isTestMode) {
@@ -88,12 +92,8 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                TestOps
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Health Overview
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">TestOps</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Health Overview</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Pipeline stability, test reliability, and coverage.
               </p>
@@ -112,10 +112,10 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
             {measures.map(({ id, ts }) => {
               const def = TESTOPS_MEASURES[id];
               if (!def) return null;
-              
+
               const value = getLatestValue(ts, id);
               const spark = getSparkline(ts, id);
-              
+
               return (
                 <MetricCard
                   key={id}

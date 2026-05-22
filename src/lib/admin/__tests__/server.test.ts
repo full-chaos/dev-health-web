@@ -107,7 +107,10 @@ describe("admin/server credential actions", () => {
         .spyOn(global, "fetch")
         .mockResolvedValue(new Response(JSON.stringify(resp), { status: 200 }));
 
-      const result = await testConnection("github", { name: "default", credentials: { token: "tok" } });
+      const result = await testConnection("github", {
+        name: "default",
+        credentials: { token: "tok" },
+      });
       expect(result.data?.success).toBe(true);
       expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
       fetchSpy.mockRestore();
@@ -117,7 +120,9 @@ describe("admin/server credential actions", () => {
   describe("deleteCredential", () => {
     it("calls revalidatePath after successful deletion", async () => {
       mockSession();
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(null, { status: 204 }));
 
       const result = await deleteCredential("github", "default");
       expect(result.error).toBeUndefined();
@@ -333,7 +338,10 @@ describe("admin/server IP allowlist actions", () => {
         .spyOn(global, "fetch")
         .mockResolvedValue(new Response(JSON.stringify(mockIPEntry), { status: 200 }));
 
-      const result = await createIPAllowlistEntry({ ip_range: "10.0.0.0/8", description: "Office" });
+      const result = await createIPAllowlistEntry({
+        ip_range: "10.0.0.0/8",
+        description: "Office",
+      });
       expect(result.data).toBeDefined();
       expect(revalidatePath).toHaveBeenCalledWith("/admin/ip-allowlist");
       fetchSpy.mockRestore();
@@ -358,7 +366,9 @@ describe("admin/server IP allowlist actions", () => {
   describe("deleteIPAllowlistEntry", () => {
     it("calls revalidatePath after successful deletion", async () => {
       mockSession();
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(null, { status: 204 }));
 
       const result = await deleteIPAllowlistEntry("ip-1");
       expect(result.error).toBeUndefined();
@@ -433,7 +443,10 @@ describe("admin/server retention policy actions", () => {
         .spyOn(global, "fetch")
         .mockResolvedValue(new Response(JSON.stringify(mockRetentionPolicy), { status: 200 }));
 
-      const result = await createRetentionPolicy({ resource_type: "audit_logs", retention_days: 90 });
+      const result = await createRetentionPolicy({
+        resource_type: "audit_logs",
+        retention_days: 90,
+      });
       expect(result.data).toBeDefined();
       expect(revalidatePath).toHaveBeenCalledWith("/admin/retention");
       fetchSpy.mockRestore();
@@ -458,7 +471,9 @@ describe("admin/server retention policy actions", () => {
   describe("deleteRetentionPolicy", () => {
     it("calls revalidatePath after successful deletion", async () => {
       mockSession();
-      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+      const fetchSpy = vi
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(null, { status: 204 }));
 
       const result = await deleteRetentionPolicy("rp-1");
       expect(result.error).toBeUndefined();

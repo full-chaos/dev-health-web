@@ -1,7 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { formatNumber } from "@/lib/formatters";
-import { isUnassignedLabel, stripSankeyPrefix, TOP_N_REPOS, UNASSIGNED_TEAM_LABEL } from "@/lib/investment";
+import {
+  isUnassignedLabel,
+  stripSankeyPrefix,
+  TOP_N_REPOS,
+  UNASSIGNED_TEAM_LABEL,
+} from "@/lib/investment";
 import { computeSankeyMetrics, filterSankeyToTeam } from "@/lib/sankey";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyNode, SankeyResponse } from "@/lib/types";
@@ -52,11 +57,11 @@ export function TeamCategorySankeySection({
 }: TeamCategorySankeySectionProps) {
   const rawSankeyFlow = useMemo(
     () => filterSankeyToTeam(teamCategoryFlow ?? null, focusedTeam),
-    [teamCategoryFlow, focusedTeam]
+    [teamCategoryFlow, focusedTeam],
   );
   const rawBaselineFlow = useMemo(
     () => filterSankeyToTeam(baselineSankeyFlow ?? null, focusedTeam),
-    [baselineSankeyFlow, focusedTeam]
+    [baselineSankeyFlow, focusedTeam],
   );
   const sankeyFlow = useMemo(() => {
     if (!rawSankeyFlow) {
@@ -64,7 +69,7 @@ export function TeamCategorySankeySection({
     }
     return prepareSankeyFlow(
       { ...rawSankeyFlow, mode: teamCategoryFlow?.mode ?? "team_category_repo" } as SankeyResponse,
-      TOP_N_REPOS
+      TOP_N_REPOS,
     );
   }, [prepareSankeyFlow, rawSankeyFlow, teamCategoryFlow?.mode]);
   const baselineFlow = useMemo(() => {
@@ -72,14 +77,23 @@ export function TeamCategorySankeySection({
       return null;
     }
     return prepareSankeyFlow(
-      { ...rawBaselineFlow, mode: baselineSankeyFlow?.mode ?? "team_category_repo" } as SankeyResponse,
-      TOP_N_REPOS
+      {
+        ...rawBaselineFlow,
+        mode: baselineSankeyFlow?.mode ?? "team_category_repo",
+      } as SankeyResponse,
+      TOP_N_REPOS,
     );
   }, [baselineSankeyFlow?.mode, prepareSankeyFlow, rawBaselineFlow]);
   const isSankeyLoading = isCategoryFlowLoading;
 
-  const sankeyMetrics = useMemo(() => (sankeyFlow ? computeSankeyMetrics(sankeyFlow.nodes, sankeyFlow.links) : null), [sankeyFlow]);
-  const baselineMetrics = useMemo(() => (baselineFlow ? computeSankeyMetrics(baselineFlow.nodes, baselineFlow.links) : null), [baselineFlow]);
+  const sankeyMetrics = useMemo(
+    () => (sankeyFlow ? computeSankeyMetrics(sankeyFlow.nodes, sankeyFlow.links) : null),
+    [sankeyFlow],
+  );
+  const baselineMetrics = useMemo(
+    () => (baselineFlow ? computeSankeyMetrics(baselineFlow.nodes, baselineFlow.links) : null),
+    [baselineFlow],
+  );
   const baselineSankeyTotal = baselineMetrics?.totalFlow ?? 0;
 
   const sankeyNodeMap = useMemo(() => {
@@ -102,7 +116,9 @@ export function TeamCategorySankeySection({
   const categoryShareSummary = useMemo(() => {
     if (!sankeyFlow || !sankeyFlow.links.length) return [];
     const targetGroup = showSubcategories ? "subcategory" : "category";
-    const groupNames = new Set(sankeyFlow.nodes.filter((node) => node.group === targetGroup).map((node) => node.name));
+    const groupNames = new Set(
+      sankeyFlow.nodes.filter((node) => node.group === targetGroup).map((node) => node.name),
+    );
     if (!groupNames.size) return [];
     const totals = new Map<string, number>();
     let total = 0;
@@ -129,8 +145,15 @@ export function TeamCategorySankeySection({
 
   const isSingleTeamScope = filters.scope.level === "team" && filters.scope.ids.length === 1;
   const summaryLimit = showSubcategories ? 3 : isSingleTeamScope ? 1 : 3;
-  const topCategorySummary = useMemo(() => categoryShareSummary.slice(0, summaryLimit), [categoryShareSummary, summaryLimit]);
-  const topSummaryLabel = showSubcategories ? "Top subcategories:" : isSingleTeamScope ? "Top theme:" : "Top themes:";
+  const topCategorySummary = useMemo(
+    () => categoryShareSummary.slice(0, summaryLimit),
+    [categoryShareSummary, summaryLimit],
+  );
+  const topSummaryLabel = showSubcategories
+    ? "Top subcategories:"
+    : isSingleTeamScope
+      ? "Top theme:"
+      : "Top themes:";
 
   const handleTeamFocus = useCallback(
     (teamName: string) => {
@@ -141,7 +164,7 @@ export function TeamCategorySankeySection({
       setFocusSubcategory(null);
       setFocusedTeam(teamName);
     },
-    [setFocusedTeam, setFocusSubcategory, setSelectedCategory]
+    [setFocusedTeam, setFocusSubcategory, setSelectedCategory],
   );
 
   const handleCategoryFocus = useCallback(
@@ -152,7 +175,7 @@ export function TeamCategorySankeySection({
       setFocusSubcategory(null);
       setSelectedCategory((current) => (current === categoryName ? null : categoryName));
     },
-    [setFocusSubcategory, setSelectedCategory]
+    [setFocusSubcategory, setSelectedCategory],
   );
 
   const sankeyTooltipFormatter = useMemo(
@@ -165,7 +188,15 @@ export function TeamCategorySankeySection({
         timeRange: filters.time,
         showBaselineDelta,
       }),
-    [baselineFlow, baselineMetrics, buildSankeyTooltipFormatter, filters.time, sankeyMetrics, sankeyNodeMap, showBaselineDelta]
+    [
+      baselineFlow,
+      baselineMetrics,
+      buildSankeyTooltipFormatter,
+      filters.time,
+      sankeyMetrics,
+      sankeyNodeMap,
+      showBaselineDelta,
+    ],
   );
 
   return (
@@ -175,11 +206,19 @@ export function TeamCategorySankeySection({
           <div className="flex flex-wrap items-center gap-3">
             <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
             <div className="flex flex-wrap items-center gap-3 text-[11px] text-(--ink-muted)">
-              <span>Team coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.team * 100)}%</strong></span>
-              <span>Repo coverage: <strong className="text-(--ink)">{formatNumber(sankeyCoverage.repo * 100)}%</strong></span>
+              <span>
+                Team coverage:{" "}
+                <strong className="text-(--ink)">{formatNumber(sankeyCoverage.team * 100)}%</strong>
+              </span>
+              <span>
+                Repo coverage:{" "}
+                <strong className="text-(--ink)">{formatNumber(sankeyCoverage.repo * 100)}%</strong>
+              </span>
             </div>
           </div>
-          <p className="mt-1 text-xs text-(--ink-muted)">{showSubcategories ? "Team to Theme to Subcategory to Repo" : "Team to Theme to Repo"}</p>
+          <p className="mt-1 text-xs text-(--ink-muted)">
+            {showSubcategories ? "Team to Theme to Subcategory to Repo" : "Team to Theme to Repo"}
+          </p>
           {(focusedTeam || selectedCategory) && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {focusedTeam && (
@@ -209,12 +248,19 @@ export function TeamCategorySankeySection({
           )}
         </div>
         <div className="flex flex-col items-start gap-2 text-xs text-(--ink-muted)">
-          {selectedCategory && <span>Theme focus: <strong className="text-(--ink)">{selectedCategory}</strong></span>}
+          {selectedCategory && (
+            <span>
+              Theme focus: <strong className="text-(--ink)">{selectedCategory}</strong>
+            </span>
+          )}
           {topCategorySummary.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span>{topSummaryLabel}</span>
               {topCategorySummary.map((entry) => (
-                <span key={entry.name} className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px]">
+                <span
+                  key={entry.name}
+                  className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px]"
+                >
                   {entry.name} {entry.share.toFixed(0)}%
                 </span>
               ))}
@@ -223,8 +269,8 @@ export function TeamCategorySankeySection({
         </div>
       </div>
       <div className="mt-2 mb-4 border-l-2 border-(--card-stroke) py-1 pl-3 text-[11px] leading-relaxed text-(--ink-muted)">
-        This view shows where effort appears to land across teams, themes, and repos for the selected window.
-        Allocation reflects attribution, not dependency or impact.
+        This view shows where effort appears to land across teams, themes, and repos for the
+        selected window. Allocation reflects attribution, not dependency or impact.
       </div>
       <div className="mt-0">
         {isSankeyLoading ? (

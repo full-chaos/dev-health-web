@@ -47,11 +47,7 @@ describe("SecurityAlertRow", () => {
   });
 
   it("renders the CVE id as a chip when packageName is absent", () => {
-    render(
-      <SecurityAlertRow
-        alert={makeAlert({ packageName: null as unknown as string })}
-      />
-    );
+    render(<SecurityAlertRow alert={makeAlert({ packageName: null as unknown as string })} />);
 
     expect(screen.getByText("CVE-2024-0001")).toBeInTheDocument();
   });
@@ -65,7 +61,7 @@ describe("SecurityAlertRow", () => {
     expect(openSpy).toHaveBeenCalledWith(
       "https://github.com/org/repo-a/security/dependabot/1",
       "_blank",
-      "noopener,noreferrer"
+      "noopener,noreferrer",
     );
   });
 
@@ -90,7 +86,7 @@ describe("SecurityAlertRow", () => {
     render(
       <SecurityAlertRow
         alert={makeAlert({ createdAt: new Date(Date.now() - 30_000).toISOString() })}
-      />
+      />,
     );
 
     expect(screen.getByText(/just now/i)).toBeInTheDocument();

@@ -40,9 +40,7 @@ export function UpgradeGate({
             <h2 className="font-(--font-display) text-3xl text-(--foreground)">
               Unlock {feature.replace(/_/g, " ")}
             </h2>
-            <p className="text-(--ink-muted)">
-              {featureDescription}
-            </p>
+            <p className="text-(--ink-muted)">{featureDescription}</p>
           </div>
 
           <div className="rounded-xl border border-(--card-stroke) bg-(--background) p-4 text-sm">

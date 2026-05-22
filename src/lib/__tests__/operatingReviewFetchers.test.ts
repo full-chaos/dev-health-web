@@ -34,7 +34,7 @@ describe("getOperatingReviewViaGraphQL", () => {
         orgId: "org-1",
         input: { teamId: "team-a", weekStart: "2026-05-18" },
       },
-      { orgId: "org-1" }
+      { orgId: "org-1" },
     );
   });
 });

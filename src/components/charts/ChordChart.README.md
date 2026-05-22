@@ -10,25 +10,25 @@ The chord chart is a relationship-flow view for cross-entity exchange: it makes 
 
 ### `ChordChart`
 
-| Prop | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `dataset` | `ChordDataset` | Yes | — | Fully processed dataset from `buildChordDataset(...)`. |
-| `unit` | `string` | No | `"items"` | Used in tooltip/value formatting. |
-| `height` | `number \| string` | No | `420` | Applied to the chart container. |
-| `width` | `number \| string` | No | `"100%"` | Applied to the chart container. |
-| `className` | `string` | No | — | Container class. |
-| `style` | `CSSProperties` | No | — | Merged with `height` / `width`. |
-| `tooltipFormatter` | `(params: unknown, unit: string) => string` | No | Internal formatter | Override for custom HTML tooltip content. |
-| `onItemClick` | `(item: { type: "node" \| "link"; name?: string; source?: string; target?: string; value?: number }) => void` | No | — | Receives normalized node/link click payloads. |
+| Prop               | Type                                                                                                          | Required | Default            | Notes                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- | -------- | ------------------ | ------------------------------------------------------ |
+| `dataset`          | `ChordDataset`                                                                                                | Yes      | —                  | Fully processed dataset from `buildChordDataset(...)`. |
+| `unit`             | `string`                                                                                                      | No       | `"items"`          | Used in tooltip/value formatting.                      |
+| `height`           | `number \| string`                                                                                            | No       | `420`              | Applied to the chart container.                        |
+| `width`            | `number \| string`                                                                                            | No       | `"100%"`           | Applied to the chart container.                        |
+| `className`        | `string`                                                                                                      | No       | —                  | Container class.                                       |
+| `style`            | `CSSProperties`                                                                                               | No       | —                  | Merged with `height` / `width`.                        |
+| `tooltipFormatter` | `(params: unknown, unit: string) => string`                                                                   | No       | Internal formatter | Override for custom HTML tooltip content.              |
+| `onItemClick`      | `(item: { type: "node" \| "link"; name?: string; source?: string; target?: string; value?: number }) => void` | No       | —                  | Receives normalized node/link click payloads.          |
 
 ### `ChordChartControls`
 
-| Prop | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `value` | `ChordControlsValue` | Yes | — | Controlled state for direction, grouping, top-N, self-links, and Other bucket. |
-| `onChange` | `(next: ChordControlsValue) => void` | Yes | — | Emits the fully next control state. |
-| `otherAvailable` | `boolean` | No | `true` | Disables the Other-bucket checkbox when aggregation is not needed. |
-| `className` | `string` | No | `""` | Wrapper class for layout integration. |
+| Prop             | Type                                 | Required | Default | Notes                                                                          |
+| ---------------- | ------------------------------------ | -------- | ------- | ------------------------------------------------------------------------------ |
+| `value`          | `ChordControlsValue`                 | Yes      | —       | Controlled state for direction, grouping, top-N, self-links, and Other bucket. |
+| `onChange`       | `(next: ChordControlsValue) => void` | Yes      | —       | Emits the fully next control state.                                            |
+| `otherAvailable` | `boolean`                            | No       | `true`  | Disables the Other-bucket checkbox when aggregation is not needed.             |
+| `className`      | `string`                             | No       | `""`    | Wrapper class for layout integration.                                          |
 
 Related exports for URL-synced control surfaces:
 
@@ -38,13 +38,13 @@ Related exports for URL-synced control surfaces:
 
 ### `ChordSummaryPanel`
 
-| Prop | Type | Required | Default | Notes |
-| --- | --- | --- | --- | --- |
-| `dataset` | `ChordDataset \| null` | Yes | — | `null` enables loading / empty states without fabricating data. |
-| `unit` | `string` | No | — | Included in row `aria-label`s and compact value display. |
-| `loading` | `boolean` | No | — | Shows skeleton placeholders. |
-| `className` | `string` | No | `""` | Wrapper class. |
-| `onEntitySelect` | `(entityId: string) => void` | No | — | Fired when a summary row button is activated. |
+| Prop             | Type                         | Required | Default | Notes                                                           |
+| ---------------- | ---------------------------- | -------- | ------- | --------------------------------------------------------------- |
+| `dataset`        | `ChordDataset \| null`       | Yes      | —       | `null` enables loading / empty states without fabricating data. |
+| `unit`           | `string`                     | No       | —       | Included in row `aria-label`s and compact value display.        |
+| `loading`        | `boolean`                    | No       | —       | Shows skeleton placeholders.                                    |
+| `className`      | `string`                     | No       | `""`    | Wrapper class.                                                  |
+| `onEntitySelect` | `(entityId: string) => void` | No       | —       | Fired when a summary row button is activated.                   |
 
 ## Data flow
 
@@ -122,7 +122,7 @@ Controlled controls:
 ```tsx
 const [controls, setControls] = useState(CHORD_CONTROLS_DEFAULTS);
 
-<ChordChartControls value={controls} onChange={setControls} otherAvailable />
+<ChordChartControls value={controls} onChange={setControls} otherAvailable />;
 ```
 
 URL-param-synced controls:
@@ -133,7 +133,10 @@ const [controls, setControls] = useState(() => parseChordControlsFromSearchParam
 
 const updateControls = (next: ChordControlsValue) => {
   setControls(next);
-  const params = serializeChordControlsToSearchParams(next, new URLSearchParams(searchParams.toString()));
+  const params = serializeChordControlsToSearchParams(
+    next,
+    new URLSearchParams(searchParams.toString()),
+  );
   window.history.replaceState(window.history.state, "", `?${params.toString()}`);
 };
 ```
@@ -157,12 +160,12 @@ Same-dimension flow comes from the native `analytics.flowMatrix(dimension)` reso
 
 All four direction modes render meaningful output:
 
-| Mode | Formula | Signal |
-| --- | --- | --- |
-| **Bilateral** | `m[i][j] + m[j][i]` | Total two-way exchange between a pair. |
-| **Outflow** | `m[i][j]` | Work originating from `i` directed at `j`. |
-| **Inflow** | `m[j][i]` | Work `i` receives from `j`. |
-| **Net** | `max(0, m[i][j] − m[j][i])` | Directional imbalance (one-way flow surplus). |
+| Mode          | Formula                     | Signal                                        |
+| ------------- | --------------------------- | --------------------------------------------- |
+| **Bilateral** | `m[i][j] + m[j][i]`         | Total two-way exchange between a pair.        |
+| **Outflow**   | `m[i][j]`                   | Work originating from `i` directed at `j`.    |
+| **Inflow**    | `m[j][i]`                   | Work `i` receives from `j`.                   |
+| **Net**       | `max(0, m[i][j] − m[j][i])` | Directional imbalance (one-way flow surplus). |
 
 `topImporters` / `topExporters` in the summary panel populate based on each node's incoming vs outgoing totals; ties still render "—".
 

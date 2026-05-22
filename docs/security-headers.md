@@ -13,14 +13,14 @@ Security headers are applied at two layers:
 
 ([`next.config.js:24–50`](../next.config.js#L24))
 
-| Header | Value |
-|---|---|
-| `X-Content-Type-Options` | `nosniff` |
-| `X-Frame-Options` | `DENY` |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
+| Header                      | Value                                          |
+| --------------------------- | ---------------------------------------------- |
+| `X-Content-Type-Options`    | `nosniff`                                      |
+| `X-Frame-Options`           | `DENY`                                         |
+| `Referrer-Policy`           | `strict-origin-when-cross-origin`              |
+| `Permissions-Policy`        | `camera=(), microphone=(), geolocation=()`     |
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` |
-| `Content-Security-Policy` | See below |
+| `Content-Security-Policy`   | See below                                      |
 
 ### Static-export / CDN fallback CSP
 
@@ -56,11 +56,11 @@ The nonce is injected on every response path in the middleware: redirects, rate-
 
 ## Environment differences
 
-| Context | CSP source | `unsafe-inline` in script-src |
-|---|---|---|
-| Static export (`DEMO_EXPORT=true`) | `next.config.js` | Yes (no middleware) |
-| Server-rendered (normal) | `src/proxy.ts` middleware | No (nonce used instead) |
-| Local dev (`localhost:8800`) | `src/proxy.ts` middleware | No; `connect-src` includes `http://localhost:8800` |
+| Context                            | CSP source                | `unsafe-inline` in script-src                      |
+| ---------------------------------- | ------------------------- | -------------------------------------------------- |
+| Static export (`DEMO_EXPORT=true`) | `next.config.js`          | Yes (no middleware)                                |
+| Server-rendered (normal)           | `src/proxy.ts` middleware | No (nonce used instead)                            |
+| Local dev (`localhost:8800`)       | `src/proxy.ts` middleware | No; `connect-src` includes `http://localhost:8800` |
 
 ## Updating headers safely
 

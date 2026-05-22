@@ -11,7 +11,7 @@ describe("apiClient.buildUrl", () => {
         c: undefined,
         d: 0,
         e: false,
-      })
+      }),
     );
 
     expect(url.pathname).toBe("/api/v1/test");

@@ -65,17 +65,15 @@ export const encodeFilterParam = (filters: MetricFilter) => {
 };
 
 export const filterFromQueryParams = (
-  params: Record<string, string | string[] | undefined>
+  params: Record<string, string | string[] | undefined>,
 ): MetricFilter => {
   const scopeType = (params.scope_type as MetricFilter["scope"]["level"]) ?? "org";
   const scopeId = (params.scope_id as string) ?? "";
   const startDate = (params.start_date as string) ?? undefined;
   const endDate = (params.end_date as string) ?? undefined;
-  const rangeDays = Number(
-    (params.range_days as string) ?? defaultMetricFilter.time.range_days
-  );
+  const rangeDays = Number((params.range_days as string) ?? defaultMetricFilter.time.range_days);
   const compareDays = Number(
-    (params.compare_days as string) ?? defaultMetricFilter.time.compare_days
+    (params.compare_days as string) ?? defaultMetricFilter.time.compare_days,
   );
 
   return {

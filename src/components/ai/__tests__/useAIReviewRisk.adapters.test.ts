@@ -1,9 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("urql", () => ({ useQuery: () => [{ data: undefined, fetching: false, error: undefined }] }));
+vi.mock("urql", () => ({
+  useQuery: () => [{ data: undefined, fetching: false, error: undefined }],
+}));
 vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org" }));
 
-import { approvalFriction, findBucketRow, prViolationRows, toAIQueryInputs, valueDelta } from "@/lib/graphql/hooks/useAIReviewRisk";
+import {
+  approvalFriction,
+  findBucketRow,
+  prViolationRows,
+  toAIQueryInputs,
+  valueDelta,
+} from "@/lib/graphql/hooks/useAIReviewRisk";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiGovernanceSummary } from "@/lib/graphql/__generated__/types";
 
@@ -23,7 +31,10 @@ describe("useAIReviewRisk adapters", () => {
   });
 
   it("returns the requested bucket and undefined when it is absent (no silent fallback)", () => {
-    const rows = [{ bucket: "HUMAN", value: 1 }, { bucket: "AGENT_CREATED", value: 2 }];
+    const rows = [
+      { bucket: "HUMAN", value: 1 },
+      { bucket: "AGENT_CREATED", value: 2 },
+    ];
     expect(findBucketRow(rows, "HUMAN")?.value).toBe(1);
     expect(findBucketRow(rows)).toBeUndefined();
     expect(findBucketRow(rows, "AGENT_CREATED")?.value).toBe(2);
@@ -44,8 +55,22 @@ describe("useAIReviewRisk adapters", () => {
       dataAvailable: true,
       coverage: [],
       recentViolations: [
-        { ruleId: "a", severity: "high", subjectType: "pr", subjectId: "1", observedAt: "2026-05-01T00:00:00Z", evidence: "PR issue" },
-        { ruleId: "b", severity: "low", subjectType: "workflow", subjectId: "2", observedAt: "2026-05-01T00:00:00Z", evidence: "Workflow issue" },
+        {
+          ruleId: "a",
+          severity: "high",
+          subjectType: "pr",
+          subjectId: "1",
+          observedAt: "2026-05-01T00:00:00Z",
+          evidence: "PR issue",
+        },
+        {
+          ruleId: "b",
+          severity: "low",
+          subjectType: "workflow",
+          subjectId: "2",
+          observedAt: "2026-05-01T00:00:00Z",
+          evidence: "Workflow issue",
+        },
       ],
     };
     expect(prViolationRows(summary)).toHaveLength(1);

@@ -35,8 +35,7 @@ const readTheme = (): ChartTheme => {
   const styles = getComputedStyle(document.documentElement);
   const text = styles.getPropertyValue("--chart-text").trim() || fallbackTheme.text;
   const grid = styles.getPropertyValue("--chart-grid").trim() || fallbackTheme.grid;
-  const muted =
-    styles.getPropertyValue("--chart-muted").trim() || fallbackTheme.muted;
+  const muted = styles.getPropertyValue("--chart-muted").trim() || fallbackTheme.muted;
 
   const background = styles.getPropertyValue("--card").trim() || fallbackTheme.background;
   const stroke = styles.getPropertyValue("--card-stroke").trim() || fallbackTheme.stroke;

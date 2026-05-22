@@ -70,11 +70,7 @@ export type IncidentCorrelationDashboardProps = {
 // ---------------------------------------------------------------------------
 
 /** DORA metric keys we recognise — tiles rendered only when present in home.deltas. */
-const DORA_METRIC_KEYS = [
-  "change_failure_rate",
-  "deployment_frequency",
-  "mttr",
-] as const;
+const DORA_METRIC_KEYS = ["change_failure_rate", "deployment_frequency", "mttr"] as const;
 
 const MAX_SANKEY_INCIDENTS = 10;
 const MAX_LINKS_PER_INCIDENT = 3;
@@ -116,10 +112,7 @@ export function joinEdges(
     workItemsByIncident.get(incidentId)!.add(workItemId);
   }
 
-  const allIncidentIds = new Set([
-    ...deploysByIncident.keys(),
-    ...workItemsByIncident.keys(),
-  ]);
+  const allIncidentIds = new Set([...deploysByIncident.keys(), ...workItemsByIncident.keys()]);
 
   return Array.from(allIncidentIds).map((incidentId) => ({
     incidentId,
@@ -187,10 +180,7 @@ export function IncidentCorrelationDashboard({
     [deploysEdges, incidentEdges],
   );
 
-  const sankeyData = useMemo(
-    () => buildSankeyData(incidentRows),
-    [incidentRows],
-  );
+  const sankeyData = useMemo(() => buildSankeyData(incidentRows), [incidentRows]);
 
   const doraMetrics = useMemo(
     () =>
@@ -220,11 +210,10 @@ export function IncidentCorrelationDashboard({
           No incident-correlation evidence in this window.
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
-          Incident correlation requires deployment activity and linked incidents
-          to be ingested. Run{" "}
-          <code className="font-mono text-[0.85em]">dev-hops sync git</code>{" "}
-          and ensure incidents are linked in your provider. The page will
-          populate automatically after the next data sync.
+          Incident correlation requires deployment activity and linked incidents to be ingested. Run{" "}
+          <code className="font-mono text-[0.85em]">dev-hops sync git</code> and ensure incidents
+          are linked in your provider. The page will populate automatically after the next data
+          sync.
         </p>
         <p className="mt-8 text-xs text-(--ink-muted)">
           Org <span className="font-mono">{orgId}</span>
@@ -236,10 +225,7 @@ export function IncidentCorrelationDashboard({
   const cfrDelta = deltas.find((d) => d.metric === "change_failure_rate");
 
   return (
-    <div
-      className="flex flex-col gap-8"
-      data-testid="incident-correlation-dashboard"
-    >
+    <div className="flex flex-col gap-8" data-testid="incident-correlation-dashboard">
       {/* ── DORA KPI tiles ─────────────────────────────────────────────────── */}
       {doraMetrics.length > 0 && (
         <section aria-label="DORA metrics">
@@ -268,16 +254,14 @@ export function IncidentCorrelationDashboard({
           aria-label="Change failure rate trend"
         >
           <div className="flex items-center justify-between">
-            <h2 className="font-(--font-display) text-xl">
-              Change Failure Rate — Trend
-            </h2>
+            <h2 className="font-(--font-display) text-xl">Change Failure Rate — Trend</h2>
             <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
               V1 sparkline
             </span>
           </div>
           <p className="mt-1 text-xs text-(--ink-muted)">
-            Multi-week deployments-vs-incidents trend requires a future ops
-            resolver (planned: CHAOS-1757).
+            Multi-week deployments-vs-incidents trend requires a future ops resolver (planned:
+            CHAOS-1757).
           </p>
           <div
             aria-label="CFR sparkline"
@@ -304,15 +288,10 @@ export function IncidentCorrelationDashboard({
 
       {/* ── Drivers + Contributors ──────────────────────────────────────────── */}
       {hasExplainData && (
-        <section
-          className="grid gap-6 lg:grid-cols-2"
-          aria-label="Change failure root cause"
-        >
+        <section className="grid gap-6 lg:grid-cols-2" aria-label="Change failure root cause">
           <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
             <div className="flex items-center justify-between">
-              <h2 className="font-(--font-display) text-xl">
-                Change Failure Associations
-              </h2>
+              <h2 className="font-(--font-display) text-xl">Change Failure Associations</h2>
               <Link
                 href={buildExploreUrl({
                   metric: "change_failure_rate",
@@ -381,20 +360,14 @@ export function IncidentCorrelationDashboard({
       {hasEdgeData && (
         <section aria-label="Linked incidents">
           <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Linked Incidents
-            </h2>
+            <h2 className="text-lg font-semibold tracking-tight">Linked Incidents</h2>
             <p className="text-xs text-(--ink-muted)">
               {incidentRows.length} incident
-              {incidentRows.length !== 1 ? "s" : ""} · V1: ≤ 500 edges per
-              type
+              {incidentRows.length !== 1 ? "s" : ""} · V1: ≤ 500 edges per type
             </p>
           </div>
           <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
-            <table
-              className="w-full text-sm"
-              data-testid="incident-linkage-table"
-            >
+            <table className="w-full text-sm" data-testid="incident-linkage-table">
               <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                 <tr>
                   <th className="px-5 py-3 text-left">Incident ID</th>
@@ -418,9 +391,7 @@ export function IncidentCorrelationDashboard({
                     <td className="px-5 py-3 text-right tabular-nums">
                       {row.deploymentIds.length}
                     </td>
-                    <td className="px-5 py-3 text-right tabular-nums">
-                      {row.workItemIds.length}
-                    </td>
+                    <td className="px-5 py-3 text-right tabular-nums">{row.workItemIds.length}</td>
                   </tr>
                 ))}
               </tbody>
@@ -435,19 +406,12 @@ export function IncidentCorrelationDashboard({
           className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
           aria-label="Correlation flow diagram"
         >
-          <h2 className="font-(--font-display) text-xl">
-            Deployment → Incident → Work Item Flow
-          </h2>
+          <h2 className="font-(--font-display) text-xl">Deployment → Incident → Work Item Flow</h2>
           <p className="mt-1 text-xs text-(--ink-muted)">
-            Top {MAX_SANKEY_INCIDENTS} incidents by linkage. Node labels are
-            truncated IDs.
+            Top {MAX_SANKEY_INCIDENTS} incidents by linkage. Node labels are truncated IDs.
           </p>
           <div className="mt-4">
-            <SankeyChart
-              nodes={sankeyData.nodes}
-              links={sankeyData.links}
-              height={360}
-            />
+            <SankeyChart nodes={sankeyData.nodes} links={sankeyData.links} height={360} />
           </div>
         </section>
       )}
@@ -458,11 +422,10 @@ export function IncidentCorrelationDashboard({
           className="rounded-2xl border border-(--card-stroke) bg-(--card-60) p-6 text-sm text-(--ink-muted)"
           data-testid="empty-edges-state"
         >
-          No deployment-incident linkage found in the work graph. Edge data
-          populates as{" "}
+          No deployment-incident linkage found in the work graph. Edge data populates as{" "}
           <code className="font-mono text-[0.85em]">DEPLOYS</code> and{" "}
-          <code className="font-mono text-[0.85em]">LINKED_INCIDENT</code>{" "}
-          edges are ingested from your provider.
+          <code className="font-mono text-[0.85em]">LINKED_INCIDENT</code> edges are ingested from
+          your provider.
         </section>
       )}
     </div>

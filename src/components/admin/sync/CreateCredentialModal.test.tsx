@@ -79,7 +79,12 @@ describe("CreateCredentialModal", () => {
     });
 
     renderWithToaster(
-      <CreateCredentialModal isOpen onCloseAction={vi.fn()} onCreatedAction={vi.fn()} provider="github" />,
+      <CreateCredentialModal
+        isOpen
+        onCloseAction={vi.fn()}
+        onCreatedAction={vi.fn()}
+        provider="github"
+      />,
     );
 
     await userEvent.type(screen.getByLabelText("Credential Name"), "Primary");
@@ -102,7 +107,12 @@ describe("CreateCredentialModal", () => {
     });
 
     renderWithToaster(
-      <CreateCredentialModal isOpen onCloseAction={vi.fn()} onCreatedAction={vi.fn()} provider="github" />,
+      <CreateCredentialModal
+        isOpen
+        onCloseAction={vi.fn()}
+        onCreatedAction={vi.fn()}
+        provider="github"
+      />,
     );
 
     const saveButton = screen.getByRole("button", { name: "Save" });
@@ -139,7 +149,12 @@ describe("CreateCredentialModal", () => {
     const onClose = vi.fn();
     const onCreated = vi.fn();
     renderWithToaster(
-      <CreateCredentialModal isOpen onCloseAction={onClose} onCreatedAction={onCreated} provider="github" />,
+      <CreateCredentialModal
+        isOpen
+        onCloseAction={onClose}
+        onCreatedAction={onCreated}
+        provider="github"
+      />,
     );
 
     await userEvent.type(screen.getByLabelText("Credential Name"), "Primary");
@@ -163,7 +178,12 @@ describe("CreateCredentialModal", () => {
   it("closes modal on cancel", async () => {
     const onClose = vi.fn();
     renderWithToaster(
-      <CreateCredentialModal isOpen onCloseAction={onClose} onCreatedAction={vi.fn()} provider="github" />,
+      <CreateCredentialModal
+        isOpen
+        onCloseAction={onClose}
+        onCreatedAction={vi.fn()}
+        provider="github"
+      />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));

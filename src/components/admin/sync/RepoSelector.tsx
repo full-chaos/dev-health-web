@@ -77,9 +77,7 @@ export function RepoSelector({
 
   const { repos, loading, error } = state;
 
-  const filteredRepos = repos.filter((r) =>
-    r.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRepos = repos.filter((r) => r.name.toLowerCase().includes(search.toLowerCase()));
 
   const handleToggle = useCallback(
     (repoName: string, checked: boolean) => {
@@ -90,7 +88,7 @@ export function RepoSelector({
         onSelectionChange(selectedRepos.filter((r) => r !== repoName));
       }
     },
-    [selectedRepos, onSelectionChange, maxRepos]
+    [selectedRepos, onSelectionChange, maxRepos],
   );
 
   const handleSelectAll = useCallback(() => {
@@ -200,7 +198,9 @@ export function RepoSelector({
                 <div className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{repo.name}</span>
                   {repo.description && (
-                    <span className="block truncate text-xs text-(--ink-muted)">{repo.description}</span>
+                    <span className="block truncate text-xs text-(--ink-muted)">
+                      {repo.description}
+                    </span>
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2 text-xs text-(--ink-muted)">

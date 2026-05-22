@@ -33,7 +33,9 @@ test.describe("AI Review Load dashboard", () => {
     await expect(dashboard.getByText("Change request rate")).toBeVisible();
     await expect(dashboard.getByText("Approval friction")).toBeVisible();
     // Disambiguate from "Review amplification trend" heading + daily-trend paragraph.
-    await expect(dashboard.getByRole("heading", { name: "Review amplification", exact: true })).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: "Review amplification", exact: true }),
+    ).toBeVisible();
   });
 
   test("reviewer concentration renders only aggregate distribution values", async ({ page }) => {
@@ -56,7 +58,10 @@ test.describe("AI Review Load dashboard", () => {
     await page.goto(`/ai/review-load?f=${populatedFilter}`);
 
     const dashboard = page.getByTestId("ai-review-load-dashboard");
-    await dashboard.getByRole("button", { name: /Drill into evidence/i }).first().click();
+    await dashboard
+      .getByRole("button", { name: /Drill into evidence/i })
+      .first()
+      .click();
 
     const dialog = page.getByTestId("ai-drilldown-modal");
     await expect(dialog).toBeVisible();

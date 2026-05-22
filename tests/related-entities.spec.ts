@@ -17,5 +17,7 @@ test("/prs/[pr_id] renders related Work Graph entities", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Related entities" })).toBeVisible();
   await expect(page.getByRole("link", { name: "PROJ-101" })).toBeVisible();
   await expect(page.getByRole("link", { name: "deploy-123" })).toBeVisible();
-  await expect(page.getByText("Incident opened inside the post-deploy observation window.")).toBeVisible();
+  await expect(
+    page.getByText("Incident opened inside the post-deploy observation window."),
+  ).toBeVisible();
 });

@@ -18,12 +18,12 @@ Deployment confidence and risk assessment. Surfaces three timeseries measures �
 
 **Key measures fetched:**
 
-| Measure | Dimension | Interval |
-| :--- | :--- | :--- |
-| `PIPELINE_SUCCESS_RATE` | TEAM | DAY |
-| `TEST_FLAKE_RATE` | TEAM | DAY |
-| `COVERAGE_LINE_PCT` | TEAM | DAY |
-| `PIPELINE_SUCCESS_RATE` (breakdown) | REPO | — |
+| Measure                             | Dimension | Interval |
+| :---------------------------------- | :-------- | :------- |
+| `PIPELINE_SUCCESS_RATE`             | TEAM      | DAY      |
+| `TEST_FLAKE_RATE`                   | TEAM      | DAY      |
+| `COVERAGE_LINE_PCT`                 | TEAM      | DAY      |
+| `PIPELINE_SUCCESS_RATE` (breakdown) | REPO      | —        |
 
 **Charts used:** `TimeseriesChart`, `QuadrantChart`, `HorizontalBarChart`, `MetricCard`
 
@@ -39,12 +39,12 @@ Code coverage metrics and trends. Tracks line coverage, branch coverage, and cov
 
 **Key measures fetched:**
 
-| Measure | Dimension | Interval |
-| :--- | :--- | :--- |
-| `COVERAGE_LINE_PCT` | TEAM | DAY |
-| `COVERAGE_BRANCH_PCT` | TEAM | DAY |
-| `COVERAGE_DELTA_PCT` | TEAM | DAY |
-| `COVERAGE_LINE_PCT` (breakdown) | REPO | — |
+| Measure                         | Dimension | Interval |
+| :------------------------------ | :-------- | :------- |
+| `COVERAGE_LINE_PCT`             | TEAM      | DAY      |
+| `COVERAGE_BRANCH_PCT`           | TEAM      | DAY      |
+| `COVERAGE_DELTA_PCT`            | TEAM      | DAY      |
+| `COVERAGE_LINE_PCT` (breakdown) | REPO      | —        |
 
 **Charts used:** `TimeseriesChart`, `HorizontalBarChart`, `MetricCard`
 
@@ -60,14 +60,14 @@ CI pipeline health. Tracks success rate, failure rate, P95 duration, queue time,
 
 **Key measures fetched:**
 
-| Measure | Dimension | Interval |
-| :--- | :--- | :--- |
-| `PIPELINE_SUCCESS_RATE` | TEAM | DAY |
-| `PIPELINE_FAILURE_RATE` | TEAM | DAY |
-| `PIPELINE_DURATION_P95` | TEAM | DAY |
-| `PIPELINE_QUEUE_TIME` | TEAM | DAY |
-| `PIPELINE_RERUN_RATE` | TEAM | DAY |
-| `PIPELINE_FAILURE_RATE` (breakdown) | TEAM | — |
+| Measure                             | Dimension | Interval |
+| :---------------------------------- | :-------- | :------- |
+| `PIPELINE_SUCCESS_RATE`             | TEAM      | DAY      |
+| `PIPELINE_FAILURE_RATE`             | TEAM      | DAY      |
+| `PIPELINE_DURATION_P95`             | TEAM      | DAY      |
+| `PIPELINE_QUEUE_TIME`               | TEAM      | DAY      |
+| `PIPELINE_RERUN_RATE`               | TEAM      | DAY      |
+| `PIPELINE_FAILURE_RATE` (breakdown) | TEAM      | —        |
 
 **Charts used:** `TimeseriesChart`, `HeatmapChart`, `MetricCard`
 
@@ -83,13 +83,13 @@ Test suite health. Tracks pass rate, failure rate, flake rate, and P95 suite dur
 
 **Key measures fetched:**
 
-| Measure | Dimension | Interval |
-| :--- | :--- | :--- |
-| `TEST_PASS_RATE` | TEAM | DAY |
-| `TEST_FAILURE_RATE` | TEAM | DAY |
-| `TEST_FLAKE_RATE` | TEAM | DAY |
-| `TEST_SUITE_DURATION_P95` | TEAM | DAY |
-| `TEST_FLAKE_RATE` (breakdown) | TEAM | — |
+| Measure                       | Dimension | Interval |
+| :---------------------------- | :-------- | :------- |
+| `TEST_PASS_RATE`              | TEAM      | DAY      |
+| `TEST_FAILURE_RATE`           | TEAM      | DAY      |
+| `TEST_FLAKE_RATE`             | TEAM      | DAY      |
+| `TEST_SUITE_DURATION_P95`     | TEAM      | DAY      |
+| `TEST_FLAKE_RATE` (breakdown) | TEAM      | —        |
 
 **Charts used:** `TimeseriesChart`, `HeatmapChart`, `MetricCard`
 
@@ -105,21 +105,21 @@ All four routes use the `AnalyticsRequestInput` / `AnalyticsResult` types from `
 
 ```ts
 type AnalyticsResult = {
-  timeseries: TimeseriesResult[];   // one entry per measure
-  breakdowns: BreakdownResult[];    // one entry per breakdown dimension
+  timeseries: TimeseriesResult[]; // one entry per measure
+  breakdowns: BreakdownResult[]; // one entry per breakdown dimension
 };
 
 type TimeseriesResult = {
   dimension: string;
   dimensionValue: string;
   measure: string;
-  buckets: TimeseriesBucket[];      // { date: string; value: number }[]
+  buckets: TimeseriesBucket[]; // { date: string; value: number }[]
 };
 
 type BreakdownResult = {
   dimension: string;
   measure: string;
-  items: BreakdownItem[];           // { key: string; value: number }[]
+  items: BreakdownItem[]; // { key: string; value: number }[]
 };
 ```
 
@@ -131,12 +131,12 @@ Measure metadata (labels, units, good-direction) is centralised in `src/lib/test
 
 When `DEV_HEALTH_TEST_MODE` or `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` is `"true"`, all fetchers bypass GraphQL and return static exports from `src/lib/testops/sample-data.ts`:
 
-| Export | Used by |
-| :--- | :--- |
+| Export                  | Used by                                                         |
+| :---------------------- | :-------------------------------------------------------------- |
 | `SAMPLE_PIPELINES_DATA` | `/testops/pipelines`, `/testops/tests` (via `fetchTestOpsData`) |
-| `SAMPLE_TESTS_DATA` | `/testops/tests` (via `fetchTestOpsData`) |
-| `SAMPLE_COVERAGE_DATA` | `/testops/coverage` (via `fetchCoverageMetrics`) |
-| `SAMPLE_RISK_DATA` | `/testops/risk` (via `fetchRiskMetrics`) |
+| `SAMPLE_TESTS_DATA`     | `/testops/tests` (via `fetchTestOpsData`)                       |
+| `SAMPLE_COVERAGE_DATA`  | `/testops/coverage` (via `fetchCoverageMetrics`)                |
+| `SAMPLE_RISK_DATA`      | `/testops/risk` (via `fetchRiskMetrics`)                        |
 
 Each export is typed as `AnalyticsResult`. The test-mode gate is set by Playwright in `playwright.config.ts` (see CHAOS-1573 for the gating rationale).
 

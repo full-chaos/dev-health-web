@@ -15,29 +15,29 @@ All fields are `optional()` in the Zod schema — the app applies its own defaul
 
 ([`config.ts:74–103`](../src/lib/config.ts#L74))
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `NODE_ENV` | string | — | Node environment (`development`, `production`, `test`). |
-| `LOG_LEVEL` | string | — | Pino log level (`trace`, `debug`, `info`, `warn`, `error`). |
-| `LOG_FORMAT` | string | — | Log format (`json` or `pretty`). |
-| `BACKEND_URL` | string | — | Base URL of the dev-health-ops backend API (e.g. `http://localhost:8800`). |
-| `BASE_PATH` | string | — | Next.js `basePath` for sub-path deployments. Also used as `assetPrefix` in static export mode. |
-| `AUTH_SECRET` | string | — | NextAuth v5 secret. Required in production; falls back to `NEXTAUTH_SECRET`, then a dev default. |
-| `NEXTAUTH_SECRET` | string | — | Legacy NextAuth secret alias. Superseded by `AUTH_SECRET`. |
-| `NEXTAUTH_URL` | string | — | Canonical URL for NextAuth callbacks. |
-| `AUTH_GITHUB_ID` | string | — | GitHub OAuth App client ID. Enables GitHub social login when set. |
-| `AUTH_GITHUB_SECRET` | string | — | GitHub OAuth App client secret. Required when `AUTH_GITHUB_ID` is set. |
-| `AUTH_GOOGLE_ID` | string | — | Google OAuth client ID. Enables Google social login when set. |
-| `AUTH_GOOGLE_SECRET` | string | — | Google OAuth client secret. Required when `AUTH_GOOGLE_ID` is set. |
-| `AUTH_GITLAB_ID` | string | — | GitLab OAuth client ID. Enables GitLab social login when set. |
-| `AUTH_GITLAB_SECRET` | string | — | GitLab OAuth client secret. Required when `AUTH_GITLAB_ID` is set. |
-| `LINEAR_API_KEY` | string | — | Linear API key for Linear integration features. |
-| `LINEAR_TEAM_ID` | string | — | Linear team ID scoping Linear API calls. |
-| `REDIS_URL` | string | — | Redis/Valkey connection URL. Required for distributed rate limiting (`failClosed` routes). Without it, rate limiting falls back to per-process in-memory. |
-| `TRUST_PROXY` | string | — | Set to `"true"` to trust `X-Forwarded-For` for client IP detection (needed behind a load balancer). |
-| `USE_GRAPHQL_ANALYTICS` | string | — | Server-side override for GraphQL analytics. Defaults to `true` unless set to `"false"`. |
-| `DEV_HEALTH_TEST_MODE` | string | — | Enables test mode (bypasses rate limiting, uses sample data). **Must not be `"true"` in production.** |
-| `DEMO_EXPORT` | string | — | Set to `"true"` to build a static demo export. Changes Next.js output mode and page extensions. |
+| Variable                | Type   | Default | Description                                                                                                                                               |
+| ----------------------- | ------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`              | string | —       | Node environment (`development`, `production`, `test`).                                                                                                   |
+| `LOG_LEVEL`             | string | —       | Pino log level (`trace`, `debug`, `info`, `warn`, `error`).                                                                                               |
+| `LOG_FORMAT`            | string | —       | Log format (`json` or `pretty`).                                                                                                                          |
+| `BACKEND_URL`           | string | —       | Base URL of the dev-health-ops backend API (e.g. `http://localhost:8800`).                                                                                |
+| `BASE_PATH`             | string | —       | Next.js `basePath` for sub-path deployments. Also used as `assetPrefix` in static export mode.                                                            |
+| `AUTH_SECRET`           | string | —       | NextAuth v5 secret. Required in production; falls back to `NEXTAUTH_SECRET`, then a dev default.                                                          |
+| `NEXTAUTH_SECRET`       | string | —       | Legacy NextAuth secret alias. Superseded by `AUTH_SECRET`.                                                                                                |
+| `NEXTAUTH_URL`          | string | —       | Canonical URL for NextAuth callbacks.                                                                                                                     |
+| `AUTH_GITHUB_ID`        | string | —       | GitHub OAuth App client ID. Enables GitHub social login when set.                                                                                         |
+| `AUTH_GITHUB_SECRET`    | string | —       | GitHub OAuth App client secret. Required when `AUTH_GITHUB_ID` is set.                                                                                    |
+| `AUTH_GOOGLE_ID`        | string | —       | Google OAuth client ID. Enables Google social login when set.                                                                                             |
+| `AUTH_GOOGLE_SECRET`    | string | —       | Google OAuth client secret. Required when `AUTH_GOOGLE_ID` is set.                                                                                        |
+| `AUTH_GITLAB_ID`        | string | —       | GitLab OAuth client ID. Enables GitLab social login when set.                                                                                             |
+| `AUTH_GITLAB_SECRET`    | string | —       | GitLab OAuth client secret. Required when `AUTH_GITLAB_ID` is set.                                                                                        |
+| `LINEAR_API_KEY`        | string | —       | Linear API key for Linear integration features.                                                                                                           |
+| `LINEAR_TEAM_ID`        | string | —       | Linear team ID scoping Linear API calls.                                                                                                                  |
+| `REDIS_URL`             | string | —       | Redis/Valkey connection URL. Required for distributed rate limiting (`failClosed` routes). Without it, rate limiting falls back to per-process in-memory. |
+| `TRUST_PROXY`           | string | —       | Set to `"true"` to trust `X-Forwarded-For` for client IP detection (needed behind a load balancer).                                                       |
+| `USE_GRAPHQL_ANALYTICS` | string | —       | Server-side override for GraphQL analytics. Defaults to `true` unless set to `"false"`.                                                                   |
+| `DEV_HEALTH_TEST_MODE`  | string | —       | Enables test mode (bypasses rate limiting, uses sample data). **Must not be `"true"` in production.**                                                     |
+| `DEMO_EXPORT`           | string | —       | Set to `"true"` to build a static demo export. Changes Next.js output mode and page extensions.                                                           |
 
 ---
 
@@ -45,16 +45,16 @@ All fields are `optional()` in the Zod schema — the app applies its own defaul
 
 ([`config.ts:22–31`](../src/lib/config.ts#L22))
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS` | string | `"true"` | Enables GraphQL analytics on the client. Set to `"false"` to disable. |
-| `NEXT_PUBLIC_DOCS_URL` | string | `"/docs"` | Base URL for documentation links. |
-| `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` | string | — | Client-side test mode flag. Mirrors `DEV_HEALTH_TEST_MODE`. |
-| `NEXT_PUBLIC_DEMO_MODE` | string | — | Enables demo mode UI behaviour. |
-| `NEXT_PUBLIC_BETA` | string | — | Enables beta feature flags in the UI. |
-| `NEXT_PUBLIC_RUM_ENDPOINT` | string | — | Real User Monitoring endpoint URL. |
-| `NEXT_PUBLIC_SENTRY_DSN` | string | — | Sentry DSN for client-side error reporting. |
-| `NODE_ENV` | string | — | Also available in the public schema for client-side environment checks. |
+| Variable                            | Type   | Default   | Description                                                             |
+| ----------------------------------- | ------ | --------- | ----------------------------------------------------------------------- |
+| `NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS` | string | `"true"`  | Enables GraphQL analytics on the client. Set to `"false"` to disable.   |
+| `NEXT_PUBLIC_DOCS_URL`              | string | `"/docs"` | Base URL for documentation links.                                       |
+| `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE`  | string | —         | Client-side test mode flag. Mirrors `DEV_HEALTH_TEST_MODE`.             |
+| `NEXT_PUBLIC_DEMO_MODE`             | string | —         | Enables demo mode UI behaviour.                                         |
+| `NEXT_PUBLIC_BETA`                  | string | —         | Enables beta feature flags in the UI.                                   |
+| `NEXT_PUBLIC_RUM_ENDPOINT`          | string | —         | Real User Monitoring endpoint URL.                                      |
+| `NEXT_PUBLIC_SENTRY_DSN`            | string | —         | Sentry DSN for client-side error reporting.                             |
+| `NODE_ENV`                          | string | —         | Also available in the public schema for client-side environment checks. |
 
 ---
 
@@ -70,7 +70,7 @@ window.__DEV_HEALTH_RUNTIME__ = {
     NEXT_PUBLIC_SENTRY_DSN: "...",
     NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: "true",
     // ...
-  }
+  },
 };
 ```
 

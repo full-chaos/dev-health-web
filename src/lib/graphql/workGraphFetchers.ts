@@ -18,7 +18,7 @@ export async function getWorkGraphEdgesViaGraphQL(params: {
   const response = await graphqlFetch<WorkGraphEdgesQueryResponse>(
     WORK_GRAPH_EDGES_QUERY,
     { orgId: params.orgId, filters: params.filters ?? null },
-    { orgId: params.orgId }
+    { orgId: params.orgId },
   );
   return response.workGraphEdges;
 }
@@ -41,7 +41,7 @@ export async function getAIWorkflowDrilldownViaGraphQL(params: {
         depth: params.depth ?? 3,
         limit: params.limit ?? 100,
       },
-      { orgId: params.orgId }
+      { orgId: params.orgId },
     );
     const drilldown = response.aiWorkflowDrilldown;
     if (drilldown.dataAvailable || !params.useDemoFallback) return drilldown;

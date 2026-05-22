@@ -22,60 +22,62 @@ export function IntegrationForm({
   onCancel,
   children,
 }: IntegrationFormProps) {
-   const [status, setStatus] = useState<ConnectionStatusType>(initialStatus);
-   const [isSaving, setIsSaving] = useState(false);
-   const [isTesting, setIsTesting] = useState(false);
+  const [status, setStatus] = useState<ConnectionStatusType>(initialStatus);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
 
-   const handleSubmit = async (e: React.FormEvent) => {
-     e.preventDefault();
-     setIsSaving(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
 
-     const formData = new FormData(e.target as HTMLFormElement);
-     const data = Object.fromEntries(formData.entries());
+    const formData = new FormData(e.target as HTMLFormElement);
+    const data = Object.fromEntries(formData.entries());
 
-     try {
-       await onSave(data);
-       toast.success("Settings saved successfully.");
-     } catch {
-       toast.error("Failed to save settings.");
-     } finally {
-       setIsSaving(false);
-     }
-   };
+    try {
+      await onSave(data);
+      toast.success("Settings saved successfully.");
+    } catch {
+      toast.error("Failed to save settings.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-   const handleTestConnection = async (e: React.MouseEvent) => {
-     e.preventDefault();
-     setIsTesting(true);
-     setStatus("connecting");
+  const handleTestConnection = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsTesting(true);
+    setStatus("connecting");
 
-     const form = (e.target as HTMLElement).closest("form");
-     const formData = new FormData(form!);
-     const data = Object.fromEntries(formData.entries());
+    const form = (e.target as HTMLElement).closest("form");
+    const formData = new FormData(form!);
+    const data = Object.fromEntries(formData.entries());
 
-     try {
-       const success = await onTestConnection(data);
-       setStatus(success ? "connected" : "error");
-       if (success) {
-         toast.success("Connection successful!");
-       } else {
-         toast.error("Connection failed. Please check your credentials.");
-       }
-     } catch (err) {
-       setStatus("error");
-       toast.error(err instanceof Error ? err.message : "An error occurred while testing the connection.");
-     } finally {
-       setIsTesting(false);
-     }
-   };
+    try {
+      const success = await onTestConnection(data);
+      setStatus(success ? "connected" : "error");
+      if (success) {
+        toast.success("Connection successful!");
+      } else {
+        toast.error("Connection failed. Please check your credentials.");
+      }
+    } catch (err) {
+      setStatus("error");
+      toast.error(
+        err instanceof Error ? err.message : "An error occurred while testing the connection.",
+      );
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   return (
     <div className="max-w-2xl rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm">
-       <div className="mb-6 flex items-center justify-between">
-         <h2 className="text-xl font-semibold text-(--ink-base)">Configuration</h2>
-         <ConnectionStatus status={status} />
-       </div>
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-(--ink-base)">Configuration</h2>
+        <ConnectionStatus status={status} />
+      </div>
 
-       <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {children}
 
         <div className="flex items-center justify-end gap-4 pt-4 border-t border-(--border-subtle)">

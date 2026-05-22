@@ -57,7 +57,7 @@ function mapPlanToForm(plan: BillingPlanRecord): PlanFormState {
         is_active: price.is_active,
       })),
       null,
-      2
+      2,
     ),
   };
 }
@@ -77,8 +77,9 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
   const [isPending, startTransition] = useTransition();
 
   const sortedPlans = useMemo(
-    () => [...plans].sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name)),
-    [plans]
+    () =>
+      [...plans].sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name)),
+    [plans],
   );
 
   const resetForm = () => {
@@ -142,7 +143,9 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
         toast.error(result.error);
         return;
       }
-      setPlans((current) => current.map((plan) => (plan.id === planId ? { ...plan, is_active: false } : plan)));
+      setPlans((current) =>
+        current.map((plan) => (plan.id === planId ? { ...plan, is_active: false } : plan)),
+      );
       toast.success("Plan archived");
     });
   };
@@ -199,21 +202,27 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
         <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
           <input
             value={formState.name}
-            onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
+            onChange={(event) =>
+              setFormState((current) => ({ ...current, name: event.target.value }))
+            }
             placeholder="Plan name"
             className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm"
             required
           />
           <input
             value={formState.key}
-            onChange={(event) => setFormState((current) => ({ ...current, key: event.target.value }))}
+            onChange={(event) =>
+              setFormState((current) => ({ ...current, key: event.target.value }))
+            }
             placeholder="Plan key"
             className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm"
             required
           />
           <input
             value={formState.tier}
-            onChange={(event) => setFormState((current) => ({ ...current, tier: event.target.value }))}
+            onChange={(event) =>
+              setFormState((current) => ({ ...current, tier: event.target.value }))
+            }
             placeholder="Tier"
             className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm"
             required
@@ -221,25 +230,33 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
           <input
             type="number"
             value={formState.display_order}
-            onChange={(event) => setFormState((current) => ({ ...current, display_order: event.target.value }))}
+            onChange={(event) =>
+              setFormState((current) => ({ ...current, display_order: event.target.value }))
+            }
             placeholder="Display order"
             className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm"
           />
           <input
             value={formState.description}
-            onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
+            onChange={(event) =>
+              setFormState((current) => ({ ...current, description: event.target.value }))
+            }
             placeholder="Description"
             className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm md:col-span-2"
           />
           <input
             value={formState.bundle_ids_csv}
-            onChange={(event) => setFormState((current) => ({ ...current, bundle_ids_csv: event.target.value }))}
+            onChange={(event) =>
+              setFormState((current) => ({ ...current, bundle_ids_csv: event.target.value }))
+            }
             placeholder="Bundle IDs (comma-separated)"
             className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm md:col-span-2"
           />
           <textarea
             value={formState.prices_json}
-            onChange={(event) => setFormState((current) => ({ ...current, prices_json: event.target.value }))}
+            onChange={(event) =>
+              setFormState((current) => ({ ...current, prices_json: event.target.value }))
+            }
             placeholder='[{"interval":"monthly","amount":4900,"currency":"usd"}]'
             rows={8}
             className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm font-(--font-mono) md:col-span-2"
@@ -248,7 +265,9 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
             <input
               type="checkbox"
               checked={formState.is_active}
-              onChange={(event) => setFormState((current) => ({ ...current, is_active: event.target.checked }))}
+              onChange={(event) =>
+                setFormState((current) => ({ ...current, is_active: event.target.checked }))
+              }
             />
             Active plan
           </label>
@@ -278,12 +297,19 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
         </div>
         <div className="space-y-4">
           {sortedPlans.map((plan) => (
-            <article key={plan.id} className="rounded-xl border border-(--card-stroke) bg-(--card) p-4">
+            <article
+              key={plan.id}
+              className="rounded-xl border border-(--card-stroke) bg-(--card) p-4"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.12em] text-(--ink-muted)">{plan.key}</p>
+                  <p className="text-xs uppercase tracking-[0.12em] text-(--ink-muted)">
+                    {plan.key}
+                  </p>
                   <h3 className="font-(--font-display) text-lg">{plan.name}</h3>
-                  <p className="text-sm text-(--ink-muted)">{plan.description ?? "No description"}</p>
+                  <p className="text-sm text-(--ink-muted)">
+                    {plan.description ?? "No description"}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -316,7 +342,8 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
               </div>
 
               <div className="mt-3 text-xs text-(--ink-muted)">
-                Tier: {plan.tier} | Order: {plan.display_order} | Status: {plan.is_active ? "active" : "inactive"}
+                Tier: {plan.tier} | Order: {plan.display_order} | Status:{" "}
+                {plan.is_active ? "active" : "inactive"}
               </div>
               <div className="mt-3 text-xs text-(--ink-muted)">
                 Stripe product: {plan.stripe_product_id ?? "not synced"}
@@ -325,7 +352,12 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
               <div className="mt-3 space-y-1 text-sm text-(--ink-muted)">
                 {plan.prices.map((price) => (
                   <p key={price.id}>
-                    {price.interval}: {(price.amount / 100).toLocaleString("en-US", { style: "currency", currency: price.currency.toUpperCase(), maximumFractionDigits: 0 })}
+                    {price.interval}:{" "}
+                    {(price.amount / 100).toLocaleString("en-US", {
+                      style: "currency",
+                      currency: price.currency.toUpperCase(),
+                      maximumFractionDigits: 0,
+                    })}
                     {price.stripe_price_id ? ` (${price.stripe_price_id})` : ""}
                   </p>
                 ))}

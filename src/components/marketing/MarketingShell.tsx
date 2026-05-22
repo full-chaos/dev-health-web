@@ -51,27 +51,15 @@ const FOOTER_LINKS: Record<
   ],
 };
 
-export function MarketingShell({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export function MarketingShell({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="min-h-screen bg-(image:--hero-gradient) text-foreground">
       <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex items-center"
-            aria-label="Full Chaos Dev Health home"
-          >
-            <Image
-              src={fcLogo}
-              alt="Full Chaos Dev Health logo"
-              className="mr-2 h-10 w-auto"
-            />
+          <Link href="/" className="flex items-center" aria-label="Full Chaos Dev Health home">
+            <Image src={fcLogo} alt="Full Chaos Dev Health logo" className="mr-2 h-10 w-auto" />
             <div className="flex flex-col">
-              <span className="text-lg font-semibold leading-tight tracking-tight">
-                Full Chaos
-              </span>
+              <span className="text-lg font-semibold leading-tight tracking-tight">Full Chaos</span>
               <span className="text-xs font-semibold tracking-tight text-(--ink-muted)">
                 Dev Health
               </span>
@@ -119,15 +107,12 @@ export function MarketingShell({
           <div>
             <p className="text-lg font-semibold">Full Chaos Dev Health</p>
             <p className="mt-2 text-sm text-(--ink-muted)">
-              Open-source analytics for team operating modes and developer
-              health.
+              Open-source analytics for team operating modes and developer health.
             </p>
           </div>
           {Object.entries(FOOTER_LINKS).map(([group, links]) => (
             <div key={group}>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                {group}
-              </p>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">{group}</p>
               <ul className="mt-3 space-y-2">
                 {links.map((link) => (
                   <li key={link.label}>
@@ -157,12 +142,9 @@ export function MarketingShell({
         <div className="border-t border-(--card-stroke)">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
             <p className="text-xs text-(--ink-muted)">
-              &copy; {new Date().getFullYear()} Full Chaos Studios. All rights
-              reserved.
+              &copy; {new Date().getFullYear()} Full Chaos Studios. All rights reserved.
             </p>
-            <p className="text-xs text-(--ink-muted)">
-              Learning, not judgment.
-            </p>
+            <p className="text-xs text-(--ink-muted)">Learning, not judgment.</p>
           </div>
         </div>
       </footer>

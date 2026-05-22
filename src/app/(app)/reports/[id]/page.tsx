@@ -26,17 +26,38 @@ type ReportParameters = {
 };
 
 function StatusBadge({ status }: { status?: string }) {
-  if (!status) return <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-wider text-(--ink-muted)">Never run</span>;
-  
+  if (!status)
+    return (
+      <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-wider text-(--ink-muted)">
+        Never run
+      </span>
+    );
+
   switch (status) {
     case ReportStatus.SUCCESS:
-      return <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-green-500">Success</span>;
+      return (
+        <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-green-500">
+          Success
+        </span>
+      );
     case ReportStatus.FAILED:
-      return <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-500">Failed</span>;
+      return (
+        <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-500">
+          Failed
+        </span>
+      );
     case ReportStatus.RUNNING:
-      return <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-blue-500">Running</span>;
+      return (
+        <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-blue-500">
+          Running
+        </span>
+      );
     case ReportStatus.PENDING:
-      return <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-500">Pending</span>;
+      return (
+        <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-500">
+          Pending
+        </span>
+      );
     default:
       return null;
   }
@@ -54,7 +75,9 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
           {latestRun?.renderedMarkdown ? (
             <MarkdownRenderer content={latestRun.renderedMarkdown} />
           ) : (
-            <p className="text-sm text-(--ink-muted)">No rendered content available for this report.</p>
+            <p className="text-sm text-(--ink-muted)">
+              No rendered content available for this report.
+            </p>
           )}
         </div>
       </div>
@@ -69,18 +92,24 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
             </div>
             <div>
               <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Date Range</dt>
-              <dd className="mt-1 font-medium">{params.dateRange?.replace(/_/g, " ") || "Not set"}</dd>
+              <dd className="mt-1 font-medium">
+                {params.dateRange?.replace(/_/g, " ") || "Not set"}
+              </dd>
             </div>
             <div>
               <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Schedule</dt>
-              <dd className="mt-1 font-medium capitalize">{report.scheduleId ? "Scheduled" : "Manual"}</dd>
+              <dd className="mt-1 font-medium capitalize">
+                {report.scheduleId ? "Scheduled" : "Manual"}
+              </dd>
             </div>
             <div>
               <dt className="text-(--ink-muted) text-xs uppercase tracking-wider">Metrics</dt>
               <dd className="mt-1 font-medium">
                 <div className="flex flex-wrap gap-2">
                   {(params.metrics ?? []).map((m) => (
-                    <span key={m} className="rounded-md bg-(--card-70) px-2 py-1 text-xs">{m}</span>
+                    <span key={m} className="rounded-md bg-(--card-70) px-2 py-1 text-xs">
+                      {m}
+                    </span>
                   ))}
                 </div>
               </dd>
@@ -104,9 +133,15 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
                 <tbody className="divide-y divide-(--card-stroke)">
                   {runs.map((run) => (
                     <tr key={run.id} className="hover:bg-(--card-70) transition-colors">
-                      <td className="py-3">{run.startedAt ? new Date(run.startedAt).toLocaleDateString() : "-"}</td>
-                      <td className="py-3"><StatusBadge status={run.status} /></td>
-                      <td className="py-3">{run.durationSeconds != null ? `${run.durationSeconds.toFixed(1)}s` : "-"}</td>
+                      <td className="py-3">
+                        {run.startedAt ? new Date(run.startedAt).toLocaleDateString() : "-"}
+                      </td>
+                      <td className="py-3">
+                        <StatusBadge status={run.status} />
+                      </td>
+                      <td className="py-3">
+                        {run.durationSeconds != null ? `${run.durationSeconds.toFixed(1)}s` : "-"}
+                      </td>
                       <td className="py-3 capitalize">{run.triggeredBy}</td>
                     </tr>
                   ))}
@@ -125,7 +160,8 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
 export default function SingleReportPage() {
   const params = useParams();
   const router = useRouter();
-  const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
+  const id =
+    typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
 
   const [report, setReport] = useState<SavedReport | null>(null);
   const [runs, setRuns] = useState<ReportRun[]>([]);
@@ -163,7 +199,7 @@ export default function SingleReportPage() {
       const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
       const [reportData, runsData] = await Promise.all([
         fetchSavedReport("default-org", id, isTestMode),
-        fetchReportRuns("default-org", id, undefined, isTestMode)
+        fetchReportRuns("default-org", id, undefined, isTestMode),
       ]);
       setReport(reportData);
       setRuns(runsData.items);
@@ -224,7 +260,11 @@ export default function SingleReportPage() {
           setRuns(runsData.items);
 
           const latest = runsData.items[0];
-          if (latest && latest.status !== ReportStatus.RUNNING && latest.status !== ReportStatus.PENDING) {
+          if (
+            latest &&
+            latest.status !== ReportStatus.RUNNING &&
+            latest.status !== ReportStatus.PENDING
+          ) {
             stopPolling();
             setIsRunning(false);
           }
@@ -320,9 +360,22 @@ export default function SingleReportPage() {
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3">
-                <Link href="/reports" className="text-(--ink-muted) hover:text-foreground transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m15 18-6-6 6-6"/>
+                <Link
+                  href="/reports"
+                  className="text-(--ink-muted) hover:text-foreground transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m15 18-6-6 6-6" />
                   </svg>
                 </Link>
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -363,12 +416,8 @@ export default function SingleReportPage() {
                 </div>
               ) : (
                 <>
-                  <h1 className="mt-2 font-(--font-display) text-3xl">
-                    {report.name}
-                  </h1>
-                  <p className="mt-2 text-sm text-(--ink-muted)">
-                    {report.description}
-                  </p>
+                  <h1 className="mt-2 font-(--font-display) text-3xl">{report.name}</h1>
+                  <p className="mt-2 text-sm text-(--ink-muted)">{report.description}</p>
                 </>
               )}
             </div>
@@ -438,7 +487,8 @@ export default function SingleReportPage() {
             <div className="rounded-3xl border border-red-500/30 bg-red-500/5 p-6">
               <h2 className="font-(--font-display) text-lg text-red-500 mb-2">Delete Report</h2>
               <p className="text-sm text-(--ink-muted) mb-4">
-                Are you sure you want to delete &ldquo;{report.name}&rdquo;? This action cannot be undone.
+                Are you sure you want to delete &ldquo;{report.name}&rdquo;? This action cannot be
+                undone.
               </p>
               <div className="flex gap-2">
                 <button

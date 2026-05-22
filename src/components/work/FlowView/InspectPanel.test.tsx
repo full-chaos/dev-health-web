@@ -8,7 +8,15 @@ import { decodeFilter } from "@/lib/filters/encode";
 import { InspectPanel, buildFlowWorkGraphUrl, type FlowSelection } from "./InspectPanel";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...props }: { href: string; children: ReactNode; [key: string]: unknown }) => (
+  default: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string;
+    children: ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -45,14 +53,17 @@ describe("InspectPanel Work Graph drilldown", () => {
         contextEntityLabel={null}
         contextZone={null}
         onClearContext={vi.fn()}
-      />
+      />,
     );
 
     const link = screen.getByText("Open Work Graph").closest("a");
     expect(link).toHaveAttribute("href", expect.stringContaining("/work?tab=graph&"));
     expect(link).toHaveAttribute("href", expect.stringContaining("f="));
     expect(link).toHaveAttribute("href", expect.stringContaining("role=manager"));
-    expect(link).toHaveAttribute("href", expect.stringContaining("graph_connection=work-to-change"));
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringContaining("graph_connection=work-to-change"),
+    );
   });
 
   it("omits graph_connection for investment selections", () => {
@@ -71,7 +82,7 @@ describe("InspectPanel Work Graph drilldown", () => {
           subcategoryKey: "quality.bugfix",
         },
       },
-      filters
+      filters,
     );
 
     expect(href).toContain("graph_theme=quality");
@@ -103,13 +114,19 @@ describe("InspectPanel Work Graph drilldown", () => {
         contextEntityLabel={null}
         contextZone={null}
         onClearContext={vi.fn()}
-      />
+      />,
     );
 
     const link = screen.getByText("Open Work Graph").closest("a");
     expect(link).toHaveAttribute("href", expect.stringContaining("/work?tab=graph&"));
-    expect(link).toHaveAttribute("href", expect.stringContaining("graph_connection=change-to-code"));
-    expect(link).toHaveAttribute("href", expect.stringContaining("graph_node=FILE%3Asrc%2Fapp%2Fpage.tsx"));
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringContaining("graph_connection=change-to-code"),
+    );
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringContaining("graph_node=FILE%3Asrc%2Fapp%2Fpage.tsx"),
+    );
 
     const href = link?.getAttribute("href") ?? "";
     const decodedFilters = decodeFilter(new URLSearchParams(href.split("?")[1]).get("f"));

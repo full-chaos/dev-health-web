@@ -17,10 +17,10 @@ const SEVERITY_ORDER: SeverityBucketData["severity"][] = [
 
 const SEVERITY_COLORS: Record<SeverityBucketData["severity"], string> = {
   critical: "#dc2626", // red-600
-  high: "#f97316",     // orange-500
-  medium: "#fbbf24",   // amber-400
-  low: "#94a3b8",      // slate-400
-  unknown: "#cbd5e1",  // slate-300
+  high: "#f97316", // orange-500
+  medium: "#fbbf24", // amber-400
+  low: "#94a3b8", // slate-400
+  unknown: "#cbd5e1", // slate-300
 };
 
 type SeverityStackedBarProps = {
@@ -82,11 +82,5 @@ export function SeverityStackedBar({ buckets, loading }: SeverityStackedBarProps
     return <SkeletonLine height="h-48" />;
   }
 
-  return (
-    <Chart
-      option={option}
-      style={{ height: 240, width: "100%" }}
-      chartTheme={chartTheme}
-    />
-  );
+  return <Chart option={option} style={{ height: 240, width: "100%" }} chartTheme={chartTheme} />;
 }

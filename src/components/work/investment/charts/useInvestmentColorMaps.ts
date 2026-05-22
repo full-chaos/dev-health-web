@@ -91,7 +91,7 @@ export function useInvestmentColorMaps({
         }) ?? null
       );
     },
-    [allSubcategoryIds, selectedThemeKey]
+    [allSubcategoryIds, selectedThemeKey],
   );
 
   const applySankeyNodeColor = useCallback(
@@ -115,7 +115,7 @@ export function useInvestmentColorMaps({
       }
       return node;
     },
-    [categoryColorMap, resolveSubcategoryIdForColor, themeColorMap]
+    [categoryColorMap, resolveSubcategoryIdForColor, themeColorMap],
   );
 
   const prepareSankeyFlow = useCallback(
@@ -128,7 +128,8 @@ export function useInvestmentColorMaps({
       flow.nodes.forEach((node) => {
         groupByOriginalName.set(node.name, node.group);
       });
-      const normalizeName = (name: string, group?: string) => normalizeUnassignedLabel(name, group ?? groupByOriginalName.get(name));
+      const normalizeName = (name: string, group?: string) =>
+        normalizeUnassignedLabel(name, group ?? groupByOriginalName.get(name));
 
       const nodeMap = new Map<string, SankeyNode>();
       flow.nodes.forEach((node) => {
@@ -183,7 +184,7 @@ export function useInvestmentColorMaps({
 
       return { ...flow, nodes, links };
     },
-    [applySankeyNodeColor]
+    [applySankeyNodeColor],
   );
 
   const resolveSubcategoryIdFromLabel = useCallback(
@@ -202,11 +203,15 @@ export function useInvestmentColorMaps({
           const formatted = formatSubcategoryLabel(id, includeTheme).toLowerCase();
           const formattedWithTheme = formatSubcategoryLabel(id, true).toLowerCase();
           const formattedWithoutTheme = formatSubcategoryLabel(id, false).toLowerCase();
-          return formatted === normalized || formattedWithTheme === normalized || formattedWithoutTheme === normalized;
+          return (
+            formatted === normalized ||
+            formattedWithTheme === normalized ||
+            formattedWithoutTheme === normalized
+          );
         }) ?? null
       );
     },
-    [allSubcategoryIds, selectedThemeKey]
+    [allSubcategoryIds, selectedThemeKey],
   );
 
   const buildSankeyTooltipFormatter = useCallback(
@@ -231,9 +236,13 @@ export function useInvestmentColorMaps({
         const currentValue = typeof data.value === "number" ? data.value : 0;
         const nodeValue = context.metrics.nodeValueByName.get(nodeName) ?? currentValue;
         const resolvedValue = isEdge ? currentValue : nodeValue;
-        const shareRatio = context.metrics.totalFlow > 0 ? resolvedValue / context.metrics.totalFlow : null;
+        const shareRatio =
+          context.metrics.totalFlow > 0 ? resolvedValue / context.metrics.totalFlow : null;
         const clampedShare = shareRatio === null ? null : Math.min(1, Math.max(0, shareRatio));
-        const timeLabel = buildOptionalTimeRangeLabel(context.timeRange.start_date, context.timeRange.end_date);
+        const timeLabel = buildOptionalTimeRangeLabel(
+          context.timeRange.start_date,
+          context.timeRange.end_date,
+        );
 
         const groupLabel = (name?: string) => {
           const group = name ? context.nodeMap.get(name)?.group : undefined;
@@ -261,20 +270,32 @@ export function useInvestmentColorMaps({
         };
 
         let deltaHtml = "";
-        if (context.showBaselineDelta && context.baselineFlow && context.baselineMetrics && clampedShare !== null) {
+        if (
+          context.showBaselineDelta &&
+          context.baselineFlow &&
+          context.baselineMetrics &&
+          clampedShare !== null
+        ) {
           let baselineValue = 0;
           if (isEdge) {
-            const baseLink = context.baselineFlow.links.find((l) => l.source === data.source && l.target === data.target);
+            const baseLink = context.baselineFlow.links.find(
+              (l) => l.source === data.source && l.target === data.target,
+            );
             baselineValue = baseLink?.value ?? 0;
           } else {
             baselineValue = context.baselineMetrics.nodeValueByName.get(nodeName) ?? 0;
           }
-          const baselineRatio = context.baselineMetrics.totalFlow > 0 ? baselineValue / context.baselineMetrics.totalFlow : null;
-          const baselineShare = baselineRatio === null ? null : Math.min(1, Math.max(0, baselineRatio));
+          const baselineRatio =
+            context.baselineMetrics.totalFlow > 0
+              ? baselineValue / context.baselineMetrics.totalFlow
+              : null;
+          const baselineShare =
+            baselineRatio === null ? null : Math.min(1, Math.max(0, baselineRatio));
           if (baselineShare !== null) {
             const delta = clampedShare - baselineShare;
             const deltaSign = delta > 0 ? "↑ +" : delta < 0 ? "↓ " : "";
-            const deltaColor = delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
+            const deltaColor =
+              delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
             deltaHtml = `
               <div style=\"margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 11px;\">
                 <div><span style=\"color: ${chartTheme.muted}\">Current allocation share:</span> ${(clampedShare * 100).toFixed(1)}%</div>
@@ -297,9 +318,12 @@ export function useInvestmentColorMaps({
           if (timeLabel) {
             lines.push(`<strong>Window:</strong> ${timeLabel}`);
           }
-          const edgeUnassigned = unassignedLine(data.source ?? "") || unassignedLine(data.target ?? "");
+          const edgeUnassigned =
+            unassignedLine(data.source ?? "") || unassignedLine(data.target ?? "");
           if (edgeUnassigned) {
-            lines.push(`<span style=\"color: ${chartTheme.muted}; font-size: 10px;\">${edgeUnassigned}</span>`);
+            lines.push(
+              `<span style=\"color: ${chartTheme.muted}; font-size: 10px;\">${edgeUnassigned}</span>`,
+            );
           }
           const meaning = `<div style=\"margin-top: 8px; font-size: 10px; color: ${chartTheme.muted};\">Attribution under current filters (not dependency or causation).</div>`;
           return `<div style=\"padding: 4px;\">${lines.join("<br/>")}${deltaHtml}${meaning}</div>`;
@@ -314,13 +338,15 @@ export function useInvestmentColorMaps({
         }
         const nodeUnassigned = unassignedLine(nodeName);
         if (nodeUnassigned) {
-          lines.push(`<span style=\"color: ${chartTheme.muted}; font-size: 10px;\">${nodeUnassigned}</span>`);
+          lines.push(
+            `<span style=\"color: ${chartTheme.muted}; font-size: 10px;\">${nodeUnassigned}</span>`,
+          );
         }
         const meaning = `<div style=\"margin-top: 8px; font-size: 10px; color: ${chartTheme.muted};\">Attribution under current filters (not dependency or causation).</div>`;
         return `<div style=\"padding: 4px;\"><div style=\"font-weight: 600;\">${nodeName}${typeBadge(nodeName)}</div><div style=\"margin-top: 6px;\">${lines.join("<br/>")}</div>${deltaHtml}${meaning}</div>`;
       };
     },
-    [chartTheme.accent1, chartTheme.accent2, chartTheme.grid, chartTheme.muted, chartTheme.text]
+    [chartTheme.accent1, chartTheme.accent2, chartTheme.grid, chartTheme.muted, chartTheme.text],
   );
 
   return {

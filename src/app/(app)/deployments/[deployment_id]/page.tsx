@@ -13,9 +13,7 @@ type DeploymentDetailPageProps = {
   params: Promise<{ deployment_id: string }>;
 };
 
-export default async function DeploymentDetailPage({
-  params,
-}: DeploymentDetailPageProps) {
+export default async function DeploymentDetailPage({ params }: DeploymentDetailPageProps) {
   const health = await checkApiHealth();
   if (!health.ok) {
     return <ServiceUnavailable />;
@@ -24,7 +22,7 @@ export default async function DeploymentDetailPage({
   const { deployment_id: deploymentId } = await params;
   const flame = await fetchOrNull(
     getFlame({ entity_type: "deployment", entity_id: deploymentId }),
-    `deployments/${deploymentId}/flame`
+    `deployments/${deploymentId}/flame`,
   );
 
   return (
@@ -34,12 +32,8 @@ export default async function DeploymentDetailPage({
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Deployment
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Flame Diagram
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Deployment</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Flame Diagram</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Track pipeline runtime and deploy handoffs.
               </p>

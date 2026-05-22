@@ -19,7 +19,10 @@ type AIMissingDataPanelProps = {
  */
 export function AIMissingDataPanel({ title, reason, needed }: AIMissingDataPanelProps) {
   return (
-    <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-80) p-5" data-testid="ai-missing-data-panel">
+    <section
+      className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-80) p-5"
+      data-testid="ai-missing-data-panel"
+    >
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)">
         Missing data
       </p>

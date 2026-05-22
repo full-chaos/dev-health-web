@@ -13,8 +13,8 @@ type EditTeamFormWrapperProps = {
 };
 
 export function EditTeamFormWrapper({ team }: EditTeamFormWrapperProps) {
-   const router = useRouter();
-   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const initialData: Team = {
     team_id: team.team_id,
@@ -24,27 +24,27 @@ export function EditTeamFormWrapper({ team }: EditTeamFormWrapperProps) {
     project_keys: team.project_keys,
   };
 
-   const handleSubmit = async (data: Team) => {
-     setIsLoading(true);
+  const handleSubmit = async (data: Team) => {
+    setIsLoading(true);
 
-      const result = await updateTeam(team.team_id, {
-       name: data.name,
-       description: data.description || undefined,
-       repo_patterns: data.repo_patterns,
-       project_keys: data.project_keys,
-     });
+    const result = await updateTeam(team.team_id, {
+      name: data.name,
+      description: data.description || undefined,
+      repo_patterns: data.repo_patterns,
+      project_keys: data.project_keys,
+    });
 
-     setIsLoading(false);
+    setIsLoading(false);
 
-     if (result.error) {
-       toast.error(result.error);
-       return;
-     }
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
 
-      router.push("/admin/teams");
-   };
+    router.push("/admin/teams");
+  };
 
-   return (
-     <TeamForm initialData={initialData} onSubmit={handleSubmit} isEditing isLoading={isLoading} />
-   );
- }
+  return (
+    <TeamForm initialData={initialData} onSubmit={handleSubmit} isEditing isLoading={isLoading} />
+  );
+}

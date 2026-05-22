@@ -103,7 +103,9 @@ describe("normalizeUnassignedLabel", () => {
   });
 
   it("returns the canonical subcategory unassigned label", () => {
-    expect(normalizeUnassignedLabel("Unassigned subcategory", "subcategory")).toBe(UNASSIGNED_SUBCATEGORY_LABEL);
+    expect(normalizeUnassignedLabel("Unassigned subcategory", "subcategory")).toBe(
+      UNASSIGNED_SUBCATEGORY_LABEL,
+    );
   });
 
   it("returns the value unchanged when not unassigned", () => {

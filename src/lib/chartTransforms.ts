@@ -45,29 +45,27 @@ const sumByKey = (items: Array<{ key: string; value: number }>) => {
 
 export const toThroughputBarSeries = (
   data: WorkItemMetricsDaily[],
-  options: { scopeOrder?: string[] } = {}
+  options: { scopeOrder?: string[] } = {},
 ) => {
   const plannedTotals = sumByKey(
     data.map((entry) => ({
       key: normalizeKey(entry.workScopeId),
       value: entry.itemsStarted,
-    }))
+    })),
   );
   const actualTotals = sumByKey(
     data.map((entry) => ({
       key: normalizeKey(entry.workScopeId),
       value: entry.itemsCompleted,
-    }))
+    })),
   );
-  const keys = Array.from(
-    new Set([...plannedTotals.keys(), ...actualTotals.keys()])
-  );
+  const keys = Array.from(new Set([...plannedTotals.keys(), ...actualTotals.keys()]));
   const normalizedScopeOrder = options.scopeOrder?.map((key) => normalizeKey(key));
   const orderedKeys = options.scopeOrder
     ? [
-      ...(normalizedScopeOrder ?? []).filter((key) => keys.includes(key)),
-      ...keys.filter((key) => !normalizedScopeOrder?.includes(key)),
-    ]
+        ...(normalizedScopeOrder ?? []).filter((key) => keys.includes(key)),
+        ...keys.filter((key) => !normalizedScopeOrder?.includes(key)),
+      ]
     : keys;
 
   return {
@@ -79,7 +77,7 @@ export const toThroughputBarSeries = (
 
 export const toTeamEfficiencyBarSeries = (
   data: WorkItemFlowEfficiencyDaily[],
-  options: { percent?: boolean } = { percent: true }
+  options: { percent?: boolean } = { percent: true },
 ) => {
   const totals = new Map<string, { sum: number; count: number; label: string }>();
 
@@ -102,15 +100,13 @@ export const toTeamEfficiencyBarSeries = (
 
   return {
     categories: rows.map((row) => row.label),
-    values: rows.map((row) =>
-      options.percent ? Math.round(row.value * 100) : row.value
-    ),
+    values: rows.map((row) => (options.percent ? Math.round(row.value * 100) : row.value)),
   };
 };
 
 export const toSparklineSeries = (
   data: WorkItemMetricsDaily[],
-  options: { workScopeId?: string; teamId?: string; metric?: SparklineMetric } = {}
+  options: { workScopeId?: string; teamId?: string; metric?: SparklineMetric } = {},
 ) => {
   const metric = options.metric ?? "itemsCompleted";
   const filtered = data.filter((entry) => {
@@ -120,10 +116,7 @@ export const toSparklineSeries = (
     ) {
       return false;
     }
-    if (
-      options.teamId &&
-      normalizeKey(entry.teamId) !== normalizeKey(options.teamId)
-    ) {
+    if (options.teamId && normalizeKey(entry.teamId) !== normalizeKey(options.teamId)) {
       return false;
     }
     return true;
@@ -136,10 +129,7 @@ export const toSparklineSeries = (
     byDay.set(entry.day, { sum: current.sum + value, count: current.count + 1 });
   });
 
-  const ratioMetrics: SparklineMetric[] = [
-    "bugCompletedRatio",
-    "predictabilityScore",
-  ];
+  const ratioMetrics: SparklineMetric[] = ["bugCompletedRatio", "predictabilityScore"];
   const categories = Array.from(byDay.keys()).sort();
   const values = categories.map((day) => {
     const entry = byDay.get(day);
@@ -155,14 +145,12 @@ export const toSparklineSeries = (
   return { categories, values };
 };
 
-export const toWorkItemTypeDonutData = (
-  data: WorkItemTypeSummary[]
-): PieSegment[] => {
+export const toWorkItemTypeDonutData = (data: WorkItemTypeSummary[]): PieSegment[] => {
   const totals = sumByKey(
     data.map((entry) => ({
       key: normalizeKey(entry.type),
       value: entry.count,
-    }))
+    })),
   );
 
   return Array.from(totals.entries()).map(([key, value]) => ({
@@ -173,10 +161,7 @@ export const toWorkItemTypeDonutData = (
 
 export const toNestedPieData = (data: WorkItemTypeByScope[]) => {
   const scopeTotals = new Map<string, { value: number; name: string }>();
-  const subtypeTotals = new Map<
-    string,
-    { value: number; name: string; parentKey: string }
-  >();
+  const subtypeTotals = new Map<string, { value: number; name: string; parentKey: string }>();
 
   data.forEach((entry) => {
     const scopeKey = normalizeKey(entry.workScopeId);
@@ -202,21 +187,17 @@ export const toNestedPieData = (data: WorkItemTypeByScope[]) => {
     });
   });
 
-  const categories: NestedPieCategory[] = Array.from(scopeTotals.entries()).map(
-    ([key, value]) => ({
-      key,
-      name: value.name,
-      value: value.value,
-    })
-  );
+  const categories: NestedPieCategory[] = Array.from(scopeTotals.entries()).map(([key, value]) => ({
+    key,
+    name: value.name,
+    value: value.value,
+  }));
 
-  const subtypes: NestedPieSubtype[] = Array.from(subtypeTotals.values()).map(
-    (entry) => ({
-      name: entry.name,
-      value: entry.value,
-      parentKey: entry.parentKey,
-    })
-  );
+  const subtypes: NestedPieSubtype[] = Array.from(subtypeTotals.values()).map((entry) => ({
+    name: entry.name,
+    value: entry.value,
+    parentKey: entry.parentKey,
+  }));
 
   return { categories, subtypes };
 };
@@ -261,7 +242,7 @@ export type HierarchyNode = {
  */
 export const toInvestmentHierarchy = (
   categories: Array<{ key: string; name: string; value: number }>,
-  subtypes: Array<{ name: string; value: number; parentKey: string }>
+  subtypes: Array<{ name: string; value: number; parentKey: string }>,
 ): HierarchyNode => {
   const children: HierarchyNode[] = categories
     .slice()
@@ -295,7 +276,7 @@ export const toInvestmentHierarchy = (
  */
 export const toHotspotHierarchy = (
   nodes: Array<{ name: string; group?: string }>,
-  links: Array<{ source: string; target: string; value: number }>
+  links: Array<{ source: string; target: string; value: number }>,
 ): HierarchyNode => {
   // Build adjacency list: source -> targets with values
   const adjacency = new Map<string, Array<{ target: string; value: number }>>();
@@ -357,7 +338,7 @@ export const toHotspotHierarchy = (
  * Convert FlowTransitionSummary data into transition matrix format for heatmap.
  */
 export const toTransitionMatrix = (
-  data: FlowTransitionSummary[]
+  data: FlowTransitionSummary[],
 ): Array<{ fromStatus: string; toStatus: string; count: number }> => {
   const totals = new Map<string, number>();
   data.forEach((entry) => {
@@ -432,4 +413,3 @@ export const toStackedAreaData = (data: ExpenseTimePoint[]) => {
     ],
   };
 };
-

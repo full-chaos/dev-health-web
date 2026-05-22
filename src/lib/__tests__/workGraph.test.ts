@@ -112,8 +112,18 @@ describe("Work Graph GraphQL", () => {
     });
 
     it("investment taxonomy mirrors the compute-time schema", () => {
-      const themes: InvestmentTheme[] = ["feature_delivery", "operational", "maintenance", "quality", "risk"];
-      const subcategories: InvestmentSubcategory[] = ["feature_delivery.customer", "operational.incident_response", "risk.vulnerability"];
+      const themes: InvestmentTheme[] = [
+        "feature_delivery",
+        "operational",
+        "maintenance",
+        "quality",
+        "risk",
+      ];
+      const subcategories: InvestmentSubcategory[] = [
+        "feature_delivery.customer",
+        "operational.incident_response",
+        "risk.vulnerability",
+      ];
       expect(themes).toHaveLength(5);
       expect(subcategories).toContain("feature_delivery.customer");
     });
@@ -126,17 +136,25 @@ describe("Work Graph GraphQL", () => {
         partial: false,
         dataAvailable: true,
         nodes: [{ nodeType: "PR", nodeId: "PR-1" }],
-        edges: [{ edgeId: "edge-1", sourceType: "PR", sourceId: "PR-1", targetType: "DEPLOYMENT", targetId: "deploy-1", edgeType: "DEPLOYS", confidence: 0.9, source: "native", evidence: "deploy evidence" }],
+        edges: [
+          {
+            edgeId: "edge-1",
+            sourceType: "PR",
+            sourceId: "PR-1",
+            targetType: "DEPLOYMENT",
+            targetId: "deploy-1",
+            edgeType: "DEPLOYS",
+            confidence: 0.9,
+            source: "native",
+            evidence: "deploy evidence",
+          },
+        ],
       };
       expect(drilldown.edges[0]?.source).toBe("native");
     });
 
     it("WorkGraphProvenance accepts valid values", () => {
-      const provenances: WorkGraphProvenance[] = [
-        "NATIVE",
-        "EXPLICIT_TEXT",
-        "HEURISTIC",
-      ];
+      const provenances: WorkGraphProvenance[] = ["NATIVE", "EXPLICIT_TEXT", "HEURISTIC"];
       expect(provenances).toHaveLength(3);
     });
 

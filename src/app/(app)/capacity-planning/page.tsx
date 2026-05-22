@@ -94,9 +94,7 @@ function RiskCard({ risk }: { risk: ThroughputRiskOverlay }) {
         <h3 className="text-sm font-semibold">{risk.label}</h3>
         <span
           className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
-            risk.active
-              ? "bg-amber-500/15 text-amber-200"
-              : "bg-emerald-500/10 text-emerald-200"
+            risk.active ? "bg-amber-500/15 text-amber-200" : "bg-emerald-500/10 text-emerald-200"
           }`}
         >
           {risk.active ? "Elevated" : "Normal"}
@@ -134,7 +132,7 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
             backlogSize: backlog,
             historyWeeks: 12,
           }),
-          "capacity-planning/throughput-forecast"
+          "capacity-planning/throughput-forecast",
         )
       : null;
   const renderedForecast = forecast ?? SAMPLE_FORECAST;
@@ -150,9 +148,7 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Capacity planning
               </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Throughput forecast
-              </h1>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Throughput forecast</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Forecast — not a commitment. Uses rolling 4/8/12-week throughput and risk overlays.
               </p>
@@ -193,7 +189,8 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
 
           {isSample ? (
             <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-              Showing sample data. Select a <strong>team</strong> in the scope bar above and set a backlog size to fetch a live forecast.
+              Showing sample data. Select a <strong>team</strong> in the scope bar above and set a
+              backlog size to fetch a live forecast.
             </div>
           ) : null}
 
@@ -203,7 +200,10 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
               ["P75", renderedForecast.p75Weeks],
               ["P90", renderedForecast.p90Weeks],
             ].map(([label, weeks]) => (
-              <div key={label} className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+              <div
+                key={label}
+                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
+              >
                 <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">{label}</p>
                 <p className="mt-3 text-3xl font-semibold">{formatWeeks(weeks as number | null)}</p>
                 <p className="mt-2 text-xs text-(--ink-muted)">Weeks to complete backlog</p>
@@ -228,7 +228,9 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
               series={[
                 {
                   name: "Items/week",
-                  data: renderedForecast.rollingWindows.map((window) => window.meanWeeklyThroughput),
+                  data: renderedForecast.rollingWindows.map(
+                    (window) => window.meanWeeklyThroughput,
+                  ),
                 },
               ]}
               height={300}
@@ -242,11 +244,13 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
           </section>
 
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-            <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">Primary risk callout</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+              Primary risk callout
+            </p>
             <h2 className="mt-3 text-2xl font-semibold">{renderedForecast.primaryRisk.label}</h2>
             <p className="mt-2 text-sm text-(--ink-muted)">
-              This is the most elevated current overlay for the forecast, selected from WIP congestion,
-              review bottleneck, and incident load.
+              This is the most elevated current overlay for the forecast, selected from WIP
+              congestion, review bottleneck, and incident load.
             </p>
           </section>
         </main>

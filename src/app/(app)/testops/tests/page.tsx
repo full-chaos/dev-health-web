@@ -11,7 +11,12 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
-import { TimeseriesResult, TimeseriesBucket, BreakdownResult, BreakdownItem } from "@/lib/graphql/schemas/analytics";
+import {
+  TimeseriesResult,
+  TimeseriesBucket,
+  BreakdownResult,
+  BreakdownItem,
+} from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
 type TestsPageProps = {
@@ -36,32 +41,34 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const env = getServerEnv();
-  const isTestMode = env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+  const isTestMode =
+    env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
   const rangeDays = filters?.time?.range_days ?? 14;
   const today = new Date();
   const endDate = filters?.time?.end_date ?? today.toISOString().slice(0, 10);
-  const startDate = filters?.time?.start_date ?? new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
+  const startDate =
+    filters?.time?.start_date ??
+    new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
   const dateRange = { startDate, endDate };
 
   const [health, testOpsData] = await Promise.all([
     checkApiHealth(),
-    fetchTestOpsData({
-      timeseries: [
-        { dimension: "TEAM", measure: "TEST_PASS_RATE", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "TEST_FAILURE_RATE", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange },
-        { dimension: "TEAM", measure: "TEST_SUITE_DURATION_P95", interval: "DAY", dateRange },
-      ],
-      breakdowns: [
-        { dimension: "TEAM", measure: "TEST_FLAKE_RATE", dateRange, topN: 10 }
-      ],
-    }, isTestMode),
+    fetchTestOpsData(
+      {
+        timeseries: [
+          { dimension: "TEAM", measure: "TEST_PASS_RATE", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "TEST_FAILURE_RATE", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange },
+          { dimension: "TEAM", measure: "TEST_SUITE_DURATION_P95", interval: "DAY", dateRange },
+        ],
+        breakdowns: [{ dimension: "TEAM", measure: "TEST_FLAKE_RATE", dateRange, topN: 10 }],
+      },
+      isTestMode,
+    ),
   ]);
 
   if (!health.ok && !isTestMode) {
@@ -78,25 +85,33 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     { id: "TEST_SUITE_DURATION_P95", ts: testTimeseries },
   ];
 
-  const passRateSeries = testTimeseries.find((s: TimeseriesResult) => s.measure === "TEST_PASS_RATE");
-  const flakeBreakdown = testBreakdowns.find((b: BreakdownResult) => b.measure === "TEST_FLAKE_RATE");
+  const passRateSeries = testTimeseries.find(
+    (s: TimeseriesResult) => s.measure === "TEST_PASS_RATE",
+  );
+  const flakeBreakdown = testBreakdowns.find(
+    (b: BreakdownResult) => b.measure === "TEST_FLAKE_RATE",
+  );
 
-  const timeseriesData = passRateSeries ? passRateSeries.buckets.map((b: TimeseriesBucket) => ({ day: b.date, value: b.value })) : [];
+  const timeseriesData = passRateSeries
+    ? passRateSeries.buckets.map((b: TimeseriesBucket) => ({ day: b.date, value: b.value }))
+    : [];
 
   const heatmapData = {
     axes: {
       x: flakeBreakdown ? flakeBreakdown.items.map((item: BreakdownItem) => item.key) : [],
-      y: ["Flake Rate"]
+      y: ["Flake Rate"],
     },
-    cells: flakeBreakdown ? flakeBreakdown.items.map((item: BreakdownItem) => ({
-      x: item.key,
-      y: "Flake Rate",
-      value: item.value
-    })) : [],
+    cells: flakeBreakdown
+      ? flakeBreakdown.items.map((item: BreakdownItem) => ({
+          x: item.key,
+          y: "Flake Rate",
+          value: item.value,
+        }))
+      : [],
     legend: {
       unit: "%",
-      scale: "linear" as const
-    }
+      scale: "linear" as const,
+    },
   };
 
   return (
@@ -106,12 +121,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                TestOps
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Tests
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">TestOps</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Tests</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Test suite reliability and performance.
               </p>
@@ -130,10 +141,10 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
             {measures.map(({ id, ts }) => {
               const def = TESTOPS_MEASURES[id];
               if (!def) return null;
-              
+
               const value = getLatestValue(ts, id);
               const spark = getSparkline(ts, id);
-              
+
               return (
                 <MetricCard
                   key={id}

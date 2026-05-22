@@ -93,7 +93,10 @@ export async function getInvoices(
   }
 }
 
-export async function getInvoice(invoiceId: string, orgId?: string): Promise<ActionResult<InvoiceRecord>> {
+export async function getInvoice(
+  invoiceId: string,
+  orgId?: string,
+): Promise<ActionResult<InvoiceRecord>> {
   const orgResult = await resolveOrgId(orgId);
   if (orgResult.error) {
     return orgResult;
@@ -110,11 +113,14 @@ export async function getInvoice(invoiceId: string, orgId?: string): Promise<Act
       params.set("org_id", orgResult.data);
     }
     const query = params.size > 0 ? `?${params.toString()}` : "";
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}${query}`, {
-      method: "GET",
-      headers: headersResult.data,
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}${query}`,
+      {
+        method: "GET",
+        headers: headersResult.data,
+        cache: "no-store",
+      },
+    );
 
     if (!res.ok) {
       const detail = await res.json().catch(() => ({ detail: res.statusText }));
@@ -128,7 +134,10 @@ export async function getInvoice(invoiceId: string, orgId?: string): Promise<Act
   }
 }
 
-export async function voidInvoice(invoiceId: string, orgId?: string): Promise<ActionResult<InvoiceRecord>> {
+export async function voidInvoice(
+  invoiceId: string,
+  orgId?: string,
+): Promise<ActionResult<InvoiceRecord>> {
   const orgResult = await resolveOrgId(orgId);
   if (orgResult.error) {
     return orgResult;
@@ -145,10 +154,13 @@ export async function voidInvoice(invoiceId: string, orgId?: string): Promise<Ac
       params.set("org_id", orgResult.data);
     }
     const query = params.size > 0 ? `?${params.toString()}` : "";
-    const res = await fetch(`${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}/void${query}`, {
-      method: "POST",
-      headers: headersResult.data,
-    });
+    const res = await fetch(
+      `${getBackendUrl()}/api/v1/billing/invoices/${sanitizeId(invoiceId)}/void${query}`,
+      {
+        method: "POST",
+        headers: headersResult.data,
+      },
+    );
 
     if (!res.ok) {
       const detail = await res.json().catch(() => ({ detail: res.statusText }));

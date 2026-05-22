@@ -20,11 +20,11 @@ const readVisibleTooltipText = async (page: Page) => {
       const style = window.getComputedStyle(element);
       const text = (element.textContent ?? "").trim();
       return (
-        text.length > 0
-        && style.visibility !== "hidden"
-        && style.display !== "none"
-        && (style.position === "absolute" || style.position === "fixed")
-        && style.pointerEvents === "none"
+        text.length > 0 &&
+        style.visibility !== "hidden" &&
+        style.display !== "none" &&
+        (style.position === "absolute" || style.position === "fixed") &&
+        style.pointerEvents === "none"
       );
     });
 
@@ -104,14 +104,19 @@ test.describe("chord chart", () => {
 
   test("summary panel renders", async ({ page }) => {
     const section = await gotoChordDemo(page);
-    const rows = section.locator("button[aria-label*='exchanged'], button[aria-label*='net imported'], button[aria-label*='net exported']");
+    const rows = section.locator(
+      "button[aria-label*='exchanged'], button[aria-label*='net imported'], button[aria-label*='net exported']",
+    );
 
     await expect(rows.first()).toBeVisible();
     expect(await rows.count()).toBeGreaterThan(0);
   });
 
   test("hover tooltip appears", async ({ page }) => {
-    test.skip(true, "ECharts canvas tooltips are not reliably surfaced in headless Chromium under this repo's dev+CSP setup; skipping to keep the default suite deterministic.");
+    test.skip(
+      true,
+      "ECharts canvas tooltips are not reliably surfaced in headless Chromium under this repo's dev+CSP setup; skipping to keep the default suite deterministic.",
+    );
     const section = await gotoChordDemo(page);
     const canvas = getPrimaryCanvas(section);
 
@@ -144,7 +149,10 @@ test.describe("chord chart", () => {
   });
 
   test("empty state", async ({ page }) => {
-    test.skip(true, "The demo route does not expose an empty-data flag yet, and this task must avoid non-surgical Wave 1/2/3 behavior changes.");
+    test.skip(
+      true,
+      "The demo route does not expose an empty-data flag yet, and this task must avoid non-surgical Wave 1/2/3 behavior changes.",
+    );
     await page.goto("/demo?chord.empty=true");
   });
 

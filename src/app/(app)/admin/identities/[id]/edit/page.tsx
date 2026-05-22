@@ -3,16 +3,9 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { EditIdentityFormWrapper } from "./EditIdentityFormWrapper";
 import { getIdentity, listTeams } from "@/lib/admin/server";
 
-export default async function EditIdentityPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditIdentityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [identityResult, teamsResult] = await Promise.all([
-    getIdentity(id),
-    listTeams(),
-  ]);
+  const [identityResult, teamsResult] = await Promise.all([getIdentity(id), listTeams()]);
 
   if (identityResult.error || !identityResult.data) {
     notFound();

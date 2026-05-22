@@ -55,10 +55,12 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
 
   const selectableUnits = useMemo(
     () => (data.focusSubcategory ? evidenceUnits.map((entry) => entry.unit) : data.workUnits),
-    [data.focusSubcategory, data.workUnits, evidenceUnits]
+    [data.focusSubcategory, data.workUnits, evidenceUnits],
   );
 
-  const focusSubcategoryLabel = data.focusSubcategory ? formatSubcategoryLabel(data.focusSubcategory, true) : "";
+  const focusSubcategoryLabel = data.focusSubcategory
+    ? formatSubcategoryLabel(data.focusSubcategory, true)
+    : "";
 
   const selectedUnitId = useMemo(() => {
     if (!data.selectedUnit) return "";
@@ -73,7 +75,8 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
         <div>
           <h2 className="font-(--font-display) text-xl">Work Unit Investment</h2>
           <p className="mt-2 text-sm text-(--ink-muted)">
-            These views surface probabilistic investment themes and subcategories inferred from connected work units.
+            These views surface probabilistic investment themes and subcategories inferred from
+            connected work units.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -83,7 +86,10 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
             onChange={data.setCategorizationMode}
             className="flex-wrap"
           />
-          <a href="#work-unit-calculation" className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
+          <a
+            href="#work-unit-calculation"
+            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+          >
             How this was calculated
           </a>
         </div>
@@ -91,23 +97,29 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
-          <summary className="cursor-pointer list-none font-(--font-display) text-base">What this investment view represents</summary>
+          <summary className="cursor-pointer list-none font-(--font-display) text-base">
+            What this investment view represents
+          </summary>
           <div className="mt-2">
             <p className="text-sm text-(--ink-muted)">
-              These views show investment intent inferred from connected work activity across issues, pull requests,
-              commits, and files.
+              These views show investment intent inferred from connected work activity across
+              issues, pull requests, commits, and files.
             </p>
             <p className="mt-2 text-sm text-(--ink-muted)">
-              Investment reflects how work appears to be aimed, based on text-first intent plus structural and
-              contextual corroboration. It is not a label, a verdict, or an assessment of people.
+              Investment reflects how work appears to be aimed, based on text-first intent plus
+              structural and contextual corroboration. It is not a label, a verdict, or an
+              assessment of people.
             </p>
             <p className="mt-2 text-sm text-(--ink-muted)">
-              Because real work is messy, investment views are shown with evidence quality and uncertainty rather than
-              as fixed categories.
+              Because real work is messy, investment views are shown with evidence quality and
+              uncertainty rather than as fixed categories.
             </p>
             <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
               <li>Investment describes effort allocation, not individual performance.</li>
-              <li>Categories are probabilistic, not exclusive. Work can span multiple categories at once.</li>
+              <li>
+                Categories are probabilistic, not exclusive. Work can span multiple categories at
+                once.
+              </li>
               <li>Evidence quality reflects corroboration strength, not correctness.</li>
               <li>Low evidence quality indicates mixed or incomplete evidence, not bad data.</li>
             </ul>
@@ -117,14 +129,18 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
           </div>
         </details>
         <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
-          <summary className="cursor-pointer list-none font-(--font-display) text-base">How to read the visuals</summary>
+          <summary className="cursor-pointer list-none font-(--font-display) text-base">
+            How to read the visuals
+          </summary>
           <div className="mt-2">
             <ul className="space-y-2 text-sm text-(--ink-muted)">
               <li>Size represents effort associated with a theme or subcategory.</li>
               <li>Color indicates which theme or subcategory the work leans toward.</li>
               <li>Opacity represents evidence quality for the interpretation.</li>
               <li>Flows show how effort appears to move from teams into themes and repos.</li>
-              <li>Use the investment mix chart to drill from themes into subcategories and evidence.</li>
+              <li>
+                Use the investment mix chart to drill from themes into subcategories and evidence.
+              </li>
             </ul>
           </div>
         </details>
@@ -171,17 +187,24 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
         onSelectWorkUnit={data.handleSelect}
       />
 
-      <div id="work-unit-calculation" className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+      <div
+        id="work-unit-calculation"
+        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="font-(--font-display) text-lg">How this was calculated</h3>
             <p className="mt-1 text-sm text-(--ink-muted)">
-              This interpretation is text-first, with provider metadata and contextual structure used to corroborate
-              the investment mix. Evidence quality reflects how strongly those inputs align.
+              This interpretation is text-first, with provider metadata and contextual structure
+              used to corroborate the investment mix. Evidence quality reflects how strongly those
+              inputs align.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)" htmlFor="work-unit-select">
+            <label
+              className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+              htmlFor="work-unit-select"
+            >
               Work unit
             </label>
             <select
@@ -212,7 +235,8 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
               <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Overview</p>
               <div className="mt-3 space-y-2 text-sm">
                 <div>
-                  <span className="text-(--ink-muted)">Work unit:</span> {formatWorkUnitLabel(data.selectedUnit)}
+                  <span className="text-(--ink-muted)">Work unit:</span>{" "}
+                  {formatWorkUnitLabel(data.selectedUnit)}
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-(--ink-muted)">
                     {data.selectedUnitTypeLabel ? (
                       <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
@@ -220,16 +244,23 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
                       </span>
                     ) : null}
                     <span>
-                      ID: <span className="font-mono text-(--ink)">{data.selectedUnit.work_unit_id}</span>
+                      ID:{" "}
+                      <span className="font-mono text-(--ink)">
+                        {data.selectedUnit.work_unit_id}
+                      </span>
                     </span>
                   </div>
                 </div>
                 <div>
                   <span className="text-(--ink-muted)">Time range:</span>{" "}
-                  {buildTimeRangeLabel(data.selectedUnit.time_range?.start, data.selectedUnit.time_range?.end)}
+                  {buildTimeRangeLabel(
+                    data.selectedUnit.time_range?.start,
+                    data.selectedUnit.time_range?.end,
+                  )}
                 </div>
                 <div>
-                  <span className="text-(--ink-muted)">Effort:</span> {formatNumber(data.selectedUnit.effort.value)}{" "}
+                  <span className="text-(--ink-muted)">Effort:</span>{" "}
+                  {formatNumber(data.selectedUnit.effort.value)}{" "}
                   {formatEffortUnit(data.selectedUnit.effort.metric)}
                 </div>
                 <div>
@@ -239,19 +270,26 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
                     : "Unknown"}
                 </div>
                 {(data.selectedUnit.evidence?.textual ?? []).length > 0 && (
-                  <div className="text-xs text-(--ink-muted)">Textual phrases informed the categorization.</div>
+                  <div className="text-xs text-(--ink-muted)">
+                    Textual phrases informed the categorization.
+                  </div>
                 )}
               </div>
             </div>
 
             <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Structural evidence</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                Structural evidence
+              </p>
               <div className="mt-3 space-y-2 text-xs">
                 {(data.selectedUnit.evidence?.structural ?? []).length === 0 && (
                   <p className="text-(--ink-muted)">No structural evidence reported.</p>
                 )}
                 {(data.selectedUnit.evidence?.structural ?? []).map((entry) => (
-                  <div key={`structural-${JSON.stringify(entry)}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                  <div
+                    key={`structural-${JSON.stringify(entry)}`}
+                    className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]"
+                  >
                     {JSON.stringify(entry)}
                   </div>
                 ))}
@@ -259,13 +297,18 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
             </div>
 
             <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Contextual evidence</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                Contextual evidence
+              </p>
               <div className="mt-3 space-y-2 text-xs">
                 {(data.selectedUnit.evidence?.contextual ?? []).length === 0 && (
                   <p className="text-(--ink-muted)">No contextual evidence reported.</p>
                 )}
                 {(data.selectedUnit.evidence?.contextual ?? []).map((entry) => (
-                  <div key={`contextual-${JSON.stringify(entry)}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                  <div
+                    key={`contextual-${JSON.stringify(entry)}`}
+                    className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]"
+                  >
                     {JSON.stringify(entry)}
                   </div>
                 ))}
@@ -273,13 +316,18 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
             </div>
 
             <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 lg:col-span-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Textual evidence</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                Textual evidence
+              </p>
               <div className="mt-3 space-y-2 text-xs">
                 {(data.selectedUnit.evidence?.textual ?? []).length === 0 && (
                   <p className="text-(--ink-muted)">No textual evidence reported.</p>
                 )}
                 {(data.selectedUnit.evidence?.textual ?? []).map((entry) => (
-                  <div key={`textual-${JSON.stringify(entry)}`} className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]">
+                  <div
+                    key={`textual-${JSON.stringify(entry)}`}
+                    className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 font-mono text-[11px]"
+                  >
                     {JSON.stringify(entry)}
                   </div>
                 ))}
@@ -293,9 +341,13 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
                     <div className="rounded bg-(--accent-2) px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                       AI-Generated
                     </div>
-                    <span className="text-xs font-medium text-(--accent-2)">Investment Explanation</span>
+                    <span className="text-xs font-medium text-(--accent-2)">
+                      Investment Explanation
+                    </span>
                   </div>
-                  <span className="text-[10px] text-(--ink-muted)">Phase 3 - Non-Authoritative</span>
+                  <span className="text-[10px] text-(--ink-muted)">
+                    Phase 3 - Non-Authoritative
+                  </span>
                 </div>
                 <div className="p-5">
                   {data.isExplaining ? (
@@ -306,20 +358,28 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
                   ) : data.explanation ? (
                     <div className="space-y-6">
                       <div>
-                        <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Summary</h4>
+                        <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                          Summary
+                        </h4>
                         <p className="mt-2 text-sm leading-relaxed">{data.explanation.summary}</p>
                       </div>
 
                       <div className="grid gap-6 md:grid-cols-2">
                         <div>
-                          <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Reasons</h4>
+                          <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                            Reasons
+                          </h4>
                           <div className="mt-3 space-y-3">
-                            {Object.entries(data.explanation.category_rationale).map(([cat, text]) => (
-                              <div key={cat} className="rounded-lg bg-(--card-70) p-3">
-                                <span className="text-[10px] font-bold uppercase text-(--accent-2)">{cat}</span>
-                                <p className="mt-1 text-xs text-(--ink-muted)">{text}</p>
-                              </div>
-                            ))}
+                            {Object.entries(data.explanation.category_rationale).map(
+                              ([cat, text]) => (
+                                <div key={cat} className="rounded-lg bg-(--card-70) p-3">
+                                  <span className="text-[10px] font-bold uppercase text-(--accent-2)">
+                                    {cat}
+                                  </span>
+                                  <p className="mt-1 text-xs text-(--ink-muted)">{text}</p>
+                                </div>
+                              ),
+                            )}
                             {data.explanation.evidence_highlights.length > 0 && (
                               <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-(--ink-muted)">
                                 {data.explanation.evidence_highlights.map((highlight) => (
@@ -331,13 +391,19 @@ export function InvestmentView({ filters, activeRole }: InvestmentViewProps) {
                         </div>
 
                         <div>
-                          <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Uncertainty</h4>
+                          <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                            Uncertainty
+                          </h4>
                           <div className="mt-3 space-y-3">
                             <div className="rounded-lg bg-(--card-70) p-3">
-                              <p className="text-xs text-(--ink-muted)">{data.explanation.uncertainty_disclosure}</p>
+                              <p className="text-xs text-(--ink-muted)">
+                                {data.explanation.uncertainty_disclosure}
+                              </p>
                             </div>
                             <div className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3">
-                              <p className="text-xs font-medium italic text-(--ink-muted)">{data.explanation.evidence_quality_limits}</p>
+                              <p className="text-xs font-medium italic text-(--ink-muted)">
+                                {data.explanation.evidence_quality_limits}
+                              </p>
                             </div>
                           </div>
                         </div>

@@ -58,22 +58,22 @@ export const normalizeInvestmentMix = (input: InvestmentMixResponse): Investment
         Object.entries(themeDistribution).map(([key, value]) => [
           key,
           typeof value === "number" ? value : 0,
-        ])
+        ]),
       ),
       subcategory_distribution: Object.fromEntries(
         Object.entries(subcategoryDistribution).map(([key, value]) => [
           key,
           typeof value === "number" ? value : 0,
-        ])
+        ]),
       ),
       unit: typeof typed.unit === "string" ? typed.unit : undefined,
       evidence_quality_distribution: isRecord(typed.evidence_quality_distribution)
         ? Object.fromEntries(
-          Object.entries(typed.evidence_quality_distribution).map(([key, value]) => [
-            key,
-            typeof value === "number" ? value : 0,
-          ])
-        )
+            Object.entries(typed.evidence_quality_distribution).map(([key, value]) => [
+              key,
+              typeof value === "number" ? value : 0,
+            ]),
+          )
         : undefined,
     };
   }
@@ -91,7 +91,7 @@ export const normalizeInvestmentMix = (input: InvestmentMixResponse): Investment
       const { logger } = require("@/lib/logger");
       logger.warn(
         { keys: Object.keys(typed) },
-        "investmentMix: received legacy categories/subtypes response shape — backend should upgrade to theme_distribution contract (CHAOS-659)"
+        "investmentMix: received legacy categories/subtypes response shape — backend should upgrade to theme_distribution contract (CHAOS-659)",
       );
     } catch {
       // Ignore if logger is unavailable.
@@ -133,4 +133,3 @@ export const getSortedSubcategories = (mix: InvestmentMixAggregate): InvestmentM
     })
     .filter((entry) => entry.value > 0 && entry.key.includes(".") && entry.themeKey)
     .sort((a, b) => b.value - a.value);
-

@@ -62,8 +62,12 @@ function StateDiff({
                 className={`border-b border-(--card-stroke)/60 ${matches ? "" : "bg-(--accent)/10"}`}
               >
                 <td className="p-2 font-medium">{key}</td>
-                <td className={`p-2 ${matches ? "text-(--ink-muted)" : "text-red-300"}`}>{localText}</td>
-                <td className={`p-2 ${matches ? "text-(--ink-muted)" : "text-green-300"}`}>{stripeText}</td>
+                <td className={`p-2 ${matches ? "text-(--ink-muted)" : "text-red-300"}`}>
+                  {localText}
+                </td>
+                <td className={`p-2 ${matches ? "text-(--ink-muted)" : "text-green-300"}`}>
+                  {stripeText}
+                </td>
               </tr>
             );
           })}

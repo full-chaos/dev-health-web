@@ -40,7 +40,12 @@ function getMode(value: string | null): string {
   return isPreset ? value : "custom";
 }
 
-export function SchedulePicker({ value, timezone, onChange, minIntervalHours }: SchedulePickerProps) {
+export function SchedulePicker({
+  value,
+  timezone,
+  onChange,
+  minIntervalHours,
+}: SchedulePickerProps) {
   const timezones = useMemo(() => getSupportedTimezones(), []);
   const browserTimezone = useMemo(() => getBrowserTimezone(), []);
   const effectiveTimezone = timezone ?? browserTimezone;
@@ -48,41 +53,47 @@ export function SchedulePicker({ value, timezone, onChange, minIntervalHours }: 
   const visiblePresets = useMemo(() => {
     if (minIntervalHours === undefined) return SCHEDULE_PRESETS;
     return SCHEDULE_PRESETS.filter(
-      (p) => p.intervalHours === null || p.intervalHours >= minIntervalHours
+      (p) => p.intervalHours === null || p.intervalHours >= minIntervalHours,
     );
   }, [minIntervalHours]);
 
   const [mode, setMode] = useState(() => getMode(value));
-  const [customCron, setCustomCron] = useState(getMode(value) === "custom" ? value ?? "" : "");
+  const [customCron, setCustomCron] = useState(getMode(value) === "custom" ? (value ?? "") : "");
 
   const selectedTimezone = timezones.includes(effectiveTimezone)
     ? effectiveTimezone
     : (timezones[0] ?? "UTC");
 
-  const handleModeChange = useCallback((nextMode: string) => {
-    setMode(nextMode);
-    if (nextMode === "manual") {
-      onChange(null, selectedTimezone);
-      return;
-    }
-    if (nextMode === "custom") {
-      onChange(customCron || null, selectedTimezone);
-      return;
-    }
-    onChange(nextMode, selectedTimezone);
-  }, [customCron, onChange, selectedTimezone]);
+  const handleModeChange = useCallback(
+    (nextMode: string) => {
+      setMode(nextMode);
+      if (nextMode === "manual") {
+        onChange(null, selectedTimezone);
+        return;
+      }
+      if (nextMode === "custom") {
+        onChange(customCron || null, selectedTimezone);
+        return;
+      }
+      onChange(nextMode, selectedTimezone);
+    },
+    [customCron, onChange, selectedTimezone],
+  );
 
-  const handleTimezoneChange = useCallback((nextTimezone: string) => {
-    if (mode === "manual") {
-      onChange(null, nextTimezone);
-      return;
-    }
-    if (mode === "custom") {
-      onChange(customCron || null, nextTimezone);
-      return;
-    }
-    onChange(mode, nextTimezone);
-  }, [mode, customCron, onChange]);
+  const handleTimezoneChange = useCallback(
+    (nextTimezone: string) => {
+      if (mode === "manual") {
+        onChange(null, nextTimezone);
+        return;
+      }
+      if (mode === "custom") {
+        onChange(customCron || null, nextTimezone);
+        return;
+      }
+      onChange(mode, nextTimezone);
+    },
+    [mode, customCron, onChange],
+  );
 
   return (
     <div className="space-y-4">
@@ -122,7 +133,10 @@ export function SchedulePicker({ value, timezone, onChange, minIntervalHours }: 
 
       {mode === "custom" && (
         <div>
-          <label htmlFor="custom-cron" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
+          <label
+            htmlFor="custom-cron"
+            className="mb-1.5 block text-sm font-medium text-(--ink-muted)"
+          >
             Custom cron
           </label>
           <input
@@ -142,8 +156,8 @@ export function SchedulePicker({ value, timezone, onChange, minIntervalHours }: 
               {minIntervalHours < 1
                 ? `${Math.round(minIntervalHours * 60)} minutes`
                 : minIntervalHours === 1
-                ? "1 hour"
-                : `${minIntervalHours} hours`}{" "}
+                  ? "1 hour"
+                  : `${minIntervalHours} hours`}{" "}
               between syncs.
             </p>
           )}
@@ -151,7 +165,10 @@ export function SchedulePicker({ value, timezone, onChange, minIntervalHours }: 
       )}
 
       <div>
-        <label htmlFor="schedule-timezone" className="mb-1.5 block text-sm font-medium text-(--ink-muted)">
+        <label
+          htmlFor="schedule-timezone"
+          className="mb-1.5 block text-sm font-medium text-(--ink-muted)"
+        >
           Timezone
         </label>
         <select

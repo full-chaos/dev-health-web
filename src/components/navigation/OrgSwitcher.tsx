@@ -65,7 +65,7 @@ export function OrgSwitcher() {
   const activeOrgId = state?.active_org_id ?? session?.user?.org_id ?? "";
   const activeOrg = useMemo(
     () => state?.organizations.find((org) => org.id === activeOrgId),
-    [activeOrgId, state?.organizations]
+    [activeOrgId, state?.organizations],
   );
 
   if (!state || state.organizations.length === 0) {
@@ -89,14 +89,19 @@ export function OrgSwitcher() {
       }
       const data = (await response.json()) as SwitchOrgResponse;
       await update({ activeOrg: data });
-      setState((current) => current ? { ...current, active_org_id: data.user.org_id ?? orgId } : current);
+      setState((current) =>
+        current ? { ...current, active_org_id: data.user.org_id ?? orgId } : current,
+      );
       router.refresh();
     });
   }
 
   return (
     <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3">
-      <label htmlFor="org-switcher" className="text-[10px] uppercase tracking-widest text-(--ink-muted)">
+      <label
+        htmlFor="org-switcher"
+        className="text-[10px] uppercase tracking-widest text-(--ink-muted)"
+      >
         {canSwitchOrganizations ? "Organization" : "Current organization"}
       </label>
       <select
@@ -114,9 +119,7 @@ export function OrgSwitcher() {
         ))}
       </select>
       <p id="org-switcher-data" className="mt-2 text-[11px] text-(--ink-muted)">
-        {activeOrg
-          ? dataLabel(activeOrg)
-          : "Choose the organization used for dashboards."}
+        {activeOrg ? dataLabel(activeOrg) : "Choose the organization used for dashboards."}
         {!canSwitchOrganizations ? " · Only organization on this account" : null}
       </p>
       {error ? <p className="mt-2 text-[11px] text-red-400">{error}</p> : null}

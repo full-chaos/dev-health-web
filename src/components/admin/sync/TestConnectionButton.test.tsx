@@ -28,13 +28,14 @@ describe("TestConnectionButton", () => {
   it("shows spinner while testing", async () => {
     let resolvePromise: ((value: unknown) => void) | undefined;
     mockTestConnection.mockImplementation(
-      () => new Promise((resolve) => {
-        resolvePromise = resolve;
-      })
+      () =>
+        new Promise((resolve) => {
+          resolvePromise = resolve;
+        }),
     );
 
     const { container } = renderWithToaster(
-      <TestConnectionButton provider="github" credentialId="cred-1" />
+      <TestConnectionButton provider="github" credentialId="cred-1" />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Test Connection" }));

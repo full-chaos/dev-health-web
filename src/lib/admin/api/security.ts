@@ -13,7 +13,7 @@ export const ipAllowlistApi = {
       `/ip-allowlist?limit=${limit}&offset=${offset}`,
       {},
       token,
-      orgId
+      orgId,
     ),
 
   get: (id: string, token?: string, orgId?: string) =>
@@ -24,7 +24,7 @@ export const ipAllowlistApi = {
       "/ip-allowlist",
       { method: "POST", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   update: (id: string, data: IPAllowlistUpdate, token?: string, orgId?: string) =>
@@ -32,7 +32,7 @@ export const ipAllowlistApi = {
       `/ip-allowlist/${id}`,
       { method: "PATCH", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   delete: (id: string, token?: string, orgId?: string) =>
@@ -43,6 +43,6 @@ export const ipAllowlistApi = {
       "/ip-allowlist/check",
       { method: "POST", body: JSON.stringify({ ip_address: ipAddress }) },
       token,
-      orgId
+      orgId,
     ),
 };

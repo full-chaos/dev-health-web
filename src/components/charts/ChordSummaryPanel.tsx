@@ -64,7 +64,9 @@ export function ChordSummaryPanel({
   };
 
   return (
-    <section className={`rounded-3xl border border-(--card-stroke) bg-card p-4 space-y-6 ${className}`}>
+    <section
+      className={`rounded-3xl border border-(--card-stroke) bg-card p-4 space-y-6 ${className}`}
+    >
       {/* Top Importers */}
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-(--ink-muted) mb-3">
@@ -80,10 +82,12 @@ export function ChordSummaryPanel({
                 type="button"
                 onClick={() => handleSelect(item.id)}
                 className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) transition-colors"
-                aria-label={`Rank ${idx + 1}: ${item.label}, +${formatCompactValue(item.net)} ${unit || ''} net imported`}
+                aria-label={`Rank ${idx + 1}: ${item.label}, +${formatCompactValue(item.net)} ${unit || ""} net imported`}
               >
                 <span className="flex items-center gap-2 overflow-hidden">
-                  <span className="text-xs text-(--ink-muted) w-4 text-right shrink-0">{idx + 1}</span>
+                  <span className="text-xs text-(--ink-muted) w-4 text-right shrink-0">
+                    {idx + 1}
+                  </span>
                   <span className="truncate text-sm font-medium">{item.label}</span>
                 </span>
                 <span className="text-sm text-(--accent-positive) font-mono shrink-0 ml-2">
@@ -110,10 +114,12 @@ export function ChordSummaryPanel({
                 type="button"
                 onClick={() => handleSelect(item.id)}
                 className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) transition-colors"
-                aria-label={`Rank ${idx + 1}: ${item.label}, -${formatCompactValue(item.net)} ${unit || ''} net exported`}
+                aria-label={`Rank ${idx + 1}: ${item.label}, -${formatCompactValue(item.net)} ${unit || ""} net exported`}
               >
                 <span className="flex items-center gap-2 overflow-hidden">
-                  <span className="text-xs text-(--ink-muted) w-4 text-right shrink-0">{idx + 1}</span>
+                  <span className="text-xs text-(--ink-muted) w-4 text-right shrink-0">
+                    {idx + 1}
+                  </span>
                   <span className="truncate text-sm font-medium">{item.label}</span>
                 </span>
                 <span className="text-sm text-(--accent-negative) font-mono shrink-0 ml-2">
@@ -143,12 +149,15 @@ export function ChordSummaryPanel({
                   type="button"
                   onClick={() => handleSelect(item.a)}
                   className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) transition-colors"
-                  aria-label={`Rank ${idx + 1}: ${nodeA} and ${nodeB}, ${formatCompactValue(item.bilateralValue)} ${unit || ''} exchanged`}
+                  aria-label={`Rank ${idx + 1}: ${nodeA} and ${nodeB}, ${formatCompactValue(item.bilateralValue)} ${unit || ""} exchanged`}
                 >
                   <span className="flex items-center gap-2 overflow-hidden">
-                    <span className="text-xs text-(--ink-muted) w-4 text-right shrink-0">{idx + 1}</span>
+                    <span className="text-xs text-(--ink-muted) w-4 text-right shrink-0">
+                      {idx + 1}
+                    </span>
                     <span className="truncate text-sm font-medium">
-                      {nodeA} <span className="text-(--ink-muted) font-normal mx-0.5">↔</span> {nodeB}
+                      {nodeA} <span className="text-(--ink-muted) font-normal mx-0.5">↔</span>{" "}
+                      {nodeB}
                     </span>
                   </span>
                   <span className="text-sm font-mono shrink-0 ml-2">
@@ -165,7 +174,8 @@ export function ChordSummaryPanel({
       {summary.otherShare > 0 && (
         <div className="pt-2 border-t border-(--card-stroke)">
           <p className="text-xs text-(--ink-muted) text-center">
-            {(summary.otherShare * 100).toFixed(1)}% of flow collapsed into &apos;Other&apos; ({otherNodesCount} entities)
+            {(summary.otherShare * 100).toFixed(1)}% of flow collapsed into &apos;Other&apos; (
+            {otherNodesCount} entities)
           </p>
         </div>
       )}

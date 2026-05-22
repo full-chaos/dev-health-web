@@ -19,9 +19,9 @@ Five providers are currently supported. They are defined as a TypeScript union t
 
 ```ts
 // src/lib/admin/types.ts:518
-export type Provider = 'github' | 'gitlab' | 'jira' | 'linear' | 'launchdarkly';
+export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly";
 
-export const PROVIDERS: Provider[] = ['github', 'gitlab', 'jira', 'linear', 'launchdarkly'];
+export const PROVIDERS: Provider[] = ["github", "gitlab", "jira", "linear", "launchdarkly"];
 ```
 
 Human-readable labels and the sync targets each provider supports are also declared in the same file (lines 522–536):
@@ -29,20 +29,20 @@ Human-readable labels and the sync targets each provider supports are also decla
 ```ts
 // src/lib/admin/types.ts:522
 export const PROVIDER_LABELS: Record<Provider, string> = {
-  github: 'GitHub',
-  gitlab: 'GitLab',
-  jira: 'Jira',
-  linear: 'Linear',
-  launchdarkly: 'LaunchDarkly',
+  github: "GitHub",
+  gitlab: "GitLab",
+  jira: "Jira",
+  linear: "Linear",
+  launchdarkly: "LaunchDarkly",
 };
 
 // src/lib/admin/types.ts:530
 export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
-  github: ['git', 'prs', 'cicd', 'deployments', 'incidents', 'work-items'],
-  gitlab: ['git', 'prs', 'cicd', 'deployments', 'incidents', 'work-items', 'feature-flags'],
-  jira: ['work-items'],
-  linear: ['work-items'],
-  launchdarkly: ['feature-flags'],
+  github: ["git", "prs", "cicd", "deployments", "incidents", "work-items"],
+  gitlab: ["git", "prs", "cicd", "deployments", "incidents", "work-items", "feature-flags"],
+  jira: ["work-items"],
+  linear: ["work-items"],
+  launchdarkly: ["feature-flags"],
 };
 ```
 
@@ -52,11 +52,11 @@ export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
 
 ```tsx
 // src/components/admin/sync/SyncConfigForm.tsx:290
-{(formData.provider === "github" || formData.provider === "gitlab") && (
-  <div className="space-y-4">
-    {/* Owner / Organization input, RepoSelector, GitLab URL */}
-  </div>
-)}
+{
+  (formData.provider === "github" || formData.provider === "gitlab") && (
+    <div className="space-y-4">{/* Owner / Organization input, RepoSelector, GitLab URL */}</div>
+  );
+}
 ```
 
 This is the **source of truth** for which providers expose repository-level configuration in the UI. Any new VCS provider that needs owner/repo fields must be added here.
@@ -65,41 +65,39 @@ A second guard at line 307 further restricts the GitLab-specific URL field:
 
 ```tsx
 // src/components/admin/sync/SyncConfigForm.tsx:307
-{formData.provider === "gitlab" && (
-  <div>
-    {/* GitLab URL input */}
-  </div>
-)}
+{
+  formData.provider === "gitlab" && <div>{/* GitLab URL input */}</div>;
+}
 ```
 
 ## Conventions — Where Provider Names Surface
 
 The following files all reference provider names or the `Provider` type. Each must be updated when adding a new provider.
 
-| File | What it does |
-| :--- | :--- |
-| `src/lib/admin/types.ts` | **Source of truth.** Defines `Provider` union, `PROVIDERS` array, `PROVIDER_LABELS`, and `PROVIDER_SYNC_TARGETS`. |
-| `src/components/admin/sync/SyncConfigForm.tsx` | Renders the sync-config creation/edit form. Imports `PROVIDERS`, `PROVIDER_LABELS`, `PROVIDER_SYNC_TARGETS`. Hardcodes the repo-settings guard at line 290. |
-| `src/components/admin/sync/CreateCredentialModal.tsx` | Defines `PROVIDER_FIELDS` (credential field schemas per provider) and `getInitialCredentials()`. Both are keyed on `Provider`. |
-| `src/components/admin/integrations/EditCredentialModal.tsx` | Mirrors `PROVIDER_FIELDS` and `getInitialCredentials()` for the edit flow. |
-| `src/components/admin/integrations/ProviderCredentialsList.tsx` | Accepts `provider: Provider` prop; renders the credential list for a given provider. |
-| `src/lib/admin/server/credentials.ts` | Server actions `testConnection(provider, ...)` and `deleteCredential(provider, ...)` — pass the provider string to the API layer. |
-| `src/lib/admin/api/credentials.ts` | API client methods keyed on `provider` string: `get`, `update`, `delete`, `test`. |
-| `src/lib/admin/api/teams.ts` | `discover(provider, ...)` — team-discovery endpoint is provider-scoped. |
-| `src/lib/admin/server/teams.ts` | `discoverTeams(provider)` server action wrapping the API call above. |
-| `src/lib/graphql/schema.graphql` | `provider: String!` field on sync-related GraphQL types (lines 509, 597). Treated as an opaque string — no enum enforcement at the GraphQL layer. |
-| `src/lib/graphql/hooks/useSubscription.ts` | Filters real-time sync-progress events by `provider` string (line 64). |
-| `src/components/admin/sync/SyncProgressBar.tsx` | Accepts `provider: string` prop; matches incoming subscription events by provider (line 30). |
-| `src/components/admin/sync/SyncConfigCard.tsx` | Renders `config.provider` as a capitalised label (line 87). |
+| File                                                            | What it does                                                                                                                                                |
+| :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/admin/types.ts`                                        | **Source of truth.** Defines `Provider` union, `PROVIDERS` array, `PROVIDER_LABELS`, and `PROVIDER_SYNC_TARGETS`.                                           |
+| `src/components/admin/sync/SyncConfigForm.tsx`                  | Renders the sync-config creation/edit form. Imports `PROVIDERS`, `PROVIDER_LABELS`, `PROVIDER_SYNC_TARGETS`. Hardcodes the repo-settings guard at line 290. |
+| `src/components/admin/sync/CreateCredentialModal.tsx`           | Defines `PROVIDER_FIELDS` (credential field schemas per provider) and `getInitialCredentials()`. Both are keyed on `Provider`.                              |
+| `src/components/admin/integrations/EditCredentialModal.tsx`     | Mirrors `PROVIDER_FIELDS` and `getInitialCredentials()` for the edit flow.                                                                                  |
+| `src/components/admin/integrations/ProviderCredentialsList.tsx` | Accepts `provider: Provider` prop; renders the credential list for a given provider.                                                                        |
+| `src/lib/admin/server/credentials.ts`                           | Server actions `testConnection(provider, ...)` and `deleteCredential(provider, ...)` — pass the provider string to the API layer.                           |
+| `src/lib/admin/api/credentials.ts`                              | API client methods keyed on `provider` string: `get`, `update`, `delete`, `test`.                                                                           |
+| `src/lib/admin/api/teams.ts`                                    | `discover(provider, ...)` — team-discovery endpoint is provider-scoped.                                                                                     |
+| `src/lib/admin/server/teams.ts`                                 | `discoverTeams(provider)` server action wrapping the API call above.                                                                                        |
+| `src/lib/graphql/schema.graphql`                                | `provider: String!` field on sync-related GraphQL types (lines 509, 597). Treated as an opaque string — no enum enforcement at the GraphQL layer.           |
+| `src/lib/graphql/hooks/useSubscription.ts`                      | Filters real-time sync-progress events by `provider` string (line 64).                                                                                      |
+| `src/components/admin/sync/SyncProgressBar.tsx`                 | Accepts `provider: string` prop; matches incoming subscription events by provider (line 30).                                                                |
+| `src/components/admin/sync/SyncConfigCard.tsx`                  | Renders `config.provider` as a capitalised label (line 87).                                                                                                 |
 
 ### Test Fixtures
 
 Tests that fixture a specific provider value:
 
-| File | Provider used |
-| :--- | :--- |
-| `src/components/admin/sync/SyncProgressBar.test.tsx` | `"github"` (multiple test cases) |
-| `src/lib/admin/__tests__/server.test.ts` | `"github"` (credential create, test-connection, delete) |
+| File                                                 | Provider used                                           |
+| :--------------------------------------------------- | :------------------------------------------------------ |
+| `src/components/admin/sync/SyncProgressBar.test.tsx` | `"github"` (multiple test cases)                        |
+| `src/lib/admin/__tests__/server.test.ts`             | `"github"` (credential create, test-connection, delete) |
 
 ## How to Add a New Provider
 
@@ -162,13 +160,13 @@ The GraphQL schema treats `provider` as an opaque `String` — no schema change 
 
 ## References
 
-| Resource | Link |
-| :--- | :--- |
-| Ops canonical provider ADR (PR) | https://github.com/chrisgeo/dev-health-ops/pull/714 |
-| Ops ADR Linear issue | https://linear.app/fullchaos/issue/CHAOS-1549 |
-| Provider type + constants | `src/lib/admin/types.ts` (lines 516–536) |
-| Sync config form (repo-settings guard) | `src/components/admin/sync/SyncConfigForm.tsx` (line 290) |
-| Credential field schemas | `src/components/admin/sync/CreateCredentialModal.tsx` (lines 20–37) |
-| Edit credential field schemas | `src/components/admin/integrations/EditCredentialModal.tsx` (lines 23–41) |
-| Server credential actions | `src/lib/admin/server/credentials.ts` |
-| API credential client | `src/lib/admin/api/credentials.ts` |
+| Resource                               | Link                                                                      |
+| :------------------------------------- | :------------------------------------------------------------------------ |
+| Ops canonical provider ADR (PR)        | https://github.com/chrisgeo/dev-health-ops/pull/714                       |
+| Ops ADR Linear issue                   | https://linear.app/fullchaos/issue/CHAOS-1549                             |
+| Provider type + constants              | `src/lib/admin/types.ts` (lines 516–536)                                  |
+| Sync config form (repo-settings guard) | `src/components/admin/sync/SyncConfigForm.tsx` (line 290)                 |
+| Credential field schemas               | `src/components/admin/sync/CreateCredentialModal.tsx` (lines 20–37)       |
+| Edit credential field schemas          | `src/components/admin/integrations/EditCredentialModal.tsx` (lines 23–41) |
+| Server credential actions              | `src/lib/admin/server/credentials.ts`                                     |
+| API credential client                  | `src/lib/admin/api/credentials.ts`                                        |

@@ -6,11 +6,11 @@ Technical reference for the Report Center feature in dev-health-web.
 
 ## Routes
 
-| Route | Component | Rendering |
-|-------|-----------|-----------|
-| `/reports` | `ReportsPage` | Server Component (RSC) |
-| `/reports/new` | `NewReportPage` | Client Component |
-| `/reports/[id]` | `SingleReportPage` | Client Component |
+| Route           | Component          | Rendering              |
+| --------------- | ------------------ | ---------------------- |
+| `/reports`      | `ReportsPage`      | Server Component (RSC) |
+| `/reports/new`  | `NewReportPage`    | Client Component       |
+| `/reports/[id]` | `SingleReportPage` | Client Component       |
 
 ---
 
@@ -24,13 +24,13 @@ Pages → fetchers.ts → graphqlFetch (urqlClient) → Backend GraphQL API
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/lib/reports/types.ts` | TypeScript types matching the GraphQL schema |
-| `src/lib/reports/queries.ts` | GraphQL query and mutation strings |
-| `src/lib/reports/fetchers.ts` | Async functions wrapping `graphqlFetch` |
-| `src/lib/reports/sample-data.ts` | Static data used when `DEV_HEALTH_TEST_MODE=true` |
-| `src/components/reports/StatusBadge.tsx` | Shared status indicator component |
+| File                                     | Purpose                                           |
+| ---------------------------------------- | ------------------------------------------------- |
+| `src/lib/reports/types.ts`               | TypeScript types matching the GraphQL schema      |
+| `src/lib/reports/queries.ts`             | GraphQL query and mutation strings                |
+| `src/lib/reports/fetchers.ts`            | Async functions wrapping `graphqlFetch`           |
+| `src/lib/reports/sample-data.ts`         | Static data used when `DEV_HEALTH_TEST_MODE=true` |
+| `src/components/reports/StatusBadge.tsx` | Shared status indicator component                 |
 
 ### Types
 
@@ -42,16 +42,16 @@ Pages → fetchers.ts → graphqlFetch (urqlClient) → Backend GraphQL API
 
 ### Fetchers
 
-| Function | Operation | Used By |
-|----------|-----------|---------|
-| `fetchSavedReports` | Query list | Reports list page |
-| `fetchSavedReport` | Query single | Report detail page |
-| `fetchReportRuns` | Query runs | Report detail page |
-| `createSavedReport` | Mutation | New Report form |
-| `updateSavedReport` | Mutation | Edit mode on detail page |
-| `cloneSavedReport` | Mutation | Clone dialog on detail page |
-| `deleteSavedReport` | Mutation | Delete confirmation on detail page |
-| `triggerReport` | Mutation | "Run Now" button on detail page |
+| Function            | Operation    | Used By                            |
+| ------------------- | ------------ | ---------------------------------- |
+| `fetchSavedReports` | Query list   | Reports list page                  |
+| `fetchSavedReport`  | Query single | Report detail page                 |
+| `fetchReportRuns`   | Query runs   | Report detail page                 |
+| `createSavedReport` | Mutation     | New Report form                    |
+| `updateSavedReport` | Mutation     | Edit mode on detail page           |
+| `cloneSavedReport`  | Mutation     | Clone dialog on detail page        |
+| `deleteSavedReport` | Mutation     | Delete confirmation on detail page |
+| `triggerReport`     | Mutation     | "Run Now" button on detail page    |
 
 ---
 
@@ -81,13 +81,13 @@ The `/reports/[id]` page supports:
 
 Frontend types are kept in sync with the backend schema at `src/lib/graphql/schema.graphql`. Key mappings:
 
-| Schema Field | Frontend Field | Notes |
-|-------------|---------------|-------|
-| `SavedReportType.reportPlan` | `SavedReport.reportPlan` | JSON, opaque to frontend |
-| `SavedReportType.parameters` | `SavedReport.parameters` | Typed as `ReportParameters` in UI |
-| `ReportRunType.renderedMarkdown` | `ReportRun.renderedMarkdown` | Displayed in detail page |
-| `ReportRunType.durationSeconds` | `ReportRun.durationSeconds` | Shown as `Xs` in run history |
-| `ReportRunType.triggeredBy` | `ReportRun.triggeredBy` | "manual" or "scheduler" |
-| `ReportRunType.artifactUrl` | `ReportRun.artifactUrl` | Future: downloadable report |
+| Schema Field                     | Frontend Field               | Notes                             |
+| -------------------------------- | ---------------------------- | --------------------------------- |
+| `SavedReportType.reportPlan`     | `SavedReport.reportPlan`     | JSON, opaque to frontend          |
+| `SavedReportType.parameters`     | `SavedReport.parameters`     | Typed as `ReportParameters` in UI |
+| `ReportRunType.renderedMarkdown` | `ReportRun.renderedMarkdown` | Displayed in detail page          |
+| `ReportRunType.durationSeconds`  | `ReportRun.durationSeconds`  | Shown as `Xs` in run history      |
+| `ReportRunType.triggeredBy`      | `ReportRun.triggeredBy`      | "manual" or "scheduler"           |
+| `ReportRunType.artifactUrl`      | `ReportRun.artifactUrl`      | Future: downloadable report       |
 
 The `CreateSavedReportInput` wraps user form fields into the schema's `input` object pattern — the mutation sends `{ orgId, input }` not flat args.

@@ -12,9 +12,7 @@ type AIRiskPageProps = {
 export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const aiFilter = metricFilterToAIFilter(filters);
 
   return (
@@ -23,7 +21,8 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
         <PrimaryNav filters={filters} active="ai-risk" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <AIPageHeader eyebrow="AI workflows" title="AI Risk">
-            Quality-risk diagnostics for AI-associated work, including baseline deltas, explicit missing-data states, and governance findings.
+            Quality-risk diagnostics for AI-associated work, including baseline deltas, explicit
+            missing-data states, and governance findings.
           </AIPageHeader>
           <FilterBar view="ai" />
           <AIRiskDashboard filter={aiFilter} />

@@ -1,7 +1,4 @@
-import {
-  DATA_COMPLETENESS_THRESHOLD,
-  GATE_COPY,
-} from "@/lib/feature-flags/interpretation";
+import { DATA_COMPLETENESS_THRESHOLD, GATE_COPY } from "@/lib/feature-flags/interpretation";
 
 interface DataQualityBannerProps {
   dataCompleteness?: number;
@@ -34,12 +31,9 @@ export function DataQualityBanner({
   concurrentDeployCount,
 }: DataQualityBannerProps) {
   const showCompleteness =
-    dataCompleteness !== undefined &&
-    dataCompleteness < DATA_COMPLETENESS_THRESHOLD;
-  const showContamination =
-    cohortContamination !== undefined && cohortContamination > 0;
-  const showConcurrent =
-    concurrentDeployCount !== undefined && concurrentDeployCount > 0;
+    dataCompleteness !== undefined && dataCompleteness < DATA_COMPLETENESS_THRESHOLD;
+  const showContamination = cohortContamination !== undefined && cohortContamination > 0;
+  const showConcurrent = concurrentDeployCount !== undefined && concurrentDeployCount > 0;
 
   if (!showCompleteness && !showContamination && !showConcurrent) return null;
 

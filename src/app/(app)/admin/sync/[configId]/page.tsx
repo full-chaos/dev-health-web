@@ -37,10 +37,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <AdminHeader
-          title={config.name}
-          description={`Provider: ${config.provider}`}
-        >
+        <AdminHeader title={config.name} description={`Provider: ${config.provider}`}>
           <div className="flex items-center gap-3">
             <TestConnectionButton provider={config.provider} credentialId={config.credential_id} />
             <Link

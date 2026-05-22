@@ -34,7 +34,7 @@ export function stripDimensionPrefix(id: string): string {
  */
 export function adaptSankeyToChord(
   sankey: ChordSankeyInput,
-  grouping: ChordGroupingDimension
+  grouping: ChordGroupingDimension,
 ): ChordRecord[] {
   const nodesById = new Map(sankey.nodes.map((node) => [node.id, node]));
   const metadataKey = METADATA_KEY_BY_GROUPING[grouping];

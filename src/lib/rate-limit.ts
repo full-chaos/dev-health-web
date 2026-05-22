@@ -143,7 +143,10 @@ function checkRateLimitedInMemory(key: string, options: RateLimitOptions): RateL
 // Redis backend (shared across instances)
 // ---------------------------------------------------------------------------
 
-async function checkRateLimitedRedis(key: string, options: RateLimitOptions): Promise<RateLimitResult> {
+async function checkRateLimitedRedis(
+  key: string,
+  options: RateLimitOptions,
+): Promise<RateLimitResult> {
   const redis = getRedis();
   if (!redis) {
     if (options.failClosed) {
@@ -201,10 +204,7 @@ export async function checkRateLimit(
   return checkRateLimitedRedis(key, options);
 }
 
-export async function isRateLimited(
-  key: string,
-  options: RateLimitOptions = {},
-): Promise<boolean> {
+export async function isRateLimited(key: string, options: RateLimitOptions = {}): Promise<boolean> {
   return (await checkRateLimit(key, options)).limited;
 }
 

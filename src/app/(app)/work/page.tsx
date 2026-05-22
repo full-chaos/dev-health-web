@@ -30,19 +30,15 @@ type WorkPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-
 const findCategory = (
   categories: Array<{ key: string; name: string; value: number }>,
-  tokens: string[]
+  tokens: string[],
 ) =>
   categories.find((category) =>
-    tokens.some((token) =>
-      `${category.key} ${category.name}`.toLowerCase().includes(token)
-    )
+    tokens.some((token) => `${category.key} ${category.name}`.toLowerCase().includes(token)),
   );
 
 export default async function WorkPage({ searchParams }: WorkPageProps) {
-
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
@@ -51,13 +47,22 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
   const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-  const activeTab: WorkTab = (typeof tabParam === "string" && ["landscape", "heatmap", "flow", "investment", "capacity", "flame", "evidence", "graph"].includes(tabParam))
-    ? (tabParam as WorkTab)
-    : "landscape";
+  const activeTab: WorkTab =
+    typeof tabParam === "string" &&
+    [
+      "landscape",
+      "heatmap",
+      "flow",
+      "investment",
+      "capacity",
+      "flame",
+      "evidence",
+      "graph",
+    ].includes(tabParam)
+      ? (tabParam as WorkTab)
+      : "landscape";
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const scopeId = filters.scope.ids[0] ?? "";
   const quadrantScope: "org" | "team" | "repo" | "developer" =
     filters.scope.level === "developer"
@@ -78,15 +83,16 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     hydrationOrgId = session?.user?.org_id as string | undefined;
   }
 
-  const investmentFetch = graphqlEnabled && hydrationOrgId
-    ? fetchOrNull(
-        getInvestmentMixForHydration(filters, hydrationOrgId),
-        "work/investment-hydration"
-      )
-    : fetchOrNull(
-        getInvestment(filters).then((data) => ({ data, hydrationPayload: null })),
-        "work/investment"
-      );
+  const investmentFetch =
+    graphqlEnabled && hydrationOrgId
+      ? fetchOrNull(
+          getInvestmentMixForHydration(filters, hydrationOrgId),
+          "work/investment-hydration",
+        )
+      : fetchOrNull(
+          getInvestment(filters).then((data) => ({ data, hydrationPayload: null })),
+          "work/investment",
+        );
 
   const [
     health,
@@ -102,7 +108,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     checkApiHealth(),
     fetchOrNull(getHomeData(filters), "work/home-data"),
     investmentFetch,
-    fetchOrNull(getExplainData({ metric: "wip_saturation", filters }), "work/explain-wip_saturation"),
+    fetchOrNull(
+      getExplainData({ metric: "wip_saturation", filters }),
+      "work/explain-wip_saturation",
+    ),
     fetchOrNull(getExplainData({ metric: "blocked_work", filters }), "work/explain-blocked_work"),
     fetchOrNull(
       getHeatmap({
@@ -114,7 +123,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
         start_date: filters.time.start_date,
         end_date: filters.time.end_date,
       }),
-      "work/review-heatmap"
+      "work/review-heatmap",
     ),
     fetchOrNull(
       getQuadrant({
@@ -126,7 +135,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
         start_date: filters.time.start_date,
         end_date: filters.time.end_date,
       }),
-      "work/cycle-throughput-quadrant"
+      "work/cycle-throughput-quadrant",
     ),
     fetchOrNull(
       getQuadrant({
@@ -138,7 +147,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
         start_date: filters.time.start_date,
         end_date: filters.time.end_date,
       }),
-      "work/wip-throughput-quadrant"
+      "work/wip-throughput-quadrant",
     ),
     fetchOrNull(
       getQuadrant({
@@ -150,7 +159,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
         start_date: filters.time.start_date,
         end_date: filters.time.end_date,
       }),
-      "work/review-load-latency-quadrant"
+      "work/review-load-latency-quadrant",
     ),
   ]);
 
@@ -166,10 +175,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
   const investmentCategoriesForSummary = investmentMix
     ? Object.entries(investmentMix.theme_distribution).map(([key, value]) => ({
-      key,
-      name: key.replace(/[_-]+/g, " "),
-      value,
-    }))
+        key,
+        name: key.replace(/[_-]+/g, " "),
+        value,
+      }))
     : [];
 
   const planned = investmentMix
@@ -177,13 +186,13 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     : null;
   const unplanned = investmentMix
     ? (findCategory(investmentCategoriesForSummary, [
-      "unplanned",
-      "interrupt",
-      "incident",
-      "support",
-      "ops",
-      "run",
-    ]) ?? null)
+        "unplanned",
+        "interrupt",
+        "incident",
+        "support",
+        "ops",
+        "run",
+      ]) ?? null)
     : null;
   const plannedTotal = planned && unplanned ? planned.value + unplanned.value : 0;
   const plannedPct = plannedTotal ? (planned?.value ?? 0) / plannedTotal : null;
@@ -196,18 +205,12 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Work
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Work Investment and Flow
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Work</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Work Investment and Flow</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Work allocation, WIP pressure, and blocked effort.
               </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Select a tab to investigate.
-              </p>
+              <p className="mt-2 text-sm text-(--ink-muted)">Select a tab to investigate.</p>
             </div>
             <Link
               href={withFilterParam("/", filters, activeRole)}
@@ -241,41 +244,21 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
           )}
 
           {activeTab === "heatmap" && (
-            <HeatmapView
-              filters={filters}
-              scopeId={scopeId}
-              reviewHeatmap={reviewHeatmap}
-            />
+            <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={reviewHeatmap} />
           )}
 
-          {activeTab === "flow" && (
-            <FlowView
-              filters={filters}
-              activeRole={activeRole}
-            />
-          )}
+          {activeTab === "flow" && <FlowView filters={filters} activeRole={activeRole} />}
 
           {activeTab === "investment" && (
             <>
               <HydrateUrqlResults payload={investmentHydrationPayload} />
-              <InvestmentView
-                filters={filters}
-                activeRole={activeRole}
-              />
+              <InvestmentView filters={filters} activeRole={activeRole} />
             </>
           )}
 
-          {activeTab === "capacity" && (
-            <CapacityView
-              filters={filters}
-            />
-          )}
+          {activeTab === "capacity" && <CapacityView filters={filters} />}
 
-          {activeTab === "flame" && (
-            <FlameView
-              filters={filters}
-            />
-          )}
+          {activeTab === "flame" && <FlameView filters={filters} />}
 
           {activeTab === "evidence" && (
             <EvidenceView
@@ -286,12 +269,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
             />
           )}
 
-          {activeTab === "graph" && (
-            <GraphView
-              filters={filters}
-              activeRole={activeRole}
-            />
-          )}
+          {activeTab === "graph" && <GraphView filters={filters} activeRole={activeRole} />}
         </main>
       </div>
     </div>

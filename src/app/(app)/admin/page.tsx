@@ -8,8 +8,8 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <AdminHeader 
-        title="Admin Dashboard" 
+      <AdminHeader
+        title="Admin Dashboard"
         description={`Welcome back, ${user?.name || user?.email}.`}
       />
 
@@ -20,8 +20,8 @@ export default async function AdminDashboardPage() {
             Manage users, roles, and permissions across the organization.
           </p>
           <div className="mt-4">
-            <Link 
-              href="/admin/users" 
+            <Link
+              href="/admin/users"
               className="text-sm font-medium text-(--accent) hover:underline"
             >
               Manage Users →
@@ -35,8 +35,8 @@ export default async function AdminDashboardPage() {
             Configure connections to GitHub, GitLab, Jira, and other tools.
           </p>
           <div className="mt-4">
-            <Link 
-              href="/admin/integrations" 
+            <Link
+              href="/admin/integrations"
               className="text-sm font-medium text-(--accent) hover:underline"
             >
               Configure Integrations →
@@ -50,8 +50,8 @@ export default async function AdminDashboardPage() {
             Monitor data synchronization jobs and troubleshoot issues.
           </p>
           <div className="mt-4">
-            <Link 
-              href="/admin/sync" 
+            <Link
+              href="/admin/sync"
               className="text-sm font-medium text-(--accent) hover:underline"
             >
               View Sync Status →

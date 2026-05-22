@@ -79,7 +79,7 @@ describe("TreemapChart", () => {
         name: "Feature Delivery",
         value: 60,
         path: ["All Work", "Feature Delivery"],
-      })
+      }),
     );
   });
 
@@ -93,7 +93,7 @@ describe("TreemapChart", () => {
           children: [],
         }}
         onNodeClick={onNodeClick}
-      />
+      />,
     );
 
     const props = chartSpy.mock.calls[0][0] as {

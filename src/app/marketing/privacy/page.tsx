@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import {
-  LegalDocument,
-  type LegalSection,
-} from "@/components/shared/LegalDocument";
+import { LegalDocument, type LegalSection } from "@/components/shared/LegalDocument";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Full Chaos Dev Health",

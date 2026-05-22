@@ -11,7 +11,7 @@ describe("AIComparisonMetricCard", () => {
         unit="%"
         delta={0.031}
         description="AI rework signal"
-      />
+      />,
     );
 
     expect(screen.getByText("Rework rate")).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe("AIComparisonMetricCard", () => {
         delta={1}
         description="Loading card"
         loading
-      />
+      />,
     );
 
     expect(screen.getByText("Loading baseline…")).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe("AIComparisonMetricCard", () => {
         unit="%"
         description="Incident card"
         onDrilldown={onDrilldown}
-      />
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: /drill into evidence/i }));

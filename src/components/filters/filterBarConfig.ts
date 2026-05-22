@@ -153,10 +153,7 @@ const AI_VISIBILITY: FilterVisibility = {
   date: true,
 };
 
-export const resolveVisibility = (
-  view?: FilterBarView,
-  tab?: string
-): FilterVisibility => {
+export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVisibility => {
   if (view === "metrics") {
     if (tab === "flow") {
       return METRICS_FLOW_VISIBILITY;
@@ -209,9 +206,7 @@ export const resolveVisibility = (
   return DEFAULT_VISIBILITY;
 };
 
-export const resolveScopeLock = (
-  view?: FilterBarView
-): MetricFilter["scope"]["level"] | null => {
+export const resolveScopeLock = (view?: FilterBarView): MetricFilter["scope"]["level"] | null => {
   const lockedViews: FilterBarView[] = [
     "metrics",
     "quality",

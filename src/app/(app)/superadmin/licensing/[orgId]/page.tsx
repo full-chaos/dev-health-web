@@ -14,7 +14,7 @@ type PageProps = {
 
 export default async function LicensingDetailPage({ params }: PageProps) {
   const { orgId } = await params;
-  
+
   const [orgResult, entitlementsResult, overridesResult, flagsResult] = await Promise.all([
     getOrganization(orgId),
     getOrgEntitlements(orgId),
@@ -37,7 +37,7 @@ export default async function LicensingDetailPage({ params }: PageProps) {
         title={`${org.name} Entitlements`}
         description={`Manage licensing and feature flags for ${org.slug}`}
       />
-      
+
       <EntitlementsDetail
         orgId={org.id}
         entitlements={entitlements}

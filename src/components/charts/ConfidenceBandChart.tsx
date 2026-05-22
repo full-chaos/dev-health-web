@@ -28,7 +28,7 @@ function generateProjection(
   backlog: number,
   throughput: number,
   days: number,
-  mode: "burndown" | "burnup"
+  mode: "burndown" | "burnup",
 ): number[] {
   const result: number[] = [];
   let remaining = backlog;
@@ -77,7 +77,7 @@ export function ConfidenceBandChart({
 
   const projection = useMemo(
     () => generateProjection(backlogSize, throughputMean, maxDays, mode),
-    [backlogSize, throughputMean, maxDays, mode]
+    [backlogSize, throughputMean, maxDays, mode],
   );
 
   const p50Band = useMemo(() => {
@@ -237,15 +237,10 @@ export function ConfidenceBandChart({
       p50Days,
       p85Days,
       p95Days,
-    ]
+    ],
   );
 
   return (
-    <Chart
-      option={option}
-      className={className}
-      style={mergedStyle}
-      chartTheme={chartTheme}
-    />
+    <Chart option={option} className={className} style={mergedStyle} chartTheme={chartTheme} />
   );
 }

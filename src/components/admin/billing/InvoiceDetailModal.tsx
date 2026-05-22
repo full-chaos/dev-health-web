@@ -21,14 +21,22 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--background) shadow-2xl">
         <div className="flex items-center justify-between border-b border-(--card-stroke) px-6 py-4">
           <div>
             <h3 className="font-(--font-display) text-xl text-foreground">Invoice Details</h3>
             <p className="text-sm text-(--ink-muted)">{invoice.stripe_invoice_id}</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm hover:bg-(--card-70)">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm hover:bg-(--card-70)"
+          >
             Close
           </button>
         </div>
@@ -40,11 +48,15 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
           </div>
           <div>
             <p className="text-(--ink-muted)">Amount Due</p>
-            <p className="font-medium text-foreground">{formatMoney(invoice.amount_due, invoice.currency)}</p>
+            <p className="font-medium text-foreground">
+              {formatMoney(invoice.amount_due, invoice.currency)}
+            </p>
           </div>
           <div>
             <p className="text-(--ink-muted)">Amount Paid</p>
-            <p className="font-medium text-foreground">{formatMoney(invoice.amount_paid, invoice.currency)}</p>
+            <p className="font-medium text-foreground">
+              {formatMoney(invoice.amount_paid, invoice.currency)}
+            </p>
           </div>
           <div>
             <p className="text-(--ink-muted)">Customer</p>

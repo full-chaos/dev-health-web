@@ -111,9 +111,7 @@ export function PreferencesSettings() {
     >
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-(--foreground) mb-2">
-            Theme
-          </label>
+          <label className="block text-sm font-medium text-(--foreground) mb-2">Theme</label>
           <div className="flex gap-3">
             <button
               type="button"

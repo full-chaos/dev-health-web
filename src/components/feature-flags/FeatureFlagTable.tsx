@@ -25,16 +25,12 @@ const columns: DataTableColumn<FeatureFlagListItem>[] = [
   {
     key: "flagKey",
     header: "Flag Key",
-    render: (row) => (
-      <span className="font-mono text-xs">{row.flagKey}</span>
-    ),
+    render: (row) => <span className="font-mono text-xs">{row.flagKey}</span>,
   },
   {
     key: "provider",
     header: "Provider",
-    render: (row) => (
-      <span className="text-xs capitalize text-(--ink-muted)">{row.provider}</span>
-    ),
+    render: (row) => <span className="text-xs capitalize text-(--ink-muted)">{row.provider}</span>,
   },
   {
     key: "createdAt",
@@ -57,7 +53,9 @@ const columns: DataTableColumn<FeatureFlagListItem>[] = [
       const key = row.isActive === true ? "on" : row.isActive === false ? "off" : "unknown";
       const badge = STATUS_BADGE[key];
       return (
-        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badge.className}`}>
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badge.className}`}
+        >
           {badge.label}
         </span>
       );

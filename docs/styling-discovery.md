@@ -7,17 +7,17 @@
 
 ## Current State Summary
 
-| Area | Status |
-|------|--------|
-| Design tokens (CSS vars) | Solid — 5 palettes, light/dark, chart integration |
-| Typography | Good — Inter + JetBrains Mono, consistent scale |
-| Component patterns | Good — consistent card/nav/table language |
-| Dark mode | Complete — `data-theme` + OS preference |
-| Responsive | Good — mobile-first, `md:` / `lg:` breakpoints |
-| Animations | Minimal — hover lifts, pulse skeletons |
-| Gradients | Marketing only — app shell is flat `bg-background` |
-| Loading states | Weak — Suspense boundaries render nothing |
-| Empty states | Weak — dashed borders, no helpful guidance |
+| Area                     | Status                                             |
+| ------------------------ | -------------------------------------------------- |
+| Design tokens (CSS vars) | Solid — 5 palettes, light/dark, chart integration  |
+| Typography               | Good — Inter + JetBrains Mono, consistent scale    |
+| Component patterns       | Good — consistent card/nav/table language          |
+| Dark mode                | Complete — `data-theme` + OS preference            |
+| Responsive               | Good — mobile-first, `md:` / `lg:` breakpoints     |
+| Animations               | Minimal — hover lifts, pulse skeletons             |
+| Gradients                | Marketing only — app shell is flat `bg-background` |
+| Loading states           | Weak — Suspense boundaries render nothing          |
+| Empty states             | Weak — dashed borders, no helpful guidance         |
 
 ---
 
@@ -50,6 +50,7 @@
 ```
 
 Apply on the `(app)` layout wrapper:
+
 ```tsx
 <div className="min-h-screen bg-(image:--app-gradient) bg-fixed">
 ```
@@ -66,13 +67,13 @@ Using `bg-fixed` keeps the gradient stationary while content scrolls — avoids 
 
 **Recommendation:** Adopt a layered surface model:
 
-| Layer | Token | Use |
-|-------|-------|-----|
-| Page | `--background` | Body/shell |
-| Surface 1 | `--card-90` | Primary sections (metric grids, chart panels) |
-| Surface 2 | `--card-80` | Cards within sections |
-| Surface 3 | `--card-70` | Nested elements (table headers, filter bars) |
-| Inset | `--card-60` | Inputs, code blocks |
+| Layer     | Token          | Use                                           |
+| --------- | -------------- | --------------------------------------------- |
+| Page      | `--background` | Body/shell                                    |
+| Surface 1 | `--card-90`    | Primary sections (metric grids, chart panels) |
+| Surface 2 | `--card-80`    | Cards within sections                         |
+| Surface 3 | `--card-70`    | Nested elements (table headers, filter bars)  |
+| Inset     | `--card-60`    | Inputs, code blocks                           |
 
 Some pages already do this inconsistently. Standardize across all views so nesting always darkens/lightens predictably.
 
@@ -85,12 +86,14 @@ Some pages already do this inconsistently. Standardize across all views so nesti
 **Recommendation:** Add `loading.tsx` files for key routes using the existing `Skeleton` component:
 
 Priority routes:
+
 - `/(app)/dashboard/loading.tsx`
 - `/(app)/metrics/loading.tsx`
 - `/(app)/explore/loading.tsx`
 - `/(app)/work/loading.tsx`
 
 Pattern:
+
 ```tsx
 export default function Loading() {
   return (
@@ -124,11 +127,11 @@ export default function Loading() {
 ```tsx
 function EmptyState({ icon, title, description, action }: Props) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed
-                    border-(--card-stroke) bg-(--card-70) py-12 text-center">
-      <div className="rounded-full bg-(--accent)/10 p-3 text-(--accent)">
-        {icon}
-      </div>
+    <div
+      className="flex flex-col items-center gap-3 rounded-3xl border border-dashed
+                    border-(--card-stroke) bg-(--card-70) py-12 text-center"
+    >
+      <div className="rounded-full bg-(--accent)/10 p-3 text-(--accent)">{icon}</div>
       <p className="font-(--font-display) text-lg font-semibold">{title}</p>
       <p className="max-w-sm text-sm text-(--ink-muted)">{description}</p>
       {action}
@@ -144,12 +147,17 @@ function EmptyState({ icon, title, description, action }: Props) {
 **Problem:** Data tables (`DataTable.tsx`) have no row hover highlight and no alternating row colors, making dense tables hard to scan.
 
 **Recommendation:**
+
 ```css
 /* Row hover */
-tr:hover td { background: var(--card-70); }
+tr:hover td {
+  background: var(--card-70);
+}
 
 /* Optional zebra — use odd rows to avoid header conflict */
-tbody tr:nth-child(odd) { background: color-mix(in srgb, var(--card) 5%, transparent); }
+tbody tr:nth-child(odd) {
+  background: color-mix(in srgb, var(--card) 5%, transparent);
+}
 ```
 
 Keep it subtle — the current minimal style is intentional, but a hover state is expected UX.
@@ -164,19 +172,36 @@ Keep it subtle — the current minimal style is intentional, but a hover state i
 
 ```css
 /* Fast — color/opacity changes */
-.transition-fast { transition: color 150ms, background-color 150ms, border-color 150ms, opacity 150ms; }
+.transition-fast {
+  transition:
+    color 150ms,
+    background-color 150ms,
+    border-color 150ms,
+    opacity 150ms;
+}
 
 /* Standard — transforms, layout */
-.transition-standard { transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1); }
+.transition-standard {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
 ```
 
 Add page-level entrance animation for content sections:
+
 ```css
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.animate-fade-up { animation: fade-up 300ms ease-out; }
+.animate-fade-up {
+  animation: fade-up 300ms ease-out;
+}
 ```
 
 Apply `animate-fade-up` to the main content wrapper in each page.
@@ -233,12 +258,12 @@ The `backdrop-blur-sm` + semi-transparent background creates a frosted-glass eff
 
 **Recommendation:** Adopt a consistent scale:
 
-| Context | Padding | Gap |
-|---------|---------|-----|
-| Section wrapper | `p-5` | `gap-6` |
-| Card content | `p-4` | `gap-4` |
-| Nested element | `p-3` | `gap-3` |
-| Compact (metric) | `p-4` | `gap-2` |
+| Context          | Padding | Gap     |
+| ---------------- | ------- | ------- |
+| Section wrapper  | `p-5`   | `gap-6` |
+| Card content     | `p-4`   | `gap-4` |
+| Nested element   | `p-3`   | `gap-3` |
+| Compact (metric) | `p-4`   | `gap-2` |
 
 Audit and align existing uses. No visual change for most, but makes future work predictable.
 
@@ -290,10 +315,14 @@ This ensures keyboard navigation works everywhere and meets WCAG 2.1 AA (2.4.7 F
 ```tsx
 function ErrorCard({ title, message, action }: Props) {
   return (
-    <div className="mx-auto max-w-md rounded-3xl border border-(--accent-negative)/30
-                    bg-(--card-80) p-8 text-center">
-      <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-(--accent-negative)/10
-                      flex items-center justify-center text-(--accent-negative)">
+    <div
+      className="mx-auto max-w-md rounded-3xl border border-(--accent-negative)/30
+                    bg-(--card-80) p-8 text-center"
+    >
+      <div
+        className="mx-auto mb-4 h-12 w-12 rounded-full bg-(--accent-negative)/10
+                      flex items-center justify-center text-(--accent-negative)"
+      >
         ⚠
       </div>
       <h2 className="font-(--font-display) text-xl font-semibold">{title}</h2>
@@ -308,20 +337,20 @@ function ErrorCard({ title, message, action }: Props) {
 
 ## Priority Matrix
 
-| # | Recommendation | Impact | Effort | Priority |
-|---|---------------|--------|--------|----------|
-| 1 | App shell gradient background | High | Low | **P1** |
-| 3 | Skeleton loading states | High | Medium | **P1** |
-| 7 | Filter bar frosted glass | Medium | Low | **P1** |
-| 6 | Micro-animations (fade-up) | Medium | Low | **P2** |
-| 5 | Table row hover | Medium | Low | **P2** |
-| 11 | Focus ring consistency | Medium | Low | **P2** |
-| 2 | Card depth layering | Medium | Medium | **P2** |
-| 4 | Empty state component | Medium | Medium | **P2** |
-| 8 | Sidebar active indicator | Low | Low | **P3** |
-| 9 | Spacing standardization | Low | Medium | **P3** |
-| 10 | Gradient hero metrics | Low | Low | **P3** |
-| 12 | Error card component | Low | Medium | **P3** |
+| #   | Recommendation                | Impact | Effort | Priority |
+| --- | ----------------------------- | ------ | ------ | -------- |
+| 1   | App shell gradient background | High   | Low    | **P1**   |
+| 3   | Skeleton loading states       | High   | Medium | **P1**   |
+| 7   | Filter bar frosted glass      | Medium | Low    | **P1**   |
+| 6   | Micro-animations (fade-up)    | Medium | Low    | **P2**   |
+| 5   | Table row hover               | Medium | Low    | **P2**   |
+| 11  | Focus ring consistency        | Medium | Low    | **P2**   |
+| 2   | Card depth layering           | Medium | Medium | **P2**   |
+| 4   | Empty state component         | Medium | Medium | **P2**   |
+| 8   | Sidebar active indicator      | Low    | Low    | **P3**   |
+| 9   | Spacing standardization       | Low    | Medium | **P3**   |
+| 10  | Gradient hero metrics         | Low    | Low    | **P3**   |
+| 12  | Error card component          | Low    | Medium | **P3**   |
 
 ---
 

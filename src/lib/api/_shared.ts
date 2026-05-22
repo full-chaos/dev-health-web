@@ -20,12 +20,7 @@ export const postJson = async <T>(
   path: string,
   body: unknown,
   revalidate = 60,
-  params?: Record<string, string | number>
+  params?: Record<string, string | number>,
 ) => {
-  return apiClient.postJson<T>(
-    path,
-    body,
-    { next: { revalidate } },
-    params
-  );
+  return apiClient.postJson<T>(path, body, { next: { revalidate } }, params);
 };

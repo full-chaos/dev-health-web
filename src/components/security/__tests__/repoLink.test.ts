@@ -11,20 +11,14 @@ describe("buildRepoHref", () => {
   });
 
   it("appends ?f= when f is provided", () => {
-    expect(buildRepoHref("my-repo", "abc123")).toBe(
-      "/security/repos/my-repo?f=abc123"
-    );
+    expect(buildRepoHref("my-repo", "abc123")).toBe("/security/repos/my-repo?f=abc123");
   });
 
   it("URL-encodes special characters in repoId", () => {
-    expect(buildRepoHref("org/repo-name", "xyz")).toBe(
-      "/security/repos/org%2Frepo-name?f=xyz"
-    );
+    expect(buildRepoHref("org/repo-name", "xyz")).toBe("/security/repos/org%2Frepo-name?f=xyz");
   });
 
   it("URL-encodes repoId even without f param", () => {
-    expect(buildRepoHref("org/repo-name")).toBe(
-      "/security/repos/org%2Frepo-name"
-    );
+    expect(buildRepoHref("org/repo-name")).toBe("/security/repos/org%2Frepo-name");
   });
 });

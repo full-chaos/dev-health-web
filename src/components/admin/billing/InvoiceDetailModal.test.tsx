@@ -52,16 +52,14 @@ describe("InvoiceDetailModal", () => {
 
   it("renders nothing when isOpen=false", () => {
     const { container } = render(
-      <InvoiceDetailModal invoice={makeInvoice()} isOpen={false} onClose={vi.fn()} />
+      <InvoiceDetailModal invoice={makeInvoice()} isOpen={false} onClose={vi.fn()} />,
     );
 
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders nothing when invoice is null", () => {
-    const { container } = render(
-      <InvoiceDetailModal invoice={null} isOpen onClose={vi.fn()} />
-    );
+    const { container } = render(<InvoiceDetailModal invoice={null} isOpen onClose={vi.fn()} />);
 
     expect(container).toBeEmptyDOMElement();
   });
@@ -79,11 +77,7 @@ describe("InvoiceDetailModal", () => {
 
   it("renders 'No line items found.' when there are no lines", () => {
     render(
-      <InvoiceDetailModal
-        invoice={makeInvoice({ line_items: [] })}
-        isOpen
-        onClose={vi.fn()}
-      />
+      <InvoiceDetailModal invoice={makeInvoice({ line_items: [] })} isOpen onClose={vi.fn()} />,
     );
 
     expect(screen.getByText(/No line items found/i)).toBeInTheDocument();

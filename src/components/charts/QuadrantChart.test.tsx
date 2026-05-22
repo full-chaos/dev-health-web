@@ -92,7 +92,7 @@ describe("QuadrantChart", () => {
           points: [],
           annotations: [],
         }}
-      />
+      />,
     );
 
     const props = chartSpy.mock.calls[0][0] as {

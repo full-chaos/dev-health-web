@@ -9,7 +9,7 @@ describe("AIMissingDataPanel", () => {
         title="Reviewer concentration"
         reason="Reviewer concentration is not in the schema."
         needed="Aggregated reviewer distribution buckets."
-      />
+      />,
     );
 
     expect(screen.getByText("Missing data")).toBeInTheDocument();

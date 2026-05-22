@@ -18,10 +18,10 @@ GitHub social login is an optional provider in NextAuth.js v5. It is enabled onl
 
 ([`config.ts:83–84`](../src/lib/config.ts#L83))
 
-| Variable | Required | Description |
-|---|---|---|
-| `AUTH_GITHUB_ID` | Yes (to enable) | GitHub OAuth App client ID. If absent, GitHub login is disabled. |
-| `AUTH_GITHUB_SECRET` | Yes (when `AUTH_GITHUB_ID` is set) | GitHub OAuth App client secret. |
+| Variable             | Required                           | Description                                                      |
+| -------------------- | ---------------------------------- | ---------------------------------------------------------------- |
+| `AUTH_GITHUB_ID`     | Yes (to enable)                    | GitHub OAuth App client ID. If absent, GitHub login is disabled. |
+| `AUTH_GITHUB_SECRET` | Yes (when `AUTH_GITHUB_ID` is set) | GitHub OAuth App client secret.                                  |
 
 See [`docs/env-vars.md`](env-vars.md) for the full environment variable reference.
 
@@ -46,20 +46,20 @@ User clicks "Sign in with GitHub"
 
 The same session shape as credentials login:
 
-| Field | Source |
-|---|---|
-| `access_token` | Backend JWT returned by `/api/v1/auth/social-login` |
-| `role` | User's role from backend |
-| `is_superuser` | Boolean from backend |
-| `permissions` | Empty array (social login does not return granular permissions) |
-| `needs_onboarding` | Whether the user needs to complete onboarding |
+| Field              | Source                                                          |
+| ------------------ | --------------------------------------------------------------- |
+| `access_token`     | Backend JWT returned by `/api/v1/auth/social-login`             |
+| `role`             | User's role from backend                                        |
+| `is_superuser`     | Boolean from backend                                            |
+| `permissions`      | Empty array (social login does not return granular permissions) |
+| `needs_onboarding` | Whether the user needs to complete onboarding                   |
 
 ## Checking which providers are enabled
 
 ```ts
-import { getAvailableSocialProviders } from "@/lib/auth"
+import { getAvailableSocialProviders } from "@/lib/auth";
 // Returns e.g. ["github", "google"] based on which env vars are set
-const providers = getAvailableSocialProviders()
+const providers = getAvailableSocialProviders();
 ```
 
 ([`auth.ts:369–376`](../src/lib/auth.ts#L369))

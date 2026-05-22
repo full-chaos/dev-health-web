@@ -1,9 +1,5 @@
 import { request } from "./_request";
-import type {
-  IdentityMapping,
-  IdentityMappingCreate,
-  IdentityMappingUpdate,
-} from "../types";
+import type { IdentityMapping, IdentityMappingCreate, IdentityMappingUpdate } from "../types";
 
 export const identitiesApi = {
   list: (token?: string, orgId?: string) =>
@@ -17,7 +13,7 @@ export const identitiesApi = {
       "/identities",
       { method: "POST", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   update: (id: string, data: IdentityMappingUpdate, token?: string, orgId?: string) =>
@@ -25,7 +21,7 @@ export const identitiesApi = {
       `/identities/${id}`,
       { method: "PATCH", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   delete: (id: string, token?: string, orgId?: string) =>

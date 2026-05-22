@@ -63,15 +63,38 @@ describe("ChordChart", () => {
   });
 
   it("renders empty state for empty dataset", () => {
-    render(<ChordChart dataset={{ grouping: "team", nodes: [], matrix: [], totalFlow: 0, summary: { topImporters: [], topExporters: [], strongestBilateral: [], otherShare: 0 } }} />);
+    render(
+      <ChordChart
+        dataset={{
+          grouping: "team",
+          nodes: [],
+          matrix: [],
+          totalFlow: 0,
+          summary: { topImporters: [], topExporters: [], strongestBilateral: [], otherShare: 0 },
+        }}
+      />,
+    );
 
     expect(screen.queryByTestId("chord-chart")).not.toBeInTheDocument();
     expect(screen.getByText(/No flows match the current filters/i)).toBeInTheDocument();
-    expect(screen.getByText(/No flows match the current filters/i)).toHaveAttribute("data-chord-empty", "true");
+    expect(screen.getByText(/No flows match the current filters/i)).toHaveAttribute(
+      "data-chord-empty",
+      "true",
+    );
   });
 
   it("renders single-node state for 1-node dataset", () => {
-    render(<ChordChart dataset={{ grouping: "team", nodes: [{ id: "team-a", label: "Team A", isOther: false }], matrix: [[1]], totalFlow: 1, summary: { topImporters: [], topExporters: [], strongestBilateral: [], otherShare: 0 } }} />);
+    render(
+      <ChordChart
+        dataset={{
+          grouping: "team",
+          nodes: [{ id: "team-a", label: "Team A", isOther: false }],
+          matrix: [[1]],
+          totalFlow: 1,
+          summary: { topImporters: [], topExporters: [], strongestBilateral: [], otherShare: 0 },
+        }}
+      />,
+    );
 
     expect(screen.queryByTestId("chord-chart")).not.toBeInTheDocument();
     expect(screen.getByText(/Only one entity found/i)).toBeInTheDocument();

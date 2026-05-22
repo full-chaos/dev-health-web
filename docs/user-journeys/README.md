@@ -48,47 +48,47 @@
 
 ### Master Coverage Matrix
 
-| Journey | Backend Unit | Frontend Unit | Frontend E2E | Live E2E |
-|---|---|---|---|---|
-| Full Account Setup | — | — | ✅ | ✅ |
-| Integration Setup | ✅ (`test_admin_credentials.py`) | ✅ (`IntegrationForm.test.tsx`) | ✅ (`admin-integrations.spec.ts`, account-creation-journey step 4) | ✅ (`journey.spec.ts`) |
-| Sync Configuration | ✅ (`test_sync_configs.py`) | ✅ (`SyncConfigForm.test.tsx`) | ✅ (`admin-sync.spec.ts`, account-creation-journey step 5) | ✅ (`journey.spec.ts`) |
-| Team Management | ✅ (`test_teams.py`) | ✅ (`TeamForm.test.tsx`) | ✅ (`admin-teams.spec.ts`, account-creation-journey step 6) | — |
-| Identity Mapping | ✅ (`test_identities.py`) | ✅ (`IdentityForm.test.tsx`) | ✅ (`admin-identities.spec.ts`, account-creation-journey step 7) | — |
-| Organization Settings | — | — | ✅ (`admin-settings.spec.ts`) | — |
-| Dashboard & Drill-down | — | — | ✅ (`home-flow.spec.ts`) | — |
-| Work Navigation | — | — | ✅ (`work-navigation.spec.ts`) | — |
-| Filter Propagation | — | — | ✅ (`filter-propagation.spec.ts`) | — |
-| People Search | — | — | ✅ (`people.spec.ts`) | — |
-| Chart Rendering | — | — | ✅ (`sankey/quadrant/heatmap/flame.spec.ts`) | — |
-| Deployment Flame | — | — | ✅ (`deployments.spec.ts`) | — |
-| Marketing/Pricing | — | — | ✅ (`marketing-pricing.spec.ts`) | — |
-| Impersonation | ✅ (`test_impersonation_endpoints.py`) | ✅ (`access-matrix.test.ts`) | — | ✅ (`impersonation.spec.ts`) |
-| Billing Plans | ✅ (`test_billing_plans.py`) | — | ✅ (`billing-plans.spec.ts`) | — |
-| Subscriptions | ✅ (`test_subscriptions.py`) | — | ✅ (`billing-subscriptions.spec.ts`) | — |
-| Invoices | — | — | ✅ (`billing-invoices.spec.ts`) | — |
-| Refunds | ✅ (`test_refunds.py`) | — | ✅ (`billing-refunds.spec.ts`) | — |
-| Billing Audit | — | — | ✅ (`billing-audit.spec.ts`) | — |
-| IP Allowlisting | ✅ (`test_ip_allowlist.py`) | ✅ (`server.test.ts`) | — | — |
-| Retention Policies | ✅ (`test_retention.py`) | ✅ (`server.test.ts`) | — | — |
-| Platform Stats | ✅ (`test_platform_stats.py`) | — | — | — |
-| Tier Feature Gating | ✅ (`test_community_features.py`) | ✅ (`access-matrix.test.ts`) | — | — |
+| Journey                | Backend Unit                           | Frontend Unit                   | Frontend E2E                                                       | Live E2E                     |
+| ---------------------- | -------------------------------------- | ------------------------------- | ------------------------------------------------------------------ | ---------------------------- |
+| Full Account Setup     | —                                      | —                               | ✅                                                                 | ✅                           |
+| Integration Setup      | ✅ (`test_admin_credentials.py`)       | ✅ (`IntegrationForm.test.tsx`) | ✅ (`admin-integrations.spec.ts`, account-creation-journey step 4) | ✅ (`journey.spec.ts`)       |
+| Sync Configuration     | ✅ (`test_sync_configs.py`)            | ✅ (`SyncConfigForm.test.tsx`)  | ✅ (`admin-sync.spec.ts`, account-creation-journey step 5)         | ✅ (`journey.spec.ts`)       |
+| Team Management        | ✅ (`test_teams.py`)                   | ✅ (`TeamForm.test.tsx`)        | ✅ (`admin-teams.spec.ts`, account-creation-journey step 6)        | —                            |
+| Identity Mapping       | ✅ (`test_identities.py`)              | ✅ (`IdentityForm.test.tsx`)    | ✅ (`admin-identities.spec.ts`, account-creation-journey step 7)   | —                            |
+| Organization Settings  | —                                      | —                               | ✅ (`admin-settings.spec.ts`)                                      | —                            |
+| Dashboard & Drill-down | —                                      | —                               | ✅ (`home-flow.spec.ts`)                                           | —                            |
+| Work Navigation        | —                                      | —                               | ✅ (`work-navigation.spec.ts`)                                     | —                            |
+| Filter Propagation     | —                                      | —                               | ✅ (`filter-propagation.spec.ts`)                                  | —                            |
+| People Search          | —                                      | —                               | ✅ (`people.spec.ts`)                                              | —                            |
+| Chart Rendering        | —                                      | —                               | ✅ (`sankey/quadrant/heatmap/flame.spec.ts`)                       | —                            |
+| Deployment Flame       | —                                      | —                               | ✅ (`deployments.spec.ts`)                                         | —                            |
+| Marketing/Pricing      | —                                      | —                               | ✅ (`marketing-pricing.spec.ts`)                                   | —                            |
+| Impersonation          | ✅ (`test_impersonation_endpoints.py`) | ✅ (`access-matrix.test.ts`)    | —                                                                  | ✅ (`impersonation.spec.ts`) |
+| Billing Plans          | ✅ (`test_billing_plans.py`)           | —                               | ✅ (`billing-plans.spec.ts`)                                       | —                            |
+| Subscriptions          | ✅ (`test_subscriptions.py`)           | —                               | ✅ (`billing-subscriptions.spec.ts`)                               | —                            |
+| Invoices               | —                                      | —                               | ✅ (`billing-invoices.spec.ts`)                                    | —                            |
+| Refunds                | ✅ (`test_refunds.py`)                 | —                               | ✅ (`billing-refunds.spec.ts`)                                     | —                            |
+| Billing Audit          | —                                      | —                               | ✅ (`billing-audit.spec.ts`)                                       | —                            |
+| IP Allowlisting        | ✅ (`test_ip_allowlist.py`)            | ✅ (`server.test.ts`)           | —                                                                  | —                            |
+| Retention Policies     | ✅ (`test_retention.py`)               | ✅ (`server.test.ts`)           | —                                                                  | —                            |
+| Platform Stats         | ✅ (`test_platform_stats.py`)          | —                               | —                                                                  | —                            |
+| Tier Feature Gating    | ✅ (`test_community_features.py`)      | ✅ (`access-matrix.test.ts`)    | —                                                                  | —                            |
 
 ### Coverage Gaps
 
-| Journey | Missing Coverage | Priority |
-|---------|-----------------|----------|
-| Organization Settings | No backend unit tests for settings CRUD | Medium |
-| Dashboard & Drill-down | No backend or unit tests | Low |
-| Work Navigation | No backend or unit tests | Low |
-| Filter Propagation | No backend or unit tests (URL-only logic) | Low |
-| People Search | No backend unit tests for search endpoint | Medium |
-| Chart Rendering | No unit tests for chart components | Medium |
-| Deployment Flame | No backend unit tests for deployment data | Medium |
-| Marketing/Pricing | No backend tests for pricing page data | Low |
-| Invoices | No backend unit tests for invoice CRUD | Medium |
-| Billing Audit | No backend or unit tests | Medium |
-| IP Allowlisting | No frontend E2E tests | Low |
-| Retention Policies | No frontend E2E tests | Low |
-| Platform Stats | No frontend tests at all | Medium |
-| Tier Feature Gating | No frontend E2E tests | Low |
+| Journey                | Missing Coverage                          | Priority |
+| ---------------------- | ----------------------------------------- | -------- |
+| Organization Settings  | No backend unit tests for settings CRUD   | Medium   |
+| Dashboard & Drill-down | No backend or unit tests                  | Low      |
+| Work Navigation        | No backend or unit tests                  | Low      |
+| Filter Propagation     | No backend or unit tests (URL-only logic) | Low      |
+| People Search          | No backend unit tests for search endpoint | Medium   |
+| Chart Rendering        | No unit tests for chart components        | Medium   |
+| Deployment Flame       | No backend unit tests for deployment data | Medium   |
+| Marketing/Pricing      | No backend tests for pricing page data    | Low      |
+| Invoices               | No backend unit tests for invoice CRUD    | Medium   |
+| Billing Audit          | No backend or unit tests                  | Medium   |
+| IP Allowlisting        | No frontend E2E tests                     | Low      |
+| Retention Policies     | No frontend E2E tests                     | Low      |
+| Platform Stats         | No frontend tests at all                  | Medium   |
+| Tier Feature Gating    | No frontend E2E tests                     | Low      |

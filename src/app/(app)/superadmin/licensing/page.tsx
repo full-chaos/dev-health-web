@@ -8,10 +8,7 @@ export default async function LicensingPage() {
   if (error) {
     return (
       <div>
-        <AdminHeader
-          title="Licensing"
-          description="Organization tiers and entitlements."
-        />
+        <AdminHeader title="Licensing" description="Organization tiers and entitlements." />
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
           Error loading organizations: {error}
         </div>
@@ -21,10 +18,7 @@ export default async function LicensingPage() {
 
   return (
     <div>
-      <AdminHeader
-        title="Licensing"
-        description="Organization tiers and entitlements."
-      />
+      <AdminHeader title="Licensing" description="Organization tiers and entitlements." />
       <LicenseTable orgs={orgs || []} />
     </div>
   );

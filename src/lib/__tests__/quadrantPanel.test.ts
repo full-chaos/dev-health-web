@@ -7,18 +7,12 @@ import type { QuadrantResponse } from "@/lib/types";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 
 vi.mock("next/link", () => ({
-  default: ({
-    href,
-    children,
-  }: {
-    href: string;
-    children: React.ReactNode;
-  }) => React.createElement("a", { href }, children),
+  default: ({ href, children }: { href: string; children: React.ReactNode }) =>
+    React.createElement("a", { href }, children),
 }));
 
 vi.mock("@/components/charts/QuadrantChart", () => ({
-  QuadrantChart: () =>
-    React.createElement("div", { "data-testid": "quadrant-chart" }),
+  QuadrantChart: () => React.createElement("div", { "data-testid": "quadrant-chart" }),
 }));
 
 describe("QuadrantPanel", () => {
@@ -65,7 +59,7 @@ describe("QuadrantPanel", () => {
         description: "Individual quadrant view.",
         data,
         filters,
-      })
+      }),
     );
 
     expect(html.match(/Liam/g) ?? []).toHaveLength(1);

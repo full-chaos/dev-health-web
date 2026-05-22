@@ -40,10 +40,12 @@ BACKEND_URL="http://127.0.0.1:8000" npm run dev
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
 > **First checkout?** The GraphQL schema file (`src/lib/graphql/schema.graphql`) is exported from the `dev-health-ops` backend and is not generated locally. If it is missing, `npm run codegen` will fail. To obtain it, start the backend API and run:
+>
 > ```bash
 > PYTHONPATH=../dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema --out src/lib/graphql/schema.graphql
 > npm run codegen
 > ```
+>
 > See [Schema Contract Enforcement](#schema-contract-enforcement) for details.
 
 ### Frontend Only (Demo Mode)
@@ -59,21 +61,21 @@ This will serve the app at [http://localhost:3000](http://localhost:3000) using 
 
 ## Environment Variables
 
-| Variable | Required | Purpose | Default / Notes |
-|----------|----------|---------|-----------------|
-| `BACKEND_URL` | No | Backend API base URL | `http://127.0.0.1:8000` |
-| `AUTH_SECRET` | Prod: Yes, Dev: No | Auth.js signing/encryption secret | Falls back to a dev-only in-code value |
-| `LINEAR_API_KEY` | Optional feature | Enables `POST /api/feedback` Linear issue creation | Must be set with `LINEAR_TEAM_ID`; route returns `503` if missing |
-| `LINEAR_TEAM_ID` | Optional feature | Linear team target for feedback issues | Must be set with `LINEAR_API_KEY` |
-| `NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS` | No | GraphQL analytics toggle (**default: enabled**). GraphQL is the default data layer; set to `false` to fall back to REST. | `true` |
-| `USE_GRAPHQL_ANALYTICS` | No | Server-side runtime fallback for GraphQL toggle | Used when the public flag is absent |
-| `NEXT_PUBLIC_DOCS_URL` | No | Docs/help link URL in UI | `/docs` |
-| `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` | No | Use sample data in test/demo paths | `false` |
-| `NEXT_PUBLIC_DEMO_MODE` | No | Show demo-only UI tabs and sample-data panels (e.g., Code Hotspots, Investment Expense in the Flow view). Backed by static data, not live APIs | `false` |
-| `DEMO_EXPORT` | No | Enable static export build mode | `false` |
-| `BASE_PATH` | No | Subpath hosting prefix (example: `/app`) | Empty (root) |
-| `NEXT_PUBLIC_SENTRY_DSN` | No | Sentry DSN for client + server + edge error reporting | Empty (Sentry still initializes but events go nowhere) |
-| `NEXT_PUBLIC_SENTRY_REPLAY_ROUTES` | No | Comma-separated path prefixes that activate Sentry Session Replay. Replay is lazy-loaded on-demand so it stays out of the initial client bundle on non-matching routes. Set to an empty string to disable Replay entirely | `/admin,/superadmin` |
+| Variable                            | Required           | Purpose                                                                                                                                                                                                                   | Default / Notes                                                   |
+| ----------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `BACKEND_URL`                       | No                 | Backend API base URL                                                                                                                                                                                                      | `http://127.0.0.1:8000`                                           |
+| `AUTH_SECRET`                       | Prod: Yes, Dev: No | Auth.js signing/encryption secret                                                                                                                                                                                         | Falls back to a dev-only in-code value                            |
+| `LINEAR_API_KEY`                    | Optional feature   | Enables `POST /api/feedback` Linear issue creation                                                                                                                                                                        | Must be set with `LINEAR_TEAM_ID`; route returns `503` if missing |
+| `LINEAR_TEAM_ID`                    | Optional feature   | Linear team target for feedback issues                                                                                                                                                                                    | Must be set with `LINEAR_API_KEY`                                 |
+| `NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS` | No                 | GraphQL analytics toggle (**default: enabled**). GraphQL is the default data layer; set to `false` to fall back to REST.                                                                                                  | `true`                                                            |
+| `USE_GRAPHQL_ANALYTICS`             | No                 | Server-side runtime fallback for GraphQL toggle                                                                                                                                                                           | Used when the public flag is absent                               |
+| `NEXT_PUBLIC_DOCS_URL`              | No                 | Docs/help link URL in UI                                                                                                                                                                                                  | `/docs`                                                           |
+| `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE`  | No                 | Use sample data in test/demo paths                                                                                                                                                                                        | `false`                                                           |
+| `NEXT_PUBLIC_DEMO_MODE`             | No                 | Show demo-only UI tabs and sample-data panels (e.g., Code Hotspots, Investment Expense in the Flow view). Backed by static data, not live APIs                                                                            | `false`                                                           |
+| `DEMO_EXPORT`                       | No                 | Enable static export build mode                                                                                                                                                                                           | `false`                                                           |
+| `BASE_PATH`                         | No                 | Subpath hosting prefix (example: `/app`)                                                                                                                                                                                  | Empty (root)                                                      |
+| `NEXT_PUBLIC_SENTRY_DSN`            | No                 | Sentry DSN for client + server + edge error reporting                                                                                                                                                                     | Empty (Sentry still initializes but events go nowhere)            |
+| `NEXT_PUBLIC_SENTRY_REPLAY_ROUTES`  | No                 | Comma-separated path prefixes that activate Sentry Session Replay. Replay is lazy-loaded on-demand so it stays out of the initial client bundle on non-matching routes. Set to an empty string to disable Replay entirely | `/admin,/superadmin`                                              |
 
 Deprecated (still read for compatibility):
 
@@ -83,18 +85,18 @@ Copy `.env.example` to `.env.local` and configure as needed.
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run typecheck` | Run TypeScript checks |
-| `npm run test:unit` | Run unit tests (Vitest) |
-| `npm run test:integration` | Run integration tier placeholder (currently no suite) |
-| `npm run test:e2e` | Run e2e tests (Playwright) |
-| `npm run test:e2e:live` | Run live-backend e2e smoke tests (Playwright) |
-| `npm run test:ci` | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
+| Script                     | Description                                                   |
+| -------------------------- | ------------------------------------------------------------- |
+| `npm run dev`              | Start development server                                      |
+| `npm run build`            | Build for production                                          |
+| `npm run start`            | Start production server                                       |
+| `npm run lint`             | Run ESLint                                                    |
+| `npm run typecheck`        | Run TypeScript checks                                         |
+| `npm run test:unit`        | Run unit tests (Vitest)                                       |
+| `npm run test:integration` | Run integration tier placeholder (currently no suite)         |
+| `npm run test:e2e`         | Run e2e tests (Playwright)                                    |
+| `npm run test:e2e:live`    | Run live-backend e2e smoke tests (Playwright)                 |
+| `npm run test:ci`          | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
 
 ## Test Tiers (Phase 0 Contract)
 
@@ -121,10 +123,12 @@ npm run test:ci
 Use this tier when validating against a real `dev-health-ops` backend (no mock server).
 
 Requirements:
+
 - A running `dev-health-ops` API with healthy `/health` and seeded data (fixtures recommended).
 - `PLAYWRIGHT_LIVE_BACKEND_URL` pointing at that API (defaults to `BACKEND_URL`, then `http://127.0.0.1:8000`).
 
 Test suites in `tests/live/`:
+
 - `journey.spec.ts` — 10 API-level tests: registration, login, onboarding, credentials CRUD, sync config CRUD. Self-bootstrapping (creates users via POST /register).
 - `onboarding-ui.spec.ts` — 3 browser-level tests: signup form, login→onboard redirect, onboard→dashboard.
 - `impersonation.spec.ts` — superuser impersonation flows (requires `TEST_SUPERUSER_*` env vars).
@@ -149,6 +153,7 @@ npm run test:unit   # runs both unit and component Vitest projects
 ```
 
 Key patterns:
+
 - `src/test/utils.tsx` provides `renderWithToaster()` for components that emit toasts.
 - Server actions (`"use server"`) are mocked at module level via `vi.mock()`.
 - Common mocks: `next/navigation`, `next-auth/react`, `global.fetch`.

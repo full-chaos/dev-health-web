@@ -14,9 +14,7 @@ type AIImpactPageProps = {
 export default async function AIImpactPage({ searchParams }: AIImpactPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const aiFilter = metricFilterToAIFilter(filters);
   const health = await checkApiHealth();
 
@@ -30,7 +28,8 @@ export default async function AIImpactPage({ searchParams }: AIImpactPageProps) 
         <PrimaryNav filters={filters} active="ai-impact" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <AIPageHeader eyebrow="AI" title="AI Impact">
-            Org-wide view of how AI-assisted workflows appear to influence delivery, review load, quality gaps, and operational drag.
+            Org-wide view of how AI-assisted workflows appear to influence delivery, review load,
+            quality gaps, and operational drag.
           </AIPageHeader>
 
           <FilterBar view="ai" />

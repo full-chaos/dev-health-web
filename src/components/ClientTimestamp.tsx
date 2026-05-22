@@ -38,9 +38,7 @@ export function ClientTimestamp({
 }: ClientTimestampProps) {
   const isClient = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const formatted = isClient
-    ? (value ? formatLocal(value) || fallback : fallback)
-    : "";
+  const formatted = isClient ? (value ? formatLocal(value) || fallback : fallback) : "";
 
   return (
     <span className={className}>

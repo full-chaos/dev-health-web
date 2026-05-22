@@ -11,10 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, cleanup } from "@/test/utils";
 import { InvestmentCharts } from "./InvestmentCharts";
 import type { MetricFilter } from "@/lib/filters/types";
-import type {
-  SankeyResponse,
-  WorkUnitInvestment,
-} from "@/lib/types";
+import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 
 const { treemapSpy, sankeySpy, sunburstSpy } = vi.hoisted(() => ({
   treemapSpy: vi.fn(),
@@ -38,7 +35,7 @@ vi.mock("@/components/charts/chartTheme", () => ({
 
 vi.mock("@/components/charts/TreemapChart", async () => {
   const actual = await vi.importActual<typeof import("@/components/charts/TreemapChart")>(
-    "@/components/charts/TreemapChart"
+    "@/components/charts/TreemapChart",
   );
   return {
     ...actual,
@@ -93,11 +90,7 @@ const sampleWorkUnit: WorkUnitInvestment = {
 
 const sampleSankey: SankeyResponse = {
   mode: "investment",
-  nodes: [
-    { name: "TEAM: core" },
-    { name: "THEME: feature" },
-    { name: "REPO: org/repo" },
-  ],
+  nodes: [{ name: "TEAM: core" }, { name: "THEME: feature" }, { name: "REPO: org/repo" }],
   links: [
     { source: "TEAM: core", target: "THEME: feature", value: 10 },
     { source: "THEME: feature", target: "REPO: org/repo", value: 10 },
@@ -145,13 +138,13 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
     it("renders the three h3 section headings that a split refactor must preserve", () => {
       render(<InvestmentCharts {...baseProps()} />);
       expect(
-        screen.getByRole("heading", { level: 3, name: /treemap|investment mix/i })
+        screen.getByRole("heading", { level: 3, name: /treemap|investment mix/i }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { level: 3, name: /team burden flow/i })
+        screen.getByRole("heading", { level: 3, name: /team burden flow/i }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { level: 3, name: /where effort lands/i })
+        screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
       ).toBeInTheDocument();
     });
   });
@@ -170,17 +163,13 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             teamCategoryFlow: null,
             baselineSankeyFlow: null,
           })}
-        />
+        />,
       );
       expect(screen.getByText(/loading flow data/i)).toBeInTheDocument();
     });
 
     it('shows "Loading destination view..." when isRepoTeamLoading is true', () => {
-      render(
-        <InvestmentCharts
-          {...baseProps({ isRepoTeamLoading: true, repoTeamFlow: null })}
-        />
-      );
+      render(<InvestmentCharts {...baseProps({ isRepoTeamLoading: true, repoTeamFlow: null })} />);
       expect(screen.getByText(/loading destination view/i)).toBeInTheDocument();
     });
   });
@@ -188,9 +177,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
   describe("empty states", () => {
     it('shows "No work unit investments available." when workUnits is empty and not loading', () => {
       render(<InvestmentCharts {...baseProps({ workUnits: [], isLoading: false })} />);
-      expect(
-        screen.getByText(/no work unit investments available/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/no work unit investments available/i)).toBeInTheDocument();
     });
   });
 
@@ -235,10 +222,10 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             repoTeamFlowFailed: true,
             repoTeamFlow: null,
           })}
-        />
+        />,
       );
       expect(
-        screen.getByRole("heading", { level: 3, name: /where effort lands/i })
+        screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
       ).toBeInTheDocument();
     });
   });

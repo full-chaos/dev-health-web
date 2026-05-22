@@ -62,15 +62,7 @@ interface UseBreakdownOptions {
  * Hook to fetch a single breakdown.
  */
 export function useBreakdown(options: UseBreakdownOptions): UseAnalyticsResult {
-  const {
-    orgId,
-    dimension,
-    measure,
-    startDate,
-    endDate,
-    topN = 10,
-    pause = false,
-  } = options;
+  const { orgId, dimension, measure, startDate, endDate, topN = 10, pause = false } = options;
 
   const batch: AnalyticsRequestInput = {
     breakdowns: [

@@ -1,9 +1,6 @@
 import { AuthErrors } from "@/lib/constants/errors";
 import { getCapacityForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
-import type {
-  CapacityForecast,
-  CapacityForecastInput,
-} from "@/lib/graphql/types";
+import type { CapacityForecast, CapacityForecastInput } from "@/lib/graphql/types";
 import { getAuth } from "./_shared";
 
 export async function getCapacityForecast(params: {

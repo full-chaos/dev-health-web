@@ -14,9 +14,7 @@ export default async function PeoplePage({ searchParams }: PeoplePageProps) {
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : defaultMetricFilter;
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : defaultMetricFilter;
   const query = Array.isArray(params.q) ? params.q[0] : params.q;
 
   return (
@@ -26,12 +24,8 @@ export default async function PeoplePage({ searchParams }: PeoplePageProps) {
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                People
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Individual metrics
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">People</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Individual metrics</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Individual metrics for a single-person view.
               </p>

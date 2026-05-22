@@ -80,9 +80,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
     >
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-medium text-foreground">
-              {config.name}
-          </h3>
+          <h3 className="font-medium text-foreground">{config.name}</h3>
           <div className="mt-1 flex items-center gap-2 text-sm text-(--ink-muted)">
             <span className="capitalize">{config.provider}</span>
             <span>•</span>
@@ -98,7 +96,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
         <div className="text-xs text-(--ink-muted)">
           <ClientTimestamp value={config.last_sync_at} prefix="Last sync: " fallback="Never" />
         </div>
-        
+
         <div className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
           {showDeleteConfirm ? (
             <div className="flex items-center gap-2">
@@ -130,7 +128,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
               >
                 {config.is_active ? "Pause" : "Resume"}
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}

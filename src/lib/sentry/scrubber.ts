@@ -67,9 +67,7 @@ type SentryInitOptions = Parameters<typeof Sentry.init>[0];
  * @example
  *   Sentry.init(attachBeforeSend({ dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN }));
  */
-export function attachBeforeSend(
-  config: SentryInitOptions
-): SentryInitOptions {
+export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
   const existing = config?.beforeSend;
   return {
     ...config,

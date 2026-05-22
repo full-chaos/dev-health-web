@@ -6,7 +6,9 @@ test.describe("Cognitive Load dashboard", () => {
 
     const dashboard = page.getByTestId("cognitive-load-dashboard");
     await expect(dashboard).toBeVisible();
-    await expect(dashboard.getByRole("heading", { name: /Focus fragmentation, not surveillance/i })).toBeVisible();
+    await expect(
+      dashboard.getByRole("heading", { name: /Focus fragmentation, not surveillance/i }),
+    ).toBeVisible();
     await expect(dashboard.getByText("PR interruption load")).toBeVisible();
     await expect(dashboard.getByText("Context spread", { exact: true })).toBeVisible();
     await expect(dashboard.getByText("Review request load", { exact: true })).toBeVisible();
@@ -28,7 +30,9 @@ test.describe("Cognitive Load dashboard", () => {
 
     const dashboard = page.getByTestId("cognitive-load-dashboard");
     await expect(dashboard.getByText(/Self-reflection mode/i)).toBeVisible();
-    await expect(dashboard.getByText(/Only you can open this individual cognitive-load view/i)).toBeVisible();
+    await expect(
+      dashboard.getByText(/Only you can open this individual cognitive-load view/i),
+    ).toBeVisible();
     await expect(dashboard.getByText("PR interruption load")).toBeVisible();
   });
 

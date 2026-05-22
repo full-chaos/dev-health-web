@@ -3,7 +3,11 @@ import type { WorkGraphEdge } from "@/lib/graphql/types";
 export function getRegistryEdges(edges: WorkGraphEdge[]): WorkGraphEdge[] {
   const seen = new Set<string>();
   return edges.filter((edge) => {
-    if (edge.sourceType !== "FEATURE_FLAG" || edge.targetType !== "FEATURE_FLAG" || edge.edgeType !== "RELATES") {
+    if (
+      edge.sourceType !== "FEATURE_FLAG" ||
+      edge.targetType !== "FEATURE_FLAG" ||
+      edge.edgeType !== "RELATES"
+    ) {
       return false;
     }
     if (seen.has(edge.sourceId)) {
@@ -14,7 +18,10 @@ export function getRegistryEdges(edges: WorkGraphEdge[]): WorkGraphEdge[] {
   });
 }
 
-export function getDistinctSourceIds(edges: WorkGraphEdge[], edgeType?: WorkGraphEdge["edgeType"]): Set<string> {
+export function getDistinctSourceIds(
+  edges: WorkGraphEdge[],
+  edgeType?: WorkGraphEdge["edgeType"],
+): Set<string> {
   return new Set(
     edges
       .filter((edge) => (edgeType ? edge.edgeType === edgeType : true))

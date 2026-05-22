@@ -8,12 +8,9 @@ export function ServiceUnavailable() {
         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
           Full Chaos Dev Health Ops
         </p>
-        <h1 className="font-(--font-display) text-3xl">
-          Data service unavailable
-        </h1>
+        <h1 className="font-(--font-display) text-3xl">Data service unavailable</h1>
         <p className="text-sm text-(--ink-muted)">
-          The API status check failed. The API must be available
-          to load this view.
+          The API status check failed. The API must be available to load this view.
         </p>
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
           <p>Quick checks:</p>

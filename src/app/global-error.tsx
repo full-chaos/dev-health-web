@@ -67,8 +67,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               lineHeight: 1.6,
             }}
           >
-            An unexpected error occurred. If the problem persists, please
-            contact support.
+            An unexpected error occurred. If the problem persists, please contact support.
             {error.digest && (
               <span
                 style={{

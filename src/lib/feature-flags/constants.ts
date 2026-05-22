@@ -14,8 +14,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   RELEASE_FRICTION_DELTA: {
     id: "RELEASE_FRICTION_DELTA",
     label: "Release Friction Delta",
-    description:
-      "Change in user friction signals per session compared to a 7-day baseline",
+    description: "Change in user friction signals per session compared to a 7-day baseline",
     unit: "delta",
     goodDirection: "down",
     stability: "stable",
@@ -23,8 +22,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   RELEASE_ERROR_RATE_DELTA: {
     id: "RELEASE_ERROR_RATE_DELTA",
     label: "Release Error Rate Delta",
-    description:
-      "Change in error rate between pre- and post-deployment windows",
+    description: "Change in error rate between pre- and post-deployment windows",
     unit: "delta",
     goodDirection: "down",
     stability: "stable",
@@ -41,8 +39,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   COVERAGE_RATIO: {
     id: "COVERAGE_RATIO",
     label: "Impact Coverage Ratio",
-    description:
-      "Fraction of releases with telemetry data attached on a given day",
+    description: "Fraction of releases with telemetry data attached on a given day",
     unit: "percentage",
     goodDirection: "up",
     stability: "stable",
@@ -52,8 +49,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   TIME_TO_FIRST_USER_ISSUE: {
     id: "TIME_TO_FIRST_USER_ISSUE",
     label: "Time to First User Issue",
-    description:
-      "Hours between deployment and the first linked user-reported issue",
+    description: "Hours between deployment and the first linked user-reported issue",
     unit: "hours",
     goodDirection: "down",
     stability: "provisional",
@@ -61,8 +57,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   FLAG_EXPOSURE_RATE: {
     id: "FLAG_EXPOSURE_RATE",
     label: "Flag Exposure Rate",
-    description:
-      "Ratio of sessions that encountered the flag versus all eligible sessions",
+    description: "Ratio of sessions that encountered the flag versus all eligible sessions",
     unit: "ratio",
     goodDirection: "neutral",
     stability: "provisional",
@@ -70,8 +65,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   FLAG_ACTIVATION_RATE: {
     id: "FLAG_ACTIVATION_RATE",
     label: "Flag Activation Rate",
-    description:
-      "Ratio of exposed sessions that performed a defined success action",
+    description: "Ratio of exposed sessions that performed a defined success action",
     unit: "ratio",
     goodDirection: "up",
     stability: "provisional",
@@ -79,8 +73,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   FLAG_RELIABILITY_GUARDRAIL: {
     id: "FLAG_RELIABILITY_GUARDRAIL",
     label: "Flag Reliability Guardrail",
-    description:
-      "Ratio of error-free sessions in the exposed cohort",
+    description: "Ratio of error-free sessions in the exposed cohort",
     unit: "ratio",
     goodDirection: "up",
     stability: "provisional",
@@ -88,8 +81,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   FLAG_FRICTION_DELTA: {
     id: "FLAG_FRICTION_DELTA",
     label: "Flag Friction Delta",
-    description:
-      "Change in friction signals scoped to the flag exposure window",
+    description: "Change in friction signals scoped to the flag exposure window",
     unit: "delta",
     goodDirection: "down",
     stability: "provisional",
@@ -97,8 +89,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   ISSUE_TO_RELEASE_LINK_RATE: {
     id: "ISSUE_TO_RELEASE_LINK_RATE",
     label: "Issue-to-Release Link Rate",
-    description:
-      "Fraction of completed work items with measurable post-release signal",
+    description: "Fraction of completed work items with measurable post-release signal",
     unit: "ratio",
     goodDirection: "up",
     stability: "provisional",
@@ -106,8 +97,7 @@ export const FF_MEASURES: Record<string, FeatureFlagMeasureDef> = {
   ROLLBACK_AFTER_IMPACT: {
     id: "ROLLBACK_AFTER_IMPACT",
     label: "Rollback/Disable After Impact",
-    description:
-      "Count of flag disable or rollback events within 72 hours of deployment",
+    description: "Count of flag disable or rollback events within 72 hours of deployment",
     unit: "count",
     goodDirection: "down",
     stability: "provisional",

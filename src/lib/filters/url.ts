@@ -25,7 +25,12 @@ export const buildExploreUrl = (options: {
   return `/explore?${params.toString()}`;
 };
 
-export const withFilterParam = (path: string, filters: MetricFilter, role?: string, origin?: string) => {
+export const withFilterParam = (
+  path: string,
+  filters: MetricFilter,
+  role?: string,
+  origin?: string,
+) => {
   const [pathWithoutHash, hash] = path.split("#", 2);
   const params = new URLSearchParams();
   params.set("f", encodeFilterParam(filters));

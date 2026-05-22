@@ -33,8 +33,7 @@ export const toList = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-export const toValue = (value?: string[]) =>
-  value && value.length ? value.join(", ") : "";
+export const toValue = (value?: string[]) => (value && value.length ? value.join(", ") : "");
 
 export const formatSelection = (values: string[], emptyLabel: string) => {
   if (!values.length) {

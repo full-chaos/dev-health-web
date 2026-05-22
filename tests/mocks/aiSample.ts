@@ -104,7 +104,12 @@ function populatedComparison(orgId: string, startDate: string, endDate: string) 
   };
 }
 
-export function aiComparisonResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+export function aiComparisonResponse(
+  orgId: string,
+  startDate: string,
+  endDate: string,
+  mode: AIMode,
+) {
   return mode === "populated"
     ? populatedComparison(orgId, startDate, endDate)
     : emptyComparison(orgId, startDate, endDate);
@@ -161,7 +166,12 @@ function dailyRow(bucket: string, overrides: Record<string, number> = {}) {
   };
 }
 
-export function aiImpactSummaryResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+export function aiImpactSummaryResponse(
+  orgId: string,
+  startDate: string,
+  endDate: string,
+  mode: AIMode,
+) {
   if (mode === "missing") {
     return {
       orgId,
@@ -177,7 +187,13 @@ export function aiImpactSummaryResponse(orgId: string, startDate: string, endDat
       computedAt: COMPUTED_AT,
       byBucket: [],
       daily: [],
-      missingStates: [{ key: "unknown_attribution", title: "Attribution unavailable", guidance: "AI attribution coverage is not available for this scope yet." }],
+      missingStates: [
+        {
+          key: "unknown_attribution",
+          title: "Attribution unavailable",
+          guidance: "AI attribution coverage is not available for this scope yet.",
+        },
+      ],
     };
   }
 
@@ -247,13 +263,16 @@ export function aiImpactSummaryResponse(orgId: string, startDate: string, endDat
       }),
       impactBucket("UNKNOWN", { prsTotal: 12, prsMerged: 10 }),
     ],
-    daily: Array.from({ length: 7 }, (_, i) =>
-      dailyRow("AGENT_CREATED", { prsTotal: i + 1 }),
-    ),
+    daily: Array.from({ length: 7 }, (_, i) => dailyRow("AGENT_CREATED", { prsTotal: i + 1 })),
   };
 }
 
-export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+export function aiReviewLoadResponse(
+  orgId: string,
+  startDate: string,
+  endDate: string,
+  mode: AIMode,
+) {
   if (mode === "missing") {
     return {
       orgId,
@@ -263,7 +282,13 @@ export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: 
       byBucket: [],
       daily: [],
       reviewerConcentration: { dataAvailable: false, reviewerCount: 0, reviewerGini: null },
-      missingStates: [{ key: "reviewer_concentration", title: "Reviewer concentration", guidance: "Reviewer distribution is unavailable for this scope." }],
+      missingStates: [
+        {
+          key: "reviewer_concentration",
+          title: "Reviewer concentration",
+          guidance: "Reviewer distribution is unavailable for this scope.",
+        },
+      ],
     };
   }
 
@@ -276,7 +301,13 @@ export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: 
       byBucket: [],
       daily: [],
       reviewerConcentration: { dataAvailable: false, reviewerCount: 0, reviewerGini: null },
-      missingStates: [{ key: "reviewer_concentration", title: "Reviewer concentration", guidance: "Reviewer distribution is unavailable for this scope." }],
+      missingStates: [
+        {
+          key: "reviewer_concentration",
+          title: "Reviewer concentration",
+          guidance: "Reviewer distribution is unavailable for this scope.",
+        },
+      ],
     };
   }
 
@@ -322,7 +353,12 @@ export function aiReviewLoadResponse(orgId: string, startDate: string, endDate: 
   };
 }
 
-export function aiRiskBreakdownResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+export function aiRiskBreakdownResponse(
+  orgId: string,
+  startDate: string,
+  endDate: string,
+  mode: AIMode,
+) {
   if (mode === "missing") {
     return {
       orgId,
@@ -331,8 +367,16 @@ export function aiRiskBreakdownResponse(orgId: string, startDate: string, endDat
       dataAvailable: false,
       byBucket: [],
       missingStates: [
-        { key: "hotspot_overlap", title: "Hotspot file overlap", guidance: "Hotspot overlap needs changed-file coverage for this scope." },
-        { key: "complexity_overlap", title: "High-complexity file overlap", guidance: "Complexity overlap needs file complexity coverage for this scope." },
+        {
+          key: "hotspot_overlap",
+          title: "Hotspot file overlap",
+          guidance: "Hotspot overlap needs changed-file coverage for this scope.",
+        },
+        {
+          key: "complexity_overlap",
+          title: "High-complexity file overlap",
+          guidance: "Complexity overlap needs file complexity coverage for this scope.",
+        },
       ],
     };
   }
@@ -345,8 +389,16 @@ export function aiRiskBreakdownResponse(orgId: string, startDate: string, endDat
       dataAvailable: true,
       byBucket: [],
       missingStates: [
-        { key: "hotspot_overlap", title: "Hotspot file overlap", guidance: "Hotspot overlap needs changed-file coverage for this scope." },
-        { key: "complexity_overlap", title: "High-complexity file overlap", guidance: "Complexity overlap needs file complexity coverage for this scope." },
+        {
+          key: "hotspot_overlap",
+          title: "Hotspot file overlap",
+          guidance: "Hotspot overlap needs changed-file coverage for this scope.",
+        },
+        {
+          key: "complexity_overlap",
+          title: "High-complexity file overlap",
+          guidance: "Complexity overlap needs file complexity coverage for this scope.",
+        },
       ],
     };
   }
@@ -357,8 +409,16 @@ export function aiRiskBreakdownResponse(orgId: string, startDate: string, endDat
     endDate,
     dataAvailable: true,
     missingStates: [
-      { key: "hotspot_overlap", title: "Hotspot file overlap", guidance: "Hotspot overlap needs changed-file coverage for this scope." },
-      { key: "complexity_overlap", title: "High-complexity file overlap", guidance: "Complexity overlap needs file complexity coverage for this scope." },
+      {
+        key: "hotspot_overlap",
+        title: "Hotspot file overlap",
+        guidance: "Hotspot overlap needs changed-file coverage for this scope.",
+      },
+      {
+        key: "complexity_overlap",
+        title: "High-complexity file overlap",
+        guidance: "Complexity overlap needs file complexity coverage for this scope.",
+      },
     ],
     byBucket: [
       {
@@ -405,7 +465,11 @@ export function aiOpportunitiesResponse(orgId: string, mode: AIMode) {
         title: "Automate dependency updates in platform repo",
         rationale: "Recurring weekly dependency PRs match the AI-assisted heuristic.",
         score: 0.78,
-        evidenceRefs: ["git_pull_requests:repo-1:1001", "git_pull_requests:repo-1:1009", "git_pull_requests:repo-1:1014"],
+        evidenceRefs: [
+          "git_pull_requests:repo-1:1001",
+          "git_pull_requests:repo-1:1009",
+          "git_pull_requests:repo-1:1014",
+        ],
         workGraphDrilldowns: [
           { rootType: "pr", rootId: "repo-1#1001", label: "PR 1001" },
           { rootType: "pr", rootId: "repo-1#1009", label: "PR 1009" },
@@ -426,7 +490,12 @@ export function aiOpportunitiesResponse(orgId: string, mode: AIMode) {
   };
 }
 
-export function aiAttributedPrsResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+export function aiAttributedPrsResponse(
+  orgId: string,
+  startDate: string,
+  endDate: string,
+  mode: AIMode,
+) {
   if (mode === "missing") {
     return { orgId, startDate, endDate, total: 0, hasMore: false, dataAvailable: false, rows: [] };
   }
@@ -473,7 +542,12 @@ export function aiAttributedPrsResponse(orgId: string, startDate: string, endDat
   };
 }
 
-export function aiGovernanceSummaryResponse(orgId: string, startDate: string, endDate: string, mode: AIMode) {
+export function aiGovernanceSummaryResponse(
+  orgId: string,
+  startDate: string,
+  endDate: string,
+  mode: AIMode,
+) {
   if (mode === "missing") {
     return { orgId, startDate, endDate, dataAvailable: false, recentViolations: [] };
   }

@@ -2,10 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import {
-  getRefunds,
-  type RefundRecord,
-} from "@/lib/billing/actions";
+import { getRefunds, type RefundRecord } from "@/lib/billing/actions";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 
 type RefundListResponse = {
@@ -41,10 +38,7 @@ function formatDate(value: string | null): string {
   return new Date(value).toLocaleString();
 }
 
-export function RefundList({
-  initialData,
-  initialOrgFilter = "",
-}: RefundListProps) {
+export function RefundList({ initialData, initialOrgFilter = "" }: RefundListProps) {
   const [isPending, startTransition] = useTransition();
   const [orgFilter, setOrgFilter] = useState(initialOrgFilter);
   const [data, setData] = useState(initialData);
@@ -110,7 +104,7 @@ export function RefundList({
         render: (refund) => formatDate(refund.created_at),
       },
     ],
-    []
+    [],
   );
 
   return (

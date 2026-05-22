@@ -34,7 +34,9 @@ test("forgot-password page is accessible while authenticated", async ({ page }) 
  * The ?from=reset param instructs signin/page.tsx to skip the authenticated-user
  * redirect so the login form is always rendered after a password-reset flow.
  */
-test("forgot-password: Back to Sign in after submit lands on sign-in form, not /dashboard (CHAOS-1769)", async ({ page }) => {
+test("forgot-password: Back to Sign in after submit lands on sign-in form, not /dashboard (CHAOS-1769)", async ({
+  page,
+}) => {
   // 1. Navigate to forgot-password (starting from authenticated state)
   await page.goto("/auth/forgot-password");
   await expect(page).toHaveURL(/\/auth\/forgot-password/);

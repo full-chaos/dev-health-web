@@ -17,15 +17,13 @@ describe("LegalDocument", () => {
             items: ["Account profile details", "Product usage diagnostics"],
           },
         ]}
-      />
+      />,
     );
 
-    expect(
-      screen.getByRole("heading", { name: "Privacy Policy", level: 1 })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Privacy Policy", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("Last updated: April 4, 2026")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Information we collect", level: 2 })
+      screen.getByRole("heading", { name: "Information we collect", level: 2 }),
     ).toBeInTheDocument();
     expect(screen.getByText("Account profile details")).toBeInTheDocument();
   });

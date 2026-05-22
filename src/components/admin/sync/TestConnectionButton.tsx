@@ -36,7 +36,9 @@ export function TestConnectionButton({ provider, credentialId }: TestConnectionB
       disabled={isPending || !credentialId}
       className="inline-flex items-center gap-2 rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent) disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {isPending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : null}
+      {isPending ? (
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      ) : null}
       {isPending ? "Testing..." : "Test Connection"}
     </button>
   );

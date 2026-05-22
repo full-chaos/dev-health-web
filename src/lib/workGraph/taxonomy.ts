@@ -30,7 +30,7 @@ export const SUBCATEGORY_TO_THEME = Object.fromEntries(
   INVESTMENT_SUBCATEGORIES.map((subcategory) => [
     subcategory,
     subcategory.split(".", 1)[0] as InvestmentTheme,
-  ])
+  ]),
 ) as Record<InvestmentSubcategory, InvestmentTheme>;
 
 export function themeOf(subcategory: InvestmentSubcategory): InvestmentTheme {

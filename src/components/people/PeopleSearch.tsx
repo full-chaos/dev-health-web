@@ -21,10 +21,7 @@ type PeopleSearchPlan = {
   teamId?: string;
 };
 
-const matchesDeveloper = (
-  person: PeopleSearchResult,
-  selectedDevelopers: string[]
-) => {
+const matchesDeveloper = (person: PeopleSearchResult, selectedDevelopers: string[]) => {
   if (!selectedDevelopers.length) {
     return true;
   }
@@ -35,15 +32,10 @@ const matchesDeveloper = (
   ]
     .filter(Boolean)
     .map((value) => String(value).toLowerCase());
-  return targets.some((target) =>
-    candidates.some((candidate) => candidate.includes(target))
-  );
+  return targets.some((target) => candidates.some((candidate) => candidate.includes(target)));
 };
 
-const matchesTeam = (
-  person: PeopleSearchResult,
-  teamIds: string[]
-) => {
+const matchesTeam = (person: PeopleSearchResult, teamIds: string[]) => {
   if (!teamIds.length) {
     return true;
   }
@@ -67,13 +59,8 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
   const hasTeamFilter = teamIds.length > 0;
   const queryActive = trimmedQuery.length > 0;
   const focusActive = selectedDevelopers.length > 0;
-  const canFallbackQuery =
-    !hasTeamFilter && !queryActive && selectedDevelopers.length === 1;
-  const searchTerm = queryActive
-    ? trimmedQuery
-    : canFallbackQuery
-      ? selectedDevelopers[0]
-      : "";
+  const canFallbackQuery = !hasTeamFilter && !queryActive && selectedDevelopers.length === 1;
+  const searchTerm = queryActive ? trimmedQuery : canFallbackQuery ? selectedDevelopers[0] : "";
   const fetchPlans = useMemo<PeopleSearchPlan[]>(() => {
     if (teamIds.length) {
       return teamIds.map((teamId) => ({
@@ -94,11 +81,11 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
   const results = apiResults;
   const baseResults = useMemo(
     () => (shouldShowResults ? results : EMPTY_RESULTS),
-    [results, shouldShowResults]
+    [results, shouldShowResults],
   );
   const hasTeamData = useMemo(
     () => baseResults.some((person) => Boolean(person.team_id)),
-    [baseResults]
+    [baseResults],
   );
   const visibleResults = useMemo(() => {
     if (!teamIds.length || !hasTeamData) {
@@ -111,9 +98,9 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
       new Set(
         visibleResults
           .filter((person) => matchesDeveloper(person, selectedDevelopers))
-          .map((person) => person.person_id)
+          .map((person) => person.person_id),
       ),
-    [visibleResults, selectedDevelopers]
+    [visibleResults, selectedDevelopers],
   );
   const hasFocusMatches = focusMatches.size > 0;
   const displayResults = useMemo(() => {
@@ -128,12 +115,10 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
   const emptyPrompt = hasTeamFilter
     ? "Team filter applied. Search by name/handle to refine results."
     : "Select a team or search by name/handle to find someone.";
-  const showEmptyResults =
-    shouldShowResults && !isLoading && !error && visibleResults.length === 0;
+  const showEmptyResults = shouldShowResults && !isLoading && !error && visibleResults.length === 0;
   const showQueryEmpty = showEmptyResults && queryActive;
   const showTeamEmpty = showEmptyResults && !queryActive && hasTeamFilter;
-  const showFocusEmpty =
-    showEmptyResults && !queryActive && !hasTeamFilter && focusActive;
+  const showFocusEmpty = showEmptyResults && !queryActive && !hasTeamFilter && focusActive;
 
   useEffect(() => {
     if (!shouldFetch) {
@@ -154,11 +139,9 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
           params.scope_id = plan.teamId;
           params.team_id = plan.teamId;
         }
-        return apiClient.getJson<PeopleSearchResult[]>(
-          "/api/v1/people",
-          params,
-          { signal: controller.signal }
-        );
+        return apiClient.getJson<PeopleSearchResult[]>("/api/v1/people", params, {
+          signal: controller.signal,
+        });
       });
 
       Promise.allSettled(requests)
@@ -168,7 +151,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
           }
           const fulfilled = payloads.filter(
             (result): result is PromiseFulfilledResult<PeopleSearchResult[]> =>
-              result.status === "fulfilled"
+              result.status === "fulfilled",
           );
           if (!fulfilled.length) {
             setError("Unable to load people right now.");
@@ -204,9 +187,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
     <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-            People search
-          </p>
+          <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">People search</p>
           <p className="mt-2 text-sm text-(--ink-muted)">
             Find an individual to view their personal metrics and evidence.
           </p>
@@ -263,16 +244,16 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
             <Link
               key={person.person_id}
               href={href}
-              className={`block rounded-2xl border border-(--card-stroke) bg-card px-4 py-3 transition hover:-translate-y-1 ${focusActive && !isFocus ? "opacity-50" : "opacity-100"
-                }`}
+              className={`block rounded-2xl border border-(--card-stroke) bg-card px-4 py-3 transition hover:-translate-y-1 ${
+                focusActive && !isFocus ? "opacity-50" : "opacity-100"
+              }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p
-                    className={`text-sm font-semibold ${focusActive && !isFocus
-                      ? "text-(--ink-muted)"
-                      : "text-foreground"
-                      }`}
+                    className={`text-sm font-semibold ${
+                      focusActive && !isFocus ? "text-(--ink-muted)" : "text-foreground"
+                    }`}
                   >
                     {person.display_name}
                   </p>
@@ -289,9 +270,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
                     </div>
                   )}
                 </div>
-                <span className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-                  Open
-                </span>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">Open</span>
               </div>
             </Link>
           );

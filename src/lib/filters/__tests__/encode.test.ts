@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { defaultMetricFilter } from "@/lib/filters/defaults";
-import {
-  decodeFilter,
-  encodeFilter,
-  filterFromQueryParams,
-} from "@/lib/filters/encode";
+import { decodeFilter, encodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 
 describe("filters encode/decode", () => {
   it("roundtrips filters", () => {

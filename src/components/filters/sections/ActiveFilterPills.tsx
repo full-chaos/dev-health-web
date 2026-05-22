@@ -40,7 +40,12 @@ export function ActiveFilterPills({
   return (
     <div className="flex flex-wrap gap-2">
       {repos.map((repo) => (
-        <FilterPill key={`repo-${repo}`} label="Repo" value={repo} onClear={() => onClearRepo(repo)} />
+        <FilterPill
+          key={`repo-${repo}`}
+          label="Repo"
+          value={repo}
+          onClear={() => onClearRepo(repo)}
+        />
       ))}
       {developers.map((dev) => (
         <FilterPill

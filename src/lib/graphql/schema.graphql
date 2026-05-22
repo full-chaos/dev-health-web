@@ -589,7 +589,9 @@ type DataHealth {
   metricLineage(metricId: ID!): MetricLineage
 }
 
-"""Date (isoformat)"""
+"""
+Date (isoformat)
+"""
 scalar Date
 
 input DateRangeInput {
@@ -597,7 +599,9 @@ input DateRangeInput {
   endDate: Date!
 }
 
-"""Date with time (isoformat)"""
+"""
+Date with time (isoformat)
+"""
 scalar DateTime
 
 enum DimensionInput {
@@ -689,7 +693,10 @@ type IdentityMappingHealth {
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
 """
-scalar JSON @specifiedBy(url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf")
+scalar JSON
+  @specifiedBy(
+    url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf"
+  )
 
 type MaintainerShare {
   author: String!
@@ -754,19 +761,33 @@ type MissingMapping {
 }
 
 type Mutation {
-  """Create a new saved report"""
+  """
+  Create a new saved report
+  """
   createSavedReport(orgId: String!, input: CreateSavedReportInput!): SavedReportType!
 
-  """Update an existing saved report"""
-  updateSavedReport(orgId: String!, reportId: String!, input: UpdateSavedReportInput!): SavedReportType
+  """
+  Update an existing saved report
+  """
+  updateSavedReport(
+    orgId: String!
+    reportId: String!
+    input: UpdateSavedReportInput!
+  ): SavedReportType
 
-  """Delete a saved report"""
+  """
+  Delete a saved report
+  """
   deleteSavedReport(orgId: String!, reportId: String!): Boolean!
 
-  """Clone a saved report with optional overrides"""
+  """
+  Clone a saved report with optional overrides
+  """
   cloneSavedReport(orgId: String!, input: CloneSavedReportInput!): SavedReportType
 
-  """Trigger a manual report execution"""
+  """
+  Trigger a manual report execution
+  """
   triggerReport(orgId: String!, reportId: String!): ReportRunType
 }
 
@@ -818,49 +839,90 @@ type PageInfo {
 }
 
 type Query {
-  """Get catalog of available dimensions, measures, and limits"""
-  catalog(orgId: String!, dimension: DimensionInput = null, filters: FilterInput = null): CatalogResult!
+  """
+  Get catalog of available dimensions, measures, and limits
+  """
+  catalog(
+    orgId: String!
+    dimension: DimensionInput = null
+    filters: FilterInput = null
+  ): CatalogResult!
 
-  """Run batch analytics queries"""
+  """
+  Run batch analytics queries
+  """
   analytics(orgId: String!, batch: AnalyticsRequestInput!): AnalyticsResult!
 
-  """Get home dashboard metrics"""
+  """
+  Get home dashboard metrics
+  """
   home(orgId: String!, filters: FilterInput = null): HomeResult!
 
-  """Query work graph edges with optional filters"""
+  """
+  Query work graph edges with optional filters
+  """
   workGraphEdges(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphEdgesResult!
 
-  """Paginated list of security alerts"""
-  securityAlerts(orgId: String!, filters: SecurityAlertFilterInput = null, pagination: SecurityPaginationInput = null): SecurityAlertConnection!
+  """
+  Paginated list of security alerts
+  """
+  securityAlerts(
+    orgId: String!
+    filters: SecurityAlertFilterInput = null
+    pagination: SecurityPaginationInput = null
+  ): SecurityAlertConnection!
 
-  """Aggregated security posture for the dashboard"""
+  """
+  Aggregated security posture for the dashboard
+  """
   securityOverview(orgId: String!, filters: SecurityAlertFilterInput = null): SecurityOverview!
 
-  """List saved reports for an organization"""
+  """
+  List saved reports for an organization
+  """
   savedReports(orgId: String!, limit: Int! = 50, offset: Int! = 0): SavedReportConnection!
 
-  """Get a saved report by ID"""
+  """
+  Get a saved report by ID
+  """
   savedReport(orgId: String!, reportId: String!): SavedReportType
 
-  """List report runs for a saved report"""
+  """
+  List report runs for a saved report
+  """
   reportRuns(orgId: String!, reportId: String!, limit: Int! = 50): ReportRunConnection!
 
-  """Compute capacity forecast on-demand"""
+  """
+  Compute capacity forecast on-demand
+  """
   capacityForecast(orgId: String!, input: CapacityForecastInput = null): CapacityForecast
 
-  """List persisted capacity forecasts"""
-  capacityForecasts(orgId: String!, filters: CapacityForecastFilterInput = null): CapacityForecastConnection!
+  """
+  List persisted capacity forecasts
+  """
+  capacityForecasts(
+    orgId: String!
+    filters: CapacityForecastFilterInput = null
+  ): CapacityForecastConnection!
 
-  """Compute throughput-based capacity forecast"""
+  """
+  Compute throughput-based capacity forecast
+  """
   throughputForecast(orgId: String!, input: ThroughputForecastInput!): ThroughputForecast
 
-  """Weekly Engineering Operating Review"""
+  """
+  Weekly Engineering Operating Review
+  """
   operatingReview(orgId: String!, input: OperatingReviewInput!): OperatingReview!
 
-  """Operator data-health and trust surface"""
+  """
+  Operator data-health and trust surface
+  """
   dataHealth(team: ID!): DataHealth!
 
-  """Repository ownership concentration and bus-factor summary."""
+  """
+  Repository ownership concentration and bus-factor summary.
+  """
   busFactor(orgId: String!, scope: BusFactorScopeInput = null): BusFactor!
 
   """
@@ -878,38 +940,87 @@ type Query {
   """
   hotspots(input: HotspotsInput!): HotspotsResult!
 
-  """Latest rule-based recommendations for a team within a lookback window."""
+  """
+  Latest rule-based recommendations for a team within a lookback window.
+  """
   recommendations(orgId: String!, team: ID!, window: WindowInput!): [Recommendation!]!
 
-  """AI workflow impact summary across the requested time range."""
-  aiImpactSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIImpactSummary!
+  """
+  AI workflow impact summary across the requested time range.
+  """
+  aiImpactSummary(
+    orgId: String!
+    dateRange: AIDateRangeInput!
+    scope: AIScopeInput = null
+  ): AIImpactSummary!
 
-  """Side-by-side AI-assisted vs non-AI baseline comparison."""
-  aiComparison(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIComparison!
+  """
+  Side-by-side AI-assisted vs non-AI baseline comparison.
+  """
+  aiComparison(
+    orgId: String!
+    dateRange: AIDateRangeInput!
+    scope: AIScopeInput = null
+  ): AIComparison!
 
-  """Per-bucket AI review-load breakdown with amplification."""
-  aiReviewLoad(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIReviewLoadResult!
+  """
+  Per-bucket AI review-load breakdown with amplification.
+  """
+  aiReviewLoad(
+    orgId: String!
+    dateRange: AIDateRangeInput!
+    scope: AIScopeInput = null
+  ): AIReviewLoadResult!
 
-  """Per-bucket AI risk breakdown (rework, revert, test gaps, incidents)."""
-  aiRiskBreakdown(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIRiskBreakdownResult!
+  """
+  Per-bucket AI risk breakdown (rework, revert, test gaps, incidents).
+  """
+  aiRiskBreakdown(
+    orgId: String!
+    dateRange: AIDateRangeInput!
+    scope: AIScopeInput = null
+  ): AIRiskBreakdownResult!
 
   """
   AI automation opportunity recommendations. Returns an empty, stable contract until the detector ships (CHAOS-1586).
   """
-  aiOpportunities(orgId: String!, scope: AIScopeInput = null, limit: Int! = 25): AIOpportunitiesResult!
+  aiOpportunities(
+    orgId: String!
+    scope: AIScopeInput = null
+    limit: Int! = 25
+  ): AIOpportunitiesResult!
 
-  """AI governance coverage and recent policy violations."""
-  aiGovernanceSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, violationLimit: Int! = 100): AIGovernanceSummary!
+  """
+  AI governance coverage and recent policy violations.
+  """
+  aiGovernanceSummary(
+    orgId: String!
+    dateRange: AIDateRangeInput!
+    scope: AIScopeInput = null
+    violationLimit: Int! = 100
+  ): AIGovernanceSummary!
 
   """
   Drilldown into AI workflow evidence rooted at an issue, PR, or work_unit. Returns Work Graph nodes and edges with provenance and short evidence references.
   """
-  aiWorkflowDrilldown(orgId: String!, rootType: AIWorkflowRootTypeInput!, rootId: String!, depth: Int! = 3, limit: Int! = 100): AIWorkflowDrilldownResult!
+  aiWorkflowDrilldown(
+    orgId: String!
+    rootType: AIWorkflowRootTypeInput!
+    rootId: String!
+    depth: Int! = 3
+    limit: Int! = 100
+  ): AIWorkflowDrilldownResult!
 
   """
   List AI-attributed pull requests in the requested window so the UI can offer a concrete drilldown selector. Rows come from ai_attribution_resolved joined to git_pull_requests; no aggregation, no fabrication.
   """
-  aiAttributedPrs(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, limit: Int! = 50, offset: Int! = 0): AiAttributedPrsResult!
+  aiAttributedPrs(
+    orgId: String!
+    dateRange: AIDateRangeInput!
+    scope: AIScopeInput = null
+    limit: Int! = 50
+    offset: Int! = 0
+  ): AiAttributedPrsResult!
 }
 
 type Recommendation {
@@ -1131,13 +1242,19 @@ type SparkPoint {
 }
 
 type Subscription {
-  """Subscribe to metrics updates for an organization"""
+  """
+  Subscribe to metrics updates for an organization
+  """
   metricsUpdated(orgId: String!): MetricsUpdate!
 
-  """Subscribe to task status updates"""
+  """
+  Subscribe to task status updates
+  """
   taskStatus(taskId: String!): TaskStatus!
 
-  """Subscribe to data sync progress"""
+  """
+  Subscribe to data sync progress
+  """
   syncProgress(orgId: String!): SyncProgress!
 }
 

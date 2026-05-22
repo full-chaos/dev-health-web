@@ -29,7 +29,9 @@ export function ProviderCredentialsList({
   // Auto-open the form for first-time setup so users (and e2e tests) immediately
   // see the credential fields instead of an empty state requiring an extra click.
   const [isFormOpen, setIsFormOpen] = useState(credentials.length === 0);
-  const [editingCredential, setEditingCredential] = useState<IntegrationCredential | undefined>(undefined);
+  const [editingCredential, setEditingCredential] = useState<IntegrationCredential | undefined>(
+    undefined,
+  );
 
   const handleAddConnection = () => {
     setEditingCredential(undefined);

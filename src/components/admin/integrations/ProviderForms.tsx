@@ -57,9 +57,7 @@ export function GitLabForm() {
             placeholder="glpat-..."
           />
         </div>
-        <p className="mt-2 text-sm text-(--ink-muted)">
-          Required scopes: api, read_repository
-        </p>
+        <p className="mt-2 text-sm text-(--ink-muted)">Required scopes: api, read_repository</p>
       </div>
 
       <div>
@@ -209,7 +207,10 @@ export function LaunchDarklyForm() {
       </div>
 
       <div>
-        <label htmlFor="launchdarkly-project" className="block text-sm font-medium text-(--ink-base)">
+        <label
+          htmlFor="launchdarkly-project"
+          className="block text-sm font-medium text-(--ink-base)"
+        >
           Project Key
         </label>
         <div className="mt-1">
@@ -224,7 +225,10 @@ export function LaunchDarklyForm() {
       </div>
 
       <div>
-        <label htmlFor="launchdarkly-environment" className="block text-sm font-medium text-(--ink-base)">
+        <label
+          htmlFor="launchdarkly-environment"
+          className="block text-sm font-medium text-(--ink-base)"
+        >
           Environment Key
         </label>
         <div className="mt-1">

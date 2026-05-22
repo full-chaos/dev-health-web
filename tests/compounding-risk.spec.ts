@@ -66,20 +66,13 @@ test.describe("Compounding Risk surface", () => {
 
     // Drilldown link encodes the scope.
     const drilldown = page.getByTestId("open-in-work-graph").first();
-    await expect(drilldown).toHaveAttribute(
-      "href",
-      /risk_scope_kind=repo.*risk_scope_id=repo-a/,
-    );
+    await expect(drilldown).toHaveAttribute("href", /risk_scope_kind=repo.*risk_scope_id=repo-a/);
   });
 
-  test("person scope is blocked with the no-surveillance guardrail", async ({
-    page,
-  }) => {
+  test("person scope is blocked with the no-surveillance guardrail", async ({ page }) => {
     await page.goto(`/risk/compounding?f=${encodeFilter(developerFilter)}`);
 
-    await expect(
-      page.getByTestId("developer-scope-guardrail"),
-    ).toBeVisible();
+    await expect(page.getByTestId("developer-scope-guardrail")).toBeVisible();
     await expect(
       page.getByRole("heading", {
         name: "Compounding Risk is a team and repo signal.",

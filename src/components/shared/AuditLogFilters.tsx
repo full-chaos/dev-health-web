@@ -58,7 +58,10 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
       className="mb-6 grid gap-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 sm:grid-cols-2 lg:grid-cols-5"
     >
       <div>
-        <label htmlFor="audit-action-filter" className="mb-1 block text-xs font-medium text-(--ink-muted)">
+        <label
+          htmlFor="audit-action-filter"
+          className="mb-1 block text-xs font-medium text-(--ink-muted)"
+        >
           Action
         </label>
         <input
@@ -71,7 +74,10 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
         />
       </div>
       <div>
-        <label htmlFor="audit-resource-filter" className="mb-1 block text-xs font-medium text-(--ink-muted)">
+        <label
+          htmlFor="audit-resource-filter"
+          className="mb-1 block text-xs font-medium text-(--ink-muted)"
+        >
           Resource Type
         </label>
         <input
@@ -84,7 +90,10 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
         />
       </div>
       <div>
-        <label htmlFor="audit-start-date" className="mb-1 block text-xs font-medium text-(--ink-muted)">
+        <label
+          htmlFor="audit-start-date"
+          className="mb-1 block text-xs font-medium text-(--ink-muted)"
+        >
           Start Date
         </label>
         <input
@@ -96,7 +105,10 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
         />
       </div>
       <div>
-        <label htmlFor="audit-end-date" className="mb-1 block text-xs font-medium text-(--ink-muted)">
+        <label
+          htmlFor="audit-end-date"
+          className="mb-1 block text-xs font-medium text-(--ink-muted)"
+        >
           End Date
         </label>
         <input

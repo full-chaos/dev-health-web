@@ -53,13 +53,13 @@ describe("EvidencePanel", () => {
     });
 
     render(
-        <EvidencePanel
+      <EvidencePanel
         isOpen
         onCloseAction={() => undefined}
         title="Cycle Time"
         metric="cycle_time"
         filters={filters}
-      />
+      />,
     );
 
     await waitFor(() => expect(screen.getByText("Quality + provenance")).toBeInTheDocument());
@@ -81,13 +81,13 @@ describe("EvidencePanel", () => {
     });
 
     render(
-        <EvidencePanel
+      <EvidencePanel
         isOpen
         onCloseAction={() => undefined}
         title="Throughput"
         metric="throughput"
         filters={filters}
-      />
+      />,
     );
 
     await waitFor(() => expect(screen.getByText(/Partial evidence/i)).toBeInTheDocument());

@@ -30,23 +30,16 @@ type BottleneckPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function BottleneckPage({
-  searchParams,
-}: BottleneckPageProps) {
+export default async function BottleneckPage({ searchParams }: BottleneckPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-  const originParam = Array.isArray(params.origin)
-    ? params.origin[0]
-    : params.origin;
+  const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
 
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
-  const activeOrigin =
-    typeof originParam === "string" ? originParam : undefined;
+  const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-  const filters = encodedFilter
-    ? decodeFilter(encodedFilter)
-    : filterFromQueryParams(params);
+  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
   const scopeId = filters.scope.ids[0] ?? "";
   const quadrantScope: "org" | "team" | "repo" | "developer" =
@@ -56,62 +49,55 @@ export default async function BottleneckPage({
         ? filters.scope.level
         : "org";
 
-  const [
-    health,
-    home,
-    wipExplain,
-    blockedExplain,
-    wipQuadrant,
-    reviewQuadrant,
-    reviewHeatmap,
-  ] = await Promise.all([
-    checkApiHealth(),
-    fetchOrNull(getHomeData(filters), "bottleneck/home-data"),
-    fetchOrNull(
-      getExplainData({ metric: "wip_saturation", filters }),
-      "bottleneck/explain-wip_saturation",
-    ),
-    fetchOrNull(
-      getExplainData({ metric: "blocked_work", filters }),
-      "bottleneck/explain-blocked_work",
-    ),
-    fetchOrNull(
-      getQuadrant({
-        type: "wip_throughput",
-        scope_type: quadrantScope,
-        scope_id: scopeId,
-        range_days: filters.time.range_days,
-        bucket: "week",
-        start_date: filters.time.start_date,
-        end_date: filters.time.end_date,
-      }),
-      "bottleneck/wip-throughput-quadrant",
-    ),
-    fetchOrNull(
-      getQuadrant({
-        type: "review_load_latency",
-        scope_type: quadrantScope,
-        scope_id: scopeId,
-        range_days: filters.time.range_days,
-        bucket: "week",
-        start_date: filters.time.start_date,
-        end_date: filters.time.end_date,
-      }),
-      "bottleneck/review-load-latency-quadrant",
-    ),
-    fetchOrNull(
-      getHeatmap({
-        type: "temporal_load",
-        metric: "review_wait_density",
-        scope_type: filters.scope.level,
-        scope_id: scopeId,
-        range_days: filters.time.range_days,
-        start_date: filters.time.start_date,
-        end_date: filters.time.end_date,
-      }),
-      "bottleneck/review-heatmap",
-    ),
-  ]);
+  const [health, home, wipExplain, blockedExplain, wipQuadrant, reviewQuadrant, reviewHeatmap] =
+    await Promise.all([
+      checkApiHealth(),
+      fetchOrNull(getHomeData(filters), "bottleneck/home-data"),
+      fetchOrNull(
+        getExplainData({ metric: "wip_saturation", filters }),
+        "bottleneck/explain-wip_saturation",
+      ),
+      fetchOrNull(
+        getExplainData({ metric: "blocked_work", filters }),
+        "bottleneck/explain-blocked_work",
+      ),
+      fetchOrNull(
+        getQuadrant({
+          type: "wip_throughput",
+          scope_type: quadrantScope,
+          scope_id: scopeId,
+          range_days: filters.time.range_days,
+          bucket: "week",
+          start_date: filters.time.start_date,
+          end_date: filters.time.end_date,
+        }),
+        "bottleneck/wip-throughput-quadrant",
+      ),
+      fetchOrNull(
+        getQuadrant({
+          type: "review_load_latency",
+          scope_type: quadrantScope,
+          scope_id: scopeId,
+          range_days: filters.time.range_days,
+          bucket: "week",
+          start_date: filters.time.start_date,
+          end_date: filters.time.end_date,
+        }),
+        "bottleneck/review-load-latency-quadrant",
+      ),
+      fetchOrNull(
+        getHeatmap({
+          type: "temporal_load",
+          metric: "review_wait_density",
+          scope_type: filters.scope.level,
+          scope_id: scopeId,
+          range_days: filters.time.range_days,
+          start_date: filters.time.start_date,
+          end_date: filters.time.end_date,
+        }),
+        "bottleneck/review-heatmap",
+      ),
+    ]);
 
   if (!health.ok) {
     return <ServiceUnavailable />;
@@ -120,8 +106,7 @@ export default async function BottleneckPage({
   const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
   const placeholderDeltas = !home?.deltas?.length;
 
-  const getMetric = (metric: string) =>
-    deltas.find((item) => item.metric === metric);
+  const getMetric = (metric: string) => deltas.find((item) => item.metric === metric);
 
   const wipMetric = getMetric("wip_saturation");
   const blockedMetric = getMetric("blocked_work");
@@ -134,12 +119,8 @@ export default async function BottleneckPage({
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                Bottlenecks
-              </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                Delivery Bottleneck Summary
-              </h1>
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Bottlenecks</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Delivery Bottleneck Summary</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 WIP saturation, review latency, and blocked work in one view.
               </p>
@@ -194,13 +175,9 @@ export default async function BottleneckPage({
                 filters,
                 role: activeRole,
               })}
-              value={
-                placeholderDeltas ? undefined : reviewLatencyMetric?.value
-              }
+              value={placeholderDeltas ? undefined : reviewLatencyMetric?.value}
               unit={reviewLatencyMetric?.unit}
-              delta={
-                placeholderDeltas ? undefined : reviewLatencyMetric?.delta_pct
-              }
+              delta={placeholderDeltas ? undefined : reviewLatencyMetric?.delta_pct}
               spark={reviewLatencyMetric?.spark}
               caption="Time to first review"
             />

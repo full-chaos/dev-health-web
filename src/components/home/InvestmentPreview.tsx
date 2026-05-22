@@ -10,8 +10,9 @@ import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import { logger } from "@/lib/logger";
 
 const InvestmentMixSunburst = dynamic(
-  () => import("@/components/charts/InvestmentMixSunburst").then((mod) => mod.InvestmentMixSunburst),
-  { ssr: false }
+  () =>
+    import("@/components/charts/InvestmentMixSunburst").then((mod) => mod.InvestmentMixSunburst),
+  { ssr: false },
 );
 
 // Consistent height for both loading and loaded states
@@ -23,9 +24,7 @@ type InvestmentPreviewProps = {
 
 function LoadingState() {
   return (
-    <div
-      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]"
-    >
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]">
       <div className="mb-4 flex gap-1">
         <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:0ms]" />
         <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:150ms]" />
@@ -67,7 +66,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
       .postJson<InvestmentResponse>(
         "/api/v1/investment",
         { filters },
-        { signal: controller.signal }
+        { signal: controller.signal },
       )
       .then((payload) => {
         if (payload) {
@@ -92,9 +91,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
 
   if (!hasData) {
     return (
-      <div
-        className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]"
-      >
+      <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]">
         <span className="text-sm text-(--ink-muted)">
           Investment data not yet available for this window.
         </span>

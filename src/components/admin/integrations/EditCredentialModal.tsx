@@ -39,12 +39,16 @@ const PROVIDER_FIELDS: Record<Provider, ProviderField[]> = {
   ],
 };
 
-function getInitialCredentials(provider: Provider, existingConfig?: Record<string, unknown>): Record<string, string> {
+function getInitialCredentials(
+  provider: Provider,
+  existingConfig?: Record<string, unknown>,
+): Record<string, string> {
   const base: Record<string, string> = ((): Record<string, string> => {
     if (provider === "gitlab") return { token: "", url: "https://gitlab.com" };
     if (provider === "jira") return { email: "", api_token: "", server_url: "" };
     if (provider === "linear") return { api_key: "" };
-    if (provider === "launchdarkly") return { api_key: "", project_key: "", environment: "production" };
+    if (provider === "launchdarkly")
+      return { api_key: "", project_key: "", environment: "production" };
     return { token: "" };
   })();
 
@@ -179,7 +183,10 @@ export function EditCredentialModal({
 
           {PROVIDER_FIELDS[provider].map((field) => (
             <div key={field.key}>
-              <label htmlFor={`edit-credential-${field.key}`} className="mb-1.5 block text-sm font-medium">
+              <label
+                htmlFor={`edit-credential-${field.key}`}
+                className="mb-1.5 block text-sm font-medium"
+              >
                 {field.label}
               </label>
               <input

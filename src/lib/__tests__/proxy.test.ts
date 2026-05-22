@@ -83,8 +83,7 @@ describe("sanitizeCallbackUrl", () => {
 describe("org-scoped route guard", () => {
   const mockAuth = vi.mocked(auth);
 
-  const makeRequest = (path: string) =>
-    new NextRequest(new URL(path, "http://localhost:3000"));
+  const makeRequest = (path: string) => new NextRequest(new URL(path, "http://localhost:3000"));
 
   const baseUser = { id: "u-1", name: "Test", email: "t@t.com" } as const;
 

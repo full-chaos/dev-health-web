@@ -9,7 +9,7 @@ export function useBaseFormState<T>(initialState: T) {
   const [formData, setFormData] = useState<T>(initialState);
 
   const handleChange = (
-    event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => {
     const { name, value, type } = event.target;
     const nextValue = type === "checkbox" ? (event.target as HTMLInputElement).checked : value;

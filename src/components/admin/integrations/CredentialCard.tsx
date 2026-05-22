@@ -104,7 +104,8 @@ export function CredentialCard({
             </p>
             {isUsedBySyncConfigs && (
               <div className="mb-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-600">
-                <strong>Warning:</strong> This credential is used by active sync configs. Deleting it will disconnect {providerName} for those configs.
+                <strong>Warning:</strong> This credential is used by active sync configs. Deleting
+                it will disconnect {providerName} for those configs.
               </div>
             )}
             <div className="flex justify-end gap-2">

@@ -34,4 +34,3 @@ describe("normalizeInvestmentMix", () => {
     expect(normalized.subcategory_distribution["quality.bugs"]).toBe(12);
   });
 });
-

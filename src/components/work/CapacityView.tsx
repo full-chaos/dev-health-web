@@ -17,9 +17,10 @@ type CapacityViewProps = {
 export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
   const contextOrgId = useOrgId();
   const orgId = propOrgId || contextOrgId || "";
-  const teamId = filters.scope.level === "team" && filters.scope.ids.length > 0
-    ? filters.scope.ids[0]
-    : undefined;
+  const teamId =
+    filters.scope.level === "team" && filters.scope.ids.length > 0
+      ? filters.scope.ids[0]
+      : undefined;
 
   const historyDays = filters.time.range_days ?? 90;
 
@@ -52,9 +53,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">
-            Capacity Planning
-          </h2>
+          <h2 className="text-xl font-semibold text-foreground">Capacity Planning</h2>
           <p className="mt-1 text-sm text-(--ink-muted)">
             Monte Carlo forecast for work completion
           </p>
@@ -72,9 +71,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
         <ForecastCard forecast={forecast} loading={isLoading} error={error} />
 
         <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
-          <h3 className="text-sm font-medium text-foreground mb-4">
-            Completion Projection
-          </h3>
+          <h3 className="text-sm font-medium text-foreground mb-4">Completion Projection</h3>
           {chartData ? (
             <ConfidenceBandChart
               backlogSize={chartData.backlogSize}
@@ -86,9 +83,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
             />
           ) : isLoading ? (
             <div className="h-[320px] flex items-center justify-center">
-              <div className="animate-pulse text-sm text-(--ink-muted)">
-                Loading chart...
-              </div>
+              <div className="animate-pulse text-sm text-(--ink-muted)">Loading chart...</div>
             </div>
           ) : (
             <div className="h-[320px] flex items-center justify-center text-sm text-(--ink-muted)">
@@ -101,9 +96,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
       {forecast && (
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
-            <h3 className="text-sm font-medium text-foreground mb-4">
-              Throughput Distribution
-            </h3>
+            <h3 className="text-sm font-medium text-foreground mb-4">Throughput Distribution</h3>
             <ThroughputHistogram
               throughputMean={forecast.throughputMean}
               throughputStddev={forecast.throughputStddev}
@@ -115,9 +108,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
           </div>
 
           <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
-            <h3 className="text-sm font-medium text-foreground mb-3">
-              How to Interpret
-            </h3>
+            <h3 className="text-sm font-medium text-foreground mb-3">How to Interpret</h3>
             <div className="grid gap-3 text-sm text-(--ink-muted)">
               <div>
                 <span className="font-medium text-green-600 dark:text-green-400">P50 (50%)</span>

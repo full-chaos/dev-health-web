@@ -47,18 +47,14 @@ describe("KpiTile", () => {
   });
 
   it("applies the danger tone border when tone='danger'", () => {
-    const { container } = render(
-      <KpiTile label="Critical" value={2} tone="danger" />
-    );
+    const { container } = render(<KpiTile label="Critical" value={2} tone="danger" />);
 
     const root = container.querySelector("div");
     expect(root?.className).toContain("border-l-red-600");
   });
 
   it("applies the warn tone border when tone='warn'", () => {
-    const { container } = render(
-      <KpiTile label="Open" value={5} tone="warn" />
-    );
+    const { container } = render(<KpiTile label="Open" value={5} tone="warn" />);
 
     const root = container.querySelector("div");
     expect(root?.className).toContain("border-l-amber-400");

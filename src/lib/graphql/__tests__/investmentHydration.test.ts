@@ -23,7 +23,7 @@ describe("buildInvestmentMixVariables", () => {
           end_date: "2025-01-31",
         },
       }),
-      "org-1"
+      "org-1",
     );
 
     expect(vars.orgId).toBe("org-1");
@@ -46,7 +46,7 @@ describe("buildInvestmentMixVariables", () => {
   it("translates scope.level to uppercase", () => {
     const vars = buildInvestmentMixVariables(
       baseFilters({ scope: { level: "team", ids: ["team-a"] } }),
-      "org-1"
+      "org-1",
     );
     expect(vars.batch.filters?.scope).toEqual({
       level: "TEAM",
@@ -70,7 +70,7 @@ describe("buildInvestmentMixVariables", () => {
         why: { work_category: ["roadmap"], issue_type: ["bug"] },
         how: { flow_stage: ["in_progress"] },
       }),
-      "org-1"
+      "org-1",
     );
     expect(vars.batch.filters?.who).toEqual({ developers: ["alice"] });
     expect(vars.batch.filters?.what).toEqual({ repos: ["repo-a"] });
@@ -91,7 +91,7 @@ describe("buildInvestmentMixVariables", () => {
           end_date: "2025-01-31",
         },
       }),
-      "org-1"
+      "org-1",
     );
     const vars2 = buildInvestmentMixVariables(
       baseFilters({
@@ -102,7 +102,7 @@ describe("buildInvestmentMixVariables", () => {
           end_date: "2025-01-31",
         },
       }),
-      "org-1"
+      "org-1",
     );
     expect(JSON.stringify(vars1)).toBe(JSON.stringify(vars2));
   });

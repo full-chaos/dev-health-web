@@ -29,9 +29,7 @@ export default async function IntegrationPage({
     listSyncConfigs(),
   ]);
 
-  const credentials = (credentialsResult.data ?? []).filter(
-    (c) => c.provider === provider
-  );
+  const credentials = (credentialsResult.data ?? []).filter((c) => c.provider === provider);
   const syncConfigs = syncConfigsResult.data ?? [];
 
   return (

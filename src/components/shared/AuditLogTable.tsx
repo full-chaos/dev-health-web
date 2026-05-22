@@ -66,7 +66,9 @@ function BillingAuditLogTable({
           {entries.map((entry) => (
             <tr
               key={entry.id}
-              className={onSelect ? "cursor-pointer hover:bg-(--card-70)/70" : "hover:bg-(--card-70)/70"}
+              className={
+                onSelect ? "cursor-pointer hover:bg-(--card-70)/70" : "hover:bg-(--card-70)/70"
+              }
               onClick={() => onSelect?.(entry.id)}
             >
               <td className="px-4 py-3">
@@ -80,9 +82,7 @@ function BillingAuditLogTable({
                 <p className="font-medium">{entry.resource_type}</p>
                 <p className="font-mono text-xs text-(--ink-muted)">{entry.resource_id}</p>
               </td>
-              <td className="px-4 py-3 text-(--ink-muted)">
-                {entry.reconciliation_status ?? "-"}
-              </td>
+              <td className="px-4 py-3 text-(--ink-muted)">{entry.reconciliation_status ?? "-"}</td>
               <td className="px-4 py-3 text-(--ink-muted)">
                 {new Date(entry.created_at).toLocaleString()}
               </td>

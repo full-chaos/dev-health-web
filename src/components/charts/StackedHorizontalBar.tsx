@@ -36,11 +36,14 @@ export function StackedHorizontalBar({
   style,
 }: StackedHorizontalBarProps) {
   const chartTheme = useChartTheme();
-  const mergedStyle: CSSProperties = useMemo(() => ({ height, width, ...style }), [height, width, style]);
+  const mergedStyle: CSSProperties = useMemo(
+    () => ({ height, width, ...style }),
+    [height, width, style],
+  );
 
   const total = useMemo(
     () => segments.reduce((sum, segment) => sum + (segment.value ?? 0), 0),
-    [segments]
+    [segments],
   );
 
   const option = useMemo(
@@ -90,9 +93,20 @@ export function StackedHorizontalBar({
           emphasis: { focus: "series" as const },
         })),
     }),
-    [chartTheme.accent2, chartTheme.background, chartTheme.grid, chartTheme.muted, chartTheme.stroke, chartTheme.text, segments, total, unit]
+    [
+      chartTheme.accent2,
+      chartTheme.background,
+      chartTheme.grid,
+      chartTheme.muted,
+      chartTheme.stroke,
+      chartTheme.text,
+      segments,
+      total,
+      unit,
+    ],
   );
 
-  return <Chart option={option} className={className} style={mergedStyle} chartTheme={chartTheme} />;
+  return (
+    <Chart option={option} className={className} style={mergedStyle} chartTheme={chartTheme} />
+  );
 }
-

@@ -17,23 +17,12 @@ import { getRangeParams, withRangeParams } from "@/lib/people/query";
 
 const getItemTitle = (item: Record<string, unknown>, index: number) => {
   const title =
-    item.title ??
-    item.name ??
-    item.work_item_id ??
-    item.number ??
-    item.id ??
-    `Item ${index + 1}`;
+    item.title ?? item.name ?? item.work_item_id ?? item.number ?? item.id ?? `Item ${index + 1}`;
   return String(title);
 };
 
 const getItemHref = (item: Record<string, unknown>, fallback: string) => {
-  const candidates = [
-    item.url,
-    item.link,
-    item.html_url,
-    item.web_url,
-    item.api_url,
-  ];
+  const candidates = [item.url, item.link, item.html_url, item.web_url, item.api_url];
   for (const candidate of candidates) {
     if (typeof candidate === "string" && candidate.length) {
       return candidate;
@@ -62,7 +51,7 @@ const getEvidenceTypeFromLink = (link?: string) => {
 
 const pickDefinitionValue = (
   definition: Record<string, string | number | string[]> | undefined,
-  keys: string[]
+  keys: string[],
 ) => {
   if (!definition) {
     return null;
@@ -81,10 +70,7 @@ type PersonMetricPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function PersonMetricPage({
-  params,
-  searchParams,
-}: PersonMetricPageProps) {
+export default async function PersonMetricPage({ params, searchParams }: PersonMetricPageProps) {
   const health = await checkApiHealth();
 
   const { person_id: personId, metric } = await params;
@@ -96,20 +82,20 @@ export default async function PersonMetricPage({
   const evidenceParam = Array.isArray(rawParams.evidence)
     ? rawParams.evidence[0]
     : rawParams.evidence;
-  const evidenceType = evidenceParam === "prs" || evidenceParam === "issues"
-    ? evidenceParam
-    : null;
-  const limitParam = Array.isArray(rawParams.limit)
-    ? rawParams.limit[0]
-    : rawParams.limit;
+  const evidenceType = evidenceParam === "prs" || evidenceParam === "issues" ? evidenceParam : null;
+  const limitParam = Array.isArray(rawParams.limit) ? rawParams.limit[0] : rawParams.limit;
   const limit = limitParam ? Math.max(1, Number(limitParam)) : 50;
-  const cursorParam = Array.isArray(rawParams.cursor)
-    ? rawParams.cursor[0]
-    : rawParams.cursor;
+  const cursorParam = Array.isArray(rawParams.cursor) ? rawParams.cursor[0] : rawParams.cursor;
 
   const [summary, metricData] = await Promise.all([
-    fetchOrNull(getPersonSummary({ personId, range_days, compare_days }), `people/${personId}/summary`),
-    fetchOrNull(getPersonMetric({ personId, metric, range_days, compare_days }), `people/${personId}/metric-${metric}`),
+    fetchOrNull(
+      getPersonSummary({ personId, range_days, compare_days }),
+      `people/${personId}/summary`,
+    ),
+    fetchOrNull(
+      getPersonMetric({ personId, metric, range_days, compare_days }),
+      `people/${personId}/metric-${metric}`,
+    ),
   ]);
   const activeHoursHeatmap = await fetchOrNull(
     getHeatmap({
@@ -119,7 +105,7 @@ export default async function PersonMetricPage({
       scope_id: personId,
       range_days,
     }),
-    `people/${personId}/active-hours-heatmap`
+    `people/${personId}/active-hours-heatmap`,
   );
 
   const person = summary?.person;
@@ -137,9 +123,10 @@ export default async function PersonMetricPage({
     "guidance",
   ]);
   const definitionEntries = definition
-    ? Object.entries(definition).filter(([, value]) =>
-      typeof value === "string" || typeof value === "number" || Array.isArray(value)
-    )
+    ? Object.entries(definition).filter(
+        ([, value]) =>
+          typeof value === "string" || typeof value === "number" || Array.isArray(value),
+      )
     : [];
 
   const drilldown = evidenceType
@@ -153,7 +140,7 @@ export default async function PersonMetricPage({
           range_days,
           compare_days,
         }),
-        `people/${personId}/drilldown-${evidenceType}`
+        `people/${personId}/drilldown-${evidenceType}`,
       )
     : null;
 
@@ -165,36 +152,37 @@ export default async function PersonMetricPage({
     {
       id: "repo",
       label: "By repo",
-      items: breakdowns.by_repo?.map((item) => ({
-        label: item.repo,
-        value: item.value,
-      })) ?? [],
+      items:
+        breakdowns.by_repo?.map((item) => ({
+          label: item.repo,
+          value: item.value,
+        })) ?? [],
     },
     {
       id: "work",
       label: "By work type",
-      items: breakdowns.by_work_type?.map((item) => ({
-        label: item.work_type,
-        value: item.value,
-      })) ?? [],
+      items:
+        breakdowns.by_work_type?.map((item) => ({
+          label: item.work_type,
+          value: item.value,
+        })) ?? [],
     },
     {
       id: "stage",
       label: "By stage",
-      items: breakdowns.by_stage?.map((item) => ({
-        label: item.stage,
-        value: item.value,
-      })) ?? [],
+      items:
+        breakdowns.by_stage?.map((item) => ({
+          label: item.stage,
+          value: item.value,
+        })) ?? [],
     },
   ];
 
   const evidenceHref = (type: "prs" | "issues") =>
-    withRangeParams(
-      `/people/${personId}/metrics/${metric}`,
-      range_days,
-      compare_days,
-      { evidence: type, limit }
-    );
+    withRangeParams(`/people/${personId}/metrics/${metric}`, range_days, compare_days, {
+      evidence: type,
+      limit,
+    });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -206,9 +194,7 @@ export default async function PersonMetricPage({
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Individual metric
               </p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">
-                {label}
-              </h1>
+              <h1 className="mt-2 font-(--font-display) text-3xl">{label}</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 {person?.display_name ?? "Individual"} • {range_days}d window
               </p>
@@ -275,9 +261,7 @@ export default async function PersonMetricPage({
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Timeseries</h2>
-                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                  Daily
-                </span>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Daily</span>
               </div>
               <div className="mt-4">
                 {timeseries.length ? (
@@ -310,14 +294,9 @@ export default async function PersonMetricPage({
 
           <section className="grid gap-6 lg:grid-cols-3">
             {breakdownGroups.map((group) => (
-              <div
-                key={group.id}
-                className="rounded-3xl border border-(--card-stroke) bg-card p-5"
-              >
+              <div key={group.id} className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-(--font-display) text-xl">
-                    {group.label}
-                  </h2>
+                  <h2 className="font-(--font-display) text-xl">{group.label}</h2>
                   <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                     Breakdown
                   </span>
@@ -341,9 +320,7 @@ export default async function PersonMetricPage({
                       className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                     >
                       <span>{item.label}</span>
-                      <span className="text-xs text-(--ink-muted)">
-                        {formatNumber(item.value)}
-                      </span>
+                      <span className="text-xs text-(--ink-muted)">{formatNumber(item.value)}</span>
                     </div>
                   ))}
                 </div>
@@ -369,9 +346,7 @@ export default async function PersonMetricPage({
                         key={`${driver.text}-${idx}`}
                         className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                       >
-                        <p className="text-sm text-foreground">
-                          {driver.text}
-                        </p>
+                        <p className="text-sm text-foreground">{driver.text}</p>
                         {href && (
                           <Link
                             href={href}
@@ -401,19 +376,21 @@ export default async function PersonMetricPage({
               <div className="mt-4 flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
                 <Link
                   href={evidenceHref("prs")}
-                  className={`rounded-full border px-3 py-2 ${evidenceType === "prs"
-                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                    : "border-(--card-stroke) text-(--ink-muted)"
-                    }`}
+                  className={`rounded-full border px-3 py-2 ${
+                    evidenceType === "prs"
+                      ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                      : "border-(--card-stroke) text-(--ink-muted)"
+                  }`}
                 >
                   PRs
                 </Link>
                 <Link
                   href={evidenceHref("issues")}
-                  className={`rounded-full border px-3 py-2 ${evidenceType === "issues"
-                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                    : "border-(--card-stroke) text-(--ink-muted)"
-                    }`}
+                  className={`rounded-full border px-3 py-2 ${
+                    evidenceType === "issues"
+                      ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                      : "border-(--card-stroke) text-(--ink-muted)"
+                  }`}
                 >
                   Issues
                 </Link>
@@ -423,12 +400,8 @@ export default async function PersonMetricPage({
                   <table className="min-w-full border-collapse">
                     <thead className="text-left text-(--ink-muted)">
                       <tr>
-                        <th className="border-b border-(--card-stroke) pb-2">
-                          Item
-                        </th>
-                        <th className="border-b border-(--card-stroke) pb-2">
-                          Details
-                        </th>
+                        <th className="border-b border-(--card-stroke) pb-2">Item</th>
+                        <th className="border-b border-(--card-stroke) pb-2">Details</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -436,10 +409,7 @@ export default async function PersonMetricPage({
                         const fallbackHref = evidenceHref(evidenceType);
                         const href = getItemHref(item, fallbackHref);
                         return (
-                          <tr
-                            key={`item-${idx}`}
-                            className="border-b border-(--card-stroke)"
-                          >
+                          <tr key={`item-${idx}`} className="border-b border-(--card-stroke)">
                             <td className="py-2 pr-4 font-medium">
                               <a href={href} className="block text-foreground">
                                 {getItemTitle(item, idx)}

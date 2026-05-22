@@ -108,8 +108,17 @@ Variables:
 query InvestmentSankey($orgId: String!, $batch: AnalyticsRequestInput!) {
   analytics(orgId: $orgId, batch: $batch) {
     sankey {
-      nodes { id label dimension value }
-      edges { source target value }
+      nodes {
+        id
+        label
+        dimension
+        value
+      }
+      edges {
+        source
+        target
+        value
+      }
     }
   }
 }
@@ -136,10 +145,10 @@ Variables:
 
 For reduced query string churn, use these persisted query IDs:
 
-| ID | Description |
-|----|-------------|
+| ID                     | Description                      |
+| ---------------------- | -------------------------------- |
 | `investment-breakdown` | Theme and subcategory breakdowns |
-| `investment-sankey` | Sankey flow data |
+| `investment-sankey`    | Sankey flow data                 |
 
 Example:
 

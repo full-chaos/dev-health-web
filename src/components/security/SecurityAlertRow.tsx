@@ -100,9 +100,7 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
       <span className="flex shrink-0">{chip}</span>
       <span className="shrink-0">{repoLink}</span>
       <StateBadge state={state} />
-      <span className="shrink-0 text-xs text-[var(--ink-muted)]">
-        {relativeAge(createdAt)}
-      </span>
+      <span className="shrink-0 text-xs text-[var(--ink-muted)]">{relativeAge(createdAt)}</span>
       {externalIcon}
     </div>
   );

@@ -6,18 +6,12 @@ import { PendingChangesPanel } from "@/components/admin/teams/PendingChangesPane
 import { listTeams, getPendingTeamChanges } from "@/lib/admin/server";
 
 export default async function TeamsPage() {
-  const [result, pendingResult] = await Promise.all([
-    listTeams(),
-    getPendingTeamChanges(),
-  ]);
+  const [result, pendingResult] = await Promise.all([listTeams(), getPendingTeamChanges()]);
   const pendingCount = pendingResult.data?.total ?? 0;
 
   return (
     <div>
-      <AdminHeader
-        title="Teams"
-        description="Manage teams and their resource ownership mappings."
-      >
+      <AdminHeader title="Teams" description="Manage teams and their resource ownership mappings.">
         <div className="flex items-center gap-2">
           {pendingCount > 0 && (
             <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">

@@ -33,7 +33,8 @@ export const getFormatter = (options?: Intl.NumberFormatOptions): Intl.NumberFor
   if (
     options.notation === "compact" &&
     (options.maximumFractionDigits === undefined || options.maximumFractionDigits === 1) &&
-    Object.keys(options).filter((k) => k !== "notation" && k !== "maximumFractionDigits").length === 0
+    Object.keys(options).filter((k) => k !== "notation" && k !== "maximumFractionDigits").length ===
+      0
   ) {
     return compactFormatter;
   }

@@ -80,15 +80,13 @@ interface UseSecurityAlertsResult {
 
 export function useSecurityAlerts(
   filter: SecurityFilter,
-  pagination?: UseSecurityAlertsOptions
+  pagination?: UseSecurityAlertsOptions,
 ): UseSecurityAlertsResult {
   const orgId = useOrgId();
   const filters = toGraphQLFilter(filter);
 
   const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [accumulatedEdges, setAccumulatedEdges] = useState<
-    SecurityAlertConnection["edges"]
-  >([]);
+  const [accumulatedEdges, setAccumulatedEdges] = useState<SecurityAlertConnection["edges"]>([]);
 
   const paginationInput: SecurityPaginationInput = {
     first: pagination?.first ?? 50,
@@ -111,14 +109,14 @@ export function useSecurityAlerts(
       setAccumulatedEdges((prev) => {
         const existingIds = new Set(prev.map((e) => e.cursor));
         const newEdges = (result.data?.securityAlerts?.edges ?? []).filter(
-          (e) => !existingIds.has(e.cursor)
+          (e) => !existingIds.has(e.cursor),
         );
         return [...prev, ...newEdges];
       });
       setCursor(after);
       reexecute({ requestPolicy: "network-only" });
     },
-    [result.data, reexecute]
+    [result.data, reexecute],
   );
 
   // When cursor is set, allEdges = accumulated + current page
@@ -127,9 +125,7 @@ export function useSecurityAlerts(
     cursor !== undefined
       ? [
           ...accumulatedEdges,
-          ...currentEdges.filter(
-            (e) => !accumulatedEdges.some((a) => a.cursor === e.cursor)
-          ),
+          ...currentEdges.filter((e) => !accumulatedEdges.some((a) => a.cursor === e.cursor)),
         ]
       : currentEdges;
 

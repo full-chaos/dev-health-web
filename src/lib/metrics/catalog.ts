@@ -14,7 +14,7 @@ export const METRIC_CATALOG = [
 type MetricMeta = (typeof METRIC_CATALOG)[number];
 
 const metricMetaByKey = new Map<string, MetricMeta>(
-  METRIC_CATALOG.map((item) => [item.metric, item])
+  METRIC_CATALOG.map((item) => [item.metric, item]),
 );
 
 export const FALLBACK_DELTAS: MetricDelta[] = METRIC_CATALOG.map((item) => ({
@@ -35,5 +35,4 @@ export const getMetricLabel = (metric: string) => {
     .join(" ");
 };
 
-export const getMetricUnit = (metric: string) =>
-  metricMetaByKey.get(metric)?.unit ?? "";
+export const getMetricUnit = (metric: string) => metricMetaByKey.get(metric)?.unit ?? "";

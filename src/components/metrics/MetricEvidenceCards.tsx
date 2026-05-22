@@ -63,7 +63,9 @@ export function MetricEvidenceCards({
               <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 <span>{label}</span>
                 <span className={deltaTone(data?.delta_pct)}>
-                  {placeholderDeltas || data?.delta_pct === undefined ? "--" : formatDelta(data.delta_pct)}
+                  {placeholderDeltas || data?.delta_pct === undefined
+                    ? "--"
+                    : formatDelta(data.delta_pct)}
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-between gap-4">
@@ -75,7 +77,11 @@ export function MetricEvidenceCards({
                   </p>
                   <button
                     type="button"
-                    onClick={() => setActiveMetric(data ?? { metric, label, value: 0, unit: "", delta_pct: 0, spark: [] })}
+                    onClick={() =>
+                      setActiveMetric(
+                        data ?? { metric, label, value: 0, unit: "", delta_pct: 0, spark: [] },
+                      )
+                    }
                     className="mt-2 text-left text-xs text-(--accent-2) underline-offset-4 hover:underline"
                   >
                     See evidence

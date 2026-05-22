@@ -26,12 +26,8 @@ export function ConnectionStatus({ status, className = "" }: ConnectionStatusPro
     <span
       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${styles[status]} ${className}`}
     >
-      {status === "connected" && (
-        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
-      )}
-      {status === "error" && (
-        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-      )}
+      {status === "connected" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />}
+      {status === "error" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}
       {status === "not_configured" && (
         <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-gray-400" />
       )}

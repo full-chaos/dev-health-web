@@ -1,31 +1,15 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { apiClient } from "@/lib/apiClient";
-import {
-  addDays,
-  formatDateInput,
-  parseDateInput,
-  toLocalDate,
-} from "@/lib/dateUtils";
+import { addDays, formatDateInput, parseDateInput, toLocalDate } from "@/lib/dateUtils";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
 import { logger } from "@/lib/logger";
-import {
-  type FilterBarClientProps,
-  resolveScopeLock,
-  resolveVisibility,
-} from "./filterBarConfig";
+import { type FilterBarClientProps, resolveScopeLock, resolveVisibility } from "./filterBarConfig";
 import {
   DATE_PRESETS,
   EMPTY_FILTER_OPTIONS,
@@ -48,19 +32,12 @@ export function useFilterBarState({
   tab,
   resolvedVisibility,
   resolvedScopeLock,
-}: Pick<
-  FilterBarClientProps,
-  "view" | "tab" | "resolvedVisibility" | "resolvedScopeLock"
->) {
+}: Pick<FilterBarClientProps, "view" | "tab" | "resolvedVisibility" | "resolvedScopeLock">) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const isClient = useSyncExternalStore(
-    subscribe,
-    getIsClientSnapshot,
-    getServerSnapshot,
-  );
+  const isClient = useSyncExternalStore(subscribe, getIsClientSnapshot, getServerSnapshot);
 
   const encoded = searchParams.get("f");
   const initialFilters = useMemo(() => decodeFilter(encoded), [encoded]);
@@ -149,7 +126,7 @@ export function useFilterBarState({
       params.set("f", encodeFilterParam(nextFilters));
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [pathname, router, searchParams]
+    [pathname, router, searchParams],
   );
 
   const updateFilters = useCallback(
@@ -157,7 +134,7 @@ export function useFilterBarState({
       setFilters(nextFilters);
       updateUrl(nextFilters);
     },
-    [updateUrl]
+    [updateUrl],
   );
 
   const updatePeopleQuery = useCallback(
@@ -172,7 +149,7 @@ export function useFilterBarState({
       params.set("f", encodeFilterParam(filters));
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [filters, pathname, router, searchParams]
+    [filters, pathname, router, searchParams],
   );
 
   const resetFilters = useCallback(() => {
@@ -211,16 +188,14 @@ export function useFilterBarState({
         },
       });
     },
-    [filters, updateFilters]
+    [filters, updateFilters],
   );
 
   const visibility = resolvedVisibility ?? resolveVisibility(view, tab);
   const allowAdvanced = view !== "people";
-  const scopeLock =
-    resolvedScopeLock !== undefined ? resolvedScopeLock : resolveScopeLock(view);
+  const scopeLock = resolvedScopeLock !== undefined ? resolvedScopeLock : resolveScopeLock(view);
   const scopeLevel = scopeLock ?? filters.scope.level;
-  const effectiveScopeIds =
-    scopeLock && filters.scope.level !== scopeLock ? [] : filters.scope.ids;
+  const effectiveScopeIds = scopeLock && filters.scope.level !== scopeLock ? [] : filters.scope.ids;
 
   useEffect(() => {
     if (!scopeLock || filters.scope.level === scopeLock) {
@@ -264,14 +239,10 @@ export function useFilterBarState({
   const scopeValue = formatSelection(effectiveScopeIds, scopeEmptyLabel);
   const safeRangeDays = Math.max(1, filters.time.range_days);
   const today = toLocalDate(new Date());
-  const parsedStart = filters.time.start_date
-    ? parseDateInput(filters.time.start_date)
-    : null;
+  const parsedStart = filters.time.start_date ? parseDateInput(filters.time.start_date) : null;
   const parsedEnd = filters.time.end_date ? parseDateInput(filters.time.end_date) : null;
   const resolvedEnd = toLocalDate(parsedEnd ?? today);
-  const resolvedStart = toLocalDate(
-    parsedStart ?? addDays(resolvedEnd, -(safeRangeDays - 1))
-  );
+  const resolvedStart = toLocalDate(parsedStart ?? addDays(resolvedEnd, -(safeRangeDays - 1)));
   const startDate = resolvedStart > resolvedEnd ? resolvedEnd : resolvedStart;
   const endDate = resolvedStart > resolvedEnd ? resolvedStart : resolvedEnd;
   // When the URL doesn't pin both dates, startDate/endDate derive from

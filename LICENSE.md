@@ -50,6 +50,7 @@ For commercial licensing inquiries (organizations exceeding the Additional Use G
 - Website: https://fullchaos.studio/pricing
 
 Commercial licenses include:
+
 - Production use at any scale
 - Priority support
 - Enterprise features (SSO, SAML, advanced analytics)
@@ -65,16 +66,16 @@ THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
 
 ## Summary Table
 
-| Use Case | Allowed? |
-|----------|----------|
-| Personal/hobby projects | ✅ Yes |
-| Development & testing | ✅ Yes |
-| Internal team analytics (<10 employees, <$1M revenue) | ✅ Yes |
-| Internal team analytics (larger orgs) | ⚠️ Requires commercial license |
-| Hosting as a service for others | ❌ No (requires partnership) |
-| Building a competing SaaS product | ❌ No |
-| Contributing to the project | ✅ Yes |
-| Forking for personal modifications | ✅ Yes |
+| Use Case                                              | Allowed?                       |
+| ----------------------------------------------------- | ------------------------------ |
+| Personal/hobby projects                               | ✅ Yes                         |
+| Development & testing                                 | ✅ Yes                         |
+| Internal team analytics (<10 employees, <$1M revenue) | ✅ Yes                         |
+| Internal team analytics (larger orgs)                 | ⚠️ Requires commercial license |
+| Hosting as a service for others                       | ❌ No (requires partnership)   |
+| Building a competing SaaS product                     | ❌ No                          |
+| Contributing to the project                           | ✅ Yes                         |
+| Forking for personal modifications                    | ✅ Yes                         |
 
 ---
 

@@ -1,10 +1,5 @@
 import { request } from "./_request";
-import type {
-  Setting,
-  SettingCreate,
-  SettingUpdate,
-  SettingsListResponse,
-} from "../types";
+import type { Setting, SettingCreate, SettingUpdate, SettingsListResponse } from "../types";
 
 export const settingsApi = {
   listCategories: (token?: string, orgId?: string) =>
@@ -24,7 +19,7 @@ export const settingsApi = {
       `/settings/${category}/${key}`,
       { method: "PUT", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   delete: (category: string, key: string, token?: string, orgId?: string) =>

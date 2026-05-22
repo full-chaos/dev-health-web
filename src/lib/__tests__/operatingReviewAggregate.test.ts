@@ -27,7 +27,7 @@ function makeReview(
   throughput: number,
   wip: number,
   priorThroughput: number,
-  priorWip: number
+  priorWip: number,
 ): OperatingReview {
   return {
     orgId: "org-1",
@@ -52,13 +52,7 @@ function makeReview(
   };
 }
 
-function makeMetric(
-  key: string,
-  label: string,
-  unit: string,
-  value: number,
-  priorValue: number
-) {
+function makeMetric(key: string, label: string, unit: string, value: number, priorValue: number) {
   return {
     key,
     label,

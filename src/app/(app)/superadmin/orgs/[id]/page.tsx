@@ -20,10 +20,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
 
   return (
     <div>
-      <AdminHeader
-        title={org.name}
-        description={`Manage organization ${org.slug}`}
-      />
+      <AdminHeader title={org.name} description={`Manage organization ${org.slug}`} />
 
       <SettingsSection
         title="Organization Settings"
@@ -32,10 +29,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
         <OrgEditForm org={org} />
       </SettingsSection>
 
-      <SettingsSection
-        title="Members"
-        description="Users who are members of this organization."
-      >
+      <SettingsSection title="Members" description="Users who are members of this organization.">
         {membersError ? (
           <div className="text-red-500">Error loading members: {membersError}</div>
         ) : (
@@ -58,9 +52,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-(--ink-muted)">
-                      {member.joined_at
-                        ? new Date(member.joined_at).toLocaleDateString()
-                        : "-"}
+                      {member.joined_at ? new Date(member.joined_at).toLocaleDateString() : "-"}
                     </td>
                   </tr>
                 ))}

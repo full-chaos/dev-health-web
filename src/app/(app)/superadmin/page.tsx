@@ -7,10 +7,7 @@ export default async function SuperadminDashboard() {
   if (error) {
     return (
       <div>
-        <AdminHeader
-          title="Platform Dashboard"
-          description="System overview and health metrics."
-        />
+        <AdminHeader title="Platform Dashboard" description="System overview and health metrics." />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-800">
           <h3 className="text-lg font-semibold">Error loading stats</h3>
           <p className="mt-2 text-sm">{error}</p>
@@ -25,55 +22,36 @@ export default async function SuperadminDashboard() {
 
   return (
     <div className="space-y-8">
-      <AdminHeader
-        title="Platform Dashboard"
-        description="System overview and health metrics."
-      />
+      <AdminHeader title="Platform Dashboard" description="System overview and health metrics." />
 
       {/* Key Metrics Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Organizations */}
         <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
           <div className="text-sm font-medium text-(--ink-muted)">Total Organizations</div>
-          <div className="mt-2 text-3xl font-bold text-foreground">
-            {stats.total_organizations}
-          </div>
-          <div className="mt-1 text-xs text-(--ink-muted)">
-            {stats.active_organizations} active
-          </div>
+          <div className="mt-2 text-3xl font-bold text-foreground">{stats.total_organizations}</div>
+          <div className="mt-1 text-xs text-(--ink-muted)">{stats.active_organizations} active</div>
         </div>
 
         {/* Users */}
         <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
           <div className="text-sm font-medium text-(--ink-muted)">Total Users</div>
-          <div className="mt-2 text-3xl font-bold text-foreground">
-            {stats.total_users}
-          </div>
-          <div className="mt-1 text-xs text-(--ink-muted)">
-            {stats.active_users} active
-          </div>
+          <div className="mt-2 text-3xl font-bold text-foreground">{stats.total_users}</div>
+          <div className="mt-1 text-xs text-(--ink-muted)">{stats.active_users} active</div>
         </div>
 
         {/* Superusers */}
         <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
           <div className="text-sm font-medium text-(--ink-muted)">Superusers</div>
-          <div className="mt-2 text-3xl font-bold text-purple-500">
-            {stats.superuser_count}
-          </div>
-          <div className="mt-1 text-xs text-(--ink-muted)">
-            System administrators
-          </div>
+          <div className="mt-2 text-3xl font-bold text-purple-500">{stats.superuser_count}</div>
+          <div className="mt-1 text-xs text-(--ink-muted)">System administrators</div>
         </div>
 
         {/* Memberships */}
         <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
           <div className="text-sm font-medium text-(--ink-muted)">Total Memberships</div>
-          <div className="mt-2 text-3xl font-bold text-foreground">
-            {stats.total_memberships}
-          </div>
-          <div className="mt-1 text-xs text-(--ink-muted)">
-            Across all organizations
-          </div>
+          <div className="mt-2 text-3xl font-bold text-foreground">{stats.total_memberships}</div>
+          <div className="mt-1 text-xs text-(--ink-muted)">Across all organizations</div>
         </div>
       </div>
 
@@ -86,9 +64,7 @@ export default async function SuperadminDashboard() {
               <div key={tier} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-purple-500" />
-                  <span className="text-sm font-medium capitalize text-foreground">
-                    {tier}
-                  </span>
+                  <span className="text-sm font-medium capitalize text-foreground">{tier}</span>
                 </div>
                 <span className="text-sm text-(--ink-muted)">{count} orgs</span>
               </div>
@@ -102,7 +78,7 @@ export default async function SuperadminDashboard() {
         {/* Sync Health */}
         <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
           <h3 className="mb-4 text-lg font-semibold text-foreground">Sync Health</h3>
-          
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg bg-(--bg-base) p-4">
               <div className="text-xs font-medium text-(--ink-muted)">Sync Configs</div>

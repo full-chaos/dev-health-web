@@ -25,7 +25,7 @@ import type {
  */
 export function buildCapacityForecastVariables(
   filters: MetricFilter,
-  orgId: string
+  orgId: string,
 ): { orgId: string; input: CapacityForecastInput } {
   const teamId =
     filters.scope.level === "team" && filters.scope.ids.length > 0
@@ -51,15 +51,14 @@ export function buildCapacityForecastVariables(
  */
 export async function getCapacityForecastForHydration(
   filters: MetricFilter,
-  orgId: string
+  orgId: string,
 ): Promise<{ data: CapacityForecast | null; hydrationPayload: SSRData }> {
   const variables = buildCapacityForecastVariables(filters, orgId);
-  const { data, hydrationPayload } =
-    await graphqlFetchForHydration<CapacityForecastQueryResponse>(
-      CAPACITY_FORECAST_QUERY,
-      variables,
-      { orgId }
-    );
+  const { data, hydrationPayload } = await graphqlFetchForHydration<CapacityForecastQueryResponse>(
+    CAPACITY_FORECAST_QUERY,
+    variables,
+    { orgId },
+  );
 
   return {
     data: data.capacityForecast,

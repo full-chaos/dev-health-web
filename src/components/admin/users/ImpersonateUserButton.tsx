@@ -13,9 +13,7 @@ export function ImpersonateUserButton({ user }: { user: User }) {
   const [loading, setLoading] = useState(false);
 
   const canImpersonate =
-    session?.user?.id !== user.id &&
-    !user.is_superuser &&
-    user.role !== "admin";
+    session?.user?.id !== user.id && !user.is_superuser && user.role !== "admin";
 
   if (!canImpersonate) {
     return null;

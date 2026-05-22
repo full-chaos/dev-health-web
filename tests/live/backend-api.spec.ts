@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const liveBackendUrl =
-  process.env.PLAYWRIGHT_LIVE_BACKEND_URL ??
-  process.env.BACKEND_URL ??
-  "http://127.0.0.1:8000";
+  process.env.PLAYWRIGHT_LIVE_BACKEND_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 test("backend health is reachable", async ({ request }) => {
   const response = await request.get(`${liveBackendUrl}/health`);

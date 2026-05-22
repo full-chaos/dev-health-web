@@ -20,7 +20,7 @@ export const orgsApi = {
       "/orgs",
       { method: "POST", body: JSON.stringify(data) },
       token,
-      headerOrgId
+      headerOrgId,
     ),
 
   update: (orgId: string, data: OrganizationUpdate, token?: string, headerOrgId?: string) =>
@@ -28,7 +28,7 @@ export const orgsApi = {
       `/orgs/${orgId}`,
       { method: "PATCH", body: JSON.stringify(data) },
       token,
-      headerOrgId
+      headerOrgId,
     ),
 
   delete: (orgId: string, token?: string, headerOrgId?: string) =>
@@ -43,26 +43,37 @@ export const orgsApi = {
         `/orgs/${orgId}/members`,
         { method: "POST", body: JSON.stringify(data) },
         token,
-        headerOrgId
+        headerOrgId,
       ),
 
-    updateRole: (orgId: string, userId: string, data: MembershipUpdateRole, token?: string, headerOrgId?: string) =>
+    updateRole: (
+      orgId: string,
+      userId: string,
+      data: MembershipUpdateRole,
+      token?: string,
+      headerOrgId?: string,
+    ) =>
       request<Membership>(
         `/orgs/${orgId}/members/${userId}`,
         { method: "PATCH", body: JSON.stringify(data) },
         token,
-        headerOrgId
+        headerOrgId,
       ),
 
     remove: (orgId: string, userId: string, token?: string, headerOrgId?: string) =>
       request<void>(`/orgs/${orgId}/members/${userId}`, { method: "DELETE" }, token, headerOrgId),
 
-    transferOwnership: (orgId: string, newOwnerUserId: string, token?: string, headerOrgId?: string) =>
+    transferOwnership: (
+      orgId: string,
+      newOwnerUserId: string,
+      token?: string,
+      headerOrgId?: string,
+    ) =>
       request<void>(
         `/orgs/${orgId}/transfer-ownership`,
         { method: "POST", body: JSON.stringify({ new_owner_user_id: newOwnerUserId }) },
         token,
-        headerOrgId
+        headerOrgId,
       ),
   },
 };

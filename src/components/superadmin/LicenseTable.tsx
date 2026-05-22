@@ -42,7 +42,7 @@ export function LicenseTable({ orgs }: LicenseTableProps) {
               <td className="px-6 py-4">
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTierBadge(
-                    org.tier
+                    org.tier,
                   )}`}
                 >
                   {org.tier}
@@ -51,9 +51,7 @@ export function LicenseTable({ orgs }: LicenseTableProps) {
               <td className="px-6 py-4">
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    org.is_active
-                      ? "bg-green-500/10 text-green-500"
-                      : "bg-red-500/10 text-red-500"
+                    org.is_active ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
                   }`}
                 >
                   {org.is_active ? "active" : "inactive"}

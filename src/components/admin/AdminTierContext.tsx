@@ -33,7 +33,7 @@ export function AdminTierProvider({
   features: Record<string, boolean>;
   limits?: Record<string, number | null>;
   children: React.ReactNode;
-    }) {
+}) {
   const features = {
     ...backendFeatures,
     initial_sync_depth: tier === "team" || tier === "enterprise",

@@ -59,7 +59,9 @@ export function UserTable({ users }: UserTableProps) {
       render: (user) => {
         const status = getStatusDisplay(user);
         return (
-          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}>
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}
+          >
             {status.label}
           </span>
         );
@@ -70,7 +72,8 @@ export function UserTable({ users }: UserTableProps) {
       header: "Last Login",
       headerClassName: "px-6 py-4 font-medium",
       className: "px-6 py-4 text-(--ink-muted)",
-      render: (user) => (user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : "Never"),
+      render: (user) =>
+        user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : "Never",
     },
     {
       key: "actions",

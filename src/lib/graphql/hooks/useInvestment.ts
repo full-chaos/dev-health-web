@@ -46,10 +46,13 @@ function translateFilters(filters: MetricFilter): FilterInput {
     },
     who: filters.who.developers?.length ? { developers: filters.who.developers } : undefined,
     what: filters.what.repos?.length ? { repos: filters.what.repos } : undefined,
-    why: (filters.why.work_category?.length || filters.why.issue_type?.length) ? {
-      workCategory: filters.why.work_category,
-      issueType: filters.why.issue_type,
-    } : undefined,
+    why:
+      filters.why.work_category?.length || filters.why.issue_type?.length
+        ? {
+            workCategory: filters.why.work_category,
+            issueType: filters.why.issue_type,
+          }
+        : undefined,
     how: filters.how.flow_stage?.length ? { flowStage: filters.how.flow_stage } : undefined,
   };
 }
@@ -75,8 +78,18 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
     const dateRange = buildDateRange(filters);
     const batch: AnalyticsRequestInput = {
       breakdowns: [
-        { dimension: "THEME" as DimensionInput, measure: "COUNT" as MeasureInput, dateRange, topN: 50 },
-        { dimension: "SUBCATEGORY" as DimensionInput, measure: "COUNT" as MeasureInput, dateRange, topN: 100 },
+        {
+          dimension: "THEME" as DimensionInput,
+          measure: "COUNT" as MeasureInput,
+          dateRange,
+          topN: 50,
+        },
+        {
+          dimension: "SUBCATEGORY" as DimensionInput,
+          measure: "COUNT" as MeasureInput,
+          dateRange,
+          topN: 100,
+        },
       ],
       useInvestment: true,
       filters: translateFilters(filters),
@@ -95,10 +108,10 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
     if (!result.data?.analytics) return null;
 
     const themeBreakdown = result.data.analytics.breakdowns.find(
-      (b) => b.dimension.toLowerCase() === "theme"
+      (b) => b.dimension.toLowerCase() === "theme",
     );
     const subcategoryBreakdown = result.data.analytics.breakdowns.find(
-      (b) => b.dimension.toLowerCase() === "subcategory"
+      (b) => b.dimension.toLowerCase() === "subcategory",
     );
 
     const theme_distribution: Record<string, number> = {};
@@ -202,7 +215,9 @@ interface UseInvestmentRepoTeamFlowOptions {
   pause?: boolean;
 }
 
-export function useInvestmentRepoTeamFlow(options: UseInvestmentRepoTeamFlowOptions): UseInvestmentFlowResult {
+export function useInvestmentRepoTeamFlow(
+  options: UseInvestmentRepoTeamFlowOptions,
+): UseInvestmentFlowResult {
   const { filters, theme = null, pause = false } = options;
   const contextOrgId = useOrgId();
 

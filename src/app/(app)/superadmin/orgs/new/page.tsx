@@ -5,10 +5,7 @@ import { OrgCreateForm } from "@/components/superadmin/OrgCreateForm";
 export default function CreateOrgPage() {
   return (
     <div>
-      <AdminHeader
-        title="Create Organization"
-        description="Create a new organization tenant."
-      />
+      <AdminHeader title="Create Organization" description="Create a new organization tenant." />
       <SettingsSection
         title="Organization Details"
         description="Enter the basic information for the new organization."

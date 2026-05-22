@@ -33,10 +33,7 @@ vi.mock("@/components/charts/Chart", () => ({
 
 vi.mock("@/components/charts/TreemapChart", () => ({
   TreemapChart: ({ data }: { data: { children?: unknown[] } }) => (
-    <div
-      data-testid="treemap-chart"
-      data-children={data?.children?.length ?? 0}
-    />
+    <div data-testid="treemap-chart" data-children={data?.children?.length ?? 0} />
   ),
 }));
 
@@ -114,10 +111,7 @@ function makeHotspot(
 
 describe("computeKpis", () => {
   it("returns nulls/zeros when both arrays are empty", () => {
-    const { avgComplexity, totalHighComplexity, hotspotCount } = computeKpis(
-      [],
-      [],
-    );
+    const { avgComplexity, totalHighComplexity, hotspotCount } = computeKpis([], []);
     expect(avgComplexity).toBeNull();
     expect(totalHighComplexity).toBe(0);
     expect(hotspotCount).toBe(0);
@@ -150,21 +144,13 @@ describe("computeKpis", () => {
   });
 
   it("counts hotspot rows with riskScore above default threshold (0.5)", () => {
-    const rows = [
-      makeHotspot("a.py", 0.3),
-      makeHotspot("b.py", 0.6),
-      makeHotspot("c.py", 0.9),
-    ];
+    const rows = [makeHotspot("a.py", 0.3), makeHotspot("b.py", 0.6), makeHotspot("c.py", 0.9)];
     const { hotspotCount } = computeKpis([], rows);
     expect(hotspotCount).toBe(2);
   });
 
   it("respects a custom threshold", () => {
-    const rows = [
-      makeHotspot("a.py", 0.3),
-      makeHotspot("b.py", 0.6),
-      makeHotspot("c.py", 0.9),
-    ];
+    const rows = [makeHotspot("a.py", 0.3), makeHotspot("b.py", 0.6), makeHotspot("c.py", 0.9)];
     const { hotspotCount } = computeKpis([], rows, 0.8);
     expect(hotspotCount).toBe(1);
   });
@@ -222,9 +208,7 @@ describe("ComplexityDashboard", () => {
   it("renders empty state when both points and hotspotRows are empty", () => {
     render(<ComplexityDashboard {...baseProps} />);
     expect(screen.getByTestId("empty-state")).toBeInTheDocument();
-    expect(
-      screen.getByText(/no complexity history/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/no complexity history/i)).toBeInTheDocument();
   });
 
   it("includes orgId in the empty state message", () => {
@@ -241,13 +225,7 @@ describe("ComplexityDashboard", () => {
   it("renders exactly 3 KPI tiles", () => {
     const points = [makePoint("r1", "2026-01-08", { cyclomaticPerKloc: 6.0 })];
     const hotspots = [makeHotspot("a.py", 0.8)];
-    render(
-      <ComplexityDashboard
-        {...baseProps}
-        points={points}
-        hotspotRows={hotspots}
-      />,
-    );
+    render(<ComplexityDashboard {...baseProps} points={points} hotspotRows={hotspots} />);
     const kpiCards = screen.getAllByTestId("kpi-card");
     expect(kpiCards).toHaveLength(3);
   });
@@ -267,10 +245,7 @@ describe("ComplexityDashboard", () => {
   });
 
   it("renders the drilldown table with correct row count", () => {
-    const hotspots = [
-      makeHotspot("src/main.py", 0.9),
-      makeHotspot("src/utils.py", 0.7),
-    ];
+    const hotspots = [makeHotspot("src/main.py", 0.9), makeHotspot("src/utils.py", 0.7)];
     render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} />);
     expect(screen.getByTestId("drilldown-table")).toBeInTheDocument();
     const rows = screen.getAllByTestId("hotspot-row");
@@ -287,15 +262,10 @@ describe("ComplexityDashboard", () => {
   });
 
   it("renders evidence link when evidenceUrl is provided", () => {
-    const hotspots = [
-      makeHotspot("a.py", 0.9, { evidenceUrl: "https://example.com/evidence" }),
-    ];
+    const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "https://example.com/evidence" })];
     render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} />);
     const evidenceLinks = screen.getAllByTestId("evidence-link");
-    expect(evidenceLinks[0]).toHaveAttribute(
-      "href",
-      "https://example.com/evidence",
-    );
+    expect(evidenceLinks[0]).toHaveAttribute("href", "https://example.com/evidence");
   });
 
   it("omits trend panel when points is empty but hotspots exist", () => {

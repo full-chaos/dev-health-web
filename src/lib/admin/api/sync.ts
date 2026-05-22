@@ -22,7 +22,7 @@ export const syncConfigsApi = {
       "/sync-configs",
       { method: "POST", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   update: (id: string, data: SyncConfigUpdate, token?: string, orgId?: string) =>
@@ -30,7 +30,7 @@ export const syncConfigsApi = {
       `/sync-configs/${id}`,
       { method: "PATCH", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   delete: (id: string, token?: string, orgId?: string) =>
@@ -44,16 +44,11 @@ export const syncConfigsApi = {
       `/sync-configs/${id}/backfill`,
       { method: "POST", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 
   getBackfillJob: (jobId: string, token?: string, orgId?: string) =>
-    request<BackfillJob>(
-      `/backfill-jobs/${jobId}`,
-      { method: "GET" },
-      token,
-      orgId
-    ),
+    request<BackfillJob>(`/backfill-jobs/${jobId}`, { method: "GET" }, token, orgId),
 
   jobs: (id: string, token?: string, orgId?: string) =>
     request<SyncJob[]>(`/sync-configs/${id}/jobs`, {}, token, orgId),
@@ -63,6 +58,6 @@ export const syncConfigsApi = {
       "/sync-configs/batch",
       { method: "POST", body: JSON.stringify(data) },
       token,
-      orgId
+      orgId,
     ),
 };

@@ -59,21 +59,13 @@ export function MetricCard({
       <div className="mt-3 flex items-center justify-between gap-4">
         <div>
           <p className="text-2xl font-semibold metric-hero">
-            {value === undefined || value === null
-              ? "--"
-              : formatMetricValue(value, unit ?? "")}
+            {value === undefined || value === null ? "--" : formatMetricValue(value, unit ?? "")}
           </p>
-          <p className="mt-2 text-xs text-(--ink-muted)">
-            {caption ?? "Open in Explore"}
-          </p>
+          <p className="mt-2 text-xs text-(--ink-muted)">{caption ?? "Open in Explore"}</p>
         </div>
         <div className="h-16 w-full">
           {sparkValues.length > 1 ? (
-            <SparklineChart
-              data={sparkValues}
-              categories={sparkLabels}
-              height={64}
-            />
+            <SparklineChart data={sparkValues} categories={sparkLabels} height={64} />
           ) : (
             <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
               Trend

@@ -56,9 +56,7 @@ function makeRow(overrides: Partial<CompoundingRiskRowView> = {}): CompoundingRi
   };
 }
 
-function renderDashboard(
-  overrides: Partial<CompoundingRiskDashboardProps> = {},
-) {
+function renderDashboard(overrides: Partial<CompoundingRiskDashboardProps> = {}) {
   const props: CompoundingRiskDashboardProps = {
     orgId: "demo-org",
     breakout: "repo",
@@ -97,9 +95,7 @@ describe("CompoundingRiskDashboard", () => {
 
   it("surfaces the persisted thresholds audit trail", () => {
     renderDashboard();
-    expect(
-      screen.getByText(/elevated ≥ 0\.40/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/elevated ≥ 0\.40/i)).toBeInTheDocument();
     expect(screen.getByText(/high ≥ 0\.65/i)).toBeInTheDocument();
   });
 
@@ -121,12 +117,8 @@ describe("CompoundingRiskDashboard", () => {
     expect(tableRows[1].getAttribute("data-severity")).toBe("low");
 
     const drilldownLinks = screen.getAllByTestId("open-in-work-graph");
-    expect(drilldownLinks[0].getAttribute("href")).toContain(
-      "risk_scope_id=repo-a",
-    );
-    expect(drilldownLinks[0].getAttribute("href")).toContain(
-      "risk_scope_kind=repo",
-    );
+    expect(drilldownLinks[0].getAttribute("href")).toContain("risk_scope_id=repo-a");
+    expect(drilldownLinks[0].getAttribute("href")).toContain("risk_scope_kind=repo");
   });
 
   it("uses 'team' in the drilldown URL when breakout is team", () => {
@@ -182,13 +174,13 @@ describe("CompoundingRiskDashboard", () => {
         score: 0.8,
         severity: "high",
         scopeId: "repo-b",
-      })
+      }),
     ];
     renderDashboard({ rows });
     // headline shows 0.8 from the valid row
     const score = screen.getByTestId("headline-score");
     expect(score.textContent).toBe("0.80");
-    
+
     // the first row in the table should be the null one if we just look at rows[0], but let's check the table
     const tableRows = screen.getAllByTestId("risk-row");
     // The null row is tableRows[0]
@@ -226,11 +218,15 @@ describe("CompoundingRiskDashboard", () => {
     expect(screen.getByTestId("all-scores-null-state")).toBeInTheDocument();
     expect(screen.getByText(/Scores currently unavailable/)).toBeInTheDocument();
     expect(screen.getByText(/Missing inputs across all teams:/)).toBeInTheDocument();
-    
+
     // check that the 4 derived missing inputs are listed
     expect(screen.getByText("rework churn")).toBeInTheDocument();
-    expect(screen.getByText("complexity delta (rising cyclomatic_per_kloc trend)")).toBeInTheDocument();
-    expect(screen.getByText("ownership concentration (gini and single-owner ratio)")).toBeInTheDocument();
+    expect(
+      screen.getByText("complexity delta (rising cyclomatic_per_kloc trend)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("ownership concentration (gini and single-owner ratio)"),
+    ).toBeInTheDocument();
     expect(screen.getByText("review latency (p90h)")).toBeInTheDocument();
 
     // The normal components shouldn't be there

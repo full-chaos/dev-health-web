@@ -42,8 +42,9 @@ describe("SchedulePicker", () => {
     const optionElements = Array.from(timezoneSelect.querySelectorAll("option"));
     const fallbackTimezone = optionElements[0]?.getAttribute("value") ?? "UTC";
     const nextTimezone =
-      optionElements.find((option) => option.getAttribute("value") !== "UTC")?.getAttribute("value") ??
-      fallbackTimezone;
+      optionElements
+        .find((option) => option.getAttribute("value") !== "UTC")
+        ?.getAttribute("value") ?? fallbackTimezone;
 
     await userEvent.selectOptions(timezoneSelect, nextTimezone);
     expect(onChange).toHaveBeenCalledWith("0 0 * * *", nextTimezone);

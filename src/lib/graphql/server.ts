@@ -95,7 +95,7 @@ interface GraphQLFetchOptions {
 export async function graphqlFetch<T>(
   query: string | TypedDocumentNode<T, Record<string, unknown>>,
   variables: Record<string, unknown> = {},
-  options: GraphQLFetchOptions = {}
+  options: GraphQLFetchOptions = {},
 ): Promise<T> {
   const client = getServerClient(options.orgId);
 
@@ -118,13 +118,10 @@ export async function graphqlFetch<T>(
   const operationContext =
     Object.keys(headers).length > 0 ? { fetchOptions: { headers } } : undefined;
 
-  const isMutation =
-    typeof query === "string" && /^\s*mutation\b/i.test(query);
+  const isMutation = typeof query === "string" && /^\s*mutation\b/i.test(query);
 
   const result = isMutation
-    ? await client
-        .mutation<T>(query, variables, operationContext)
-        .toPromise()
+    ? await client.mutation<T>(query, variables, operationContext).toPromise()
     : await client.query<T>(query, variables, operationContext).toPromise();
 
   if (result.error) {
@@ -156,7 +153,7 @@ export async function graphqlFetch<T>(
 export async function graphqlFetchForHydration<T>(
   query: string | TypedDocumentNode<T, Record<string, unknown>>,
   variables: Record<string, unknown> = {},
-  options: GraphQLFetchOptions = {}
+  options: GraphQLFetchOptions = {},
 ): Promise<{ data: T; hydrationPayload: SSRData }> {
   const ssr = createSsrExchange({ isClient: false });
 
@@ -184,13 +181,10 @@ export async function graphqlFetchForHydration<T>(
   const operationContext =
     Object.keys(headers).length > 0 ? { fetchOptions: { headers } } : undefined;
 
-  const isMutation =
-    typeof query === "string" && /^\s*mutation\b/i.test(query);
+  const isMutation = typeof query === "string" && /^\s*mutation\b/i.test(query);
 
   const result = isMutation
-    ? await client
-        .mutation<T>(query, variables, operationContext)
-        .toPromise()
+    ? await client.mutation<T>(query, variables, operationContext).toPromise()
     : await client.query<T>(query, variables, operationContext).toPromise();
 
   if (result.error) {

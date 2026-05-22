@@ -74,7 +74,7 @@ export function HeatmapPanel({
 }: HeatmapPanelProps) {
   const [selected, setSelected] = useState<HeatmapCell | null>(null);
   const [evidence, setEvidence] = useState<Array<Record<string, unknown>>>(
-    initialData?.evidence ?? []
+    initialData?.evidence ?? [],
   );
   const [loading, setLoading] = useState(false);
 
@@ -98,7 +98,7 @@ export function HeatmapPanel({
         setLoading(false);
       }
     },
-    [request]
+    [request],
   );
 
   const selectionLabel = useMemo(() => {
@@ -132,20 +132,14 @@ export function HeatmapPanel({
       </div>
       <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-            {evidenceTitle}
-          </p>
+          <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">{evidenceTitle}</p>
           {selectionLabel ? (
             <span className="text-xs text-(--ink-muted)">{selectionLabel}</span>
           ) : null}
         </div>
-        {loading ? (
-          <p className="mt-3 text-sm text-(--ink-muted)">Loading evidence...</p>
-        ) : null}
+        {loading ? <p className="mt-3 text-sm text-(--ink-muted)">Loading evidence...</p> : null}
         {!loading && selected && evidence.length === 0 ? (
-          <p className="mt-3 text-sm text-(--ink-muted)">
-            No evidence returned for this cell.
-          </p>
+          <p className="mt-3 text-sm text-(--ink-muted)">No evidence returned for this cell.</p>
         ) : null}
         {!selected && !loading ? (
           <p className="mt-3 text-sm text-(--ink-muted)">
@@ -175,9 +169,7 @@ export function HeatmapPanel({
                   <div className="flex items-center justify-between">
                     <span>{label}</span>
                     {typeof item.value === "number" ? (
-                      <span className="text-xs text-(--ink-muted)">
-                        {formatNumber(item.value)}
-                      </span>
+                      <span className="text-xs text-(--ink-muted)">{formatNumber(item.value)}</span>
                     ) : null}
                   </div>
                   <p className="mt-2 text-xs text-(--ink-muted)">{detail}</p>

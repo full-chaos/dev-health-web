@@ -6,10 +6,9 @@ import { expandAllSidebarGroups } from "./helpers/sidebar";
 const getFilterParam = (url: string) => new URL(url).searchParams.get("f");
 
 const waitForFilterParam = async (page: Page) => {
-  await page.waitForFunction(
-    () => new URL(window.location.href).searchParams.get("f"),
-    { timeout: 10000 }
-  );
+  await page.waitForFunction(() => new URL(window.location.href).searchParams.get("f"), {
+    timeout: 10000,
+  });
   const value = getFilterParam(page.url());
   expect(value).toBeTruthy();
   return value as string;
@@ -29,7 +28,7 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
       return Boolean(current && current !== prev);
     },
     previous,
-    { timeout: 10000 }
+    { timeout: 10000 },
   );
   const nextValue = getFilterParam(page.url());
   expect(nextValue).toBeTruthy();
@@ -43,7 +42,7 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
 const expectFilterParam = async (page: Page, expected: string) => {
   await page.waitForFunction(
     (value) => new URL(window.location.href).searchParams.get("f") === value,
-    expected
+    expected,
   );
 };
 
@@ -65,11 +64,7 @@ test.describe("filter propagation", () => {
     // collapsed by default. Iterating across primary routes spans multiple
     // groups, so expand them all up-front to keep nav links clickable.
     await expandAllSidebarGroups(page);
-    const updatedFilter = await updateDeveloperFilter(
-      page,
-      "dev-health-web",
-      initialFilter
-    );
+    const updatedFilter = await updateDeveloperFilter(page, "dev-health-web", initialFilter);
 
     const nav = page.locator("aside nav");
     // Routes that exist in the primary navigation
@@ -85,9 +80,7 @@ test.describe("filter propagation", () => {
 
     for (const route of routes) {
       await nav.getByRole("link", { name: route.label }).click();
-      await expect
-        .poll(() => new URL(page.url()).pathname)
-        .toBe(route.path);
+      await expect.poll(() => new URL(page.url()).pathname).toBe(route.path);
       await expectFilterParam(page, updatedFilter);
       await expectDeveloperFilter(page, "dev-health-web");
     }
@@ -97,18 +90,12 @@ test.describe("filter propagation", () => {
     await page.goto("/metrics?tab=dora");
     const initialFilter = await waitForFilterParam(page);
     await expandAllSidebarGroups(page);
-    const updatedFilter = await updateDeveloperFilter(
-      page,
-      "metrics-owner",
-      initialFilter
-    );
+    const updatedFilter = await updateDeveloperFilter(page, "metrics-owner", initialFilter);
     expect(updatedFilter).not.toBe(initialFilter);
 
     const nav = page.locator("aside nav");
     await nav.getByRole("link", { name: /Work/i }).click();
-    await expect
-      .poll(() => new URL(page.url()).pathname)
-      .toBe("/work");
+    await expect.poll(() => new URL(page.url()).pathname).toBe("/work");
     await expectFilterParam(page, updatedFilter);
     await expectDeveloperFilter(page, "metrics-owner");
   });
