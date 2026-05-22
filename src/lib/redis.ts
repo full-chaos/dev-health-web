@@ -42,7 +42,10 @@ export function getRedis(): RedisClient | null {
       lazyConnect: true,
       connectTimeout: 5_000,
       maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
+      // enableOfflineQueue defaults to true — commands issued while the TCP
+      // handshake is in progress are buffered and replayed once the socket is
+      // ready.  Setting this to false caused a 429 on the very first request
+      // after a web-container restart (CHAOS-1768).
     });
 
     client.on("error", (err: Error) => {

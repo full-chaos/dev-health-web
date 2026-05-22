@@ -224,6 +224,69 @@ describe("rate-limit", () => {
 
       _resetRedisClient();
     });
+
+    it("does not return 429 when Redis INCR succeeds via offline queue on cold start (CHAOS-1768)", async () => {
+      // Regression: before the fix, enableOfflineQueue:false caused ioredis to
+      // throw 'Stream isn't writeable' on the very first command after a web
+      // container restart.  Combined with failClosed:true that produced an
+      // erroneous 429.  After the fix the offline queue is re-enabled, the
+      // command is buffered during the TCP handshake and resolves normally.
+      vi.stubEnv("REDIS_URL", "redis://localhost:6379/0");
+
+      const { _resetRedisClient, getRedis } = await import("@/lib/redis");
+      _resetRedisClient();
+
+      const redis = getRedis();
+      expect(redis).not.toBeNull();
+
+      // Simulate offline-queue path: command was buffered while connecting,
+      // then resolved successfully once the socket was ready.
+      redis!.incr = vi.fn().mockResolvedValue(1);
+      redis!.expire = vi.fn().mockResolvedValue(1);
+
+      const { checkRateLimit } = await import("@/lib/rate-limit");
+      const result = await checkRateLimit("coldstart-key", {
+        failClosed: true,
+        namespace: "auth-pwreset",
+        windowMs: 60 * 60_000,
+        maxRequests: 3,
+      });
+
+      // First request in window — must NOT be rate-limited.
+      expect(result.limited).toBe(false);
+      expect(result.retryAfter).toBe(0);
+
+      _resetRedisClient();
+    });
+
+    it("falls back to in-memory (not 429) when Redis throws connection-not-ready error and failClosed is false (CHAOS-1768)", async () => {
+      // Non-auth routes (failClosed:false) must always fall back to the
+      // in-memory store on any Redis error, including the 'Stream isn't
+      // writeable' error that the old enableOfflineQueue:false config produced.
+      vi.stubEnv("REDIS_URL", "redis://localhost:6379/0");
+
+      const { _resetRedisClient, getRedis } = await import("@/lib/redis");
+      _resetRedisClient();
+
+      const redis = getRedis();
+      redis!.incr = vi.fn().mockRejectedValue(
+        new Error("Stream isn't writeable and enableOfflineQueue options is false"),
+      );
+
+      const { checkRateLimit, _resetMemoryStore } = await import("@/lib/rate-limit");
+      _resetMemoryStore();
+
+      const result = await checkRateLimit("non-auth-coldstart-key", {
+        failClosed: false,
+        windowMs: 60_000,
+        maxRequests: 100,
+      });
+
+      // First request in in-memory window is always allowed.
+      expect(result.limited).toBe(false);
+
+      _resetRedisClient();
+    });
   });
 });
 

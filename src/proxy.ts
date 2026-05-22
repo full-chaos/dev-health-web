@@ -20,7 +20,7 @@ const ROUTE_LIMITS: Array<{ match: (method: string, pathname: string) => boolean
         opts: { failClosed: true, namespace: "auth-login", windowMs: 15 * 60_000, maxRequests: 10 },
     },
     {
-        match: (method, pathname) => method === "POST" && pathname.startsWith("/api/v1/auth/password-reset"),
+        match: (method, pathname) => method === "POST" && (pathname.startsWith("/api/v1/auth/forgot-password") || pathname.startsWith("/api/v1/auth/password-reset")),
         opts: { failClosed: true, namespace: "auth-pwreset", windowMs: 60 * 60_000, maxRequests: 3 },
     },
     {
@@ -107,7 +107,7 @@ function buildCspHeader(nonce: string): string {
 
 function pathBucket(pathname: string): string {
     if (pathname.startsWith("/api/v1/auth/login")) return "auth-login";
-    if (pathname.startsWith("/api/v1/auth/password-reset")) return "auth-password-reset";
+    if (pathname.startsWith("/api/v1/auth/forgot-password") || pathname.startsWith("/api/v1/auth/password-reset")) return "auth-pwreset";
     if (pathname.startsWith("/api/v1/auth/register")) return "auth-register";
     if (pathname.startsWith("/api/v1/auth/")) return "auth-other";
     if (pathname.startsWith("/api/v1/admin/credentials/test-connection")) return "admin-credentials-test-connection";
