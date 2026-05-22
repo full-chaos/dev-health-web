@@ -3,7 +3,6 @@
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import type { AIFilter } from "@/lib/filters/ai";
 import { useAIOpportunities } from "@/lib/graphql/hooks/useAIImpact";
-import { AIEmptyState } from "./AIEmptyState";
 import { AIOpportunityList } from "./AIOpportunityList";
 import { AIPanelCard } from "./AIPanelCard";
 
