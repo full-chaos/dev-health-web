@@ -44,6 +44,21 @@ describe('ForgotPasswordForm', () => {
     })
   })
 
+  test('success screen back-to-signin link includes ?from=reset (CHAOS-1769)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    })
+
+    renderWithToaster(<ForgotPasswordForm />)
+    await userEvent.type(screen.getByLabelText(/email address/i), 'tester@example.com')
+    await userEvent.click(screen.getByRole('button', { name: /send reset link/i }))
+
+    const backLink = await screen.findByRole('link', { name: /back to sign in/i })
+    expect(backLink).toHaveAttribute('href', '/auth/signin?from=reset')
+  })
+
   test('shows 429 rate limit error', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,

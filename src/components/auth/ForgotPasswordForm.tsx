@@ -48,7 +48,7 @@ export function ForgotPasswordForm() {
           If an account exists with that email, a password reset link has been sent.
         </div>
         <div className="text-center">
-          <Link href="/auth/signin" className="text-sm font-medium text-[var(--accent)] hover:opacity-90">
+          <Link href="/auth/signin?from=reset" className="text-sm font-medium text-[var(--accent)] hover:opacity-90">
             Back to Sign in
           </Link>
         </div>
