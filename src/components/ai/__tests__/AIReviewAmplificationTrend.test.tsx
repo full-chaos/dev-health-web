@@ -10,11 +10,11 @@ describe("AIReviewAmplificationTrend helpers", () => {
 
   it("sorts daily rows chronologically by ISO day and keeps bucket series aligned", () => {
     const trend = reviewAmplificationTrendRows([
-      { day: "2026-05-22", bucket: "AI_ASSISTED", prsTotal: 4, reviewsTotal: 8, reviewAmplification: 2.2 },
-      { day: "2026-05-01", bucket: "AI_ASSISTED", prsTotal: 4, reviewsTotal: 4, reviewAmplification: 1.1 },
-      { day: "2026-05-09", bucket: "AGENT_CREATED", prsTotal: 4, reviewsTotal: 7, reviewAmplification: 1.9 },
-      { day: "2026-05-09", bucket: "AI_ASSISTED", prsTotal: 4, reviewsTotal: 5, reviewAmplification: 1.4 },
-      { bucket: "UNKNOWN", prsTotal: 1, reviewsTotal: 9, reviewAmplification: 9.9 },
+      { day: "2026-05-22", bucket: "AI_ASSISTED", prsTotal: 4, reviewsTotal: 8, reviewAmplification: 2.2, postFirstReviewPushesCount: 2 },
+      { day: "2026-05-01", bucket: "AI_ASSISTED", prsTotal: 4, reviewsTotal: 4, reviewAmplification: 1.1, postFirstReviewPushesCount: 0 },
+      { day: "2026-05-09", bucket: "AGENT_CREATED", prsTotal: 4, reviewsTotal: 7, reviewAmplification: 1.9, postFirstReviewPushesCount: 1 },
+      { day: "2026-05-09", bucket: "AI_ASSISTED", prsTotal: 4, reviewsTotal: 5, reviewAmplification: 1.4, postFirstReviewPushesCount: 0 },
+      { bucket: "UNKNOWN", prsTotal: 1, reviewsTotal: 9, reviewAmplification: 9.9, postFirstReviewPushesCount: 0 },
     ]);
 
     expect(trend.days).toEqual(["2026-05-01", "2026-05-09", "2026-05-22"]);

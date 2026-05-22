@@ -194,7 +194,6 @@ type AIReviewerConcentrationSummary {
   dataAvailable: Boolean!
   reviewerCount: Int!
   reviewerGini: Float
-  missingStates: [AIMissingState!]!
 }
 
 type AIRiskBreakdownResult {
