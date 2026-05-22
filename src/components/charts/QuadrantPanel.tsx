@@ -455,25 +455,26 @@ export function QuadrantPanel({
               </p>
               {selectablePoints.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {selectablePoints.map((point) =>
-                    isPersonScope ? (
+                  {selectablePoints.map((point) => {
+                    const pointKey = `${point.entity_id}:${point.window_start}:${point.window_end}`;
+                    return isPersonScope ? (
                       <span
-                        key={point.entity_id}
+                        key={pointKey}
                         className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2)"
                       >
                         {point.entity_label}
                       </span>
                     ) : (
                       <button
-                        key={point.entity_id}
+                        key={pointKey}
                         type="button"
                         onClick={() => handlePointSelect(point)}
                         className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
                       >
                         {point.entity_label}
                       </button>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
               )}
             </div>
