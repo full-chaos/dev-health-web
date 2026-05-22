@@ -110,6 +110,7 @@ const navGroups: NavGroup[] = [
       { id: "testops", label: "TestOps Overview", href: "/testops", description: "Health" },
       { id: "pipelines", label: "Pipelines", href: "/testops/pipelines", description: "CI/CD" },
       { id: "tests", label: "Tests", href: "/testops/tests", description: "Reliability" },
+      { id: "quality", label: "Quality", href: "/quality", description: "Reliability" },
       { id: "coverage", label: "Coverage", href: "/testops/coverage", description: "Quality" },
       { id: "risk", label: "Delivery Risk", href: "/testops/risk", description: "Confidence" },
       { id: "incident-correlation", label: "Incident Correlation", href: "/incident-correlation", description: "Change failure" },

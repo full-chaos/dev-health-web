@@ -105,3 +105,18 @@ it("renders the 'Complexity' nav item under Spot Pressure Early (CHAOS-1745)", (
     expect.stringContaining("/complexity")
   );
 });
+
+it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", () => {
+  render(<PrimaryNav filters={makeFilter()} active="quality" />);
+
+  const qualityLinks = screen.getAllByRole("link", {
+    name: /^QualityReliability$/i,
+  });
+
+  expect(qualityLinks).toHaveLength(1);
+  expect(qualityLinks[0]).toHaveAttribute(
+    "href",
+    expect.stringContaining("/quality")
+  );
+  expect(qualityLinks[0]).toHaveAttribute("aria-current", "page");
+});
