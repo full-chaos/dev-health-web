@@ -633,6 +633,12 @@ body {
   animation: fade-up 300ms ease-out;
 }
 
+.primary-nav-group-button:focus-visible {
+  outline: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--accent);
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

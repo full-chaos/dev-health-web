@@ -239,7 +239,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
       <div key={group.id}>
         <button
           onClick={() => toggleGroup(group.id, groupIsCollapsed)}
-          className="flex w-full items-center justify-between py-2 text-xs uppercase tracking-wider text-(--ink-muted) hover:text-foreground transition-colors"
+          className="primary-nav-group-button flex w-full items-center justify-between rounded-xl py-2 text-xs uppercase tracking-wider text-(--ink-muted) transition-colors hover:text-foreground"
         >
           <span>{group.label}</span>
           <svg
