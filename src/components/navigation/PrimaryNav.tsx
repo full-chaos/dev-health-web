@@ -268,7 +268,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
 
         <div
           className={`space-y-2 overflow-hidden transition-all duration-300 ${
-            groupIsCollapsed ? "max-h-0 opacity-0" : "max-h-[600px] opacity-100"
+            groupIsCollapsed ? "max-h-0 opacity-0" : "max-h-[1200px] opacity-100"
           }`}
         >
           {group.items.map((item) => {
