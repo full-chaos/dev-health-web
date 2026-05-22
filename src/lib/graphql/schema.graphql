@@ -122,6 +122,7 @@ type AIImpactSummary {
   aiAssistedPrRatio: Float
   byBucket: [AIImpactBucketTotals!]!
   daily: [AIImpactBucketRow!]!
+  missingStates: [AIMissingState!]!
   dataAvailable: Boolean!
   computedAt: DateTime
 }
@@ -133,6 +134,12 @@ type AILeverageComponents {
   reworkComponent: Float
   testComponent: Float
   incidentComponent: Float
+}
+
+type AIMissingState {
+  key: String!
+  title: String!
+  guidance: String!
 }
 
 type AIOpportunitiesResult {
@@ -150,6 +157,7 @@ type AIOpportunity {
   rationale: String!
   score: Float!
   evidenceRefs: [String!]!
+  workGraphDrilldowns: [AIWorkGraphDrilldownRef!]!
 }
 
 enum AIOpportunityKind {
@@ -166,6 +174,8 @@ type AIReviewLoadResult {
   endDate: Date!
   byBucket: [AIReviewLoadRow!]!
   daily: [AIReviewLoadRow!]!
+  reviewerConcentration: AIReviewerConcentrationSummary!
+  missingStates: [AIMissingState!]!
   dataAvailable: Boolean!
 }
 
@@ -176,6 +186,15 @@ type AIReviewLoadRow {
   reviewsPerPr: Float
   changesRequestedPerPr: Float
   reviewAmplification: Float
+  postFirstReviewPushesCount: Int!
+  postFirstReviewPushesPerPr: Float
+}
+
+type AIReviewerConcentrationSummary {
+  dataAvailable: Boolean!
+  reviewerCount: Int!
+  reviewerGini: Float
+  missingStates: [AIMissingState!]!
 }
 
 type AIRiskBreakdownResult {
@@ -183,6 +202,7 @@ type AIRiskBreakdownResult {
   startDate: Date!
   endDate: Date!
   byBucket: [AIRiskBreakdownRow!]!
+  missingStates: [AIMissingState!]!
   dataAvailable: Boolean!
 }
 
@@ -204,6 +224,12 @@ input AIScopeInput {
   teamId: String = null
   workType: String = null
   buckets: [AIAttributionBucketInput!] = null
+}
+
+type AIWorkGraphDrilldownRef {
+  rootType: String!
+  rootId: String!
+  label: String!
 }
 
 type AIWorkflowDrilldownResult {
