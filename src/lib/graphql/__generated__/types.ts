@@ -491,6 +491,40 @@ export type CloneSavedReportInput = {
   sourceReportId: Scalars['String']['input'];
 };
 
+export type ComplexityPoint = {
+  __typename?: 'ComplexityPoint';
+  cyclomaticAvg?: Maybe<Scalars['Float']['output']>;
+  cyclomaticPerKloc?: Maybe<Scalars['Float']['output']>;
+  cyclomaticTotal?: Maybe<Scalars['Int']['output']>;
+  date: Scalars['Date']['output'];
+  highComplexityFunctions?: Maybe<Scalars['Int']['output']>;
+  locTotal?: Maybe<Scalars['Int']['output']>;
+  scopeId: Scalars['String']['output'];
+  scopeName: Scalars['String']['output'];
+  veryHighComplexityFunctions?: Maybe<Scalars['Int']['output']>;
+};
+
+export type ComplexityScope =
+  | 'FILE'
+  | 'REPO';
+
+export type ComplexityTimeseriesInput = {
+  granularity: TimeGranularity;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  orgId: Scalars['String']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  scope: ComplexityScope;
+  sinceUtc: Scalars['DateTime']['input'];
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  untilUtc: Scalars['DateTime']['input'];
+};
+
+export type ComplexityTimeseriesResult = {
+  __typename?: 'ComplexityTimeseriesResult';
+  points: Array<ComplexityPoint>;
+  totalScope: Scalars['Int']['output'];
+};
+
 export type CompoundingRiskComponents = {
   __typename?: 'CompoundingRiskComponents';
   busFactor?: Maybe<Scalars['Float']['output']>;
@@ -677,6 +711,34 @@ export type HomeResult = {
   __typename?: 'HomeResult';
   deltas: Array<MetricDelta>;
   freshness: Freshness;
+};
+
+export type HotspotRow = {
+  __typename?: 'HotspotRow';
+  blameConcentration?: Maybe<Scalars['Float']['output']>;
+  churnCommits30d: Scalars['Int']['output'];
+  churnLoc30d: Scalars['Int']['output'];
+  cyclomaticAvg: Scalars['Float']['output'];
+  cyclomaticTotal: Scalars['Int']['output'];
+  evidenceUrl?: Maybe<Scalars['String']['output']>;
+  filePath: Scalars['String']['output'];
+  repoId: Scalars['String']['output'];
+  repoName: Scalars['String']['output'];
+  riskScore: Scalars['Float']['output'];
+};
+
+export type HotspotsInput = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  orgId: Scalars['String']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  sinceUtc: Scalars['DateTime']['input'];
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  untilUtc: Scalars['DateTime']['input'];
+};
+
+export type HotspotsResult = {
+  __typename?: 'HotspotsResult';
+  rows: Array<HotspotRow>;
 };
 
 export type HowFilterInput = {
@@ -882,12 +944,16 @@ export type Query = {
   capacityForecasts: CapacityForecastConnection;
   /** Get catalog of available dimensions, measures, and limits */
   catalog: CatalogResult;
+  /** Cyclomatic complexity trend by repo or file. Reads from append-only ``repo_complexity_daily`` / ``file_complexity_snapshots`` tables — no recomputation, pure surface of persisted data. */
+  complexityTimeseries: ComplexityTimeseriesResult;
   /** Compounding Risk composite: churn × complexity × ownership × review-latency. Inspectable score with persisted weights, thresholds, raw inputs, and normalized components. */
   compoundingRisk: CompoundingRiskResult;
   /** Operator data-health and trust surface */
   dataHealth: DataHealth;
   /** Get home dashboard metrics */
   home: HomeResult;
+  /** Top file hotspots ranked by risk_score (churn x complexity x ownership concentration). Reads from the append-only ``file_hotspot_daily`` table. */
+  hotspots: HotspotsResult;
   /** Weekly Engineering Operating Review */
   operatingReview: OperatingReview;
   /** Latest rule-based recommendations for a team within a lookback window. */
@@ -1001,6 +1067,11 @@ export type QueryCatalogArgs = {
 };
 
 
+export type QueryComplexityTimeseriesArgs = {
+  input: ComplexityTimeseriesInput;
+};
+
+
 export type QueryCompoundingRiskArgs = {
   filter?: InputMaybe<CompoundingRiskFilterInput>;
   orgId: Scalars['String']['input'];
@@ -1015,6 +1086,11 @@ export type QueryDataHealthArgs = {
 export type QueryHomeArgs = {
   filters?: InputMaybe<FilterInput>;
   orgId: Scalars['String']['input'];
+};
+
+
+export type QueryHotspotsArgs = {
+  input: HotspotsInput;
 };
 
 
@@ -1395,6 +1471,10 @@ export type ThroughputRollingWindow = {
   sampleCount: Scalars['Int']['output'];
   windowWeeks: Scalars['Int']['output'];
 };
+
+export type TimeGranularity =
+  | 'DAY'
+  | 'WEEK';
 
 export type TimeseriesBucket = {
   __typename?: 'TimeseriesBucket';

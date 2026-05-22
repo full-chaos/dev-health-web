@@ -80,6 +80,7 @@ const navGroups: NavGroup[] = [
       { id: "capacity-planning", label: "Capacity Planning", href: "/capacity-planning", description: "Forecast" },
       { id: "code", label: "Code", href: "/code", description: "Ownership" },
       { id: "risk-compounding", label: "Compounding Risk", href: "/risk/compounding", description: "Composite" },
+      { id: "incident-correlation", label: "Incident Correlation", href: "/incident-correlation", description: "DORA change-failure" },
       { id: "opportunities", label: "Opportunities", href: "/opportunities", description: "Threads" },
       { id: "security", label: "Security", href: "/security", description: "Alerts" },
     ],
