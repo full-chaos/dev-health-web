@@ -245,7 +245,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                 href={withFilterParam(item.href, filters, role)}
                 onClick={itemHash ? () => setHash(`#${itemHash}`) : undefined}
                 aria-current={isActive ? "page" : undefined}
-                className={`group relative flex items-center justify-between rounded-2xl border px-3 py-2 transition ${
+                className={`group relative flex flex-col gap-0.5 rounded-2xl border px-3 py-2 transition ${
                   isActive
                     ? "border-(--accent) bg-(--accent)/15 text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-full before:bg-(--accent)"
                     : "border-transparent bg-(--card-70) text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground"
