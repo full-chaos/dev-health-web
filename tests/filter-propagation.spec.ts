@@ -1,6 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 
 import { decodeFilter } from "../src/lib/filters/encode";
+import { expandAllSidebarGroups } from "./helpers/sidebar";
 
 const getFilterParam = (url: string) => new URL(url).searchParams.get("f");
 
@@ -60,6 +61,10 @@ test.describe("filter propagation", () => {
   test("primary routes retain filter param", async ({ page }) => {
     await page.goto("/dashboard");
     const initialFilter = await waitForFilterParam(page);
+    // CHAOS-1760: sidebar groups other than Cockpit + active-route are
+    // collapsed by default. Iterating across primary routes spans multiple
+    // groups, so expand them all up-front to keep nav links clickable.
+    await expandAllSidebarGroups(page);
     const updatedFilter = await updateDeveloperFilter(
       page,
       "dev-health-web",
@@ -91,6 +96,7 @@ test.describe("filter propagation", () => {
   test("filter change updates URL and persists across nav", async ({ page }) => {
     await page.goto("/metrics?tab=dora");
     const initialFilter = await waitForFilterParam(page);
+    await expandAllSidebarGroups(page);
     const updatedFilter = await updateDeveloperFilter(
       page,
       "metrics-owner",

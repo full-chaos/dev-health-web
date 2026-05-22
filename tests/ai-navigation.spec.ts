@@ -1,13 +1,18 @@
 import { test, expect, type Page } from "@playwright/test";
 
 import { encodeAIFilterParam } from "../src/lib/filters/ai";
+import { ensureGroupExpanded } from "./helpers/sidebar";
+
 
 /**
- * CHAOS-1588: AI workflow navigation e2e.
+ * CHAOS-1588 / CHAOS-1767: AI workflow navigation e2e.
  *
- * Asserts the PrimaryNav AI group routes between Impact, Review Load, and Risk
- * cleanly, that each page mounts the correct dashboard, and that AIFilterBar
- * lives on the current pathname rather than redirecting back to /ai/impact.
+ * Asserts the PrimaryNav AI links route between Impact, Review Load, Risk,
+ * and Automations cleanly. After CHAOS-1760 the sidebar IA distributes AI
+ * items across three collapsible groups (See Where Time Goes / Spot Pressure
+ * Early / Improve Delivery Confidence). Only the active-route group expands
+ * by default, so cross-group navigation must first expand the destination
+ * group — same as real user behavior.
  */
 
 const defaultFilter = encodeAIFilterParam({
@@ -28,6 +33,7 @@ const aiRiskLink = (page: Page) =>
 const aiAutomationsLink = (page: Page) =>
   page.locator('a[href^="/ai/automations"]').first();
 
+
 test.describe("AI workflow primary navigation", () => {
   test("nav links route between the three AI views", async ({ page }) => {
     await page.goto(`/ai/impact?f=${defaultFilter}`);
@@ -35,16 +41,19 @@ test.describe("AI workflow primary navigation", () => {
     await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
     await expect(page.getByTestId("ai-impact-dashboard")).toBeVisible();
 
+    await ensureGroupExpanded(page, "Spot Pressure Early");
     await aiReviewLoadLink(page).click();
     await expect(page).toHaveURL(/\/ai\/review-load/);
     await expect(page.getByRole("heading", { name: "AI Review Load" })).toBeVisible();
     await expect(page.getByTestId("ai-review-load-dashboard")).toBeVisible();
 
+    await ensureGroupExpanded(page, "Improve Delivery Confidence");
     await aiRiskLink(page).click();
     await expect(page).toHaveURL(/\/ai\/risk/);
     await expect(page.getByRole("heading", { name: "AI Risk" })).toBeVisible();
     await expect(page.getByTestId("ai-risk-dashboard")).toBeVisible();
 
+    await ensureGroupExpanded(page, "See Where Time Goes");
     await aiImpactLink(page).click();
     await expect(page).toHaveURL(/\/ai\/impact/);
     await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
@@ -53,6 +62,7 @@ test.describe("AI workflow primary navigation", () => {
   test("Automations link owns the active nav state on its own route", async ({ page }) => {
     await page.goto(`/ai/impact?f=${defaultFilter}`);
 
+    await ensureGroupExpanded(page, "Spot Pressure Early");
     await aiAutomationsLink(page).click();
 
     await expect(page).toHaveURL(/\/ai\/automations/);
@@ -85,6 +95,7 @@ test.describe("AI workflow primary navigation", () => {
     await expect(page.getByLabel("Start")).toHaveValue("2026-03-01");
     await expect(page.getByLabel("End")).toHaveValue("2026-04-01");
 
+    await ensureGroupExpanded(page, "Spot Pressure Early");
     await aiReviewLoadLink(page).click();
     await expect(page).toHaveURL(/\/ai\/review-load/);
     await expect(page.getByRole("heading", { name: "AI Review Load" })).toBeVisible();
