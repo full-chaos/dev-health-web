@@ -1,4 +1,5 @@
 import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { requireSession } from "@/lib/auth";
@@ -89,6 +90,8 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
               </div>
             </div>
           </section>
+
+          <FilterBar view="cognitive-load" />
 
           <ContextStrip filters={filters} origin={activeOrigin} />
 

@@ -1,5 +1,6 @@
 import { AI_BUCKETS } from "@/components/ai/utils";
 import { isServer } from "@/lib/env";
+import type { MetricFilter } from "@/lib/filters/types";
 import type { AiAttributionBucketInput } from "@/lib/graphql/__generated__/types";
 
 type AIAttributionBucket = AiAttributionBucketInput;
@@ -90,3 +91,50 @@ export function decodeAIFilter(encoded?: string | null): AIFilter {
 }
 
 export const encodeAIFilterParam = encodeAIFilter;
+
+/**
+ * Derive an {@link AIFilter} from the canonical {@link MetricFilter} used by
+ * the global FilterBar. The AI surfaces (Impact, Review Load, Automations,
+ * Risk) consume `AIFilter` internally, but their URL state is now driven by
+ * the canonical filter so they share the same chrome as the rest of the app.
+ *
+ * Mapping:
+ * - startDate/endDate <- time.start_date/time.end_date (custom range) or a
+ *   window of `time.range_days` ending today (preset).
+ * - teamId  <- scope.ids[0] when scope.level === "team".
+ * - repoId  <- what.repos[0].
+ * - workType<- why.work_category[0].
+ * - buckets <- left undefined (FilterBar does not expose buckets; dashboards
+ *   manage attribution drill-downs internally).
+ */
+export function metricFilterToAIFilter(metric: MetricFilter): AIFilter {
+  const fallback = defaultAIFilter();
+
+  let startDate = fallback.startDate;
+  let endDate = fallback.endDate;
+  if (metric.time?.start_date && metric.time?.end_date) {
+    startDate = metric.time.start_date;
+    endDate = metric.time.end_date;
+  } else if (typeof metric.time?.range_days === "number" && metric.time.range_days > 0) {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(end.getDate() - (metric.time.range_days - 1));
+    startDate = isoDate(start);
+    endDate = isoDate(end);
+  }
+
+  const teamId =
+    metric.scope?.level === "team" && metric.scope.ids?.length
+      ? metric.scope.ids[0]
+      : undefined;
+  const repoId = metric.what?.repos?.[0];
+  const workType = metric.why?.work_category?.[0];
+
+  return {
+    startDate,
+    endDate,
+    ...(teamId ? { teamId } : {}),
+    ...(repoId ? { repoId } : {}),
+    ...(workType ? { workType } : {}),
+  };
+}

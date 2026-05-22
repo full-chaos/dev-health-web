@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -163,6 +164,8 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
               Monte Carlo view
             </Link>
           </header>
+
+          <FilterBar view="capacity-planning" />
 
           <ContextStrip filters={filters} origin={originParam} />
 

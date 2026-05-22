@@ -13,6 +13,7 @@
 import Link from "next/link";
 
 import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import {
   CompoundingRiskDashboard,
@@ -210,6 +211,8 @@ export default async function CompoundingRiskPage({
               Back to cockpit
             </Link>
           </header>
+
+          <FilterBar view="risk-compounding" />
 
           <ContextStrip filters={filters} origin={activeOrigin} />
 

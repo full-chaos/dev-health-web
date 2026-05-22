@@ -12,6 +12,7 @@
 import Link from "next/link";
 
 import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
 import type {
@@ -172,6 +173,8 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
               Back to cockpit
             </Link>
           </header>
+
+          <FilterBar view="complexity" />
 
           <ContextStrip filters={filters} origin={activeOrigin} />
 
