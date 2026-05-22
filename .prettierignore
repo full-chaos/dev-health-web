@@ -26,3 +26,7 @@ public
 
 # Environment files
 .env*
+
+
+# Generated GraphQL schema (regenerated from dev-health-ops via codegen)
+src/lib/graphql/schema.graphql
