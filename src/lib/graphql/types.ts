@@ -339,9 +339,9 @@ export interface CapacityForecastsQueryResponse {
 }
 
 export interface ThroughputForecastInput {
-  teamId: string;
-  workScopeId?: string;
-  backlogSize: number;
+  teamId?: string | null;
+  workScopeId?: string | null;
+  backlogSize?: number | null;
   historyWeeks?: number;
 }
 
@@ -364,8 +364,8 @@ export interface ThroughputRiskOverlay {
 export interface ThroughputForecast {
   forecastId: string;
   computedAt: string;
-  teamId: string;
-  workScopeId?: string;
+  teamId: string | null;
+  workScopeId?: string | null;
   backlogSize: number;
   historyWeeks: number;
   p50Weeks?: number | null;
