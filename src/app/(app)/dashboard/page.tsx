@@ -50,23 +50,22 @@ const MONITORING_VIEWS = [
 const AI_WORKFLOW_STEPS = [
   {
     label: "AI Impact",
-    description: "Start with delivery lift versus review, rework, test, and incident drag.",
+    description: "Delivery lift versus review, rework, and incident drag.",
     href: "/ai/impact",
   },
   {
     label: "Review Load / Risk",
-    description:
-      "Check whether AI-attributed work is shifting cost into review or quality signals.",
+    description: "Is AI-attributed work shifting cost into review or quality?",
     href: "/ai/review-load",
   },
   {
     label: "Governance gaps",
-    description: "Treat unknown attribution and policy violations as trust signals to investigate.",
+    description: "Unknown attribution and policy violations as trust signals.",
     href: "/ai/risk",
   },
   {
     label: "Evidence + intervention",
-    description: "Move from recommendations into the evidence trail and weekly operating review.",
+    description: "Move from recommendations into evidence and weekly review.",
     href: "/operating-review#ai-workflow-intelligence",
   },
 ];
@@ -182,23 +181,21 @@ export default async function Home({ searchParams }: HomePageProps) {
           {/* Minimal freshness indicator only — no integration status UI */}
 
           <section className="overflow-hidden rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-5 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.55)]">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-2xl">
+            <div className="flex flex-col gap-6">
+              <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-                  Market entry path
+                  Starting point
                 </p>
-                <h2 className="mt-3 font-(--font-display) text-3xl leading-tight">
+                <h2 className="mt-3 text-xl leading-tight">
                   AI Workflow Intelligence
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
-                  Answer the AI adoption question without turning Dev Health into surveillance: are
-                  AI-assisted workflows improving delivery, or shifting cost into review, rework,
-                  quality risk, and governance gaps?
+                  See whether AI-assisted work is improving delivery or shifting cost into review, rework, and risk.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em]">
                   <Link
                     href={withFilterParam("/ai/impact", filters, activeRole)}
-                    className="rounded-full bg-(--accent) px-4 py-2 font-semibold text-white transition hover:-translate-y-0.5"
+                    className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2 text-(--accent-2) transition hover:-translate-y-0.5"
                   >
                     Start with AI Impact
                   </Link>
@@ -214,7 +211,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   </Link>
                 </div>
               </div>
-              <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 flex-1 gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 {AI_WORKFLOW_STEPS.map((step, index) => (
                   <Link
                     key={step.label}
