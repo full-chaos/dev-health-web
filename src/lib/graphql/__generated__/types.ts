@@ -1442,15 +1442,15 @@ export type ThroughputForecast = {
   primaryRisk: ThroughputRiskOverlay;
   reviewBottleneck: ThroughputRiskOverlay;
   rollingWindows: Array<ThroughputRollingWindow>;
-  teamId: Scalars['String']['output'];
+  teamId?: Maybe<Scalars['String']['output']>;
   wipCongestion: ThroughputRiskOverlay;
   workScopeId?: Maybe<Scalars['String']['output']>;
 };
 
 export type ThroughputForecastInput = {
-  backlogSize: Scalars['Int']['input'];
+  backlogSize?: InputMaybe<Scalars['Int']['input']>;
   historyWeeks?: Scalars['Int']['input'];
-  teamId: Scalars['String']['input'];
+  teamId?: InputMaybe<Scalars['String']['input']>;
   workScopeId?: InputMaybe<Scalars['String']['input']>;
 };
 

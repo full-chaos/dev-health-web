@@ -11,69 +11,14 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
-import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
+import type { ThroughputRiskOverlay } from "@/lib/graphql/types";
 
 type CapacityPlanningPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const SAMPLE_FORECAST: ThroughputForecast = {
-  forecastId: "sample",
-  computedAt: new Date(0).toISOString(),
-  teamId: "sample-team",
-  backlogSize: 42,
-  historyWeeks: 12,
-  p50Weeks: 5,
-  p75Weeks: 7,
-  p90Weeks: 9,
-  insufficientHistory: false,
-  rollingWindows: [
-    { windowWeeks: 4, meanWeeklyThroughput: 9.2, sampleCount: 57, insufficientHistory: false },
-    { windowWeeks: 8, meanWeeklyThroughput: 7.8, sampleCount: 29, insufficientHistory: false },
-    { windowWeeks: 12, meanWeeklyThroughput: 6.4, sampleCount: 1, insufficientHistory: false },
-  ],
-  primaryRisk: {
-    kind: "review",
-    score: 1.45,
-    label: "Review bottleneck",
-    value: 69.6,
-    threshold: 48,
-    active: true,
-  },
-  wipCongestion: {
-    kind: "wip",
-    score: 1.08,
-    label: "WIP congestion",
-    value: 1.35,
-    threshold: 1.25,
-    active: true,
-  },
-  reviewBottleneck: {
-    kind: "review",
-    score: 1.45,
-    label: "Review bottleneck",
-    value: 69.6,
-    threshold: 48,
-    active: true,
-  },
-  incidentLoad: {
-    kind: "incident_load",
-    score: 0.25,
-    label: "Incident load",
-    value: 0.25,
-    threshold: 1,
-    active: false,
-  },
-};
-
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function parseBacklog(value: string | undefined): number | null {
-  if (!value) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function formatWeeks(value: number | null | undefined) {
@@ -108,13 +53,27 @@ function RiskCard({ risk }: { risk: ThroughputRiskOverlay }) {
   );
 }
 
+function EmptyForecastState({ scopeLabel }: { scopeLabel: string }) {
+  return (
+    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8">
+      <h2 className="text-xl font-semibold">No forecast available</h2>
+      <p className="mt-2 text-sm text-(--ink-muted)">
+        Scope: <span className="text-foreground">{scopeLabel}</span>
+      </p>
+      <p className="mt-4 text-sm text-(--ink-muted)">
+        Not enough throughput history to generate a forecast for this scope. Try widening the date
+        range, selecting a different team, or syncing more work-item history.
+      </p>
+    </section>
+  );
+}
+
 export default async function CapacityPlanningPage({ searchParams }: CapacityPlanningPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = firstParam(params.f);
   const roleParam = firstParam(params.role);
   const originParam = firstParam(params.origin);
   const workScopeId = firstParam(params.scope);
-  const backlog = parseBacklog(firstParam(params.backlog));
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const team = filters.scope.level === "team" ? filters.scope.ids[0] : undefined;
@@ -123,20 +82,19 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
   if (!health.ok) return <ServiceUnavailable />;
 
   const orgId = session.user.org_id ?? "default-org";
-  const forecast =
-    team && backlog !== null
-      ? await fetchOrNull(
-          getThroughputForecastViaGraphQL(orgId, {
-            teamId: team,
-            workScopeId,
-            backlogSize: backlog,
-            historyWeeks: 12,
-          }),
-          "capacity-planning/throughput-forecast",
-        )
-      : null;
-  const renderedForecast = forecast ?? SAMPLE_FORECAST;
-  const isSample = !forecast;
+  // CHAOS-1783: always fetch. When team is undefined the resolver aggregates
+  // org-wide; when backlogSize is omitted the resolver derives it from the
+  // latest work_item_metrics_daily rows. No more SAMPLE_FORECAST.
+  const forecast = await fetchOrNull(
+    getThroughputForecastViaGraphQL(orgId, {
+      teamId: team ?? null,
+      workScopeId: workScopeId ?? null,
+      historyWeeks: 12,
+    }),
+    "capacity-planning/throughput-forecast",
+  );
+
+  const scopeLabel = team ? `Team ${team}` : "All teams";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -151,6 +109,7 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
               <h1 className="mt-2 font-(--font-display) text-3xl">Throughput forecast</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Forecast — not a commitment. Uses rolling 4/8/12-week throughput and risk overlays.
+                Backlog and scope are derived from the filter bar.
               </p>
             </div>
             <Link
@@ -165,94 +124,86 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
 
           <ContextStrip filters={filters} origin={originParam} />
 
-          <form className="grid gap-4 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 md:grid-cols-[1fr_auto]">
-            <label className="text-sm">
-              <span className="mb-2 block text-xs uppercase tracking-[0.16em] text-(--ink-muted)">
-                Backlog items
-              </span>
-              <input
-                name="backlog"
-                type="number"
-                min="0"
-                defaultValue={backlog ?? ""}
-                placeholder="42"
-                className="w-full rounded-xl border border-(--card-stroke) bg-background px-4 py-3"
-              />
-            </label>
-            <button className="self-end rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background">
-              Update forecast
-            </button>
-            {encodedFilter ? <input type="hidden" name="f" value={encodedFilter} /> : null}
-            {activeRole ? <input type="hidden" name="role" value={activeRole} /> : null}
-            {workScopeId ? <input type="hidden" name="scope" value={workScopeId} /> : null}
-          </form>
+          {forecast ? (
+            <>
+              <section className="grid gap-4 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 md:grid-cols-[auto_1fr]">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">Backlog</p>
+                  <p className="mt-2 text-3xl font-semibold">
+                    {forecast.backlogSize}{" "}
+                    <span className="text-base font-normal text-(--ink-muted)">open items</span>
+                  </p>
+                </div>
+                <div className="self-center text-xs text-(--ink-muted) md:text-right">
+                  Derived from current filter scope — adjust filters above to refocus.
+                </div>
+              </section>
 
-          {isSample ? (
-            <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-              Showing sample data. Select a <strong>team</strong> in the scope bar above and set a
-              backlog size to fetch a live forecast.
-            </div>
-          ) : null}
+              <section className="grid gap-4 md:grid-cols-3">
+                {[
+                  ["P50", forecast.p50Weeks],
+                  ["P75", forecast.p75Weeks],
+                  ["P90", forecast.p90Weeks],
+                ].map(([label, weeks]) => (
+                  <div
+                    key={label as string}
+                    className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
+                  >
+                    <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                      {label}
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold">
+                      {formatWeeks(weeks as number | null)}
+                    </p>
+                    <p className="mt-2 text-xs text-(--ink-muted)">Weeks to complete backlog</p>
+                  </div>
+                ))}
+              </section>
 
-          <section className="grid gap-4 md:grid-cols-3">
-            {[
-              ["P50", renderedForecast.p50Weeks],
-              ["P75", renderedForecast.p75Weeks],
-              ["P90", renderedForecast.p90Weeks],
-            ].map(([label, weeks]) => (
-              <div
-                key={label}
-                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
-              >
-                <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">{label}</p>
-                <p className="mt-3 text-3xl font-semibold">{formatWeeks(weeks as number | null)}</p>
-                <p className="mt-2 text-xs text-(--ink-muted)">Weeks to complete backlog</p>
-              </div>
-            ))}
-          </section>
+              <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold">Rolling throughput</h2>
+                    <p className="mt-1 text-sm text-(--ink-muted)">
+                      Mean weekly completed items by historical window.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-foreground/10 px-3 py-1 text-xs">
+                    Backlog {forecast.backlogSize}
+                  </span>
+                </div>
+                <VerticalBarChart
+                  categories={forecast.rollingWindows.map((window) => `${window.windowWeeks}w`)}
+                  series={[
+                    {
+                      name: "Items/week",
+                      data: forecast.rollingWindows.map((window) => window.meanWeeklyThroughput),
+                    },
+                  ]}
+                  height={300}
+                />
+              </section>
 
-          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold">Rolling throughput</h2>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                  Mean weekly completed items by historical window.
+              <section className="grid gap-4 md:grid-cols-3">
+                <RiskCard risk={forecast.wipCongestion} />
+                <RiskCard risk={forecast.reviewBottleneck} />
+                <RiskCard risk={forecast.incidentLoad} />
+              </section>
+
+              <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                  Primary risk callout
                 </p>
-              </div>
-              <span className="rounded-full bg-foreground/10 px-3 py-1 text-xs">
-                Backlog {renderedForecast.backlogSize}
-              </span>
-            </div>
-            <VerticalBarChart
-              categories={renderedForecast.rollingWindows.map((window) => `${window.windowWeeks}w`)}
-              series={[
-                {
-                  name: "Items/week",
-                  data: renderedForecast.rollingWindows.map(
-                    (window) => window.meanWeeklyThroughput,
-                  ),
-                },
-              ]}
-              height={300}
-            />
-          </section>
-
-          <section className="grid gap-4 md:grid-cols-3">
-            <RiskCard risk={renderedForecast.wipCongestion} />
-            <RiskCard risk={renderedForecast.reviewBottleneck} />
-            <RiskCard risk={renderedForecast.incidentLoad} />
-          </section>
-
-          <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-            <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
-              Primary risk callout
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold">{renderedForecast.primaryRisk.label}</h2>
-            <p className="mt-2 text-sm text-(--ink-muted)">
-              This is the most elevated current overlay for the forecast, selected from WIP
-              congestion, review bottleneck, and incident load.
-            </p>
-          </section>
+                <h2 className="mt-3 text-2xl font-semibold">{forecast.primaryRisk.label}</h2>
+                <p className="mt-2 text-sm text-(--ink-muted)">
+                  This is the most elevated current overlay for the forecast, selected from WIP
+                  congestion, review bottleneck, and incident load.
+                </p>
+              </section>
+            </>
+          ) : (
+            <EmptyForecastState scopeLabel={scopeLabel} />
+          )}
         </main>
       </div>
     </div>

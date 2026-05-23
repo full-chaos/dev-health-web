@@ -1163,7 +1163,7 @@ type TaskStatus {
 type ThroughputForecast {
   forecastId: String!
   computedAt: String!
-  teamId: String!
+  teamId: String
   workScopeId: String
   backlogSize: Int!
   historyWeeks: Int!
@@ -1179,9 +1179,9 @@ type ThroughputForecast {
 }
 
 input ThroughputForecastInput {
-  teamId: String!
+  teamId: String = null
   workScopeId: String = null
-  backlogSize: Int!
+  backlogSize: Int = null
   historyWeeks: Int! = 12
 }
 
