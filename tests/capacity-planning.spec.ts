@@ -1,57 +1,43 @@
 import { expect, test } from "@playwright/test";
 
+// The sample-data banner, manual backlog input, and team text input were
+// removed in CHAOS-1783. CHAOS-1784 added multi-team aggregation. In the
+// E2E suite the backend is not reachable, so the forecast fetch returns
+// null and the page renders the EmptyForecastState card.
+
 test.describe("Capacity Planning page", () => {
-  test("renders the throughput forecast page with sample data", async ({ page }) => {
+  test("renders the throughput forecast page header", async ({ page }) => {
     await page.goto("/capacity-planning");
 
     await expect(page.getByRole("heading", { name: /Throughput forecast/i })).toBeVisible();
-    await expect(page.getByText("P50")).toBeVisible();
-    await expect(page.getByText("P75")).toBeVisible();
-    await expect(page.getByText("P90")).toBeVisible();
+    await expect(
+      page.getByText(/Backlog and scope are derived from the filter bar/i),
+    ).toBeVisible();
   });
 
-  test("shows sample data banner when no team scope is set", async ({ page }) => {
+  test("shows the empty-state card when the backend is unreachable", async ({ page }) => {
     await page.goto("/capacity-planning");
 
-    await expect(page.getByText(/Showing sample data/i)).toBeVisible();
-    await expect(page.getByText(/Select a team in the scope bar above/i)).toBeVisible();
+    // CHAOS-1783: sample data is gone. Without a reachable forecast the
+    // page renders an honest empty state instead of placeholder numbers.
+    await expect(page.getByRole("heading", { name: /No forecast available/i })).toBeVisible();
+    await expect(page.getByText(/Scope:/i)).toBeVisible();
+    await expect(page.getByText(/Showing sample data/i)).not.toBeVisible();
   });
 
-  test("does not show team ID input — team comes from global scope bar", async ({ page }) => {
+  test("does not expose a manual backlog or team input", async ({ page }) => {
     await page.goto("/capacity-planning");
 
-    // The inline form must NOT have a team-id text input any more
-    await expect(page.locator('input[name="team"]')).not.toBeVisible();
-
-    // Backlog size input must still be present
-    await expect(page.locator('input[name="backlog"]')).toBeVisible();
+    // Both inputs were deleted in CHAOS-1783 — backlog is derived from
+    // the filter scope server-side.
+    await expect(page.locator('input[name="team"]')).toHaveCount(0);
+    await expect(page.locator('input[name="backlog"]')).toHaveCount(0);
   });
 
-  test("uses team from encoded filter scope when level is team", async ({ page }) => {
-    // Encode a filter with scope level=team
-    // The sample-data banner should NOT appear when the team scope is set
-    // (we can't hit a real API in E2E, but we can verify the banner is
-    //  shown because forecast fetch returns null in test mode — that's fine,
-    //  the important thing is the team input is absent from the form)
-    await page.goto("/capacity-planning?scope_level=team&scope_ids=team-abc&backlog=10");
-
-    // Team input must still be absent
-    await expect(page.locator('input[name="team"]')).not.toBeVisible();
-  });
-
-  test("shows the rolling throughput section", async ({ page }) => {
+  test("scope label reflects All teams when no team is selected", async ({ page }) => {
     await page.goto("/capacity-planning");
 
-    await expect(page.getByRole("heading", { name: /Rolling throughput/i })).toBeVisible();
-    await expect(page.getByText(/Mean weekly completed items/i)).toBeVisible();
-  });
-
-  test("shows the risk cards", async ({ page }) => {
-    await page.goto("/capacity-planning");
-
-    await expect(page.locator("h3").filter({ hasText: "WIP congestion" })).toBeVisible();
-    await expect(page.locator("h3").filter({ hasText: "Review bottleneck" })).toBeVisible();
-    await expect(page.locator("h3").filter({ hasText: "Incident load" })).toBeVisible();
+    await expect(page.getByText(/Scope:\s*All teams/i)).toBeVisible();
   });
 
   test("links to the Monte Carlo view", async ({ page }) => {
