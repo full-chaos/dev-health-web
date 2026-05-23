@@ -75,9 +75,11 @@ This document is the authoritative guide for any automated coding agent (Copilot
 
 - Use descriptive PR titles and reference related tests. Keep changes scoped to one feature or bugfix.
 - **Visual evidence (MANDATORY):** Any change that affects rendered UI **must** include screenshots attached to both the PR body and the linked Linear issue/task.
+  - **Canonical procedure:** [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md) — deterministic runbook for agents (account check → fixture seed → dev-server verify → Playwright login → screenshot → PR/Linear attach). Follow this end-to-end; the rules below are summary only.
   - Use the **Playwright MCP** (`playwright` skill) to capture screenshots of affected pages/components after the dev server is running
   - Attach screenshots to the GitHub PR body (upload via `gh` CLI or drag-and-drop)
-  - Attach screenshots to the linked Linear issue as a comment: `linear i comment <ID> -b "Screenshot attached" --attach <file>`
+  - Attach screenshots to the linked Linear issue as a comment: `linear-cli i comment <ID> -b "Screenshot attached" --attach <file>`
+  - **Canonical test account:** `admin@devhealth.example` / `devhealth123` (seeded by `dev-hops fixtures generate`). Do not create ad-hoc accounts.
   - **What to capture:** Every page or component visually altered by the change — before/after if modifying existing UI, just after if net-new
   - **When to skip:** Changes that are purely backend, purely type-level, or have no rendered output (add `SCREENSHOT-WAIVER: <reason>` to PR body)
 - **Governance gate (`enforce-src-test-policy`)**: Any PR that changes files under `src/` must either include at least one test file change (`tests/`, `__tests__/`, or `*.test.*`/`*.spec.*`) **or** include a `TEST-WAIVER:` line in the PR body explaining why tests were not touched. Example:
@@ -101,11 +103,11 @@ Use the repository README for setup steps and `package.json` scripts to run dev 
 ### Quick Reference
 
 ```bash
-linear issues create "Task title" --team CHAOS --priority high
-linear issues list
-linear issues get CHAOS-123
-linear issues update CHAOS-123 --state "In Progress"
-linear issues update CHAOS-123 --state "Done"
+linear-cli issues create "Task title" --team CHAOS --priority high
+linear-cli issues list
+linear-cli issues get CHAOS-123
+linear-cli issues update CHAOS-123 --state "In Progress"
+linear-cli issues update CHAOS-123 --state "Done"
 ```
 
 ---
@@ -145,10 +147,10 @@ Default team: **CHAOS**
 
 ```bash
 # Create a simple issue
-linear issues create "Fix login bug" --team CHAOS --priority high
+linear-cli issues create "Fix login bug" --team CHAOS --priority high
 
 # Create with full details and dependencies
-linear issues create "Add OAuth integration" \
+linear-cli issues create "Add OAuth integration" \
   --team CHAOS \
   --description "Integrate Google and GitHub OAuth providers" \
   --parent CHAOS-100 \
@@ -157,8 +159,8 @@ linear issues create "Add OAuth integration" \
   --estimate 5
 
 # List and view issues
-linear issues list
-linear issues get CHAOS-123
+linear-cli issues list
+linear-cli issues get CHAOS-123
 ```
 
 ### Fetching private Linear images
@@ -167,7 +169,7 @@ linear issues get CHAOS-123
 Do **NOT** use `WebFetch` or `curl` — they will 401.
 
 ```bash
-linear attachments download "https://uploads.linear.app/..."
+linear-cli attachments download "https://uploads.linear.app/..."
 # → /tmp/linear-img-<hash>.png
 ```
 
@@ -175,7 +177,7 @@ Then `Read` that path to view the image.
 
 ### Claude Code Skills
 
-Available workflow skills (install with `linear skills install --all`):
+Available workflow skills (install with `linear-cli skills install --all`):
 
 - `/prd` - Create agent-friendly tickets with PRDs and sub-issues
 - `/triage` - Analyze and prioritize backlog
@@ -183,4 +185,4 @@ Available workflow skills (install with `linear skills install --all`):
 - `/retro` - Generate sprint retrospectives
 - `/deps` - Analyze dependency chains
 
-Run `linear skills list` for details.
+Run `linear-cli skills list` for details.
