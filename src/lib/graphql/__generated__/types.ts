@@ -1450,7 +1450,7 @@ export type ThroughputForecast = {
 export type ThroughputForecastInput = {
   backlogSize?: InputMaybe<Scalars['Int']['input']>;
   historyWeeks?: Scalars['Int']['input'];
-  teamId?: InputMaybe<Scalars['String']['input']>;
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
   workScopeId?: InputMaybe<Scalars['String']['input']>;
 };
 
