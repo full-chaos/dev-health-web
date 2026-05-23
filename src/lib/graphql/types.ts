@@ -339,7 +339,7 @@ export interface CapacityForecastsQueryResponse {
 }
 
 export interface ThroughputForecastInput {
-  teamId?: string | null;
+  teamIds?: string[] | null;
   workScopeId?: string | null;
   backlogSize?: number | null;
   historyWeeks?: number;

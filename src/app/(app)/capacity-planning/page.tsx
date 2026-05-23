@@ -76,25 +76,34 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
   const workScopeId = firstParam(params.scope);
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
-  const team = filters.scope.level === "team" ? filters.scope.ids[0] : undefined;
+  const teamIds =
+    filters.scope.level === "team" && filters.scope.ids.length > 0
+      ? filters.scope.ids
+      : null;
 
   const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
   if (!health.ok) return <ServiceUnavailable />;
 
   const orgId = session.user.org_id ?? "default-org";
-  // CHAOS-1783: always fetch. When team is undefined the resolver aggregates
-  // org-wide; when backlogSize is omitted the resolver derives it from the
-  // latest work_item_metrics_daily rows. No more SAMPLE_FORECAST.
+  // CHAOS-1783: always fetch. When teamIds is null the resolver aggregates
+  // org-wide; with multiple teams selected the resolver aggregates across
+  // those teams (multi-team follow-up). Backlog is derived server-side from
+  // the latest work_item_metrics_daily rows.
   const forecast = await fetchOrNull(
     getThroughputForecastViaGraphQL(orgId, {
-      teamId: team ?? null,
+      teamIds,
       workScopeId: workScopeId ?? null,
       historyWeeks: 12,
     }),
     "capacity-planning/throughput-forecast",
   );
 
-  const scopeLabel = team ? `Team ${team}` : "All teams";
+  const scopeLabel =
+    teamIds === null
+      ? "All teams"
+      : teamIds.length === 1
+        ? `Team ${teamIds[0]}`
+        : `Teams ${teamIds.join(", ")}`;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

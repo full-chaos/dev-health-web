@@ -1179,7 +1179,7 @@ type ThroughputForecast {
 }
 
 input ThroughputForecastInput {
-  teamId: String = null
+  teamIds: [String!] = null
   workScopeId: String = null
   backlogSize: Int = null
   historyWeeks: Int! = 12
