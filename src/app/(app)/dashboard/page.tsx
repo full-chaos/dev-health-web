@@ -50,23 +50,22 @@ const MONITORING_VIEWS = [
 const AI_WORKFLOW_STEPS = [
   {
     label: "AI Impact",
-    description: "Start with delivery lift versus review, rework, test, and incident drag.",
+    description: "Delivery lift versus review, rework, and incident drag.",
     href: "/ai/impact",
   },
   {
     label: "Review Load / Risk",
-    description:
-      "Check whether AI-attributed work is shifting cost into review or quality signals.",
+    description: "Is AI-attributed work shifting cost into review or quality?",
     href: "/ai/review-load",
   },
   {
     label: "Governance gaps",
-    description: "Treat unknown attribution and policy violations as trust signals to investigate.",
+    description: "Unknown attribution and policy violations as trust signals.",
     href: "/ai/risk",
   },
   {
     label: "Evidence + intervention",
-    description: "Move from recommendations into the evidence trail and weekly operating review.",
+    description: "Move from recommendations into evidence and weekly review.",
     href: "/operating-review#ai-workflow-intelligence",
   },
 ];
