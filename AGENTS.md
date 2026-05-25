@@ -88,6 +88,75 @@ This document is the authoritative guide for any automated coding agent (Copilot
   ```
   The script lives at `.github/scripts/enforce-src-test-governance.mjs`. PRs that fail this check will be blocked from merging.
 
+## Pre-commit + pre-push + commit-msg hooks (lefthook)
+
+Lefthook drives three git hooks that match what CI enforces. Mirrors the
+`dev-health-ops` setup so the platform shares one hook tool and one mental
+model.
+
+- **commit-msg** strips agent-attribution trailers from every commit message
+  before the commit lands. Backs the repo-root `AGENTS.md` rule "Never add
+  contribution attribution for agents in commits." Removes
+  `Ultraworked with [...]`, `Co-authored-by: Sisyphus`,
+  `Co-authored-by: Claude`, and `🤖 Generated with [Claude Code]` lines.
+  Preserves real-human `Co-authored-by`, `Signed-off-by`, `Refs`, `Closes`.
+  Implementation: `scripts/strip-agent-attribution.mjs`.
+  Tests: `scripts/__tests__/strip-agent-attribution.test.mjs`.
+- **pre-commit** auto-fixes formatting (`prettier --write`) and lint
+  (`eslint --fix`) on staged files and re-stages the fixes
+  (`stage_fixed: true`). The resulting commit is clean.
+- **pre-push** is a final gate: `prettier --check` + `eslint` on the files
+  being pushed. No auto-fix here — pre-push cannot modify the commits it's
+  gating, so blocking with an instruction is the only correct shape.
+
+### Install
+
+```bash
+pnpm install   # runs `prepare` → `lefthook install`
+# or, manually:
+pnpm exec lefthook install --force
+```
+
+Lefthook is a Go binary published as the `lefthook` npm package; pnpm only
+runs its postinstall script if it's listed in `pnpm-workspace.yaml`'s
+`allowBuilds` block. The repo already lists `lefthook: true` there.
+
+### Hook behaviour
+
+**commit-msg** (on every `git commit`, edits the commit message file in place):
+
+| Step | Command                                        | Behaviour                                                                                                                 |
+| ---- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `node scripts/strip-agent-attribution.mjs {1}` | Removes agent-attribution trailers. Idempotent. Preserves real human `Co-authored-by`, `Signed-off-by`, `Refs`, `Closes`. |
+
+**pre-commit** (on every `git commit`, for staged files):
+
+| Step | Glob                                             | Command                                     | Behaviour                          |
+| ---- | ------------------------------------------------ | ------------------------------------------- | ---------------------------------- |
+| 1    | `*.{ts,tsx,js,mjs,cjs,jsx,json,md,css,yaml,yml}` | `pnpm exec prettier --write {staged_files}` | Auto-formats + re-stages           |
+| 2    | `*.{ts,tsx,js,mjs,cjs,jsx}`                      | `pnpm exec eslint --fix {staged_files}`     | Auto-fixes lint issues + re-stages |
+
+**pre-push** (on every `git push`, for files in pushed commits):
+
+| Step | Glob                                             | Command                                   | Behaviour                                    |
+| ---- | ------------------------------------------------ | ----------------------------------------- | -------------------------------------------- |
+| 1    | `*.{ts,tsx,js,mjs,cjs,jsx,json,md,css,yaml,yml}` | `pnpm exec prettier --check {push_files}` | **Gate**: blocks if formatting issues remain |
+| 2    | `*.{ts,tsx,js,mjs,cjs,jsx}`                      | `pnpm exec eslint {push_files}`           | **Gate**: blocks if lint issues remain       |
+
+### Escape hatch
+
+```bash
+git commit --no-verify   # skip pre-commit + commit-msg (use sparingly, e.g. WIP)
+git push --no-verify     # skip pre-push (emergency pushes)
+```
+
+### Disabling repo-wide
+
+```bash
+git config core.hooksPath /dev/null   # disable all hooks for this checkout
+git config --unset core.hooksPath     # re-enable
+```
+
 ## Contact & further reading
 
 Use the repository README for setup steps and `package.json` scripts to run dev server, tests, and linters.

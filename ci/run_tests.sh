@@ -26,10 +26,10 @@ PLAYWRIGHT_JUNIT_PATH="${PLAYWRIGHT_JUNIT_PATH:-${PLAYWRIGHT_RESULTS_DIR}/junit.
 export PLAYWRIGHT_HTML_REPORT="${PLAYWRIGHT_HTML_REPORT:-${PLAYWRIGHT_REPORT_DIR}}"
 export PLAYWRIGHT_JUNIT_OUTPUT_NAME="${PLAYWRIGHT_JUNIT_OUTPUT_NAME:-${PLAYWRIGHT_JUNIT_PATH}}"
 
-run_npm_script() {
+run_pnpm_script() {
   local script_name="$1"
-  echo "==> npm run ${script_name}"
-  npm run "${script_name}"
+  echo "==> pnpm ${script_name}"
+  pnpm "${script_name}"
 }
 
 is_ci() {
@@ -58,7 +58,7 @@ print_e2e_diagnostics() {
   echo "PLAYWRIGHT_JUNIT_OUTPUT_NAME=${PLAYWRIGHT_JUNIT_OUTPUT_NAME}"
   echo "PLAYWRIGHT_RESULTS_DIR=${PLAYWRIGHT_RESULTS_DIR}"
   echo "node $(node --version)"
-  echo "npm $(npm --version)"
+  echo "pnpm $(pnpm --version)"
   echo "playwright $(npx playwright --version)"
 }
 
@@ -85,18 +85,18 @@ print_playwright_artifact_summary() {
 }
 
 run_unit() {
-  run_npm_script test:unit
+  run_pnpm_script test:unit
 }
 
 run_integration() {
-  run_npm_script test:integration
+  run_pnpm_script test:integration
 }
 
 run_e2e() {
   install_playwright_browser
   prepare_playwright_artifacts
   print_e2e_diagnostics
-  if ! run_npm_script test:e2e; then
+  if ! run_pnpm_script test:e2e; then
     echo "E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
     return 1
@@ -106,7 +106,7 @@ run_e2e() {
 
 run_live_e2e() {
   install_playwright_browser
-  run_npm_script test:e2e:live
+  run_pnpm_script test:e2e:live
 }
 
 case "${tier}" in
@@ -124,12 +124,12 @@ case "${tier}" in
     ;;
   ci)
     export CI=true
-    echo "==> npm audit --audit-level=high"
-    npm audit --audit-level=high
-    run_npm_script codegen:check
-    run_npm_script lint
-    run_npm_script typecheck
-    run_npm_script build
+    echo "==> pnpm audit --audit-level=high --prod"
+    pnpm audit --audit-level=high --prod
+    run_pnpm_script codegen:check
+    run_pnpm_script lint
+    run_pnpm_script typecheck
+    run_pnpm_script build
     run_unit
     run_integration
     run_e2e

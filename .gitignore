@@ -44,3 +44,6 @@ playwright-report/
 #
 **/.worktree**
 **/.pnpm**
+
+# Use pnpm-lock.yaml as the canonical lockfile; npm lockfile is rejected.
+package-lock.json

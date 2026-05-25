@@ -1,0 +1,62 @@
+# Pre-commit + pre-push + commit-msg hooks for dev-health-web.
+#
+# Mirrors the ops lefthook setup so the platform shares one hook tool and one
+# mental model. Three hooks:
+#
+#   commit-msg  — strips agent-attribution trailers from every commit message
+#                 before the commit lands. Backs the repo-root AGENTS.md rule
+#                 "Never add contribution attribution for agents in commits."
+#                 Removes "Ultraworked with [...]", "Co-authored-by: Sisyphus",
+#                 "Co-authored-by: Claude", and "🤖 Generated with [...]" lines.
+#                 Implementation: scripts/strip-agent-attribution.mjs.
+#
+#   pre-commit  — auto-fixes formatting on staged files (prettier --write) and
+#                 auto-fixes lint on staged TS/TSX/JS/MJS files (eslint --fix),
+#                 then re-stages the fixes (stage_fixed: true). The resulting
+#                 commit is clean. stage_fixed only works in pre-commit, which
+#                 is why fix-and-stage lives here and not in pre-push.
+#
+#   pre-push    — final gate matching CI: prettier --check + eslint on pushed
+#                 files. No auto-fix here — pre-push cannot modify the commits
+#                 it's gating, so blocking with an instruction is the only
+#                 correct shape.
+#
+# Install: lefthook is added as a devDependency; the `prepare` script in
+# package.json runs `lefthook install` automatically after `npm install` /
+# `pnpm install`. Or run `npx lefthook install --force` manually.
+#
+# Skip a hook for WIP/emergency commits with `--no-verify`:
+#   git commit --no-verify
+#   git push --no-verify
+
+commit-msg:
+  commands:
+    strip-agent-attribution:
+      # AGENTS.md rule: "Never add contribution attribution for agents in
+      # commits." Sisyphus / oh-my-openagent / Claude Code inject trailers
+      # despite the rule; this hook removes them before the commit lands.
+      run: node scripts/strip-agent-attribution.mjs {1}
+
+pre-commit:
+  parallel: true
+  commands:
+    prettier-write:
+      glob: "*.{ts,tsx,js,mjs,cjs,jsx,json,md,css,yaml,yml}"
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+    eslint-fix:
+      glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+      run: pnpm exec eslint --fix {staged_files}
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  commands:
+    prettier-check:
+      glob: "*.{ts,tsx,js,mjs,cjs,jsx,json,md,css,yaml,yml}"
+      run: pnpm exec prettier --check {push_files}
+      fail_text: "Run `pnpm format` locally, commit the result, push again. Or `git push --no-verify` to bypass."
+    eslint-check:
+      glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+      run: pnpm exec eslint {push_files}
+      fail_text: "Run `pnpm lint --fix` locally, commit the result, push again. Or `git push --no-verify` to bypass."
