@@ -972,6 +972,27 @@ export type ProductTelemetryFilterChangeType = {
   view: Scalars['String']['output'];
 };
 
+export type ProductTelemetryPlatformDashboardType = {
+  __typename?: 'ProductTelemetryPlatformDashboardType';
+  chartInteractions: Array<ProductTelemetryChartInteractionType>;
+  clientErrors: Array<ProductTelemetryClientErrorType>;
+  dailyActiveUsers: Array<ProductTelemetryDailyActiveUsersType>;
+  featureViews: Array<ProductTelemetryFeatureViewType>;
+  filterChanges: Array<ProductTelemetryFilterChangeType>;
+  sessionSummary: ProductTelemetrySessionSummaryType;
+  topOrgs: Array<ProductTelemetryTopOrgType>;
+  topRoutes: Array<ProductTelemetryRouteUsageType>;
+  totals: ProductTelemetryPlatformTotalsType;
+};
+
+export type ProductTelemetryPlatformTotalsType = {
+  __typename?: 'ProductTelemetryPlatformTotalsType';
+  activeOrgs: Scalars['Int']['output'];
+  anonymousUsers: Scalars['Int']['output'];
+  events: Scalars['Int']['output'];
+  sessions: Scalars['Int']['output'];
+};
+
 export type ProductTelemetryRouteUsageType = {
   __typename?: 'ProductTelemetryRouteUsageType';
   anonymousUsers: Scalars['Int']['output'];
@@ -988,6 +1009,17 @@ export type ProductTelemetrySessionSummaryType = {
   p75DurationMs?: Maybe<Scalars['Int']['output']>;
   p90DurationMs?: Maybe<Scalars['Int']['output']>;
   p95DurationMs?: Maybe<Scalars['Int']['output']>;
+};
+
+export type ProductTelemetryTopOrgType = {
+  __typename?: 'ProductTelemetryTopOrgType';
+  anonymousUsers: Scalars['Int']['output'];
+  events: Scalars['Int']['output'];
+  orgId?: Maybe<Scalars['String']['output']>;
+  orgIdHash: Scalars['String']['output'];
+  orgName?: Maybe<Scalars['String']['output']>;
+  orgSlug?: Maybe<Scalars['String']['output']>;
+  sessions: Scalars['Int']['output'];
 };
 
 export type Query = {
@@ -1032,6 +1064,8 @@ export type Query = {
   operatingReview: OperatingReview;
   /** Get first-party product telemetry dashboard metrics */
   productTelemetryDashboard: ProductTelemetryDashboardType;
+  /** Cross-org product telemetry dashboard for platform/super admins. Requires is_superuser. Returns global aggregates plus a top-orgs rollup with org names resolved from Postgres. */
+  productTelemetryPlatformDashboard: ProductTelemetryPlatformDashboardType;
   /** Latest rule-based recommendations for a team within a lookback window. */
   recommendations: Array<Recommendation>;
   /** List report runs for a saved report */
@@ -1179,6 +1213,11 @@ export type QueryOperatingReviewArgs = {
 export type QueryProductTelemetryDashboardArgs = {
   input: ProductTelemetryDashboardInput;
   orgId: Scalars['String']['input'];
+};
+
+
+export type QueryProductTelemetryPlatformDashboardArgs = {
+  input: ProductTelemetryDashboardInput;
 };
 
 

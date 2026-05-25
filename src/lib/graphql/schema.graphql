@@ -867,6 +867,25 @@ type ProductTelemetryFilterChangeType {
   avgValueCount: Float
 }
 
+type ProductTelemetryPlatformDashboardType {
+  totals: ProductTelemetryPlatformTotalsType!
+  dailyActiveUsers: [ProductTelemetryDailyActiveUsersType!]!
+  topRoutes: [ProductTelemetryRouteUsageType!]!
+  featureViews: [ProductTelemetryFeatureViewType!]!
+  filterChanges: [ProductTelemetryFilterChangeType!]!
+  chartInteractions: [ProductTelemetryChartInteractionType!]!
+  clientErrors: [ProductTelemetryClientErrorType!]!
+  sessionSummary: ProductTelemetrySessionSummaryType!
+  topOrgs: [ProductTelemetryTopOrgType!]!
+}
+
+type ProductTelemetryPlatformTotalsType {
+  activeOrgs: Int!
+  anonymousUsers: Int!
+  sessions: Int!
+  events: Int!
+}
+
 type ProductTelemetryRouteUsageType {
   routePattern: String!
   events: Int!
@@ -883,6 +902,16 @@ type ProductTelemetrySessionSummaryType {
   avgInteractions: Float
 }
 
+type ProductTelemetryTopOrgType {
+  orgIdHash: String!
+  events: Int!
+  sessions: Int!
+  anonymousUsers: Int!
+  orgId: String
+  orgName: String
+  orgSlug: String
+}
+
 type Query {
   """Get catalog of available dimensions, measures, and limits"""
   catalog(orgId: String!, dimension: DimensionInput = null, filters: FilterInput = null): CatalogResult!
@@ -892,6 +921,11 @@ type Query {
 
   """Get first-party product telemetry dashboard metrics"""
   productTelemetryDashboard(orgId: String!, input: ProductTelemetryDashboardInput!): ProductTelemetryDashboardType!
+
+  """
+  Cross-org product telemetry dashboard for platform/super admins. Requires is_superuser. Returns global aggregates plus a top-orgs rollup with org names resolved from Postgres.
+  """
+  productTelemetryPlatformDashboard(input: ProductTelemetryDashboardInput!): ProductTelemetryPlatformDashboardType!
 
   """Get home dashboard metrics"""
   home(orgId: String!, filters: FilterInput = null): HomeResult!
