@@ -1,42 +1,44 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { ProductTelemetryDashboard } from "@/components/product-telemetry/ProductTelemetryDashboard";
-import { auth } from "@/lib/auth";
-import { getProductTelemetryDashboardViaGraphQL } from "@/lib/graphql/productTelemetryFetchers";
+import { PlatformProductTelemetryDashboard } from "@/components/product-telemetry/PlatformProductTelemetryDashboard";
+import { getProductTelemetryPlatformDashboardViaGraphQL } from "@/lib/graphql/productTelemetryFetchers";
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
 
-export default async function ProductTelemetryDashboardPage() {
-  const session = await auth();
-  const orgId = session?.user?.org_id;
-  const endDate = new Date();
-  const startDate = new Date(endDate);
-  startDate.setUTCDate(startDate.getUTCDate() - 30);
+type SearchParams = { startDate?: string; endDate?: string };
 
-  if (!orgId) {
-    return (
-      <div className="space-y-6">
-        <AdminHeader
-          title="Product telemetry"
-          description="First-party product usage analytics backed by ClickHouse."
-        />
-        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
-          Select an organization to view product telemetry.
-        </div>
-      </div>
-    );
-  }
+export default async function ProductTelemetryDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
+  const params = (await searchParams) ?? {};
+  const endDate = params.endDate ? new Date(params.endDate) : new Date();
+  const startDate = params.startDate
+    ? new Date(params.startDate)
+    : (() => {
+        const d = new Date(endDate);
+        d.setUTCDate(d.getUTCDate() - 30);
+        return d;
+      })();
 
   const start = isoDate(startDate);
   const end = isoDate(endDate);
-  const dashboard = await getProductTelemetryDashboardViaGraphQL({ orgId, startDate: start, endDate: end });
+  const dashboard = await getProductTelemetryPlatformDashboardViaGraphQL({
+    startDate: start,
+    endDate: end,
+  });
 
   return (
     <div className="space-y-6">
       <AdminHeader
         title="Product telemetry"
-        description="First-party product usage analytics backed by persisted ClickHouse events."
+        description="Cross-org first-party product usage analytics backed by persisted ClickHouse events. Click any organization to drill down."
       />
-      <ProductTelemetryDashboard dashboard={dashboard} startDate={start} endDate={end} />
+      <PlatformProductTelemetryDashboard
+        dashboard={dashboard}
+        startDate={start}
+        endDate={end}
+      />
     </div>
   );
 }
