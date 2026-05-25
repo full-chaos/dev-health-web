@@ -1,6 +1,8 @@
 "use client";
 import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/logger";
+import { trackTelemetryEvent } from "@/lib/telemetry";
+import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 
 /**
  * Global error boundary — catches errors that bubble past all route-level
@@ -21,6 +23,12 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     // Capture error to Sentry and log to console as fallback
     Sentry.captureException(error);
     logger.error({ err: error }, "[GlobalError] Unhandled global error");
+    trackTelemetryEvent("client_error", {
+      boundary: "global",
+      digest: error.digest ?? null,
+      errorClass: error.name || "Error",
+      routePattern: typeof window === "undefined" ? null : routePatternForPathname(window.location.pathname),
+    });
   }, [error]);
 
   return (

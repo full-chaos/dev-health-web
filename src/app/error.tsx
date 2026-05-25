@@ -8,15 +8,23 @@
  */
 import { useEffect } from "react";
 import { logger } from "@/lib/logger";
+import { trackTelemetryEvent } from "@/lib/telemetry";
+import { routePatternForPathname } from "@/lib/telemetry/routePatterns";
 
 interface ErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
 
-export default function Error({ error, reset }: ErrorProps) {
+export default function RouteError({ error, reset }: ErrorProps) {
   useEffect(() => {
     logger.error({ err: error, digest: error.digest }, "Unhandled route error");
+    trackTelemetryEvent("client_error", {
+      boundary: "route",
+      digest: error.digest ?? null,
+      errorClass: error.name || "Error",
+      routePattern: typeof window === "undefined" ? null : routePatternForPathname(window.location.pathname),
+    });
   }, [error]);
 
   return (
@@ -33,6 +41,7 @@ export default function Error({ error, reset }: ErrorProps) {
           )}
         </p>
         <button
+          type="button"
           onClick={reset}
           className="rounded-full border border-(--card-stroke) px-6 py-2.5 text-xs uppercase tracking-[0.2em] hover:border-(--accent) transition"
         >

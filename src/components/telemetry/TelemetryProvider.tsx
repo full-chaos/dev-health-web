@@ -13,6 +13,15 @@ type TelemetryProviderProps = {
 };
 
 const TELEMETRY_INTERACTION_EVENT = "devhealth:telemetry-interaction";
+const FEATURE_BY_ROUTE_PATTERN: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/work": "work",
+  "/metrics": "metrics",
+  "/code": "code",
+  "/investment": "investment",
+  "/testops": "testops",
+  "/feature-flags": "feature-flags",
+};
 
 function fallbackHash(input: string): string {
   let hash = 0x811c9dc5;
@@ -80,6 +89,14 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
       page: routePattern,
       referrerRoutePattern: previousRoutePattern,
     });
+    const feature = FEATURE_BY_ROUTE_PATTERN[routePattern];
+    if (feature) {
+      trackTelemetryEvent("feature_viewed", {
+        feature,
+        surface: routePattern.slice(1) || "dashboard",
+        routePattern,
+      });
+    }
     pagesViewedRef.current += 1;
     previousRoutePatternRef.current = routePattern;
   }, [pathname]);
