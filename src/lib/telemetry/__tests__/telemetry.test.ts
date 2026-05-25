@@ -43,6 +43,8 @@ vi.mock("@/lib/env", () => ({
   isServer: false,
 }));
 
+const originalRandomUUID = crypto.randomUUID;
+
 describe("product telemetry", () => {
   beforeEach(() => {
     envMock.storage.clear();
@@ -58,6 +60,7 @@ describe("product telemetry", () => {
   });
 
   afterEach(() => {
+    Object.defineProperty(crypto, "randomUUID", { configurable: true, value: originalRandomUUID });
     resetTelemetryForTests();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
@@ -120,6 +123,39 @@ describe("product telemetry", () => {
       payload: { chart: "quadrant", action: "overlay_toggled", surface: "metrics", scope: "team" },
     });
     expect(sent[0]?.payload).not.toHaveProperty("message");
+  });
+
+  it("uses crypto-backed fallback ids when randomUUID is unavailable", async () => {
+    vi.restoreAllMocks();
+    Object.defineProperty(crypto, "randomUUID", { configurable: true, value: undefined });
+    vi.spyOn(crypto, "getRandomValues").mockImplementation((array) => {
+      if (array instanceof Uint8Array) {
+        array.fill(0xab);
+      }
+      return array;
+    });
+    vi.spyOn(Math, "random").mockImplementation(() => {
+      throw new Error("Math.random must not be used for telemetry identifiers");
+    });
+    const sent: TelemetryEvent[] = [];
+    configureTelemetry({
+      adapters: [
+        {
+          name: "test",
+          enabled: () => true,
+          send: async (events) => {
+            sent.push(...events);
+          },
+        },
+      ],
+      maxBatchSize: 1,
+      flushIntervalMs: 60_000,
+    });
+
+    trackTelemetryEvent("feature_viewed", { feature: "metrics", surface: "metrics", routePattern: "/metrics" });
+
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]?.eventId).toBe("abababab-abab-4bab-abab-abababababab");
   });
 
   it("does not track when DNT, local opt-out, or env disablement applies", async () => {
