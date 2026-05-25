@@ -853,6 +853,20 @@ type ProductTelemetryDashboardType {
   sessionSummary: ProductTelemetrySessionSummaryType!
 }
 
+type ProductTelemetryFeatureViewType {
+  feature: String!
+  surface: String!
+  views: Int!
+  anonymousUsers: Int!
+}
+
+type ProductTelemetryFilterChangeType {
+  view: String!
+  filterKey: String!
+  changes: Int!
+  avgValueCount: Float
+}
+
 type ProductTelemetryPlatformDashboardType {
   totals: ProductTelemetryPlatformTotalsType!
   dailyActiveUsers: [ProductTelemetryDailyActiveUsersType!]!
@@ -872,30 +886,6 @@ type ProductTelemetryPlatformTotalsType {
   events: Int!
 }
 
-type ProductTelemetryTopOrgType {
-  orgIdHash: String!
-  events: Int!
-  sessions: Int!
-  anonymousUsers: Int!
-  orgId: String
-  orgName: String
-  orgSlug: String
-}
-
-type ProductTelemetryFeatureViewType {
-  feature: String!
-  surface: String!
-  views: Int!
-  anonymousUsers: Int!
-}
-
-type ProductTelemetryFilterChangeType {
-  view: String!
-  filterKey: String!
-  changes: Int!
-  avgValueCount: Float
-}
-
 type ProductTelemetryRouteUsageType {
   routePattern: String!
   events: Int!
@@ -910,6 +900,16 @@ type ProductTelemetrySessionSummaryType {
   p95DurationMs: Int
   avgPagesViewed: Float
   avgInteractions: Float
+}
+
+type ProductTelemetryTopOrgType {
+  orgIdHash: String!
+  events: Int!
+  sessions: Int!
+  anonymousUsers: Int!
+  orgId: String
+  orgName: String
+  orgSlug: String
 }
 
 type Query {
