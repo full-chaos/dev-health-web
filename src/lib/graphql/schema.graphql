@@ -817,12 +817,81 @@ type PageInfo {
   endCursor: String
 }
 
+type ProductTelemetryChartInteractionType {
+  chart: String!
+  action: String!
+  surface: String!
+  interactions: Int!
+  sessions: Int!
+}
+
+type ProductTelemetryClientErrorType {
+  routePattern: String!
+  boundary: String!
+  errorClass: String!
+  errors: Int!
+  affectedAnonymousUsers: Int!
+}
+
+type ProductTelemetryDailyActiveUsersType {
+  day: Date!
+  activeAnonymousUsers: Int!
+}
+
+input ProductTelemetryDashboardInput {
+  startDate: Date!
+  endDate: Date!
+}
+
+type ProductTelemetryDashboardType {
+  dailyActiveUsers: [ProductTelemetryDailyActiveUsersType!]!
+  topRoutes: [ProductTelemetryRouteUsageType!]!
+  featureViews: [ProductTelemetryFeatureViewType!]!
+  filterChanges: [ProductTelemetryFilterChangeType!]!
+  chartInteractions: [ProductTelemetryChartInteractionType!]!
+  clientErrors: [ProductTelemetryClientErrorType!]!
+  sessionSummary: ProductTelemetrySessionSummaryType!
+}
+
+type ProductTelemetryFeatureViewType {
+  feature: String!
+  surface: String!
+  views: Int!
+  anonymousUsers: Int!
+}
+
+type ProductTelemetryFilterChangeType {
+  view: String!
+  filterKey: String!
+  changes: Int!
+  avgValueCount: Float
+}
+
+type ProductTelemetryRouteUsageType {
+  routePattern: String!
+  events: Int!
+  sessions: Int!
+  anonymousUsers: Int!
+}
+
+type ProductTelemetrySessionSummaryType {
+  p50DurationMs: Int
+  p75DurationMs: Int
+  p90DurationMs: Int
+  p95DurationMs: Int
+  avgPagesViewed: Float
+  avgInteractions: Float
+}
+
 type Query {
   """Get catalog of available dimensions, measures, and limits"""
   catalog(orgId: String!, dimension: DimensionInput = null, filters: FilterInput = null): CatalogResult!
 
   """Run batch analytics queries"""
   analytics(orgId: String!, batch: AnalyticsRequestInput!): AnalyticsResult!
+
+  """Get first-party product telemetry dashboard metrics"""
+  productTelemetryDashboard(orgId: String!, input: ProductTelemetryDashboardInput!): ProductTelemetryDashboardType!
 
   """Get home dashboard metrics"""
   home(orgId: String!, filters: FilterInput = null): HomeResult!
