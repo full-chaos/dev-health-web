@@ -420,6 +420,7 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
       expect(visibleIds).toContain("dashboard");
       expect(visibleIds).toContain("users");
       expect(visibleIds).toContain("integrations");
+      expect(visibleIds).not.toContain("product-telemetry");
     });
 
     it("UpgradeGate blocks all enterprise features", () => {
