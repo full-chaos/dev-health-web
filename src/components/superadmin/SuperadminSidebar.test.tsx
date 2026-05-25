@@ -8,6 +8,15 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("SuperadminSidebar", () => {
+  it("links to product telemetry from platform admin", () => {
+    render(<SuperadminSidebar />);
+
+    expect(screen.getByRole("link", { name: /product telemetryusage/i })).toHaveAttribute(
+      "href",
+      "/superadmin/product-telemetry",
+    );
+  });
+
   it("shows 'Return to org admin' link when canAccessOrgAdmin is true", () => {
     render(<SuperadminSidebar canAccessOrgAdmin={true} />);
     expect(screen.getByText(/Return to/)).toBeInTheDocument();

@@ -40,6 +40,7 @@ describe("AdminSidebar", () => {
 
     expect(screen.getByText("Full Chaos Dev Health Ops")).toBeInTheDocument();
     expect(screen.getByTestId("org-switcher")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /product telemetryusage/i })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /dashboardoverview/i })).toHaveAttribute(
       "aria-current",
       "page",
