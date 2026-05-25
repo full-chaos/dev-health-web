@@ -8,6 +8,7 @@ import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
 
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
+import { useTrackEvent } from "@/lib/telemetry/useTrackEvent";
 
 const STORAGE_KEY = "devhealth-nav-collapsed";
 
@@ -190,6 +191,7 @@ type PrimaryNavProps = {
 
 export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
   const pathname = usePathname();
+  const trackEvent = useTrackEvent();
   const [hash, setHash] = useState("");
   const collapsed = useSyncExternalStore(
     subscribeToStorage,
@@ -217,9 +219,14 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     const current = getCollapsedState();
     const next = { ...current, [groupId]: !currentlyCollapsed };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    trackEvent("navigation_interacted", {
+      group: groupId,
+      item: null,
+      action: currentlyCollapsed ? "group_expanded" : "group_collapsed",
+    });
     // Trigger storage event for useSyncExternalStore
     window.dispatchEvent(new Event("storage"));
-  }, []);
+  }, [trackEvent]);
 
   /**
    * Determine whether a group should be shown as collapsed.
@@ -281,7 +288,14 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
               <Link
                 key={item.id}
                 href={withFilterParam(item.href, filters, role)}
-                onClick={itemHash ? () => setHash(`#${itemHash}`) : undefined}
+                onClick={() => {
+                  if (itemHash) setHash(`#${itemHash}`);
+                  trackEvent("navigation_interacted", {
+                    group: group.id,
+                    item: item.id,
+                    action: "item_selected",
+                  });
+                }}
                 aria-current={isActive ? "page" : undefined}
                 className={`group relative flex flex-col gap-0.5 rounded-2xl border px-3 py-2 transition ${
                   isActive

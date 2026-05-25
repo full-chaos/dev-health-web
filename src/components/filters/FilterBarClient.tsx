@@ -10,6 +10,7 @@ import { QuickFilterMenu } from "./sections/QuickFilterMenu";
 import { ScopeSection } from "./sections/ScopeSection";
 import { TimeRangeSection } from "./sections/TimeRangeSection";
 import { ToolbarActions } from "./sections/ToolbarActions";
+import { useTrackEvent } from "@/lib/telemetry/useTrackEvent";
 
 export { resolveVisibility } from "./filterBarConfig";
 export type { FilterBarView } from "./filterBarConfig";
@@ -21,6 +22,7 @@ export function FilterBarClient({
   resolvedVisibility,
   resolvedScopeLock,
 }: FilterBarClientProps) {
+  const trackEvent = useTrackEvent();
   const {
     allowAdvanced,
     artifacts,
@@ -56,6 +58,45 @@ export function FilterBarClient({
     visibility,
     workCategory,
   } = useFilterBarState({ view, tab, resolvedVisibility, resolvedScopeLock });
+  const telemetryView = view ?? "default";
+  const emitFilterChange = (
+    filterKey: "scope" | "date" | "repo" | "developer" | "work" | "flow" | "artifact" | "blocked" | "issueType",
+    valueCount: number,
+    customDateRange: boolean | null = null,
+  ) => {
+    trackEvent("filter_changed", {
+      view: telemetryView,
+      filterKey,
+      valueCount,
+      isCustomDateRange: customDateRange,
+    });
+  };
+  const updateFiltersWithTelemetry = (next: MetricFilter) => {
+    updateFilters(next);
+    if (next.scope.ids !== filters.scope.ids || next.scope.level !== filters.scope.level) {
+      emitFilterChange("scope", next.scope.ids?.length ?? 0);
+    } else if (next.what.repos !== filters.what.repos) {
+      emitFilterChange("repo", next.what.repos?.length ?? 0);
+    } else if (next.who.developers !== filters.who.developers) {
+      emitFilterChange("developer", next.who.developers?.length ?? 0);
+    } else if (next.why.work_category !== filters.why.work_category) {
+      emitFilterChange("work", next.why.work_category?.length ?? 0);
+    } else if (next.how.flow_stage !== filters.how.flow_stage) {
+      emitFilterChange("flow", next.how.flow_stage?.length ?? 0);
+    } else if (next.what.artifacts !== filters.what.artifacts) {
+      emitFilterChange("artifact", next.what.artifacts?.length ?? 0);
+    } else if (next.how.blocked !== filters.how.blocked) {
+      emitFilterChange("blocked", next.how.blocked ? 1 : 0);
+    } else if (next.why.issue_type !== filters.why.issue_type) {
+      emitFilterChange("issueType", next.why.issue_type?.length ?? 0);
+    } else if (next.time !== filters.time) {
+      emitFilterChange("date", 1, Boolean(next.time.start_date || next.time.end_date));
+    }
+  };
+  const handleDatePresetWithTelemetry = (days: number) => {
+    handleDatePreset(days);
+    emitFilterChange("date", 1, false);
+  };
 
   return (
     <section
@@ -80,7 +121,7 @@ export function FilterBarClient({
                 scopeValue={scopeValue}
                 setOpenMenu={setOpenMenu}
                 toggleValue={toggleValue}
-                updateFilters={updateFilters}
+                updateFilters={updateFiltersWithTelemetry}
               />
             )}
 
@@ -90,11 +131,11 @@ export function FilterBarClient({
                 endDate={endDate}
                 filters={filters}
                 isCustomDateRange={isCustomDateRange}
-                onDatePreset={handleDatePreset}
+                onDatePreset={handleDatePresetWithTelemetry}
                 openMenu={openMenu}
                 setOpenMenu={setOpenMenu}
                 startDate={startDate}
-                updateFilters={updateFilters}
+                updateFilters={updateFiltersWithTelemetry}
               />
             )}
 
@@ -106,7 +147,7 @@ export function FilterBarClient({
                 label="Repo"
                 menuKey="repo"
                 onChange={(next) =>
-                  updateFilters({
+                  updateFiltersWithTelemetry({
                     ...filters,
                     what: { ...filters.what, repos: next },
                   })
@@ -125,7 +166,7 @@ export function FilterBarClient({
                 label="Developer"
                 menuKey="developer"
                 onChange={(next) =>
-                  updateFilters({
+                  updateFiltersWithTelemetry({
                     ...filters,
                     who: { ...filters.who, developers: next },
                   })
@@ -144,7 +185,7 @@ export function FilterBarClient({
                 label="Work"
                 menuKey="work"
                 onChange={(next) =>
-                  updateFilters({
+                  updateFiltersWithTelemetry({
                     ...filters,
                     why: { ...filters.why, work_category: next },
                   })
@@ -163,7 +204,7 @@ export function FilterBarClient({
                 label="Flow"
                 menuKey="flow"
                 onChange={(next) =>
-                  updateFilters({
+                  updateFiltersWithTelemetry({
                     ...filters,
                     how: { ...filters.how, flow_stage: next },
                   })
@@ -194,7 +235,7 @@ export function FilterBarClient({
           flowStage={flowStage}
           issueType={issueType}
           onClearArtifact={(value) =>
-            updateFilters({
+            updateFiltersWithTelemetry({
               ...filters,
               what: {
                 ...filters.what,
@@ -203,43 +244,43 @@ export function FilterBarClient({
             })
           }
           onClearBlocked={() =>
-            updateFilters({
+            updateFiltersWithTelemetry({
               ...filters,
               how: { ...filters.how, blocked: false },
             })
           }
           onClearDeveloper={(value) =>
-            updateFilters({
+            updateFiltersWithTelemetry({
               ...filters,
               who: { ...filters.who, developers: toggleValue(developers, value) },
             })
           }
           onClearFlowStage={(value) =>
-            updateFilters({
+            updateFiltersWithTelemetry({
               ...filters,
               how: { ...filters.how, flow_stage: toggleValue(flowStage, value) },
             })
           }
           onClearIssueType={(value) =>
-            updateFilters({
+            updateFiltersWithTelemetry({
               ...filters,
               why: { ...filters.why, issue_type: toggleValue(issueType, value) },
             })
           }
           onClearRepo={(value) =>
-            updateFilters({
+            updateFiltersWithTelemetry({
               ...filters,
               what: { ...filters.what, repos: toggleValue(repos, value) },
             })
           }
           onClearRole={(value) =>
-            updateFilters({
+            updateFiltersWithTelemetry({
               ...filters,
               who: { ...filters.who, roles: toggleValue(roles, value) },
             })
           }
           onClearWorkCategory={(value) =>
-            updateFilters({
+            updateFiltersWithTelemetry({
               ...filters,
               why: {
                 ...filters.why,
@@ -262,7 +303,7 @@ export function FilterBarClient({
             issueType={issueType}
             repos={repos}
             roles={roles}
-            updateFilters={updateFilters}
+            updateFilters={updateFiltersWithTelemetry}
             workCategory={workCategory}
           />
         )}

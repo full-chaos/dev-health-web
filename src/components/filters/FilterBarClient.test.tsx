@@ -15,6 +15,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 
 const mockReplace = vi.fn();
 const mockPush = vi.fn();
+const trackEvent = vi.fn();
 
 let currentSearchParams = new URLSearchParams();
 
@@ -58,6 +59,10 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+vi.mock("@/lib/telemetry/useTrackEvent", () => ({
+  useTrackEvent: () => trackEvent,
+}));
+
 function setSearchParams(entries: Record<string, string> = {}) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(entries)) sp.set(k, v);
@@ -67,6 +72,7 @@ function setSearchParams(entries: Record<string, string> = {}) {
 beforeEach(() => {
   mockReplace.mockClear();
   mockPush.mockClear();
+  trackEvent.mockClear();
   setSearchParams();
 });
 
@@ -177,6 +183,12 @@ describe("URL sync on filter change", () => {
     const firstCallArg = mockReplace.mock.calls[0][0] as string;
     expect(firstCallArg).toMatch(/^\/dashboard\?/);
     expect(firstCallArg).toContain("f=");
+    expect(trackEvent).toHaveBeenCalledWith("filter_changed", {
+      view: "home",
+      filterKey: "date",
+      valueCount: 1,
+      isCustomDateRange: false,
+    });
   });
 
   it("writes default `f` to URL when none is present (initialization effect)", async () => {

@@ -1,8 +1,10 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { render } from "@/test/utils";
 import { PrimaryNav } from "./PrimaryNav";
 import type { MetricFilter } from "@/lib/filters/types";
+
+const trackEvent = vi.fn();
 
 // Stub usePathname so PrimaryNav (a client component) renders deterministically
 vi.mock("next/navigation", () => ({
@@ -16,6 +18,27 @@ vi.mock("next-auth/react", () => ({
     update: vi.fn(),
   }),
 }));
+
+vi.mock("@/lib/telemetry/useTrackEvent", () => ({
+  useTrackEvent: () => trackEvent,
+}));
+
+beforeEach(() => {
+  trackEvent.mockClear();
+  const store = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    clear: () => store.clear(),
+  };
+  Object.defineProperty(window, "localStorage", { configurable: true, value: storage });
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage });
+});
 
 function makeFilter(): MetricFilter {
   return {
@@ -108,4 +131,23 @@ it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", ()
   expect(qualityLinks).toHaveLength(1);
   expect(qualityLinks[0]).toHaveAttribute("href", expect.stringContaining("/quality"));
   expect(qualityLinks[0]).toHaveAttribute("aria-current", "page");
+});
+
+it("tracks nav group toggles and stable item selections", async () => {
+  const user = (await import("@testing-library/user-event")).default.setup();
+  render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
+
+  await user.click(screen.getByRole("button", { name: /cockpit/i }));
+  expect(trackEvent).toHaveBeenCalledWith("navigation_interacted", {
+    group: "cockpit",
+    item: null,
+    action: "group_collapsed",
+  });
+
+  await user.click(screen.getByRole("link", { name: /^WorkInvestment$/i }));
+  expect(trackEvent).toHaveBeenCalledWith("navigation_interacted", {
+    group: "see-where-time-goes",
+    item: "work",
+    action: "item_selected",
+  });
 });
