@@ -41,7 +41,7 @@ function anonymousFallbackId(): string {
 
 export function TelemetryProvider({ children, orgId, userId }: TelemetryProviderProps) {
   const pathname = usePathname();
-  const sessionStartMsRef = useRef<number>(performance.now());
+  const sessionStartMsRef = useRef<number | null>(null);
   const pagesViewedRef = useRef(0);
   const interactionsRef = useRef(0);
   const sessionStartedRef = useRef(false);
@@ -85,12 +85,14 @@ export function TelemetryProvider({ children, orgId, userId }: TelemetryProvider
   }, [pathname]);
 
   useEffect(() => {
+    sessionStartMsRef.current ??= performance.now();
     const recordInteraction = () => {
       interactionsRef.current += 1;
     };
     const endSession = () => {
+      const startedAt = sessionStartMsRef.current ?? performance.now();
       trackTelemetryEvent("session_ended", {
-        durationMs: Math.max(0, Math.round(performance.now() - sessionStartMsRef.current)),
+        durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
         pagesViewed: pagesViewedRef.current,
         interactions: interactionsRef.current,
       });
