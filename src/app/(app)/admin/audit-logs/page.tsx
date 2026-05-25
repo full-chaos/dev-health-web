@@ -34,6 +34,7 @@ export default function OrgAuditLogPage() {
   }, [filters, offset]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchLogs coordinates async loading state after mount/filter changes.
     fetchLogs();
   }, [fetchLogs]);
 

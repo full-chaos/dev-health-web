@@ -36,6 +36,7 @@ export function PendingChangesPanel() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loadChanges coordinates async loading state after mount.
     loadChanges();
   }, [loadChanges]);
 

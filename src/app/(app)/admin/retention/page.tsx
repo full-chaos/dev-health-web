@@ -54,6 +54,7 @@ export default function RetentionPolicyPage() {
   }, [offset]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchPolicies coordinates async loading state after mount/page changes.
     fetchPolicies();
   }, [fetchPolicies]);
 
