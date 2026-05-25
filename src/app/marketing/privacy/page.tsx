@@ -23,8 +23,21 @@ const sections: LegalSection[] = [
     items: [
       "Account and profile details, such as your name, work email address, password hash, organization name, and billing or subscription contacts.",
       "Workspace and integration data, including repository names, pull requests, commits, work-item metadata, deployment events, and related operational analytics imported from tools you connect.",
-      "Usage and diagnostic data, such as browser type, IP address, device identifiers, pages viewed, feature usage, timestamps, logs, error reports, and performance telemetry.",
+      "Product usage and diagnostic data, such as browser type, device identifiers, normalized route patterns, feature usage, filter counts, chart actions, session duration, timestamps, logs, error digests, and performance telemetry.",
       "Communications you send to us, including support requests, feedback, and sales or partnership inquiries.",
+    ],
+  },
+  {
+    title: "Product telemetry",
+    paragraphs: [
+      "We use first-party product telemetry to understand how our features are used and to improve the user experience. This data appears to lean toward aggregate patterns rather than individual tracking.",
+      "Our telemetry system is designed with privacy in mind and explicitly excludes sensitive information. We do not collect:",
+    ],
+    items: [
+      "Personal identifiers such as names, email addresses, or raw user IDs.",
+      "Raw URLs, query strings, or search parameters that might contain sensitive data.",
+      "Free-form text entered into the application, such as issue titles, PR descriptions, or comments.",
+      "Source code, stack traces, or detailed error messages.",
     ],
   },
   {
@@ -99,7 +112,7 @@ export default function PrivacyPage() {
       eyebrow="Legal"
       title="Privacy Policy"
       summary="How Full Chaos Dev Health collects, uses, shares, and safeguards information for our website and hosted service."
-      lastUpdated="April 4, 2026"
+      lastUpdated="May 25, 2026"
       sections={sections}
     />
   );
