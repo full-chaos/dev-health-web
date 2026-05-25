@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
-import { trackTelemetryEvent } from "@/lib/telemetry";
+import { useTrackEvent } from "@/lib/telemetry/useTrackEvent";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantChart } from "./QuadrantChart";
@@ -95,6 +95,7 @@ export function QuadrantPanel({
   showViewGuide = true,
 }: QuadrantPanelProps) {
   const scopeType = filters.scope.level === "developer" ? "person" : filters.scope.level;
+  const trackEvent = useTrackEvent();
   const isPersonScope = scopeType === "person";
   const scopeIds = filters.scope.ids;
   const focusEntityIds = useMemo(() => {
@@ -191,6 +192,12 @@ export function QuadrantPanel({
   const handlePointSelect = (point: QuadrantPoint) => {
     setSelectedPoint(point);
     setSelectedPointKey(dataKey);
+    trackEvent("chart_interacted", {
+      chart: "quadrant",
+      action: "point_selected",
+      surface: "quadrant_panel",
+      scope: scopeType,
+    });
   };
 
   useEffect(() => {
@@ -204,14 +211,14 @@ export function QuadrantPanel({
     if (zoneIgnoredLogged.current) {
       return;
     }
-    trackTelemetryEvent("chart_interacted", {
+    trackEvent("chart_interacted", {
       chart: "quadrant",
       action: "overlay_ignored",
       surface: "quadrant_panel",
       scope: scopeType,
     });
     zoneIgnoredLogged.current = true;
-  }, [activeSelectedPoint, axesKey, scopeType, showZoneOverlay, zoneOverlay]);
+  }, [activeSelectedPoint, axesKey, scopeType, showZoneOverlay, trackEvent, zoneOverlay]);
 
   useEffect(() => {
     if (!isGuideOpen) {
@@ -254,7 +261,7 @@ export function QuadrantPanel({
     setShowZoneOverlay(next);
     setHoveredOverlayKey(null);
     if (zoneOverlay && axesKey) {
-      trackTelemetryEvent("chart_interacted", {
+      trackEvent("chart_interacted", {
         chart: "quadrant",
         action: "overlay_toggled",
         surface: "quadrant_panel",
@@ -275,7 +282,13 @@ export function QuadrantPanel({
           {showViewGuide ? (
             <button
               type="button"
-              onClick={() => setIsGuideOpen(true)}
+              onClick={() => {
+                setIsGuideOpen(true);
+                trackEvent("guide_opened", {
+                  guide: "quadrant_interpretation",
+                  surface: "quadrant_panel",
+                });
+              }}
               className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)  btn-help"
             >
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-[11px] text-foreground">
