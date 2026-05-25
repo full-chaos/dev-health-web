@@ -42,6 +42,7 @@ export default function IPAllowlistPage() {
   }, [offset]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchEntries coordinates async loading state after mount/page changes.
     fetchEntries();
   }, [fetchEntries]);
 

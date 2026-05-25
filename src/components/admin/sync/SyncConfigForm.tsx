@@ -77,6 +77,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
   });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- local credentials intentionally mirror updated server props.
     setLocalCredentials(credentials);
   }, [credentials]);
 

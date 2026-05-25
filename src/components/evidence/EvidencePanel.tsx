@@ -80,6 +80,7 @@ export function EvidencePanel({
 
   useEffect(() => {
     if (isOpen && (apiUrl || metric)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- opening the panel intentionally starts async evidence loading.
       setLoading(true);
       setError(null);
 

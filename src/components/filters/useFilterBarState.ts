@@ -51,6 +51,7 @@ export function useFilterBarState({
   const [options, setOptions] = useState<FilterOptions>(EMPTY_FILTER_OPTIONS);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- filters mirror URL-derived initial state.
     setFilters(initialFilters);
   }, [initialFilters]);
 
@@ -67,6 +68,7 @@ export function useFilterBarState({
     if (view !== "people") {
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- people query mirrors the q search parameter.
     setPeopleQuery(queryParam);
   }, [queryParam, view]);
 
@@ -206,6 +208,7 @@ export function useFilterBarState({
       ...filters,
       scope: { ...filters.scope, level: scopeLock, ids: [] },
     };
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- scope lock enforces URL/filter consistency.
     setFilters(nextFilters);
     updateUrl(nextFilters);
   }, [filters, scopeLock, updateUrl]);

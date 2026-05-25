@@ -155,6 +155,7 @@ export function GraphView({ filters, activeRole }: GraphViewProps) {
   const graphHeight = 580;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- graph state mirrors URL search parameters.
     setTheme(searchState.theme);
     setSubcategory(searchState.subcategory);
     setConnectionSliceId(searchState.connectionSliceId);

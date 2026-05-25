@@ -83,6 +83,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
 
   useEffect(() => {
     if (!focusTheme) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing subcategory keeps it consistent with theme focus.
       setFocusSubcategory(null);
     }
   }, [focusTheme]);
@@ -193,6 +194,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
 
   useEffect(() => {
     if (!selectedId || !selectedUnit) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing stale explanation keeps selection state consistent.
       setExplanation(null);
       return;
     }
