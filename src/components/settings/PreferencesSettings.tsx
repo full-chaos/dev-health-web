@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { SettingsSection } from "./SettingsSection";
 import { isServer, getLocalStorage, getWindow } from "@/lib/env";
+import { isTelemetryOptedOut, setTelemetryOptOut } from "@/lib/telemetry/config";
 
 type Theme = "light" | "dark";
 type Palette =
@@ -23,7 +24,9 @@ const subscribe = (listener: Listener) => {
 };
 
 const notify = () => {
-  listeners.forEach((listener) => listener());
+  listeners.forEach((listener) => {
+    listener();
+  });
 };
 
 const getStoredTheme = (): Theme | null => {
@@ -89,6 +92,8 @@ const getPaletteSnapshot = (): Palette => {
 
 const getThemeServerSnapshot = (): Theme => "light";
 const getPaletteServerSnapshot = (): Palette => "fullchaos-infinity-knot-redux";
+const getTelemetrySnapshot = (): boolean => (isServer ? false : isTelemetryOptedOut());
+const getTelemetryServerSnapshot = (): boolean => false;
 
 const PALETTES: { value: Palette; label: string }[] = [
   { value: "fullchaos", label: "Full Chaos" },
@@ -103,6 +108,12 @@ const PALETTES: { value: Palette; label: string }[] = [
 export function PreferencesSettings() {
   const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);
   const palette = useSyncExternalStore(subscribe, getPaletteSnapshot, getPaletteServerSnapshot);
+  const telemetryOptedOut = useSyncExternalStore(subscribe, getTelemetrySnapshot, getTelemetryServerSnapshot);
+
+  const applyTelemetryOptOut = (optedOut: boolean) => {
+    setTelemetryOptOut(optedOut);
+    notify();
+  };
 
   return (
     <SettingsSection
@@ -111,7 +122,7 @@ export function PreferencesSettings() {
     >
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-(--foreground) mb-2">Theme</label>
+          <p className="block text-sm font-medium text-(--foreground) mb-2">Theme</p>
           <div className="flex gap-3">
             <button
               type="button"
@@ -141,9 +152,9 @@ export function PreferencesSettings() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-(--foreground) mb-2">
+          <p className="block text-sm font-medium text-(--foreground) mb-2">
             Color Palette
-          </label>
+          </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {PALETTES.map((p) => (
               <button
@@ -159,6 +170,41 @@ export function PreferencesSettings() {
                 {p.label}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="block text-sm font-medium text-(--foreground) mb-2">Product telemetry</p>
+          <p className="mb-3 text-sm text-(--ink-muted)">
+            Privacy-safe product events help improve Dev Health. We collect route patterns, stable feature IDs,
+            counts, and chart actions only — no names, emails, query strings, or user-entered text. Browser Do Not
+            Track is respected.
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              aria-pressed={!telemetryOptedOut}
+              onClick={() => applyTelemetryOptOut(false)}
+              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                !telemetryOptedOut
+                  ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                  : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+              }`}
+            >
+              Enabled
+            </button>
+            <button
+              type="button"
+              aria-pressed={telemetryOptedOut}
+              onClick={() => applyTelemetryOptOut(true)}
+              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                telemetryOptedOut
+                  ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                  : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+              }`}
+            >
+              Disabled
+            </button>
           </div>
         </div>
       </div>

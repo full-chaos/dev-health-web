@@ -64,4 +64,19 @@ describe("PreferencesSettings", () => {
     expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot-redux");
     expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot-redux");
   });
+
+  it("persists the product telemetry opt-out preference", async () => {
+    const user = userEvent.setup();
+    render(<PreferencesSettings />);
+
+    await user.click(screen.getByRole("button", { name: "Disabled" }));
+
+    expect(localStorage.getItem("devhealth-product-telemetry-opt-out")).toBe("true");
+    expect(screen.getByRole("button", { name: "Disabled" })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: "Enabled" }));
+
+    expect(localStorage.getItem("devhealth-product-telemetry-opt-out")).toBe("false");
+    expect(screen.getByRole("button", { name: "Enabled" })).toHaveAttribute("aria-pressed", "true");
+  });
 });
