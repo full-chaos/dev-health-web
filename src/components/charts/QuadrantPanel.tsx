@@ -204,8 +204,10 @@ export function QuadrantPanel({
     if (zoneIgnoredLogged.current) {
       return;
     }
-    trackTelemetryEvent("quadrant_zone_overlay_ignored", {
-      axes: axesKey,
+    trackTelemetryEvent("chart_interacted", {
+      chart: "quadrant",
+      action: "overlay_ignored",
+      surface: "quadrant_panel",
       scope: scopeType,
     });
     zoneIgnoredLogged.current = true;
@@ -252,9 +254,10 @@ export function QuadrantPanel({
     setShowZoneOverlay(next);
     setHoveredOverlayKey(null);
     if (zoneOverlay && axesKey) {
-      trackTelemetryEvent("quadrant_zone_overlay_toggled", {
-        enabled: next,
-        axes: axesKey,
+      trackTelemetryEvent("chart_interacted", {
+        chart: "quadrant",
+        action: "overlay_toggled",
+        surface: "quadrant_panel",
         scope: scopeType,
       });
     }
