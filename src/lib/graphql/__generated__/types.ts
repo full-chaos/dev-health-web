@@ -916,6 +916,80 @@ export type PageInfo = {
   startCursor?: Maybe<Scalars['String']['output']>;
 };
 
+export type ProductTelemetryChartInteractionType = {
+  __typename?: 'ProductTelemetryChartInteractionType';
+  action: Scalars['String']['output'];
+  chart: Scalars['String']['output'];
+  interactions: Scalars['Int']['output'];
+  sessions: Scalars['Int']['output'];
+  surface: Scalars['String']['output'];
+};
+
+export type ProductTelemetryClientErrorType = {
+  __typename?: 'ProductTelemetryClientErrorType';
+  affectedAnonymousUsers: Scalars['Int']['output'];
+  boundary: Scalars['String']['output'];
+  errorClass: Scalars['String']['output'];
+  errors: Scalars['Int']['output'];
+  routePattern: Scalars['String']['output'];
+};
+
+export type ProductTelemetryDailyActiveUsersType = {
+  __typename?: 'ProductTelemetryDailyActiveUsersType';
+  activeAnonymousUsers: Scalars['Int']['output'];
+  day: Scalars['Date']['output'];
+};
+
+export type ProductTelemetryDashboardInput = {
+  endDate: Scalars['Date']['input'];
+  startDate: Scalars['Date']['input'];
+};
+
+export type ProductTelemetryDashboardType = {
+  __typename?: 'ProductTelemetryDashboardType';
+  chartInteractions: Array<ProductTelemetryChartInteractionType>;
+  clientErrors: Array<ProductTelemetryClientErrorType>;
+  dailyActiveUsers: Array<ProductTelemetryDailyActiveUsersType>;
+  featureViews: Array<ProductTelemetryFeatureViewType>;
+  filterChanges: Array<ProductTelemetryFilterChangeType>;
+  sessionSummary: ProductTelemetrySessionSummaryType;
+  topRoutes: Array<ProductTelemetryRouteUsageType>;
+};
+
+export type ProductTelemetryFeatureViewType = {
+  __typename?: 'ProductTelemetryFeatureViewType';
+  anonymousUsers: Scalars['Int']['output'];
+  feature: Scalars['String']['output'];
+  surface: Scalars['String']['output'];
+  views: Scalars['Int']['output'];
+};
+
+export type ProductTelemetryFilterChangeType = {
+  __typename?: 'ProductTelemetryFilterChangeType';
+  avgValueCount?: Maybe<Scalars['Float']['output']>;
+  changes: Scalars['Int']['output'];
+  filterKey: Scalars['String']['output'];
+  view: Scalars['String']['output'];
+};
+
+export type ProductTelemetryRouteUsageType = {
+  __typename?: 'ProductTelemetryRouteUsageType';
+  anonymousUsers: Scalars['Int']['output'];
+  events: Scalars['Int']['output'];
+  routePattern: Scalars['String']['output'];
+  sessions: Scalars['Int']['output'];
+};
+
+export type ProductTelemetrySessionSummaryType = {
+  __typename?: 'ProductTelemetrySessionSummaryType';
+  avgInteractions?: Maybe<Scalars['Float']['output']>;
+  avgPagesViewed?: Maybe<Scalars['Float']['output']>;
+  p50DurationMs?: Maybe<Scalars['Int']['output']>;
+  p75DurationMs?: Maybe<Scalars['Int']['output']>;
+  p90DurationMs?: Maybe<Scalars['Int']['output']>;
+  p95DurationMs?: Maybe<Scalars['Int']['output']>;
+};
+
 export type Query = {
   __typename?: 'Query';
   /** List AI-attributed pull requests in the requested window so the UI can offer a concrete drilldown selector. Rows come from ai_attribution_resolved joined to git_pull_requests; no aggregation, no fabrication. */
@@ -956,6 +1030,8 @@ export type Query = {
   hotspots: HotspotsResult;
   /** Weekly Engineering Operating Review */
   operatingReview: OperatingReview;
+  /** Get first-party product telemetry dashboard metrics */
+  productTelemetryDashboard: ProductTelemetryDashboardType;
   /** Latest rule-based recommendations for a team within a lookback window. */
   recommendations: Array<Recommendation>;
   /** List report runs for a saved report */
@@ -1096,6 +1172,12 @@ export type QueryHotspotsArgs = {
 
 export type QueryOperatingReviewArgs = {
   input: OperatingReviewInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryProductTelemetryDashboardArgs = {
+  input: ProductTelemetryDashboardInput;
   orgId: Scalars['String']['input'];
 };
 

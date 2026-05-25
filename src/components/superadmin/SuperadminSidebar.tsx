@@ -8,6 +8,12 @@ const navItems = [
   { id: "orgs", label: "Organizations", href: "/superadmin/orgs", description: "Tenants" },
   { id: "users", label: "Users", href: "/superadmin/users", description: "Global" },
   { id: "licensing", label: "Licensing", href: "/superadmin/licensing", description: "Tiers" },
+  {
+    id: "product-telemetry",
+    label: "Product Telemetry",
+    href: "/superadmin/product-telemetry",
+    description: "Usage",
+  },
   { id: "audit", label: "Audit Log", href: "/superadmin/audit", description: "Events" },
   { id: "settings", label: "Settings", href: "/superadmin/settings", description: "Platform" },
   {
