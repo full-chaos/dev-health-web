@@ -52,6 +52,7 @@ All fields are `optional()` in the Zod schema — the app applies its own defaul
 | `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE`  | string | —         | Client-side test mode flag. Mirrors `DEV_HEALTH_TEST_MODE`.             |
 | `NEXT_PUBLIC_DEMO_MODE`             | string | —         | Enables demo mode UI behaviour.                                         |
 | `NEXT_PUBLIC_BETA`                  | string | —         | Enables beta feature flags in the UI.                                   |
+| `NEXT_PUBLIC_TELEMETRY_ENABLED`     | string | `"true"`  | Enables product telemetry. Set to `"false"` to disable globally.        |
 | `NEXT_PUBLIC_RUM_ENDPOINT`          | string | —         | Real User Monitoring endpoint URL.                                      |
 | `NEXT_PUBLIC_SENTRY_DSN`            | string | —         | Sentry DSN for client-side error reporting.                             |
 | `NODE_ENV`                          | string | —         | Also available in the public schema for client-side environment checks. |
@@ -77,3 +78,13 @@ window.__DEV_HEALTH_RUNTIME__ = {
 `src/lib/runtimeConfig.ts` reads from `window.__DEV_HEALTH_RUNTIME__.publicEnv` first, falling back to `process.env`. This means runtime-config values take precedence over build-time values for any `NEXT_PUBLIC_*` variable. ([`runtimeConfig.ts`](../src/lib/runtimeConfig.ts))
 
 > **Do not commit `public/runtime-config.js`** — it is generated at container start and contains deployment-specific values. It is listed in `.gitignore`.
+
+---
+
+## Local Storage Keys
+
+The application uses the following local storage keys for client-side preferences and state:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `devhealth-product-telemetry-opt-out` | boolean | Set to `"true"` to opt out of product telemetry. |
