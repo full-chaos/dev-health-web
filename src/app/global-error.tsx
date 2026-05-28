@@ -67,7 +67,11 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               lineHeight: 1.6,
             }}
           >
-            An unexpected error occurred. If the problem persists, please contact support.
+            An unexpected error occurred. If the problem persists, please contact{" "}
+            <a href="mailto:support@fullchaos.studio" style={{ color: "#cbd5e1", textDecoration: "underline" }}>
+              support@fullchaos.studio
+            </a>
+            .
             {error.digest && (
               <span
                 style={{
