@@ -162,7 +162,7 @@ const TIERS: Tier[] = [
       "SLA guarantees",
     ],
     cta: "Contact sales",
-    ctaHref: "mailto:sales@fullchaos.dev",
+    ctaHref: "mailto:support@fullchaos.studio",
     highlighted: false,
   },
 ];
@@ -426,7 +426,7 @@ export default async function PricingPage() {
               Get started free
             </Link>
             <a
-              href="mailto:sales@fullchaos.dev"
+              href="mailto:support@fullchaos.studio"
               className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
             >
               Talk to sales
