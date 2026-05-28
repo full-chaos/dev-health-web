@@ -101,7 +101,7 @@ const sections: LegalSection[] = [
   {
     title: "Contact",
     paragraphs: [
-      "Questions about this Privacy Policy or our privacy practices can be sent through the Full Chaos Dev Health project contact channels published on our website or GitHub repository.",
+      "Questions about this Privacy Policy or our privacy practices can be sent to support@fullchaos.studio, or through the Full Chaos Dev Health project contact channels published on our website or GitHub repository.",
     ],
   },
 ];
