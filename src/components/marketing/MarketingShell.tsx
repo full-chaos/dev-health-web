@@ -47,8 +47,13 @@ const FOOTER_LINKS: Record<
   ],
   Legal: [
     { label: "Privacy", href: "/marketing/privacy" },
+    { label: "Security", href: "/marketing/security" },
     { label: "Terms", href: "/marketing/terms" },
-    { label: "Contact", href: "mailto:support@fullchaos.studio", external: true },
+    {
+      label: "Contact",
+      href: "mailto:support@fullchaos.studio",
+      external: true,
+    },
   ],
 };
 
