@@ -3,8 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { deleteOrganization } from "@/lib/admin/server";
+import { deleteOrganization, dryRunDeleteOrganization } from "@/lib/admin/server";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
+import {
+  DeletionPlanPreview,
+  type DeletionResult,
+} from "@/components/admin/settings/DeletionPlanPreview";
 
 type OrgDeleteSectionProps = {
   orgId: string;
@@ -15,7 +19,20 @@ export function OrgDeleteSection({ orgId, orgSlug }: OrgDeleteSectionProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmSlug, setConfirmSlug] = useState("");
+  const [plan, setPlan] = useState<DeletionResult | null>(null);
 
+  async function handleStartDelete() {
+    setIsDeleting(true);
+    const result = await dryRunDeleteOrganization(orgId);
+
+    if (result.error) {
+      toast.error(result.error);
+      setIsDeleting(false);
+    } else {
+      setPlan(result.data ?? null);
+      setIsDeleting(false);
+    }
+  }
   async function handleDelete() {
     if (confirmSlug !== orgSlug) return;
 
@@ -52,29 +69,44 @@ export function OrgDeleteSection({ orgId, orgSlug }: OrgDeleteSectionProps) {
           </div>
         </div>
 
-        <div>
-          <label htmlFor="confirm-slug" className="block text-sm font-medium text-(--foreground)">
-            Type <span className="font-mono font-bold">{orgSlug}</span> to confirm
-          </label>
-          <div className="mt-1 flex gap-4">
-            <input
-              type="text"
-              id="confirm-slug"
-              value={confirmSlug}
-              onChange={(e) => setConfirmSlug(e.target.value)}
-              className="block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-              placeholder={orgSlug}
-            />
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting || confirmSlug !== orgSlug}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              {isDeleting ? "Deleting..." : "Delete Organization"}
-            </button>
+        {!plan ? (
+          <div>
+            <label htmlFor="confirm-slug" className="block text-sm font-medium text-(--foreground)">
+              Type <span className="font-mono font-bold">{orgSlug}</span> to confirm
+            </label>
+            <div className="mt-1 flex gap-4">
+              <input
+                type="text"
+                id="confirm-slug"
+                value={confirmSlug}
+                onChange={(e) => setConfirmSlug(e.target.value)}
+                className="block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                placeholder={orgSlug}
+              />
+              <button
+                type="button"
+                onClick={handleStartDelete}
+                disabled={isDeleting || confirmSlug !== orgSlug}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {isDeleting ? "Loading..." : "Delete Organization"}
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <DeletionPlanPreview
+            plan={plan}
+            onConfirm={handleDelete}
+            onCancel={() => {
+              setPlan(null);
+              setConfirmSlug("");
+            }}
+            isPending={isDeleting}
+            confirmText={confirmSlug}
+            expectedConfirmText={orgSlug}
+            setConfirmText={setConfirmSlug}
+          />
+        )}
       </div>
     </SettingsSection>
   );
