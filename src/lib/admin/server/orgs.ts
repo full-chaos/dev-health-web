@@ -10,6 +10,7 @@ import type {
   PlatformStats,
   AuditLogListResponse,
   AuditLogFilter,
+  DeletionPlan,
 } from "../types";
 import { getSessionContext, requireSuperuserToken, withErrorHandling } from "./_shared";
 
@@ -118,6 +119,16 @@ export async function deleteCurrentOrg(): Promise<ActionResult<void>> {
   });
 }
 
+export async function dryRunDeleteCurrentOrg(): Promise<ActionResult<DeletionPlan>> {
+  return withErrorHandling(async () => {
+    const { token, orgId } = await getSessionContext();
+    if (!orgId) {
+      throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+    }
+    return adminApi.orgs.dryRunDelete(orgId, token, orgId);
+  });
+}
+
 // ---- Impersonation ----
 
 export async function startImpersonation(targetUserId: string): Promise<
@@ -194,6 +205,13 @@ export async function deleteOrganization(orgId: string): Promise<ActionResult<vo
   return withErrorHandling(async () => {
     const token = await requireSuperuserToken();
     return adminApi.orgs.delete(orgId, token);
+  });
+}
+
+export async function dryRunDeleteOrganization(orgId: string): Promise<ActionResult<DeletionPlan>> {
+  return withErrorHandling(async () => {
+    const token = await requireSuperuserToken();
+    return adminApi.orgs.dryRunDelete(orgId, token);
   });
 }
 

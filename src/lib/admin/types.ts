@@ -599,3 +599,34 @@ export interface OrgEntitlements {
   is_valid: boolean;
   limits: Record<string, number | null>;
 }
+
+// ---- Organization Deletion ----
+
+/** Raw deletion scope from dev-health-ops (snake_case). */
+export interface DeletionScopeRaw {
+  total: number;
+  tables: Record<string, number>;
+}
+
+/** Raw deletion result from dev-health-ops DELETE /orgs/{id} (snake_case). */
+export interface DeletionResultRaw {
+  organization_id: string;
+  dry_run: boolean;
+  timestamp: string;
+  postgres: DeletionScopeRaw;
+  clickhouse: DeletionScopeRaw;
+  disabled_jobs: number;
+  credentials_deleted: number;
+  warnings: string[];
+}
+
+/** Normalized deletion plan consumed by the UI deletion-plan preview. */
+export interface DeletionPlan {
+  organizationId: string;
+  dryRun: boolean;
+  timestamp: string;
+  deletedCounts: Record<string, number>;
+  disabledJobCount: number;
+  credentialDeletionCount: number;
+  warnings: string[];
+}
