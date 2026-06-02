@@ -963,7 +963,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                 day: "2026-05-20",
                 scope: breakout,
                 scopeId: "scope-1",
-                scopeLabel: "acme/null",
+                scopeLabel: "meridian/data-pipeline",
                 score: null,
                 severity: "UNKNOWN",
                 components: {
@@ -1007,7 +1007,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         day: "2026-05-20",
         scope: "REPO",
         scopeId: "repo-a",
-        scopeLabel: "acme/backend",
+        scopeLabel: "meridian/core-api",
         score: 0.71,
         severity: "HIGH",
         components: baseComponents,
@@ -1019,7 +1019,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         day: "2026-05-20",
         scope: "REPO",
         scopeId: "repo-b",
-        scopeLabel: "acme/frontend",
+        scopeLabel: "meridian/web-app",
         score: 0.42,
         severity: "ELEVATED",
         components: {
@@ -1037,7 +1037,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         day: "2026-05-20",
         scope: "REPO",
         scopeId: "repo-c",
-        scopeLabel: "acme/infra",
+        scopeLabel: "meridian/infra",
         score: 0.25,
         severity: "LOW",
         components: {

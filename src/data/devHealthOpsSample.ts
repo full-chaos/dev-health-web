@@ -807,7 +807,7 @@ export const sampleChordTeamReviewLoad: ChordRecord[] = [
  * at default topN=8. Includes one strongly bilateral pair.
  *
  * Shape:
- * - 6 distinct repos (web-app, core-api, auth-svc, billing-svc, search-svc,
+ * - 6 distinct repos (web-app, core-api, auth-service, billing-service, search-service,
  *   mobile-app).
  * - No self-links: demonstrates clean directional exchange.
  * - Strongest bilateral: web-app <-> core-api (25 + 20 = 45).
@@ -828,27 +828,27 @@ export const sampleChordRepoTransfer: ChordRecord[] = [
   },
   {
     source: "core-api",
-    target: "auth-svc",
+    target: "auth-service",
     value: 18,
     metadata: { repo: "core-api", period: "2025-W08" },
   },
   {
-    source: "auth-svc",
+    source: "auth-service",
     target: "core-api",
     value: 6,
-    metadata: { repo: "auth-svc", period: "2025-W08" },
+    metadata: { repo: "auth-service", period: "2025-W08" },
   },
   {
     source: "core-api",
-    target: "billing-svc",
+    target: "billing-service",
     value: 14,
     metadata: { repo: "core-api", period: "2025-W08" },
   },
   {
-    source: "billing-svc",
+    source: "billing-service",
     target: "core-api",
     value: 10,
-    metadata: { repo: "billing-svc", period: "2025-W08" },
+    metadata: { repo: "billing-service", period: "2025-W08" },
   },
   {
     source: "mobile-app",
@@ -863,20 +863,20 @@ export const sampleChordRepoTransfer: ChordRecord[] = [
     metadata: { repo: "core-api", period: "2025-W08" },
   },
   {
-    source: "search-svc",
+    source: "search-service",
     target: "core-api",
     value: 9,
-    metadata: { repo: "search-svc", period: "2025-W08" },
+    metadata: { repo: "search-service", period: "2025-W08" },
   },
   {
     source: "core-api",
-    target: "search-svc",
+    target: "search-service",
     value: 5,
     metadata: { repo: "core-api", period: "2025-W08" },
   },
   {
     source: "web-app",
-    target: "auth-svc",
+    target: "auth-service",
     value: 7,
     metadata: { repo: "web-app", period: "2025-W08" },
   },
@@ -887,14 +887,14 @@ export const sampleChordRepoTransfer: ChordRecord[] = [
     metadata: { repo: "web-app", period: "2025-W08" },
   },
   {
-    source: "billing-svc",
-    target: "auth-svc",
+    source: "billing-service",
+    target: "auth-service",
     value: 4,
-    metadata: { repo: "billing-svc", period: "2025-W08" },
+    metadata: { repo: "billing-service", period: "2025-W08" },
   },
   {
     source: "mobile-app",
-    target: "search-svc",
+    target: "search-service",
     value: 2,
     metadata: { repo: "mobile-app", period: "2025-W08" },
   },
