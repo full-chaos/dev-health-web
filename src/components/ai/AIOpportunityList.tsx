@@ -69,10 +69,10 @@ export function AIOpportunityList({
   if (!detectorReady) {
     return (
       <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
-        <p className="font-medium text-foreground">Opportunity engine pending</p>
+        <p className="font-medium text-foreground">No automation candidates in this scope yet</p>
         <p className="mt-2">
-          Best-fit automation candidates land with CHAOS-1586. This space will suggest repeatable
-          work patterns once that signal becomes available.
+          As more repeatable work patterns accumulate for the selected scope, best-fit automation
+          candidates will appear here.
         </p>
       </div>
     );
@@ -80,9 +80,7 @@ export function AIOpportunityList({
 
   if (!recommendations?.length) {
     return (
-      <p className="text-sm text-(--ink-muted)">
-        No automation candidates appear in the current scope.
-      </p>
+      <p className="text-sm text-(--ink-muted)">No automation candidates in this scope yet.</p>
     );
   }
 

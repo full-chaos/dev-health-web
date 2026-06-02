@@ -69,7 +69,7 @@ const AI_WORKFLOW_STEPS = [
 	{
 		label: "Evidence + intervention",
 		description: "Move from recommendations into evidence and weekly review.",
-		href: "/operating-review#ai-workflow-intelligence",
+		href: "/operating-review#ai_workflow_intelligence",
 	},
 ];
 

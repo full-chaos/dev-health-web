@@ -18,7 +18,15 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
 
 	return (
 		<>
-			<AIPageHeader eyebrow="AI Workflows" title="Governance Risk">
+			<AIPageHeader
+				eyebrow="AI Workflows"
+				title="Governance Risk"
+				breadcrumbs={[
+					{ label: "Home", href: "/dashboard" },
+					{ label: "AI Workflows", href: "/ai" },
+					{ label: "Governance Risk" },
+				]}
+			>
 				Quality-risk diagnostics for AI-associated work, including baseline
 				deltas, explicit missing-data states, and governance findings.
 			</AIPageHeader>

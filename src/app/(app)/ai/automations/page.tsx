@@ -20,7 +20,16 @@ export default async function AIAutomationsPage({
 
 	return (
 		<>
-			<AIPageHeader eyebrow="AI Workflows" title="Automations">
+			<AIPageHeader
+				eyebrow="AI Workflows"
+				title="Automations"
+				preview
+				breadcrumbs={[
+					{ label: "Home", href: "/dashboard" },
+					{ label: "AI Workflows", href: "/ai" },
+					{ label: "Automations" },
+				]}
+			>
 				Candidate patterns for responsible automation, separated from Impact
 				diagnostics so teams can triage opportunities directly.
 			</AIPageHeader>

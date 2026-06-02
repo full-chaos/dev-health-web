@@ -20,7 +20,15 @@ export default async function AIReviewLoadPage({
 
 	return (
 		<>
-			<AIPageHeader eyebrow="AI Workflows" title="Review Load">
+			<AIPageHeader
+				eyebrow="AI Workflows"
+				title="Review Load"
+				breadcrumbs={[
+					{ label: "Home", href: "/dashboard" },
+					{ label: "AI Workflows", href: "/ai" },
+					{ label: "Review Load" },
+				]}
+			>
 				Diagnostic view for AI-generated review pressure, comparing
 				AI-attributed work against the human baseline without person-level
 				rankings.
