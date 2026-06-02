@@ -39,32 +39,32 @@ test.describe("AI workflow primary navigation", () => {
     await expect(page.getByRole("link", { name: /Governance gaps/ })).toBeVisible();
 
     await page.getByRole("link", { name: /Start with AI Impact/ }).click();
-    await expect(page).toHaveURL(/\/ai\/impact/);
-    await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
+    await expect(page).toHaveURL(/\/ai(\?|$)/);
+    await expect(page.getByRole("heading", { name: "Impact", exact: true })).toBeVisible();
   });
 
   test("nav links route between the three AI views", async ({ page }) => {
     await page.goto(`/ai/impact?f=${defaultFilter}`);
 
-    await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Impact", exact: true })).toBeVisible();
     await expect(page.getByTestId("ai-impact-dashboard")).toBeVisible();
 
     await ensureGroupExpanded(page, "Spot Pressure Early");
     await aiReviewLoadLink(page).click();
     await expect(page).toHaveURL(/\/ai\/review-load/);
-    await expect(page.getByRole("heading", { name: "AI Review Load" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review Load", exact: true })).toBeVisible();
     await expect(page.getByTestId("ai-review-load-dashboard")).toBeVisible();
 
     await ensureGroupExpanded(page, "Improve Delivery Confidence");
     await aiRiskLink(page).click();
     await expect(page).toHaveURL(/\/ai\/risk/);
-    await expect(page.getByRole("heading", { name: "AI Risk" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Governance Risk", exact: true })).toBeVisible();
     await expect(page.getByTestId("ai-risk-dashboard")).toBeVisible();
 
     await ensureGroupExpanded(page, "See Where Time Goes");
     await aiImpactLink(page).click();
-    await expect(page).toHaveURL(/\/ai\/impact/);
-    await expect(page.getByRole("heading", { name: "AI Impact" })).toBeVisible();
+    await expect(page).toHaveURL(/\/ai(\?|$)/);
+    await expect(page.getByRole("heading", { name: "Impact", exact: true })).toBeVisible();
   });
 
   test("Automations link owns the active nav state on its own route", async ({ page }) => {
@@ -101,7 +101,7 @@ test.describe("AI workflow primary navigation", () => {
     await ensureGroupExpanded(page, "Spot Pressure Early");
     await aiReviewLoadLink(page).click();
     await expect(page).toHaveURL(/\/ai\/review-load/);
-    await expect(page.getByRole("heading", { name: "AI Review Load" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review Load", exact: true })).toBeVisible();
     await expect(page.getByTestId("filter-bar")).toBeVisible();
   });
 });
