@@ -204,11 +204,11 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
 
         <AIPanelCard
           title="Top affected repos and teams"
-          description="Scoped rollups will appear after repo/team AI summary coverage lands."
+          description="Scoped repo and team rollups appear here once enough AI summary coverage exists for the selected scope."
         >
-          <AIEmptyState title="Coming after detector lands">
-            Org-scoped AI impact data populates now. Repo and team ranking placeholders remain empty
-            to avoid fabricating scoped values.
+          <AIEmptyState title="No scoped rollups in this scope yet">
+            Org-wide AI impact is shown above. Repo- and team-level rankings stay empty until there
+            is enough scoped coverage to show them without estimating values.
           </AIEmptyState>
         </AIPanelCard>
 
