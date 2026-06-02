@@ -31,7 +31,7 @@ export function AIAutomationsDashboard({ filter }: AIAutomationsDashboardProps) 
     <div className="flex flex-col gap-6" data-testid="ai-automations-dashboard">
       <AIPanelCard
         title="Best-fit automation opportunities"
-        description="Candidate patterns for responsible automation once the recommendation engine becomes ready."
+        description="Repeatable work patterns that may be good candidates for responsible automation, scoped to your current selection."
       >
         <AIOpportunityList
           detectorReady={opportunities?.detectorReady}

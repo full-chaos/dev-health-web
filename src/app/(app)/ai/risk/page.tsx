@@ -20,7 +20,15 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="ai-risk" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
-          <AIPageHeader eyebrow="AI workflows" title="AI Risk">
+          <AIPageHeader
+            eyebrow="AI workflows"
+            title="AI Risk"
+            breadcrumbs={[
+              { label: "Home", href: "/dashboard" },
+              { label: "AI Workflow", href: "/ai/impact" },
+              { label: "AI Risk" },
+            ]}
+          >
             Quality-risk diagnostics for AI-associated work, including baseline deltas, explicit
             missing-data states, and governance findings.
           </AIPageHeader>

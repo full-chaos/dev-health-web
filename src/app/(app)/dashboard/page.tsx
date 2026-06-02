@@ -66,7 +66,7 @@ const AI_WORKFLOW_STEPS = [
   {
     label: "Evidence + intervention",
     description: "Move from recommendations into evidence and weekly review.",
-    href: "/operating-review#ai-workflow-intelligence",
+    href: "/operating-review#ai_workflow_intelligence",
   },
 ];
 
@@ -186,11 +186,10 @@ export default async function Home({ searchParams }: HomePageProps) {
                 <p className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
                   Starting point
                 </p>
-                <h2 className="mt-3 text-xl leading-tight">
-                  AI Workflow Intelligence
-                </h2>
+                <h2 className="mt-3 text-xl leading-tight">AI Workflow Intelligence</h2>
                 <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
-                  See whether AI-assisted work is improving delivery or shifting cost into review, rework, and risk.
+                  See whether AI-assisted work is improving delivery or shifting cost into review,
+                  rework, and risk.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em]">
                   <Link
@@ -201,7 +200,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   </Link>
                   <Link
                     href={withFilterParam(
-                      "/operating-review#ai-workflow-intelligence",
+                      "/operating-review#ai_workflow_intelligence",
                       filters,
                       activeRole,
                     )}
@@ -285,7 +284,11 @@ export default async function Home({ searchParams }: HomePageProps) {
                   Open Work view
                 </Link>
                 <Link
-                  href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}
+                  href={buildExploreUrl({
+                    metric: "throughput",
+                    filters,
+                    role: activeRole,
+                  })}
                   className="text-(--accent-2)"
                 >
                   Open in Explore
