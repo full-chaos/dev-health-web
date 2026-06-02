@@ -38,10 +38,7 @@ test.describe("Operating Review", () => {
     await expect(aiSection).toContainText("AI-assisted PR ratio");
     await expect(aiSection).toContainText("Review amplification");
     await expect(aiSection).toContainText("AI test gap rate");
-    await expect(aiSection.getByRole("link", { name: "Impact" })).toHaveAttribute(
-      "href",
-      "/ai/impact",
-    );
+    await expect(aiSection.getByRole("link", { name: "Impact" })).toHaveAttribute("href", "/ai");
     await expect(aiSection.getByRole("link", { name: "Review Load" })).toHaveAttribute(
       "href",
       "/ai/review-load",
