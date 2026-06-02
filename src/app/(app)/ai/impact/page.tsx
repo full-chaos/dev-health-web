@@ -25,7 +25,7 @@ export default async function AIImpactPage({ searchParams }: AIImpactPageProps) 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="ai-impact" />
+        <PrimaryNav filters={filters} active="ai-workflows" />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <AIPageHeader eyebrow="AI" title="AI Impact">
             Org-wide view of how AI-assisted workflows appear to influence delivery, review load,
