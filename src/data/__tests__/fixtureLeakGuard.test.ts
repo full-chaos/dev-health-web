@@ -38,6 +38,14 @@ const FORBIDDEN_SUBSTRINGS: ReadonlyArray<{ pattern: RegExp; reason: string }> =
     pattern: /\bacme\//i,
     reason: "fixture-flavoured 'acme/' scope label — use curated 'meridian/*'",
   },
+  {
+    pattern: /Default Organization/i,
+    reason: "fixture 'Default Organization' display name — use the curated brand",
+  },
+  {
+    pattern: /\bdefault-org\b/i,
+    reason: "fixture 'default-org' identifier rendered in demo data — use a curated id",
+  },
 ];
 
 /** Bare UUID used as a literal value (acceptable in functional mocks, not in labels). */

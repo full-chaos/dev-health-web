@@ -6,7 +6,11 @@ import type {
 
 const issueInvestment: WorkUnitInvestmentDistribution = {
   workUnitId: "PROJ-101",
-  themeDistribution: { feature_delivery: 0.72, quality: 0.18, maintenance: 0.1 },
+  themeDistribution: {
+    feature_delivery: 0.72,
+    quality: 0.18,
+    maintenance: 0.1,
+  },
   subcategoryDistribution: {
     "feature_delivery.customer": 0.46,
     "feature_delivery.roadmap": 0.26,
@@ -24,7 +28,11 @@ const issueInvestment: WorkUnitInvestmentDistribution = {
 
 const prInvestment: WorkUnitInvestmentDistribution = {
   workUnitId: "PR-201",
-  themeDistribution: { feature_delivery: 0.62, quality: 0.28, operational: 0.1 },
+  themeDistribution: {
+    feature_delivery: 0.62,
+    quality: 0.28,
+    operational: 0.1,
+  },
   subcategoryDistribution: {
     "feature_delivery.customer": 0.42,
     "feature_delivery.enablement": 0.2,
@@ -51,7 +59,7 @@ export function demoInvestmentForRoot(
 export function demoWorkflowDrilldown(
   rootType: AIWorkflowRootTypeInput,
   rootId: string,
-  orgId = "default-org",
+  orgId = "meridian",
 ): AIWorkflowDrilldownResult {
   const isPr = rootType === "PR";
   const issueId = isPr ? "PROJ-101" : rootId;
