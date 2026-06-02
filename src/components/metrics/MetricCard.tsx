@@ -22,6 +22,8 @@ type MetricCardProps = {
   value?: number;
   unit?: string;
   delta?: number;
+  /** Label shown in the delta slot when no delta is available (never a bare "--"). */
+  deltaUnavailableLabel?: string;
   spark?: SparkPoint[];
   caption?: string;
   className?: string;
@@ -34,6 +36,7 @@ export function MetricCard({
   value,
   unit,
   delta,
+  deltaUnavailableLabel = "No prior period",
   spark,
   caption,
   className,
@@ -53,7 +56,16 @@ export function MetricCard({
           {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
         </div>
         <span className={deltaTone(delta)}>
-          {delta === undefined || delta === null ? "--" : formatDelta(delta)}
+          {delta === undefined || delta === null ? (
+            <span
+              title="No prior period available to compute a change"
+              className="text-[10px] normal-case tracking-normal"
+            >
+              {deltaUnavailableLabel}
+            </span>
+          ) : (
+            formatDelta(delta)
+          )}
         </span>
       </div>
       <div className="mt-3 flex items-center justify-between gap-4">

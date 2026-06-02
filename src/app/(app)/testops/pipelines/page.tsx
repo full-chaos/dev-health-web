@@ -35,6 +35,17 @@ function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
   return series.buckets.map((b: TimeseriesBucket) => ({ ts: b.date, value: b.value }));
 }
 
+/** Period-over-period change (%) from first to last bucket; undefined when history is insufficient. */
+function getDelta(timeseries: TimeseriesResult[], measureId: string) {
+  const series = timeseries.find((s) => s.measure === measureId);
+  const buckets = series?.buckets;
+  if (!buckets || buckets.length < 2) return undefined;
+  const prev = buckets[0].value;
+  const curr = buckets[buckets.length - 1].value;
+  if (prev === 0) return undefined;
+  return ((curr - prev) / Math.abs(prev)) * 100;
+}
+
 export default async function PipelinesPage({ searchParams }: PipelinesPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
@@ -146,6 +157,7 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
 
               const value = getLatestValue(ts, id);
               const spark = getSparkline(ts, id);
+              const delta = getDelta(ts, id);
 
               return (
                 <MetricCard
@@ -154,12 +166,21 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
                   href="#"
                   value={value}
                   unit={def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : ""}
+                  delta={delta}
+                  deltaUnavailableLabel="Insufficient history"
                   spark={spark}
                   caption={def.description}
                 />
               );
             })}
           </section>
+
+          <p className="-mt-4 text-xs text-(--ink-muted)">
+            Success Rate and Failure Rate are shares of <em>completed</em> pipeline runs and need
+            not sum to 100% — runs can be cancelled or skipped. Failure Patterns below shows the
+            failure rate <em>within each group</em>, a different denominator from the headline
+            Failure Rate, so the figures are not directly comparable.
+          </p>
 
           <section className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">

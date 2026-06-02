@@ -372,7 +372,13 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                         </td>
                         <td className="py-3 pr-4 text-(--ink-muted)">
                           <Link href={href} className="block">
-                            {placeholderDeltas || !data ? "--" : formatDelta(data.delta_pct)}
+                            {placeholderDeltas || !data ? (
+                              <span title="No prior period available to compute a change">
+                                No prior period
+                              </span>
+                            ) : (
+                              formatDelta(data.delta_pct)
+                            )}
                           </Link>
                         </td>
                         <td className="py-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">

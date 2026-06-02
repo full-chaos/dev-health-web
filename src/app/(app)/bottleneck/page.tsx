@@ -183,6 +183,14 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
             />
           </section>
 
+          <p className="-mt-2 text-xs text-(--ink-muted)">
+            WIP Saturation is indexed to a baseline of 100% (work in progress matched to typical
+            throughput). Readings above 100% mean more work is open than the team usually clears in
+            the window &mdash; e.g. 950% reads as ~9.5&times; the baseline, not a data error.
+            Sustained readings far above 100% point to over-commitment, and the metric is
+            intentionally uncapped so that severity stays visible.
+          </p>
+
           {/* Quadrant panels */}
           <section className="grid gap-6">
             <QuadrantPanel

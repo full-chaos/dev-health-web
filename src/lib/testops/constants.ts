@@ -12,14 +12,16 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
   PIPELINE_SUCCESS_RATE: {
     id: "PIPELINE_SUCCESS_RATE",
     label: "Success Rate",
-    description: "Percentage of pipeline runs that complete successfully",
+    description:
+      "Share of completed pipeline runs that succeed; excludes cancelled and skipped runs",
     unit: "percentage",
     goodDirection: "up",
   },
   PIPELINE_FAILURE_RATE: {
     id: "PIPELINE_FAILURE_RATE",
     label: "Failure Rate",
-    description: "Percentage of pipeline runs that fail",
+    description:
+      "Share of completed pipeline runs that fail; with Success Rate need not sum to 100% (runs can be cancelled or skipped)",
     unit: "percentage",
     goodDirection: "down",
   },
