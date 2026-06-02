@@ -84,10 +84,21 @@ export function CockpitClient({
             >
               <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 <span>{delta.label}</span>
-                <span className={deltaAccent(delta.delta_pct)}>{formatDelta(delta.delta_pct)}</span>
+                {placeholderDeltas ? (
+                  <span
+                    title="No prior period available to compute a change"
+                    className="normal-case tracking-normal text-(--ink-muted)"
+                  >
+                    No prior period
+                  </span>
+                ) : (
+                  <span className={deltaAccent(delta.delta_pct)}>
+                    {formatDelta(delta.delta_pct)}
+                  </span>
+                )}
               </div>
               <p className="mt-4 text-2xl font-semibold metric-hero">
-                {placeholderDeltas ? "--" : formatMetricValue(delta.value, delta.unit)}
+                {placeholderDeltas ? "No data yet" : formatMetricValue(delta.value, delta.unit)}
               </p>
               <p className="mt-3 text-xs text-(--ink-muted)">Open evidence</p>
             </button>

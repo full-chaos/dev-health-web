@@ -35,6 +35,17 @@ function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
   return series.buckets.map((b: TimeseriesBucket) => ({ ts: b.date, value: b.value }));
 }
 
+/** Period-over-period change (%) from first to last bucket; undefined when history is insufficient. */
+function getDelta(timeseries: TimeseriesResult[], measureId: string) {
+  const series = timeseries.find((s) => s.measure === measureId);
+  const buckets = series?.buckets;
+  if (!buckets || buckets.length < 2) return undefined;
+  const prev = buckets[0].value;
+  const curr = buckets[buckets.length - 1].value;
+  if (prev === 0) return undefined;
+  return ((curr - prev) / Math.abs(prev)) * 100;
+}
+
 export default async function TestsPage({ searchParams }: TestsPageProps) {
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
@@ -144,6 +155,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
 
               const value = getLatestValue(ts, id);
               const spark = getSparkline(ts, id);
+              const delta = getDelta(ts, id);
 
               return (
                 <MetricCard
@@ -152,6 +164,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                   href="#"
                   value={value}
                   unit={def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : ""}
+                  delta={delta}
+                  deltaUnavailableLabel="Insufficient history"
                   spark={spark}
                   caption={def.description}
                 />
