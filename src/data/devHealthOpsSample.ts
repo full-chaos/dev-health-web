@@ -474,7 +474,10 @@ export const sankeyStateTransitionSample: FlowTransitionSummary[] = [
 
 // Minimal heatmap sample used for test/dev server mode
 export const reviewHeatmapSample = {
-  axes: { x: ["00:00", "06:00", "12:00", "18:00"], y: ["Mon", "Tue", "Wed", "Thu", "Fri"] },
+  axes: {
+    x: ["00:00", "06:00", "12:00", "18:00"],
+    y: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+  },
   cells: [
     { x: "00:00", y: "Mon", value: 0 },
     { x: "12:00", y: "Wed", value: 5 },
@@ -482,6 +485,75 @@ export const reviewHeatmapSample = {
   legend: { unit: "hours", scale: "linear" },
   evidence: [],
 };
+
+export const hotspotHeatmapSample = {
+  axes: {
+    x: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    y: ["auth", "billing", "search", "platform"],
+  },
+  cells: [
+    { x: "Mon", y: "auth", value: 3 },
+    { x: "Tue", y: "auth", value: 9 },
+    { x: "Wed", y: "auth", value: 6 },
+    { x: "Mon", y: "billing", value: 2 },
+    { x: "Tue", y: "billing", value: 5 },
+    { x: "Thu", y: "billing", value: 8 },
+    { x: "Wed", y: "search", value: 7 },
+    { x: "Fri", y: "search", value: 4 },
+    { x: "Thu", y: "platform", value: 1 },
+    { x: "Fri", y: "platform", value: 10 },
+  ],
+  legend: { unit: "risk", scale: "linear" as const },
+  evidence: [
+    {
+      path: "services/auth/session.ts",
+      value: 18,
+      ts: "2026-05-12T14:00:00Z",
+    },
+    {
+      repo_id: "web-platform",
+      repo_name: "web-platform",
+      number: 412,
+      value: 11,
+      ts: "2026-05-11T09:30:00Z",
+    },
+    {
+      commit_hash: "8f3a1c2d9b4e5f6a7b8c9d0e1f2a3b4c5d6e7f80",
+      value: 6,
+      ts: "2026-05-10T18:45:00Z",
+    },
+    {
+      work_item_id: "550e8400-e29b-41d4-a716-446655440000",
+      title: "Flaky auth refresh",
+      value: 4,
+      ts: "2026-05-09T11:00:00Z",
+    },
+  ],
+};
+
+export const churnHotspotContributors = [
+  {
+    id: "services/auth/session.ts",
+    label: "Auth session",
+    value: 320,
+    delta_pct: 18,
+    evidence_link: "/api/v1/explain?metric=churn&file=auth-session",
+  },
+  {
+    id: "billing/invoices.ts",
+    label: "Billing invoices",
+    value: 240,
+    delta_pct: 9,
+    evidence_link: "/api/v1/explain?metric=churn&file=billing-invoices",
+  },
+  {
+    id: "search/index.ts",
+    label: "Search index",
+    value: 180,
+    delta_pct: -4,
+    evidence_link: "/api/v1/explain?metric=churn&file=search-index",
+  },
+];
 
 export const sankeyInvestmentNodes = [
   { name: "Platform modernization", group: "initiative" },
@@ -516,7 +588,11 @@ export const sankeyInvestmentLinks = [
   { source: "Growth experiments", target: "Onboarding revamp", value: 28 },
   { source: "Growth experiments", target: "Search relevance", value: 12 },
   { source: "Reliability hardening", target: "Incident automation", value: 18 },
-  { source: "Reliability hardening", target: "Observability uplift", value: 22 },
+  {
+    source: "Reliability hardening",
+    target: "Observability uplift",
+    value: 22,
+  },
   { source: "Auth refresh", target: "Feature", value: 18 },
   { source: "Auth refresh", target: "Bug", value: 12 },
   { source: "Billing revamp", target: "Feature", value: 12 },
