@@ -15,6 +15,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue } from "@/lib/formatters";
+import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 
@@ -83,6 +84,12 @@ export default async function CodePage({ searchParams }: CodePageProps) {
 
   const churnMetric = getMetric(deltas, "churn");
   const hotspots = (churnExplain?.contributors ?? []).slice(0, 6);
+  const hotspotHighlights = hotspots
+    .slice(0, 3)
+    .map((item) => resolveEntityLabel(item.id, { name: item.label }).label);
+  const hotspotSummary = hotspotHighlights.length
+    ? `Leading hotspots: ${hotspotHighlights.join(", ")}. Higher values lean toward concentrated change and ownership load — open a cell to trace the files, PRs, and commits behind it.`
+    : undefined;
   const hasBusFactorEvidence = (busFactor?.evidenceSampleCount ?? 0) > 0;
   const topMaintainers = (busFactor?.topMaintainers ?? []).slice(0, 5);
   const riskyRepos = (busFactor?.repos ?? [])
@@ -118,7 +125,11 @@ export default async function CodePage({ searchParams }: CodePageProps) {
           <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <MetricCard
               label={churnMetric?.label ?? "Code Churn"}
-              href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
+              href={buildExploreUrl({
+                metric: "churn",
+                filters,
+                role: activeRole,
+              })}
               value={placeholderDeltas ? undefined : churnMetric?.value}
               unit={churnMetric?.unit}
               delta={placeholderDeltas ? undefined : churnMetric?.delta_pct}
@@ -133,10 +144,10 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 </span>
               </div>
               <p className="mt-3 text-sm text-(--ink-muted)">
-                Ownership metadata is not yet available for this scope.
+                Ownership concentration shows who carries the most-changed code in this view.
               </p>
               <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
-                Ownership telemetry not yet available.
+                Connect a Git provider with commit history to surface ownership concentration here.
               </div>
             </div>
           </section>
@@ -157,6 +168,8 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               initialData={hotspotHeatmap}
               emptyState="Hotspot heatmap unavailable."
               evidenceTitle="Hotspot evidence"
+              defaultSummary={hotspotSummary}
+              flatStateLabel="No hotspot variance in this window — churn is evenly spread, so no single area stands out yet."
             />
           </section>
 
@@ -181,7 +194,11 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Hotspots</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "ownership", filters, role: activeRole })}
+                  href={buildExploreUrl({
+                    metric: "ownership",
+                    filters,
+                    role: activeRole,
+                  })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Evidence
@@ -223,7 +240,11 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Bus Factor</h2>
                 <Link
-                  href={buildExploreUrl({ metric: "churn", filters, role: activeRole })}
+                  href={buildExploreUrl({
+                    metric: "churn",
+                    filters,
+                    role: activeRole,
+                  })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Explore
@@ -308,7 +329,8 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               ) : (
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-(--ink-muted)">
-                    Ownership metadata not yet available for this scope.
+                    Connect a Git provider with commit history to surface bus-factor risk for this
+                    view.
                   </div>
                 </div>
               )}
