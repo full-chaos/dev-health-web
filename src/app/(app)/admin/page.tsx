@@ -11,6 +11,7 @@ export default async function AdminDashboardPage() {
       <AdminHeader
         title="Admin Dashboard"
         description={`Welcome back, ${user?.name || user?.email}.`}
+        breadcrumbs={[{ label: "Home", href: "/dashboard" }, { label: "Admin" }]}
       />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

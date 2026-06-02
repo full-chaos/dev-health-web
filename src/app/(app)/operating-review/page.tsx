@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { FilterBar } from "@/components/filters/FilterBar";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -73,6 +74,11 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
         <main className="flex min-w-0 flex-1 flex-col gap-8">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
+              <div className="mb-3">
+                <Breadcrumbs
+                  items={[{ label: "Home", href: "/dashboard" }, { label: "Operating Review" }]}
+                />
+              </div>
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Weekly mode</p>
               <h1 className="mt-2 font-(--font-display) text-3xl">Engineering Operating Review</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
