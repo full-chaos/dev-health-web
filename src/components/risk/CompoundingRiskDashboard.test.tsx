@@ -26,7 +26,7 @@ function makeRow(overrides: Partial<CompoundingRiskRowView> = {}): CompoundingRi
     day: "2026-05-20",
     scope: "repo",
     scopeId: "11111111-1111-1111-1111-111111111111",
-    scopeLabel: "acme/backend",
+    scopeLabel: "meridian/core-api",
     score: 0.72,
     severity: "high",
     components: {
@@ -101,10 +101,14 @@ describe("CompoundingRiskDashboard", () => {
 
   it("renders one table row per scope and links into Work Graph", () => {
     const rows = [
-      makeRow({ scopeId: "repo-a", scopeLabel: "acme/a", score: 0.8 }),
+      makeRow({
+        scopeId: "repo-a",
+        scopeLabel: "meridian/web-app",
+        score: 0.8,
+      }),
       makeRow({
         scopeId: "repo-b",
-        scopeLabel: "acme/b",
+        scopeLabel: "meridian/infra",
         score: 0.35,
         severity: "low",
       }),
