@@ -112,7 +112,13 @@ const workUnitInvestmentsSample = [
     },
     evidence_quality: { value: 0.78, band: "moderate" },
     evidence: {
-      textual: [{ type: "text_phrase", phrase: "feature launch", source: "issue_title" }],
+      textual: [
+        {
+          type: "text_phrase",
+          phrase: "feature launch",
+          source: "issue_title",
+        },
+      ],
       structural: [{ type: "work_item_type", work_item_type: "story", count: 3 }],
       contextual: [
         {
@@ -889,7 +895,9 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
 
   // Capacity forecast.
   if (query.includes("capacityForecast") || query.includes("CapacityForecast")) {
-    return HttpResponse.json({ data: { capacityForecast: sampleCapacityForecast } });
+    return HttpResponse.json({
+      data: { capacityForecast: sampleCapacityForecast },
+    });
   }
 
   if (query.includes("OperatingReview") || query.includes("operatingReview")) {
@@ -897,7 +905,11 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
       data: {
         operatingReview: operatingReviewResponse(
           vars.orgId ?? "org-e2e",
-          (variables as { input?: { teamId?: string | null; weekStart?: string } }).input,
+          (
+            variables as {
+              input?: { teamId?: string | null; weekStart?: string };
+            }
+          ).input,
         ),
       },
     });
@@ -929,7 +941,12 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
   if (query.includes("compoundingRisk") || query.includes("CompoundingRisk")) {
     const orgId = vars.orgId ?? "org-e2e";
     const breakout = (variables as { filter?: { breakout?: string } }).filter?.breakout ?? "REPO";
-    const weights = { churn: 0.3, complexity: 0.3, ownership: 0.2, review: 0.2 };
+    const weights = {
+      churn: 0.3,
+      complexity: 0.3,
+      ownership: 0.2,
+      review: 0.2,
+    };
     const thresholds = { elevated: 0.4, high: 0.65 };
 
     // CHAOS-1750 test hook
@@ -1075,7 +1092,9 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
 
   if (query.includes("AIImpactSummary")) {
     return HttpResponse.json({
-      data: { aiImpactSummary: aiImpactSummaryResponse(orgId, startDate, endDate, aiMode) },
+      data: {
+        aiImpactSummary: aiImpactSummaryResponse(orgId, startDate, endDate, aiMode),
+      },
     });
   }
   if (query.includes("AIReviewLoad")) {
@@ -1096,20 +1115,28 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
   }
   if (query.includes("AIComparison")) {
     return HttpResponse.json({
-      data: { aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode) },
+      data: {
+        aiComparison: aiComparisonResponse(orgId, startDate, endDate, aiMode),
+      },
     });
   }
   if (query.includes("AIOpportunities")) {
-    return HttpResponse.json({ data: { aiOpportunities: aiOpportunitiesResponse(orgId, aiMode) } });
+    return HttpResponse.json({
+      data: { aiOpportunities: aiOpportunitiesResponse(orgId, aiMode) },
+    });
   }
   if (query.includes("AIGovernanceSummary")) {
     return HttpResponse.json({
-      data: { aiGovernanceSummary: aiGovernanceSummaryResponse(orgId, startDate, endDate, aiMode) },
+      data: {
+        aiGovernanceSummary: aiGovernanceSummaryResponse(orgId, startDate, endDate, aiMode),
+      },
     });
   }
   if (query.includes("AIAttributedPrs")) {
     return HttpResponse.json({
-      data: { aiAttributedPrs: aiAttributedPrsResponse(orgId, startDate, endDate, aiMode) },
+      data: {
+        aiAttributedPrs: aiAttributedPrsResponse(orgId, startDate, endDate, aiMode),
+      },
     });
   }
   if (query.includes("AIWorkflowDrilldown")) {
@@ -1223,7 +1250,10 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
 export const handlers = [
   // ---- Auth (for e2e test authentication) ----
   http.post("*/api/v1/auth/login", async ({ request }) => {
-    const body = (await request.json()) as { email?: string; password?: string } | null;
+    const body = (await request.json()) as {
+      email?: string;
+      password?: string;
+    } | null;
     if (!body?.email || !body?.password) {
       return HttpResponse.json({ detail: "Missing credentials" }, { status: 400 });
     }
@@ -1589,8 +1619,20 @@ export const handlers = [
         coverage: { repos: 10, people: 5 },
       },
       deltas: [
-        { metric: "cycle_time", label: "Cycle Time", unit: "hours", value: 48, delta_pct: -12 },
-        { metric: "throughput", label: "Throughput", unit: "PRs/week", value: 15, delta_pct: 8 },
+        {
+          metric: "cycle_time",
+          label: "Cycle Time",
+          unit: "hours",
+          value: 48,
+          delta_pct: -12,
+        },
+        {
+          metric: "throughput",
+          label: "Throughput",
+          unit: "PRs/week",
+          value: 15,
+          delta_pct: 8,
+        },
         {
           metric: "review_latency",
           label: "Review Latency",
@@ -1793,7 +1835,13 @@ export const handlers = [
       },
       identity_coverage_pct: 100,
       deltas: [
-        { metric: "cycle_time", label: "Cycle Time", unit: "hours", value: 36, delta_pct: -10 },
+        {
+          metric: "cycle_time",
+          label: "Cycle Time",
+          unit: "hours",
+          value: 36,
+          delta_pct: -10,
+        },
         {
           metric: "review_latency",
           label: "Review Latency",
@@ -1801,15 +1849,43 @@ export const handlers = [
           value: 4,
           delta_pct: -15,
         },
-        { metric: "throughput", label: "Throughput", unit: "PRs/week", value: 8, delta_pct: 5 },
-        { metric: "churn", label: "Churn", unit: "%", value: 12, delta_pct: -3 },
-        { metric: "wip_overlap", label: "WIP Overlap", unit: "items", value: 2, delta_pct: 0 },
-        { metric: "blocked_work", label: "Blocked Work", unit: "%", value: 8, delta_pct: -2 },
+        {
+          metric: "throughput",
+          label: "Throughput",
+          unit: "PRs/week",
+          value: 8,
+          delta_pct: 5,
+        },
+        {
+          metric: "churn",
+          label: "Churn",
+          unit: "%",
+          value: 12,
+          delta_pct: -3,
+        },
+        {
+          metric: "wip_overlap",
+          label: "WIP Overlap",
+          unit: "items",
+          value: 2,
+          delta_pct: 0,
+        },
+        {
+          metric: "blocked_work",
+          label: "Blocked Work",
+          unit: "%",
+          value: 8,
+          delta_pct: -2,
+        },
       ],
       narrative: [{ text: "This person appears to maintain a steady delivery pace." }],
       sections: {
         work_mix: {
-          themes: { feature_delivery: 0.6, maintenance: 0.25, operational: 0.15 },
+          themes: {
+            feature_delivery: 0.6,
+            maintenance: 0.25,
+            operational: 0.15,
+          },
           evidence_count: 24,
         },
         flow_breakdown: {
@@ -1819,9 +1895,19 @@ export const handlers = [
           meeting_pct: 0.15,
         },
         collaboration: {
-          reviewers: [{ person_id: "person-456", display_name: "Jordan Lee", review_count: 12 }],
+          reviewers: [
+            {
+              person_id: "person-456",
+              display_name: "Jordan Lee",
+              review_count: 12,
+            },
+          ],
           authors_reviewed: [
-            { person_id: "person-789", display_name: "Sam Rivera", review_count: 8 },
+            {
+              person_id: "person-789",
+              display_name: "Sam Rivera",
+              review_count: 8,
+            },
           ],
         },
       },
@@ -1875,13 +1961,38 @@ export const handlers = [
   http.post("*/api/v1/drilldown/issues", () => HttpResponse.json({ items: [], total: 0 })),
 
   // ---- Opportunities ----
-  http.post("*/api/v1/opportunities", () => HttpResponse.json({ opportunities: [] })),
+  http.post("*/api/v1/opportunities", () =>
+    HttpResponse.json({
+      items: [
+        {
+          id: "reduce-review-latency",
+          title: "Reduce Review Latency",
+          rationale: "Review wait time appears to lengthen cycle time in this window.",
+          evidence_links: ["/api/v1/explain?metric=review_latency"],
+          suggested_experiments: [
+            "Trial a 24h review SLA for the auth squad",
+            "Add a second reviewer to the on-call rota",
+          ],
+        },
+        {
+          id: "stabilise-flaky-suite",
+          title: "Stabilise the Flaky Suite",
+          rationale: "Retry rates appear elevated; no linked artifacts in this window yet.",
+          evidence_links: [],
+          suggested_experiments: ["Quarantine the top 3 flaky specs and track re-runs"],
+        },
+      ],
+    }),
+  ),
 
   // ---- GraphQL ----
   http.post("*/graphql", async ({ request }) => {
     let body: { query?: string; variables?: Record<string, unknown> } | null = null;
     try {
-      body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+      body = (await request.json()) as {
+        query?: string;
+        variables?: Record<string, unknown>;
+      };
     } catch (error) {
       console.warn("[msw] Failed to parse GraphQL request body", error);
     }
@@ -1912,14 +2023,19 @@ export const handlers = [
   }),
 
   http.post("*/api/v1/auth/forgot-password", () =>
-    HttpResponse.json({ message: "If an account exists, a reset email was sent." }),
+    HttpResponse.json({
+      message: "If an account exists, a reset email was sent.",
+    }),
   ),
 
   http.get("*/api/v1/auth/verify", ({ request }) => {
     const url = new URL(request.url);
     const token = url.searchParams.get("token");
     if (token === "valid-token") {
-      return HttpResponse.json({ message: "Email verified successfully", verified: true });
+      return HttpResponse.json({
+        message: "Email verified successfully",
+        verified: true,
+      });
     }
     return HttpResponse.json(
       { detail: { message: "Invalid or expired verification token" } },
@@ -2048,7 +2164,13 @@ export const handlers = [
 
   http.get("*/api/v1/admin/teams/discover", () =>
     HttpResponse.json({
-      items: [{ team_id: "discovered-team", name: "Auto-discovered", source: "github" }],
+      items: [
+        {
+          team_id: "discovered-team",
+          name: "Auto-discovered",
+          source: "github",
+        },
+      ],
     }),
   ),
 
@@ -2068,7 +2190,14 @@ export const handlers = [
 
   http.get("*/api/v1/admin/users", () =>
     HttpResponse.json({
-      items: [{ id: "e2e-user-1", email: "test@example.com", role: "owner", is_active: true }],
+      items: [
+        {
+          id: "e2e-user-1",
+          email: "test@example.com",
+          role: "owner",
+          is_active: true,
+        },
+      ],
       total: 1,
     }),
   ),

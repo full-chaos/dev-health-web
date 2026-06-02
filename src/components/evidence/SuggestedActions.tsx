@@ -15,7 +15,9 @@ export function SuggestedActions({ actions }: SuggestedActionsProps) {
 
   return (
     <section className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Suggested Actions</p>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+        Recommended next steps
+      </p>
       <div className="flex flex-wrap gap-2">
         {actions.map((action) => (
           <div
