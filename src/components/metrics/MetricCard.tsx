@@ -67,8 +67,11 @@ export function MetricCard({
           {sparkValues.length > 1 ? (
             <SparklineChart data={sparkValues} categories={sparkLabels} height={64} />
           ) : (
-            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
-              Trend
+            <div
+              title="Not enough data points to plot a trend yet"
+              className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-2 text-center text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+            >
+              No trend yet
             </div>
           )}
         </div>

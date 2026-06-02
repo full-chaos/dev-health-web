@@ -14,6 +14,13 @@ echarts.use([BarChart]);
 type HorizontalBarChartProps = {
   categories: string[];
   values: number[];
+  /**
+   * Optional full identifiers (e.g. raw repo ids) aligned with
+   * `categories`. When provided, the axis tooltip surfaces the full id
+   * even when the rendered category label is a degraded short form.
+   * Pair with `resolveEntityLabels` from `@/lib/labels/entityLabel`.
+   */
+  categoryTitles?: string[];
   height?: number | string;
   width?: number | string;
   className?: string;
@@ -23,6 +30,7 @@ type HorizontalBarChartProps = {
 export function HorizontalBarChart({
   categories,
   values,
+  categoryTitles,
   height = 240,
   width = "100%",
   className,
@@ -46,6 +54,26 @@ export function HorizontalBarChart({
     ...style,
   };
 
+  // When full identifiers are supplied, show them in the axis tooltip so a
+  // degraded short label (e.g. `#550e8400`) still traces to its real id.
+  const tooltipFormatter = categoryTitles
+    ? (params: unknown): string => {
+        const list = Array.isArray(params) ? params : [params];
+        const first = list[0] as
+          | {
+              name?: string;
+              value?: number | string;
+              dataIndex?: number;
+              marker?: string;
+            }
+          | undefined;
+        if (!first) return "";
+        const idx = typeof first.dataIndex === "number" ? first.dataIndex : -1;
+        const heading = (idx >= 0 ? categoryTitles[idx] : undefined) ?? first.name ?? "";
+        return `${heading}<br/>${first.marker ?? ""}${first.value ?? ""}`;
+      }
+    : undefined;
+
   return (
     <Chart
       option={{
@@ -57,6 +85,7 @@ export function HorizontalBarChart({
           textStyle: {
             color: chartTheme.text,
           },
+          formatter: tooltipFormatter,
         },
         grid: { left: 80, right: 24, top: 20, bottom: 20 },
         xAxis: {
