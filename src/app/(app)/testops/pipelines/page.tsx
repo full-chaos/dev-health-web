@@ -11,11 +11,11 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
+import { buildFailurePatternsModel, UNATTRIBUTED_LABEL } from "@/lib/testops/failure-patterns";
 import {
   TimeseriesResult,
   TimeseriesBucket,
   BreakdownResult,
-  BreakdownItem,
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
@@ -98,23 +98,7 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
     ? successRateSeries.buckets.map((b: TimeseriesBucket) => ({ day: b.date, value: b.value }))
     : [];
 
-  const heatmapData = {
-    axes: {
-      x: failureBreakdown ? failureBreakdown.items.map((item: BreakdownItem) => item.key) : [],
-      y: ["Failure Rate"],
-    },
-    cells: failureBreakdown
-      ? failureBreakdown.items.map((item: BreakdownItem) => ({
-          x: item.key,
-          y: "Failure Rate",
-          value: item.value,
-        }))
-      : [],
-    legend: {
-      unit: "%",
-      scale: "linear" as const,
-    },
-  };
+  const failurePatterns = buildFailurePatternsModel(failureBreakdown, "%");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -170,9 +154,24 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
             </div>
             <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
               <h2 className="font-(--font-display) text-xl mb-4">Failure Patterns</h2>
-              <div className="h-64">
-                <HeatmapChart data={heatmapData} />
-              </div>
+              {failurePatterns.isEmpty ? (
+                <div className="flex h-64 items-center justify-center text-center text-sm text-(--ink-muted)">
+                  No failure data for this window or scope.
+                </div>
+              ) : (
+                <>
+                  <div className="h-64">
+                    <HeatmapChart data={failurePatterns.heatmap} />
+                  </div>
+                  {failurePatterns.hasUnattributed ? (
+                    <p className="mt-3 text-xs text-(--ink-muted)">
+                      &ldquo;{UNATTRIBUTED_LABEL}&rdquo; groups failures with no attribution in the
+                      source data &mdash; read its share as a data-quality caveat, not a real
+                      category.
+                    </p>
+                  ) : null}
+                </>
+              )}
             </div>
           </section>
         </main>
