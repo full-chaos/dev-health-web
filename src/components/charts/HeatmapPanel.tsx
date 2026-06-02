@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { getHeatmap } from "@/lib/api/visuals";
+import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import type { HeatmapCell, HeatmapResponse } from "@/lib/types";
 import { formatNumber } from "@/lib/formatters";
 
@@ -26,34 +28,31 @@ type HeatmapPanelProps = {
   initialData?: HeatmapResponse | null;
   emptyState?: string;
   evidenceTitle?: string;
+  /** Plain-language summary shown before any cell is selected (top hotspots + why). */
+  defaultSummary?: string;
+  /** Message shown when every cell carries the same value (no variance to map). */
+  flatStateLabel?: string;
 };
 
-const pickEvidenceLabel = (item: Record<string, unknown>, index: number) => {
-  const candidates = [
-    item.title,
-    item.path,
-    item.file_key,
-    item.commit_hash,
-    item.work_item_id,
-    item.deployment_id,
-    item.number,
-    `Item ${index + 1}`,
-  ];
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim().length) {
-      return candidate;
-    }
-  }
-  if (typeof candidates[6] === "number") {
-    return `#${candidates[6]}`;
-  }
-  return `Item ${index + 1}`;
-};
+const asText = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length ? value.trim() : null;
 
-const evidenceLink = (item: Record<string, unknown>) => {
-  const repoId = typeof item.repo_id === "string" ? item.repo_id : null;
-  const number = typeof item.number === "number" ? item.number : null;
-  const workItemId = typeof item.work_item_id === "string" ? item.work_item_id : null;
+const asNumber = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+const pickTimestamp = (item: Record<string, unknown>): string | null =>
+  asText(item.ts) ??
+  asText(item.timestamp) ??
+  asText(item.created_at) ??
+  asText(item.merged_at) ??
+  asText(item.completed_at) ??
+  asText(item.occurred_at) ??
+  null;
+
+const evidenceLink = (item: Record<string, unknown>): string | null => {
+  const repoId = asText(item.repo_id);
+  const number = asNumber(item.number);
+  const workItemId = asText(item.work_item_id);
 
   if (repoId && number !== null) {
     return `/prs/${repoId}:${number}`;
@@ -64,6 +63,83 @@ const evidenceLink = (item: Record<string, unknown>) => {
   return null;
 };
 
+type ResolvedArtifact = {
+  type: string;
+  label: string;
+  title: string;
+  timestamp: string | null;
+  value: number | null;
+  link: string | null;
+};
+
+/**
+ * Describe a single evidence row as a human-readable artifact: a typed kind,
+ * a render-safe label (via the shared entity-label helper — never a bare
+ * UUID/path), a tooltip carrying the full identifier, and a timestamp.
+ * Replaces the previous raw `JSON.stringify(item)` dump.
+ */
+export function describeArtifact(item: Record<string, unknown>, index: number): ResolvedArtifact {
+  const explicitName =
+    asText(item.title) ?? asText(item.name) ?? asText(item.repo_name) ?? asText(item.author);
+  const timestamp = pickTimestamp(item);
+  const value = asNumber(item.value);
+  const link = evidenceLink(item);
+
+  const path = asText(item.path) ?? asText(item.file_key);
+  const commit = asText(item.commit_hash);
+  const number = asNumber(item.number);
+  const workItem = asText(item.work_item_id);
+  const deployment = asText(item.deployment_id);
+
+  if (path) {
+    const { label, title } = resolveEntityLabel(path, {
+      name: explicitName ?? undefined,
+    });
+    return { type: "File", label, title, timestamp, value, link };
+  }
+  if (commit) {
+    return {
+      type: "Commit",
+      label: explicitName ?? commit.slice(0, 8),
+      title: commit,
+      timestamp,
+      value,
+      link,
+    };
+  }
+  if (number !== null) {
+    const repo = asText(item.repo_id);
+    const repoLabel = repo
+      ? resolveEntityLabel(repo, { name: asText(item.repo_name) ?? undefined }).label
+      : null;
+    return {
+      type: "PR",
+      label: repoLabel ? `${repoLabel} #${number}` : `#${number}`,
+      title: repo ? `${repo}#${number}` : `#${number}`,
+      timestamp,
+      value,
+      link,
+    };
+  }
+  if (workItem) {
+    const { label, title } = resolveEntityLabel(workItem, {
+      name: explicitName ?? undefined,
+    });
+    return { type: "Work item", label, title, timestamp, value, link };
+  }
+  if (deployment) {
+    const { label, title } = resolveEntityLabel(deployment, {
+      name: explicitName ?? undefined,
+    });
+    return { type: "Deployment", label, title, timestamp, value, link };
+  }
+
+  const { label, title } = resolveEntityLabel(explicitName, {
+    fallback: `Item ${index + 1}`,
+  });
+  return { type: "Item", label, title, timestamp, value, link };
+}
+
 export function HeatmapPanel({
   title,
   description,
@@ -71,6 +147,8 @@ export function HeatmapPanel({
   initialData,
   emptyState = "Heatmap data unavailable.",
   evidenceTitle = "Evidence",
+  defaultSummary,
+  flatStateLabel = "No variance in this window — every cell shares the same value.",
 }: HeatmapPanelProps) {
   const [selected, setSelected] = useState<HeatmapCell | null>(null);
   const [evidence, setEvidence] = useState<Array<Record<string, unknown>>>(
@@ -108,6 +186,21 @@ export function HeatmapPanel({
     return `${selected.y} · ${selected.x}`;
   }, [selected]);
 
+  // A heatmap with no spread across its cells renders as a single flat colour,
+  // which reads as "broken" rather than "uniform". Detect it and say so.
+  const isFlat = useMemo(() => {
+    const values = data?.cells?.map((cell) => cell.value) ?? [];
+    if (values.length < 2) {
+      return false;
+    }
+    return Math.max(...values) - Math.min(...values) === 0;
+  }, [data]);
+
+  const artifacts = useMemo(
+    () => evidence.map((item, index) => describeArtifact(item, index)),
+    [evidence],
+  );
+
   if (!data || !data.axes?.x?.length || !data.axes?.y?.length) {
     return (
       <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
@@ -115,6 +208,9 @@ export function HeatmapPanel({
       </div>
     );
   }
+
+  const headerNote = selectionLabel ?? (defaultSummary ? "Top hotspots" : null);
+  const showArtifacts = !loading && artifacts.length > 0;
 
   return (
     <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
@@ -128,55 +224,97 @@ export function HeatmapPanel({
         </div>
       </div>
       <div className="mt-4">
-        <HeatmapChart data={data} height={320} onCellSelect={handleCellSelect} />
+        {isFlat ? (
+          <div
+            data-testid="heatmap-flat-state"
+            className="flex h-[320px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-6 text-center text-sm text-(--ink-muted)"
+          >
+            {flatStateLabel}
+          </div>
+        ) : (
+          <HeatmapChart data={data} height={320} onCellSelect={handleCellSelect} />
+        )}
       </div>
       <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">{evidenceTitle}</p>
-          {selectionLabel ? (
-            <span className="text-xs text-(--ink-muted)">{selectionLabel}</span>
-          ) : null}
+          {headerNote ? <span className="text-xs text-(--ink-muted)">{headerNote}</span> : null}
         </div>
+
+        {!selected && defaultSummary ? (
+          <p className="mt-3 text-sm leading-6 text-(--ink-muted)">{defaultSummary}</p>
+        ) : null}
+
         {loading ? <p className="mt-3 text-sm text-(--ink-muted)">Loading evidence...</p> : null}
-        {!loading && selected && evidence.length === 0 ? (
-          <p className="mt-3 text-sm text-(--ink-muted)">No evidence returned for this cell.</p>
-        ) : null}
-        {!selected && !loading ? (
-          <p className="mt-3 text-sm text-(--ink-muted)">
-            Select a cell to inspect the underlying evidence.
-          </p>
-        ) : null}
-        {!loading && evidence.length > 0 ? (
+
+        {showArtifacts ? (
           <div className="mt-3 space-y-2 text-sm">
-            {evidence.map((item, index) => {
-              const label = pickEvidenceLabel(item, index);
-              const link = evidenceLink(item);
-              const detail = JSON.stringify(item);
-              return link ? (
+            {artifacts.map((artifact, index) => {
+              const body = (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 rounded border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-[10px] font-bold uppercase text-(--ink-muted)">
+                        {artifact.type}
+                      </span>
+                      <span className="truncate" title={artifact.title}>
+                        {artifact.label}
+                      </span>
+                    </div>
+                    {artifact.value !== null ? (
+                      <span className="shrink-0 text-xs text-(--ink-muted)">
+                        {formatNumber(artifact.value)}
+                      </span>
+                    ) : artifact.link ? (
+                      <span className="shrink-0 text-xs text-(--ink-muted)">Open flame</span>
+                    ) : null}
+                  </div>
+                  {artifact.timestamp ? (
+                    <ClientTimestamp
+                      value={artifact.timestamp}
+                      className="mt-1 block text-xs text-(--ink-muted)"
+                    />
+                  ) : null}
+                </>
+              );
+              return artifact.link ? (
                 <Link
-                  key={`${label}-${index}`}
-                  href={link}
-                  className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
+                  key={`${artifact.title}-${index}`}
+                  href={artifact.link}
+                  className="block rounded-2xl border border-(--card-stroke) bg-card px-3 py-2 transition-colors hover:border-(--accent)/40"
                 >
-                  <span>{label}</span>
-                  <span className="text-xs text-(--ink-muted)">Open flame</span>
+                  {body}
                 </Link>
               ) : (
                 <div
-                  key={`${label}-${index}`}
+                  key={`${artifact.title}-${index}`}
                   className="rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
                 >
-                  <div className="flex items-center justify-between">
-                    <span>{label}</span>
-                    {typeof item.value === "number" ? (
-                      <span className="text-xs text-(--ink-muted)">{formatNumber(item.value)}</span>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 text-xs text-(--ink-muted)">{detail}</p>
+                  {body}
                 </div>
               );
             })}
           </div>
+        ) : null}
+
+        {!loading && selected && artifacts.length === 0 ? (
+          <p className="mt-3 text-sm text-(--ink-muted)">
+            No artifacts linked to this cell in the selected window.
+          </p>
+        ) : null}
+
+        {!loading && !selected && artifacts.length === 0 ? (
+          <p className="mt-3 text-sm text-(--ink-muted)">
+            {defaultSummary
+              ? "Hotspot artifacts appear here once code history is connected for this view."
+              : "Select a cell to inspect the underlying evidence."}
+          </p>
+        ) : null}
+
+        {showArtifacts && !selected && !isFlat ? (
+          <p className="mt-3 text-xs text-(--ink-muted)">
+            Select a cell to inspect its underlying artifacts.
+          </p>
         ) : null}
       </div>
     </div>

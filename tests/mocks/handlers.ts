@@ -23,6 +23,8 @@ import type {
 
 import {
   reviewHeatmapSample,
+  hotspotHeatmapSample,
+  churnHotspotContributors,
   sankeyStateTransitionSample,
   sankeyHotspotNodes,
   sankeyHotspotLinks,
@@ -1735,7 +1737,13 @@ export const handlers = [
   }),
 
   // ---- Heatmap ----
-  http.get("*/api/v1/heatmap", () => HttpResponse.json(reviewHeatmapSample)),
+  http.get("*/api/v1/heatmap", ({ request }) => {
+    const url = new URL(request.url);
+    if (url.searchParams.get("type") === "risk") {
+      return HttpResponse.json(hotspotHeatmapSample);
+    }
+    return HttpResponse.json(reviewHeatmapSample);
+  }),
 
   // ---- Flame ----
   http.get("*/api/v1/flame/aggregated", ({ request }) => {
@@ -1950,7 +1958,7 @@ export const handlers = [
       value: 42,
       delta_pct: -5,
       drivers: [],
-      contributors: [],
+      contributors: metric === "churn" ? churnHotspotContributors : [],
       drilldown_links: {},
     });
   }),
