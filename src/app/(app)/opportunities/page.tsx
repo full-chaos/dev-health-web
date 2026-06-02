@@ -3,11 +3,12 @@ import Link from "next/link";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { FocusCard } from "./FocusCard";
 import { checkApiHealth } from "@/lib/api/system";
 import { getOpportunities } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { withFilterParam } from "@/lib/filters/url";
 
 type OpportunitiesPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -59,34 +60,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
 
           <section className="grid gap-6 md:grid-cols-2">
             {(data?.items ?? []).map((card) => (
-              <div
-                key={card.id}
-                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
-              >
-                <h2 className="font-(--font-display) text-xl">{card.title}</h2>
-                <p className="mt-2 text-sm text-(--ink-muted)">{card.rationale}</p>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                  {card.evidence_links.map((link) => (
-                    <Link
-                      key={link}
-                      href={buildExploreUrl({ api: link, filters, role: activeRole })}
-                      className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1"
-                    >
-                      Evidence
-                    </Link>
-                  ))}
-                </div>
-                <div className="mt-4 space-y-2 text-xs text-(--ink-muted)">
-                  {card.suggested_experiments.map((experiment) => (
-                    <div
-                      key={experiment}
-                      className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                    >
-                      {experiment}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <FocusCard key={card.id} card={card} filters={filters} activeRole={activeRole} />
             ))}
             {!data?.items?.length && (
               <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
