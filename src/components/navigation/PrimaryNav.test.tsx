@@ -34,6 +34,28 @@ function makeFilter(): MetricFilter {
 }
 
 describe("PrimaryNav — section composition", () => {
+  it("keeps the collapsed IA to six primary sections with one AI Workflows entry", () => {
+    render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
+
+    const sectionHeadings = screen
+      .getAllByRole("button")
+      .map((button) => (button.textContent ?? "").replace(/\s+/g, " ").trim());
+
+    expect(sectionHeadings).toHaveLength(6);
+    expect(sectionHeadings).toEqual([
+      "Cockpit",
+      "Diagnose",
+      "Improve",
+      "Govern",
+      "Reports",
+      "Admin",
+    ]);
+
+    const aiLinks = screen.getAllByRole("link", { name: /^AI Workflows$/i });
+    expect(aiLinks).toHaveLength(1);
+    expect(aiLinks[0]).toHaveAttribute("href", expect.stringContaining("/ai"));
+  });
+
   it("renders the 'Cognitive Load' nav item exactly once (regression: CHAOS-1747)", () => {
     render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
 
@@ -107,3 +129,21 @@ it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", ()
   expect(qualityLinks[0]).toHaveAttribute("href", expect.stringContaining("/quality"));
   expect(qualityLinks[0]).toHaveAttribute("aria-current", "page");
 });
+
+it.each([
+  { active: "home", label: /^Home$/i, href: "/dashboard" },
+  { active: "work", label: /^Work$/i, href: "/work" },
+  { active: "ai-workflows", label: /^AI Workflows$/i, href: "/ai" },
+  { active: "testops", label: /^TestOps$/i, href: "/testops" },
+  { active: "reports", label: /^Report Center$/i, href: "/reports" },
+  { active: "admin", label: /^Settings$/i, href: "/admin" },
+])(
+  "highlights $active as the active nav item for representative routes",
+  ({ active, label, href }) => {
+    render(<PrimaryNav filters={makeFilter()} active={active} />);
+
+    const link = screen.getByRole("link", { name: label });
+    expect(link).toHaveAttribute("href", expect.stringContaining(href));
+    expect(link).toHaveAttribute("aria-current", "page");
+  },
+);
