@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { EvidencePanel } from "@/components/evidence";
+import { EntityLabel } from "@/components/labels/EntityLabel";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { CockpitHealthStatus, HomeResponse } from "@/lib/types";
 
@@ -107,11 +108,19 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
 				data-testid="cockpit-headline"
 				className="mt-4 max-w-3xl font-(--font-display) text-3xl leading-tight sm:text-4xl"
 			>
-				{health?.headline ?? "Engineering health is steady this week"}
+				<EntityLabel
+					variant="text"
+					id={health?.headline ?? "Engineering health is steady this week"}
+				/>
 			</h1>
 			<p className="mt-3 max-w-2xl text-sm leading-6 text-(--ink-muted)">
-				{health?.summary ??
-					"Available signals suggest no acute limiting factor in the selected window."}
+				<EntityLabel
+					variant="text"
+					id={
+						health?.summary ??
+						"Available signals suggest no acute limiting factor in the selected window."
+					}
+				/>
 			</p>
 
 			{/* Top change — the highest-impact signal driving the state */}
@@ -125,12 +134,20 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
 					</p>
 					<div className="mt-2 flex flex-wrap items-start justify-between gap-3">
 						<h2 className="font-(--font-display) text-xl leading-tight text-foreground">
-							{topSignal.title}
+							<EntityLabel variant="text" id={topSignal.title} />
 						</h2>
 						<div className="flex items-center gap-2 text-xs">
 							<span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 font-bold uppercase tracking-[0.16em] text-(--ink-muted)">
 								{topSignal.severity}
 							</span>
+							{(topSignal.scope?.id ?? topSignal.affected_scope) ? (
+								<EntityLabel
+									id={topSignal.scope?.id ?? topSignal.affected_scope}
+									displayName={topSignal.scope?.display_name ?? null}
+									data-testid="cockpit-top-change-scope"
+									className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 font-medium text-(--ink-muted)"
+								/>
+							) : null}
 							{topSignal.delta ? (
 								<span className="text-(--ink-muted)">
 									<span aria-hidden>
@@ -142,7 +159,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
 						</div>
 					</div>
 					<p className="mt-3 text-sm leading-6 text-(--ink-muted)">
-						{topSignal.why_it_matters}
+						<EntityLabel variant="text" id={topSignal.why_it_matters} />
 					</p>
 
 					<div className="mt-4 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3">
@@ -150,7 +167,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
 							Recommended action
 						</p>
 						<p className="mt-1 text-sm leading-5 text-foreground">
-							{topSignal.recommended_action}
+							<EntityLabel variant="text" id={topSignal.recommended_action} />
 						</p>
 					</div>
 
