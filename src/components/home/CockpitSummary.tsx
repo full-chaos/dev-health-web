@@ -64,8 +64,10 @@ type PanelState = {
 export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
 	const [panel, setPanel] = useState<PanelState>({ isOpen: false, title: "" });
 
-	const openPanel = (title: string, params: { apiUrl?: string }) =>
-		setPanel({ isOpen: true, title, ...params });
+	const openPanel = (
+		title: string,
+		params: { apiUrl?: string; metric?: string },
+	) => setPanel({ isOpen: true, title, ...params });
 	const closePanel = () => setPanel((prev) => ({ ...prev, isOpen: false }));
 
 	const health = home?.health_state;
@@ -158,6 +160,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
 						onClick={() =>
 							openPanel(topSignal.title, {
 								apiUrl: topSignal.evidence_ref || undefined,
+								metric: topSignal.metric,
 							})
 						}
 						className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"

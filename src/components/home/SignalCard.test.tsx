@@ -131,6 +131,7 @@ describe("SignalCard", () => {
 
 		expect(onOpenEvidence).toHaveBeenCalledWith(baseSignal.title, {
 			apiUrl: baseSignal.evidence_ref,
+			metric: baseSignal.metric,
 		});
 	});
 

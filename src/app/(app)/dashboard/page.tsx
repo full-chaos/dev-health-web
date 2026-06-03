@@ -3,6 +3,10 @@ import Link from "next/link";
 import { BackendBanner } from "@/components/home/BackendBanner";
 import { CockpitClient } from "@/components/home/CockpitClient";
 import { InvestmentPreview } from "@/components/home/InvestmentPreview";
+import { CockpitSummary } from "@/components/home/CockpitSummary";
+import { RankedSignals } from "@/components/home/RankedSignals";
+import { AiWorkflowCallout } from "@/components/home/AiWorkflowCallout";
+import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -15,8 +19,8 @@ import { getHomeData } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
-import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
-import { getRoleConfig, isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
+import { isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
+import { isAiDominant } from "@/lib/cockpit/aiGate";
 import type { HomeResponse } from "@/lib/types";
 
 const MONITORING_VIEWS = [
@@ -50,29 +54,6 @@ const MONITORING_VIEWS = [
 	},
 ];
 
-const AI_WORKFLOW_STEPS = [
-	{
-		label: "AI Impact",
-		description: "Delivery lift versus review, rework, and incident drag.",
-		href: "/ai",
-	},
-	{
-		label: "Review Load / Risk",
-		description: "Is AI-attributed work shifting cost into review or quality?",
-		href: "/ai/review-load",
-	},
-	{
-		label: "Governance gaps",
-		description: "Unknown attribution and policy violations as trust signals.",
-		href: "/ai/risk",
-	},
-	{
-		label: "Evidence + intervention",
-		description: "Move from recommendations into evidence and weekly review.",
-		href: "/operating-review#ai_workflow_intelligence",
-	},
-];
-
 const loadHome = async (
 	filters: Parameters<typeof getHomeData>[0],
 ): Promise<HomeResponse | null> => {
@@ -96,7 +77,6 @@ export default async function Home({ searchParams }: HomePageProps) {
 
 	const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
 	const activeRole = isValidRole(roleParam) ? roleParam : DEFAULT_ROLE;
-	const roleConfig = getRoleConfig(activeRole);
 
 	// Run health check in parallel with data fetches to eliminate the waterfall.
 	const [health, home, meta] = await Promise.all([
@@ -109,8 +89,6 @@ export default async function Home({ searchParams }: HomePageProps) {
 		return <ServiceUnavailable />;
 	}
 	const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
-	const rawDeltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
-	const placeholderDeltas = !home?.deltas?.length;
 	// Reorder Monitoring Views based on role
 	const viewPriority: Record<string, string[]> = {
 		ic: ["flow", "quality", "throughput", "dora"],
@@ -123,25 +101,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 		return priority.indexOf(a.id) - priority.indexOf(b.id);
 	});
 
-	// Reorder key shifts (deltas) based on role investigationOrder
-	const metricTypeMap: Record<string, string> = {
-		review: "review_latency",
-		cycle: "cycle_time",
-		wip: "wip",
-		churn: "churn",
-		investment: "throughput",
-	};
-	const prioritizedDeltas = [...rawDeltas].sort((a, b) => {
-		const order = roleConfig.investigationOrder.map(
-			(t) => metricTypeMap[t] || t,
-		);
-		const indexA = order.indexOf(a.metric);
-		const indexB = order.indexOf(b.metric);
-		if (indexA === -1 && indexB === -1) return 0;
-		if (indexA === -1) return 1;
-		if (indexB === -1) return -1;
-		return indexA - indexB;
-	});
+	const aiDominant = isAiDominant({ signals: home?.signals ?? null });
 
 	return (
 		<div className="min-h-screen bg-(image:--hero-gradient) text-foreground">
@@ -193,60 +153,21 @@ export default async function Home({ searchParams }: HomePageProps) {
 
 					{/* Minimal freshness indicator only — no integration status UI */}
 
-					<section className="overflow-hidden rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-5 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.55)]">
-						<div className="flex flex-col gap-6">
-							<div>
-								<p className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-									Starting point
-								</p>
-								<h2 className="mt-3 text-xl leading-tight">
-									AI Workflow Intelligence
-								</h2>
-								<p className="mt-3 text-sm leading-6 text-(--ink-muted)">
-									See whether AI-assisted work is improving delivery or shifting
-									cost into review, rework, and risk.
-								</p>
-								<div className="mt-5 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em]">
-									<Link
-										href={withFilterParam("/ai", filters, activeRole)}
-										className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2 text-(--accent-2) transition hover:-translate-y-0.5"
-									>
-										Start with AI Impact
-									</Link>
-									<Link
-										href={withFilterParam(
-											"/operating-review#ai-workflow-intelligence",
-											filters,
-											activeRole,
-										)}
-										className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2 text-(--accent-2) transition hover:-translate-y-0.5"
-									>
-										Weekly review
-									</Link>
-								</div>
-							</div>
-							<div className="grid min-w-0 flex-1 gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-								{AI_WORKFLOW_STEPS.map((step, index) => (
-									<Link
-										key={step.label}
-										href={withFilterParam(step.href, filters, activeRole)}
-										className="group rounded-2xl border border-(--card-stroke) bg-(--card) p-4 transition hover:-translate-y-1"
-									>
-										<div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-											<span>{String(index + 1).padStart(2, "0")}</span>
-											<span className="text-(--accent-2)">Open</span>
-										</div>
-										<p className="mt-3 text-sm font-semibold text-foreground">
-											{step.label}
-										</p>
-										<p className="mt-2 text-xs leading-5 text-(--ink-muted)">
-											{step.description}
-										</p>
-									</Link>
-								))}
-							</div>
-						</div>
-					</section>
+					{home?.data_confidence && (
+						<DataConfidenceIndicator confidence={home.data_confidence} />
+					)}
+
+					<CockpitSummary home={home} filters={filters} />
+
+					{home?.signals && home.signals.length > 0 ? (
+						<RankedSignals signals={home.signals} filters={filters} />
+					) : null}
+
+					<AiWorkflowCallout
+						filters={filters}
+						activeRole={activeRole}
+						prominent={aiDominant}
+					/>
 
 					<section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
 						<div className="flex flex-wrap items-center justify-between gap-3">
@@ -291,8 +212,6 @@ export default async function Home({ searchParams }: HomePageProps) {
 						home={home}
 						filters={filters}
 						activeRole={activeRole}
-						prioritizedDeltas={prioritizedDeltas}
-						placeholderDeltas={placeholderDeltas}
 					/>
 
 					<section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">

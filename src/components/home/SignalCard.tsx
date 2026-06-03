@@ -79,7 +79,10 @@ export function SignalCard({
 	onOpenEvidence,
 }: SignalCardProps) {
 	const open = () =>
-		onOpenEvidence(signal.title, { apiUrl: signal.evidence_ref || undefined });
+		onOpenEvidence(signal.title, {
+			apiUrl: signal.evidence_ref || undefined,
+			metric: signal.metric,
+		});
 
 	const hasPrior = signal.prior_value != null && signal.prior_value !== "";
 
