@@ -1,4 +1,4 @@
-# AGENTS.md — dev-health-web
+# AGENTS.md: dev-health-web
 
 > **Canonical Reference:** See [`/AGENTS.md`](../AGENTS.md) for the unified Full Chaos Dev Health platform agent briefing.
 >
@@ -9,6 +9,14 @@ This document contains **dev-health-web specific** guidance for the Full Chaos D
 ## Purpose
 
 This document is the authoritative guide for any automated coding agent (Copilot-like, Gemini, or other AI assistants) working on the dev-health-web repository. It explains the project's architecture, common flows, recommended diagram types, developer workflows, and rules agents must follow.
+
+## Design and Style Framework
+
+All UI changes must conform to the Design and Style Framework. See [`docs/design-system.md`](docs/design-system.md) for the full specification.
+
+The Definition of Done requires:
+
+> Conforms to the Design & Style Framework; uses the shared primitives; backing queries return resolved names (no unresolved ids surfaced); `npm run design-lint` passes; an after-screenshot or visual-regression assertion is attached.
 
 ## High-level architecture
 
@@ -28,9 +36,9 @@ This document is the authoritative guide for any automated coding agent (Copilot
 - Default Playwright suite (mock/sample-data E2E): `playwright.config.ts` with `testIgnore: ["live/**"]`.
 - Live backend suite (real API required): `playwright.live.config.ts` with `testDir: "./tests/live"`.
 - CI workflow mapping: `.github/workflows/tests.yml` and `.github/workflows/live-e2e.yml`.
-- Component tests: `src/components/**/*.test.tsx` — Vitest `components` project (jsdom). Uses `src/test/utils.tsx` for `renderWithToaster()`.
-- MSW mock types: `tests/mocks/types.ts` — REST response interfaces. `tests/mocks/handlers.ts` uses `HttpResponse.json<T>()` for compile-time shape checking.
-- Live E2E helpers: `tests/live/helpers.ts` — `testEmail()`, `registerUser()`, `loginUser()`, `authHeaders()`. All live tests self-bootstrap (no SQL seeding).
+- Component tests: `src/components/**/*.test.tsx`, Vitest `components` project (jsdom). Uses `src/test/utils.tsx` for `renderWithToaster()`.
+- MSW mock types: `tests/mocks/types.ts`, REST response interfaces. `tests/mocks/handlers.ts` uses `HttpResponse.json<T>()` for compile-time shape checking.
+- Live E2E helpers: `tests/live/helpers.ts`, `testEmail()`, `registerUser()`, `loginUser()`, `authHeaders()`. All live tests self-bootstrap (no SQL seeding).
 - Schema drift: `live-e2e.yml` runs `export_schema.py` from dev-health-ops and diffs against `src/lib/graphql/schema.graphql`.
 
 ## Diagram types to use
@@ -42,20 +50,20 @@ This document is the authoritative guide for any automated coding agent (Copilot
 
 ## Key files & folders
 
-- `src/app` — Next.js pages and routes.
-- `src/components` — Reusable UI components and subfolders (charts, filters, navigation).
-- `src/lib` — Data transforms, mappers, formatters, test helpers.
-- `src/data` — Sample data and translations for demos.
-- `tests` & `test-results` — Playwright and other e2e test artifacts.
+- `src/app`, Next.js pages and routes.
+- `src/components`, Reusable UI components and subfolders (charts, filters, navigation).
+- `src/lib`, Data transforms, mappers, formatters, test helpers.
+- `src/data`, Sample data and translations for demos.
+- `tests` & `test-results`, Playwright and other e2e test artifacts.
 
 ## Development conventions for agents
 
-- Read this file (`AGENTS.md`) first — it is the source of truth for architecture and flows.
-- **NEVER commit directly to main** — Always create a feature branch first:
+- Read this file (`AGENTS.md`) first, it is the source of truth for architecture and flows.
+- **NEVER commit directly to main**, Always create a feature branch first:
   ```bash
   git checkout -b <type>/<descriptive-name>  # e.g., fix/chart-resize, feat/new-filter
   ```
-- **Use git worktrees for parallel work** — When starting a new feature or unrelated task, use a worktree:
+- **Use git worktrees for parallel work**, When starting a new feature or unrelated task, use a worktree:
   ```bash
   git worktree add ../dev-health-web-feature-name feature/branch-name
   ```
@@ -75,16 +83,16 @@ This document is the authoritative guide for any automated coding agent (Copilot
 
 - Use descriptive PR titles and reference related tests. Keep changes scoped to one feature or bugfix.
 - **Visual evidence (MANDATORY):** Any change that affects rendered UI **must** include screenshots attached to both the PR body and the linked Linear issue/task.
-  - **Canonical procedure:** [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md) — deterministic runbook for agents (account check → fixture seed → dev-server verify → Playwright login → screenshot → PR/Linear attach). Follow this end-to-end; the rules below are summary only.
+  - **Canonical procedure:** [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md), deterministic runbook for agents (account check → fixture seed → dev-server verify → Playwright login → screenshot → PR/Linear attach). Follow this end-to-end; the rules below are summary only.
   - Use the **Playwright MCP** (`playwright` skill) to capture screenshots of affected pages/components after the dev server is running
   - Attach screenshots to the GitHub PR body (upload via `gh` CLI or drag-and-drop)
   - Attach screenshots to the linked Linear issue as a comment: `linear-cli i comment <ID> -b "Screenshot attached" --attach <file>`
   - **Canonical test account:** `admin@devhealth.example` / `devhealth123` (seeded by `dev-hops fixtures generate`). Do not create ad-hoc accounts.
-  - **What to capture:** Every page or component visually altered by the change — before/after if modifying existing UI, just after if net-new
+  - **What to capture:** Every page or component visually altered by the change, before/after if modifying existing UI, just after if net-new
   - **When to skip:** Changes that are purely backend, purely type-level, or have no rendered output (add `SCREENSHOT-WAIVER: <reason>` to PR body)
 - **Governance gate (`enforce-src-test-policy`)**: Any PR that changes files under `src/` must either include at least one test file change (`tests/`, `__tests__/`, or `*.test.*`/`*.spec.*`) **or** include a `TEST-WAIVER:` line in the PR body explaining why tests were not touched. Example:
   ```
-  TEST-WAIVER: CSS-only changes — no component logic affected
+  TEST-WAIVER: CSS-only changes, no component logic affected
   ```
   The script lives at `.github/scripts/enforce-src-test-governance.mjs`. PRs that fail this check will be blocked from merging.
 
@@ -106,7 +114,7 @@ model.
   (`eslint --fix`) on staged files and re-stages the fixes
   (`stage_fixed: true`). The resulting commit is clean.
 - **pre-push** is a final gate: `prettier --check` + `eslint` on the files
-  being pushed. No auto-fix here — pre-push cannot modify the commits it's
+  being pushed. No auto-fix here, pre-push cannot modify the commits it's
   gating, so blocking with an instruction is the only correct shape.
 
 ### Install
@@ -235,7 +243,7 @@ linear-cli issues get CHAOS-123
 ### Fetching private Linear images
 
 `uploads.linear.app` URLs in issue descriptions require authentication.
-Do **NOT** use `WebFetch` or `curl` — they will 401.
+Do **NOT** use `WebFetch` or `curl`, they will 401.
 
 ```bash
 linear-cli attachments download "https://uploads.linear.app/..."
