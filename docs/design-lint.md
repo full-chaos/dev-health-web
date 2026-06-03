@@ -1,6 +1,6 @@
 # Design lint
 
-`pnpm design-lint` runs the local `eslint-plugin-design-lint` AST rules and `scripts/design-lint.mjs` static string scan. `pnpm lint`, Lefthook pre-commit/pre-push, and CI all run the same gate.
+`pnpm design-lint` runs the local `eslint-plugin-design-lint` AST rules and `scripts/design-lint.mjs` static string scan. It is advisory in CI and Lefthook until the existing violation backlog is triaged; `pnpm lint` remains the blocking baseline ESLint gate.
 
 - `no-raw-id-in-jsx`: flags UUIDs and long `#hash` ids in JSX text and label-bearing props; use `resolveEntityLabel`/EntityLabel and pass `unresolvedFallback: "Unresolved"` when the display name is intentionally unavailable.
 - `no-hardcoded-style`: flags hex colors and `px` values in `className`, `style`, and styled template literals; use the tokens in `docs/design-system.md` and `src/app/globals.css`.

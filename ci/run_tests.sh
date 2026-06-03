@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <unit|integration|e2e|live-e2e|ci>" >&2
+  echo "Usage: ci/run_tests.sh <quality|build|unit|integration|e2e|live-e2e|design-lint|ci>" >&2
 }
 
 if [[ $# -ne 1 ]]; then
@@ -88,6 +88,22 @@ run_unit() {
   run_pnpm_script test:unit
 }
 
+run_quality() {
+  echo "==> pnpm audit --audit-level=high --prod"
+  pnpm audit --audit-level=high --prod
+  run_pnpm_script codegen:check
+  run_pnpm_script lint
+  run_pnpm_script typecheck
+}
+
+run_build() {
+  run_pnpm_script build
+}
+
+run_design_lint() {
+  run_pnpm_script design-lint
+}
+
 run_integration() {
   run_pnpm_script test:integration
 }
@@ -110,6 +126,12 @@ run_live_e2e() {
 }
 
 case "${tier}" in
+  quality)
+    run_quality
+    ;;
+  build)
+    run_build
+    ;;
   unit)
     run_unit
     ;;
@@ -122,14 +144,13 @@ case "${tier}" in
   live-e2e)
     run_live_e2e
     ;;
+  design-lint)
+    run_design_lint
+    ;;
   ci)
     export CI=true
-    echo "==> pnpm audit --audit-level=high --prod"
-    pnpm audit --audit-level=high --prod
-    run_pnpm_script codegen:check
-    run_pnpm_script lint
-    run_pnpm_script typecheck
-    run_pnpm_script build
+    run_quality
+    run_build
     run_unit
     run_integration
     run_e2e

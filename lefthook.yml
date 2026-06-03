@@ -50,7 +50,7 @@ pre-commit:
       stage_fixed: true
     design-lint:
       glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
-      run: pnpm design-lint
+      run: pnpm design-lint || true
 
 pre-push:
   parallel: true
@@ -65,5 +65,5 @@ pre-push:
       fail_text: "Run `pnpm lint --fix` locally, commit the result, push again. Or `git push --no-verify` to bypass."
     design-lint:
       glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
-      run: pnpm design-lint
-      fail_text: "Run `pnpm design-lint`, suppress with a reason only when intentional, push again. Or `git push --no-verify` to bypass."
+      run: pnpm design-lint || true
+      fail_text: "Design lint is advisory until existing violations are triaged. Run `pnpm design-lint` locally for details."

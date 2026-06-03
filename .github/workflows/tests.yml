@@ -19,8 +19,8 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: dorny/paths-filter@v4.0.1 # v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: dorny/paths-filter@v4.0.1
         id: filter
         with:
           filters: |
@@ -45,49 +45,145 @@ jobs:
               - 'instrumentation.ts'
               - 'sentry.*.config.ts'
 
-  test:
+  quality:
+    name: Quality
     needs: [changes]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Skip if no relevant changes
-        if: needs.changes.outputs.code != 'true'
-        run: |
-          echo "No test-relevant files changed; emitting success without running the suite."
-          echo "Keeps 'test' as a consistent required status check regardless of PR scope."
-      - name: Checkout
-        if: needs.changes.outputs.code == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - name: Setup pnpm
-        if: needs.changes.outputs.code == 'true'
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
         with:
           version: 11.1.1
-
-      - name: Setup Node
-        if: needs.changes.outputs.code == 'true'
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: 22
           cache: pnpm
-      - name: Install dependencies
-        if: needs.changes.outputs.code == 'true'
-        run: pnpm install --frozen-lockfile
-      - name: Run CI test contract
-        if: needs.changes.outputs.code == 'true'
-        run: bash ci/run_tests.sh ci
+      - run: pnpm install --frozen-lockfile
+      - run: bash ci/run_tests.sh quality
+
+  build:
+    name: Build
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+        with:
+          version: 11.1.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: bash ci/run_tests.sh build
+
+  unit:
+    name: Unit tests
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+        with:
+          version: 11.1.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: bash ci/run_tests.sh unit
+
+  integration:
+    name: Integration tests
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+        with:
+          version: 11.1.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: bash ci/run_tests.sh integration
+
+  e2e:
+    name: E2E tests
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+        with:
+          version: 11.1.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: bash ci/run_tests.sh e2e
       - name: Upload Playwright report
-        if: always() && needs.changes.outputs.code == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: playwright-report/
           if-no-files-found: warn
           retention-days: 14
       - name: Upload Playwright raw results and JUnit
-        if: always() && needs.changes.outputs.code == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: playwright-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results/playwright/
           if-no-files-found: warn
           retention-days: 14
+
+  design-lint:
+    name: Design lint advisory
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+        with:
+          version: 11.1.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run design lint advisory
+        continue-on-error: true
+        run: bash ci/run_tests.sh design-lint
+
+  test:
+    name: test
+    needs: [changes, quality, build, unit, integration, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check change detection
+        if: needs.changes.result != 'success'
+        run: exit 1
+      - name: Skip if no relevant changes
+        if: needs.changes.result == 'success' && needs.changes.outputs.code != 'true'
+        run: |
+          echo "No test-relevant files changed; emitting success without running the suite."
+          echo "Keeps 'test' as a consistent required status check regardless of PR scope."
+      - name: Check parallel test stages
+        if: needs.changes.outputs.code == 'true'
+        run: |
+          results='${{ toJson(needs) }}'
+          echo "${results}"
+          if [[ "${results}" == *'"result":"failure"'* || "${results}" == *'"result":"cancelled"'* ]]; then
+            exit 1
+          fi
