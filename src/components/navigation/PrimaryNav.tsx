@@ -61,6 +61,55 @@ function groupContainsPath(group: NavGroup, pathname: string): boolean {
   });
 }
 
+function splitHref(href: string): { path: string; hash: string } {
+  const [withoutHash, hash = ""] = href.split("#", 2);
+  return {
+    path: withoutHash.split("?")[0] || "/",
+    hash: hash ? `#${hash}` : "",
+  };
+}
+
+function pathnameMatchesItem(pathname: string, itemPath: string): boolean {
+  return pathname === itemPath || pathname.startsWith(itemPath + "/");
+}
+
+function selectedItemIdForPathname(
+  groups: NavGroup[],
+  pathname: string,
+  hash: string,
+  fallbackActive?: string,
+): string | undefined {
+  let selectedItemId: string | undefined;
+  let selectedScore = -1;
+  let fallbackItemId: string | undefined;
+
+  for (const group of groups) {
+    for (const item of group.items) {
+      const { path: itemPath, hash: itemHash } = splitHref(item.href);
+
+      if (fallbackActive === item.id) fallbackItemId = item.id;
+
+      if (itemHash) {
+        if (pathname === itemPath && hash === itemHash) {
+          const score = itemPath.length + itemHash.length;
+          if (score > selectedScore) {
+            selectedItemId = item.id;
+            selectedScore = score;
+          }
+        }
+        continue;
+      }
+
+      if (pathnameMatchesItem(pathname, itemPath) && itemPath.length > selectedScore) {
+        selectedItemId = item.id;
+        selectedScore = itemPath.length;
+      }
+    }
+  }
+
+  return selectedItemId ?? fallbackItemId;
+}
+
 // ── Navigation data ──────────────────────────────────────────────────────────
 
 const navGroups: NavGroup[] = [
@@ -210,6 +259,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
 
   const mainGroups = navGroups.filter((g) => g.placement === "main");
   const utilityGroups = navGroups.filter((g) => g.placement === "utility");
+  const selectedItemId = selectedItemIdForPathname(navGroups, pathname, hash, active);
 
   const renderGroup = (group: NavGroup) => {
     const groupIsCollapsed = isGroupCollapsed(group);
@@ -244,21 +294,18 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
           }`}
         >
           {group.items.map((item) => {
-            const [itemPath, itemHash] = item.href.split("#", 2);
-            const hashMatchesItem =
-              Boolean(itemHash) && pathname === itemPath && hash === `#${itemHash}`;
-            const pageMatchesItem = active === item.id && !(hash && pathname === itemPath);
-            const isActive = hashMatchesItem || pageMatchesItem;
+            const [, itemHash] = item.href.split("#", 2);
+            const isActive = selectedItemId === item.id;
             return (
               <Link
                 key={item.id}
                 href={withFilterParam(item.href, filters, role)}
                 onClick={itemHash ? () => setHash(`#${itemHash}`) : undefined}
                 aria-current={isActive ? "page" : undefined}
-                className={`group relative flex flex-col gap-0.5 rounded-2xl border px-3 py-2 transition ${
+                className={`group relative flex flex-col gap-0.5 rounded-2xl border px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/35 ${
                   isActive
                     ? "border-(--accent) bg-(--accent)/15 text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-full before:bg-(--accent)"
-                    : "border-transparent bg-(--card-70) text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground"
+                    : "border-transparent bg-(--card-70) text-(--ink-muted) hover:border-(--card-stroke) hover:bg-(--card-80) hover:text-foreground focus-visible:border-(--card-stroke) focus-visible:bg-(--card-80) focus-visible:text-foreground"
                 }`}
               >
                 <span className="font-medium">{item.label}</span>
@@ -280,7 +327,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
   };
 
   return (
-    <aside className="w-full md:max-w-[220px] md:shrink-0">
+    <aside className="w-full md:max-w-56 md:shrink-0">
       <div className="md:sticky md:top-6">
         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
           <div>

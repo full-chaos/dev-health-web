@@ -1,12 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { render } from "@/test/utils";
 import { PrimaryNav } from "./PrimaryNav";
 import type { MetricFilter } from "@/lib/filters/types";
 
 // Stub usePathname so PrimaryNav (a client component) renders deterministically
+const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard" }));
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => navigationMock.pathname,
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
@@ -31,6 +33,16 @@ function makeFilter(): MetricFilter {
     why: {},
     how: {},
   };
+}
+
+beforeEach(() => {
+  navigationMock.pathname = "/dashboard";
+});
+
+function currentPageLinks() {
+  return screen
+    .getAllByRole("link")
+    .filter((link) => link.getAttribute("aria-current") === "page");
 }
 
 describe("PrimaryNav — section composition", () => {
@@ -119,6 +131,7 @@ it("renders the 'Complexity' nav item under Diagnose (CHAOS-1745)", () => {
 });
 
 it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", () => {
+  navigationMock.pathname = "/quality";
   render(<PrimaryNav filters={makeFilter()} active="quality" />);
 
   const qualityLinks = screen.getAllByRole("link", {
@@ -128,22 +141,50 @@ it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", ()
   expect(qualityLinks).toHaveLength(1);
   expect(qualityLinks[0]).toHaveAttribute("href", expect.stringContaining("/quality"));
   expect(qualityLinks[0]).toHaveAttribute("aria-current", "page");
+  expect(currentPageLinks()).toHaveLength(1);
 });
 
 it.each([
-  { active: "home", label: /^Home$/i, href: "/dashboard" },
-  { active: "work", label: /^Work$/i, href: "/work" },
-  { active: "ai-workflows", label: /^AI Workflows$/i, href: "/ai" },
-  { active: "testops", label: /^TestOps$/i, href: "/testops" },
-  { active: "reports", label: /^Report Center$/i, href: "/reports" },
-  { active: "admin", label: /^Settings$/i, href: "/admin" },
+  { pathname: "/dashboard", active: "home", label: /^Home$/i, href: "/dashboard" },
+  { pathname: "/work", active: "work", label: /^Work$/i, href: "/work" },
+  { pathname: "/metrics", active: "metrics", label: /^Metrics$/i, href: "/metrics" },
+  { pathname: "/ai/impact", active: "ai-workflows", label: /^AI Workflows$/i, href: "/ai" },
+  { pathname: "/testops", active: "testops", label: /^TestOps$/i, href: "/testops" },
+  { pathname: "/reports", active: "reports", label: /^Report Center$/i, href: "/reports" },
+  { pathname: "/admin", active: "admin", label: /^Settings$/i, href: "/admin" },
 ])(
-  "highlights $active as the active nav item for representative routes",
-  ({ active, label, href }) => {
+  "highlights $active from $pathname as the active nav item for representative routes",
+  ({ pathname, active, label, href }) => {
+    navigationMock.pathname = pathname;
     render(<PrimaryNav filters={makeFilter()} active={active} />);
 
     const link = screen.getByRole("link", { name: label });
     expect(link).toHaveAttribute("href", expect.stringContaining(href));
     expect(link).toHaveAttribute("aria-current", "page");
+    expect(currentPageLinks()).toHaveLength(1);
   },
 );
+
+it("uses the longest pathname match and ignores a stale active prop", () => {
+  navigationMock.pathname = "/testops/risk";
+  render(<PrimaryNav filters={makeFilter()} active="coverage" />);
+
+  const deliveryRisk = screen.getByRole("link", { name: /^Delivery Risk$/i });
+  const testOps = screen.getByRole("link", { name: /^TestOps$/i });
+  const coverage = screen.getByRole("link", { name: /^Coverage$/i });
+
+  expect(deliveryRisk).toHaveAttribute("aria-current", "page");
+  expect(testOps).not.toHaveAttribute("aria-current");
+  expect(coverage).not.toHaveAttribute("aria-current");
+  expect(currentPageLinks()).toHaveLength(1);
+});
+
+it("falls back to the active prop only when no nav href matches the pathname", () => {
+  navigationMock.pathname = "/prs/123";
+  render(<PrimaryNav filters={makeFilter()} active="people" />);
+
+  const people = screen.getByRole("link", { name: /^People$/i });
+
+  expect(people).toHaveAttribute("aria-current", "page");
+  expect(currentPageLinks()).toHaveLength(1);
+});

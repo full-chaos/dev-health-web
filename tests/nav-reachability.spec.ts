@@ -96,6 +96,21 @@ async function expandSection(page: Page, section: string) {
 	await page.getByRole("button", { name: section }).click();
 }
 
+async function expectSingleSelectedNavItem(
+	page: Page,
+	path: string,
+	selectedLabel: string,
+) {
+	await page.goto(path);
+	await page.evaluate(() => localStorage.removeItem("devhealth-nav-collapsed"));
+	await page.goto(path);
+	await waitForHydration(page);
+
+	const selectedLinks = page.locator('aside a[aria-current="page"]');
+	await expect(selectedLinks).toHaveCount(1);
+	await expect(selectedLinks).toHaveText(selectedLabel);
+}
+
 test.describe("primary navigation reachability", () => {
 	test("exposes every primary section and reaches representative nav destinations", async ({
 		page,
@@ -156,6 +171,20 @@ test.describe("primary navigation reachability", () => {
 	}) => {
 		for (const destination of previouslyReachableDestinations) {
 			await expectReachable(request, destination);
+		}
+	});
+
+	test("marks exactly one primary nav item as selected for representative routes", async ({
+		page,
+	}) => {
+		for (const route of [
+			{ path: "/metrics?tab=dora", selectedLabel: "Metrics" },
+			{ path: "/testops/coverage", selectedLabel: "Coverage" },
+			{ path: "/testops/risk", selectedLabel: "Delivery Risk" },
+			{ path: "/bottleneck", selectedLabel: "Bottlenecks" },
+			{ path: "/risk/compounding", selectedLabel: "Compounding Risk" },
+		]) {
+			await expectSingleSelectedNavItem(page, route.path, route.selectedLabel);
 		}
 	});
 });
