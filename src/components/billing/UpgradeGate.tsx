@@ -7,6 +7,7 @@ import { TIER_FEATURES } from "@/lib/billing/tiers";
 type UpgradeGateProps = {
   feature: string;
   requiredTier: string;
+  currentTier?: string;
   features?: Record<string, boolean>;
   children: React.ReactNode;
 };
@@ -14,12 +15,13 @@ type UpgradeGateProps = {
 export function UpgradeGate({
   feature,
   requiredTier,
+  currentTier: currentTierProp,
   features: featuresProp,
   children,
 }: UpgradeGateProps) {
   const context = useAdminTier();
   const features = featuresProp ?? context.features;
-  const currentTier = context.tier;
+  const currentTier = currentTierProp ?? context.tier;
 
   if (features[feature] === true) {
     return <>{children}</>;

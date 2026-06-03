@@ -39,6 +39,7 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
   }
 
   const features = entitlements?.data?.features ?? {};
+  const currentTier = entitlements?.data?.tier;
 
   const params = (await searchParams) ?? {};
   const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
@@ -72,7 +73,12 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="capacity" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
-          <UpgradeGate feature="capacity_planning" requiredTier="team" features={features}>
+          <UpgradeGate
+            feature="capacity_forecast"
+            requiredTier="team"
+            currentTier={currentTier}
+            features={features}
+          >
             <header className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Capacity</p>

@@ -9,12 +9,17 @@ import type {
   FeatureOverride,
   FeatureOverrideCreate,
 } from "../types";
-import { requireSuperuserToken, withErrorHandling } from "./_shared";
+import { getSessionContext, requireSuperuserToken, withErrorHandling } from "./_shared";
 
 export async function getOrgEntitlements(orgId: string): Promise<ActionResult<OrgEntitlements>> {
   return withErrorHandling(async () => {
-    const token = await requireSuperuserToken();
-    return adminApi.licensing.entitlements(orgId, token);
+    const { token, orgId: sessionOrgId } = await getSessionContext();
+    if (sessionOrgId === orgId) {
+      return adminApi.licensing.entitlements(orgId, token, sessionOrgId);
+    }
+
+    const superuserToken = await requireSuperuserToken();
+    return adminApi.licensing.entitlements(orgId, superuserToken);
   });
 }
 
