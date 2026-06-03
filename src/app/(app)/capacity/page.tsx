@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -94,12 +95,7 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
                 >
                   View in Work context
                 </Link>
-                <Link
-                  href={withFilterParam("/", filters, activeRole)}
-                  className="rounded-full border border-(--card-stroke) px-4 py-2"
-                >
-                  Re-orient in cockpit
-                </Link>
+                <BackLink href={withFilterParam("/", filters, activeRole)} />
               </div>
             </header>
 

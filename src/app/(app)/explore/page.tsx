@@ -4,6 +4,8 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { BackLink } from "@/components/shared/BackLink";
+import { buttonClassName } from "@/components/shared/Button";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
 import { getDrilldown } from "@/lib/api/investment";
@@ -147,31 +149,21 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
               </p>
               <p className="mt-2 text-sm text-(--ink-muted)">Select evidence to investigate.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={withFilterParam("/flame?mode=cycle_breakdown", filters, activeRole)}
-                className="rounded-full border border-(--accent-2) bg-(--accent-2)/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                className={buttonClassName("primary")}
               >
                 Flame Diagram
               </Link>
               <Link
                 href={withFilterParam("/explore/landscape", filters, activeRole)}
-                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                className={buttonClassName("secondary")}
               >
                 Landscape
               </Link>
-              <Link
-                href={withFilterParam("/metrics", filters, activeRole)}
-                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-              >
-                Back to Metrics view
-              </Link>
-              <Link
-                href={withFilterParam("/", filters, activeRole)}
-                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-              >
-                Back to cockpit
-              </Link>
+              <BackLink href={withFilterParam("/metrics", filters, activeRole)} area="Metrics" />
+              <BackLink href={withFilterParam("/", filters, activeRole)} />
             </div>
           </header>
 
@@ -245,7 +237,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 <div className="flex items-center justify-between">
                   <h2 className="font-(--font-display) text-xl">Top Associations</h2>
                   <Link
-                    href={buildExploreUrl({ metric: metricFromApi, filters, role: activeRole })}
+                    href={buildExploreUrl({
+                      metric: metricFromApi,
+                      filters,
+                      role: activeRole,
+                    })}
                     className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                   >
                     Open evidence
@@ -287,7 +283,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 <div className="flex items-center justify-between">
                   <h2 className="font-(--font-display) text-xl">Contributors</h2>
                   <Link
-                    href={buildExploreUrl({ metric: metricFromApi, filters, role: activeRole })}
+                    href={buildExploreUrl({
+                      metric: metricFromApi,
+                      filters,
+                      role: activeRole,
+                    })}
                     className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                   >
                     Open evidence
@@ -419,7 +419,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 {Object.entries(data?.drilldown_links ?? {}).map(([label, link]) => (
                   <Link
                     key={label}
-                    href={buildExploreUrl({ api: link, filters, role: activeRole })}
+                    href={buildExploreUrl({
+                      api: link,
+                      filters,
+                      role: activeRole,
+                    })}
                     className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2"
                   >
                     {label}

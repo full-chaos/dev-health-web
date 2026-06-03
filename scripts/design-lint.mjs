@@ -50,7 +50,11 @@ const RULES = [
       { re: /\bOpen Landscapes\b/u, label: "Open Landscapes" },
       { re: /\bExplore Work\b/u, label: "Explore Work" },
       { re: /\bOpen Flame\b/u, label: "Open Flame" },
-      { re: /(^|[>"'`\s{])Evidence([<"'`\s}]|$)/u, label: "Evidence" },
+      // Only flag a *standalone* "Evidence" token (a bare CTA/label), not
+      // content phrases like "Evidence quality", "Evidence Table", or
+      // "Inspect Evidence" which are legitimate non-CTA copy. This mirrors the
+      // button/link context check in the design-lint ESLint rule.
+      { re: /(?:^|[>"'`{])Evidence(?:[<"'`}]|$)/u, label: "Evidence" },
     ],
   },
   {

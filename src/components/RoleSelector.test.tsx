@@ -34,11 +34,11 @@ describe("RoleSelector", () => {
     expect(screen.getByText("Leadership")).toBeInTheDocument();
   });
 
-  it("marks the default role as active (aria-pressed=true)", () => {
+  it("marks the default role as active (aria-checked=true)", () => {
     render(<RoleSelector />);
     // Default role is "ic"
-    const icButton = screen.getByText("IC");
-    expect(icButton).toHaveAttribute("aria-pressed", "true");
+    const icButton = screen.getByText("IC").closest("button");
+    expect(icButton).toHaveAttribute("aria-checked", "true");
   });
 
   it("calls router.push when a role button is clicked", () => {

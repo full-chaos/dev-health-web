@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -73,12 +74,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                 >
                   Inspect associations
                 </Link>
-                <Link
-                  href={withFilterParam("/explore/landscape", filters)}
-                  className="rounded-full border border-(--card-stroke) px-4 py-2"
-                >
-                  Re-orient in landscape
-                </Link>
+                <BackLink href={withFilterParam("/explore/landscape", filters)} area="Landscape" />
               </div>
             </header>
 

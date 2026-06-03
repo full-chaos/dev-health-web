@@ -11,6 +11,7 @@
  */
 
 import Link from "next/link";
+import { BackLink } from "@/components/shared/BackLink";
 
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -182,12 +183,7 @@ export default async function CompoundingRiskPage({ searchParams }: CompoundingR
                 row.
               </p>
             </div>
-            <Link
-              href={withFilterParam("/", filters, activeRole)}
-              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-            >
-              Back to cockpit
-            </Link>
+            <BackLink href={withFilterParam("/", filters, activeRole)} />
           </header>
 
           <FilterBar view="risk-compounding" />
