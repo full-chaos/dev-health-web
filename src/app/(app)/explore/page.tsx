@@ -130,7 +130,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 	type DrilldownResult = Awaited<ReturnType<typeof getDrilldown>> | null;
 	type HomeResult = Awaited<ReturnType<typeof getHomeData>> | null;
 
-	let view: "explain" | "drilldown" | "home" | "unknown" = "explain";
+	let view: "explain" | "drilldown" | "home" | "unknown";
 	let dataPromise: Promise<ExplainResult | DrilldownResult | HomeResult | null>;
 
 	if (
