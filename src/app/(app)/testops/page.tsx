@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { AreaHub } from "@/components/navigation/AreaHub";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -25,7 +26,10 @@ function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
 function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
   const series = timeseries.find((s) => s.measure === measureId);
   if (!series || !series.buckets) return undefined;
-  return series.buckets.map((b: TimeseriesBucket) => ({ ts: b.date, value: b.value }));
+  return series.buckets.map((b: TimeseriesBucket) => ({
+    ts: b.date,
+    value: b.value,
+  }));
 }
 
 export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
@@ -53,13 +57,48 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     fetchTestOpsData(
       {
         timeseries: [
-          { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "PIPELINE_FAILURE_RATE", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "PIPELINE_DURATION_P95", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "PIPELINE_QUEUE_TIME", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "PIPELINE_RERUN_RATE", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_SUCCESS_RATE",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_FAILURE_RATE",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_DURATION_P95",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_QUEUE_TIME",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_RERUN_RATE",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "TEST_FLAKE_RATE",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "COVERAGE_LINE_PCT",
+            interval: "DAY",
+            dateRange,
+          },
         ],
         breakdowns: [],
       },
@@ -129,6 +168,13 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
               );
             })}
           </section>
+          <AreaHub
+            areaId="govern"
+            filters={filters}
+            role={activeRole}
+            title="Govern area"
+            description="Pipelines, tests, quality, security, and risk surfaces."
+          />
         </main>
       </div>
     </div>
