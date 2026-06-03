@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveEntityLabel, resolveEntityLabels } from "@/lib/labels/entityLabel";
 
 const UUID = "550e8400-e29b-41d4-a716-446655440000";
 const HEX32 = "550e8400e29b41d4a716446655440000";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("resolveEntityLabel", () => {
   it("prefers an explicit name and keeps the full id as the tooltip title", () => {
@@ -73,6 +77,16 @@ describe("resolveEntityLabel", () => {
 
   it("honours a custom fallback for missing ids", () => {
     expect(resolveEntityLabel(undefined, { fallback: "No repo" }).label).toBe("No repo");
+  });
+
+  it("throws in development when UUID-like ids have no display name or explicit unresolved fallback", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    expect(() => resolveEntityLabel(UUID)).toThrow(/unresolved id/u);
+    expect(resolveEntityLabel(UUID, { unresolvedFallback: "Unresolved" })).toEqual({
+      label: "Unresolved",
+      title: UUID,
+      resolved: false,
+    });
   });
 });
 

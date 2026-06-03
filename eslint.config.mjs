@@ -3,6 +3,8 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import prettierConfig from "eslint-config-prettier";
 
+import designLint from "./eslint-plugin-design-lint/index.mjs";
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -12,6 +14,13 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    ".worktrees/**",
+    ".pnpm-store/**",
+    "artifacts/**",
+    "output/**",
+    "playwright-report/**",
+    "test-results/**",
+    "vendor/**",
     "next-env.d.ts",
   ]),
   {
@@ -35,6 +44,29 @@ const eslintConfig = defineConfig([
             "Empty .catch(() => {}) swallows errors. Use fetchOrNull() or log the error explicitly.",
         },
       ],
+    },
+  },
+  {
+    files: ["src/**/*.{ts,tsx,js,jsx}"],
+    ignores: [
+      "src/**/*.test.{ts,tsx,js,jsx}",
+      "src/**/*.spec.{ts,tsx,js,jsx}",
+      "src/**/__tests__/**",
+      "src/**/fixtures/**",
+      "src/**/mocks/**",
+      "src/lib/api/**",
+      "src/lib/graphql/**",
+      "src/lib/design/cta.ts",
+    ],
+    plugins: {
+      "design-lint": designLint,
+    },
+    rules: {
+      "design-lint/no-raw-id-in-jsx": "error",
+      "design-lint/no-hardcoded-style": "error",
+      "design-lint/cta-from-registry": "error",
+      "design-lint/no-internal-leak": "error",
+      "design-lint/chart-values-formatted": "error",
     },
   },
   // eslint-config-prettier must be last — disables any ESLint formatting rules
