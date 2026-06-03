@@ -73,6 +73,16 @@ export type HealthState = {
 	summary: string;
 };
 
+/**
+ * Server-resolved entity reference (CHAOS-2064). `id` is the stable identifier;
+ * `display_name` is the human label the backend resolved for it. Rendered via the
+ * EntityLabel primitive so a bare UUID/hash never surfaces as a primary label.
+ */
+export type EntityRef = {
+	id: string;
+	display_name?: string | null;
+};
+
 /** A ranked cockpit signal. Values are backend-formatted display strings. */
 export type CockpitSignal = {
 	id: string;
@@ -85,6 +95,11 @@ export type CockpitSignal = {
 	severity: SignalSeverity;
 	confidence: ConfidenceLevel;
 	affected_scope: string;
+	/**
+	 * Server-resolved scope entity (CHAOS-2064). Matches the backend REST key
+	 * `scope_entity` exactly. Preferred over `affected_scope` for the scope chip.
+	 */
+	scope_entity?: EntityRef | null;
 	evidence_count: number;
 	why_it_matters: string;
 	recommended_action: string;

@@ -117,4 +117,104 @@ describe("CockpitSummary", () => {
 		);
 		expect(screen.getByTestId("cockpit-headline")).toBeInTheDocument();
 	});
+
+	const UUID = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
+	const HASH32 = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
+
+	it("never renders a raw UUID as the dominant headline", () => {
+		render(
+			<CockpitSummary
+				home={makeHome({
+					health_state: { status: "watch", headline: UUID, summary: "x" },
+				})}
+				filters={filters}
+			/>,
+		);
+		const headline = screen.getByTestId("cockpit-headline");
+		expect(headline.textContent ?? "").not.toContain(UUID);
+		expect(headline).toHaveTextContent("#3f2504e0");
+		expect(headline).toHaveTextContent(/unresolved/i);
+	});
+
+	it("scrubs UUIDs embedded inside the backend-built headline (CHAOS-2064)", () => {
+		// Real backend payload interpolates an unresolved scope id into prose.
+		const embedded = `Compounding risk appears elevated for ${UUID} across ${UUID}`;
+		render(
+			<CockpitSummary
+				home={makeHome({
+					health_state: {
+						status: "at_risk",
+						headline: embedded,
+						summary: `Risk is concentrated in ${UUID}.`,
+					},
+				})}
+				filters={filters}
+			/>,
+		);
+		const summary = screen.getByTestId("cockpit-summary");
+		// No raw UUID anywhere in the dominant conclusion block.
+		expect(summary.textContent ?? "").not.toContain(UUID);
+		const headline = screen.getByTestId("cockpit-headline");
+		// Prose is preserved; only the id is degraded to a stable short token.
+		expect(headline).toHaveTextContent(/Compounding risk appears elevated/i);
+		expect(headline).toHaveTextContent("#3f2504e0");
+		expect(headline).toHaveTextContent(/unresolved/i);
+	});
+
+	it("never renders a raw hash as the top-change title", () => {
+		render(
+			<CockpitSummary
+				home={makeHome({ signals: [{ ...topSignal, title: HASH32 }] })}
+				filters={filters}
+			/>,
+		);
+		const topChange = screen.getByTestId("cockpit-top-change");
+		expect(topChange.textContent ?? "").not.toContain(HASH32);
+		expect(topChange).toHaveTextContent("#a1b2c3d4");
+		expect(topChange).toHaveTextContent(/unresolved/i);
+	});
+
+	it("renders the server-resolved scope display name, not its id", () => {
+		render(
+			<CockpitSummary
+				home={makeHome({
+					signals: [
+						{
+							...topSignal,
+							scope_entity: { id: UUID, display_name: "payments-api" },
+						},
+					],
+				})}
+				filters={filters}
+			/>,
+		);
+		const scope = screen.getByTestId("cockpit-top-change-scope");
+		expect(scope).toHaveTextContent("payments-api");
+		expect(scope.textContent ?? "").not.toContain(UUID);
+		expect(scope).not.toHaveTextContent(/unresolved/i);
+	});
+
+	it("degrades an unresolved scope id to a short token + Unresolved badge", () => {
+		render(
+			<CockpitSummary
+				home={makeHome({
+					signals: [
+						{ ...topSignal, affected_scope: "", scope_entity: { id: UUID } },
+					],
+				})}
+				filters={filters}
+			/>,
+		);
+		const scope = screen.getByTestId("cockpit-top-change-scope");
+		expect(scope.textContent ?? "").not.toContain(UUID);
+		expect(scope).toHaveTextContent("#3f2504e0");
+		expect(scope).toHaveTextContent(/unresolved/i);
+	});
+
+	it("renders a human scope verbatim without an Unresolved badge", () => {
+		render(<CockpitSummary home={makeHome()} filters={filters} />);
+		const scope = screen.getByTestId("cockpit-top-change-scope");
+		expect(scope).toHaveTextContent("3 repos");
+		expect(scope).not.toHaveTextContent(/unresolved/i);
+	});
 });
