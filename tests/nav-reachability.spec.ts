@@ -145,7 +145,7 @@ test.describe("primary navigation reachability", () => {
 			await clickUntilHeading(
 				page,
 				page.getByRole("link", { name: new RegExp(`^${tab}`) }),
-				page.getByRole("heading", { level: 1, name: tab }),
+				page.getByRole("heading", { level: 2, name: tab }),
 			);
 			await expectReachable(request, new URL(page.url()).pathname);
 		}
