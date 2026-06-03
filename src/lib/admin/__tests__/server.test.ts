@@ -27,6 +27,7 @@ import {
   deleteRetentionPolicy,
   executeRetentionPolicy,
   listRetentionResourceTypes,
+  getOrgEntitlements,
 } from "../server";
 
 function mockSession() {
@@ -92,7 +93,10 @@ describe("admin/server credential actions", () => {
         .spyOn(global, "fetch")
         .mockResolvedValue(new Response(JSON.stringify(cred), { status: 200 }));
 
-      const result = await createCredential({ provider: "github", credentials: { token: "tok" } });
+      const result = await createCredential({
+        provider: "github",
+        credentials: { token: "tok" },
+      });
       expect(result.data).toBeDefined();
       expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
       fetchSpy.mockRestore();
@@ -172,6 +176,44 @@ describe("admin/server user list actions", () => {
     const headers = options?.headers as Record<string, string>;
     expect(headers.Authorization).toBe("Bearer test-token");
     expect(headers["X-Org-Id"]).toBeUndefined();
+    fetchSpy.mockRestore();
+  });
+});
+
+describe("admin/server entitlement actions", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+  });
+
+  it("gets current org entitlements with the current org token", async () => {
+    mockSession();
+    const entitlements = {
+      org_id: "org-1",
+      tier: "enterprise",
+      licensed_users: null,
+      licensed_repos: null,
+      features: { capacity_forecast: true },
+      features_override: null,
+      limits_override: null,
+      expires_at: null,
+      is_valid: true,
+      limits: {},
+    };
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify(entitlements), { status: 200 }));
+
+    const result = await getOrgEntitlements("org-1");
+
+    expect(result.data?.features.capacity_forecast).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+    expect(url).toBe("http://test-ops:8000/api/v1/licensing/entitlements/org-1");
+    expect(options?.headers).toMatchObject({
+      Authorization: "Bearer test-token",
+      "X-Org-Id": "org-1",
+    });
     fetchSpy.mockRestore();
   });
 });
@@ -417,7 +459,12 @@ describe("admin/server retention policy actions", () => {
   describe("listRetentionPolicies", () => {
     it("returns policies on success", async () => {
       mockSession();
-      const resp = { items: [mockRetentionPolicy], total: 1, limit: 50, offset: 0 };
+      const resp = {
+        items: [mockRetentionPolicy],
+        total: 1,
+        limit: 50,
+        offset: 0,
+      };
       const fetchSpy = vi
         .spyOn(global, "fetch")
         .mockResolvedValue(new Response(JSON.stringify(resp), { status: 200 }));
@@ -461,7 +508,9 @@ describe("admin/server retention policy actions", () => {
         .spyOn(global, "fetch")
         .mockResolvedValue(new Response(JSON.stringify(updated), { status: 200 }));
 
-      const result = await updateRetentionPolicy("rp-1", { retention_days: 180 });
+      const result = await updateRetentionPolicy("rp-1", {
+        retention_days: 180,
+      });
       expect(result.data).toBeDefined();
       expect(revalidatePath).toHaveBeenCalledWith("/admin/retention");
       fetchSpy.mockRestore();

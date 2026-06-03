@@ -36,6 +36,21 @@ describe("UpgradeGate", () => {
     expect(screen.queryByRole("link", { name: /upgrade to team/i })).not.toBeInTheDocument();
   });
 
+  it("renders capacity planning content for the canonical capacity forecast entitlement", () => {
+    renderWithToaster(
+      <UpgradeGate
+        feature="capacity_forecast"
+        requiredTier="team"
+        features={{ capacity_forecast: true }}
+      >
+        <p>Monte Carlo forecast</p>
+      </UpgradeGate>,
+    );
+
+    expect(screen.getByText("Monte Carlo forecast")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /upgrade to team/i })).not.toBeInTheDocument();
+  });
+
   it("renders the upgrade CTA overlay when the feature is missing", () => {
     renderWithToaster(
       <UpgradeGate
@@ -96,5 +111,21 @@ describe("UpgradeGate", () => {
 
     expect(screen.getByText(/current plan/i)).toBeInTheDocument();
     expect(screen.getByText("community")).toBeInTheDocument();
+  });
+
+  it("prefers an explicit current tier over context for standalone gates", () => {
+    renderWithToaster(
+      <UpgradeGate
+        feature="advanced_insights"
+        requiredTier="team"
+        currentTier="enterprise"
+        features={{ advanced_insights: false }}
+      >
+        <p>hidden</p>
+      </UpgradeGate>,
+    );
+
+    expect(screen.getByText(/current plan/i)).toBeInTheDocument();
+    expect(screen.getByText("enterprise")).toBeInTheDocument();
   });
 });
