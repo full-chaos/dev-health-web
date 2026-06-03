@@ -1,5 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
+import { clickUntilHeading, clickUntilUrl, waitForHydration } from "./helpers/nav";
+
 const primarySections = ["Cockpit", "Diagnose", "Improve", "Govern", "Reports", "Admin"];
 
 const navLinks = [
@@ -100,9 +102,10 @@ test.describe("primary navigation reachability", () => {
 
   test("reaches every AI tab from the unified AI Workflows area", async ({ page, request }) => {
     await resetDashboardNav(page);
+    await waitForHydration(page);
     await expandSection(page, "Improve");
-    await page.getByRole("link", { name: "AI Workflows" }).click();
-    await expect(page).toHaveURL(/\/ai(?:[?#].*)?$/);
+
+    await clickUntilUrl(page, page.getByRole("link", { name: "AI Workflows" }), /\/ai(?:[?#].*)?$/);
 
     for (const tab of [
       "Impact",
@@ -113,8 +116,11 @@ test.describe("primary navigation reachability", () => {
       "Evidence",
       "Automations",
     ]) {
-      await page.getByRole("link", { name: new RegExp(`^${tab}`) }).click();
-      await expect(page.getByRole("heading", { level: 1, name: tab })).toBeVisible();
+      await clickUntilHeading(
+        page,
+        page.getByRole("link", { name: new RegExp(`^${tab}`) }),
+        page.getByRole("heading", { level: 1, name: tab }),
+      );
       await expectReachable(request, new URL(page.url()).pathname);
     }
   });

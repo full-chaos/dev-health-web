@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
+import { clickUntilHeading, clickUntilUrl, waitForHydration } from "./helpers/nav";
 import { encodeFilter } from "../src/lib/filters/encode";
 import { defaultMetricFilter } from "../src/lib/filters/defaults";
 
@@ -24,13 +25,17 @@ const automationsTab = (page: Page) => page.getByRole("link", { name: /^Automati
 test.describe("AI workflow primary navigation", () => {
   test("Home exposes the guided AI Workflow Intelligence entry path", async ({ page }) => {
     await page.goto(`/dashboard?f=${defaultFilter}`);
+    await waitForHydration(page);
 
     await expect(page.getByRole("heading", { name: "AI Workflow Intelligence" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Start with AI Impact/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Governance gaps/ })).toBeVisible();
 
-    await page.getByRole("link", { name: /Start with AI Impact/ }).click();
-    await expect(page).toHaveURL(/\/ai(\?|$)/);
+    await clickUntilUrl(
+      page,
+      page.getByRole("link", { name: /Start with AI Impact/ }),
+      /\/ai(\?|$)/,
+    );
     await expect(page.getByRole("heading", { name: "Impact", exact: true })).toBeVisible();
   });
 
@@ -40,27 +45,23 @@ test.describe("AI workflow primary navigation", () => {
     await expect(page.getByRole("heading", { name: "Impact", exact: true })).toBeVisible();
     await expect(page.getByTestId("ai-impact-dashboard")).toBeVisible();
 
-    await reviewLoadTab(page).click();
-    await expect(page).toHaveURL(/\/ai\/review-load/);
+    await clickUntilUrl(page, reviewLoadTab(page), /\/ai\/review-load/);
     await expect(page.getByRole("heading", { name: "Review Load", exact: true })).toBeVisible();
     await expect(page.getByTestId("ai-review-load-dashboard")).toBeVisible();
 
-    await governanceRiskTab(page).click();
-    await expect(page).toHaveURL(/\/ai\/risk/);
+    await clickUntilUrl(page, governanceRiskTab(page), /\/ai\/risk/);
     await expect(page.getByRole("heading", { name: "Governance Risk", exact: true })).toBeVisible();
     await expect(page.getByTestId("ai-risk-dashboard")).toBeVisible();
 
-    await impactTab(page).click();
-    await expect(page).toHaveURL(/\/ai(\?|$)/);
+    await clickUntilUrl(page, impactTab(page), /\/ai(\?|$)/);
     await expect(page.getByRole("heading", { name: "Impact", exact: true })).toBeVisible();
   });
 
   test("Automations link owns the active nav state on its own route", async ({ page }) => {
     await page.goto(`/ai/impact?f=${defaultFilter}`);
 
-    await automationsTab(page).click();
+    await clickUntilUrl(page, automationsTab(page), /\/ai\/automations/);
 
-    await expect(page).toHaveURL(/\/ai\/automations/);
     await expect(automationsTab(page)).toHaveAttribute("aria-current", "page");
     await expect(impactTab(page)).not.toHaveAttribute("aria-current", "page");
   });
@@ -85,9 +86,12 @@ test.describe("AI workflow primary navigation", () => {
     await page.goto(`/ai/impact?f=${customFilter}`);
     await expect(page.getByTestId("filter-bar")).toBeVisible();
 
-    await reviewLoadTab(page).click();
+    await clickUntilHeading(
+      page,
+      reviewLoadTab(page),
+      page.getByRole("heading", { name: "Review Load", exact: true }),
+    );
     await expect(page).toHaveURL(/\/ai\/review-load/);
-    await expect(page.getByRole("heading", { name: "Review Load", exact: true })).toBeVisible();
     await expect(page.getByTestId("filter-bar")).toBeVisible();
   });
 });
