@@ -1,7 +1,6 @@
 import { test, expect, Page } from "@playwright/test";
 
 import { decodeFilter } from "../src/lib/filters/encode";
-import { expandAllSidebarGroups } from "./helpers/sidebar";
 import { clickUntilUrl } from "./helpers/nav";
 
 const getFilterParam = (url: string) => new URL(url).searchParams.get("f");
@@ -60,32 +59,26 @@ const expectDeveloperFilter = async (page: Page, expected: string) => {
 };
 
 test.describe("filter propagation", () => {
-  test("primary routes retain filter param", async ({ page }) => {
+  test("primary area routes retain filter param", async ({ page }) => {
     await page.goto("/dashboard");
     const initialFilter = await waitForFilterParam(page);
-    // CHAOS-1760: sidebar groups other than Cockpit + active-route are
-    // collapsed by default. Iterating across primary routes spans multiple
-    // groups, so expand them all up-front to keep nav links clickable.
-    await expandAllSidebarGroups(page);
     const updatedFilter = await updateDeveloperFilter(page, "dev-health-web", initialFilter);
 
+    // CHAOS-2073: the sidebar surfaces the six decision areas as links. The main
+    // spine (<nav aria-label="Primary areas">) holds the four primary areas.
     const nav = page.locator("aside nav");
-    // Routes that exist in the primary navigation
-    const routes = [
-      { label: /People/i, path: "/people" },
-      { label: /Metrics/i, path: "/metrics" },
-      { label: /Landscape/i, path: "/explore/landscape" },
-      { label: /^Work$/, path: "/work" },
-      { label: /Code/i, path: "/code" },
-      { label: /Opportunities/i, path: "/opportunities" },
-      { label: /Home/i, path: "/dashboard" },
+    const areas = [
+      { label: /^Diagnose$/, path: "/work" },
+      { label: /^Improve$/, path: "/opportunities" },
+      { label: /^Govern$/, path: "/testops" },
+      { label: /^Cockpit$/, path: "/dashboard" },
     ];
 
-    for (const route of routes) {
+    for (const area of areas) {
       await clickUntilUrl(
         page,
-        nav.getByRole("link", { name: route.label }),
-        new RegExp(`${route.path}(?:[?#].*)?$`),
+        nav.getByRole("link", { name: area.label }),
+        new RegExp(`${area.path}(?:[?#].*)?$`),
       );
       await expectFilterParam(page, updatedFilter);
       await expectDeveloperFilter(page, "dev-health-web");
@@ -95,12 +88,11 @@ test.describe("filter propagation", () => {
   test("filter change updates URL and persists across nav", async ({ page }) => {
     await page.goto("/metrics?tab=dora");
     const initialFilter = await waitForFilterParam(page);
-    await expandAllSidebarGroups(page);
     const updatedFilter = await updateDeveloperFilter(page, "metrics-owner", initialFilter);
     expect(updatedFilter).not.toBe(initialFilter);
 
     const nav = page.locator("aside nav");
-    await clickUntilUrl(page, nav.getByRole("link", { name: /^Work$/ }), /\/work(?:[?#].*)?$/);
+    await clickUntilUrl(page, nav.getByRole("link", { name: /^Govern$/ }), /\/testops(?:[?#].*)?$/);
     await expectFilterParam(page, updatedFilter);
     await expectDeveloperFilter(page, "metrics-owner");
   });

@@ -1,190 +1,178 @@
-import {
-	expect,
-	test,
-	type APIRequestContext,
-	type Page,
-} from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-import {
-	clickUntilHeading,
-	clickUntilUrl,
-	waitForHydration,
-} from "./helpers/nav";
+import { clickUntilHeading, clickUntilUrl, waitForHydration } from "./helpers/nav";
 
-const primarySections = [
-	"Cockpit",
-	"Diagnose",
-	"Improve",
-	"Govern",
-	"Reports",
-	"Admin",
-];
-
-const navLinks = [
-	{ section: "Cockpit", name: "Home", path: "/dashboard" },
-	{ section: "Cockpit", name: "Operating Review", path: "/operating-review" },
-	{ section: "Diagnose", name: "Work", path: "/work" },
-	{ section: "Diagnose", name: "Metrics", path: "/metrics" },
-	{ section: "Diagnose", name: "People", path: "/people" },
-	{ section: "Diagnose", name: "Code", path: "/code" },
-	{ section: "Improve", name: "Opportunities", path: "/opportunities" },
-	{ section: "Improve", name: "Capacity Planning", path: "/capacity-planning" },
-	{ section: "Improve", name: "AI Workflows", path: "/ai" },
-	{ section: "Govern", name: "TestOps", path: "/testops" },
-	{ section: "Govern", name: "Quality", path: "/quality" },
-	{ section: "Govern", name: "Security", path: "/security" },
-	{ section: "Govern", name: "Feature Flags", path: "/feature-flags" },
-	{
-		section: "Govern",
-		name: "Incident Correlation",
-		path: "/incident-correlation",
-	},
-	{ section: "Reports", name: "Report Center", path: "/reports" },
-	{ section: "Admin", name: "Settings", path: "/admin" },
+// CHAOS-2073: the sidebar collapsed to exactly six decision-area links; leaf
+// destinations moved off the sidebar into area-landing drill-downs (AreaHub).
+const primaryAreas = [
+  { label: "Cockpit", path: "/dashboard" },
+  { label: "Diagnose", path: "/work" },
+  { label: "Improve", path: "/opportunities" },
+  { label: "Govern", path: "/testops" },
+  { label: "Reports", path: "/reports" },
+  { label: "Admin", path: "/admin" },
 ] as const;
 
-const previouslyReachableDestinations = [
-	"/work",
-	"/metrics",
-	"/people",
-	"/code",
-	"/testops",
-	"/testops/pipelines",
-	"/testops/tests",
-	"/testops/coverage",
-	"/testops/risk",
-	"/security",
-	"/quality",
-	"/feature-flags",
-	"/incident-correlation",
-	"/opportunities",
-	"/capacity-planning",
-	"/ai",
-	"/ai/impact",
-	"/ai/attribution",
-	"/ai/review-load",
-	"/ai/test-gaps",
-	"/ai/risk",
-	"/ai/evidence",
-	"/ai/automations",
+// Leaf labels that must NOT appear as flat sidebar rows anymore.
+const collapsedLeafLabels = [
+  "Metrics",
+  "People",
+  "Code",
+  "Complexity",
+  "Cognitive Load",
+  "Bottlenecks",
+  "Operating Review",
+  "Capacity Planning",
+  "AI Workflows",
+  "Pipelines",
+  "Tests",
+  "Quality",
+  "Coverage",
+  "Delivery Risk",
+  "Incident Correlation",
+  "Security",
+  "Feature Flags",
+  "Compounding Risk",
+  "Report Center",
+] as const;
+
+// Every destination that used to be a sidebar leaf must still resolve (no 404),
+// reachable via its area landing + drill-down. Routes are unchanged by CHAOS-2073.
+const reachableRoutes = [
+  "/dashboard",
+  "/operating-review",
+  "/work",
+  "/metrics",
+  "/people",
+  "/code",
+  "/explore/landscape",
+  "/complexity",
+  "/cognitive-load",
+  "/bottleneck",
+  "/opportunities",
+  "/capacity-planning",
+  "/ai",
+  "/ai/impact",
+  "/ai/attribution",
+  "/ai/review-load",
+  "/ai/test-gaps",
+  "/ai/risk",
+  "/ai/evidence",
+  "/ai/automations",
+  "/testops",
+  "/testops/pipelines",
+  "/testops/tests",
+  "/testops/coverage",
+  "/testops/risk",
+  "/quality",
+  "/security",
+  "/feature-flags",
+  "/incident-correlation",
+  "/risk/compounding",
+  "/reports",
+  "/admin",
 ] as const;
 
 /**
  * Reachability is asserted over the authenticated HTTP request context rather than
- * by browser-navigating to each route. Browser-navigating ~40 chart-heavy pages in a
+ * by browser-navigating to each route. Browser-navigating ~30 chart-heavy pages in a
  * single spec wedged the dev server under CI's constrained runners (net::ERR_ABORTED /
  * "[WebServer] Error: aborted"); an SSR status check is the right weight for "is this
  * route reachable / not a 404". Retries absorb transient dev-server aborts under load.
  */
 async function expectReachable(request: APIRequestContext, path: string) {
-	await expect(async () => {
-		const response = await request.get(path);
-		const status = response.status();
-		expect(status, `${path} returned ${status}`).not.toBe(404);
-		expect(status, `${path} returned ${status}`).toBeLessThan(500);
-	}).toPass({ timeout: 30000, intervals: [500, 1000, 2000] });
+  await expect(async () => {
+    const response = await request.get(path);
+    const status = response.status();
+    expect(status, `${path} returned ${status}`).not.toBe(404);
+    expect(status, `${path} returned ${status}`).toBeLessThan(500);
+  }).toPass({ timeout: 30000, intervals: [500, 1000, 2000] });
 }
 
-async function resetDashboardNav(page: Page) {
-	await page.goto("/dashboard");
-	await page.evaluate(() => localStorage.removeItem("devhealth-nav-collapsed"));
-	await page.goto("/dashboard");
+async function expectSingleSelectedArea(page: Page, path: string, selectedLabel: string) {
+  await page.goto(path);
+
+  // aria-current is rendered from usePathname() (server + hydration) and does not
+  // depend on the slower ?f= filter-param append, so wait for the selected link
+  // directly to stay robust under CI load.
+  const selectedLinks = page.locator('aside a[aria-current="page"]');
+  await expect(selectedLinks).toHaveCount(1, { timeout: 15000 });
+  await expect(selectedLinks).toHaveText(selectedLabel);
 }
 
-async function expandSection(page: Page, section: string) {
-	if (section === "Cockpit") return;
-	await page.getByRole("button", { name: section }).click();
-}
+test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)", () => {
+  test("sidebar surfaces exactly the six decision areas as links, no leaf rows", async ({
+    page,
+  }) => {
+    await page.goto("/dashboard");
+    await waitForHydration(page);
 
-async function expectSingleSelectedNavItem(
-	page: Page,
-	path: string,
-	selectedLabel: string,
-) {
-	await page.goto(path);
+    const aside = page.locator("aside");
 
-	// aria-current is rendered from usePathname() (server + hydration) and does not
-	// depend on the slower ?f= filter-param append, so wait for the selected link
-	// directly to stay robust under CI load.
-	const selectedLinks = page.locator('aside a[aria-current="page"]');
-	await expect(selectedLinks).toHaveCount(1, { timeout: 15000 });
-	await expect(selectedLinks).toHaveText(selectedLabel);
-}
+    for (const area of primaryAreas) {
+      await expect(aside.getByRole("link", { name: area.label, exact: true })).toHaveAttribute(
+        "href",
+        new RegExp(`${area.path}(?:[?#].*)?`),
+      );
+    }
 
-test.describe("primary navigation reachability", () => {
-	test("exposes every primary section and reaches representative nav destinations", async ({
-		page,
-		request,
-	}) => {
-		// Wait for client hydration before interacting (the app appends ?f= once JS runs).
-		await page.goto("/dashboard");
-		await page.waitForFunction(
-			() => new URL(window.location.href).searchParams.get("f"),
-			{
-				timeout: 15000,
-			},
-		);
+    // Leaf destinations are no longer enumerated flat in the sidebar.
+    for (const leaf of collapsedLeafLabels) {
+      await expect(aside.getByRole("link", { name: leaf, exact: true })).toHaveCount(0);
+    }
+  });
 
-		for (const section of primarySections) {
-			await expect(page.getByRole("button", { name: section })).toBeVisible();
-		}
+  test("every former leaf destination still resolves without 404", async ({ request }) => {
+    for (const route of reachableRoutes) {
+      await expectReachable(request, route);
+    }
+  });
 
-		for (const item of navLinks) {
-			await expectReachable(request, item.path);
-		}
-	});
+  test("reaches every AI tab from the Improve area landing drill-down", async ({
+    page,
+    request,
+  }) => {
+    await page.goto("/opportunities");
+    await waitForHydration(page);
 
-	test("reaches every AI tab from the unified AI Workflows area", async ({
-		page,
-		request,
-	}) => {
-		await resetDashboardNav(page);
-		await waitForHydration(page);
-		await expandSection(page, "Improve");
+    // AI Workflows now lives in the Improve area's drill-down hub, not the sidebar.
+    const improveHub = page.getByRole("region", {
+      name: "Improve destinations",
+    });
+    await clickUntilUrl(
+      page,
+      improveHub.getByRole("link", { name: /AI Workflows/ }),
+      /\/ai(?:[?#].*)?$/,
+    );
 
-		await clickUntilUrl(
-			page,
-			page.getByRole("link", { name: "AI Workflows", exact: true }),
-			/\/ai(?:[?#].*)?$/,
-		);
+    for (const tab of [
+      "Impact",
+      "Attribution",
+      "Review Load",
+      "Test Gaps",
+      "Governance Risk",
+      "Evidence",
+      "Automations",
+    ]) {
+      await clickUntilHeading(
+        page,
+        page.getByRole("link", { name: new RegExp(`^${tab}`) }),
+        page.getByRole("heading", { level: 2, name: tab }),
+      );
+      await expectReachable(request, new URL(page.url()).pathname);
+    }
+  });
 
-		for (const tab of [
-			"Impact",
-			"Attribution",
-			"Review Load",
-			"Test Gaps",
-			"Governance Risk",
-			"Evidence",
-			"Automations",
-		]) {
-			await clickUntilHeading(
-				page,
-				page.getByRole("link", { name: new RegExp(`^${tab}`) }),
-				page.getByRole("heading", { level: 2, name: tab }),
-			);
-			await expectReachable(request, new URL(page.url()).pathname);
-		}
-	});
-
-	test("previously reachable destinations resolve without 404", async ({
-		request,
-	}) => {
-		for (const destination of previouslyReachableDestinations) {
-			await expectReachable(request, destination);
-		}
-	});
-
-	test("marks exactly one primary nav item as selected for representative routes", async ({
-		page,
-	}) => {
-		for (const route of [
-			{ path: "/metrics?tab=dora", selectedLabel: "Metrics" },
-			{ path: "/testops/coverage", selectedLabel: "Coverage" },
-			{ path: "/testops/risk", selectedLabel: "Delivery Risk" },
-			{ path: "/bottleneck", selectedLabel: "Bottlenecks" },
-			{ path: "/risk/compounding", selectedLabel: "Compounding Risk" },
-		]) {
-			await expectSingleSelectedNavItem(page, route.path, route.selectedLabel);
-		}
-	});
+  test("marks exactly one area as selected for representative leaf routes", async ({ page }) => {
+    for (const route of [
+      { path: "/metrics?tab=dora", selectedLabel: "Diagnose" },
+      { path: "/testops/coverage", selectedLabel: "Govern" },
+      { path: "/testops/risk", selectedLabel: "Govern" },
+      { path: "/bottleneck", selectedLabel: "Diagnose" },
+      { path: "/risk/compounding", selectedLabel: "Govern" },
+      { path: "/operating-review", selectedLabel: "Cockpit" },
+    ]) {
+      await expectSingleSelectedArea(page, route.path, route.selectedLabel);
+    }
+  });
 });
