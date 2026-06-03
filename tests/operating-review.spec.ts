@@ -33,6 +33,8 @@ test.describe("Operating Review", () => {
     await expect(
       aiSection.getByRole("heading", { name: "AI Workflow Intelligence" }),
     ).toBeVisible();
+    await expect(aiSection).not.toContainText(/\bAI section\b/i);
+    await expect(aiSection).not.toContainText(/\bSection\b/);
     await expect(aiSection).toContainText(/operating patterns, not individual performance/i);
     await expect(aiSection).toContainText("AI-assisted PR ratio");
     await expect(aiSection).toContainText("Review amplification");
@@ -47,6 +49,11 @@ test.describe("Operating Review", () => {
       "href",
       "/ai/automations",
     );
+
+    const recommendationsBlock = page
+      .getByRole("heading", { name: "Recommendations" })
+      .locator("..");
+    await expect(recommendationsBlock).not.toContainText(/\bRule engine\b/i);
   });
 
   test("pinned team in URL switches off the All Teams aggregate", async ({ page }) => {
