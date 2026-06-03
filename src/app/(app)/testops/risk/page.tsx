@@ -13,6 +13,7 @@ import { withFilterParam } from "@/lib/filters/url";
 import { fetchRiskMetrics } from "@/lib/testops/fetchers";
 import { getServerEnv } from "@/lib/config";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type RiskPageProps = {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -151,7 +152,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 								TestOps
 							</p>
 							<h1 className="mt-2 font-(--font-display) text-3xl">
-								Risk & Quality Drag
+								Delivery Risk
 							</h1>
 							<p className="mt-2 text-sm text-(--ink-muted)">
 								Deployment confidence and risk assessment.
@@ -161,7 +162,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 							href={withFilterParam("/", filters, activeRole)}
 							className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
 						>
-							Back to cockpit
+							{CTA_LABELS.backToCockpit}
 						</Link>
 					</header>
 

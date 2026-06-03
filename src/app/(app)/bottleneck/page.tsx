@@ -1,5 +1,5 @@
 /**
- * /bottleneck — Delivery Bottleneck Summary (CHAOS-1742).
+ * /bottleneck — Bottlenecks.
  *
  * RSC entry. Pre-fetches WIP saturation + review latency data and renders
  * KPI tiles, WIP × Throughput quadrant, Review Load × Latency quadrant,
@@ -25,6 +25,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { fetchOrNull } from "@/lib/fetchOrNull";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type BottleneckPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -120,7 +121,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Bottlenecks</p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">Delivery Bottleneck Summary</h1>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Bottlenecks</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 WIP saturation, review latency, and blocked work in one view.
               </p>
@@ -132,7 +133,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
               href={withFilterParam("/", filters, activeRole)}
               className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
-              Back to cockpit
+              {CTA_LABELS.backToCockpit}
             </Link>
           </header>
 
