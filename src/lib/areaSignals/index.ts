@@ -1,29 +1,29 @@
 // ── Area signals: shared dispatcher (CHAOS-2074) ──────────────────────────────
 //
 // `getAreaSignals(areaId, filters)` is the single RSC entry point an area
-// landing calls to resolve its sub-area signal cards. Govern is wired to its
-// real resolver now; Diagnose / Improve are Phase-2 stubs that currently return
-// the static descriptors as honest-empty ("unavailable") cards so the landing
-// renders the right SHAPE before the resolver fetching lands. Cockpit / utility
-// areas have no signal grid.
-//
-// Phase 2 only has to replace the `diagnose` / `improve` cases with real
-// resolvers mirroring `getGovernSignals` — the type, the AreaHub rendering, and
-// the descriptors are already in place.
+// landing calls to resolve its sub-area signal cards. Govern, Diagnose, and
+// Improve are wired to their real resolvers. Cockpit renders its single
+// navigational sub-area as a calm "neutral" card; reports / admin have no
+// signal grid. No sub-area ever renders a fabricated value — a missing or
+// failed source degrades to an honest "unavailable" (DataState) card.
 
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { MetricFilter } from "@/lib/filters/types";
 
+import { getDiagnoseSignals } from "./diagnose";
 import { getGovernSignals } from "./govern";
+import { getImproveSignals } from "./improve";
 import type { AreaSignal } from "./types";
 
 export type { AreaSignal, AreaSignalState } from "./types";
+export { getDiagnoseSignals } from "./diagnose";
 export { getGovernSignals } from "./govern";
+export { getImproveSignals } from "./improve";
 
 /**
- * Resolve an area's signal cards. Returns `[]` for areas with no signal grid
- * (cockpit, reports, admin) and honest-empty descriptor cards for areas whose
- * resolver is not yet wired (Phase 2).
+ * Resolve an area's signal cards. Govern/Diagnose/Improve fetch real signals;
+ * Cockpit returns its single sub-area as a calm "neutral" card; reports / admin
+ * return `[]` (no signal grid).
  */
 export async function getAreaSignals(
   areaId: NavAreaId,
@@ -34,10 +34,9 @@ export async function getAreaSignals(
     case "govern":
       return getGovernSignals(filters, isTestMode);
     case "diagnose":
+      return getDiagnoseSignals(filters, isTestMode);
     case "improve":
-      // Phase 2 wires these resolvers. Until then, surface the descriptors as
-      // honest-empty cards (never fabricated values) so the grid shape is right.
-      return descriptorStubs(areaId, "unavailable");
+      return getImproveSignals(filters, isTestMode);
     case "cockpit":
       // Cockpit's single sub-area (Operating Review) has no severity metric; it
       // is a navigational surface. Render it as a calm "neutral" card rather
@@ -51,7 +50,6 @@ export async function getAreaSignals(
 
 /**
  * Map an area's nav descriptors to placeholder `AreaSignal`s in a given state.
- * "unavailable" → honest-empty (DataState) for not-yet-wired metric areas;
  * "neutral" → calm navigational card for areas without severity metrics.
  */
 function descriptorStubs(areaId: NavAreaId, state: "unavailable" | "neutral"): AreaSignal[] {
