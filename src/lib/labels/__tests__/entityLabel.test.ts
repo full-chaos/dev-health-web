@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
 	resolveEntityLabel,
+	chartEntityLabel,
 	resolveEntityLabels,
 	scrubIdentifiers,
 } from "@/lib/labels/entityLabel";
@@ -153,5 +154,44 @@ describe("scrubIdentifiers", () => {
 		expect(scrubIdentifiers("")).toEqual({ text: "", changed: false });
 		expect(scrubIdentifiers(null)).toEqual({ text: "", changed: false });
 		expect(scrubIdentifiers(undefined)).toEqual({ text: "", changed: false });
+	});
+});
+
+describe("chartEntityLabel", () => {
+	it("returns a confident human label unchanged", () => {
+		expect(chartEntityLabel("frontend-web")).toBe("frontend-web");
+	});
+
+	it("strips a known prefix from a readable slug", () => {
+		expect(chartEntityLabel("repo:web-app")).toBe("web-app");
+	});
+
+	it("NEVER returns a bare UUID — degrades to a stable short token", () => {
+		const label = chartEntityLabel(UUID);
+		expect(label).toBe("#550e8400");
+		expect(label).not.toBe(UUID);
+	});
+
+	it("degrades a prefixed UUID while preserving the entity prefix", () => {
+		expect(chartEntityLabel(`repo:${UUID}`)).toBe("repo\u00b7550e8400");
+	});
+
+	it("degrades a 32-char hex id", () => {
+		expect(chartEntityLabel(HEX32)).toBe("#550e8400");
+	});
+
+	it("honours an explicit name when one resolves", () => {
+		expect(chartEntityLabel(UUID, { name: "Web App" })).toBe("Web App");
+	});
+
+	it("falls back safely for empty ids without leaking a raw token", () => {
+		expect(chartEntityLabel("")).toBe("Unknown");
+		expect(chartEntityLabel(undefined)).toBe("Unknown");
+	});
+
+	it("never throws in development for an unresolved id", () => {
+		vi.stubEnv("NODE_ENV", "development");
+		expect(() => chartEntityLabel(UUID)).not.toThrow();
+		expect(chartEntityLabel(UUID)).toBe("#550e8400");
 	});
 });
