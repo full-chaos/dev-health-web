@@ -2,6 +2,7 @@ import { test, expect, Page } from "@playwright/test";
 
 import { decodeFilter } from "../src/lib/filters/encode";
 import { expandAllSidebarGroups } from "./helpers/sidebar";
+import { clickUntilUrl } from "./helpers/nav";
 
 const getFilterParam = (url: string) => new URL(url).searchParams.get("f");
 
@@ -72,15 +73,18 @@ test.describe("filter propagation", () => {
       { label: /People/i, path: "/people" },
       { label: /Metrics/i, path: "/metrics" },
       { label: /Landscape/i, path: "/explore/landscape" },
-      { label: /^Work Investment$/, path: "/work" },
+      { label: /^Work$/, path: "/work" },
       { label: /Code/i, path: "/code" },
       { label: /Opportunities/i, path: "/opportunities" },
       { label: /Home/i, path: "/dashboard" },
     ];
 
     for (const route of routes) {
-      await nav.getByRole("link", { name: route.label }).click();
-      await expect.poll(() => new URL(page.url()).pathname).toBe(route.path);
+      await clickUntilUrl(
+        page,
+        nav.getByRole("link", { name: route.label }),
+        new RegExp(`${route.path}(?:[?#].*)?$`),
+      );
       await expectFilterParam(page, updatedFilter);
       await expectDeveloperFilter(page, "dev-health-web");
     }
@@ -94,8 +98,7 @@ test.describe("filter propagation", () => {
     expect(updatedFilter).not.toBe(initialFilter);
 
     const nav = page.locator("aside nav");
-    await nav.getByRole("link", { name: /^Work Investment$/ }).click();
-    await expect.poll(() => new URL(page.url()).pathname).toBe("/work");
+    await clickUntilUrl(page, nav.getByRole("link", { name: /^Work$/ }), /\/work(?:[?#].*)?$/);
     await expectFilterParam(page, updatedFilter);
     await expectDeveloperFilter(page, "metrics-owner");
   });

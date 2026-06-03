@@ -34,11 +34,33 @@ function makeFilter(): MetricFilter {
 }
 
 describe("PrimaryNav — section composition", () => {
+  it("keeps the collapsed IA to six primary sections with one AI Workflows entry", () => {
+    render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
+
+    const sectionHeadings = screen
+      .getAllByRole("button")
+      .map((button) => (button.textContent ?? "").replace(/\s+/g, " ").trim());
+
+    expect(sectionHeadings).toHaveLength(6);
+    expect(sectionHeadings).toEqual([
+      "Cockpit",
+      "Diagnose",
+      "Improve",
+      "Govern",
+      "Reports",
+      "Admin",
+    ]);
+
+    const aiLinks = screen.getAllByRole("link", { name: /^AI Workflows$/i });
+    expect(aiLinks).toHaveLength(1);
+    expect(aiLinks[0]).toHaveAttribute("href", expect.stringContaining("/ai"));
+  });
+
   it("renders the 'Cognitive Load' nav item exactly once (regression: CHAOS-1747)", () => {
     render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
 
     // CHAOS-1747: the entry was duplicated under both Observe and Investigate.
-    // Cognitive Load is a wellbeing/focus surface and belongs only under Spot Pressure Early.
+    // Cognitive Load is a wellbeing/focus surface and belongs only under Diagnose.
     const cognitiveLoadLinks = screen.getAllByRole("link", {
       name: /cognitive load/i,
     });
@@ -49,15 +71,13 @@ describe("PrimaryNav — section composition", () => {
     );
   });
 
-  it("preserves canonical section ordering: Cockpit, See Where Time Goes, Spot Pressure Early, Improve Delivery Confidence", () => {
+  it("preserves canonical section ordering: Cockpit, Diagnose, Improve, Govern", () => {
     render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
 
     const sectionHeadings = screen
       .getAllByRole("button")
       .map((b) => b.textContent ?? "")
-      .filter((t) =>
-        /cockpit|see where time goes|spot pressure early|improve delivery confidence/i.test(t),
-      );
+      .filter((t) => /cockpit|diagnose|improve|govern/i.test(t));
 
     // Quick sanity that the four primary sections exist and are ordered correctly.
     // Loose match — exact heading text may include counts/icons.
@@ -65,35 +85,35 @@ describe("PrimaryNav — section composition", () => {
       sectionHeadings.findIndex((h) => new RegExp(label, "i").test(h));
 
     const cockpitIdx = indexOf("cockpit");
-    const seeTimeIdx = indexOf("see where time goes");
-    const spotPressureIdx = indexOf("spot pressure early");
-    const deliveryIdx = indexOf("improve delivery confidence");
+    const diagnoseIdx = indexOf("diagnose");
+    const improveIdx = indexOf("improve");
+    const governIdx = indexOf("govern");
 
     expect(cockpitIdx).toBeGreaterThanOrEqual(0);
-    expect(seeTimeIdx).toBeGreaterThan(cockpitIdx);
-    expect(spotPressureIdx).toBeGreaterThan(seeTimeIdx);
-    expect(deliveryIdx).toBeGreaterThan(spotPressureIdx);
+    expect(diagnoseIdx).toBeGreaterThan(cockpitIdx);
+    expect(improveIdx).toBeGreaterThan(diagnoseIdx);
+    expect(governIdx).toBeGreaterThan(improveIdx);
   });
 
-  it("renders the 'Bottlenecks' nav item under Spot Pressure Early (CHAOS-1742)", () => {
+  it("renders the 'Bottlenecks' nav item under Diagnose (CHAOS-1742)", () => {
     render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
 
     const bottleneckLinks = screen.getAllByRole("link", {
       name: /bottlenecks/i,
     });
-    // Exactly one Bottlenecks link — under the Spot Pressure Early section.
+    // Exactly one Bottlenecks link — under the Diagnose section.
     expect(bottleneckLinks).toHaveLength(1);
     expect(bottleneckLinks[0]).toHaveAttribute("href", expect.stringContaining("/bottleneck"));
   });
 });
 
-it("renders the 'Complexity' nav item under Spot Pressure Early (CHAOS-1745)", () => {
+it("renders the 'Complexity' nav item under Diagnose (CHAOS-1745)", () => {
   render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
 
   const complexityLinks = screen.getAllByRole("link", {
     name: /complexity/i,
   });
-  // Exactly one Complexity link — under the Spot Pressure Early section.
+  // Exactly one Complexity link — under the Diagnose section.
   expect(complexityLinks).toHaveLength(1);
   expect(complexityLinks[0]).toHaveAttribute("href", expect.stringContaining("/complexity"));
 });
@@ -102,10 +122,28 @@ it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", ()
   render(<PrimaryNav filters={makeFilter()} active="quality" />);
 
   const qualityLinks = screen.getAllByRole("link", {
-    name: /^QualityReliability$/i,
+    name: /^Quality$/i,
   });
 
   expect(qualityLinks).toHaveLength(1);
   expect(qualityLinks[0]).toHaveAttribute("href", expect.stringContaining("/quality"));
   expect(qualityLinks[0]).toHaveAttribute("aria-current", "page");
 });
+
+it.each([
+  { active: "home", label: /^Home$/i, href: "/dashboard" },
+  { active: "work", label: /^Work$/i, href: "/work" },
+  { active: "ai-workflows", label: /^AI Workflows$/i, href: "/ai" },
+  { active: "testops", label: /^TestOps$/i, href: "/testops" },
+  { active: "reports", label: /^Report Center$/i, href: "/reports" },
+  { active: "admin", label: /^Settings$/i, href: "/admin" },
+])(
+  "highlights $active as the active nav item for representative routes",
+  ({ active, label, href }) => {
+    render(<PrimaryNav filters={makeFilter()} active={active} />);
+
+    const link = screen.getByRole("link", { name: label });
+    expect(link).toHaveAttribute("href", expect.stringContaining(href));
+    expect(link).toHaveAttribute("aria-current", "page");
+  },
+);

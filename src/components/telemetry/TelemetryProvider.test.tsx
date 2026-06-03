@@ -39,16 +39,20 @@ describe("TelemetryProvider", () => {
         entryRoutePattern: "/metrics",
       }),
     );
-    expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith("page_viewed", {
-      routePattern: "/metrics",
-      page: "/metrics",
-      referrerRoutePattern: null,
-    });
-    expect(telemetryMock.setTelemetryContext).toHaveBeenCalledWith(
-      expect.objectContaining({
-        anonymousUserId: expect.not.stringContaining("user-raw"),
-        orgIdHash: expect.not.stringContaining("org-raw"),
+    await waitFor(() =>
+      expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith("page_viewed", {
+        routePattern: "/metrics",
+        page: "/metrics",
+        referrerRoutePattern: null,
       }),
+    );
+    await waitFor(() =>
+      expect(telemetryMock.setTelemetryContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          anonymousUserId: expect.not.stringContaining("user-raw"),
+          orgIdHash: expect.not.stringContaining("org-raw"),
+        }),
+      ),
     );
   });
 
@@ -58,7 +62,12 @@ describe("TelemetryProvider", () => {
         <div>App</div>
       </TelemetryProvider>,
     );
-    await waitFor(() => expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith("session_started", expect.any(Object)));
+    await waitFor(() =>
+      expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith(
+        "session_started",
+        expect.any(Object),
+      ),
+    );
 
     pathname = "/people/abc-123/metrics/cycle-time?person=Ada#top";
     rerender(
@@ -83,7 +92,12 @@ describe("TelemetryProvider", () => {
         <button type="button">App</button>
       </TelemetryProvider>,
     );
-    await waitFor(() => expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith("session_started", expect.any(Object)));
+    await waitFor(() =>
+      expect(telemetryMock.trackTelemetryEvent).toHaveBeenCalledWith(
+        "session_started",
+        expect.any(Object),
+      ),
+    );
 
     act(() => {
       window.dispatchEvent(new Event("devhealth:telemetry-interaction"));
