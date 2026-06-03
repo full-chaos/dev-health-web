@@ -45,7 +45,7 @@ describe("CockpitEmptyState", () => {
 		render(
 			<CockpitEmptyState
 				variant="no-data-connected"
-				action={<a href="/admin/integrations">Connect a source</a>}
+				action={<button type="button">Connect a source</button>}
 			/>,
 		);
 		expect(screen.getByText("Connect a source")).toBeInTheDocument();
