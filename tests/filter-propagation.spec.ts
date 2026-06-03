@@ -16,11 +16,13 @@ const waitForFilterParam = async (page: Page) => {
 };
 
 const updateDeveloperFilter = async (page: Page, value: string, previous: string) => {
-  // Click "Filters" button to expand the advanced filters panel
-  await expect(page.getByRole("button", { name: "Filters" })).toBeVisible({
+  // Click "Filters" button to expand the advanced filters panel. Anchor the
+  // name so it targets only the advanced toggle, not the adjacent "Reset
+  // filters" CTA (CHAOS-2058 registry label) under substring matching.
+  await expect(page.getByRole("button", { name: /^Filters$/ })).toBeVisible({
     timeout: 15000,
   });
-  await page.getByRole("button", { name: "Filters" }).click();
+  await page.getByRole("button", { name: /^Filters$/ }).click();
   await page.locator("summary", { hasText: "Who" }).click();
   await page.getByPlaceholder("alice, bob").fill(value);
   await page.waitForFunction(
@@ -35,7 +37,7 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
   expect(nextValue).toBeTruthy();
 
   // Click "Filters" again to collapse the panel (toggle behavior)
-  await page.getByRole("button", { name: "Filters" }).click();
+  await page.getByRole("button", { name: /^Filters$/ }).click();
 
   return nextValue as string;
 };
