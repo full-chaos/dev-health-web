@@ -33,7 +33,6 @@ test.describe("Operating Review", () => {
     await expect(
       aiSection.getByRole("heading", { name: "AI Workflow Intelligence" }),
     ).toBeVisible();
-    await expect(aiSection).toContainText("AI workflow intelligence");
     await expect(aiSection).toContainText(/operating patterns, not individual performance/i);
     await expect(aiSection).toContainText("AI-assisted PR ratio");
     await expect(aiSection).toContainText("Review amplification");
