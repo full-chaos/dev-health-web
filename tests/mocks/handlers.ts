@@ -2134,6 +2134,21 @@ export const handlers = [
 		});
 	}),
 
+	http.get("*/api/v1/explain", ({ request }) => {
+		const metric =
+			new URL(request.url).searchParams.get("metric") ?? "cycle_time";
+		return HttpResponse.json({
+			metric,
+			label: metric.replace(/_/g, " "),
+			unit: "hours",
+			value: 42,
+			delta_pct: -5,
+			drivers: [],
+			contributors: metric === "churn" ? churnHotspotContributors : [],
+			drilldown_links: {},
+		});
+	}),
+
 	// ---- Drilldown ----
 	http.post("*/api/v1/drilldown/prs", () =>
 		HttpResponse.json({ items: [], total: 0 }),

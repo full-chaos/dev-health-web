@@ -123,7 +123,7 @@ describe("SignalCard", () => {
 		);
 	});
 
-	it("opens evidence via the signal's evidence_ref apiUrl", async () => {
+	it("opens evidence via the signal's metric + evidence_ref", async () => {
 		const onOpenEvidence = vi.fn();
 		render(<SignalCard signal={baseSignal} onOpenEvidence={onOpenEvidence} />);
 
