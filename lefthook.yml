@@ -48,6 +48,9 @@ pre-commit:
       glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
       run: pnpm exec eslint --fix {staged_files}
       stage_fixed: true
+    design-lint:
+      glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+      run: pnpm design-lint || true
 
 pre-push:
   parallel: true
@@ -60,3 +63,7 @@ pre-push:
       glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
       run: pnpm exec eslint {push_files}
       fail_text: "Run `pnpm lint --fix` locally, commit the result, push again. Or `git push --no-verify` to bypass."
+    design-lint:
+      glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+      run: pnpm design-lint || true
+      fail_text: "Design lint is advisory until existing violations are triaged. Run `pnpm design-lint` locally for details."

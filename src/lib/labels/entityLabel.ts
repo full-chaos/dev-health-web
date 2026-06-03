@@ -36,6 +36,7 @@ export interface ResolveEntityLabelOptions {
   nameMap?: Record<string, string>;
   /** Label used when `id` is empty / missing. Defaults to `"Unknown"`. */
   fallback?: string;
+  unresolvedFallback?: string;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -67,6 +68,14 @@ function shortUuid(s: string): string {
   return s.replace(/-/g, "").slice(0, 8);
 }
 
+function assertUnresolvedFallback(id: string, fallback?: string): void {
+  if (process.env.NODE_ENV !== "development") return;
+  if (fallback === "Unresolved") return;
+  throw new Error(
+    `EntityLabel received unresolved id '${id}' without displayName/nameMap or unresolvedFallback: "Unresolved".`,
+  );
+}
+
 /**
  * Resolve a single entity identifier into a render-safe label.
  *
@@ -82,7 +91,7 @@ export function resolveEntityLabel(
   id: string | null | undefined,
   options: ResolveEntityLabelOptions = {},
 ): EntityLabel {
-  const { name, nameMap, fallback = "Unknown" } = options;
+  const { name, nameMap, fallback = "Unknown", unresolvedFallback } = options;
   const raw = typeof id === "string" ? id.trim() : "";
 
   // 1. Empty / missing id.
@@ -109,6 +118,10 @@ export function resolveEntityLabel(
   // 5. UUID (with or without prefix / path) → degrade to a stable short
   //    label, keeping the full id available as a tooltip. Never bare UUID.
   if (isUuidLike(segment)) {
+    assertUnresolvedFallback(raw, unresolvedFallback);
+    if (unresolvedFallback) {
+      return { label: unresolvedFallback, title: raw, resolved: false };
+    }
     const short = shortUuid(segment);
     const label = prefix ? `${prefix}·${short}` : `#${short}`;
     return { label, title: raw, resolved: false };
