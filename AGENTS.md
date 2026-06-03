@@ -86,7 +86,7 @@ The Definition of Done requires:
   - **Canonical procedure:** [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md), deterministic runbook for agents (account check → fixture seed → dev-server verify → Playwright login → screenshot → PR/Linear attach). Follow this end-to-end; the rules below are summary only.
   - Use the **Playwright MCP** (`playwright` skill) to capture screenshots of affected pages/components after the dev server is running
   - Attach screenshots to the GitHub PR body (upload via `gh` CLI or drag-and-drop)
-  - Attach screenshots to the linked Linear issue as a comment: `linear-cli i comment <ID> -b "Screenshot attached" --attach <file>`
+  - Attach screenshots to the linked Linear issue (linear-cli cannot upload a local file — there is **no** `--attach` flag): upload the image to the GitHub PR first, then either `linear-cli attachments create --title "Screenshot" --url "<image-url>" <ID>` or reference the URL in a comment: `linear-cli issues comment <ID> -b "Screenshot: <image-url>"`
   - **Canonical test account:** `admin@devhealth.example` / `devhealth123` (seeded by `dev-hops fixtures generate`). Do not create ad-hoc accounts.
   - **What to capture:** Every page or component visually altered by the change, before/after if modifying existing UI, just after if net-new
   - **When to skip:** Changes that are purely backend, purely type-level, or have no rendered output (add `SCREENSHOT-WAIVER: <reason>` to PR body)
@@ -246,8 +246,8 @@ linear-cli issues get CHAOS-123
 Do **NOT** use `WebFetch` or `curl`, they will 401.
 
 ```bash
-linear-cli attachments download "https://uploads.linear.app/..."
-# → /tmp/linear-img-<hash>.png
+linear-cli uploads fetch "https://uploads.linear.app/..." -f /tmp/linear-img.png
+# omit -f to stream the bytes to stdout instead
 ```
 
 Then `Read` that path to view the image.
