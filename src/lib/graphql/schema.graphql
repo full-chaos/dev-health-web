@@ -505,6 +505,7 @@ type CompoundingRiskPoint {
   weights: CompoundingRiskWeights!
   thresholds: CompoundingRiskThresholds!
   computedAt: DateTime!
+  scopeEntity: CompoundingRiskScopeEntity!
 }
 
 type CompoundingRiskResult {
@@ -518,6 +519,11 @@ type CompoundingRiskResult {
 enum CompoundingRiskScope {
   REPO
   TEAM
+}
+
+type CompoundingRiskScopeEntity {
+  id: String!
+  displayName: String!
 }
 
 enum CompoundingRiskSeverity {
