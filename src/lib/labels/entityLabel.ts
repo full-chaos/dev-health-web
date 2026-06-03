@@ -176,6 +176,29 @@ export function resolveEntityLabels(
 	};
 }
 
+/**
+ * Resolve a single identifier for a NON-React surface — ECharts tooltip /
+ * axis / node label strings, where the JSX `EntityLabel` component cannot be
+ * used. Returns a confident human label when one resolves, otherwise the
+ * stable short token (e.g. `#a1b2c3d4` or `repo·a1b2c3d4`). It NEVER returns a
+ * bare UUID / hash, so chart labels degrade identically to cards and tables.
+ *
+ * Use this anywhere a chart formatter needs a render-safe string for an entity
+ * identifier (repo / team / person / service / artifact).
+ */
+export function chartEntityLabel(
+	id: string | null | undefined,
+	options: ResolveEntityLabelOptions = {},
+): string {
+	const resolved = resolveEntityLabel(id, {
+		unresolvedFallback: "Unresolved",
+		...options,
+	});
+	return resolved.resolved
+		? resolved.label
+		: (resolved.short ?? resolved.label);
+}
+
 // Embedded-identifier scrubbing (CHAOS-2064). Backend-built narrative strings
 // (cockpit headlines, signal titles) can interpolate an *unresolved* scope id
 // directly into prose, e.g. "Compounding risk appears elevated for <uuid>".
