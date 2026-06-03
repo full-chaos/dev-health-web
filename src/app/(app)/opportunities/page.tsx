@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { AreaHub } from "@/components/navigation/AreaHub";
+import { getAreaSignals } from "@/lib/areaSignals";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FocusCard } from "./FocusCard";
 import { checkApiHealth } from "@/lib/api/system";
@@ -71,6 +72,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
           </section>
           <AreaHub
             areaId="improve"
+            signals={await getAreaSignals("improve", filters)}
             filters={filters}
             role={activeRole}
             title="Improve area"

@@ -1,11 +1,15 @@
 "use client";
 
-import type {
-	CockpitSignal,
-	ConfidenceLevel,
-	SignalDirection,
-	SignalSeverity,
-} from "@/lib/types";
+import type { CockpitSignal } from "@/lib/types";
+
+import {
+	CONFIDENCE_DOT,
+	CONFIDENCE_TEXT,
+	DIRECTION_GLYPH,
+	SEVERITY_BADGE,
+	SEVERITY_LABEL,
+	directionAccent,
+} from "./severityTokens";
 
 /**
  * Cockpit signal card (CHAOS-2050).
@@ -33,45 +37,6 @@ export type SignalCardProps = {
 	emphasized?: boolean;
 	onOpenEvidence: OpenEvidence;
 };
-
-const SEVERITY_BADGE: Record<SignalSeverity, string> = {
-	critical: "border-red-500/30 bg-red-500/15 text-red-300",
-	high: "border-amber-500/30 bg-amber-500/15 text-amber-300",
-	medium: "border-(--accent-2)/30 bg-(--accent-2)/12 text-(--accent-2)",
-	low: "border-(--card-stroke) bg-(--card-70) text-(--ink-muted)",
-};
-
-const SEVERITY_LABEL: Record<SignalSeverity, string> = {
-	critical: "Critical",
-	high: "High",
-	medium: "Medium",
-	low: "Low",
-};
-
-const CONFIDENCE_DOT: Record<ConfidenceLevel, string> = {
-	high: "bg-(--accent-3)",
-	medium: "bg-amber-400",
-	low: "bg-(--ink-muted)",
-};
-
-const CONFIDENCE_TEXT: Record<ConfidenceLevel, string> = {
-	high: "text-(--accent-3)",
-	medium: "text-amber-300",
-	low: "text-(--ink-muted)",
-};
-
-const DIRECTION_GLYPH: Record<SignalDirection, string> = {
-	up: "↑",
-	down: "↓",
-	flat: "→",
-};
-
-const directionAccent = (direction: SignalDirection) =>
-	direction === "up"
-		? "text-(--accent-3)"
-		: direction === "down"
-			? "text-(--accent-negative)"
-			: "text-(--ink-muted)";
 
 export function SignalCard({
 	signal,

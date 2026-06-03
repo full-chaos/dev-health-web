@@ -1,6 +1,7 @@
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { AreaHub } from "@/components/navigation/AreaHub";
+import { getAreaSignals } from "@/lib/areaSignals";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
@@ -270,6 +271,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
           {activeTab === "graph" && <GraphView filters={filters} activeRole={activeRole} />}
           <AreaHub
             areaId="diagnose"
+            signals={await getAreaSignals("diagnose", filters)}
             filters={filters}
             role={activeRole}
             title="Diagnose area"
