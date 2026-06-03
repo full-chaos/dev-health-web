@@ -140,10 +140,10 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
 							<span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 font-bold uppercase tracking-[0.16em] text-(--ink-muted)">
 								{topSignal.severity}
 							</span>
-							{(topSignal.scope?.id ?? topSignal.affected_scope) ? (
+							{(topSignal.scope_entity?.id ?? topSignal.affected_scope) ? (
 								<EntityLabel
-									id={topSignal.scope?.id ?? topSignal.affected_scope}
-									displayName={topSignal.scope?.display_name ?? null}
+									id={topSignal.scope_entity?.id ?? topSignal.affected_scope}
+									displayName={topSignal.scope_entity?.display_name ?? null}
 									data-testid="cockpit-top-change-scope"
 									className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 font-medium text-(--ink-muted)"
 								/>

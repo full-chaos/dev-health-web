@@ -179,7 +179,10 @@ describe("CockpitSummary", () => {
 			<CockpitSummary
 				home={makeHome({
 					signals: [
-						{ ...topSignal, scope: { id: UUID, display_name: "payments-api" } },
+						{
+							...topSignal,
+							scope_entity: { id: UUID, display_name: "payments-api" },
+						},
 					],
 				})}
 				filters={filters}
@@ -195,7 +198,9 @@ describe("CockpitSummary", () => {
 		render(
 			<CockpitSummary
 				home={makeHome({
-					signals: [{ ...topSignal, affected_scope: "", scope: { id: UUID } }],
+					signals: [
+						{ ...topSignal, affected_scope: "", scope_entity: { id: UUID } },
+					],
 				})}
 				filters={filters}
 			/>,

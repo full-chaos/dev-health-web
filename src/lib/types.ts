@@ -95,10 +95,11 @@ export type CockpitSignal = {
 	severity: SignalSeverity;
 	confidence: ConfidenceLevel;
 	affected_scope: string;
-	/** Server-resolved scope entity (CHAOS-2064). Preferred over `affected_scope`. */
-	scope?: EntityRef | null;
-	/** Server-resolved subject entity (CHAOS-2064), distinct from scope. */
-	subject?: EntityRef | null;
+	/**
+	 * Server-resolved scope entity (CHAOS-2064). Matches the backend REST key
+	 * `scope_entity` exactly. Preferred over `affected_scope` for the scope chip.
+	 */
+	scope_entity?: EntityRef | null;
 	evidence_count: number;
 	why_it_matters: string;
 	recommended_action: string;
