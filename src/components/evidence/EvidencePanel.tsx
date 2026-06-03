@@ -80,6 +80,11 @@ const explainMetricFromApiUrl = (apiUrl?: string) => {
 };
 
 const readJsonOrEmpty = async <T,>(response: Response): Promise<T | null> => {
+  // Real fetch Responses always expose text(); some test doubles only provide
+  // json(). Fall back to json() so both real Responses and realistic mocks work.
+  if (typeof response.text !== "function") {
+    return (await response.json()) as T;
+  }
   const text = await response.text();
   const trimmed = text.trim();
   return trimmed ? (JSON.parse(trimmed) as T) : null;
@@ -126,17 +131,28 @@ export function EvidencePanel({
         let requestPath = apiUrl ?? "/api/v1/explain";
         try {
           let result: EvidencePanelResult | null | undefined;
-          const explainMetric = metric ?? explainMetricFromApiUrl(apiUrl);
-          if (explainMetric) {
+          if (apiUrl) {
+            // apiUrl wins: a populated evidence_ref must drive the panel.
+            // Route /api/v1/explain URLs through the typed, cached client;
+            // fetch all other evidence_ref endpoints directly.
+            const apiExplainMetric = explainMetricFromApiUrl(apiUrl);
+            if (apiExplainMetric) {
+              requestPath = "/api/v1/explain";
+              result = await getExplainData({
+                metric: apiExplainMetric,
+                filters,
+              });
+            } else {
+              const res = await fetch(apiUrl);
+              if (!res.ok) throw new Error(ValidationErrors.FailedToFetchEvidence);
+              result = await readJsonOrEmpty<EvidencePanelResult>(res);
+            }
+          } else if (metric) {
             requestPath = "/api/v1/explain";
             result = await getExplainData({
-              metric: explainMetric,
+              metric,
               filters,
             });
-          } else if (apiUrl) {
-            const res = await fetch(apiUrl);
-            if (!res.ok) throw new Error(ValidationErrors.FailedToFetchEvidence);
-            result = await readJsonOrEmpty<EvidencePanelResult>(res);
           }
 
           if (result) {
