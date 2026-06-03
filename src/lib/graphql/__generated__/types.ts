@@ -553,6 +553,7 @@ export type CompoundingRiskPoint = {
   computedAt: Scalars['DateTime']['output'];
   day: Scalars['Date']['output'];
   scope: CompoundingRiskScope;
+  scopeEntity: CompoundingRiskScopeEntity;
   scopeId: Scalars['String']['output'];
   scopeLabel: Scalars['String']['output'];
   score?: Maybe<Scalars['Float']['output']>;
@@ -573,6 +574,12 @@ export type CompoundingRiskResult = {
 export type CompoundingRiskScope =
   | 'REPO'
   | 'TEAM';
+
+export type CompoundingRiskScopeEntity = {
+  __typename?: 'CompoundingRiskScopeEntity';
+  displayName: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+};
 
 export type CompoundingRiskSeverity =
   | 'ELEVATED'
