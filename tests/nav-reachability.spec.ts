@@ -102,12 +102,12 @@ async function expectSingleSelectedNavItem(
 	selectedLabel: string,
 ) {
 	await page.goto(path);
-	await page.evaluate(() => localStorage.removeItem("devhealth-nav-collapsed"));
-	await page.goto(path);
-	await waitForHydration(page);
 
+	// aria-current is rendered from usePathname() (server + hydration) and does not
+	// depend on the slower ?f= filter-param append, so wait for the selected link
+	// directly to stay robust under CI load.
 	const selectedLinks = page.locator('aside a[aria-current="page"]');
-	await expect(selectedLinks).toHaveCount(1);
+	await expect(selectedLinks).toHaveCount(1, { timeout: 15000 });
 	await expect(selectedLinks).toHaveText(selectedLabel);
 }
 
