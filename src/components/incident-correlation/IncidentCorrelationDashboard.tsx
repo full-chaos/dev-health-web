@@ -24,6 +24,7 @@ import { SankeyChart } from "@/components/charts/SankeyChart";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { buildExploreUrl } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import type {
 	Contributor,
@@ -271,7 +272,6 @@ export function IncidentCorrelationDashboard({
 				</section>
 			)}
 
-			{/* ── CFR enlarged sparkline (V1 trend) ──────────────────────────────── */}
 			{cfrDelta && cfrDelta.spark.length > 0 && (
 				<section
 					className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
@@ -282,14 +282,15 @@ export function IncidentCorrelationDashboard({
 							Change Failure Rate — Trend
 						</h2>
 						<span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-							V1 sparkline
+							Recent trend
 						</span>
 					</div>
 					<p className="mt-1 text-xs text-(--ink-muted)">
-						Multi-week deployments-vs-incidents trend requires a future ops
-						resolver (planned: CHAOS-1757).
+						Deployment and incident trends appear when the connected source
+						provides enough history for the selected window.
 					</p>
 					<div
+						role="img"
 						aria-label="CFR sparkline"
 						className="mt-4 flex h-24 items-end gap-0.5"
 						data-testid="cfr-sparkline"
@@ -299,11 +300,11 @@ export function IncidentCorrelationDashboard({
 								0.01,
 								...cfrDelta.spark.map((p) => p.value),
 							);
-							return cfrDelta.spark.map((point, i) => {
+							return cfrDelta.spark.map((point) => {
 								const height = Math.max(4, (point.value / maxVal) * 88);
 								return (
 									<div
-										key={i}
+										key={point.ts}
 										className="flex-1 rounded-t-sm bg-(--accent)"
 										style={{ height: `${height}px` }}
 										title={`${point.ts}: ${point.value}`}
@@ -334,7 +335,7 @@ export function IncidentCorrelationDashboard({
 								})}
 								className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
 							>
-								Evidence
+								{CTA_LABELS.openEvidence}
 							</Link>
 						</div>
 						{topDrivers.length > 0 ? (
@@ -363,7 +364,7 @@ export function IncidentCorrelationDashboard({
 								})}
 								className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
 							>
-								Evidence
+								{CTA_LABELS.openEvidence}
 							</Link>
 						</div>
 						{topContributors.length > 0 ? (
@@ -400,7 +401,8 @@ export function IncidentCorrelationDashboard({
 						</h2>
 						<p className="text-xs text-(--ink-muted)">
 							{incidentRows.length} incident
-							{incidentRows.length !== 1 ? "s" : ""} · V1: ≤ 500 edges per type
+							{incidentRows.length !== 1 ? "s" : ""} · showing the strongest
+							linked records
 						</p>
 					</div>
 					<div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
@@ -450,8 +452,8 @@ export function IncidentCorrelationDashboard({
 						Deployment → Incident → Work Item Flow
 					</h2>
 					<p className="mt-1 text-xs text-(--ink-muted)">
-						Top {MAX_SANKEY_INCIDENTS} incidents by linkage. Node labels are
-						truncated IDs.
+						Top {MAX_SANKEY_INCIDENTS} incidents by linkage. Labels are
+						shortened so the flow remains readable.
 					</p>
 					<div className="mt-4">
 						<SankeyChart
@@ -469,10 +471,9 @@ export function IncidentCorrelationDashboard({
 					className="rounded-2xl border border-(--card-stroke) bg-(--card-60) p-6 text-sm text-(--ink-muted)"
 					data-testid="empty-edges-state"
 				>
-					No deployment-incident linkage found in the work graph. Edge data
-					populates as <code className="font-mono text-[0.85em]">DEPLOYS</code>{" "}
-					and <code className="font-mono text-[0.85em]">LINKED_INCIDENT</code>{" "}
-					edges are ingested from your provider.
+					No deployment-incident linkage found yet. Deployment and incident
+					associations appear here after your connected provider sends enough
+					linked evidence for the selected window.
 				</section>
 			)}
 		</div>
