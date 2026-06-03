@@ -219,4 +219,24 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
     );
     for (const s of signals) expect(["Quality", "Risk"]).toContain(s.cluster);
   });
+
+  it("skips fetchTestOpsData when prefetched.testOpsData is provided", async () => {
+    // Simulate the page passing its already-fetched testOpsData — the resolver
+    // must reuse it without issuing a second analytics POST.
+    const prefetchedData = {
+      pipelines: { timeseries: [ts("PIPELINE_SUCCESS_RATE", 95)], breakdowns: [] },
+      tests: { timeseries: [ts("TEST_FLAKE_RATE", 1)], breakdowns: [] },
+      coverage: { timeseries: [ts("COVERAGE_LINE_PCT", 90)], breakdowns: [] },
+    };
+    const signals = byId(
+      await getGovernSignals(defaultMetricFilter, false, { testOpsData: prefetchedData }),
+    );
+    // fetchTestOpsData must NOT have been called — the prefetched data was reused.
+    expect(mockTestOps).not.toHaveBeenCalled();
+    // Signals derived from the prefetched data reflect the prefetched values.
+    // Success 95 → shortfall 5 → low.
+    expect(signals.pipelines).toMatchObject({ state: "low", value: "95%" });
+    // Flake 1% → low (< 3 medium threshold).
+    expect(signals.tests).toMatchObject({ state: "low", value: "1%" });
+  });
 });

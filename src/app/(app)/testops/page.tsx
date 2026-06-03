@@ -67,7 +67,10 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
 
   // Resolve the area's sub-area signals (Govern reference resolver) and the
   // borrowed TestOps metric grid in parallel — no waterfall.
-  const [health, testOpsData, governSignals] = await Promise.all([
+  // testOpsData is fetched once here; getGovernSignals reuses it via `prefetched`
+  // to avoid a duplicate analytics POST (PIPELINE_SUCCESS_RATE / TEST_FLAKE_RATE /
+  // COVERAGE_LINE_PCT are all present in the batch below).
+  const [health, testOpsData] = await Promise.all([
     checkApiHealth(),
     fetchTestOpsData(
       {
@@ -84,8 +87,8 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
       },
       isTestMode,
     ),
-    getGovernSignals(filters, isTestMode),
   ]);
+  const governSignals = await getGovernSignals(filters, isTestMode, { testOpsData });
 
   if (!health.ok && !isTestMode) {
     return <ServiceUnavailable />;

@@ -34,6 +34,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 import type { CockpitSignal, SignalSeverity } from "@/lib/types";
+import type { TestOpsData } from "@/lib/testops/types";
 
 import {
   COVERAGE_THRESHOLDS,
@@ -120,10 +121,15 @@ const UNAVAILABLE = { state: "unavailable" as const, value: "" };
  *
  * @param filters  Active metric filter (drives the analytics date range).
  * @param isTestMode  Render deterministic sample data without hitting the API.
+ * @param prefetched  Optional prefetched data from the calling page. When the
+ *   page has already called fetchTestOpsData with a batch that covers
+ *   PIPELINE_SUCCESS_RATE, TEST_FLAKE_RATE, and COVERAGE_LINE_PCT, pass it
+ *   here to avoid a duplicate analytics POST per render.
  */
 export async function getGovernSignals(
   filters: MetricFilter,
   isTestMode = false,
+  prefetched?: { testOpsData?: TestOpsData },
 ): Promise<AreaSignal[]> {
   const govern = getAreaById("govern");
   if (!govern) return [];
@@ -156,10 +162,15 @@ export async function getGovernSignals(
   const orgId = isTestMode ? "default-org" : await resolveOrgId();
 
   // ── Fetch every source in parallel (no serial N+1) ──────────────────────────
+  // When the calling page has already fetched testOpsData with a batch that
+  // covers PIPELINE_SUCCESS_RATE, TEST_FLAKE_RATE, and COVERAGE_LINE_PCT (all
+  // three measures this resolver needs), reuse it to avoid a duplicate POST.
   const [homeData, testOps, coverage, risk, security, compounding, featureFlags] =
     await Promise.all([
       safe(() => getHomeData(filters), "home"),
-      safe(() => fetchTestOpsData(analyticsBatch, isTestMode), "testops"),
+      prefetched?.testOpsData
+        ? Promise.resolve(prefetched.testOpsData)
+        : safe(() => fetchTestOpsData(analyticsBatch, isTestMode), "testops"),
       safe(() => fetchCoverageMetrics(analyticsBatch, isTestMode), "coverage"),
       safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk"),
       safe(
