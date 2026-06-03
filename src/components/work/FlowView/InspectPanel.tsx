@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import type { FlowSubTab } from "./Tabs";
 
@@ -15,7 +16,10 @@ export const buildFlowWorkGraphUrl = (
   activeRole?: string,
 ) => {
   const drilldownFilters: MetricFilter = selection.hotspot?.repoId
-    ? { ...filters, what: { ...filters.what, repos: [selection.hotspot.repoId] } }
+    ? {
+        ...filters,
+        what: { ...filters.what, repos: [selection.hotspot.repoId] },
+      }
     : filters;
   const baseHref = withFilterParam("/work?tab=graph", drilldownFilters, activeRole);
   const connection = WORK_GRAPH_CONNECTION_BY_VIEW[selection.view];
@@ -160,7 +164,7 @@ export function InspectPanel({
                 href={evidenceUrl || "#"}
                 className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
               >
-                <span>Inspect Evidence</span>
+                <span>{CTA_LABELS.openEvidence}</span>
                 <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
                   ↗
                 </span>
@@ -169,7 +173,7 @@ export function InspectPanel({
                 href={flameUrl || "#"}
                 className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
               >
-                <span>Open Representative Flame</span>
+                <span>{CTA_LABELS.openArtifact}</span>
                 <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
                   ↗
                 </span>

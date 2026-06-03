@@ -5,6 +5,8 @@ import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { BackLink } from "@/components/shared/BackLink";
+import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
@@ -158,34 +160,22 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               <p className="mt-2 text-sm text-(--ink-muted)">Trends over the selected window.</p>
               <p className="mt-2 text-sm text-(--ink-muted)">Open a metric to investigate.</p>
             </div>
-            <Link
-              href={withFilterParam("/", filters, activeRole)}
-              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-            >
-              Back to cockpit
-            </Link>
+            <BackLink href={withFilterParam("/", filters, activeRole)} />
           </header>
 
           <FilterBar view="metrics" tab={activeTab.id} />
 
-          <nav className="flex flex-wrap gap-2">
-            {METRIC_TABS.map((tab) => {
-              const isActive = tab.id === activeTab.id;
-              return (
-                <Link
-                  key={tab.id}
-                  href={withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole)}
-                  className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition ${
-                    isActive
-                      ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                      : "border-(--card-stroke) text-(--ink-muted) hover:text-foreground"
-                  }`}
-                >
-                  {tab.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <ModeTabs
+            ariaLabel="Metrics views"
+            activeId={activeTab.id}
+            items={METRIC_TABS.map(
+              (tab): ModeTabItem => ({
+                id: tab.id,
+                label: tab.label,
+                href: withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole),
+              }),
+            )}
+          />
 
           <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -196,7 +186,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 <p className="mt-1 text-sm text-(--ink-muted)">{activeTab.description}</p>
               </div>
               <Link
-                href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
+                href={buildExploreUrl({
+                  metric: activeTab.highlight,
+                  filters,
+                  role: activeRole,
+                })}
                 className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 title={`Open evidence for ${highlightLabel}`}
               >
@@ -209,7 +203,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 return (
                   <Link
                     key={`chip-${metric}`}
-                    href={buildExploreUrl({ metric, filters, role: activeRole })}
+                    href={buildExploreUrl({
+                      metric,
+                      filters,
+                      role: activeRole,
+                    })}
                     className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-(--ink-muted) transition hover:text-foreground"
                   >
                     {data?.label ?? metric}
@@ -248,7 +246,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Likely associations</h2>
                 <Link
-                  href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
+                  href={buildExploreUrl({
+                    metric: activeTab.highlight,
+                    filters,
+                    role: activeRole,
+                  })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Open evidence
@@ -293,7 +295,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
               <div className="flex items-center justify-between">
                 <h2 className="font-(--font-display) text-xl">Primary contributors</h2>
                 <Link
-                  href={buildExploreUrl({ metric: activeTab.highlight, filters, role: activeRole })}
+                  href={buildExploreUrl({
+                    metric: activeTab.highlight,
+                    filters,
+                    role: activeRole,
+                  })}
                   className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
                   Open evidence
@@ -355,7 +361,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 <tbody>
                   {activeTab.metrics.map((metric) => {
                     const data = getMetric(deltas, metric);
-                    const href = buildExploreUrl({ metric, filters, role: activeRole });
+                    const href = buildExploreUrl({
+                      metric,
+                      filters,
+                      role: activeRole,
+                    });
                     return (
                       <tr key={metric} className="border-b border-(--card-stroke)">
                         <td className="py-3 pr-4 font-medium">

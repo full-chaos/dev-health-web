@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -24,6 +22,7 @@ import { FlameView } from "@/components/work/FlameView";
 import { EvidenceView } from "@/components/work/EvidenceView";
 import { GraphView } from "@/components/work/GraphView";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { BackLink } from "@/components/shared/BackLink";
 import { WorkTabNav, type WorkTab } from "@/components/navigation/WorkTabNav";
 
 type WorkPageProps = {
@@ -90,7 +89,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
           "work/investment-hydration",
         )
       : fetchOrNull(
-          getInvestment(filters).then((data) => ({ data, hydrationPayload: null })),
+          getInvestment(filters).then((data) => ({
+            data,
+            hydrationPayload: null,
+          })),
           "work/investment",
         );
 
@@ -212,12 +214,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               </p>
               <p className="mt-2 text-sm text-(--ink-muted)">Select a tab to investigate.</p>
             </div>
-            <Link
-              href={withFilterParam("/", filters, activeRole)}
-              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-            >
-              Re-orient in cockpit
-            </Link>
+            <BackLink href={withFilterParam("/", filters, activeRole)} />
           </header>
 
           <FilterBar view="work" />

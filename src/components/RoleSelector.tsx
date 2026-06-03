@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
+import { FilterPills, type FilterPillOption } from "@/components/shared/FilterPills";
 import {
   type RoleType,
   ROLE_CONFIGS,
@@ -38,35 +39,22 @@ export function RoleSelector({ className }: RoleSelectorProps) {
     [pathname, router, searchParams],
   );
 
+  const options: FilterPillOption<RoleType>[] = ROLE_OPTIONS.map((role) => ({
+    id: role,
+    label: ROLE_CONFIGS[role].shortLabel,
+    title: ROLE_CONFIGS[role].framing,
+  }));
+
   return (
-    <div
-      className={`flex flex-wrap items-center gap-2 ${className ?? ""}`}
-      data-testid="role-selector"
-    >
-      <span className="text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)">View from</span>
-      <div className="flex flex-wrap gap-1">
-        {ROLE_OPTIONS.map((role) => {
-          const config = ROLE_CONFIGS[role];
-          const isActive = role === activeRole;
-          return (
-            <button
-              key={role}
-              type="button"
-              onClick={() => handleRoleChange(role)}
-              className={`rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] transition ${
-                isActive
-                  ? "border-(--accent-2) bg-(--accent-2)/15 text-(--accent-2)"
-                  : "border-(--card-stroke) bg-(--card-80) text-(--ink-muted) hover:border-(--accent-2)/40 hover:text-foreground"
-              }`}
-              aria-pressed={isActive}
-              title={config.framing}
-            >
-              {config.shortLabel}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <FilterPills
+      options={options}
+      value={activeRole}
+      onChange={handleRoleChange}
+      ariaLabel="View from role"
+      leadingLabel="View from"
+      testId="role-selector"
+      className={className}
+    />
   );
 }
 

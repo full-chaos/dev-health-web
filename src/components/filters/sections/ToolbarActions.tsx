@@ -1,3 +1,6 @@
+import { Button } from "@/components/shared/Button";
+import { CTA_LABELS } from "@/lib/design/cta";
+
 type ToolbarActionsProps = {
   allowAdvanced: boolean;
   copyFilters: () => Promise<void>;
@@ -47,20 +50,12 @@ export function ToolbarActions({
           Filters
         </button>
       )}
-      <button
-        type="button"
-        onClick={resetFilters}
-        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-      >
-        Reset
-      </button>
-      <button
-        type="button"
-        onClick={copyFilters}
-        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-      >
-        Copy
-      </button>
+      <Button variant="secondary" onClick={resetFilters}>
+        {CTA_LABELS.resetFilters}
+      </Button>
+      <Button variant="secondary" onClick={copyFilters}>
+        {CTA_LABELS.copy}
+      </Button>
     </div>
   );
 }
