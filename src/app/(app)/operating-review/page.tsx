@@ -188,10 +188,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
             href={`#${section.key}`}
             className={`rounded-2xl border bg-card p-4 transition hover:border-primary/50 ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sm shadow-sky-500/10" : "border-border"}`}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              {section.key === AI_WORKFLOW_SECTION_KEY ? "AI section" : "Section"}
-            </p>
-            <h2 className="mt-2 text-base font-semibold">{section.title}</h2>
+            <h2 className="text-base font-semibold">{section.title}</h2>
             <p className="mt-2 text-xs text-muted-foreground">
               {section.improved.length} improved · {section.worsened.length} worsened ·{" "}
               {section.changed.length} changed
@@ -237,10 +234,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
       ))}
 
       <section className="rounded-[1.75rem] border border-border bg-card/90 p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-          Rule engine
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight">Recommendations</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Recommendations</h2>
         {review.recommendations.length ? (
           <ul className="mt-4 space-y-3">
             {review.recommendations.map((recommendation) => (
