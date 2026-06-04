@@ -4,7 +4,6 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { QualityCoverageTabs } from "@/components/testops/QualityCoverageTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
@@ -177,7 +176,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
 					<header className="flex flex-wrap items-center justify-between gap-4">
 						<div>
 							<p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-								TestOps
+								Tests
 							</p>
 							<h1 className="mt-2 font-(--font-display) text-3xl">Tests</h1>
 							<p className="mt-2 text-sm text-(--ink-muted)">
@@ -191,8 +190,6 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
 							{CTA_LABELS.backToCockpit}
 						</Link>
 					</header>
-
-					<QualityCoverageTabs filters={filters} role={activeRole} />
 
 					<GlobalContextBar filters={filters} />
 					<FilterBar view="testops" />
