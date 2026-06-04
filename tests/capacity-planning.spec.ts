@@ -5,18 +5,18 @@ import { expect, test } from "@playwright/test";
 // E2E suite the backend is not reachable, so the forecast fetch returns
 // null and the page renders the EmptyForecastState card.
 
-test.describe("Capacity Planning page", () => {
-  test("renders the throughput forecast page header", async ({ page }) => {
-    await page.goto("/capacity-planning");
+test.describe("Delivery Forecast page", () => {
+  test("renders the delivery forecast page header", async ({ page }) => {
+    await page.goto("/plan/delivery-forecast");
 
-    await expect(page.getByRole("heading", { name: /Throughput forecast/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Delivery Forecast/i })).toBeVisible();
     await expect(
       page.getByText(/Backlog and scope are derived from the filter bar/i),
     ).toBeVisible();
   });
 
   test("shows the empty-state card when the backend is unreachable", async ({ page }) => {
-    await page.goto("/capacity-planning");
+    await page.goto("/plan/delivery-forecast");
 
     // CHAOS-1783: sample data is gone. Without a reachable forecast the
     // page renders an honest empty state instead of placeholder numbers.
@@ -26,7 +26,7 @@ test.describe("Capacity Planning page", () => {
   });
 
   test("does not expose a manual backlog or team input", async ({ page }) => {
-    await page.goto("/capacity-planning");
+    await page.goto("/plan/delivery-forecast");
 
     // Both inputs were deleted in CHAOS-1783 — backlog is derived from
     // the filter scope server-side.
@@ -35,26 +35,24 @@ test.describe("Capacity Planning page", () => {
   });
 
   test("scope label reflects All teams when no team is selected", async ({ page }) => {
-    await page.goto("/capacity-planning");
+    await page.goto("/plan/delivery-forecast");
 
     await expect(page.getByText(/Scope:\s*All teams/i)).toBeVisible();
   });
 
-  test("links to the Monte Carlo view", async ({ page }) => {
-    await page.goto("/capacity-planning");
+  test("renders Monte Carlo as the local delivery forecast view", async ({ page }) => {
+    await page.goto("/plan/delivery-forecast");
 
-    const link = page.getByRole("link", { name: /Monte Carlo view/i });
+    const link = page.getByRole("link", { name: /^Monte Carlo$/i });
     await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("aria-current", "page");
   });
 
   test("renders the unified global context bar above the forecast (CHAOS-2081)", async ({
     page,
   }) => {
-    await page.goto("/capacity-planning");
+    await page.goto("/plan/delivery-forecast");
 
-    // CHAOS-2081 unified global scope/date/repo into a single GlobalContextBar.
-    // Capacity Planning carries no page-local filters, so the per-page FilterBar
-    // legitimately disappears and the global context bar is the canonical chrome.
     const contextBar = page.getByTestId("global-context-bar");
     await expect(contextBar).toBeVisible();
     await expect(contextBar).toHaveAttribute("aria-label", "Global context");

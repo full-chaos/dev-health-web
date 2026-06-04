@@ -2,13 +2,13 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 import { clickUntilUrl, waitForHydration } from "./helpers/nav";
 
-// CHAOS-2073: the sidebar collapsed to exactly six decision-area links; leaf
-// destinations moved off the sidebar into area-landing drill-downs (AreaHub).
 const primaryAreas = [
   { label: "Cockpit", path: "/dashboard" },
   { label: "Diagnose", path: "/work" },
+  { label: "Plan", path: "/plan" },
   { label: "Improve", path: "/opportunities" },
   { label: "Govern", path: "/testops" },
+  { label: "AI", path: "/ai" },
   { label: "Reports", path: "/reports" },
   { label: "Admin", path: "/admin" },
 ] as const;
@@ -22,7 +22,7 @@ const collapsedLeafLabels = [
   "Cognitive Load",
   "Bottlenecks",
   "Operating Review",
-  "Capacity Planning",
+  "Delivery Forecast",
   "AI Workflows",
   "Pipelines",
   "Tests",
@@ -36,10 +36,10 @@ const collapsedLeafLabels = [
   "Report Center",
 ] as const;
 
-// Every destination that used to be a sidebar leaf must still resolve (no 404),
-// reachable via its area landing + drill-down. Routes are unchanged by CHAOS-2073.
 const reachableRoutes = [
   "/dashboard",
+  "/plan",
+  "/plan/delivery-forecast",
   "/operating-review",
   "/work",
   "/metrics",
@@ -50,7 +50,6 @@ const reachableRoutes = [
   "/cognitive-load",
   "/bottleneck",
   "/opportunities",
-  "/capacity-planning",
   "/ai",
   "/ai/impact",
   "/ai/attribution",
@@ -101,8 +100,8 @@ async function expectSingleSelectedArea(page: Page, path: string, selectedLabel:
   await expect(selectedArea).toHaveText(selectedLabel);
 }
 
-test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)", () => {
-  test("sidebar surfaces exactly the six decision areas as links, no leaf rows", async ({
+test.describe("primary navigation reachability", () => {
+  test("sidebar surfaces exactly the decision areas as links, no flat leaf rows", async ({
     page,
   }) => {
     await page.goto("/dashboard");
@@ -120,6 +119,46 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
     // Leaf destinations are no longer enumerated flat in the sidebar.
     for (const leaf of collapsedLeafLabels) {
       await expect(aside.getByRole("link", { name: leaf, exact: true })).toHaveCount(0);
+    }
+  });
+
+  test("reaches Plan as a top-level area and routes its visible subviews", async ({
+    page,
+    request,
+  }) => {
+    await page.goto("/dashboard");
+    await waitForHydration(page);
+
+    const sidebar = page.locator("aside");
+
+    await clickUntilUrl(
+      page,
+      sidebar.getByRole("link", { name: "Plan", exact: true }),
+      /\/plan(?:[?#].*)?$/,
+    );
+
+    const planChildren = page.getByTestId("nav-children-plan");
+    await expect(planChildren).toBeVisible({ timeout: 15000 });
+
+    for (const child of [
+      { label: "Overview", url: /\/plan(?:[?#].*)?$/, path: "/plan" },
+      {
+        label: "Delivery Forecast",
+        url: /\/plan\/delivery-forecast(?:[?#].*)?$/,
+        path: "/plan/delivery-forecast",
+      },
+      {
+        label: "Operating Review",
+        url: /\/operating-review(?:[?#].*)?$/,
+        path: "/operating-review",
+      },
+    ]) {
+      await clickUntilUrl(
+        page,
+        planChildren.getByRole("link", { name: child.label, exact: true }),
+        child.url,
+      );
+      await expectReachable(request, child.path);
     }
   });
 
@@ -190,7 +229,7 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
       { path: "/testops/risk", selectedLabel: "Govern" },
       { path: "/bottleneck", selectedLabel: "Diagnose" },
       { path: "/risk/compounding", selectedLabel: "Govern" },
-      // J1 (CHAOS-2080): Plan owns the /operating-review prefix, so PrimaryNav marks Plan active.
+      { path: "/plan/delivery-forecast", selectedLabel: "Plan" },
       { path: "/operating-review", selectedLabel: "Plan" },
     ]) {
       await expectSingleSelectedArea(page, route.path, route.selectedLabel);

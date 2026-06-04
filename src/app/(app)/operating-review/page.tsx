@@ -5,11 +5,13 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { BackLink } from "@/components/shared/BackLink";
 import { checkApiHealth } from "@/lib/api/system";
 import { auth } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
 import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
@@ -88,12 +90,10 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
                 Each callout compares the selected week against the prior week.
               </p>
             </div>
-            <Link
-              href={withFilterParam("/", filters, undefined, activeOrigin)}
-              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-            >
-              Back to cockpit
-            </Link>
+            <BackLink
+              href={withFilterParam("/plan", filters, undefined, activeOrigin)}
+              area="Plan"
+            />
           </header>
 
           <FilterBar view="work" />
@@ -271,25 +271,25 @@ function AIWorkflowIntelligenceCallout() {
           className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
           href="/ai"
         >
-          Impact
+          {CTA_LABELS.aiImpact}
         </Link>
         <Link
           className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
           href="/ai/review-load"
         >
-          Review Load
+          {CTA_LABELS.aiReviewLoad}
         </Link>
         <Link
           className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
           href="/ai/risk"
         >
-          Risk
+          {CTA_LABELS.aiRisk}
         </Link>
         <Link
           className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
           href="/ai/automations"
         >
-          Automations
+          {CTA_LABELS.aiAutomations}
         </Link>
       </div>
     </div>
@@ -391,7 +391,7 @@ function EmptyReviewState({
         returned.
       </p>
       <Link className="mt-4 inline-flex text-sm font-medium text-primary" href="/settings">
-        Check data connections
+        {CTA_LABELS.checkDataConnections}
       </Link>
     </section>
   );
