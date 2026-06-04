@@ -31,6 +31,7 @@ import { getDiagnoseSignals } from "@/lib/areaSignals/diagnose";
 import { topSignals } from "@/lib/areaSignals/sort";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveView, type DiagnoseView } from "@/lib/navigation/workPageView";
+import { navTitleForPathname } from "@/lib/navigation/areas";
 
 type WorkPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -223,9 +224,14 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
   // Top sub-area signals bubbled up to the area overview (Framework A2a).
   const leadSignals = topSignals(diagnoseSignals, 3);
+  const pageTitle = navTitleForPathname("/work");
 
   const tabs: ReadonlyArray<ModeTabItem<DiagnoseView>> = [
-    { id: "overview", label: "Overview", href: withFilterParam("/work", filters, activeRole) },
+    {
+      id: "overview",
+      label: "Overview",
+      href: withFilterParam("/work", filters, activeRole),
+    },
     {
       id: "work",
       label: "Work",
@@ -241,9 +247,8 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
           <header className="flex flex-col gap-4">
             <BackLink href={withFilterParam("/", filters, activeRole)} />
             <div>
-              {/* A6: the area is named by the AREA ("Diagnose"), not a borrowed leaf. */}
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Diagnose</p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">Diagnose</h1>
+              <h1 className="mt-2 font-(--font-display) text-3xl">{pageTitle}</h1>
               <p className="mt-2 text-sm text-(--ink-muted)">
                 Metrics, code health, complexity, and flow bottlenecks across the system.
               </p>
