@@ -17,9 +17,10 @@ test("sankey investigation opens from quadrant panel", async ({ page }) => {
     name: /view flow/i,
   });
   await expect(flowLink).toBeVisible();
-  await expect(flowLink).toHaveAttribute("href", /tab=flow/);
+  await expect(flowLink).toHaveAttribute("href", /\/metrics\?tab=flow/);
   await flowLink.click();
 
-  await expect(page).toHaveURL(/tab=flow/);
-  await expect(page.getByTestId("flow-chart-container")).toBeVisible();
+  await expect(page).toHaveURL(/\/metrics\?tab=flow/);
+  await expect(page.getByRole("heading", { name: "Monitoring view" })).toBeVisible();
+  await expect(page.getByText("Flow monitoring")).toBeVisible();
 });

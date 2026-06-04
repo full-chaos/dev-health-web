@@ -68,7 +68,8 @@ test.describe("Diagnose navigation", () => {
       }),
       /\/investment(?:[?#].*)?$/,
     );
-    await expect(page.getByRole("heading", { name: "Elapsed Work Allocation" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unlock investment view" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Upgrade to Team" })).toBeVisible();
 
     await page.goto("/work");
     await clickUntilUrl(

@@ -12,7 +12,7 @@ type InvestigationPanelProps = {
   point: QuadrantPoint;
   data: QuadrantResponse;
   filters: MetricFilter;
-  onClose: () => void;
+  onCloseAction: () => void;
   title?: string;
 };
 
@@ -20,7 +20,7 @@ export function InvestigationPanel({
   point,
   data,
   filters,
-  onClose,
+  onCloseAction,
   title,
 }: InvestigationPanelProps) {
   const activeRole = useActiveRole();
@@ -55,7 +55,7 @@ export function InvestigationPanel({
   const heatmapHref = withFilterParam(heatmapPath, filters, undefined, origin);
 
   const investmentHref = withFilterParam(
-    `/work?tab=flow&mode=investment&context_entity_id=${point.entity_id}&context_entity_label=${point.entity_label}`,
+    `/metrics?tab=flow&context_entity_id=${point.entity_id}&context_entity_label=${point.entity_label}`,
     filters,
     undefined,
     origin,
@@ -107,7 +107,8 @@ export function InvestigationPanel({
           <h3 className="text-sm font-semibold text-foreground">{point.entity_label}</h3>
         </div>
         <button
-          onClick={onClose}
+          type="button"
+          onClick={onCloseAction}
           className="rounded-full border border-(--card-stroke) p-1.5 text-[10px] uppercase tracking-widest text-(--ink-muted) hover:bg-(--card-70)"
           title="Close panel"
         >

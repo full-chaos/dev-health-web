@@ -520,7 +520,7 @@ export function QuadrantPanel({
 							data={scopedData}
 							filters={filters}
 							title={title}
-							onClose={() => {
+							onCloseAction={() => {
 								setSelectedPoint(null);
 								setSelectedPointKey(null);
 							}}
