@@ -30,7 +30,10 @@ test("home loads and navigates to explore via panel", async ({ page }) => {
 
 test("opportunities page renders", async ({ page }) => {
 	await page.goto("/opportunities");
+	// CHAOS-2073: bare /opportunities is the Improve "overview" area view; Focus
+	// Cards is a sub-view tab, not a page heading.
 	await expect(
-		page.getByRole("heading", { name: "Focus Cards" }),
+		page.getByRole("heading", { name: "Improve", level: 1 }),
 	).toBeVisible();
+	await expect(page.getByRole("link", { name: "Focus Cards" })).toBeVisible();
 });
