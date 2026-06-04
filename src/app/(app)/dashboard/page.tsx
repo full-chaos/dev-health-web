@@ -11,6 +11,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { AreaHub } from "@/components/navigation/AreaHub";
+import { getAreaSignals } from "@/lib/areaSignals";
 import { RoleSelectorWithSuspense, RoleFraming } from "@/components/RoleSelectorWrapper";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getHomeData } from "@/lib/api/home";
@@ -188,6 +189,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
           <AreaHub
             areaId="cockpit"
+            signals={await getAreaSignals("cockpit", filters)}
             filters={filters}
             role={activeRole}
             title="Cockpit area"

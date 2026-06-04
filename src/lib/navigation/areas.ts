@@ -23,6 +23,24 @@ export type NavAreaHubItem = {
   label: string;
   href: string;
   description?: string;
+  // ── Signal-card descriptors (CHAOS-2074) ───────────────────────────────────
+  // Static metadata the area resolver pairs with a fetched value to build an
+  // `AreaSignal`. Kept here (the single nav source of truth) so the sidebar,
+  // landing hub, and signal resolvers can never drift. The *value* + *state* are
+  // resolved at request time by the area resolver (see `@/lib/areaSignals`);
+  // these fields only describe HOW a sub-area surfaces as a card.
+  /**
+   * Optional sub-group header within a dense area. Govern groups into
+   * "Quality" / "Risk"; flat areas (Diagnose, Improve) leave this undefined.
+   */
+  cluster?: string;
+  /** Short metric name shown on the card (e.g. "Line coverage", "Open criticals"). */
+  metricLabel?: string;
+  /**
+   * R4 low-value single surface (e.g. Feature Flags): render visually secondary
+   * within its cluster rather than at equal billing.
+   */
+  demoted?: boolean;
 };
 
 export type NavArea = {
@@ -94,48 +112,60 @@ export const navAreas: readonly NavArea[] = [
       "bottleneck",
       "diagnose",
     ],
+    // CHAOS-2074: Diagnose is FLAT (no clusters). Descriptors placed here; Phase
+    // 2 wires the resolver fetching (see `@/lib/areaSignals/getAreaSignals`).
     hubItems: [
       {
         id: "metrics",
         label: "Metrics",
         href: "/metrics?tab=dora",
         description: "DORA and flow trends.",
+        metricLabel: "Deploy frequency",
       },
       {
         id: "people",
         label: "People",
         href: "/people",
         description: "Individual reflection surfaces.",
+        // No area-level metric → resolver surfaces "unavailable" (DataState).
+        metricLabel: "No area metric",
       },
       {
         id: "code",
         label: "Code",
         href: "/code",
         description: "Code health and ownership.",
+        metricLabel: "Code churn",
       },
       {
         id: "landscape",
         label: "Landscape",
         href: "/explore/landscape",
         description: "System landscape overview.",
+        // Gap: no resolver-backed metric yet → "unavailable" (DataState).
+        metricLabel: "No area metric",
       },
       {
         id: "complexity",
         label: "Complexity",
         href: "/complexity",
         description: "Complexity trend and hotspots.",
+        metricLabel: "Avg complexity",
       },
       {
         id: "cognitive-load",
         label: "Cognitive Load",
         href: "/cognitive-load",
         description: "Focus and context-switch pressure.",
+        // Gap: no resolver-backed metric yet → "unavailable" (DataState).
+        metricLabel: "No area metric",
       },
       {
         id: "bottleneck",
         label: "Bottlenecks",
         href: "/bottleneck",
         description: "Flow bottleneck detection.",
+        metricLabel: "WIP saturation",
       },
     ],
   },
@@ -146,18 +176,25 @@ export const navAreas: readonly NavArea[] = [
     placement: "main",
     ownedPathPrefixes: ["/opportunities", "/capacity-planning", "/capacity", "/ai"],
     legacyActiveIds: ["opportunities", "capacity-planning", "ai-workflows", "improve"],
+    // CHAOS-2074: Improve is FLAT (no clusters). Opportunities is the area's own
+    // landing route (`href: "/opportunities"`), so it is NOT duplicated as a hub
+    // item — its volume signal bubbles at the area level via the resolver.
+    // Descriptors placed here; Phase 2 wires the resolver fetching.
     hubItems: [
       {
         id: "capacity-planning",
         label: "Capacity Planning",
         href: "/capacity-planning",
         description: "Plan capacity against demand.",
+        metricLabel: "Forecast (p50 weeks)",
       },
       {
         id: "ai-workflows",
         label: "AI Workflows",
         href: "/ai",
         description: "AI impact, attribution, and governance.",
+        // Adoption %, NOT a severity → resolver surfaces a neutral/info state.
+        metricLabel: "AI-assisted PRs",
       },
     ],
   },
@@ -187,60 +224,84 @@ export const navAreas: readonly NavArea[] = [
       "risk-compounding",
       "govern",
     ],
+    // CHAOS-2074: Govern is sub-grouped into "Quality" and "Risk" clusters,
+    // each internally severity-sorted by the resolver (`getGovernSignals`).
     hubItems: [
+      // ── Cluster: Quality ──────────────────────────────────────────────────
       {
-        id: "pipelines",
-        label: "Pipelines",
-        href: "/testops/pipelines",
-        description: "Pipeline stability.",
+        id: "coverage",
+        label: "Coverage",
+        href: "/testops/coverage",
+        description: "Coverage delta.",
+        cluster: "Quality",
+        metricLabel: "Line coverage",
       },
       {
         id: "tests",
         label: "Tests",
         href: "/testops/tests",
         description: "Test reliability and flake.",
+        cluster: "Quality",
+        metricLabel: "Flake rate",
+      },
+      {
+        id: "pipelines",
+        label: "Pipelines",
+        href: "/testops/pipelines",
+        description: "Pipeline stability.",
+        cluster: "Quality",
+        metricLabel: "Success rate",
       },
       {
         id: "quality",
         label: "Quality",
         href: "/quality",
         description: "Reliability and rework.",
+        cluster: "Quality",
+        metricLabel: "Change failure rate",
       },
+      // ── Cluster: Risk ─────────────────────────────────────────────────────
       {
-        id: "coverage",
-        label: "Coverage",
-        href: "/testops/coverage",
-        description: "Coverage delta.",
+        id: "security",
+        label: "Security",
+        href: "/security",
+        description: "Security posture.",
+        cluster: "Risk",
+        metricLabel: "Open criticals",
       },
       {
         id: "risk",
         label: "Delivery Risk",
         href: "/testops/risk",
         description: "Delivery risk drag.",
+        cluster: "Risk",
+        metricLabel: "Release confidence",
       },
       {
         id: "incident-correlation",
         label: "Incident Correlation",
         href: "/incident-correlation",
         description: "Incidents correlated to changes.",
-      },
-      {
-        id: "security",
-        label: "Security",
-        href: "/security",
-        description: "Security posture.",
-      },
-      {
-        id: "feature-flags",
-        label: "Feature Flags",
-        href: "/feature-flags",
-        description: "Flag lifecycle and debt.",
+        cluster: "Risk",
+        metricLabel: "Change failure rate",
       },
       {
         id: "risk-compounding",
         label: "Compounding Risk",
         href: "/risk/compounding",
         description: "Compounding risk signals.",
+        cluster: "Risk",
+        metricLabel: "Worst risk score",
+      },
+      {
+        id: "feature-flags",
+        label: "Feature Flags",
+        href: "/feature-flags",
+        description: "Flag lifecycle and debt.",
+        cluster: "Risk",
+        metricLabel: "Active flags",
+        // R4: low-value single surface — render secondary, not equal billing.
+        demoted: true,
       },
     ],
   },
