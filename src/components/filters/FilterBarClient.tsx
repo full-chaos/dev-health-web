@@ -56,6 +56,10 @@ export function FilterBarClient({
     visibility,
     workCategory,
   } = useFilterBarState({ view, tab, resolvedVisibility, resolvedScopeLock });
+  const hasAdvancedFilters = Boolean(
+    allowAdvanced &&
+    (visibility.repo || visibility.developer || visibility.workType || visibility.flowStage),
+  );
 
   return (
     <section
@@ -176,7 +180,7 @@ export function FilterBarClient({
           </div>
 
           <ToolbarActions
-            allowAdvanced={allowAdvanced}
+            allowAdvanced={hasAdvancedFilters}
             copyFilters={copyFilters}
             peopleQuery={peopleQuery}
             resetFilters={resetFilters}
@@ -261,7 +265,7 @@ export function FilterBarClient({
           workCategory={workCategory}
         />
 
-        {allowAdvanced && showAdvanced && (
+        {hasAdvancedFilters && showAdvanced && (
           <AdvancedFiltersPanel
             artifacts={artifacts}
             blocked={filters.how.blocked ?? false}
@@ -272,6 +276,7 @@ export function FilterBarClient({
             repos={repos}
             roles={roles}
             updateFilters={updateFilters}
+            visibility={visibility}
             workCategory={workCategory}
           />
         )}
