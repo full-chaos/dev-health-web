@@ -11,6 +11,7 @@ import {
   navAreas,
   selectedAreaIdForPathname,
   selectedChildForPathname,
+  basePath,
   type NavArea,
   type NavChildRoute,
 } from "@/lib/navigation/areas";
@@ -45,6 +46,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
       <Link
         key={child.id}
         href={withFilterParam(child.path, filters, role)}
+        aria-current={isActive ? "page" : undefined}
         className={`group relative flex items-center rounded-xl px-3 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/35 ${
           isActive
             ? "bg-(--accent)/12 font-medium text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-0.5 before:rounded-full before:bg-(--accent)"
@@ -70,17 +72,27 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
         ? area.children.filter((child) => child.navVisible)
         : [];
     const activeChild = isActive ? selectedChildForPathname(area, pathname) : undefined;
-    // CHAOS-2073: the AREA row owns aria-current="page" whenever its subtree is
-    // active, so a leaf route (e.g. /metrics) marks its area (Diagnose) and the
-    // sidebar exposes exactly one aria-current. The active child keeps a visual
-    // highlight only (no aria-current) so the selected-area assertion stays stable.
-    const activeChildId = activeChild?.id;
+    // The area row owns the highlight when:
+    //   a) it IS the current page (no child, or child path === area landing), OR
+    //   b) it's a utility area — children never expand, so the area row is the
+    //      sole visible selection for any path within that utility area.
+    const areaRowIsSelected =
+      isActive &&
+      (area.placement === "utility" ||
+        !activeChild ||
+        basePath(activeChild.path) === basePath(area.href));
+    const activeChildId = areaRowIsSelected ? undefined : activeChild?.id;
 
     return (
       <div key={area.id}>
         <Link
           href={withFilterParam(area.href, filters, role)}
-          aria-current={isActive ? "page" : undefined}
+          aria-current={areaRowIsSelected ? "page" : undefined}
+          // Stable hook for "which area is selected" assertions: marks the active
+          // area row whether the selection is the area landing (aria-current here)
+          // or a child leaf (aria-current on the child). Keeps aria-current a11y-
+          // correct (the link to the current page) per PrimaryNav.test.tsx / A10.
+          data-active={isActive ? "true" : undefined}
           className={`group relative flex items-center rounded-2xl border px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/35 ${
             isActive
               ? "border-(--accent) bg-(--accent)/15 text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-full before:bg-(--accent)"
