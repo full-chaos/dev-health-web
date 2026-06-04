@@ -76,20 +76,57 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     fetchTestOpsData(
       {
         timeseries: [
-          { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "PIPELINE_FAILURE_RATE", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "PIPELINE_DURATION_P95", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "PIPELINE_QUEUE_TIME", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "PIPELINE_RERUN_RATE", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange },
-          { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_SUCCESS_RATE",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_FAILURE_RATE",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_DURATION_P95",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_QUEUE_TIME",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "PIPELINE_RERUN_RATE",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "TEST_FLAKE_RATE",
+            interval: "DAY",
+            dateRange,
+          },
+          {
+            dimension: "TEAM",
+            measure: "COVERAGE_LINE_PCT",
+            interval: "DAY",
+            dateRange,
+          },
         ],
         breakdowns: [],
       },
       isTestMode,
     ),
   ]);
-  const governSignals = await getGovernSignals(filters, isTestMode, { testOpsData });
+  const governSignals = await getGovernSignals(filters, isTestMode, {
+    testOpsData,
+  });
 
   if (!health.ok && !isTestMode) {
     return <ServiceUnavailable />;
@@ -113,7 +150,11 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
   const leadSignals = topSignals(governSignals, 3);
 
   const tabs: ReadonlyArray<ModeTabItem<GovernView>> = [
-    { id: "overview", label: "Overview", href: withFilterParam("/testops", filters, activeRole) },
+    {
+      id: "overview",
+      label: "Overview",
+      href: withFilterParam("/testops", filters, activeRole),
+    },
     {
       id: "testops",
       label: "TestOps",
@@ -161,7 +202,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
           {activeView === "testops" ? (
             <>
               <GlobalContextBar filters={filters} />
-          <FilterBar view="testops" />
+              <FilterBar view="testops" />
               <section className="grid gap-4 lg:grid-cols-3">
                 {measures.map(({ id, ts }) => {
                   const def = TESTOPS_MEASURES[id];

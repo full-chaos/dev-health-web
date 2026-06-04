@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { BackLink } from "@/components/shared/BackLink";
 
-import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import {
@@ -188,7 +188,7 @@ export default async function CompoundingRiskPage({ searchParams }: CompoundingR
 
           <FilterBar view="risk-compounding" />
 
-          <ContextStrip filters={filters} origin={activeOrigin} />
+          <GlobalContextBar filters={filters} origin={activeOrigin} />
 
           {isDeveloperScope ? (
             <section

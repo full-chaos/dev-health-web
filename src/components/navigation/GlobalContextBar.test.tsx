@@ -18,6 +18,10 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ data: null, status: "unauthenticated" }),
+}));
+
 beforeEach(() => {
   mockReplace.mockClear();
   currentSearchParams = new URLSearchParams("role=em");

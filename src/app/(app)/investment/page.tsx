@@ -18,7 +18,7 @@ import {
   getSortedThemes,
   normalizeInvestmentMix,
 } from "@/lib/investmentMix";
-import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 
 type InvestmentPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -88,7 +88,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
               (Allocation &rarr; Streams &rarr; Items).
             </div>
 
-            <ContextStrip filters={filters} origin={activeOrigin} />
+            <GlobalContextBar filters={filters} origin={activeOrigin} />
 
             {themes.length ? (
               <InvestmentChart
