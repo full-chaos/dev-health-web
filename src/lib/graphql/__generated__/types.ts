@@ -351,6 +351,7 @@ export type AnalyticsResult = {
 export type BreakdownItem = {
   __typename?: 'BreakdownItem';
   key: Scalars['String']['output'];
+  label?: Maybe<Scalars['String']['output']>;
   value: Scalars['Float']['output'];
 };
 
