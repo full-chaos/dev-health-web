@@ -1,6 +1,10 @@
 import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
-import { AnalyticsRequestInput, AnalyticsResult } from "@/lib/graphql/schemas/analytics";
+import {
+  AnalyticsRequestInput,
+  AnalyticsResult,
+  AnalyticsResultSchema,
+} from "@/lib/graphql/schemas/analytics";
 import { logger } from "@/lib/logger";
 import {
   TESTOPS_PIPELINE_QUERY,
@@ -41,9 +45,18 @@ export async function fetchTestOpsData(
 
   try {
     const [pipelinesRes, testsRes, coverageRes] = await Promise.all([
-      graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_PIPELINE_QUERY, { orgId, batch }),
-      graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_TEST_QUERY, { orgId, batch }),
-      graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_COVERAGE_QUERY, { orgId, batch }),
+      graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_PIPELINE_QUERY, {
+        orgId,
+        batch,
+      }),
+      graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_TEST_QUERY, {
+        orgId,
+        batch,
+      }),
+      graphqlFetch<{ analytics: AnalyticsResult }>(TESTOPS_COVERAGE_QUERY, {
+        orgId,
+        batch,
+      }),
     ]);
 
     return {
@@ -76,7 +89,15 @@ export async function fetchCoverageMetrics(
       orgId,
       batch,
     });
-    return res.analytics;
+    const parsed = AnalyticsResultSchema.safeParse(res.analytics);
+    if (!parsed.success) {
+      logger.error(
+        { err: parsed.error },
+        "Coverage analytics failed schema validation; returning empty result",
+      );
+      return EMPTY_ANALYTICS;
+    }
+    return parsed.data;
   } catch (error) {
     logger.error({ err: error }, "Failed to fetch coverage metrics");
     return EMPTY_ANALYTICS;

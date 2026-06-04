@@ -16,14 +16,15 @@ import path from "path";
 const SCREENSHOTS = path.resolve(__dirname, "../docs/screenshots");
 
 test.describe("CHAOS-2036 screenshots", () => {
-  test("opportunities focus cards (authenticated)", async ({ page }) => {
-    await page.goto("/opportunities");
-    await page.waitForSelector("main", { timeout: 10000 });
-    await page.getByText("Reduce Review Latency").waitFor({ timeout: 10000 });
-    await page.waitForTimeout(1000);
-    await page.screenshot({
-      path: path.join(SCREENSHOTS, "CHAOS-2036/opportunities-focus-cards.png"),
-      fullPage: true,
-    });
-  });
+	test("opportunities focus cards (authenticated)", async ({ page }) => {
+		// CHAOS-2073: Focus Cards moved under the ?view=focus-cards sub-view.
+		await page.goto("/opportunities?view=focus-cards");
+		await page.waitForSelector("main", { timeout: 10000 });
+		await page.getByText("Reduce Review Latency").waitFor({ timeout: 10000 });
+		await page.waitForTimeout(1000);
+		await page.screenshot({
+			path: path.join(SCREENSHOTS, "CHAOS-2036/opportunities-focus-cards.png"),
+			fullPage: true,
+		});
+	});
 });

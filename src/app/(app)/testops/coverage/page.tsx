@@ -125,23 +125,25 @@ export default async function CoveragePage({
 		(b: BreakdownResult) => b.measure === "COVERAGE_LINE_PCT",
 	);
 
-	const timeseriesData = lineCoverageSeries
+	const timeseriesData = lineCoverageSeries?.buckets
 		? lineCoverageSeries.buckets.map((b: TimeseriesBucket) => ({
 				day: b.date,
 				value: b.value,
 			}))
 		: [];
 
-	const repoIds = repoBreakdown
+	const repoIds = repoBreakdown?.items
 		? repoBreakdown.items.map((item: BreakdownItem) => item.key)
 		: [];
-	const repoValues = repoBreakdown
+	const repoValues = repoBreakdown?.items
 		? repoBreakdown.items.map((item: BreakdownItem) => item.value)
 		: [];
 	// Render-safe labels: never expose a raw repo UUID as an axis label;
 	// unresolved ids degrade to a stable short label with the full id in the tooltip.
-	const { labels: repoCategories, titles: repoTitles } =
-		resolveEntityLabels(repoIds);
+	const { labels: repoCategories, titles: repoTitles } = resolveEntityLabels(
+		repoIds,
+		{ unresolvedFallback: "Unresolved" },
+	);
 
 	return (
 		<div className="min-h-screen bg-background text-foreground">
