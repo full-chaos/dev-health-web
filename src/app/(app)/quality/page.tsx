@@ -9,6 +9,7 @@ import { QualityCoverageTabs } from "@/components/testops/QualityCoverageTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -93,7 +94,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 							href={withFilterParam("/", filters, activeRole)}
 							className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
 						>
-							Back to cockpit
+							{CTA_LABELS.backToCockpit}
 						</Link>
 					</header>
 
@@ -160,7 +161,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 									})}
 									className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
 								>
-									Evidence
+									{CTA_LABELS.openEvidence}
 								</Link>
 							</div>
 							{drivers.length ? (
@@ -210,7 +211,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 									})}
 									className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
 								>
-									Evidence
+									{CTA_LABELS.openEvidence}
 								</Link>
 							</div>
 							{contributors.length ? (
