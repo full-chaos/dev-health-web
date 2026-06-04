@@ -1,11 +1,23 @@
 import { SkeletonLine, SkeletonCard } from "@/components/ui/Skeleton";
 
+const NAV_SKELETON_ITEMS = [
+  "cockpit",
+  "diagnose",
+  "plan",
+  "improve",
+  "govern",
+  "ai",
+  "reports",
+  "admin",
+];
+const SIGNAL_SKELETON_ITEMS = ["top", "second", "third", "fourth"];
+
 function NavSkeleton() {
   return (
-    <aside className="w-full md:max-w-[220px] md:shrink-0 animate-pulse">
+    <aside className="w-full md:max-w-56 md:shrink-0 animate-pulse">
       <div className="sticky top-10 space-y-2">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-10 bg-(--card-70) rounded-2xl" />
+        {NAV_SKELETON_ITEMS.map((item) => (
+          <div key={item} className="h-10 bg-(--card-70) rounded-2xl" />
         ))}
       </div>
     </aside>
@@ -19,7 +31,7 @@ export default function Loading() {
         <NavSkeleton />
         <main className="flex min-w-0 flex-1 flex-col gap-10">
           {/* Header card */}
-          <div className="rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse">
+          <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse">
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="space-y-4">
@@ -43,42 +55,15 @@ export default function Loading() {
             </div>
           </div>
 
-          {/* Filter bar */}
           <div className="h-10 bg-(--card-70) rounded-full animate-pulse" />
-
-          {/* Monitoring views section */}
-          <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-2">
-                <div className="h-3 bg-(--card-70) rounded w-32" />
-                <div className="h-4 bg-(--card-70) rounded w-48" />
-              </div>
-              <div className="h-3 bg-(--card-70) rounded w-24" />
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="h-3 bg-(--card-70) rounded w-16" />
-                    <div className="h-3 bg-(--card-70) rounded w-10" />
-                  </div>
-                  <div className="h-4 bg-(--card-70) rounded w-40" />
-                  <div className="h-3 bg-(--card-70) rounded w-56" />
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Cockpit / key signals area */}
           <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse space-y-4">
             <div className="h-5 bg-(--card-70) rounded w-40" />
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
+              {SIGNAL_SKELETON_ITEMS.map((item) => (
                 <div
-                  key={i}
+                  key={item}
                   className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4 space-y-3"
                 >
                   <div className="h-3 bg-(--card-70) rounded w-20" />
