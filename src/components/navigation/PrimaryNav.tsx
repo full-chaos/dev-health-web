@@ -11,14 +11,13 @@ import {
   navAreas,
   selectedAreaIdForPathname,
   selectedChildForPathname,
-  basePath,
   type NavArea,
   type NavChildRoute,
 } from "@/lib/navigation/areas";
 
 // ── Component ────────────────────────────────────────────────────────────────
 //
-// Two-level sidebar (Framework A1, CHAOS-2075): the six decision areas are
+// Two-level sidebar (Framework A1, CHAOS-2075): the eight decision areas are
 // always shown; the ACTIVE main-placement area expands to its child
 // *destinations* as an indented list, while inactive areas stay collapsed.
 // Utility-placement areas (Reports, Admin) render as plain rows with NO child
@@ -72,15 +71,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
         ? area.children.filter((child) => child.navVisible)
         : [];
     const activeChild = isActive ? selectedChildForPathname(area, pathname) : undefined;
-    // The area row owns the highlight when:
-    //   a) it IS the current page (no child, or child path === area landing), OR
-    //   b) it's a utility area — children never expand, so the area row is the
-    //      sole visible selection for any path within that utility area.
-    const areaRowIsSelected =
-      isActive &&
-      (area.placement === "utility" ||
-        !activeChild ||
-        basePath(activeChild.path) === basePath(area.href));
+    const areaRowIsSelected = isActive && (area.placement === "utility" || !activeChild);
     const activeChildId = areaRowIsSelected ? undefined : activeChild?.id;
 
     return (

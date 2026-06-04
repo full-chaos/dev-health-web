@@ -1,7 +1,7 @@
 // ── Primary navigation: decision areas ───────────────────────────────────────
 //
 // Design Framework A1 (two-level sidebar) + A2 (tabs are sibling views *within*
-// a destination, never the sidebar). The sidebar surfaces the six decision
+// a destination, never the sidebar). The sidebar surfaces the eight decision
 // areas; the ACTIVE area expands to its child destinations (`children`) as an
 // indented list. Inactive areas stay collapsed.
 //
@@ -24,7 +24,15 @@
 
 import type { Crumb } from "@/components/Breadcrumbs";
 
-export type NavAreaId = "cockpit" | "diagnose" | "improve" | "govern" | "reports" | "admin";
+export type NavAreaId =
+  | "cockpit"
+  | "diagnose"
+  | "plan"
+  | "improve"
+  | "govern"
+  | "ai"
+  | "reports"
+  | "admin";
 
 export type NavAreaHubItem = {
   id: string;
@@ -57,8 +65,8 @@ export type NavAreaHubItem = {
  * landing triage grid): a `NavChildRoute` is a real route the active area
  * expands to as an indented sidebar row.
  *
- * Children are DESTINATIONS, not tabs — tab subviews (AI: Impact/Attribution/…;
- * Work: Landscape/Flow/…) are siblings *within* a destination (Framework A2)
+ * Children are DESTINATIONS, not tabs — local tab subviews are siblings *within*
+ * a destination (Framework A2)
  * and must never appear here. Only routes that resolve to a real page are
  * `navVisible`; phantom/not-yet-built routes are `preview` and never rendered.
  */
@@ -77,6 +85,7 @@ export type NavChildRoute = {
    * lists every route it fronts (e.g. `/testops/tests`, `/quality`).
    */
   ownedPaths?: string[];
+  exact?: boolean;
   /** R4 low-value surface — render visually secondary within the list. */
   demoted?: boolean;
   /**
@@ -144,6 +153,8 @@ export const navAreas: readonly NavArea[] = [
     ownedPathPrefixes: [
       "/work",
       "/metrics",
+      "/team-flow",
+      "/investment",
       "/people",
       "/code",
       "/explore",
@@ -153,7 +164,8 @@ export const navAreas: readonly NavArea[] = [
     ],
     legacyActiveIds: [
       "work",
-      "metrics",
+      "flow",
+      "investment",
       "people",
       "code",
       "landscape",
@@ -166,11 +178,18 @@ export const navAreas: readonly NavArea[] = [
     // 2 wires the resolver fetching (see `@/lib/areaSignals/getAreaSignals`).
     hubItems: [
       {
-        id: "metrics",
-        label: "Metrics",
-        href: "/metrics?tab=dora",
-        description: "DORA and flow trends.",
+        id: "flow",
+        label: "Flow",
+        href: "/metrics",
+        description: "Flow trends and delivery movement.",
         metricLabel: "Deploy frequency",
+      },
+      {
+        id: "investment",
+        label: "Investment",
+        href: "/investment",
+        description: "Effort and attention allocation.",
+        metricLabel: "Planned allocation",
       },
       {
         id: "people",
@@ -218,24 +237,82 @@ export const navAreas: readonly NavArea[] = [
         metricLabel: "WIP saturation",
       },
     ],
-    // Two-level sidebar children (CHAOS-2075): Diagnose's destinations. Each is a
-    // real page; the borrowed Work sub-views (Landscape/Flow/Heatmap/…) are TABS
-    // on /work, not children. Work is the area landing AND a child row so the
-    // expansion is self-consistent.
     children: [
-      { id: "work", label: "Work", path: "/work", navVisible: true },
-      { id: "metrics", label: "Metrics", path: "/metrics", navVisible: true },
+      {
+        id: "diagnose-overview",
+        label: "Overview",
+        path: "/work",
+        navVisible: true,
+      },
+      { id: "flow", label: "Flow", path: "/metrics", navVisible: true },
+      {
+        id: "investment",
+        label: "Investment",
+        path: "/investment",
+        navVisible: true,
+      },
+      {
+        id: "landscape",
+        label: "Landscape",
+        path: "/explore/landscape",
+        navVisible: true,
+      },
       { id: "people", label: "People", path: "/people", navVisible: true },
       { id: "code", label: "Code", path: "/code", navVisible: true },
-      { id: "landscape", label: "Landscape", path: "/explore/landscape", navVisible: true },
-      { id: "complexity", label: "Complexity", path: "/complexity", navVisible: true },
+      {
+        id: "complexity",
+        label: "Complexity",
+        path: "/complexity",
+        navVisible: true,
+      },
       {
         id: "cognitive-load",
         label: "Cognitive Load",
         path: "/cognitive-load",
         navVisible: true,
       },
-      { id: "bottleneck", label: "Bottlenecks", path: "/bottleneck", navVisible: true },
+      {
+        id: "bottleneck",
+        label: "Bottlenecks",
+        path: "/bottleneck",
+        navVisible: true,
+      },
+    ],
+  },
+  {
+    id: "plan",
+    label: "Plan",
+    href: "/capacity-planning",
+    placement: "main",
+    ownedPathPrefixes: ["/capacity-planning", "/capacity", "/operating-review"],
+    legacyActiveIds: ["capacity-planning", "capacity", "operating-review", "plan"],
+    hubItems: [],
+    children: [
+      {
+        id: "delivery-forecast",
+        label: "Delivery Forecast",
+        path: "/capacity-planning",
+        navVisible: true,
+      },
+      {
+        id: "capacity",
+        label: "Capacity",
+        path: "/capacity",
+        navVisible: true,
+      },
+      {
+        id: "backlog-risk",
+        label: "Backlog Risk",
+        path: "/plan/backlog-risk",
+        navVisible: false,
+        preview: true,
+      },
+      {
+        id: "operating-review",
+        label: "Operating Review",
+        path: "/operating-review",
+        navVisible: true,
+      },
     ],
   },
   {
@@ -243,67 +320,33 @@ export const navAreas: readonly NavArea[] = [
     label: "Improve",
     href: "/opportunities",
     placement: "main",
-    // `/operating-review` moved here from Cockpit (CHAOS-2075).
-    ownedPathPrefixes: [
-      "/opportunities",
-      "/capacity-planning",
-      "/capacity",
-      "/ai",
-      "/operating-review",
-    ],
-    legacyActiveIds: [
-      "opportunities",
-      "capacity-planning",
-      "ai-workflows",
-      "operating-review",
-      "improve",
-    ],
+    ownedPathPrefixes: ["/opportunities"],
+    legacyActiveIds: ["opportunities", "experiments", "automations", "improve"],
     // CHAOS-2074: Improve is FLAT (no clusters). Opportunities is the area's own
     // landing route (`href: "/opportunities"`), so it is NOT duplicated as a hub
     // item — its volume signal bubbles at the area level via the resolver.
     // Descriptors placed here; Phase 2 wires the resolver fetching.
-    hubItems: [
-      {
-        id: "capacity-planning",
-        label: "Capacity Planning",
-        href: "/capacity-planning",
-        description: "Plan capacity against demand.",
-        metricLabel: "Forecast (p50 weeks)",
-      },
-      {
-        id: "ai-workflows",
-        label: "AI Workflows",
-        href: "/ai",
-        description: "AI impact, attribution, and governance.",
-        // Adoption %, NOT a severity → resolver surfaces a neutral/info state.
-        metricLabel: "AI-assisted PRs",
-      },
-    ],
-    // Two-level sidebar children (CHAOS-2075). AI Workflows is ONE child row; its
-    // Impact/Attribution/Review Load/Test Gaps/Risk/Evidence/Automations surfaces
-    // are TABS on /ai (Framework A2), not sidebar children. `/ai` owns its whole
-    // subtree so any AI tab keeps the AI Workflows row active. Operating Review
-    // landed here from Cockpit.
+    hubItems: [],
     children: [
-      { id: "opportunities", label: "Opportunities", path: "/opportunities", navVisible: true },
       {
-        id: "capacity-planning",
-        label: "Capacity Planning",
-        path: "/capacity-planning",
+        id: "opportunities",
+        label: "Opportunities",
+        path: "/opportunities",
         navVisible: true,
       },
       {
-        id: "ai-workflows",
-        label: "AI Workflows",
-        path: "/ai",
-        navVisible: true,
-        ownedPaths: ["/ai"],
+        id: "experiments",
+        label: "Experiments",
+        path: "/improve/experiments",
+        navVisible: false,
+        preview: true,
       },
       {
-        id: "operating-review",
-        label: "Operating Review",
-        path: "/operating-review",
-        navVisible: true,
+        id: "improve-automations",
+        label: "Automations",
+        path: "/improve/automations",
+        navVisible: false,
+        preview: true,
       },
     ],
   },
@@ -413,30 +456,45 @@ export const navAreas: readonly NavArea[] = [
         demoted: true,
       },
     ],
-    // Two-level sidebar children (CHAOS-2075). Tests · Quality · Coverage collapse
-    // into ONE cluster row (owner decision): the row links to /testops/coverage
-    // and stays active on any of its owned paths; the actual tab strip across
-    // those three surfaces is Phase 2 (the sidebar only ever shows one row).
-    // Pipelines stays a standalone row.
     children: [
       { id: "testops", label: "Overview", path: "/testops", navVisible: true },
-      { id: "pipelines", label: "Pipelines", path: "/testops/pipelines", navVisible: true },
       {
-        id: "tests-quality-coverage",
-        label: "Tests · Quality · Coverage",
+        id: "pipelines",
+        label: "Pipelines",
+        path: "/testops/pipelines",
+        navVisible: true,
+      },
+      { id: "tests", label: "Tests", path: "/testops/tests", navVisible: true },
+      {
+        id: "quality",
+        label: "Quality",
+        path: "/quality",
+        navVisible: true,
+      },
+      {
+        id: "coverage",
+        label: "Coverage",
         path: "/testops/coverage",
         navVisible: true,
-        isCluster: true,
-        ownedPaths: ["/testops/tests", "/quality", "/testops/coverage"],
       },
-      { id: "risk", label: "Delivery Risk", path: "/testops/risk", navVisible: true },
+      {
+        id: "risk",
+        label: "Delivery Risk",
+        path: "/testops/risk",
+        navVisible: true,
+      },
       {
         id: "incident-correlation",
         label: "Incident Correlation",
         path: "/incident-correlation",
         navVisible: true,
       },
-      { id: "security", label: "Security", path: "/security", navVisible: true },
+      {
+        id: "security",
+        label: "Security",
+        path: "/security",
+        navVisible: true,
+      },
       {
         id: "risk-compounding",
         label: "Compounding Risk",
@@ -450,6 +508,60 @@ export const navAreas: readonly NavArea[] = [
         navVisible: true,
         // R4 low-value surface — rendered visually secondary in the list.
         demoted: true,
+      },
+    ],
+  },
+  {
+    id: "ai",
+    label: "AI",
+    href: "/ai",
+    placement: "main",
+    ownedPathPrefixes: ["/ai"],
+    legacyActiveIds: ["ai", "ai-workflows"],
+    hubItems: [],
+    children: [
+      { id: "ai-overview", label: "Overview", path: "/ai", navVisible: true },
+      {
+        id: "ai-impact",
+        label: "Impact",
+        path: "/ai/impact",
+        navVisible: true,
+      },
+      {
+        id: "ai-attribution",
+        label: "Attribution",
+        path: "/ai/attribution",
+        navVisible: true,
+      },
+      {
+        id: "ai-review-load",
+        label: "Review Load",
+        path: "/ai/review-load",
+        navVisible: true,
+      },
+      {
+        id: "ai-test-gaps",
+        label: "Test Gaps",
+        path: "/ai/test-gaps",
+        navVisible: true,
+      },
+      {
+        id: "ai-governance-risk",
+        label: "Governance Risk",
+        path: "/ai/risk",
+        navVisible: true,
+      },
+      {
+        id: "ai-evidence",
+        label: "Evidence",
+        path: "/ai/evidence",
+        navVisible: true,
+      },
+      {
+        id: "ai-automations",
+        label: "Automations",
+        path: "/ai/automations",
+        navVisible: true,
       },
     ],
   },
@@ -467,7 +579,13 @@ export const navAreas: readonly NavArea[] = [
     // they are never rendered and never resolved until their pages exist — DO
     // NOT create stub pages for them (CHAOS-2075).
     children: [
-      { id: "report-center", label: "Report Center", path: "/reports", navVisible: true },
+      {
+        id: "report-center",
+        label: "Report Center",
+        path: "/reports",
+        navVisible: true,
+        exact: true,
+      },
       {
         id: "weekly-review",
         label: "Weekly Review",
@@ -500,17 +618,38 @@ export const navAreas: readonly NavArea[] = [
     ownedPathPrefixes: ["/admin", "/settings", "/data-health"],
     legacyActiveIds: ["admin", "settings", "data-health"],
     hubItems: [],
-    // Built Admin destinations. Organization (distributed across admin subpages)
-    // and Billing (no page) are intentionally omitted — not phantom-previewed,
-    // just absent (CHAOS-2075).
     children: [
-      { id: "settings", label: "Settings", path: "/admin/settings", navVisible: true },
-      { id: "connections", label: "Connections", path: "/admin/integrations", navVisible: true },
+      {
+        id: "organization",
+        label: "Organization",
+        path: "/admin",
+        navVisible: true,
+        exact: true,
+      },
+      {
+        id: "connections",
+        label: "Connections",
+        path: "/admin/sync",
+        navVisible: true,
+      },
       {
         id: "data-confidence",
         label: "Data Confidence",
         path: "/data-health",
         navVisible: true,
+      },
+      {
+        id: "settings",
+        label: "Settings",
+        path: "/settings",
+        navVisible: true,
+      },
+      {
+        id: "billing",
+        label: "Billing",
+        path: "/admin/billing",
+        navVisible: false,
+        preview: true,
       },
     ],
   },
@@ -580,7 +719,8 @@ export function selectedChildForPathname(
   for (const child of area.children) {
     if (!child.navVisible) continue;
     for (const owned of ownedPathsFor(child)) {
-      if (pathMatchesPrefix(pathname, owned) && owned.length > (selected?.score ?? -1)) {
+      const matches = child.exact ? pathname === owned : pathMatchesPrefix(pathname, owned);
+      if (matches && owned.length > (selected?.score ?? -1)) {
         selected = { child, score: owned.length };
       }
     }
@@ -608,8 +748,7 @@ function resolveAreaAndChild(
  * Config-derived location trail (Area → Child) for `<Breadcrumbs>` (rule A6:
  * crumb labels are the sidebar labels, verbatim). The area crumb links to its
  * landing route; the child crumb is the current page — rendered as the last,
- * link-less crumb. When the pathname IS the area landing (or resolves to no
- * child) the area is the single, current crumb.
+ * link-less crumb. If no child owns the pathname, the area is the current crumb.
  *
  * Returns `[]` for routes no area owns (callers fall back to bespoke crumbs).
  */
@@ -618,9 +757,7 @@ export function navTrailForPathname(pathname: string): Crumb[] {
   if (!resolved) return [];
   const { area, child } = resolved;
 
-  // No distinct child (area landing, or child === the landing route): the area
-  // is the current page — a single, link-less crumb.
-  if (!child || basePath(child.path) === basePath(area.href)) {
+  if (!child) {
     return [{ label: area.label }];
   }
 
@@ -636,7 +773,7 @@ export function navTitleForPathname(pathname: string): string {
   const resolved = resolveAreaAndChild(pathname);
   if (!resolved) return "";
   const { area, child } = resolved;
-  if (child && basePath(child.path) !== basePath(area.href)) return child.label;
+  if (child) return child.label;
   return area.label;
 }
 
