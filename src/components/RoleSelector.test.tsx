@@ -21,9 +21,9 @@ describe("RoleSelector", () => {
     expect(screen.getByTestId("role-selector")).toBeInTheDocument();
   });
 
-  it("renders 'View from' label", () => {
+  it("renders 'Lens' label", () => {
     render(<RoleSelector />);
-    expect(screen.getByText(/view from/i)).toBeInTheDocument();
+    expect(screen.getByText(/lens/i)).toBeInTheDocument();
   });
 
   it("renders IC, EM, PM, and Leadership buttons", () => {

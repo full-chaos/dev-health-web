@@ -102,7 +102,7 @@ describe("resolveVisibility (pure)", () => {
   it("returns METRICS_DEFAULT for view=metrics (no tab)", () => {
     const v = resolveVisibility("metrics");
     expect(v.repo).toBe(true);
-    expect(v.developer).toBe(false);
+    expect(v.developer).toBe(true);
     expect(v.flowStage).toBe(false);
     expect(v.workType).toBe(false);
   });
@@ -147,9 +147,9 @@ describe("resolveVisibility (pure)", () => {
     expect(v.date).toBe(false);
   });
 
-  it("treats quality and testops as METRICS_DEFAULT", () => {
-    expect(resolveVisibility("quality")).toEqual(resolveVisibility("metrics"));
-    expect(resolveVisibility("testops")).toEqual(resolveVisibility("metrics"));
+  it("keeps quality and testops global-only after the page FilterBar strips global fields", () => {
+    expect(resolveVisibility("quality").developer).toBe(false);
+    expect(resolveVisibility("testops").developer).toBe(false);
   });
 
   it("treats opportunities as WORK_VISIBILITY", () => {

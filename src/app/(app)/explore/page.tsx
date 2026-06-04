@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { BackLink } from "@/components/shared/BackLink";
@@ -261,7 +262,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 								)}
 								className={buttonClassName("primary")}
 							>
-								Flame Diagram
+								{CTA_LABELS.flameDiagram}
 							</Link>
 							<Link
 								href={withFilterParam(
@@ -271,7 +272,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 								)}
 								className={buttonClassName("secondary")}
 							>
-								Landscape
+								{CTA_LABELS.landscape}
 							</Link>
 							<BackLink
 								href={withFilterParam("/metrics", filters, activeRole)}
@@ -281,6 +282,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 						</div>
 					</header>
 
+					<GlobalContextBar filters={filters} />
 					<FilterBar condensed view="explore" />
 
 					<section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm">
@@ -369,7 +371,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 										})}
 										className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
 									>
-										Open evidence
+										{CTA_LABELS.openEvidence}
 									</Link>
 								</div>
 								{drivers.length ? (
@@ -419,7 +421,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 										})}
 										className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
 									>
-										Open evidence
+										{CTA_LABELS.openEvidence}
 									</Link>
 								</div>
 								{contributors.length ? (

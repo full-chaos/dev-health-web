@@ -25,7 +25,7 @@ import { CapacityView } from "@/components/work/CapacityView";
 import { FlameView } from "@/components/work/FlameView";
 import { EvidenceView } from "@/components/work/EvidenceView";
 import { GraphView } from "@/components/work/GraphView";
-import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { WorkTabNav, type WorkTab } from "@/components/navigation/WorkTabNav";
 import { getDiagnoseSignals } from "@/lib/areaSignals/diagnose";
 import { topSignals } from "@/lib/areaSignals/sort";
@@ -281,7 +281,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
               <WorkTabNav activeTab={activeTab} filters={filters} role={activeRole} />
 
-              <ContextStrip filters={filters} origin={activeOrigin} />
+              <GlobalContextBar filters={filters} origin={activeOrigin} />
 
               {activeTab === "landscape" && (
                 <LandscapeView

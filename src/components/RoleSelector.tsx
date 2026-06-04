@@ -50,8 +50,8 @@ export function RoleSelector({ className }: RoleSelectorProps) {
       options={options}
       value={activeRole}
       onChange={handleRoleChange}
-      ariaLabel="View from role"
-      leadingLabel="View from"
+      ariaLabel="Lens"
+      leadingLabel="Lens"
       testId="role-selector"
       className={className}
     />

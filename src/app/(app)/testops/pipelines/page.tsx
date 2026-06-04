@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { DataState } from "@/components/ui/DataState";
@@ -8,6 +9,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
 import { checkApiHealth } from "@/lib/api/system";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
@@ -180,10 +182,11 @@ export default async function PipelinesPage({
 							href={withFilterParam("/", filters, activeRole)}
 							className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
 						>
-							Back to cockpit
+							{CTA_LABELS.backToCockpit}
 						</Link>
 					</header>
 
+					<GlobalContextBar filters={filters} />
 					<FilterBar view="testops" />
 
 					<section className="grid gap-4 lg:grid-cols-3">

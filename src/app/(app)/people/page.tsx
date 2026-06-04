@@ -1,5 +1,6 @@
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PeopleSearch } from "@/components/people/PeopleSearch";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter } from "@/lib/filters/encode";
@@ -40,6 +41,7 @@ export default async function PeoplePage({ searchParams }: PeoplePageProps) {
               Data service unavailable. Search results may be delayed until the API is back.
             </div>
           )}
+          <GlobalContextBar filters={filters} />
           <FilterBar view="people" />
           <PeopleSearch query={query} filters={filters} />
         </main>

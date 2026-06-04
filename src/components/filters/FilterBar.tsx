@@ -22,8 +22,21 @@ type FilterBarProps = {
 };
 
 export function FilterBar({ condensed, view, tab }: FilterBarProps) {
-  const resolvedVisibility = resolveVisibility(view, tab);
+  const baseVisibility = resolveVisibility(view, tab);
+  const resolvedVisibility = {
+    ...baseVisibility,
+    scope: false,
+    date: false,
+    repo: false,
+  };
   const resolvedScopeLock = resolveScopeLock(view);
+  const hasPageFilters = Boolean(
+    resolvedVisibility.developer || resolvedVisibility.workType || resolvedVisibility.flowStage,
+  );
+
+  if (!hasPageFilters) {
+    return null;
+  }
 
   const clientProps: FilterBarClientProps = {
     condensed,
@@ -34,7 +47,7 @@ export function FilterBar({ condensed, view, tab }: FilterBarProps) {
   };
 
   return (
-    <Suspense fallback={<div className="h-14 animate-pulse rounded-xl bg-(--card-80)" />}>
+    <Suspense fallback={<div className="h-14 animate-pulse rounded-2xl bg-(--card-80)" />}>
       <FilterBarClient {...clientProps} />
     </Suspense>
   );

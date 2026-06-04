@@ -34,6 +34,15 @@ export const CTA_LABELS = {
 	clearTheme: "Clear theme",
 	allThemes: "All themes",
 	openWorkGraph: "Open Work Graph",
+	openMetrics: "Open metrics",
+	openWorkView: "Open Work view",
+	openInExplore: "Open in Explore",
+	flameDiagram: "Flame Diagram",
+	landscape: "Landscape",
+	week: "Week",
+	month: "Month",
+	newReport: "New Report",
+	createReport: "Create Report",
 	/** Dismiss the evidence panel. */
 	closeEvidencePanel: "Close evidence panel",
 	/** Dismiss a generic panel. */

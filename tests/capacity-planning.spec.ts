@@ -47,11 +47,16 @@ test.describe("Capacity Planning page", () => {
     await expect(link).toBeVisible();
   });
 
-  test("renders the canonical FilterBar above the forecast (CHAOS-1773)", async ({ page }) => {
+  test("renders the unified global context bar above the forecast (CHAOS-2081)", async ({
+    page,
+  }) => {
     await page.goto("/capacity-planning");
 
-    const filterBar = page.getByTestId("filter-bar");
-    await expect(filterBar).toBeVisible();
-    await expect(filterBar).toHaveAttribute("data-view", "capacity-planning");
+    // CHAOS-2081 unified global scope/date/repo into a single GlobalContextBar.
+    // Capacity Planning carries no page-local filters, so the per-page FilterBar
+    // legitimately disappears and the global context bar is the canonical chrome.
+    const contextBar = page.getByTestId("global-context-bar");
+    await expect(contextBar).toBeVisible();
+    await expect(contextBar).toHaveAttribute("aria-label", "Global context");
   });
 });

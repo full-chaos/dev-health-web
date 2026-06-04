@@ -1,6 +1,7 @@
 import { AIReviewLoadDashboard } from "@/components/ai/AIReviewLoadDashboard";
 import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { navTrailForPathname } from "@/lib/navigation/areas";
@@ -25,7 +26,10 @@ export default async function AIReviewLoadPage({
 				eyebrow="AI Workflows"
 				title="Review Load"
 				breadcrumbs={[
-					...navTrailForPathname("/ai/review-load").map((c) => ({ ...c, href: c.href ?? "/ai" })),
+					...navTrailForPathname("/ai/review-load").map((c) => ({
+						...c,
+						href: c.href ?? "/ai",
+					})),
 					{ label: "Review Load" },
 				]}
 			>
@@ -33,6 +37,7 @@ export default async function AIReviewLoadPage({
 				AI-attributed work against the human baseline without person-level
 				rankings.
 			</AIPageHeader>
+			<GlobalContextBar filters={filters} />
 			<FilterBar view="ai" />
 			<AIReviewLoadDashboard filter={aiFilter} />
 		</>

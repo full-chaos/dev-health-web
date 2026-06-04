@@ -1,6 +1,7 @@
 import { AIRiskDashboard } from "@/components/ai/AIRiskDashboard";
 import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { navTrailForPathname } from "@/lib/navigation/areas";
@@ -23,13 +24,17 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
 				eyebrow="AI Workflows"
 				title="Governance Risk"
 				breadcrumbs={[
-					...navTrailForPathname("/ai/risk").map((c) => ({ ...c, href: c.href ?? "/ai" })),
+					...navTrailForPathname("/ai/risk").map((c) => ({
+						...c,
+						href: c.href ?? "/ai",
+					})),
 					{ label: "Governance Risk" },
 				]}
 			>
 				Quality-risk diagnostics for AI-associated work, including baseline
 				deltas, explicit missing-data states, and governance findings.
 			</AIPageHeader>
+			<GlobalContextBar filters={filters} />
 			<FilterBar view="ai" />
 			<AIRiskDashboard filter={aiFilter} />
 		</>

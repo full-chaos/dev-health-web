@@ -1,4 +1,5 @@
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { AreaHub } from "@/components/navigation/AreaHub";
 import { AreaSignalCard } from "@/components/navigation/AreaSignalCard";
@@ -86,10 +87,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
 
             {/* Overview: bubble the top sub-area signals up to the area level. */}
             {leadSignals.length > 0 ? (
-              <div
-                data-testid="improve-overview"
-                className="grid gap-3 md:grid-cols-2"
-              >
+              <div data-testid="improve-overview" className="grid gap-3 md:grid-cols-2">
                 {leadSignals.map((signal, index) => (
                   <AreaSignalCard
                     key={signal.id}
@@ -107,6 +105,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
 
           {activeView === "focus-cards" ? (
             <>
+              <GlobalContextBar filters={filters} />
               <FilterBar view="opportunities" />
               <section className="grid gap-6 md:grid-cols-2">
                 {(data?.items ?? []).map((card) => (
