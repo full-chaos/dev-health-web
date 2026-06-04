@@ -8,7 +8,7 @@ import { BarChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
-import { formatNumber } from "@/lib/formatters";
+import { formatNumber, formatPercent } from "@/lib/formatters";
 
 echarts.use([BarChart]);
 
@@ -63,7 +63,7 @@ export function StackedHorizontalBar({
           return `
             <div style="font-weight: 600; margin-bottom: 4px;">${p.seriesName ?? ""}</div>
             <div><span style="color: ${chartTheme.muted}">Value:</span> ${formatNumber(value)} ${unit}</div>
-            <div><span style="color: ${chartTheme.muted}">% of total:</span> <span style="color: ${chartTheme.accent2}">${pct.toFixed(1)}%</span></div>
+            <div><span style="color: ${chartTheme.muted}">% of total:</span> <span style="color: ${chartTheme.accent2}">${formatPercent(pct)}</span></div>
           `;
         },
       },

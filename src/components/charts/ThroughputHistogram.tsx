@@ -8,6 +8,7 @@ import { BarChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
+import { formatNumber } from "@/lib/formatters";
 
 echarts.use([BarChart]);
 
@@ -39,7 +40,7 @@ function generateHistogramData(
     const binMid = (binStart + binEnd) / 2;
 
     binEdges.push(binStart);
-    labels.push(binMid.toFixed(1));
+    labels.push(formatNumber(binMid, { maximumFractionDigits: 1 }));
 
     // Normal distribution probability density
     const z = (binMid - mean) / stddev;
@@ -91,7 +92,7 @@ export function ThroughputHistogram({
           const arr = params as Array<{ name?: string; value?: number }>;
           const p = arr[0];
           if (!p) return "";
-          return `<strong>${p.name ?? ""} items/day</strong><br/>Frequency: ${p.value ?? 0}`;
+          return `<strong>${p.name ?? ""} items/day</strong><br/>Frequency: ${formatNumber(p.value ?? 0)}`;
         },
       },
       grid: {
@@ -119,7 +120,9 @@ export function ThroughputHistogram({
         nameTextStyle: { color: chartTheme.muted, fontSize: 10 },
         axisLine: { show: false },
         axisLabel: { color: chartTheme.muted, fontSize: 9 },
-        splitLine: { lineStyle: { color: chartTheme.grid, type: "dashed" as const } },
+        splitLine: {
+          lineStyle: { color: chartTheme.grid, type: "dashed" as const },
+        },
       },
       series: [
         {
@@ -137,11 +140,15 @@ export function ThroughputHistogram({
           markLine: {
             silent: true,
             symbol: "none",
-            lineStyle: { color: chartTheme.accent2, width: 2, type: "solid" as const },
+            lineStyle: {
+              color: chartTheme.accent2,
+              width: 2,
+              type: "solid" as const,
+            },
             label: {
               show: true,
               position: "end" as const,
-              formatter: `Mean: ${throughputMean.toFixed(1)}`,
+              formatter: `Mean: ${formatNumber(throughputMean, { maximumFractionDigits: 1 })}`,
               color: chartTheme.accent2,
               fontSize: 10,
             },

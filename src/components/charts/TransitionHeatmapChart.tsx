@@ -9,6 +9,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { calcPercent } from "@/lib/chartUtils";
+import { formatNumber, formatPercent } from "@/lib/formatters";
 
 echarts.use([HeatmapChart]);
 
@@ -27,7 +28,7 @@ type TransitionHeatmapChartProps = {
   style?: CSSProperties;
   showSmallTransitions?: boolean;
   minTransitionThreshold?: number;
-  onCellClick?: (cell: {
+  onCellClickAction?: (cell: {
     from: string;
     to: string;
     count: number;
@@ -51,6 +52,8 @@ const sortStates = (states: string[]): string[] => {
   });
 };
 
+const textValue = (value: unknown) => (typeof value === "string" ? value : `${value ?? ""}`);
+
 /**
  * ECharts Heatmap showing state transitions as a matrix.
  * Y-axis: from-state, X-axis: to-state, Value: transition count.
@@ -64,7 +67,7 @@ export function TransitionHeatmapChart({
   style,
   showSmallTransitions = true,
   minTransitionThreshold = 1,
-  onCellClick,
+  onCellClickAction,
 }: TransitionHeatmapChartProps) {
   const chartTheme = useChartTheme();
   const chartColors = useChartColors();
@@ -120,25 +123,25 @@ export function TransitionHeatmapChart({
 
   const handleClick = useCallback(
     (params: unknown) => {
-      if (!onCellClick || !params || typeof params !== "object") return;
+      if (!onCellClickAction || !params || typeof params !== "object") return;
       const entry = params as { value?: unknown[] };
       const values = entry.value;
       if (!Array.isArray(values) || values.length < 6) return;
 
       const count = typeof values[2] === "number" ? values[2] : 0;
-      const fromState = String(values[4]);
-      const toState = String(values[5]);
+      const fromState = textValue(values[4]);
+      const toState = textValue(values[5]);
       const outgoingTotal = outgoingTotals.get(fromState) ?? 0;
       const percentOfOutgoing = calcPercent(count, outgoingTotal);
 
-      onCellClick({
+      onCellClickAction({
         from: fromState,
         to: toState,
         count,
         percentOfOutgoing,
       });
     },
-    [onCellClick, outgoingTotals],
+    [onCellClickAction, outgoingTotals],
   );
 
   const option = useMemo(
@@ -157,18 +160,18 @@ export function TransitionHeatmapChart({
           if (!Array.isArray(values) || values.length < 6) return "";
 
           const count = typeof values[2] === "number" ? values[2] : 0;
-          const fromState = String(values[4]);
-          const toState = String(values[5]);
+          const fromState = textValue(values[4]);
+          const toState = textValue(values[5]);
           const outgoingTotal = outgoingTotals.get(fromState) ?? 0;
           const percentOfOutgoing = calcPercent(count, outgoingTotal);
 
           return `
             <div style="font-weight: 600; margin-bottom: 4px;">${fromState} → ${toState}</div>
             <div style="font-family: var(--font-mono, monospace);">
-              <strong>${count.toLocaleString()}</strong> ${unit}
+              <strong>${formatNumber(count)}</strong> ${unit}
             </div>
             <div style="margin-top: 4px; color: ${chartTheme.accent2};">
-              ${percentOfOutgoing.toFixed(1)}% of outgoing from "${fromState}"
+              ${formatPercent(percentOfOutgoing)} of outgoing from "${fromState}"
             </div>
           `;
         },
@@ -236,7 +239,7 @@ export function TransitionHeatmapChart({
               const values = entry.value;
               if (!Array.isArray(values)) return "";
               const count = typeof values[2] === "number" ? values[2] : 0;
-              return count > 0 ? count.toString() : "";
+              return count > 0 ? formatNumber(count) : "";
             },
             color: chartTheme.text,
             fontSize: 10,

@@ -134,7 +134,10 @@ export function useInvestmentColorMaps({
       const nodeMap = new Map<string, SankeyNode>();
       flow.nodes.forEach((node) => {
         const normalizedName = normalizeName(node.name, node.group);
-        const coloredNode = applySankeyNodeColor({ ...node, name: normalizedName });
+        const coloredNode = applySankeyNodeColor({
+          ...node,
+          name: normalizedName,
+        });
         const existing = nodeMap.get(normalizedName);
         if (!existing) {
           nodeMap.set(normalizedName, coloredNode);
@@ -157,10 +160,16 @@ export function useInvestmentColorMaps({
         const key = `${source}|||${target}`;
         linkTotals.set(key, (linkTotals.get(key) ?? 0) + link.value);
         if (!nodeMap.has(source)) {
-          nodeMap.set(source, { name: source, group: groupByOriginalName.get(link.source) });
+          nodeMap.set(source, {
+            name: source,
+            group: groupByOriginalName.get(link.source),
+          });
         }
         if (!nodeMap.has(target)) {
-          nodeMap.set(target, { name: target, group: groupByOriginalName.get(link.target) });
+          nodeMap.set(target, {
+            name: target,
+            group: groupByOriginalName.get(link.target),
+          });
         }
       });
 
@@ -227,7 +236,12 @@ export function useInvestmentColorMaps({
         if (!params || typeof params !== "object" || !context.metrics) return "";
         const entry = params as {
           dataType?: string;
-          data?: { name?: string; value?: number; source?: string; target?: string };
+          data?: {
+            name?: string;
+            value?: number;
+            source?: string;
+            target?: string;
+          };
           name?: string;
         };
         const data = entry.data ?? {};
@@ -298,9 +312,9 @@ export function useInvestmentColorMaps({
               delta > 0 ? chartTheme.accent2 : delta < 0 ? chartTheme.accent1 : chartTheme.muted;
             deltaHtml = `
               <div style=\"margin-top: 8px; padding-top: 8px; border-top: 1px solid ${chartTheme.grid}; font-size: 11px;\">
-                <div><span style=\"color: ${chartTheme.muted}\">Current allocation share:</span> ${(clampedShare * 100).toFixed(1)}%</div>
-                <div><span style=\"color: ${chartTheme.muted}\">Baseline allocation share:</span> ${(baselineShare * 100).toFixed(1)}%</div>
-                <div style=\"font-weight: 600; color: ${deltaColor};\">Delta: ${deltaSign}${(delta * 100).toFixed(1)}%</div>
+                <div><span style=\"color: ${chartTheme.muted}\">Current allocation share:</span> ${formatNumber(clampedShare * 100)}%</div>
+                <div><span style=\"color: ${chartTheme.muted}\">Baseline allocation share:</span> ${formatNumber(baselineShare * 100)}%</div>
+                <div style=\"font-weight: 600; color: ${deltaColor};\">Delta: ${deltaSign}${formatNumber(delta * 100)}%</div>
                 <div style=\"margin-top: 6px; font-size: 10px; color: ${chartTheme.muted}; font-style: italic; line-height: 1.3;\">
                   Delta reflects change in allocation share vs the prior window. It does not indicate cause, impact, or priority.
                 </div>
@@ -331,7 +345,7 @@ export function useInvestmentColorMaps({
 
         const lines = [`<strong>Total allocated:</strong> ${formatNumber(nodeValue)} ${unit}`];
         if (clampedShare !== null) {
-          lines.push(`<strong>Share:</strong> ${(clampedShare * 100).toFixed(1)}%`);
+          lines.push(`<strong>Share:</strong> ${formatNumber(clampedShare * 100)}%`);
         }
         if (timeLabel) {
           lines.push(`<strong>Window:</strong> ${timeLabel}`);
