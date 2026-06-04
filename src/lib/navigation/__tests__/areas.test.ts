@@ -65,6 +65,7 @@ describe("navArea.children — locked child navigation", () => {
 			Cockpit: [],
 			Diagnose: [
 				"Overview",
+				"Work",
 				"Flow",
 				"Investment",
 				"Landscape",

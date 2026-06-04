@@ -256,7 +256,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 						<div className="flex flex-wrap items-center gap-3">
 							<Link
 								href={withFilterParam(
-									"/flame?mode=cycle_breakdown",
+									"/work?tab=flame&mode=cycle_breakdown",
 									filters,
 									activeRole,
 								)}
