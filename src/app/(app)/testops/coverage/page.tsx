@@ -8,6 +8,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { checkApiHealth } from "@/lib/api/system";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchCoverageMetrics } from "@/lib/testops/fetchers";
@@ -164,7 +165,7 @@ export default async function CoveragePage({
 							href={withFilterParam("/", filters, activeRole)}
 							className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
 						>
-							Back to cockpit
+							{CTA_LABELS.backToCockpit}
 						</Link>
 					</header>
 
