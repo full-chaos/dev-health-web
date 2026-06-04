@@ -4,6 +4,7 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { BackLink } from "@/components/shared/BackLink";
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
@@ -175,6 +176,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
             <BackLink href={withFilterParam("/", filters, activeRole)} />
           </header>
 
+          <GlobalContextBar filters={filters} />
           <FilterBar view="metrics" tab={activeTab.id} />
 
           <ModeTabs

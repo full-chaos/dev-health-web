@@ -9,6 +9,7 @@ import { AiWorkflowCallout } from "@/components/home/AiWorkflowCallout";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { AreaHub } from "@/components/navigation/AreaHub";
 import { getAreaSignals } from "@/lib/areaSignals";
@@ -18,6 +19,7 @@ import { getHomeData } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
 import { isAiDominant } from "@/lib/cockpit/aiGate";
 import type { HomeResponse } from "@/lib/types";
@@ -105,7 +107,7 @@ export default async function Home({ searchParams }: HomePageProps) {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-20 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="home" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-10">
-          <header className="rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
+          <header className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -121,14 +123,6 @@ export default async function Home({ searchParams }: HomePageProps) {
                     System patterns over the last {filters.time.range_days} days.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
-                    {filters.scope.level} scope
-                  </div>
-                  <div className="rounded-full border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
-                    {filters.time.range_days}d view
-                  </div>
-                </div>
               </div>
 
               <div className="flex items-center justify-between">
@@ -140,6 +134,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             </div>
           </header>
 
+          <GlobalContextBar filters={filters} />
           <FilterBar view="home" />
 
           {/* Minimal freshness indicator only — no integration status UI */}
@@ -166,7 +161,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 href={withFilterParam("/metrics?tab=dora", filters, activeRole)}
                 className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
               >
-                Open metrics
+                {CTA_LABELS.openMetrics}
               </Link>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -209,7 +204,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   href={withFilterParam("/work", filters, activeRole)}
                   className="text-(--accent-2)"
                 >
-                  Open Work view
+                  {CTA_LABELS.openWorkView}
                 </Link>
                 <Link
                   href={buildExploreUrl({
@@ -219,7 +214,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   })}
                   className="text-(--accent-2)"
                 >
-                  Open in Explore
+                  {CTA_LABELS.openInExplore}
                 </Link>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { AIImpactDashboard } from "@/components/ai/AIImpactDashboard";
 import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { encodeAIFilterParam, metricFilterToAIFilter } from "@/lib/filters/ai";
@@ -36,6 +37,7 @@ export default async function AIWorkflowsPage({
 				review load, quality gaps, and operational drag.
 			</AIPageHeader>
 
+			<GlobalContextBar filters={filters} />
 			<FilterBar view="ai" />
 			<AIImpactDashboard filter={aiFilter} />
 			<p className="sr-only">

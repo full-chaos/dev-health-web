@@ -14,14 +14,12 @@ export function RoleSelectorWithSuspense({ className }: { className?: string }) 
     <Suspense
       fallback={
         <div className={`flex items-center gap-2 ${className ?? ""}`}>
-          <span className="text-[10px] uppercase tracking-[0.25em] text-(--ink-muted)">
-            View from
-          </span>
+          <span className="text-xs uppercase tracking-[0.25em] text-(--ink-muted)">Lens</span>
           <div className="flex gap-1">
             {["IC", "EM", "PM", "Leadership"].map((label) => (
               <span
                 key={label}
-                className="rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-(--ink-muted)"
+                className="rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1.5 text-xs font-medium uppercase tracking-[0.15em] text-(--ink-muted)"
               >
                 {label}
               </span>

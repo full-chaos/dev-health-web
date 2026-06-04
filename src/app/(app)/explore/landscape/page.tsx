@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
+import { CTA_LABELS, backToArea } from "@/lib/design/cta";
 import { getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
@@ -125,11 +127,12 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                 href={withFilterParam("/explore", filters, roleParam as string)}
                 className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
               >
-                Back to Explore
+                {backToArea("Explore")}
               </Link>
             </div>
           </header>
 
+          <GlobalContextBar filters={filters} />
           <FilterBar condensed view="explore" />
 
           {!canQuery && (
@@ -148,7 +151,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                   : "border-(--card-stroke)"
               }`}
             >
-              Week
+              {CTA_LABELS.week}
             </Link>
             <Link
               href={withFilterParam(
@@ -162,15 +165,15 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                   : "border-(--card-stroke)"
               }`}
             >
-              Month
+              {CTA_LABELS.month}
             </Link>
           </section>
 
           <section className="flex flex-col gap-10">
-            <div className="rounded-[40px] border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
+            <div className="rounded-3xl border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
               <div className="mb-6 flex items-center justify-between">
-                <span className="rounded-full bg-(--accent-2)/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-(--accent-2)">
-                  Role lens: {roleConfig.label}
+                <span className="rounded-full bg-(--accent-2)/20 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.25em] text-(--accent-2)">
+                  Lens: {roleConfig.label}
                 </span>
               </div>
               <QuadrantPanel
@@ -205,7 +208,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                   >
                     {isSecondary && (
                       <div className="mb-4 px-2">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-(--ink-muted)">
+                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-(--ink-muted)">
                           Secondary lens
                         </span>
                       </div>

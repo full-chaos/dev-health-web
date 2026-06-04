@@ -1,7 +1,9 @@
 import Link from "next/link";
 
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { StatusBadge } from "@/components/reports/StatusBadge";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchSavedReports } from "@/lib/reports/fetchers";
 import { getServerEnv } from "@/lib/config";
@@ -41,9 +43,11 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
               href="/reports/new"
               className="rounded-full bg-(--accent) px-4 py-2 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors"
             >
-              New Report
+              {CTA_LABELS.newReport}
             </Link>
           </header>
+
+          <GlobalContextBar filters={filters} />
 
           <section className="flex flex-col gap-4">
             {reports.length === 0 ? (
@@ -55,7 +59,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                   href="/reports/new"
                   className="mt-4 inline-block rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                 >
-                  Create Report
+                  {CTA_LABELS.createReport}
                 </Link>
               </div>
             ) : (

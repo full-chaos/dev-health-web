@@ -1,4 +1,5 @@
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { AreaHub } from "@/components/navigation/AreaHub";
 import { AreaSignalCard } from "@/components/navigation/AreaSignalCard";
@@ -107,7 +108,8 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
 
           {activeView === "focus-cards" ? (
             <>
-              <FilterBar view="opportunities" />
+              <GlobalContextBar filters={filters} />
+          <FilterBar view="opportunities" />
               <section className="grid gap-6 md:grid-cols-2">
                 {(data?.items ?? []).map((card) => (
                   <FocusCard key={card.id} card={card} filters={filters} activeRole={activeRole} />

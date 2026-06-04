@@ -3,6 +3,7 @@ import Link from "next/link";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { QualityCoverageTabs } from "@/components/testops/QualityCoverageTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -89,6 +90,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 
           <QualityCoverageTabs filters={filters} role={activeRole} />
 
+          <GlobalContextBar filters={filters} />
           <FilterBar view="quality" />
 
           <section className="grid gap-4 lg:grid-cols-3">

@@ -1,5 +1,6 @@
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { AreaHub } from "@/components/navigation/AreaHub";
 import { AreaSignalCard } from "@/components/navigation/AreaSignalCard";
@@ -159,7 +160,8 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
 
           {activeView === "testops" ? (
             <>
-              <FilterBar view="testops" />
+              <GlobalContextBar filters={filters} />
+          <FilterBar view="testops" />
               <section className="grid gap-4 lg:grid-cols-3">
                 {measures.map(({ id, ts }) => {
                   const def = TESTOPS_MEASURES[id];

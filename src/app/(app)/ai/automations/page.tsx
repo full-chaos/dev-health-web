@@ -1,6 +1,7 @@
 import { AIAutomationsDashboard } from "@/components/ai/AIAutomationsDashboard";
 import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { navTrailForPathname } from "@/lib/navigation/areas";
@@ -26,13 +27,17 @@ export default async function AIAutomationsPage({
 				title="Automations"
 				preview
 				breadcrumbs={[
-					...navTrailForPathname("/ai/automations").map((c) => ({ ...c, href: c.href ?? "/ai" })),
+					...navTrailForPathname("/ai/automations").map((c) => ({
+						...c,
+						href: c.href ?? "/ai",
+					})),
 					{ label: "Automations" },
 				]}
 			>
 				Candidate patterns for responsible automation, separated from Impact
 				diagnostics so teams can triage opportunities directly.
 			</AIPageHeader>
+			<GlobalContextBar filters={filters} />
 			<FilterBar view="ai" />
 			<AIAutomationsDashboard filter={aiFilter} />
 		</>

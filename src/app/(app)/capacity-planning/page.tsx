@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
-import { FilterBar } from "@/components/filters/FilterBar";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
@@ -125,11 +125,9 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
               href={withFilterParam("/capacity", filters, activeRole)}
               className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
             >
-              Monte Carlo view
+              {CTA_LABELS.monteCarloView}
             </Link>
           </header>
-
-          <FilterBar view="capacity-planning" />
 
           <ContextStrip filters={filters} origin={originParam} />
 

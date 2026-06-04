@@ -5,6 +5,7 @@ import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { getBusFactorData } from "@/lib/api/code";
@@ -120,6 +121,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
             </Link>
           </header>
 
+          <GlobalContextBar filters={filters} />
           <FilterBar view="code" />
 
           <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">

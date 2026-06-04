@@ -62,7 +62,7 @@ export function FilterBarClient({
       ref={barRef}
       data-testid="filter-bar"
       data-view={view ?? "default"}
-      className={`w-full border-b border-(--card-stroke) bg-(--card-90)/80 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
+      className={`w-full rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 backdrop-blur-sm transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
     >
       <div className="flex w-full flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -211,19 +211,28 @@ export function FilterBarClient({
           onClearDeveloper={(value) =>
             updateFilters({
               ...filters,
-              who: { ...filters.who, developers: toggleValue(developers, value) },
+              who: {
+                ...filters.who,
+                developers: toggleValue(developers, value),
+              },
             })
           }
           onClearFlowStage={(value) =>
             updateFilters({
               ...filters,
-              how: { ...filters.how, flow_stage: toggleValue(flowStage, value) },
+              how: {
+                ...filters.how,
+                flow_stage: toggleValue(flowStage, value),
+              },
             })
           }
           onClearIssueType={(value) =>
             updateFilters({
               ...filters,
-              why: { ...filters.why, issue_type: toggleValue(issueType, value) },
+              why: {
+                ...filters.why,
+                issue_type: toggleValue(issueType, value),
+              },
             })
           }
           onClearRepo={(value) =>
