@@ -21,7 +21,7 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
 	return (
 		<>
 			<AIPageHeader
-				eyebrow="AI Workflows"
+				eyebrow="AI"
 				title="Governance Risk"
 				breadcrumbs={[
 					...navTrailForPathname("/ai/risk").map((c) => ({

@@ -7,15 +7,6 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { AITabNav } from "./AITabNav";
 
-/**
- * Shared chrome for the unified AI Workflows area. Rendered once via
- * `src/app/(app)/ai/layout.tsx` so all AI tabs share a single sidebar entry
- * (`active="ai-workflows"`) plus one tab strip.
- *
- * Filters are read client-side from the URL because Next.js layouts do not
- * receive `searchParams`. This mirrors the `f`/`role` query convention used by
- * the per-page server components so deep links keep working.
- */
 export function AIWorkspaceChrome({ children }: { children: ReactNode }) {
 	const searchParams = useSearchParams();
 
@@ -37,16 +28,17 @@ export function AIWorkspaceChrome({ children }: { children: ReactNode }) {
 	return (
 		<div className="min-h-screen bg-background text-foreground">
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-				<PrimaryNav filters={filters} active="ai-workflows" role={role} />
+				<PrimaryNav filters={filters} active="ai" role={role} />
 				<main className="flex min-w-0 flex-1 flex-col gap-8">
 					<header className="flex flex-col gap-2">
 						<p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-							Operating modes
+							Decision area
 						</p>
-						<h1 className="font-(--font-display) text-3xl">AI Workflows</h1>
+						<h1 className="font-(--font-display) text-3xl">AI</h1>
 						<p className="max-w-3xl text-sm text-(--ink-muted)">
-							Where AI-assisted effort shows up across delivery, review, and
-							risk. Switch tabs to explore each surface.
+							What AI is changing across delivery, review, quality, and
+							governance. Open a real view to inspect the evidence-backed
+							surface.
 						</p>
 					</header>
 					<AITabNav filters={filters} role={role} />

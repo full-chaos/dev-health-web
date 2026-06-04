@@ -23,9 +23,8 @@ export default async function AIAutomationsPage({
 	return (
 		<>
 			<AIPageHeader
-				eyebrow="AI Workflows"
+				eyebrow="AI"
 				title="Automations"
-				preview
 				breadcrumbs={[
 					...navTrailForPathname("/ai/automations").map((c) => ({
 						...c,

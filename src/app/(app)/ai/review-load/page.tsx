@@ -23,7 +23,7 @@ export default async function AIReviewLoadPage({
 	return (
 		<>
 			<AIPageHeader
-				eyebrow="AI Workflows"
+				eyebrow="AI"
 				title="Review Load"
 				breadcrumbs={[
 					...navTrailForPathname("/ai/review-load").map((c) => ({

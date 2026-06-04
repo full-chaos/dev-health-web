@@ -44,32 +44,33 @@ const filters: MetricFilter = {
 };
 
 describe("AITabNav", () => {
-	it("renders all AI tab labels", () => {
+	it("renders only real AI tab labels", () => {
 		pathnameMock.mockReturnValue("/ai");
 		render(<AITabNav filters={filters} />);
 		for (const label of [
+			"Overview",
 			"Impact",
-			"Attribution",
 			"Review Load",
-			"Test Gaps",
 			"Governance Risk",
-			"Evidence",
 			"Automations",
 		]) {
 			expect(screen.getByText(label)).toBeInTheDocument();
 		}
+		for (const hiddenLabel of ["Attribution", "Test Gaps", "Evidence"]) {
+			expect(screen.queryByText(hiddenLabel)).not.toBeInTheDocument();
+		}
 	});
 
-	it("defaults the Impact tab as active on /ai", () => {
+	it("defaults the Overview tab as active on /ai", () => {
 		pathnameMock.mockReturnValue("/ai");
 		render(<AITabNav filters={filters} />);
-		expect(screen.getByText("Impact").closest("a")).toHaveAttribute(
+		expect(screen.getByText("Overview").closest("a")).toHaveAttribute(
 			"aria-current",
 			"page",
 		);
 	});
 
-	it("treats the legacy /ai/impact path as the Impact tab", () => {
+	it("marks /ai/impact as the Impact tab", () => {
 		pathnameMock.mockReturnValue("/ai/impact");
 		render(<AITabNav filters={filters} />);
 		expect(screen.getByText("Impact").closest("a")).toHaveAttribute(
@@ -88,19 +89,22 @@ describe("AITabNav", () => {
 		);
 	});
 
-	it("marks preview tabs with a Preview badge", () => {
+	it("does not render preview badges for hidden placeholder routes", () => {
 		pathnameMock.mockReturnValue("/ai");
 		render(<AITabNav filters={filters} />);
-		// Attribution, Test Gaps, Evidence each carry a Preview badge.
-		expect(screen.getAllByText("Preview")).toHaveLength(3);
+		expect(screen.queryByText("Preview")).not.toBeInTheDocument();
 	});
 
 	it("points each tab at its route", () => {
 		pathnameMock.mockReturnValue("/ai");
 		render(<AITabNav filters={filters} />);
-		expect(screen.getByText("Impact").closest("a")).toHaveAttribute(
+		expect(screen.getByText("Overview").closest("a")).toHaveAttribute(
 			"href",
 			"/ai",
+		);
+		expect(screen.getByText("Impact").closest("a")).toHaveAttribute(
+			"href",
+			"/ai/impact",
 		);
 		expect(screen.getByText("Review Load").closest("a")).toHaveAttribute(
 			"href",

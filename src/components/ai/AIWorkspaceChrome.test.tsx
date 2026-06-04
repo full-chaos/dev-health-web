@@ -15,7 +15,7 @@ vi.mock("@/components/navigation/PrimaryNav", () => ({
 }));
 
 vi.mock("./AITabNav", () => ({
-	AITabNav: () => <nav data-testid="ai-tab-nav" aria-label="AI Workflows" />,
+	AITabNav: () => <nav data-testid="ai-tab-nav" aria-label="AI views" />,
 }));
 
 vi.mock("@/lib/filters/encode", () => ({
@@ -24,11 +24,11 @@ vi.mock("@/lib/filters/encode", () => ({
 }));
 
 describe("AIWorkspaceChrome", () => {
-	it("renders the 'AI Workflows' area title as the page-level h1", () => {
+	it("renders the AI area title as the page-level h1", () => {
 		render(<AIWorkspaceChrome>content</AIWorkspaceChrome>);
 		const areaTitle = screen.getByRole("heading", {
 			level: 1,
-			name: "AI Workflows",
+			name: "AI",
 		});
 		expect(areaTitle).toBeInTheDocument();
 	});
@@ -37,7 +37,7 @@ describe("AIWorkspaceChrome", () => {
 		render(<AIWorkspaceChrome>content</AIWorkspaceChrome>);
 		const areaTitle = screen.getByRole("heading", {
 			level: 1,
-			name: "AI Workflows",
+			name: "AI",
 		});
 		const tabNav = screen.getByTestId("ai-tab-nav");
 		// DOCUMENT_POSITION_FOLLOWING (4) => tabNav comes after the area title.
@@ -49,23 +49,22 @@ describe("AIWorkspaceChrome", () => {
 
 	it("renders the area title matching the sidebar label (A6 agreement)", () => {
 		render(<AIWorkspaceChrome>content</AIWorkspaceChrome>);
-		// PrimaryNav active="ai-workflows" => label "AI Workflows".
 		expect(
-			screen.getByRole("heading", { level: 1, name: "AI Workflows" }),
+			screen.getByRole("heading", { level: 1, name: "AI" }),
 		).toBeInTheDocument();
 	});
 
 	it("demotes the per-tab title to a subordinate h2", () => {
 		render(
 			<AIWorkspaceChrome>
-				<AIPageHeader eyebrow="AI workflows" title="Impact">
+				<AIPageHeader eyebrow="AI" title="Impact">
 					Per-tab lede copy.
 				</AIPageHeader>
 			</AIWorkspaceChrome>,
 		);
 		// Area identity is the single h1.
 		expect(
-			screen.getByRole("heading", { level: 1, name: "AI Workflows" }),
+			screen.getByRole("heading", { level: 1, name: "AI" }),
 		).toBeInTheDocument();
 		// Per-tab name reads as a sub-section heading.
 		const tabTitle = screen.getByRole("heading", { level: 2, name: "Impact" });

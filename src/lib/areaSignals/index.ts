@@ -26,47 +26,54 @@ export { getImproveSignals } from "./improve";
  * return `[]` (no signal grid).
  */
 export async function getAreaSignals(
-  areaId: NavAreaId,
-  filters: MetricFilter,
-  isTestMode = false,
+	areaId: NavAreaId,
+	filters: MetricFilter,
+	isTestMode = false,
 ): Promise<AreaSignal[]> {
-  switch (areaId) {
-    case "govern":
-      return getGovernSignals(filters, isTestMode);
-    case "diagnose":
-      return getDiagnoseSignals(filters, isTestMode);
-    case "improve":
-      return getImproveSignals(filters, isTestMode);
-    case "plan":
-      void filters;
-      void isTestMode;
-      return descriptorStubs(areaId, "unavailable");
-    case "cockpit":
-      // Cockpit's single sub-area (Operating Review) has no severity metric; it
-      // is a navigational surface. Render it as a calm "neutral" card rather
-      // than implying a finding (leave-as-is per CHAOS-2074).
-      return descriptorStubs(areaId, "neutral");
-    default:
-      // reports / admin — no signal grid.
-      return [];
-  }
+	switch (areaId) {
+		case "govern":
+			return getGovernSignals(filters, isTestMode);
+		case "diagnose":
+			return getDiagnoseSignals(filters, isTestMode);
+		case "improve":
+			return getImproveSignals(filters, isTestMode);
+		case "plan":
+			void filters;
+			void isTestMode;
+			return descriptorStubs(areaId, "unavailable");
+		case "ai":
+			void filters;
+			void isTestMode;
+			return descriptorStubs(areaId, "unavailable");
+		case "cockpit":
+			// Cockpit's single sub-area (Operating Review) has no severity metric; it
+			// is a navigational surface. Render it as a calm "neutral" card rather
+			// than implying a finding (leave-as-is per CHAOS-2074).
+			return descriptorStubs(areaId, "neutral");
+		default:
+			// reports / admin — no signal grid.
+			return [];
+	}
 }
 
 /**
  * Map an area's nav descriptors to placeholder `AreaSignal`s in a given state.
  * "neutral" → calm navigational card for areas without severity metrics.
  */
-function descriptorStubs(areaId: NavAreaId, state: "unavailable" | "neutral"): AreaSignal[] {
-  const area = getAreaById(areaId);
-  if (!area) return [];
-  return area.hubItems.map((item) => ({
-    id: item.id,
-    label: item.label,
-    href: item.href,
-    cluster: item.cluster,
-    metricLabel: item.metricLabel ?? item.description ?? item.label,
-    value: "",
-    state,
-    demoted: item.demoted,
-  }));
+function descriptorStubs(
+	areaId: NavAreaId,
+	state: "unavailable" | "neutral",
+): AreaSignal[] {
+	const area = getAreaById(areaId);
+	if (!area) return [];
+	return area.hubItems.map((item) => ({
+		id: item.id,
+		label: item.label,
+		href: item.href,
+		cluster: item.cluster,
+		metricLabel: item.metricLabel ?? item.description ?? item.label,
+		value: "",
+		state,
+		demoted: item.demoted,
+	}));
 }
