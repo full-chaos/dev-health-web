@@ -21,7 +21,9 @@ import { useMemo } from "react";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { SankeyChart } from "@/components/charts/SankeyChart";
+import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { DataState } from "@/components/ui/DataState";
 import { buildExploreUrl } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -34,6 +36,7 @@ import type {
 } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
+import { hasRenderableSeries, isFiniteNumber } from "@/lib/guards/numbers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,6 +89,11 @@ const DORA_METRIC_KEYS = [
 
 const MAX_SANKEY_INCIDENTS = 10;
 const MAX_LINKS_PER_INCIDENT = 3;
+
+const hasMeaningfulAssociations = (items: Contributor[]) =>
+	items.some(
+		(item) => isFiniteNumber(item.delta_pct) && Math.abs(item.delta_pct) > 0,
+	);
 
 // ---------------------------------------------------------------------------
 // Pure join / transform helpers (exported for unit testing)
@@ -210,6 +218,7 @@ export function IncidentCorrelationDashboard({
 	);
 
 	const topDrivers = drivers.slice(0, 5);
+	const hasDriverSeries = hasMeaningfulAssociations(topDrivers);
 	// Render-safe association labels (A7): prefer the server-resolved display
 	// name; degrade genuinely-unresolved ids to a stable short token + badge.
 	const driverChartLabels = resolveEntityLabels(
@@ -278,49 +287,49 @@ export function IncidentCorrelationDashboard({
 				</section>
 			)}
 
-			{cfrDelta && cfrDelta.spark.length > 0 && (
-				<section
-					className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
-					aria-label="Change failure rate trend"
-				>
-					<div className="flex items-center justify-between">
-						<h2 className="font-(--font-display) text-xl">
-							Change Failure Rate — Trend
-						</h2>
-						<span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-							Recent trend
-						</span>
-					</div>
-					<p className="mt-1 text-xs text-(--ink-muted)">
-						Deployment and incident trends appear when the connected source
-						provides enough history for the selected window.
-					</p>
-					<div
-						role="img"
-						aria-label="CFR sparkline"
-						className="mt-4 flex h-24 items-end gap-0.5"
-						data-testid="cfr-sparkline"
-					>
-						{(() => {
-							const maxVal = Math.max(
-								0.01,
-								...cfrDelta.spark.map((p) => p.value),
-							);
-							return cfrDelta.spark.map((point) => {
-								const height = Math.max(4, (point.value / maxVal) * 88);
-								return (
-									<div
-										key={point.ts}
-										className="flex-1 rounded-t-sm bg-(--accent)"
-										style={{ height: `${height}px` }}
-										title={`${point.ts}: ${point.value}`}
+			{cfrDelta &&
+				(() => {
+					const cfrTrendData = cfrDelta.spark
+						.filter((point) => isFiniteNumber(point.value))
+						.map((point) => ({ day: point.ts, value: point.value }));
+					const hasCfrTrend = hasRenderableSeries(cfrTrendData);
+					return (
+						<section
+							className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
+							aria-label="Change failure rate trend"
+						>
+							<div className="flex items-center justify-between">
+								<h2 className="font-(--font-display) text-xl">
+									Change Failure Rate — Trend
+								</h2>
+								<span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+									Recent trend
+								</span>
+							</div>
+							<p className="mt-1 text-xs text-(--ink-muted)">
+								Deployment and incident trends appear when the connected source
+								provides enough history for the selected window.
+							</p>
+							{hasCfrTrend ? (
+								<div className="mt-4 h-64" data-testid="cfr-trend-chart">
+									<TimeseriesChart
+										data={cfrTrendData}
+										height="100%"
+										valueFormat="percent"
 									/>
-								);
-							});
-						})()}
-					</div>
-				</section>
-			)}
+								</div>
+							) : (
+								<DataState
+									variant="insufficient-confidence"
+									title="No trend data for this window"
+									description="Change failure rate needs at least two finite points before a trend can be drawn."
+									className="mt-4"
+									data-testid="cfr-trend-empty"
+								/>
+							)}
+						</section>
+					);
+				})()}
 
 			{/* ── Drivers + Contributors ──────────────────────────────────────────── */}
 			{hasExplainData && (
@@ -344,18 +353,23 @@ export function IncidentCorrelationDashboard({
 								{CTA_LABELS.openEvidence}
 							</Link>
 						</div>
-						{topDrivers.length > 0 ? (
+						{hasDriverSeries ? (
 							<div className="mt-4 space-y-4">
 								<HorizontalBarChart
 									categories={driverChartLabels.labels}
 									values={topDrivers.map((d) => Math.abs(d.delta_pct))}
 									categoryTitles={driverChartLabels.titles}
+									valueFormat="percent"
 								/>
 							</div>
 						) : (
-							<p className="mt-4 text-sm text-(--ink-muted)">
-								Association detail will appear once data is ingested.
-							</p>
+							<DataState
+								variant="detector-enabled-no-findings"
+								title="No association data for this window"
+								description="Change failure associations need non-zero driver evidence before this chart can be drawn."
+								className="mt-4"
+								data-testid="change-failure-associations-empty"
+							/>
 						)}
 					</div>
 

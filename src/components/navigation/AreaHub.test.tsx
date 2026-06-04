@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@/test/utils";
 
 import { AreaHub } from "./AreaHub";
+import { AREA_UNAVAILABLE_EMPTY_STATE } from "@/lib/design/emptyState";
 import type { AreaSignal, AreaSignalState } from "@/lib/areaSignals/types";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
@@ -109,6 +110,8 @@ describe("AreaHub — severity-sorted signal cards", () => {
       .find((c) => c.getAttribute("data-signal-id") === "gap")!;
     expect(gap.getAttribute("data-state")).toBe("unavailable");
     expect(within(gap).getByTestId("area-signal-unavailable")).toBeInTheDocument();
+    expect(within(gap).getByText(AREA_UNAVAILABLE_EMPTY_STATE.title)).toBeInTheDocument();
+    expect(within(gap).queryByText(/No area metric unavailable/i)).toBeNull();
     // No metric value node rendered for the unavailable card.
     expect(within(gap).queryByTestId("area-signal-value")).toBeNull();
 

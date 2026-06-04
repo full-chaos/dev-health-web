@@ -311,6 +311,7 @@ type AnalyticsResult {
 type BreakdownItem {
   key: String!
   value: Float!
+  label: String
 }
 
 input BreakdownRequestInput {

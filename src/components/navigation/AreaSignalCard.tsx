@@ -7,6 +7,7 @@ import {
   DIRECTION_GLYPH,
 } from "@/components/home/severityTokens";
 import type { AreaSignal } from "@/lib/areaSignals/types";
+import { AREA_UNAVAILABLE_EMPTY_STATE } from "@/lib/design/emptyState";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -48,8 +49,8 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
         <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">{signal.label}</p>
         <DataState
           variant="detector-unavailable"
-          title={`${signal.metricLabel} unavailable`}
-          description="No source feeds this metric for the selected window yet."
+          title={AREA_UNAVAILABLE_EMPTY_STATE.title}
+          description={AREA_UNAVAILABLE_EMPTY_STATE.description}
           className="mt-3"
           data-testid="area-signal-unavailable"
         />

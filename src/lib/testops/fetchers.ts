@@ -6,6 +6,7 @@ import {
   AnalyticsResultSchema,
 } from "@/lib/graphql/schemas/analytics";
 import { logger } from "@/lib/logger";
+import { normalizePercent } from "@/lib/guards/numbers";
 import {
   TESTOPS_PIPELINE_QUERY,
   TESTOPS_TEST_QUERY,
@@ -171,13 +172,15 @@ export async function fetchRiskMetrics(
         : [];
 
     const quadrantData =
-      analytics.breakdowns
-        .find((b) => b.measure === "PIPELINE_SUCCESS_RATE")
-        ?.items.map((item) => ({
-          id: item.key,
-          pipeline_success_rate: item.value,
-          test_pass_rate: latestTestFlake != null ? 100 - latestTestFlake : 0,
-        })) || [];
+      latestTestFlake != null
+        ? analytics.breakdowns
+            .find((b) => b.measure === "PIPELINE_SUCCESS_RATE")
+            ?.items.map((item) => ({
+              id: item.key,
+              pipeline_success_rate: normalizePercent(item.value),
+              test_pass_rate: normalizePercent(100 - latestTestFlake),
+            })) || []
+        : [];
 
     const toSpark = (buckets: { date: string; value: number }[]) =>
       buckets.map((b) => ({ ts: b.date, value: b.value }));
