@@ -240,6 +240,12 @@ export const navAreas: readonly NavArea[] = [
 				path: "/work",
 				navVisible: true,
 			},
+			{
+				id: "work",
+				label: "Work",
+				path: "/work?view=work",
+				navVisible: true,
+			},
 			{ id: "flow", label: "Flow", path: "/metrics", navVisible: true },
 			{
 				id: "investment",
