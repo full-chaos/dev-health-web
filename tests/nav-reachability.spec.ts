@@ -136,8 +136,9 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
     await waitForHydration(page);
 
     // AI Workflows now lives in the Improve area's drill-down hub, not the sidebar.
+    // AreaHub renders aria-label="${area.label} signals" → "Improve signals".
     const improveHub = page.getByRole("region", {
-      name: "Improve destinations",
+      name: "Improve signals",
     });
     await clickUntilUrl(
       page,
@@ -170,7 +171,8 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
       { path: "/testops/risk", selectedLabel: "Govern" },
       { path: "/bottleneck", selectedLabel: "Diagnose" },
       { path: "/risk/compounding", selectedLabel: "Govern" },
-      { path: "/operating-review", selectedLabel: "Cockpit" },
+      // Operating Review moved Cockpit → Improve (CHAOS-2075); PrimaryNav marks Improve active.
+      { path: "/operating-review", selectedLabel: "Improve" },
     ]) {
       await expectSingleSelectedArea(page, route.path, route.selectedLabel);
     }

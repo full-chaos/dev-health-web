@@ -188,7 +188,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
               signals={governSignals}
               filters={filters}
               role={activeRole}
-              title="Govern signals"
+              title="Related workflows"
               description="Quality and risk sub-areas, ordered by severity."
             />
           )}
