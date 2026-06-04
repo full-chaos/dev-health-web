@@ -333,7 +333,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
               signals={diagnoseSignals}
               filters={filters}
               role={activeRole}
-              title="Diagnose signals"
+              title="Related workflows"
               description="Diagnostic sub-areas, ordered by severity."
             />
           )}

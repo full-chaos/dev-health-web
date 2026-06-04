@@ -192,7 +192,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             signals={await getAreaSignals("cockpit", filters)}
             filters={filters}
             role={activeRole}
-            title="Cockpit area"
+            title="Related workflows"
             description="Periodic operating review of system health."
           />
 

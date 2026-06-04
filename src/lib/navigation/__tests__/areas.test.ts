@@ -76,12 +76,22 @@ describe("navAreas — leaf reachability (no orphaned routes)", () => {
   const hubItemPaths = new Set(
     navAreas.flatMap((a) => a.hubItems.map((item) => basePath(item.href))),
   );
+  // REVIEW W3: Operating Review moved Cockpit → Improve as a sidebar child (not
+  // a hubItem). Leaf reachability now also checks navVisible children paths so
+  // sidebar-only destinations (like Operating Review) satisfy the guarantee.
+  const childPaths = new Set(
+    navAreas.flatMap((a) =>
+      a.children.filter((c) => c.navVisible).map((c) => basePath(c.path)),
+    ),
+  );
 
   it.each(LEGACY_LEAVES)(
-    "keeps the legacy leaf '$id' reachable via an area landing or hub",
+    "keeps the legacy leaf '$id' reachable via an area landing, hub, or sidebar child",
     ({ href }) => {
       const path = basePath(href);
-      expect(areaLandingPaths.has(path) || hubItemPaths.has(path)).toBe(true);
+      expect(
+        areaLandingPaths.has(path) || hubItemPaths.has(path) || childPaths.has(path),
+      ).toBe(true);
     },
   );
 

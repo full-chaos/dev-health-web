@@ -4,6 +4,7 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { QualityCoverageTabs } from "@/components/testops/QualityCoverageTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
@@ -88,6 +89,8 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 							Back to cockpit
 						</Link>
 					</header>
+
+					<QualityCoverageTabs />
 
 					<FilterBar view="quality" />
 

@@ -127,18 +127,12 @@ export const navAreas: readonly NavArea[] = [
     href: "/dashboard",
     placement: "main",
     // Operating Review moved to Improve (CHAOS-2075). `/operating-review` is no
-    // longer area-owned here, so it resolves to Improve. The `hubItems` entry is
-    // intentionally untouched (the 2074 landing cards are demoted in Phase 2).
+    // longer area-owned here, so it resolves to Improve. The hubItems entry is
+    // removed (REVIEW W3): leaving it would make the Cockpit landing's AreaHub
+    // link into Improve, creating a cross-area navigation confusion.
     ownedPathPrefixes: ["/dashboard"],
     legacyActiveIds: ["home", "cockpit"],
-    hubItems: [
-      {
-        id: "operating-review",
-        label: "Operating Review",
-        href: "/operating-review",
-        description: "Periodic operating review of system health.",
-      },
-    ],
+    hubItems: [],
     // Cockpit's only destination is its landing route — no expandable children.
     children: [],
   },
@@ -647,6 +641,6 @@ export function navTitleForPathname(pathname: string): string {
 }
 
 /** Strip query/hash so route comparisons use the bare path. */
-function basePath(href: string): string {
+export function basePath(href: string): string {
   return href.split("?")[0].split("#")[0];
 }

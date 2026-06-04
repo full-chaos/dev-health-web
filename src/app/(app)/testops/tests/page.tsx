@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { QualityCoverageTabs } from "@/components/testops/QualityCoverageTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
@@ -145,6 +146,8 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
               Back to cockpit
             </Link>
           </header>
+
+          <QualityCoverageTabs />
 
           <FilterBar view="testops" />
 

@@ -91,15 +91,21 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2075)", () => {
     expect(screen.queryByRole("link", { name: /^Security$/i })).toBeNull();
   });
 
-  it("never renders preview (navVisible:false) children", () => {
-    // Reports active: Report Center shows; the preview rows never do.
-    navigationMock.pathname = "/reports";
-    render(<PrimaryNav filters={makeFilter()} active="reports" />);
+  it("never renders preview (navVisible:false) children — verified via main area", () => {
+    // Use a main-placement area to confirm preview rows are suppressed. Utility
+    // areas (Reports, Admin) no longer expand at all (owner directive), so the
+    // preview guard is now exercised through Govern's navVisible:false rows (none
+    // exist in prod) or indirectly — the utility-area gate tests cover that path.
+    // Here we use Improve: all its children are navVisible, no previews.
+    navigationMock.pathname = "/opportunities";
+    render(<PrimaryNav filters={makeFilter()} active="opportunities" />);
 
-    expect(screen.getByRole("link", { name: /^Report Center$/i })).toBeInTheDocument();
-    for (const preview of [/^Weekly Review$/i, /^Executive Summary$/i, /^Export History$/i]) {
-      expect(screen.queryByRole("link", { name: preview })).toBeNull();
-    }
+    // Improve's children render (main area, active, navVisible).
+    expect(screen.getByRole("link", { name: /^Opportunities$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^AI Workflows$/i })).toBeInTheDocument();
+    // No phantom/preview rows ever rendered (none exist in Improve).
+    expect(screen.queryByRole("link", { name: /^Weekly Review$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Executive Summary$/i })).toBeNull();
   });
 
   it("never renders tab subviews (AI/Work) as sidebar children", () => {
@@ -159,7 +165,9 @@ describe("PrimaryNav — active child highlight (A10: one selected, distinct hov
     { pathname: "/metrics", active: "metrics", child: /^Metrics$/i },
     { pathname: "/ai/impact", active: "ai-workflows", child: /^AI Workflows$/i },
     { pathname: "/operating-review", active: "operating-review", child: /^Operating Review$/i },
-    { pathname: "/admin/settings", active: "settings", child: /^Settings$/i },
+    // Note: /admin/settings is NOT here — Admin is a utility area and does not
+    // expand children (owner directive). Its behaviour is covered by the
+    // "utility-area gate" describe block below.
     {
       pathname: "/testops/coverage",
       active: "coverage",
@@ -295,6 +303,85 @@ describe("PrimaryNav — active-area resolution (A10: one selected at a time)", 
     render(<PrimaryNav filters={makeFilter()} active="people" />);
 
     expect(screen.getByRole("link", { name: /^Diagnose$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+
+  // REVIEW W1: /testops → Govern row active; Overview child rendered but NOT active.
+  it("pathname /testops → Govern area row active, Overview child rendered but not active (W1)", () => {
+    navigationMock.pathname = "/testops";
+    render(<PrimaryNav filters={makeFilter()} active="testops" />);
+
+    // Govern area row is the current page (area landing).
+    expect(screen.getByRole("link", { name: /^Govern$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // Overview child is rendered (Govern is a main area and is active).
+    expect(screen.getByRole("link", { name: /^Overview$/i })).toBeInTheDocument();
+    // Overview child is NOT marked current (the area row owns the highlight).
+    expect(screen.getByRole("link", { name: /^Overview$/i })).not.toHaveAttribute("aria-current");
+    // A10: exactly one current-page link.
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+
+  // REVIEW W2: /testops/pipelines → Pipelines child active; cluster + Overview NOT active.
+  it("pathname /testops/pipelines → Pipelines child active, not the cluster or Overview (W2)", () => {
+    navigationMock.pathname = "/testops/pipelines";
+    render(<PrimaryNav filters={makeFilter()} active="pipelines" />);
+
+    // Pipelines child is the current page.
+    expect(screen.getByRole("link", { name: /^Pipelines$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // Tests · Quality · Coverage cluster is rendered but NOT active.
+    expect(
+      screen.getByRole("link", { name: /Tests · Quality · Coverage/i }),
+    ).not.toHaveAttribute("aria-current");
+    // Overview is rendered but NOT active.
+    expect(screen.getByRole("link", { name: /^Overview$/i })).not.toHaveAttribute("aria-current");
+    // A10: exactly one current-page link.
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+});
+
+describe("PrimaryNav — utility-area gate (owner directive)", () => {
+  // Utility-placement areas (Reports, Admin) must render as plain rows with NO
+  // child expansion even when active. Only main-placement areas expand.
+
+  it("Reports area renders NO child rows when active at /reports", () => {
+    navigationMock.pathname = "/reports";
+    render(<PrimaryNav filters={makeFilter()} active="reports" />);
+
+    // Reports row is rendered and marked current (it's the area landing).
+    expect(screen.getByRole("link", { name: /^Reports$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // NO child container rendered for Reports.
+    expect(screen.queryByTestId("nav-children-reports")).toBeNull();
+    // Report Center (a navVisible child) must NOT appear in the sidebar.
+    expect(screen.queryByRole("link", { name: /^Report Center$/i })).toBeNull();
+    // Preview rows also absent (they were already suppressed, still absent).
+    expect(screen.queryByRole("link", { name: /^Weekly Review$/i })).toBeNull();
+    // A10: exactly one current-page link.
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+
+  it("Admin area renders NO child rows when active at /admin/settings", () => {
+    navigationMock.pathname = "/admin/settings";
+    render(<PrimaryNav filters={makeFilter()} active="settings" />);
+
+    // Admin row is active (but the child Settings would have been current if expanded).
+    // Under the utility gate, no children render at all.
+    expect(screen.queryByTestId("nav-children-admin")).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Settings$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Connections$/i })).toBeNull();
+    // The Admin area row itself is the sole current-page link (no child selection).
+    expect(screen.getByRole("link", { name: /^Admin$/i })).toHaveAttribute(
       "aria-current",
       "page",
     );

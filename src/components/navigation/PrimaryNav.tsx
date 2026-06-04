@@ -11,6 +11,7 @@ import {
   navAreas,
   selectedAreaIdForPathname,
   selectedChildForPathname,
+  basePath,
   type NavArea,
   type NavChildRoute,
 } from "@/lib/navigation/areas";
@@ -18,8 +19,10 @@ import {
 // ── Component ────────────────────────────────────────────────────────────────
 //
 // Two-level sidebar (Framework A1, CHAOS-2075): the six decision areas are
-// always shown; the ACTIVE area expands to its child *destinations* as an
-// indented list, while inactive areas stay collapsed. Tab subviews live on the
+// always shown; the ACTIVE main-placement area expands to its child
+// *destinations* as an indented list, while inactive areas stay collapsed.
+// Utility-placement areas (Reports, Admin) render as plain rows with NO child
+// expansion even when active (owner directive). Tab subviews live on the
 // destination page (Framework A2), never here. The nav config is the single
 // source of truth (`@/lib/navigation/areas`); `children` is the sidebar route
 // tree, distinct from `hubItems` (the landing triage cards).
@@ -29,11 +32,6 @@ type PrimaryNavProps = {
   active?: string;
   role?: string;
 };
-
-/** Bare path (no query/hash) for comparing a child route to its area landing. */
-function basePath(href: string): string {
-  return href.split("?")[0].split("#")[0];
-}
 
 export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
   const pathname = usePathname();
@@ -64,16 +62,25 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
 
   const renderArea = (area: NavArea) => {
     const isActive = selectedAreaId === area.id;
-    // Only the active area expands; only navVisible children are rendered (no
-    // preview rows, no tab subviews). Exactly one row is highlighted.
-    const visibleChildren = isActive ? area.children.filter((child) => child.navVisible) : [];
+    // Only main-placement areas expand; utility areas (Reports, Admin) render as
+    // plain rows with no child expansion even when active (owner directive).
+    // Within main areas, only the active area expands; inactive stay collapsed.
+    // Only navVisible children are rendered (no preview rows, no tab subviews).
+    // Exactly one row is highlighted.
+    const visibleChildren =
+      isActive && area.placement === "main"
+        ? area.children.filter((child) => child.navVisible)
+        : [];
     const activeChild = isActive ? selectedChildForPathname(area, pathname) : undefined;
-    // When the active child IS the area's landing route (the coincident row,
-    // e.g. Diagnose landing `/work` + the "Work" child), the AREA row owns the
-    // highlight — matching the page title (A6: that page is "Diagnose", not
-    // "Work"). Otherwise the matched child row is the single selection.
+    // The area row owns the highlight when:
+    //   a) it IS the current page (no child, or child path === area landing), OR
+    //   b) it's a utility area — children never expand, so the area row is the
+    //      sole visible selection for any path within that utility area.
     const areaRowIsSelected =
-      isActive && (!activeChild || basePath(activeChild.path) === basePath(area.href));
+      isActive &&
+      (area.placement === "utility" ||
+        !activeChild ||
+        basePath(activeChild.path) === basePath(area.href));
     const activeChildId = areaRowIsSelected ? undefined : activeChild?.id;
 
     return (

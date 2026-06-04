@@ -3,6 +3,7 @@ import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { navTrailForPathname } from "@/lib/navigation/areas";
 
 type AIReviewLoadPageProps = {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -24,8 +25,7 @@ export default async function AIReviewLoadPage({
 				eyebrow="AI Workflows"
 				title="Review Load"
 				breadcrumbs={[
-					{ label: "Home", href: "/dashboard" },
-					{ label: "AI Workflows", href: "/ai" },
+					...navTrailForPathname("/ai/review-load").map((c) => ({ ...c, href: c.href ?? "/ai" })),
 					{ label: "Review Load" },
 				]}
 			>
