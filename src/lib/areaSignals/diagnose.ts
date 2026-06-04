@@ -238,7 +238,7 @@ export async function getDiagnoseSignals(
 			: UNAVAILABLE,
 	);
 
-	// ── Landscape (/explore/landscape) ───────────────────────────────────────
+	// ── Landscape (/landscape) ────────────────────────────────────────────────
 	// Backend gap (CHAOS-2077) → honest "unavailable".
 	push("landscape", UNAVAILABLE);
 

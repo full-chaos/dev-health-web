@@ -153,7 +153,7 @@ export const navAreas: readonly NavArea[] = [
       "/investment",
       "/people",
       "/code",
-      "/explore",
+      "/landscape",
       "/complexity",
       "/cognitive-load",
       "/bottleneck",
@@ -205,7 +205,7 @@ export const navAreas: readonly NavArea[] = [
       {
         id: "landscape",
         label: "Landscape",
-        href: "/explore/landscape",
+        href: "/landscape",
         description: "System landscape overview.",
         // Gap: no resolver-backed metric yet → "unavailable" (DataState).
         metricLabel: "No area metric",
@@ -250,7 +250,7 @@ export const navAreas: readonly NavArea[] = [
       {
         id: "landscape",
         label: "Landscape",
-        path: "/explore/landscape",
+        path: "/landscape",
         navVisible: true,
       },
       { id: "people", label: "People", path: "/people", navVisible: true },

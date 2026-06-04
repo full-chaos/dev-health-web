@@ -262,7 +262,7 @@ describe("PrimaryNav — active-area resolution (A10: one selected at a time)", 
       landing: false,
     },
     {
-      pathname: "/explore/landscape",
+      pathname: "/landscape",
       active: "landscape",
       area: /^Diagnose$/i,
       landing: false,

@@ -6,6 +6,7 @@ import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { PersonRangeBar } from "@/components/people/PersonRangeBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { BackLink } from "@/components/shared/BackLink";
 import { checkApiHealth } from "@/lib/api/system";
 import { getPersonSummary } from "@/lib/api/people";
 import { getQuadrant } from "@/lib/api/visuals";
@@ -162,14 +163,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/people"
-                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-              >
-                Back to People
-              </Link>
-            </div>
+            <BackLink href="/people" area="People" />
           </header>
 
           {!health.ok && (
@@ -205,12 +199,6 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
               description="Operating mode for the selected window in individual scope."
               data={quadrant}
               filters={quadrantFilters}
-              relatedLinks={[
-                {
-                  label: "Open landscapes",
-                  href: withRangeParams("/explore/landscape", range_days, compare_days, {}),
-                },
-              ]}
               emptyState="Quadrant landscape unavailable."
             />
           </section>
@@ -305,7 +293,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                 {workMixData.length ? (
                   <DonutChart data={workMixData} height={260} />
                 ) : (
-                  <div className="flex h-[260px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                  <div className="flex min-h-64 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                     Work mix data unavailable.
                   </div>
                 )}
@@ -339,7 +327,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                     values={flowStages.map((stage) => stage.value)}
                   />
                 ) : (
-                  <div className="flex h-[240px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                  <div className="flex min-h-60 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                     Flow stage detail unavailable.
                   </div>
                 )}

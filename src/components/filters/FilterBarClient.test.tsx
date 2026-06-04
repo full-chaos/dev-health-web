@@ -255,6 +255,7 @@ describe("Per-view-type rendering smoke", () => {
     "quality",
     "opportunities",
     "explore",
+    "landscape",
     "testops",
     "security",
     "feature-flags",

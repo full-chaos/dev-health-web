@@ -85,6 +85,31 @@ test.describe("filter propagation", () => {
     }
   });
 
+  test("diagnose child routes retain filter param", async ({ page }) => {
+    await page.goto("/dashboard");
+    const initialFilter = await waitForFilterParam(page);
+    const updatedFilter = await updateDeveloperFilter(page, "diagnose-owner", initialFilter);
+
+    const nav = page.locator("aside nav");
+    await clickUntilUrl(page, nav.getByRole("link", { name: /^Diagnose$/ }), /\/work(?:[?#].*)?$/);
+
+    for (const child of [
+      { label: /^Flow$/, path: "/metrics" },
+      { label: /^Investment$/, path: "/investment" },
+      { label: /^Landscape$/, path: "/landscape" },
+    ]) {
+      const children = page.getByTestId("nav-children-diagnose");
+      await clickUntilUrl(
+        page,
+        children.getByRole("link", { name: child.label }),
+        new RegExp(`${child.path}(?:[?#].*)?$`),
+      );
+      await expectFilterParam(page, updatedFilter);
+      await expectDeveloperFilter(page, "diagnose-owner");
+      await page.goto(`/work?f=${updatedFilter}`);
+    }
+  });
+
   test("filter change updates URL and persists across nav", async ({ page }) => {
     await page.goto("/metrics?tab=dora");
     const initialFilter = await waitForFilterParam(page);

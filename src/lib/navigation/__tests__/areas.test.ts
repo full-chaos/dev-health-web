@@ -135,7 +135,7 @@ describe("selectedAreaIdForPathname", () => {
     { pathname: "/metrics", expected: "diagnose" },
     { pathname: "/investment", expected: "diagnose" },
     { pathname: "/people/abc", expected: "diagnose" },
-    { pathname: "/explore/landscape", expected: "diagnose" },
+    { pathname: "/landscape", expected: "diagnose" },
     { pathname: "/plan", expected: "plan" },
     { pathname: "/plan/delivery-forecast", expected: "plan" },
     { pathname: "/capacity-planning", expected: "plan" },
@@ -193,6 +193,7 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
     { areaId: "diagnose", pathname: "/work", childId: "diagnose-overview" },
     { areaId: "diagnose", pathname: "/metrics", childId: "flow" },
     { areaId: "diagnose", pathname: "/investment", childId: "investment" },
+    { areaId: "diagnose", pathname: "/landscape", childId: "landscape" },
     {
       areaId: "plan",
       pathname: "/plan",
@@ -254,6 +255,7 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
   it("titles child pages with the child sidebar label", () => {
     expect(navTitleForPathname("/work")).toBe("Overview");
     expect(navTitleForPathname("/metrics")).toBe("Flow");
+    expect(navTitleForPathname("/landscape")).toBe("Landscape");
     expect(navTitleForPathname("/plan")).toBe("Overview");
     expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Delivery Forecast");
     expect(navTitleForPathname("/ai/review-load")).toBe("Review Load");

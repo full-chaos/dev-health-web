@@ -15,7 +15,9 @@ const primaryAreas = [
 
 // Leaf labels that must NOT appear as flat sidebar rows anymore.
 const collapsedLeafLabels = [
-  "Metrics",
+  "Flow",
+  "Investment",
+  "Landscape",
   "People",
   "Code",
   "Complexity",
@@ -45,7 +47,7 @@ const reachableRoutes = [
   "/metrics",
   "/people",
   "/code",
-  "/explore/landscape",
+  "/landscape",
   "/complexity",
   "/cognitive-load",
   "/bottleneck",
@@ -162,6 +164,64 @@ test.describe("primary navigation reachability", () => {
     }
   });
 
+  test("reaches Diagnose as a top-level area and routes its visible subviews", async ({
+    page,
+    request,
+  }) => {
+    await page.goto("/dashboard");
+    await waitForHydration(page);
+
+    const sidebar = page.locator("aside");
+
+    await clickUntilUrl(
+      page,
+      sidebar.getByRole("link", { name: "Diagnose", exact: true }),
+      /\/work(?:[?#].*)?$/,
+    );
+
+    const diagnoseChildren = page.getByTestId("nav-children-diagnose");
+    await expect(diagnoseChildren).toBeVisible({ timeout: 15000 });
+
+    for (const child of [
+      { label: "Overview", url: /\/work(?:[?#].*)?$/, path: "/work" },
+      { label: "Flow", url: /\/metrics(?:[?#].*)?$/, path: "/metrics" },
+      {
+        label: "Investment",
+        url: /\/investment(?:[?#].*)?$/,
+        path: "/investment",
+      },
+      {
+        label: "Landscape",
+        url: /\/landscape(?:[?#].*)?$/,
+        path: "/landscape",
+      },
+      { label: "People", url: /\/people(?:[?#].*)?$/, path: "/people" },
+      { label: "Code", url: /\/code(?:[?#].*)?$/, path: "/code" },
+      {
+        label: "Complexity",
+        url: /\/complexity(?:[?#].*)?$/,
+        path: "/complexity",
+      },
+      {
+        label: "Cognitive Load",
+        url: /\/cognitive-load(?:[?#].*)?$/,
+        path: "/cognitive-load",
+      },
+      {
+        label: "Bottlenecks",
+        url: /\/bottleneck(?:[?#].*)?$/,
+        path: "/bottleneck",
+      },
+    ]) {
+      await clickUntilUrl(
+        page,
+        diagnoseChildren.getByRole("link", { name: child.label, exact: true }),
+        child.url,
+      );
+      await expectReachable(request, child.path);
+    }
+  });
+
   test("every former leaf destination still resolves without 404", async ({ request }) => {
     // ~30 sequential SSR reachability fetches; Turbopack cold-compiles each route
     // on first hit under suite load, which overruns the default 30s test budget.
@@ -225,6 +285,7 @@ test.describe("primary navigation reachability", () => {
   test("marks exactly one area as selected for representative leaf routes", async ({ page }) => {
     for (const route of [
       { path: "/metrics?tab=dora", selectedLabel: "Diagnose" },
+      { path: "/landscape", selectedLabel: "Diagnose" },
       { path: "/testops/coverage", selectedLabel: "Govern" },
       { path: "/testops/risk", selectedLabel: "Govern" },
       { path: "/bottleneck", selectedLabel: "Diagnose" },
