@@ -64,13 +64,13 @@ test.describe("filter propagation", () => {
     const initialFilter = await waitForFilterParam(page);
     const updatedFilter = await updateDeveloperFilter(page, "dev-health-web", initialFilter);
 
-    // CHAOS-2073: the sidebar surfaces the six decision areas as links. The main
-    // spine (<nav aria-label="Primary areas">) holds the four primary areas.
     const nav = page.locator("aside nav");
     const areas = [
       { label: /^Diagnose$/, path: "/work" },
+      { label: /^Plan$/, path: "/plan" },
       { label: /^Improve$/, path: "/opportunities" },
       { label: /^Govern$/, path: "/testops" },
+      { label: /^AI$/, path: "/ai" },
       { label: /^Cockpit$/, path: "/dashboard" },
     ];
 

@@ -37,6 +37,10 @@ export async function getAreaSignals(
       return getDiagnoseSignals(filters, isTestMode);
     case "improve":
       return getImproveSignals(filters, isTestMode);
+    case "plan":
+      void filters;
+      void isTestMode;
+      return descriptorStubs(areaId, "unavailable");
     case "cockpit":
       // Cockpit's single sub-area (Operating Review) has no severity metric; it
       // is a navigational surface. Render it as a calm "neutral" card rather

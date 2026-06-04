@@ -13,42 +13,47 @@
  * literal strings, so the labels live here and nowhere else.
  */
 export const CTA_LABELS = {
-	/** Open the evidence trail behind a signal / metric / work unit. */
-	openEvidence: "Open evidence",
-	/** Inspect the associations (edges) linked to an entity. */
-	inspectAssociations: "Inspect associations",
-	/** Open a single artifact (flame diagram, PR, deployment, …). */
-	openArtifact: "Open artifact",
-	/** Export the current report. */
-	exportReport: "Export report",
-	/** Apply the staged filter selection. */
-	applyFilters: "Apply filters",
-	/** Reset filters back to defaults. */
-	resetFilters: "Reset filters",
-	/** Copy the current selection / link to the clipboard. */
-	copy: "Copy",
-	monteCarloView: "Monte Carlo view",
-	viewGuide: "View guide",
-	reset: "Reset",
-	clearContext: "Clear context",
-	clearTheme: "Clear theme",
-	allThemes: "All themes",
-	openWorkGraph: "Open Work Graph",
-	openMetrics: "Open metrics",
-	openWorkView: "Open Work view",
-	openInExplore: "Open in Explore",
-	flameDiagram: "Flame Diagram",
-	landscape: "Landscape",
-	week: "Week",
-	month: "Month",
-	newReport: "New Report",
-	createReport: "Create Report",
-	/** Dismiss the evidence panel. */
-	closeEvidencePanel: "Close evidence panel",
-	/** Dismiss a generic panel. */
-	closePanel: "Close panel",
-	/** Return to the cockpit (home) — the canonical single return path. */
-	backToCockpit: "Back to Cockpit",
+  /** Open the evidence trail behind a signal / metric / work unit. */
+  openEvidence: "Open evidence",
+  /** Inspect the associations (edges) linked to an entity. */
+  inspectAssociations: "Inspect associations",
+  /** Open a single artifact (flame diagram, PR, deployment, …). */
+  openArtifact: "Open artifact",
+  /** Export the current report. */
+  exportReport: "Export report",
+  /** Apply the staged filter selection. */
+  applyFilters: "Apply filters",
+  /** Reset filters back to defaults. */
+  resetFilters: "Reset filters",
+  /** Copy the current selection / link to the clipboard. */
+  copy: "Copy",
+  monteCarloView: "Monte Carlo view",
+  viewGuide: "View guide",
+  reset: "Reset",
+  clearContext: "Clear context",
+  clearTheme: "Clear theme",
+  allThemes: "All themes",
+  openWorkGraph: "Open Work Graph",
+  openMetrics: "Open metrics",
+  openWorkView: "Open Work view",
+  openInExplore: "Open in Explore",
+  aiImpact: "Impact",
+  aiReviewLoad: "Review Load",
+  aiRisk: "Risk",
+  aiAutomations: "Automations",
+  checkDataConnections: "Check data connections",
+  flameDiagram: "Flame Diagram",
+  landscape: "Landscape",
+  week: "Week",
+  month: "Month",
+  newReport: "New Report",
+  createReport: "Create Report",
+  /** Dismiss the evidence panel. */
+  closeEvidencePanel: "Close evidence panel",
+  /** Dismiss a generic panel. */
+  closePanel: "Close panel",
+  /** Return to the cockpit (home) — the canonical single return path. */
+  backToCockpit: "Back to Cockpit",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
@@ -60,7 +65,7 @@ export type CtaLabel = (typeof CTA_LABELS)[CtaKey];
  * so every screen exposes exactly one, consistently-phrased return path.
  */
 export function backToArea(area: string): string {
-	return `Back to ${area}`;
+  return `Back to ${area}`;
 }
 
 /**
