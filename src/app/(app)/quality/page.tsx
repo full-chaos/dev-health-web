@@ -5,7 +5,6 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { QualityCoverageTabs } from "@/components/testops/QualityCoverageTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
@@ -80,9 +79,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 							<p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
 								Quality
 							</p>
-							<h1 className="mt-2 font-(--font-display) text-3xl">
-								Reliability Patterns
-							</h1>
+							<h1 className="mt-2 font-(--font-display) text-3xl">Quality</h1>
 							<p className="mt-2 text-sm text-(--ink-muted)">
 								Change failure, CI stability, and rework indicators.
 							</p>
@@ -97,8 +94,6 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 							{CTA_LABELS.backToCockpit}
 						</Link>
 					</header>
-
-					<QualityCoverageTabs filters={filters} role={activeRole} />
 
 					<GlobalContextBar filters={filters} />
 					<FilterBar view="quality" />
