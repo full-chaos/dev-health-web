@@ -30,16 +30,11 @@ import { WorkTabNav, type WorkTab } from "@/components/navigation/WorkTabNav";
 import { getDiagnoseSignals } from "@/lib/areaSignals/diagnose";
 import { topSignals } from "@/lib/areaSignals/sort";
 import { getServerEnv } from "@/lib/config";
+import { resolveActiveView, type DiagnoseView } from "@/lib/navigation/workPageView";
 
 type WorkPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-// Diagnose landing sub-views (Framework A2). "Overview" is the area summary +
-// signal grid; "Work" preserves the borrowed Work Investment and Flow leaf
-// content (A6: the area is named "Diagnose", not its borrowed leaf).
-type DiagnoseView = "overview" | "work";
-const DIAGNOSE_VIEWS: DiagnoseView[] = ["overview", "work"];
 
 const findCategory = (
   categories: Array<{ key: string; name: string; value: number }>,
@@ -57,11 +52,6 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
   const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-  const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
-  const activeView: DiagnoseView = DIAGNOSE_VIEWS.includes(viewParam as DiagnoseView)
-    ? (viewParam as DiagnoseView)
-    : "overview";
-
   const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
   const activeTab: WorkTab =
     typeof tabParam === "string" &&
@@ -77,6 +67,12 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     ].includes(tabParam)
       ? (tabParam as WorkTab)
       : "landscape";
+
+  const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
+  // resolveActiveView preserves legacy /work?tab=<workTab> deep links: when
+  // `view` is absent but a valid `tab` is present it returns "work" so the Work
+  // content branch renders and the existing `tab` logic picks the sub-view.
+  const activeView: DiagnoseView = resolveActiveView(viewParam, tabParam);
 
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const scopeId = filters.scope.ids[0] ?? "";
