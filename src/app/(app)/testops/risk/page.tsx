@@ -212,7 +212,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
 							<h2 className="font-(--font-display) text-xl mb-4">Risk Trend</h2>
 							<div className="h-64">
-								<TimeseriesChart data={timeseriesData} />
+								<TimeseriesChart data={timeseriesData} valueFormat="percent" />
 							</div>
 						</div>
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
@@ -223,6 +223,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 								<HorizontalBarChart
 									categories={dragCategories}
 									values={dragValues}
+									valueFormat="hours"
 								/>
 							</div>
 						</div>

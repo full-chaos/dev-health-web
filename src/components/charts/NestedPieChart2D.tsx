@@ -7,6 +7,7 @@ import { PieChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
+import { formatNumber, formatPercent } from "@/lib/formatters";
 
 echarts.use([PieChart]);
 
@@ -94,12 +95,12 @@ export function NestedPieChart2D({
               percent: number;
               value: number | string;
             };
-            const value = typeof p.value === "number" ? p.value.toFixed(0) : p.value;
+            const value = typeof p.value === "number" ? formatNumber(p.value) : p.value;
             return `
               <div style="font-weight: 600; margin-bottom: 4px;">${p.seriesName}</div>
               <div style="font-(--font-mono)">
                 ${p.name}: <strong>${value}</strong> ${unit}
-                <span style="color: ${chartTheme.muted}; margin-left: 8px;">(${p.percent}%)</span>
+                <span style="color: ${chartTheme.muted}; margin-left: 8px;">(${formatPercent(p.percent)})</span>
               </div>
             `;
           },
@@ -126,7 +127,10 @@ export function NestedPieChart2D({
             label: {
               color: chartTheme.muted,
               fontWeight: 600,
-              formatter: "{b}\n{d}%",
+              formatter: (params: unknown) => {
+                const p = params as { name?: string; percent?: number };
+                return `${p.name ?? ""}\n${formatPercent(p.percent ?? 0)}`;
+              },
             },
             labelLine: { length: 8, length2: 6 },
             data: innerData,

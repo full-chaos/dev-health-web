@@ -9,6 +9,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { calcPercent, createAreaGradient } from "@/lib/chartUtils";
+import { formatNumber, formatPercent } from "@/lib/formatters";
 
 echarts.use([LineChart]);
 
@@ -32,7 +33,7 @@ type StackedAreaChartProps = {
   width?: number | string;
   className?: string;
   style?: CSSProperties;
-  onSeriesClick?: (params: {
+  onSeriesClickAction?: (params: {
     seriesName: string;
     date: string;
     value: number;
@@ -52,7 +53,7 @@ export function StackedAreaChart({
   width = "100%",
   className,
   style,
-  onSeriesClick,
+  onSeriesClickAction,
 }: StackedAreaChartProps) {
   const chartTheme = useChartTheme();
   const chartColors = useChartColors();
@@ -99,10 +100,13 @@ export function StackedAreaChart({
       };
 
       // Determine gradient colors
-      let gradientFill;
+      let gradientFill: ReturnType<typeof createAreaGradient>;
       if (s.gradientStart && s.gradientEnd) {
         // Use provided gradient colors
-        gradientFill = createAreaGradient({ start: s.gradientStart, end: s.gradientEnd });
+        gradientFill = createAreaGradient({
+          start: s.gradientStart,
+          end: s.gradientEnd,
+        });
       } else if (baseColor.startsWith("#")) {
         // Convert hex to rgba gradient
         gradientFill = createAreaGradient({
@@ -140,7 +144,7 @@ export function StackedAreaChart({
 
   const handleClick = useCallback(
     (params: unknown) => {
-      if (!onSeriesClick || !params || typeof params !== "object") return;
+      if (!onSeriesClickAction || !params || typeof params !== "object") return;
       const entry = params as {
         seriesName?: string;
         componentType?: string;
@@ -160,14 +164,14 @@ export function StackedAreaChart({
       const dateTotal = dateTotals[entry.dataIndex] ?? 0;
       const percent = calcPercent(value, dateTotal);
 
-      onSeriesClick({
+      onSeriesClickAction({
         seriesName,
         date,
         value,
         percent,
       });
     },
-    [onSeriesClick, dates, dateTotals],
+    [onSeriesClickAction, dates, dateTotals],
   );
 
   const option = useMemo(
@@ -189,7 +193,10 @@ export function StackedAreaChart({
         formatter: (params: unknown) => {
           if (!Array.isArray(params) || params.length === 0) return "";
 
-          const firstEntry = params[0] as { axisValue?: string; dataIndex?: number };
+          const firstEntry = params[0] as {
+            axisValue?: string;
+            dataIndex?: number;
+          };
           const date = firstEntry.axisValue ?? "";
           const dataIndex = firstEntry.dataIndex ?? 0;
           const dateTotal = dateTotals[dataIndex] ?? 0;
@@ -205,15 +212,15 @@ export function StackedAreaChart({
             return `
               <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
                 <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: ${entry.color}"></span>
-                <span>${entry.seriesName}: <strong>${value.toLocaleString()}</strong> ${unit}</span>
-                <span style="color: ${chartTheme.accent2}">(${pct.toFixed(1)}%)</span>
+                <span>${entry.seriesName}: <strong>${formatNumber(value)}</strong> ${unit}</span>
+                <span style="color: ${chartTheme.accent2}">(${formatPercent(pct)})</span>
               </div>
             `;
           });
 
           return `
             <div style="font-weight: 600; margin-bottom: 8px;">${date}</div>
-            <div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 4px;">Total: ${dateTotal.toLocaleString()} ${unit}</div>
+            <div style="font-size: 11px; color: ${chartTheme.muted}; margin-bottom: 4px;">Total: ${formatNumber(dateTotal)} ${unit}</div>
             ${lines.join("")}
           `;
         },
@@ -243,7 +250,9 @@ export function StackedAreaChart({
         type: "value" as const,
         axisLine: { show: false },
         axisTick: { show: false },
-        splitLine: { lineStyle: { color: chartTheme.grid, type: "dashed" as const } },
+        splitLine: {
+          lineStyle: { color: chartTheme.grid, type: "dashed" as const },
+        },
         axisLabel: { color: chartTheme.muted, fontSize: 10 },
       },
       series: chartSeries,

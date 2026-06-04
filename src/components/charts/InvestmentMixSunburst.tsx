@@ -9,7 +9,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
-import { formatNumber } from "@/lib/formatters";
+import { formatNumber, formatPercent } from "@/lib/formatters";
 import { titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
 echarts.use([SunburstChart]);
@@ -35,8 +35,8 @@ type InvestmentMixSunburstProps = {
   width?: number | string;
   className?: string;
   style?: CSSProperties;
-  onThemeClick?: (themeKey: string) => void;
-  onSubcategoryClick?: (subcategoryKey: string) => void;
+  onThemeClickAction?: (themeKey: string) => void;
+  onSubcategoryClickAction?: (subcategoryKey: string) => void;
 };
 
 export function InvestmentMixSunburst({
@@ -49,8 +49,8 @@ export function InvestmentMixSunburst({
   width = "100%",
   className,
   style,
-  onThemeClick,
-  onSubcategoryClick,
+  onThemeClickAction,
+  onSubcategoryClickAction,
 }: InvestmentMixSunburstProps) {
   const chartTheme = useChartTheme();
   const chartColors = useChartColors();
@@ -59,7 +59,10 @@ export function InvestmentMixSunburst({
   const sortedThemes = useMemo(
     () =>
       Object.entries(themeDistribution)
-        .map(([key, value]) => ({ key, value: typeof value === "number" ? value : 0 }))
+        .map(([key, value]) => ({
+          key,
+          value: typeof value === "number" ? value : 0,
+        }))
         .filter((entry) => entry.value > 0)
         .sort((a, b) => b.value - a.value),
     [themeDistribution],
@@ -88,7 +91,10 @@ export function InvestmentMixSunburst({
 
   const data = useMemo(() => {
     const subEntries = Object.entries(subcategoryDistribution)
-      .map(([key, value]) => ({ key, value: typeof value === "number" ? value : 0 }))
+      .map(([key, value]) => ({
+        key,
+        value: typeof value === "number" ? value : 0,
+      }))
       .filter((entry) => entry.value > 0 && entry.key.includes("."));
 
     return sortedThemes.map((theme) => {
@@ -146,14 +152,14 @@ export function InvestmentMixSunburst({
       const themeKey = typeof node.themeKey === "string" ? node.themeKey : "";
       const subcategoryKey = typeof node.subcategoryKey === "string" ? node.subcategoryKey : "";
 
-      if (nodeType === "theme" && themeKey && onThemeClick) {
-        onThemeClick(themeKey);
+      if (nodeType === "theme" && themeKey && onThemeClickAction) {
+        onThemeClickAction(themeKey);
       }
-      if (nodeType === "subcategory" && subcategoryKey && onSubcategoryClick) {
-        onSubcategoryClick(subcategoryKey);
+      if (nodeType === "subcategory" && subcategoryKey && onSubcategoryClickAction) {
+        onSubcategoryClickAction(subcategoryKey);
       }
     },
-    [onSubcategoryClick, onThemeClick],
+    [onSubcategoryClickAction, onThemeClickAction],
   );
 
   const option = useMemo(
@@ -206,11 +212,16 @@ export function InvestmentMixSunburst({
         formatter: (name: string) => {
           const value = legendValueByName.get(name) ?? 0;
           const pct = totalValue ? (value / totalValue) * 100 : 0;
-          return `{theme|${name}}\n{value|${formatNumber(value)} ${unit}}\n{pct|${pct.toFixed(1)}% of total}`;
+          return `{theme|${name}}\n{value|${formatNumber(value)} ${unit}}\n{pct|${formatPercent(pct)} of total}`;
         },
         textStyle: {
           rich: {
-            theme: { color: chartTheme.text, fontWeight: 700, fontSize: 11, lineHeight: 16 },
+            theme: {
+              color: chartTheme.text,
+              fontWeight: 700,
+              fontSize: 11,
+              lineHeight: 16,
+            },
             value: { color: chartTheme.muted, fontSize: 10, lineHeight: 14 },
             pct: { color: chartTheme.accent2, fontSize: 10, lineHeight: 14 },
           },

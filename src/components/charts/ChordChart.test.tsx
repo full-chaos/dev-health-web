@@ -47,7 +47,12 @@ const sampleDataset: ChordDataset = {
     [1, 0, 0, 2, 0],
   ],
   totalFlow: 36,
-  summary: { topImporters: [], topExporters: [], strongestBilateral: [], otherShare: 0 },
+  summary: {
+    topImporters: [],
+    topExporters: [],
+    strongestBilateral: [],
+    otherShare: 0,
+  },
 };
 
 describe("ChordChart", () => {
@@ -70,7 +75,12 @@ describe("ChordChart", () => {
           nodes: [],
           matrix: [],
           totalFlow: 0,
-          summary: { topImporters: [], topExporters: [], strongestBilateral: [], otherShare: 0 },
+          summary: {
+            topImporters: [],
+            topExporters: [],
+            strongestBilateral: [],
+            otherShare: 0,
+          },
         }}
       />,
     );
@@ -91,7 +101,12 @@ describe("ChordChart", () => {
           nodes: [{ id: "team-a", label: "Team A", isOther: false }],
           matrix: [[1]],
           totalFlow: 1,
-          summary: { topImporters: [], topExporters: [], strongestBilateral: [], otherShare: 0 },
+          summary: {
+            topImporters: [],
+            topExporters: [],
+            strongestBilateral: [],
+            otherShare: 0,
+          },
         }}
       />,
     );
@@ -103,7 +118,7 @@ describe("ChordChart", () => {
 
   it("onItemClick fires on link click", () => {
     const onItemClick = vi.fn();
-    render(<ChordChart dataset={sampleDataset} onItemClick={onItemClick} />);
+    render(<ChordChart dataset={sampleDataset} onItemClickAction={onItemClick} />);
 
     const props = chartSpy.mock.calls[0][0] as {
       onEvents?: { click: (params: unknown) => void };
@@ -125,7 +140,7 @@ describe("ChordChart", () => {
 
   it("onItemClick fires on node click", () => {
     const onItemClick = vi.fn();
-    render(<ChordChart dataset={sampleDataset} onItemClick={onItemClick} />);
+    render(<ChordChart dataset={sampleDataset} onItemClickAction={onItemClick} />);
 
     const props = chartSpy.mock.calls[0][0] as {
       onEvents?: { click: (params: unknown) => void };
@@ -149,7 +164,11 @@ describe("ChordChart", () => {
     render(<ChordChart dataset={sampleDataset} />);
 
     const props = chartSpy.mock.calls[0][0] as {
-      option: { series: Array<{ data: Array<{ name: string; itemStyle?: { color: string } }> }> };
+      option: {
+        series: Array<{
+          data: Array<{ name: string; itemStyle?: { color: string } }>;
+        }>;
+      };
     };
 
     const otherNode = props.option.series[0]?.data.find((d) => d.name === "Other");

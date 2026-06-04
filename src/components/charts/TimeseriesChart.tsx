@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import { LineChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
+import { formatChartValue, type ChartValueFormat } from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 
@@ -16,6 +17,13 @@ type TimeseriesChartProps = {
   width?: number | string;
   className?: string;
   style?: CSSProperties;
+  valueFormat?: ChartValueFormat;
+};
+
+type NumericChartParam = {
+  name?: string;
+  value?: number | string;
+  marker?: string;
 };
 
 export function TimeseriesChart({
@@ -24,6 +32,7 @@ export function TimeseriesChart({
   width = "100%",
   className,
   style,
+  valueFormat = "number",
 }: TimeseriesChartProps) {
   const chartTheme = useChartTheme();
   const ordered = [...data].sort((a, b) => a.day.localeCompare(b.day));
@@ -34,6 +43,11 @@ export function TimeseriesChart({
     height,
     width,
     ...style,
+  };
+
+  const formatValue = (value: number | string | undefined): string => {
+    const numeric = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(numeric) ? formatChartValue(numeric, valueFormat) : `${value ?? ""}`;
   };
 
   return (
@@ -47,6 +61,16 @@ export function TimeseriesChart({
           textStyle: {
             color: chartTheme.text,
           },
+          formatter: (params: unknown): string => {
+            const list = Array.isArray(params) ? params : [params];
+            return list
+              .map((entry) => {
+                const item = entry as NumericChartParam;
+                const label = item.name ?? "Value";
+                return `${item.marker ?? ""}${label}: ${formatValue(item.value)}`;
+              })
+              .join("<br/>");
+          },
         },
         grid: { left: 24, right: 16, top: 32, bottom: 32, containLabel: true },
         xAxis: {
@@ -54,7 +78,7 @@ export function TimeseriesChart({
           data: categories,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: chartTheme.grid } },
-          axisLabel: { color: chartTheme.muted },
+          axisLabel: { color: chartTheme.muted, formatter: formatValue },
         },
         yAxis: {
           type: "value",

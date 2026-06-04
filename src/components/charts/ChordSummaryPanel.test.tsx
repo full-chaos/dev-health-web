@@ -45,7 +45,7 @@ describe("ChordSummaryPanel", () => {
     expect(screen.getByText("15")).toBeInTheDocument();
 
     // Check overflow row
-    expect(screen.getByText(/15.0% of flow collapsed into 'Other'/)).toBeInTheDocument();
+    expect(screen.getByText(/15% of flow collapsed into 'Other'/)).toBeInTheDocument();
     expect(screen.getByText(/\(1 entities\)/)).toBeInTheDocument();
   });
 

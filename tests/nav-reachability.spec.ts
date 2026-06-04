@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-import { clickUntilHeading, clickUntilUrl, waitForHydration } from "./helpers/nav";
+import { clickUntilUrl, waitForHydration } from "./helpers/nav";
 
 // CHAOS-2073: the sidebar collapsed to exactly six decision-area links; leaf
 // destinations moved off the sidebar into area-landing drill-downs (AreaHub).
@@ -132,41 +132,54 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
     }
   });
 
-  test("reaches every AI tab from the Improve area landing drill-down", async ({
+  test("reaches AI as a top-level area and routes its visible subviews", async ({
     page,
     request,
   }) => {
-    await page.goto("/opportunities");
+    // J1 (CHAOS-2080): AI is now a first-class TOP-LEVEL decision area — it no
+    // longer lives as a drill-down under Improve. Reach it directly from the
+    // sidebar spine, then walk only its navVisible children (areas.ts). The
+    // redirect/preview AI routes (/ai/impact, /ai/attribution, /ai/test-gaps,
+    // /ai/evidence, /ai/automations) are navVisible:false and surfaced solely via
+    // the in-page tab strip (covered by ai-navigation.spec.ts), so they are
+    // intentionally NOT sidebar destinations here.
+    await page.goto("/dashboard");
+    await waitForHydration(page);
 
-    // AI Workflows now lives in the Improve area's drill-down hub, not the sidebar.
-    // AreaHub renders aria-label="${area.label} signals" → "Improve signals".
-    // The hub is server-rendered, so wait for it directly: CHAOS-2073 area-overview
-    // pages don't append the ?f= hydration marker waitForHydration relies on.
-    const improveHub = page.getByRole("region", {
-      name: "Improve signals",
-    });
-    await expect(improveHub).toBeVisible({ timeout: 15000 });
+    const sidebar = page.locator("aside");
+
+    // The AI area row is a top-level sibling of Diagnose/Improve/Govern and links
+    // to the /ai workspace.
     await clickUntilUrl(
       page,
-      improveHub.getByRole("link", { name: /AI Workflows/ }),
+      sidebar.getByRole("link", { name: "AI", exact: true }),
       /\/ai(?:[?#].*)?$/,
     );
 
-    for (const tab of [
-      "Impact",
-      "Attribution",
-      "Review Load",
-      "Test Gaps",
-      "Governance Risk",
-      "Evidence",
-      "Automations",
+    // The active AI area expands to exactly its navVisible children (areas.ts):
+    // Overview (/ai), Review Load (/ai/review-load), Governance Risk (/ai/risk).
+    const aiChildren = page.getByTestId("nav-children-ai");
+    await expect(aiChildren).toBeVisible({ timeout: 15000 });
+
+    for (const child of [
+      { label: "Overview", url: /\/ai(?:[?#].*)?$/, path: "/ai" },
+      {
+        label: "Review Load",
+        url: /\/ai\/review-load(?:[?#].*)?$/,
+        path: "/ai/review-load",
+      },
+      {
+        label: "Governance Risk",
+        url: /\/ai\/risk(?:[?#].*)?$/,
+        path: "/ai/risk",
+      },
     ]) {
-      await clickUntilHeading(
+      await clickUntilUrl(
         page,
-        page.getByRole("link", { name: new RegExp(`^${tab}`) }),
-        page.getByRole("heading", { level: 2, name: tab }),
+        aiChildren.getByRole("link", { name: child.label, exact: true }),
+        child.url,
       );
-      await expectReachable(request, new URL(page.url()).pathname);
+      await expectReachable(request, child.path);
     }
   });
 
@@ -177,8 +190,8 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
       { path: "/testops/risk", selectedLabel: "Govern" },
       { path: "/bottleneck", selectedLabel: "Diagnose" },
       { path: "/risk/compounding", selectedLabel: "Govern" },
-      // Operating Review moved Cockpit → Improve (CHAOS-2075); PrimaryNav marks Improve active.
-      { path: "/operating-review", selectedLabel: "Improve" },
+      // J1 (CHAOS-2080): Plan owns the /operating-review prefix, so PrimaryNav marks Plan active.
+      { path: "/operating-review", selectedLabel: "Plan" },
     ]) {
       await expectSingleSelectedArea(page, route.path, route.selectedLabel);
     }
