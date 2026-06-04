@@ -204,16 +204,6 @@ export default async function CodePage({ searchParams }: CodePageProps) {
 							description="Operating modes under change volume and delivery pace."
 							data={churnThroughput}
 							filters={filters}
-							relatedLinks={[
-								{
-									label: "Open landscapes",
-									href: withFilterParam(
-										"/explore/landscape",
-										filters,
-										activeRole,
-									),
-								},
-							]}
 							emptyState="Quadrant data unavailable for this scope."
 						/>
 					</section>

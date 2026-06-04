@@ -5,6 +5,7 @@ import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { InvestmentChart } from "@/components/investment/InvestmentChart";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { DataState } from "@/components/ui/DataState";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import type { MetricDelta, QuadrantResponse } from "@/lib/types";
@@ -101,12 +102,6 @@ export function LandscapeView({
 					description="Operating modes under time in flight and delivery pace."
 					data={cycleThroughput}
 					filters={filters}
-					relatedLinks={[
-						{
-							label: "Open landscapes",
-							href: withFilterParam("/explore/landscape", filters, activeRole),
-						},
-					]}
 					emptyState="Quadrant data unavailable for this scope."
 				/>
 				<QuadrantPanel
@@ -114,12 +109,6 @@ export function LandscapeView({
 					description="Operating modes under work in flight and delivery pace."
 					data={wipThroughput}
 					filters={filters}
-					relatedLinks={[
-						{
-							label: "Open landscapes",
-							href: withFilterParam("/explore/landscape", filters, activeRole),
-						},
-					]}
 					emptyState="Quadrant data unavailable for this scope."
 				/>
 				<QuadrantPanel
@@ -127,12 +116,6 @@ export function LandscapeView({
 					description="Operating modes under review demand and turnaround."
 					data={reviewLoadLatency}
 					filters={filters}
-					relatedLinks={[
-						{
-							label: "Open landscapes",
-							href: withFilterParam("/explore/landscape", filters, activeRole),
-						},
-					]}
 					emptyState="Quadrant data unavailable for this scope."
 				/>
 			</section>
@@ -145,7 +128,7 @@ export function LandscapeView({
 							<Link
 								href={withFilterParam("/work?tab=flow", filters, activeRole)}
 							>
-								View flow
+								{CTA_LABELS.openMetrics}
 							</Link>
 							<Link
 								href={buildExploreUrl({
@@ -154,7 +137,7 @@ export function LandscapeView({
 									role: activeRole,
 								})}
 							>
-								Inspect associations
+								{CTA_LABELS.inspectAssociations}
 							</Link>
 						</div>
 					</div>
@@ -170,7 +153,7 @@ export function LandscapeView({
 								unit={investmentMix.unit ?? "units"}
 							/>
 						) : (
-							<div className="flex h-[280px] items-center justify-center rounded-3xl border border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+							<div className="flex min-h-72 items-center justify-center rounded-3xl border border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
 								Investment data unavailable.
 							</div>
 						)}
@@ -186,7 +169,7 @@ export function LandscapeView({
 							href={withFilterParam("/work?tab=flow", filters, activeRole)}
 							className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
 						>
-							View flow
+							{CTA_LABELS.openMetrics}
 						</Link>
 					</div>
 					{planned && unplanned ? (

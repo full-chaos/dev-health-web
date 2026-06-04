@@ -10,6 +10,7 @@ export type FilterBarView =
   | "quality"
   | "opportunities"
   | "explore"
+  | "landscape"
   | "testops"
   | "security"
   | "feature-flags"
@@ -184,7 +185,7 @@ export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVis
   if (view === "opportunities") {
     return WORK_VISIBILITY;
   }
-  if (view === "explore") {
+  if (view === "explore" || view === "landscape") {
     return EXPLORE_VISIBILITY;
   }
   if (view === "security") {

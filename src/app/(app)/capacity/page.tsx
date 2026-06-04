@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { BackLink } from "@/components/shared/BackLink";
 
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
@@ -51,7 +50,7 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
 
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-  const graphqlEnabled = runtimeConfig.useGraphQLAnalytics();
+  const graphqlEnabled = runtimeConfig["useGraphQLAnalytics"]();
   let hydrationOrgId: string | undefined;
   if (graphqlEnabled) {
     const { auth } = await import("@/lib/auth");
@@ -88,20 +87,12 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
                   Monte Carlo forecasting for work completion based on historical throughput.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
-                <Link
-                  href={withFilterParam("/work?tab=capacity", filters, activeRole)}
-                  className="rounded-full border border-(--card-stroke) px-4 py-2"
-                >
-                  View in Work context
-                </Link>
-                <BackLink href={withFilterParam("/", filters, activeRole)} />
-              </div>
+              <BackLink href={withFilterParam("/", filters, activeRole)} />
             </header>
 
-            <FilterBar view="work" />
+            <FilterBar view="capacity-planning" />
 
-            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-[11px] leading-relaxed text-(--ink-muted)">
+            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
               <span className="text-foreground font-semibold uppercase tracking-wider">
                 Perspective:
               </span>{" "}

@@ -93,7 +93,7 @@ export default async function InvestmentPage({
 									{CTA_LABELS.inspectAssociations}
 								</Link>
 								<BackLink
-									href={withFilterParam("/explore/landscape", filters)}
+									href={withFilterParam("/landscape", filters)}
 									area="Landscape"
 								/>
 							</div>

@@ -265,11 +265,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 								{CTA_LABELS.flameDiagram}
 							</Link>
 							<Link
-								href={withFilterParam(
-									"/explore/landscape",
-									filters,
-									activeRole,
-								)}
+								href={withFilterParam("/landscape", filters, activeRole)}
 								className={buttonClassName("secondary")}
 							>
 								{CTA_LABELS.landscape}

@@ -268,16 +268,6 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
 							description={activeTab.quadrant.description}
 							data={quadrant}
 							filters={filters}
-							relatedLinks={[
-								{
-									label: "Open landscapes",
-									href: withFilterParam(
-										"/explore/landscape",
-										filters,
-										activeRole,
-									),
-								},
-							]}
 							emptyState="Quadrant data unavailable for this scope."
 						/>
 					</section>
