@@ -147,7 +147,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
             </Link>
           </header>
 
-          <QualityCoverageTabs />
+          <QualityCoverageTabs filters={filters} role={activeRole} />
 
           <FilterBar view="testops" />
 

@@ -90,7 +90,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 						</Link>
 					</header>
 
-					<QualityCoverageTabs />
+					<QualityCoverageTabs filters={filters} role={activeRole} />
 
 					<FilterBar view="quality" />
 

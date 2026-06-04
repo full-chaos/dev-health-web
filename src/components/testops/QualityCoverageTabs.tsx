@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
+import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
 
 /**
  * Route-based tab strip for the Tests · Quality · Coverage cluster (CHAOS-2075
@@ -47,21 +49,28 @@ export function activeTabFromPath(pathname: string): QualityCoverageTabId {
   return "coverage";
 }
 
+type QualityCoverageTabsProps = {
+  filters: MetricFilter;
+  role?: string;
+};
+
 /**
  * Renders the Tests · Quality · Coverage cluster tab strip.
  *
  * Drop this near the top of the page `<main>` body on each of the three
  * cluster pages, after the page header and before page-specific content.
- * No props needed — the active tab is resolved from the URL.
+ * Pass `filters` and `role` from the page so that active filter/role query
+ * params are preserved when switching between cluster tabs (matches the
+ * `withFilterParam` convention used by all other ModeTabs in the app).
  */
-export function QualityCoverageTabs() {
+export function QualityCoverageTabs({ filters, role }: QualityCoverageTabsProps) {
   const pathname = usePathname();
   const activeTab = activeTabFromPath(pathname);
 
   const items: ModeTabItem<QualityCoverageTabId>[] = QUALITY_COVERAGE_TABS.map((tab) => ({
     id: tab.id,
     label: tab.label,
-    href: tab.href,
+    href: withFilterParam(tab.href, filters, role),
   }));
 
   return (

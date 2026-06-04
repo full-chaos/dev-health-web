@@ -166,7 +166,7 @@ export default async function CoveragePage({
 						</Link>
 					</header>
 
-					<QualityCoverageTabs />
+					<QualityCoverageTabs filters={filters} role={activeRole} />
 
 					<FilterBar view="testops" />
 
