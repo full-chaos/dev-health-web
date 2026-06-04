@@ -132,17 +132,18 @@ export default async function CoveragePage({
 			}))
 		: [];
 
-	const repoIds = repoBreakdown?.items
-		? repoBreakdown.items.map((item: BreakdownItem) => item.key)
-		: [];
-	const repoValues = repoBreakdown?.items
-		? repoBreakdown.items.map((item: BreakdownItem) => item.value)
-		: [];
-	// Render-safe labels: never expose a raw repo UUID as an axis label;
-	// unresolved ids degrade to a stable short label with the full id in the tooltip.
+	const repoItems = repoBreakdown?.items ?? [];
+	const repoIds = repoItems.map((item: BreakdownItem) => item.key);
+	const repoValues = repoItems.map((item: BreakdownItem) => item.value);
+	// Render-safe labels (A7): prefer the server-resolved display name; a
+	// genuinely-unresolved repo id degrades to a stable short label with the full
+	// id in the tooltip — never a bare UUID as the axis label.
 	const { labels: repoCategories, titles: repoTitles } = resolveEntityLabels(
 		repoIds,
-		{ unresolvedFallback: "Unresolved" },
+		(_id, i) => ({
+			name: repoItems[i]?.label ?? undefined,
+			unresolvedFallback: "Unresolved",
+		}),
 	);
 
 	return (
