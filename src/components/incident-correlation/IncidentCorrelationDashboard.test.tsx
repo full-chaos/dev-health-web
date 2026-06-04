@@ -38,6 +38,12 @@ vi.mock("@/components/charts/HorizontalBarChart", () => ({
   ),
 }));
 
+vi.mock("@/components/charts/TimeseriesChart", () => ({
+  TimeseriesChart: ({ data }: { data: Array<{ day: string; value: number }> }) => (
+    <div data-testid="timeseries-chart">{data.map((point) => point.value).join(",")}</div>
+  ),
+}));
+
 vi.mock("@/components/metrics/MetricCard", () => ({
   MetricCard: ({ label }: { label: string }) => <div data-testid="metric-card">{label}</div>,
 }));
@@ -278,7 +284,7 @@ describe("IncidentCorrelationDashboard", () => {
     expect(cards[0]).toHaveTextContent("Change Failure Rate");
   });
 
-  it("renders enlarged CFR sparkline when spark data is present", () => {
+  it("renders the CFR trend chart when enough finite spark data is present", () => {
     const delta = {
       metric: "change_failure_rate",
       label: "Change Failure Rate",
@@ -291,13 +297,55 @@ describe("IncidentCorrelationDashboard", () => {
       ],
     };
     render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
-    expect(screen.getByTestId("cfr-sparkline")).toBeInTheDocument();
+    expect(screen.getByTestId("cfr-trend-chart")).toBeInTheDocument();
+    expect(screen.getByTestId("timeseries-chart")).toHaveTextContent("0.04,0.06");
+  });
+
+  it("renders a controlled empty state when CFR has insufficient trend data", () => {
+    const delta = {
+      metric: "change_failure_rate",
+      label: "Change Failure Rate",
+      value: 0.05,
+      unit: "%",
+      delta_pct: -0.1,
+      spark: [{ ts: "2026-05-01", value: 0.04 }],
+    };
+    render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
+    expect(screen.getByTestId("cfr-trend-empty")).toBeInTheDocument();
+    expect(screen.queryByTestId("cfr-trend-chart")).not.toBeInTheDocument();
+  });
+
+  it("renders a controlled empty state for zero-value associations", () => {
+    const drivers = [
+      {
+        id: "d1",
+        label: "550e8400-e29b-41d4-a716-446655440000",
+        value: 0,
+        delta_pct: 0,
+        evidence_link: "/e/1",
+      },
+    ];
+    render(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
+    expect(screen.getByTestId("change-failure-associations-empty")).toBeInTheDocument();
+    expect(screen.queryByTestId("horizontal-bar-chart")).not.toBeInTheDocument();
   });
 
   it("renders HorizontalBarChart for drivers when explain data is present", () => {
     const drivers = [
-      { id: "d1", label: "Long PR", value: 5, delta_pct: 0.3, evidence_link: "/e/1" },
-      { id: "d2", label: "No tests", value: 3, delta_pct: 0.2, evidence_link: "/e/2" },
+      {
+        id: "d1",
+        label: "Long PR",
+        value: 5,
+        delta_pct: 0.3,
+        evidence_link: "/e/1",
+      },
+      {
+        id: "d2",
+        label: "No tests",
+        value: 3,
+        delta_pct: 0.2,
+        evidence_link: "/e/2",
+      },
     ];
     render(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
     expect(screen.getByTestId("horizontal-bar-chart")).toBeInTheDocument();

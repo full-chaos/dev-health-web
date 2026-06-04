@@ -38,6 +38,7 @@ describe("fetchRiskMetrics", () => {
     expect(result!.quality_drag_hours).toBeUndefined();
     expect(result!.pipeline_stability).toBeUndefined();
     expect(result!.quality_drag_breakdown).toEqual([]);
+    expect(result!.quadrant_data).toEqual([]);
     expect(result!.timeseries).toEqual([]);
   });
 

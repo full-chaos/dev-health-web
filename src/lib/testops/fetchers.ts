@@ -171,13 +171,15 @@ export async function fetchRiskMetrics(
         : [];
 
     const quadrantData =
-      analytics.breakdowns
-        .find((b) => b.measure === "PIPELINE_SUCCESS_RATE")
-        ?.items.map((item) => ({
-          id: item.key,
-          pipeline_success_rate: item.value,
-          test_pass_rate: latestTestFlake != null ? 100 - latestTestFlake : 0,
-        })) || [];
+      latestTestFlake != null
+        ? analytics.breakdowns
+            .find((b) => b.measure === "PIPELINE_SUCCESS_RATE")
+            ?.items.map((item) => ({
+              id: item.key,
+              pipeline_success_rate: item.value,
+              test_pass_rate: 100 - latestTestFlake,
+            })) || []
+        : [];
 
     const toSpark = (buckets: { date: string; value: number }[]) =>
       buckets.map((b) => ({ ts: b.date, value: b.value }));

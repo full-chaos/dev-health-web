@@ -186,7 +186,8 @@ export const buildQuadrantOption = ({
 
 	const normalizedScopeType = normalizeScopeType(scopeType);
 	const isPersonScope = normalizedScopeType === "person";
-	const showTeamLabels = normalizedScopeType === "team";
+	const showPointLabels =
+		normalizedScopeType === "team" || normalizedScopeType === "repo";
 	const focusIds = (focusEntityIds ?? []).filter(Boolean);
 	const focusSet = new Set(focusIds);
 	const directFocusPoints = focusIds.length
@@ -341,7 +342,7 @@ export const buildQuadrantOption = ({
 					color: chartTheme.muted,
 					opacity: backgroundOpacity,
 				},
-				label: showTeamLabels
+				label: showPointLabels
 					? {
 							show: true,
 							formatter: (params: DefaultLabelFormatterCallbackParams) => {
@@ -353,7 +354,7 @@ export const buildQuadrantOption = ({
 							position: "top",
 						}
 					: undefined,
-				labelLayout: showTeamLabels ? { hideOverlap: true } : undefined,
+				labelLayout: showPointLabels ? { hideOverlap: true } : undefined,
 				markArea: backgroundData.length ? markArea : undefined,
 				emphasis: {
 					scale: true,

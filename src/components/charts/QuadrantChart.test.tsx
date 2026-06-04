@@ -162,4 +162,17 @@ describe("QuadrantChart", () => {
 
 		expect(html).toContain("Team A");
 	});
+
+	it("shows repo point labels when rendered for repo scope", () => {
+		const option = buildQuadrantOption({
+			data: sampleData,
+			chartTheme,
+			colors: chartColors,
+			scopeType: "repo",
+		});
+
+		expect(
+			(option.series as Array<{ label?: { show?: boolean } }>)[0]?.label?.show,
+		).toBe(true);
+	});
 });

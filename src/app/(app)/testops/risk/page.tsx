@@ -7,6 +7,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { QuadrantChart } from "@/components/charts/QuadrantChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { DataState } from "@/components/ui/DataState";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
@@ -18,6 +19,12 @@ import { CTA_LABELS } from "@/lib/design/cta";
 type RiskPageProps = {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
+
+const isFiniteNumber = (value: number | null | undefined): value is number =>
+	typeof value === "number" && Number.isFinite(value);
+
+const normalizePercent = (value: number) =>
+	value >= 0 && value <= 1 ? value * 100 : value;
 
 export default async function RiskPage({ searchParams }: RiskPageProps) {
 	const params = (await searchParams) ?? {};
@@ -103,6 +110,41 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 			)
 		: [];
 
+	const quadrantPoints = riskData.quadrant_data
+		? riskData.quadrant_data.flatMap(
+				(item: {
+					id: string;
+					pipeline_success_rate: number;
+					test_pass_rate?: number | null;
+				}) => {
+					if (
+						!isFiniteNumber(item.pipeline_success_rate) ||
+						!isFiniteNumber(item.test_pass_rate)
+					) {
+						return [];
+					}
+					const x = normalizePercent(item.pipeline_success_rate);
+					const y = normalizePercent(item.test_pass_rate);
+					if (x < 0 || x > 100 || y < 0 || y > 100) {
+						return [];
+					}
+					return [
+						{
+							entity_id: item.id,
+							// Render-safe (A7): never feed a raw repo UUID as the quadrant's
+							// primary label — unresolved ids degrade to a stable short token.
+							entity_label: chartEntityLabel(item.id),
+							x,
+							y,
+							window_start: startDate,
+							window_end: endDate,
+							evidence_link: "#",
+						},
+					];
+				},
+			)
+		: [];
+
 	const quadrantData = {
 		axes: {
 			x: {
@@ -112,25 +154,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 			},
 			y: { metric: "test_pass_rate", label: "Test Pass Rate", unit: "%" },
 		},
-		points: riskData.quadrant_data
-			? riskData.quadrant_data.map(
-					(item: {
-						id: string;
-						pipeline_success_rate: number;
-						test_pass_rate: number;
-					}) => ({
-						entity_id: item.id,
-						// Render-safe (A7): never feed a raw repo UUID as the quadrant's
-						// primary label — unresolved ids degrade to a stable short token.
-						entity_label: chartEntityLabel(item.id),
-						x: item.pipeline_success_rate,
-						y: item.test_pass_rate,
-						window_start: "2024-01-01",
-						window_end: "2024-01-07",
-						evidence_link: "#",
-					}),
-				)
-			: [],
+		points: quadrantPoints,
 		annotations: [
 			{
 				type: "zone",
@@ -230,9 +254,18 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 						<h2 className="font-(--font-display) text-xl mb-4">
 							Risk vs Throughput (by Repo)
 						</h2>
-						<div className="h-96">
-							<QuadrantChart data={quadrantData} />
-						</div>
+						{quadrantPoints.length > 0 ? (
+							<div className="h-96" data-testid="risk-throughput-chart">
+								<QuadrantChart data={quadrantData} scopeType="repo" />
+							</div>
+						) : (
+							<DataState
+								variant="insufficient-confidence"
+								title="No repo risk data for this window"
+								description="This scatterplot needs finite repo-level pipeline success and test pass rates before it can be drawn."
+								data-testid="risk-throughput-empty"
+							/>
+						)}
 					</section>
 				</main>
 			</div>
