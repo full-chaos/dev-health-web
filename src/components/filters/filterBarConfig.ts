@@ -48,6 +48,15 @@ const DEFAULT_VISIBILITY: FilterVisibility = {
 const METRICS_DEFAULT_VISIBILITY: FilterVisibility = {
   scope: true,
   repo: true,
+  developer: true,
+  workType: false,
+  flowStage: false,
+  date: true,
+};
+
+const QUALITY_TESTOPS_VISIBILITY: FilterVisibility = {
+  scope: true,
+  repo: true,
   developer: false,
   workType: false,
   flowStage: false,
@@ -170,7 +179,7 @@ export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVis
     return CODE_VISIBILITY;
   }
   if (view === "quality" || view === "testops") {
-    return METRICS_DEFAULT_VISIBILITY;
+    return QUALITY_TESTOPS_VISIBILITY;
   }
   if (view === "opportunities") {
     return WORK_VISIBILITY;
