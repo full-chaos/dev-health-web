@@ -123,6 +123,9 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
   });
 
   test("every former leaf destination still resolves without 404", async ({ request }) => {
+    // ~30 sequential SSR reachability fetches; Turbopack cold-compiles each route
+    // on first hit under suite load, which overruns the default 30s test budget.
+    test.setTimeout(120_000);
     for (const route of reachableRoutes) {
       await expectReachable(request, route);
     }
@@ -133,13 +136,15 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
     request,
   }) => {
     await page.goto("/opportunities");
-    await waitForHydration(page);
 
     // AI Workflows now lives in the Improve area's drill-down hub, not the sidebar.
     // AreaHub renders aria-label="${area.label} signals" → "Improve signals".
+    // The hub is server-rendered, so wait for it directly: CHAOS-2073 area-overview
+    // pages don't append the ?f= hydration marker waitForHydration relies on.
     const improveHub = page.getByRole("region", {
       name: "Improve signals",
     });
+    await expect(improveHub).toBeVisible({ timeout: 15000 });
     await clickUntilUrl(
       page,
       improveHub.getByRole("link", { name: /AI Workflows/ }),

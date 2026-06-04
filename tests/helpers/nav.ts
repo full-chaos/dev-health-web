@@ -18,11 +18,16 @@ export async function waitForHydration(page: Page, timeout = 15000) {
  * handler not yet attached / mid re-render), leaving the URL unchanged. Retrying the
  * whole click+assert is the robust fix for these lost clicks.
  */
-export async function clickUntilUrl(page: Page, locator: Locator, urlPattern: RegExp) {
+export async function clickUntilUrl(
+  page: Page,
+  locator: Locator,
+  urlPattern: RegExp,
+  timeout = 30000,
+) {
   await expect(async () => {
     await locator.click();
     await expect(page).toHaveURL(urlPattern, { timeout: 3000 });
-  }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
+  }).toPass({ timeout, intervals: [300, 700, 1500] });
 }
 
 /**
