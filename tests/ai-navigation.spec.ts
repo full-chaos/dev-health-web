@@ -17,10 +17,18 @@ const defaultFilter = encodeFilter({
   time: { range_days: 30, compare_days: 30 },
 });
 
-const impactTab = (page: Page) => page.getByRole("link", { name: /^Impact$/ });
-const reviewLoadTab = (page: Page) => page.getByRole("link", { name: /^Review Load$/ });
-const governanceRiskTab = (page: Page) => page.getByRole("link", { name: /^Governance Risk$/ });
-const automationsTab = (page: Page) => page.getByRole("link", { name: /^Automations$/ });
+// J1 (CHAOS-2080): AI is now a top-level area, so on every /ai route the sidebar
+// expands to AI's navVisible children (Overview / Review Load / Governance Risk).
+// Those sidebar rows share their labels with the in-page tab strip, so tab
+// locators MUST be scoped to the tab strip (<nav aria-label="AI Workflows">) to
+// stay unambiguous under Playwright strict mode.
+const aiTabStrip = (page: Page) => page.getByRole("navigation", { name: "AI Workflows" });
+const impactTab = (page: Page) => aiTabStrip(page).getByRole("link", { name: /^Impact$/ });
+const reviewLoadTab = (page: Page) => aiTabStrip(page).getByRole("link", { name: /^Review Load$/ });
+const governanceRiskTab = (page: Page) =>
+  aiTabStrip(page).getByRole("link", { name: /^Governance Risk$/ });
+const automationsTab = (page: Page) =>
+  aiTabStrip(page).getByRole("link", { name: /^Automations$/ });
 
 test.describe("AI workflow primary navigation", () => {
   test("Home exposes the AI Workflows entry path (gated when AI is not dominant)", async ({
