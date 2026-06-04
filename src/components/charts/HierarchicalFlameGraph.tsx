@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState, type CSSProperties } from "react";
 
 import type { AggregatedFlameNode } from "@/lib/types";
+import { formatNumber } from "@/lib/formatters";
 
 const formatValue = (value: number, unit: string) => {
   if (unit === "hours") {
@@ -10,22 +11,22 @@ const formatValue = (value: number, unit: string) => {
       return `${Math.round(value * 60)}m`;
     }
     if (value < 24) {
-      return `${value.toFixed(1)}h`;
+      return `${formatNumber(value, { maximumFractionDigits: 1 })}h`;
     }
-    return `${(value / 24).toFixed(1)}d`;
+    return `${formatNumber(value / 24, { maximumFractionDigits: 1 })}d`;
   }
   if (unit === "loc") {
     if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}k`;
+      return `${formatNumber(value / 1000, { maximumFractionDigits: 1 })}k`;
     }
-    return String(Math.round(value));
+    return formatNumber(Math.round(value));
   }
-  return String(Math.round(value));
+  return formatNumber(Math.round(value));
 };
 
 const formatPercent = (value: number, total: number) => {
   if (total === 0) return "0%";
-  return `${((value / total) * 100).toFixed(1)}%`;
+  return `${formatNumber((value / total) * 100, { maximumFractionDigits: 1 })}%`;
 };
 
 type StackFrame = {
@@ -186,7 +187,7 @@ export function HierarchicalFlameGraph({
           {/* Breadcrumb */}
           <div className="flex items-center gap-1 text-xs">
             {breadcrumbs.map((crumb, idx) => (
-              <span key={`crumb-${idx}`} className="flex items-center gap-1">
+              <span key={`${crumb.label}-${crumb.index}`} className="flex items-center gap-1">
                 {idx > 0 && <span className="text-(--ink-muted)">/</span>}
                 <button
                   type="button"

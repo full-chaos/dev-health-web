@@ -1,3 +1,4 @@
+import { formatNumber } from "@/lib/formatters";
 import { formatSubcategoryLabel, titleCase } from "@/lib/investment";
 import type { MixExplanationState } from "./types";
 import { EVIDENCE_QUALITY_BANDS } from "./types";
@@ -103,9 +104,15 @@ export function InvestmentExplainer({
                   </span>
                   {mixExplanation.data.confidence?.quality_mean != null && (
                     <span className="text-[10px] text-(--ink-muted)">
-                      Mean: {(mixExplanation.data.confidence.quality_mean * 100).toFixed(0)}%
+                      Mean:{" "}
+                      {formatNumber(mixExplanation.data.confidence.quality_mean * 100, {
+                        maximumFractionDigits: 0,
+                      })}
+                      %
                       {mixExplanation.data.confidence.quality_stddev != null &&
-                        ` +- ${(mixExplanation.data.confidence.quality_stddev * 100).toFixed(0)}%`}
+                        ` +- ${formatNumber(mixExplanation.data.confidence.quality_stddev * 100, {
+                          maximumFractionDigits: 0,
+                        })}%`}
                     </span>
                   )}
                 </div>

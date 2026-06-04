@@ -189,10 +189,13 @@ export function TeamExchangeChordSection({
               <ChordChart
                 dataset={
                   dataset ??
-                  buildChordDataset([], { grouping: controls.grouping, unit: effortUnit })
+                  buildChordDataset([], {
+                    grouping: controls.grouping,
+                    unit: effortUnit,
+                  })
                 }
                 unit={effortUnit}
-                onItemClick={handleChartClick}
+                onItemClickAction={handleChartClick}
               />
             </div>
             <ChordSummaryPanel

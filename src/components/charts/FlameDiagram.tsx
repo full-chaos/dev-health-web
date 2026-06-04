@@ -14,8 +14,11 @@ import type { FlameFrame } from "@/lib/types";
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
+import { formatNumber } from "@/lib/formatters";
 
 echarts.use([CustomChart]);
+
+const textValue = (value: unknown) => (typeof value === "string" ? value : `${value ?? ""}`);
 
 const formatDuration = (start: string, end: string) => {
   const startTime = new Date(start).getTime();
@@ -30,10 +33,10 @@ const formatDuration = (start: string, end: string) => {
   }
   const hours = minutes / 60;
   if (hours < 36) {
-    return `${hours.toFixed(1)}h`;
+    return `${formatNumber(hours, { maximumFractionDigits: 1 })}h`;
   }
   const days = hours / 24;
-  return `${days.toFixed(1)}d`;
+  return `${formatNumber(days, { maximumFractionDigits: 1 })}d`;
 };
 
 const frameDepths = (frames: FlameFrame[]) => {
@@ -61,7 +64,9 @@ const frameDepths = (frames: FlameFrame[]) => {
     return depth;
   };
 
-  frames.forEach((frame) => resolveDepth(frame, new Set()));
+  frames.forEach((frame) => {
+    resolveDepth(frame, new Set());
+  });
   return depths;
 };
 
@@ -122,7 +127,7 @@ export function FlameDiagram({
     const label = values[3];
     const state = values[4];
     const category = values[5];
-    const duration = formatDuration(String(values[0]), String(values[1]));
+    const duration = formatDuration(textValue(values[0]), textValue(values[1]));
     return [
       `<strong>${label}</strong>`,
       `State: ${state}`,
@@ -168,13 +173,13 @@ export function FlameDiagram({
         series: [
           {
             type: "custom",
-            renderItem: (params: CustomSeriesRenderItemParams, api: CustomSeriesRenderItemAPI) => {
+            renderItem: (_params: CustomSeriesRenderItemParams, api: CustomSeriesRenderItemAPI) => {
               const startValue = api.value(0);
               const endValue = api.value(1);
               const depth = api.value(2);
               const label = api.value(3);
-              const state = String(api.value(4));
-              const category = String(api.value(5));
+              const state = textValue(api.value(4));
+              const category = textValue(api.value(5));
 
               const startCoord = api.coord([startValue, depth]);
               const endCoord = api.coord([endValue, depth]);
@@ -194,7 +199,7 @@ export function FlameDiagram({
                 textContent: {
                   type: "text",
                   style: {
-                    text: String(label),
+                    text: textValue(label),
                     fill: chartTheme.text,
                     fontSize: 11,
                     overflow: "truncate",

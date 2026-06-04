@@ -119,7 +119,7 @@ export function InspectPanel({
                   % of Total
                 </p>
                 <p className="mt-1 text-xl font-mono text-(--accent-2)">
-                  {selection.percentTotal.toFixed(1)}%
+                  {formatNumber(selection.percentTotal)}%
                 </p>
               </div>
             )}
@@ -146,9 +146,9 @@ export function InspectPanel({
                   Panel Outcomes
                 </p>
                 <div className="space-y-2">
-                  {selection.outcomes.map((outcome, idx) => (
+                  {selection.outcomes.map((outcome) => (
                     <div
-                      key={idx}
+                      key={outcome}
                       className="flex gap-3 items-start text-sm leading-relaxed text-foreground/90"
                     >
                       <span className="mt-1 text-(--accent-2) text-[10px]">●</span>
@@ -200,6 +200,7 @@ export function InspectPanel({
               {contextZone ? `(Zone: ${contextZone})` : ""}
             </p>
             <button
+              type="button"
               onClick={onClearContext}
               className="mt-2 text-[9px] uppercase tracking-[0.2em] text-(--accent-2) hover:underline"
             >

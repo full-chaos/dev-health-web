@@ -231,7 +231,7 @@ export function InvestmentMixSection({
     const value = typeof nodeData.value === "number" ? nodeData.value : 0;
     const pct = totalValue > 0 ? (value / totalValue) * 100 : 0;
     if (!name || pct < 2) return "";
-    return `${name}\n${pct.toFixed(0)}%`;
+    return `${name}\n${formatNumber(pct, { maximumFractionDigits: 0 })}%`;
   }, []);
 
   const formatTreemapTooltip = useCallback(
@@ -356,9 +356,9 @@ export function InvestmentMixSection({
                 height={360}
                 useInputColors
                 showBreadcrumb={false}
-                tooltipFormatter={formatTreemapTooltip}
-                labelFormatter={treemapLabelFormatter}
-                onNodeClick={handleTreemapSelection}
+                tooltipFormatterAction={formatTreemapTooltip}
+                labelFormatterAction={treemapLabelFormatter}
+                onNodeClickAction={handleTreemapSelection}
               />
             )}
           </>
@@ -375,8 +375,8 @@ export function InvestmentMixSection({
               unit={investmentMix.unit ?? effortUnit}
               height={360}
               focusedTheme={focusTheme}
-              onThemeClick={handleThemeClick}
-              onSubcategoryClick={handleSubcategoryClick}
+              onThemeClickAction={handleThemeClick}
+              onSubcategoryClickAction={handleSubcategoryClick}
             />
             <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
               <div className="flex items-center justify-between">
@@ -422,7 +422,10 @@ export function InvestmentMixSection({
                               {formatNumber(entry.value)} {investmentMix.unit ?? effortUnit}
                             </div>
                             <div className="text-xs text-(--accent-2)">
-                              {formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}% of theme
+                              {formatNumber(pctOfTheme, {
+                                maximumFractionDigits: 1,
+                              })}
+                              % of theme
                             </div>
                           </div>
                         </button>

@@ -55,7 +55,7 @@ describe("TreemapChart", () => {
 
   it("renders with sample data and supports node click callbacks", () => {
     const onNodeClick = vi.fn();
-    render(<TreemapChart data={sampleData} onNodeClick={onNodeClick} className="mix-tree" />);
+    render(<TreemapChart data={sampleData} onNodeClickAction={onNodeClick} className="mix-tree" />);
 
     const props = chartSpy.mock.calls[0][0] as {
       className: string;
@@ -92,7 +92,7 @@ describe("TreemapChart", () => {
           value: 0,
           children: [],
         }}
-        onNodeClick={onNodeClick}
+        onNodeClickAction={onNodeClick}
       />,
     );
 

@@ -21,7 +21,13 @@ type ChartProps = {
   investmentMixFocusTheme: string | null;
   dataset: SankeyDataset | null;
   onTreemapClick: (
-    node: { name: string; value: number; path: string[]; percent: number; data?: HierarchyNode },
+    node: {
+      name: string;
+      value: number;
+      path: string[];
+      percent: number;
+      data?: HierarchyNode;
+    },
     view: FlowSubTab,
     unit: string,
   ) => void;
@@ -89,8 +95,8 @@ export function Chart({
               unit={investmentMix.unit ?? "units"}
               height={500}
               focusedTheme={investmentMixFocusTheme}
-              onThemeClick={(themeKey) => onInvestmentMixClick(themeKey, "theme")}
-              onSubcategoryClick={(subcategoryKey) =>
+              onThemeClickAction={(themeKey) => onInvestmentMixClick(themeKey, "theme")}
+              onSubcategoryClickAction={(subcategoryKey) =>
                 onInvestmentMixClick(subcategoryKey, "subcategory")
               }
             />
@@ -126,7 +132,7 @@ export function Chart({
             data={hotspotHierarchy}
             unit="changes"
             height={500}
-            onNodeClick={(node) => onTreemapClick(node, "code_hotspots", "changes")}
+            onNodeClickAction={(node) => onTreemapClick(node, "code_hotspots", "changes")}
           />
         ) : (
           <SunburstChart
@@ -144,7 +150,7 @@ export function Chart({
           series={expenseData.series}
           unit="items"
           height={500}
-          onSeriesClick={onAreaClick}
+          onSeriesClickAction={onAreaClick}
         />
       )}
 
@@ -156,7 +162,7 @@ export function Chart({
             links={dataset!.links}
             unit={dataset!.unit}
             height={500}
-            onItemClick={onSankeyClick}
+            onItemClickAction={onSankeyClick}
           />
         ) : (
           !isLoading && (

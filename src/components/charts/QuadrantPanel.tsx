@@ -363,7 +363,7 @@ export function QuadrantPanel({
                 data={scopedData}
                 height={chartHeight}
                 className="w-full min-w-0"
-                onPointSelect={handlePointSelect}
+                onPointSelectAction={handlePointSelect}
                 focusEntityIds={focusEntityIds}
                 scopeType={scopeType}
                 zoneOverlay={zoneOverlay}

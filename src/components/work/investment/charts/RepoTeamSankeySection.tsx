@@ -115,8 +115,8 @@ export function RepoTeamSankeySection({
             links={repoTeamLinks}
             unit={effortUnit}
             height={320}
-            tooltipFormatter={repoTeamTooltipFormatter}
-            onItemClick={(item) => {
+            tooltipFormatterAction={repoTeamTooltipFormatter}
+            onItemClickAction={(item) => {
               if (item.type === "node") {
                 const normalized = stripSankeyPrefix(item.name ?? "");
                 const node = repoTeamNodes.find(

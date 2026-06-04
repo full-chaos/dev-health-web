@@ -1,6 +1,7 @@
 import type { ChordDataset } from "@/lib/types";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { formatNumber } from "@/lib/formatters";
 
 type ChordSummaryPanelProps = {
   dataset: ChordDataset | null;
@@ -10,11 +11,14 @@ type ChordSummaryPanelProps = {
   onEntitySelect?: (entityId: string) => void;
 };
 
+const loadingSections = ["importers", "exporters", "exchange"] as const;
+const loadingRows = ["one", "two", "three", "four", "five"] as const;
+
 function formatCompactValue(v: number): string {
   const abs = Math.abs(v);
-  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
-  return v.toFixed(0);
+  if (abs >= 1_000_000) return `${formatNumber(v / 1_000_000, { maximumFractionDigits: 1 })}M`;
+  if (abs >= 1_000) return `${formatNumber(v / 1_000, { maximumFractionDigits: 1 })}k`;
+  return formatNumber(v);
 }
 
 export function ChordSummaryPanel({
@@ -28,12 +32,12 @@ export function ChordSummaryPanel({
     return (
       <section className={`rounded-3xl border border-(--card-stroke) bg-card p-4 ${className}`}>
         <div className="space-y-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-3">
+          {loadingSections.map((section) => (
+            <div key={section} className="space-y-3">
               <SkeletonLine width="w-1/3" height="h-3" />
               <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, j) => (
-                  <SkeletonLine key={j} width="w-full" height="h-5" />
+                {loadingRows.map((row) => (
+                  <SkeletonLine key={`${section}-${row}`} width="w-full" height="h-5" />
                 ))}
               </div>
             </div>
@@ -174,8 +178,10 @@ export function ChordSummaryPanel({
       {summary.otherShare > 0 && (
         <div className="pt-2 border-t border-(--card-stroke)">
           <p className="text-xs text-(--ink-muted) text-center">
-            {(summary.otherShare * 100).toFixed(1)}% of flow collapsed into &apos;Other&apos; (
-            {otherNodesCount} entities)
+            {formatNumber(summary.otherShare * 100, {
+              maximumFractionDigits: 1,
+            })}
+            % of flow collapsed into &apos;Other&apos; ({otherNodesCount} entities)
           </p>
         </div>
       )}

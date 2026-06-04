@@ -206,7 +206,7 @@ export default async function CoveragePage({
 								Line Coverage Trend
 							</h2>
 							<div className="h-64">
-								<TimeseriesChart data={timeseriesData} />
+								<TimeseriesChart data={timeseriesData} valueFormat="percent" />
 							</div>
 						</div>
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
@@ -218,6 +218,7 @@ export default async function CoveragePage({
 									categories={repoCategories}
 									values={repoValues}
 									categoryTitles={repoTitles}
+									valueFormat="percent"
 								/>
 							</div>
 						</div>

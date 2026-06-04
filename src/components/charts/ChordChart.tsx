@@ -8,6 +8,7 @@ import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import type { ChordDataset } from "@/lib/types";
+import { formatNumber, formatPercent } from "@/lib/formatters";
 
 echarts.use([EChartsChordChart]);
 
@@ -15,14 +16,14 @@ const formatValue = (value: number | undefined, unit: string) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return "--";
   }
-  return `${value.toFixed(0)} ${unit}`;
+  return `${formatNumber(value, { maximumFractionDigits: 0 })} ${unit}`;
 };
 
-const formatPercent = (value: number, total: number) => {
+const formatShare = (value: number, total: number) => {
   if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
     return "--";
   }
-  return `${((value / total) * 100).toFixed(1)}%`;
+  return formatPercent((value / total) * 100);
 };
 
 type ChordChartProps = {
@@ -32,8 +33,8 @@ type ChordChartProps = {
   width?: number | string;
   className?: string;
   style?: CSSProperties;
-  tooltipFormatter?: (params: unknown, unit: string) => string;
-  onItemClick?: (item: {
+  tooltipFormatterAction?: (params: unknown, unit: string) => string;
+  onItemClickAction?: (item: {
     type: "node" | "link";
     name?: string;
     source?: string;
@@ -49,8 +50,8 @@ export function ChordChart({
   width = "100%",
   className,
   style,
-  tooltipFormatter,
-  onItemClick,
+  tooltipFormatterAction,
+  onItemClickAction,
 }: ChordChartProps) {
   const chartTheme = useChartTheme();
   const mergedStyle: CSSProperties = useMemo(
@@ -94,12 +95,17 @@ export function ChordChart({
       };
     });
 
-    return { chartData, chartEdges, outgoingTotals, totalFlow: dataset.totalFlow };
+    return {
+      chartData,
+      chartEdges,
+      outgoingTotals,
+      totalFlow: dataset.totalFlow,
+    };
   }, [dataset, chartTheme.muted]);
 
   const handleClick = useCallback(
     (params: unknown) => {
-      if (!onItemClick || !params || typeof params !== "object") {
+      if (!onItemClickAction || !params || typeof params !== "object") {
         return;
       }
       const entry = params as {
@@ -114,7 +120,7 @@ export function ChordChart({
       };
       const data = entry.data ?? {};
       const isLink = entry.dataType === "edge";
-      onItemClick({
+      onItemClickAction({
         type: isLink ? "link" : "node",
         name: data.name ?? entry.name ?? "",
         source: data.source,
@@ -122,7 +128,7 @@ export function ChordChart({
         value: data.value,
       });
     },
-    [onItemClick],
+    [onItemClickAction],
   );
 
   const option = useMemo(() => {
@@ -149,7 +155,7 @@ export function ChordChart({
         const unitLabel = unit === "hours" ? "Elapsed" : "Value";
         const shareLine =
           totalFromSource > 0 && typeof data.value === "number"
-            ? `<br/><span style="color: ${chartTheme.accent2}">${formatPercent(data.value, totalFromSource)}</span> of source outflow`
+            ? `<br/><span style="color: ${chartTheme.accent2}">${formatShare(data.value, totalFromSource)}</span> of source outflow`
             : "";
 
         return `
@@ -168,7 +174,7 @@ export function ChordChart({
       const unitLabel = unit === "hours" ? "Total Elapsed" : "Total Value";
       const shareLine =
         totalFlow > 0
-          ? `<br/><span style="color: ${chartTheme.accent2}">${formatPercent(nodeValue, totalFlow)}</span> of total`
+          ? `<br/><span style="color: ${chartTheme.accent2}">${formatShare(nodeValue, totalFlow)}</span> of total`
           : "";
 
       return `
@@ -195,7 +201,9 @@ export function ChordChart({
         borderColor: chartTheme.stroke,
         textStyle: { color: chartTheme.text },
         formatter: (params: unknown) =>
-          tooltipFormatter ? tooltipFormatter(params, unit) : defaultTooltipFormatter(params),
+          tooltipFormatterAction
+            ? tooltipFormatterAction(params, unit)
+            : defaultTooltipFormatter(params),
       },
       series: [
         {
@@ -206,7 +214,12 @@ export function ChordChart({
           emphasis: { focus: "adjacency" as const },
           data: chartData,
           edges: chartEdges,
-          label: { show: true, position: "outside" as const, color: chartTheme.text, fontSize: 11 },
+          label: {
+            show: true,
+            position: "outside" as const,
+            color: chartTheme.text,
+            fontSize: 11,
+          },
           itemStyle: { borderColor: chartTheme.grid, borderWidth: 1 },
           lineStyle: {
             color: "source",
@@ -221,7 +234,7 @@ export function ChordChart({
     chartEdges,
     unit,
     chartTheme,
-    tooltipFormatter,
+    tooltipFormatterAction,
     outgoingTotals,
     totalFlow,
     dataset.grouping,
@@ -230,8 +243,8 @@ export function ChordChart({
   ]);
 
   const onEvents = useMemo(
-    () => (onItemClick ? { click: handleClick } : undefined),
-    [onItemClick, handleClick],
+    () => (onItemClickAction ? { click: handleClick } : undefined),
+    [onItemClickAction, handleClick],
   );
 
   if (dataset.nodes.length === 0 || dataset.totalFlow === 0) {

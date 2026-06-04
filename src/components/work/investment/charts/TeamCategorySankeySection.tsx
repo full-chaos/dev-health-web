@@ -68,7 +68,10 @@ export function TeamCategorySankeySection({
       return null;
     }
     return prepareSankeyFlow(
-      { ...rawSankeyFlow, mode: teamCategoryFlow?.mode ?? "team_category_repo" } as SankeyResponse,
+      {
+        ...rawSankeyFlow,
+        mode: teamCategoryFlow?.mode ?? "team_category_repo",
+      } as SankeyResponse,
       TOP_N_REPOS,
     );
   }, [prepareSankeyFlow, rawSankeyFlow, teamCategoryFlow?.mode]);
@@ -261,7 +264,7 @@ export function TeamCategorySankeySection({
                   key={entry.name}
                   className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px]"
                 >
-                  {entry.name} {entry.share.toFixed(0)}%
+                  {entry.name} {formatNumber(entry.share, { maximumFractionDigits: 0 })}%
                 </span>
               ))}
             </div>
@@ -285,8 +288,8 @@ export function TeamCategorySankeySection({
             links={sankeyFlow.links}
             unit={effortUnit}
             height={320}
-            tooltipFormatter={sankeyTooltipFormatter}
-            onItemClick={(item) => {
+            tooltipFormatterAction={sankeyTooltipFormatter}
+            onItemClickAction={(item) => {
               if (!sankeyFlow) return;
               if (item.type === "node") {
                 const node = sankeyFlow.nodes.find((n) => n.name === item.name);

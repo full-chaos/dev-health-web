@@ -10,6 +10,7 @@ import { requireSession } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
+import { formatNumber } from "@/lib/formatters";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
 import type { ThroughputRiskOverlay } from "@/lib/graphql/types";
 
@@ -22,13 +23,17 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 }
 
 function formatWeeks(value: number | null | undefined) {
-  return typeof value === "number" ? `${value} weeks` : "Not enough throughput";
+  return typeof value === "number"
+    ? `${formatNumber(value, { maximumFractionDigits: 0 })} weeks`
+    : "Not enough throughput";
 }
 
 function riskValue(risk: ThroughputRiskOverlay) {
-  if (risk.kind === "review") return `${risk.value.toFixed(1)}h`;
-  if (risk.kind === "wip") return `${risk.value.toFixed(2)}×`;
-  if (risk.kind === "incident_load") return `${risk.value.toFixed(1)}/week`;
+  if (risk.kind === "review") return `${formatNumber(risk.value, { maximumFractionDigits: 1 })}h`;
+  if (risk.kind === "wip") return `${formatNumber(risk.value, { maximumFractionDigits: 2 })}×`;
+  if (risk.kind === "incident_load") {
+    return `${formatNumber(risk.value, { maximumFractionDigits: 1 })}/week`;
+  }
   return "—";
 }
 
@@ -77,9 +82,7 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
   const activeRole = typeof roleParam === "string" ? roleParam : undefined;
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const teamIds =
-    filters.scope.level === "team" && filters.scope.ids.length > 0
-      ? filters.scope.ids
-      : null;
+    filters.scope.level === "team" && filters.scope.ids.length > 0 ? filters.scope.ids : null;
 
   const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
   if (!health.ok) return <ServiceUnavailable />;
@@ -139,7 +142,7 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">Backlog</p>
                   <p className="mt-2 text-3xl font-semibold">
-                    {forecast.backlogSize}{" "}
+                    {formatNumber(forecast.backlogSize)}{" "}
                     <span className="text-base font-normal text-(--ink-muted)">open items</span>
                   </p>
                 </div>
@@ -178,7 +181,7 @@ export default async function CapacityPlanningPage({ searchParams }: CapacityPla
                     </p>
                   </div>
                   <span className="rounded-full bg-foreground/10 px-3 py-1 text-xs">
-                    Backlog {forecast.backlogSize}
+                    Backlog {formatNumber(forecast.backlogSize)}
                   </span>
                 </div>
                 <VerticalBarChart

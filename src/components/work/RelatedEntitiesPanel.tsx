@@ -6,6 +6,7 @@ import type {
   AIWorkflowRootTypeInput,
   WorkUnitInvestmentDistribution,
 } from "@/lib/graphql/types";
+import { formatNumber } from "@/lib/formatters";
 import { labelInvestmentKey } from "@/lib/workGraph/taxonomy";
 
 type RelatedEntitiesPanelProps = {
@@ -112,7 +113,7 @@ export function RelatedEntitiesPanel({
           <p className="mt-1 font-medium">{theme ? labelInvestmentKey(theme[0]) : "No data"}</p>
           <p className="mt-1 text-xs text-(--ink-muted)">
             {subcategory
-              ? `${labelInvestmentKey(subcategory[0])} · ${Math.round(subcategory[1] * 100)}%`
+              ? `${labelInvestmentKey(subcategory[0])} · ${formatNumber(subcategory[1] * 100, { maximumFractionDigits: 0 })}%`
               : "No data"}
           </p>
         </div>
@@ -163,7 +164,10 @@ export function RelatedEntitiesPanel({
                             <dt className="uppercase tracking-[0.16em]">Evidence quality</dt>
                             <dd className="mt-1 text-foreground">
                               {evidenceQuality(edge.confidence)} ·{" "}
-                              {Math.round(edge.confidence * 100)}%
+                              {formatNumber(edge.confidence * 100, {
+                                maximumFractionDigits: 0,
+                              })}
+                              %
                             </dd>
                           </div>
                           <div>

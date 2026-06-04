@@ -8,6 +8,7 @@ import { useWorkGraphEdges } from "@/lib/graphql/hooks";
 import type { WorkGraphEdge, WorkGraphEdgeType, WorkGraphNodeType } from "@/lib/graphql/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { useOrgId } from "@/lib/graphql/provider";
+import { formatNumber } from "@/lib/formatters";
 import {
   INVESTMENT_SUBCATEGORIES,
   INVESTMENT_THEMES,
@@ -415,11 +416,18 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
           </div>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="p-1 hover:bg-white/10 rounded transition-colors"
           aria-label="Close panel"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            aria-hidden="true"
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -486,7 +494,10 @@ function EdgeList({ title, subtitle, edges, getLabel, getRelation }: EdgeListPro
             </span>
             <span className="text-[11px] text-(--ink-muted)">
               {edge.provenance.toLowerCase().replace(/_/g, " ")} ·{" "}
-              {Math.round(edge.confidence * 100)}% confidence
+              {formatNumber(edge.confidence * 100, {
+                maximumFractionDigits: 0,
+              })}
+              % confidence
             </span>
             {edge.evidence && <q className="text-[11px] text-(--ink-muted)">{edge.evidence}</q>}
           </li>
