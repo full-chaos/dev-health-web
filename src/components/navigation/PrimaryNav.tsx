@@ -88,6 +88,11 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
         <Link
           href={withFilterParam(area.href, filters, role)}
           aria-current={areaRowIsSelected ? "page" : undefined}
+          // Stable hook for "which area is selected" assertions: marks the active
+          // area row whether the selection is the area landing (aria-current here)
+          // or a child leaf (aria-current on the child). Keeps aria-current a11y-
+          // correct (the link to the current page) per PrimaryNav.test.tsx / A10.
+          data-active={isActive ? "true" : undefined}
           className={`group relative flex items-center rounded-2xl border px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/35 ${
             isActive
               ? "border-(--accent) bg-(--accent)/15 text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-full before:bg-(--accent)"

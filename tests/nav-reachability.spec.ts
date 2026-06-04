@@ -92,12 +92,13 @@ async function expectReachable(request: APIRequestContext, path: string) {
 async function expectSingleSelectedArea(page: Page, path: string, selectedLabel: string) {
   await page.goto(path);
 
-  // aria-current is rendered from usePathname() (server + hydration) and does not
-  // depend on the slower ?f= filter-param append, so wait for the selected link
-  // directly to stay robust under CI load.
-  const selectedLinks = page.locator('aside a[aria-current="page"]');
-  await expect(selectedLinks).toHaveCount(1, { timeout: 15000 });
-  await expect(selectedLinks).toHaveText(selectedLabel);
+  // CHAOS-2075 two-level nav: aria-current marks the current-page link (a child
+  // leaf on a leaf route, the area row on a landing), so the active AREA is marked
+  // with data-active instead. Assert exactly one area is active and it's the
+  // expected one — rendered from usePathname(), independent of the ?f= append.
+  const selectedArea = page.locator('aside a[data-active="true"]');
+  await expect(selectedArea).toHaveCount(1, { timeout: 15000 });
+  await expect(selectedArea).toHaveText(selectedLabel);
 }
 
 test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)", () => {
@@ -123,6 +124,9 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
   });
 
   test("every former leaf destination still resolves without 404", async ({ request }) => {
+    // ~30 sequential SSR reachability fetches; Turbopack cold-compiles each route
+    // on first hit under suite load, which overruns the default 30s test budget.
+    test.setTimeout(120_000);
     for (const route of reachableRoutes) {
       await expectReachable(request, route);
     }
@@ -133,13 +137,15 @@ test.describe("primary navigation reachability (collapsed areas — CHAOS-2073)"
     request,
   }) => {
     await page.goto("/opportunities");
-    await waitForHydration(page);
 
     // AI Workflows now lives in the Improve area's drill-down hub, not the sidebar.
     // AreaHub renders aria-label="${area.label} signals" → "Improve signals".
+    // The hub is server-rendered, so wait for it directly: CHAOS-2073 area-overview
+    // pages don't append the ?f= hydration marker waitForHydration relies on.
     const improveHub = page.getByRole("region", {
       name: "Improve signals",
     });
+    await expect(improveHub).toBeVisible({ timeout: 15000 });
     await clickUntilUrl(
       page,
       improveHub.getByRole("link", { name: /AI Workflows/ }),

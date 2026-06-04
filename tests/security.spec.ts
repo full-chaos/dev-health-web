@@ -15,7 +15,9 @@ test("security page renders and shows KPI tiles", async ({ page }) => {
   // All four KPI tile wrappers must be in the DOM — they render loading state
   // or error state but the testid divs are always rendered.
   await expect(page.getByTestId("kpi-open")).toBeVisible({ timeout: 10000 });
-  await expect(page.getByTestId("kpi-critical")).toBeVisible({ timeout: 10000 });
+  await expect(page.getByTestId("kpi-critical")).toBeVisible({
+    timeout: 10000,
+  });
   await expect(page.getByTestId("kpi-high")).toBeVisible({ timeout: 10000 });
   await expect(page.getByTestId("kpi-mttf")).toBeVisible({ timeout: 10000 });
 });
@@ -29,7 +31,9 @@ test("security page has top-repos chart container in DOM", async ({ page }) => {
   });
 
   // The top-repos-chart testid is always rendered (shows empty or data state)
-  await expect(page.getByTestId("top-repos-chart")).toBeVisible({ timeout: 10000 });
+  await expect(page.getByTestId("top-repos-chart")).toBeVisible({
+    timeout: 10000,
+  });
 });
 
 test("security repo evidence page renders with locked pill", async ({ page }) => {
@@ -42,7 +46,9 @@ test("security repo evidence page renders with locked pill", async ({ page }) =>
   });
 
   // The locked pill must appear
-  await expect(page.getByTestId("locked-repo-pill")).toBeVisible({ timeout: 10000 });
+  await expect(page.getByTestId("locked-repo-pill")).toBeVisible({
+    timeout: 10000,
+  });
 
   // Locked pill should contain the repoId
   const pill = page.getByTestId("locked-repo-pill");
@@ -50,10 +56,13 @@ test("security repo evidence page renders with locked pill", async ({ page }) =>
 });
 
 test("security in primary nav links to /security", async ({ page }) => {
-  await page.goto("/dashboard");
+  // CHAOS-2073: Security is a Govern-area child, rendered when Govern is the
+  // active area. Land on the Govern area so its child rows (incl. Security)
+  // expand in the sidebar.
+  await page.goto("/testops");
 
   // Find the Security nav link
-  const securityLink = page.getByRole("link", { name: /security/i }).first();
+  const securityLink = page.getByRole("link", { name: /^security$/i }).first();
   await expect(securityLink).toBeVisible({ timeout: 10000 });
 
   const href = await securityLink.getAttribute("href");
