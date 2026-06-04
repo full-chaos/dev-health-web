@@ -230,6 +230,7 @@ export default async function CapacityPlanningPage({
 											),
 										},
 									]}
+									valueFormat="number"
 									height={300}
 								/>
 							</section>

@@ -50,6 +50,15 @@ export function VerticalBarChart({
     type: "bar",
     data: item.data,
     barMaxWidth: 24,
+    label: {
+      show: true,
+      position: "top",
+      color: chartTheme.muted,
+      formatter: (params: unknown) => {
+        const value = (params as NumericChartParam | undefined)?.value;
+        return formatValue(value);
+      },
+    },
   }));
 
   const mergedStyle: CSSProperties = {
@@ -92,12 +101,12 @@ export function VerticalBarChart({
           data: categories,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: chartTheme.grid } },
-          axisLabel: { color: chartTheme.muted, formatter: formatValue },
+          axisLabel: { color: chartTheme.muted },
         },
         yAxis: {
           type: "value",
           splitLine: { lineStyle: { color: chartTheme.grid } },
-          axisLabel: { color: chartTheme.muted },
+          axisLabel: { color: chartTheme.muted, formatter: formatValue },
         },
         series: barSeries,
       }}

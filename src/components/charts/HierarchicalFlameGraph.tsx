@@ -25,7 +25,7 @@ const formatValue = (value: number, unit: string) => {
 	return formatNumber(Math.round(value));
 };
 
-const formatPercent = (value: number, total: number) => {
+const formatShare = (value: number, total: number) => {
 	if (total === 0) return "0%";
 	return `${formatNumber((value / total) * 100, { maximumFractionDigits: 1 })}%`;
 };
@@ -288,7 +288,7 @@ export function HierarchicalFlameGraph({
 
 						<span className="text-(--ink-muted)">Percent:</span>
 						<span className="text-foreground font-mono">
-							{formatPercent(hoveredNode.value, totalValue)}
+							{formatShare(hoveredNode.value, totalValue)}
 						</span>
 					</div>
 					<div className="flex justify-between border-b border-(--card-stroke) pb-1">
