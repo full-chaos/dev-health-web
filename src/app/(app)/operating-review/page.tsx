@@ -14,6 +14,7 @@ import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetch
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
 import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
 import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
+import { navTrailForPathname } from "@/lib/navigation/areas";
 
 type OperatingReviewPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -75,9 +76,7 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="mb-3">
-                <Breadcrumbs
-                  items={[{ label: "Home", href: "/dashboard" }, { label: "Operating Review" }]}
-                />
+                <Breadcrumbs items={navTrailForPathname("/operating-review")} />
               </div>
               <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Weekly mode</p>
               <h1 className="mt-2 font-(--font-display) text-3xl">Engineering Operating Review</h1>

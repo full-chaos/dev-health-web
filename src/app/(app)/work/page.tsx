@@ -1,5 +1,9 @@
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { AreaHub } from "@/components/navigation/AreaHub";
+import { AreaSignalCard } from "@/components/navigation/AreaSignalCard";
+import { BackLink } from "@/components/shared/BackLink";
+import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
@@ -22,8 +26,11 @@ import { FlameView } from "@/components/work/FlameView";
 import { EvidenceView } from "@/components/work/EvidenceView";
 import { GraphView } from "@/components/work/GraphView";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
-import { BackLink } from "@/components/shared/BackLink";
 import { WorkTabNav, type WorkTab } from "@/components/navigation/WorkTabNav";
+import { getDiagnoseSignals } from "@/lib/areaSignals/diagnose";
+import { topSignals } from "@/lib/areaSignals/sort";
+import { getServerEnv } from "@/lib/config";
+import { resolveActiveView, type DiagnoseView } from "@/lib/navigation/workPageView";
 
 type WorkPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -61,6 +68,12 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
       ? (tabParam as WorkTab)
       : "landscape";
 
+  const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
+  // resolveActiveView preserves legacy /work?tab=<workTab> deep links: when
+  // `view` is absent but a valid `tab` is present it returns "work" so the Work
+  // content branch renders and the existing `tab` logic picks the sub-view.
+  const activeView: DiagnoseView = resolveActiveView(viewParam, tabParam);
+
   const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
   const scopeId = filters.scope.ids[0] ?? "";
   const quadrantScope: "org" | "team" | "repo" | "developer" =
@@ -69,6 +82,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
       : filters.scope.level === "team" || filters.scope.level === "repo"
         ? filters.scope.level
         : "org";
+
+  const env = getServerEnv();
+  const isTestMode =
+    env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
   // When GraphQL transport is enabled we use the hydration-aware fetcher so
   // the client-side <InvestmentView> useQuery resolves from cache instead of
@@ -96,6 +113,8 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
           "work/investment",
         );
 
+  // Resolve the area's sub-area signals and the borrowed Work metric content
+  // in parallel — no waterfall.
   const [
     health,
     home,
@@ -106,6 +125,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
     cycleThroughput,
     wipThroughput,
     reviewLoadLatency,
+    diagnoseSignals,
   ] = await Promise.all([
     checkApiHealth(),
     fetchOrNull(getHomeData(filters), "work/home-data"),
@@ -163,9 +183,10 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
       }),
       "work/review-load-latency-quadrant",
     ),
+    getDiagnoseSignals(filters, isTestMode),
   ]);
 
-  if (!health.ok) {
+  if (!health.ok && !isTestMode) {
     return <ServiceUnavailable />;
   }
 
@@ -200,73 +221,118 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
   const plannedPct = plannedTotal ? (planned?.value ?? 0) / plannedTotal : null;
   const unplannedPct = plannedTotal ? (unplanned?.value ?? 0) / plannedTotal : null;
 
+  // Top sub-area signals bubbled up to the area overview (Framework A2a).
+  const leadSignals = topSignals(diagnoseSignals, 3);
+
+  const tabs: ReadonlyArray<ModeTabItem<DiagnoseView>> = [
+    { id: "overview", label: "Overview", href: withFilterParam("/work", filters, activeRole) },
+    {
+      id: "work",
+      label: "Work",
+      href: withFilterParam("/work?view=work", filters, activeRole),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
         <PrimaryNav filters={filters} active="work" role={activeRole} />
         <main className="flex min-w-0 flex-1 flex-col gap-8">
-          <header className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Work</p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">Work Investment and Flow</h1>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Work allocation, WIP pressure, and blocked effort.
-              </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">Select a tab to investigate.</p>
-            </div>
+          <header className="flex flex-col gap-4">
             <BackLink href={withFilterParam("/", filters, activeRole)} />
+            <div>
+              {/* A6: the area is named by the AREA ("Diagnose"), not a borrowed leaf. */}
+              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Diagnose</p>
+              <h1 className="mt-2 font-(--font-display) text-3xl">Diagnose</h1>
+              <p className="mt-2 text-sm text-(--ink-muted)">
+                Metrics, code health, complexity, and flow bottlenecks across the system.
+              </p>
+            </div>
+
+            {/* Overview: bubble the top sub-area signals up to the area level. */}
+            {leadSignals.length > 0 ? (
+              <div
+                data-testid="diagnose-overview"
+                className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+              >
+                {leadSignals.map((signal, index) => (
+                  <AreaSignalCard
+                    key={signal.id}
+                    signal={signal}
+                    filters={filters}
+                    role={activeRole}
+                    emphasized={index === 0}
+                  />
+                ))}
+              </div>
+            ) : null}
           </header>
 
-          <FilterBar view="work" />
+          <ModeTabs items={tabs} activeId={activeView} ariaLabel="Diagnose views" />
 
-          <WorkTabNav activeTab={activeTab} filters={filters} role={activeRole} />
-
-          <ContextStrip filters={filters} origin={activeOrigin} />
-
-          {activeTab === "landscape" && (
-            <LandscapeView
-              filters={filters}
-              activeRole={activeRole}
-              deltas={deltas}
-              placeholderDeltas={placeholderDeltas}
-              investmentMix={investmentMix}
-              cycleThroughput={cycleThroughput}
-              wipThroughput={wipThroughput}
-              reviewLoadLatency={reviewLoadLatency}
-              planned={planned}
-              unplanned={unplanned}
-              plannedPct={plannedPct}
-              unplannedPct={unplannedPct}
-            />
-          )}
-
-          {activeTab === "heatmap" && (
-            <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={reviewHeatmap} />
-          )}
-
-          {activeTab === "flow" && <FlowView filters={filters} activeRole={activeRole} />}
-
-          {activeTab === "investment" && (
+          {activeView === "work" ? (
             <>
-              <HydrateUrqlResults payload={investmentHydrationPayload} />
-              <InvestmentView filters={filters} activeRole={activeRole} />
+              <FilterBar view="work" />
+
+              <WorkTabNav activeTab={activeTab} filters={filters} role={activeRole} />
+
+              <ContextStrip filters={filters} origin={activeOrigin} />
+
+              {activeTab === "landscape" && (
+                <LandscapeView
+                  filters={filters}
+                  activeRole={activeRole}
+                  deltas={deltas}
+                  placeholderDeltas={placeholderDeltas}
+                  investmentMix={investmentMix}
+                  cycleThroughput={cycleThroughput}
+                  wipThroughput={wipThroughput}
+                  reviewLoadLatency={reviewLoadLatency}
+                  planned={planned}
+                  unplanned={unplanned}
+                  plannedPct={plannedPct}
+                  unplannedPct={unplannedPct}
+                />
+              )}
+
+              {activeTab === "heatmap" && (
+                <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={reviewHeatmap} />
+              )}
+
+              {activeTab === "flow" && <FlowView filters={filters} activeRole={activeRole} />}
+
+              {activeTab === "investment" && (
+                <>
+                  <HydrateUrqlResults payload={investmentHydrationPayload} />
+                  <InvestmentView filters={filters} activeRole={activeRole} />
+                </>
+              )}
+
+              {activeTab === "capacity" && <CapacityView filters={filters} />}
+
+              {activeTab === "flame" && <FlameView filters={filters} />}
+
+              {activeTab === "evidence" && (
+                <EvidenceView
+                  filters={filters}
+                  activeRole={activeRole}
+                  wipExplain={wipExplain}
+                  blockedExplain={blockedExplain}
+                />
+              )}
+
+              {activeTab === "graph" && <GraphView filters={filters} activeRole={activeRole} />}
             </>
-          )}
-
-          {activeTab === "capacity" && <CapacityView filters={filters} />}
-
-          {activeTab === "flame" && <FlameView filters={filters} />}
-
-          {activeTab === "evidence" && (
-            <EvidenceView
+          ) : (
+            <AreaHub
+              areaId="diagnose"
+              signals={diagnoseSignals}
               filters={filters}
-              activeRole={activeRole}
-              wipExplain={wipExplain}
-              blockedExplain={blockedExplain}
+              role={activeRole}
+              title="Related workflows"
+              description="Diagnostic sub-areas, ordered by severity."
             />
           )}
-
-          {activeTab === "graph" && <GraphView filters={filters} activeRole={activeRole} />}
         </main>
       </div>
     </div>

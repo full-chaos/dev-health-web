@@ -1,0 +1,65 @@
+/**
+ * Phase 2 (CHAOS-2075) — breadcrumb adoption + AreaHub title reconciliation.
+ *
+ * Covers:
+ *   A) navTrailForPathname("/operating-review") resolves to Improve → Operating Review
+ *      (Operating Review moved Cockpit → Improve in Phase 1; the breadcrumb on the
+ *      operating-review page now derives from this trail instead of hardcoding
+ *      "Home → Operating Review").
+ *   B) AI tab page trails (review-load, automations, risk) all start with
+ *      Improve → AI Workflows (not "Home").
+ */
+import { describe, it, expect } from "vitest";
+import {
+  navTrailForPathname,
+  navTitleForPathname,
+  getAreaById,
+} from "../areas";
+
+describe("navTrailForPathname — operating-review (Phase 2: Improve child)", () => {
+  it("returns a two-crumb trail: Improve (linked) → Operating Review (current)", () => {
+    const trail = navTrailForPathname("/operating-review");
+    expect(trail).toHaveLength(2);
+    expect(trail[0]?.label).toBe("Improve");
+    expect(trail[0]?.href).toBe(getAreaById("improve")?.href); // "/opportunities"
+    expect(trail[1]?.label).toBe("Operating Review");
+    expect(trail[1]?.href).toBeUndefined(); // current page — no link
+  });
+
+  it("trail label matches the sidebar child label verbatim (A6)", () => {
+    const trail = navTrailForPathname("/operating-review");
+    const child = getAreaById("improve")?.children.find((c) => c.id === "operating-review");
+    expect(trail[trail.length - 1]?.label).toBe(child?.label);
+  });
+
+  it("area crumb label matches the Improve area label verbatim (A6)", () => {
+    const trail = navTrailForPathname("/operating-review");
+    expect(trail[0]?.label).toBe(getAreaById("improve")?.label);
+  });
+
+  it("title for /operating-review is 'Operating Review' (child label, not area label)", () => {
+    expect(navTitleForPathname("/operating-review")).toBe("Operating Review");
+  });
+});
+
+describe("navTrailForPathname — AI tab pages (Phase 2: start with Improve → AI Workflows)", () => {
+  const tabPaths = ["/ai/review-load", "/ai/automations", "/ai/risk"];
+
+  it.each(tabPaths)("%s trail starts with Improve area crumb", (pathname) => {
+    const trail = navTrailForPathname(pathname);
+    expect(trail.length).toBeGreaterThanOrEqual(1);
+    expect(trail[0]?.label).toBe("Improve");
+    expect(trail[0]?.href).toBe(getAreaById("improve")?.href);
+  });
+
+  it.each(tabPaths)("%s trail second crumb is AI Workflows (sidebar child label)", (pathname) => {
+    const trail = navTrailForPathname(pathname);
+    // All /ai/* paths resolve to the ai-workflows child row.
+    expect(trail[1]?.label).toBe("AI Workflows");
+  });
+
+  it.each(tabPaths)("%s trail does NOT start with 'Home'", (pathname) => {
+    const trail = navTrailForPathname(pathname);
+    expect(trail[0]?.label).not.toBe("Home");
+  });
+});

@@ -10,8 +10,9 @@
 
 ## Part A: Interaction and content rules (design inconsistencies)
 
-- **A1 Sidebar**, major product areas only. No one-off metric pages without product approval.
-- **A2 Tabs**, sibling views within one area only (Work: Investment/Flow/Landscape/Heatmap/Capacity/Evidence; AI Workflows: Impact/Attribution/Review Load/Test Gaps/Governance Risk/Evidence). Never style a navigation exit as a tab.
+- **A1 Sidebar**, two levels: the six decision areas, plus the ACTIVE area expanded to its child destinations (inactive areas stay collapsed). Children are real destinations only — never tab subviews, never preview/unbuilt routes, never one-off metric pages without product approval. The route tree is config-driven (`src/lib/navigation/areas.ts` → `navArea.children`), so sidebar = breadcrumb = page title (A6). ([CHAOS-2075](https://linear.app/fullchaos/issue/CHAOS-2075/two-level-expandable-area-navigation).)
+- **A2 Tabs**, sibling views _within_ one destination only (Work: Investment/Flow/Landscape/Heatmap/Capacity/Evidence; AI Workflows: Impact/Attribution/Review Load/Test Gaps/Governance Risk/Evidence). Area children (A1) are destinations, not tabs, and never appear in the sidebar as their tab subviews. Never style a navigation exit as a tab.
+- **A2a Area landings**, the area header names the area; sub-areas surface as severity-sorted signal cards (metric + state), never passive links; bubble the top sub-area signal(s) up to the area level. Dense areas may sub-group (e.g. Govern → Quality / Risk); light areas degrade gracefully; unavailable metrics use DataState, never fabricated values. ([CHAOS-2074](https://linear.app/fullchaos/issue/CHAOS-2074/area-landing-pages-severity-sorted-signal-cards).)
 - **A3 Pills**, filters, scope, status, and segmented view controls only. Never for navigation, back, or primary CTAs.
 - **A4 Buttons**, actions only, from the CTA registry (Part D). Don't invent verbs.
 - **A5 Back links**, one pattern: `Back to Cockpit` or `Back to {parent area}`. Never styled as pills/filters. One return path per screen, remove redundant ones (e.g. `Back to Metrics View` **and** `Back to Cockpit` together).

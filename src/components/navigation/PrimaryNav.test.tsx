@@ -40,151 +40,351 @@ beforeEach(() => {
 });
 
 function currentPageLinks() {
-  return screen
-    .getAllByRole("link")
-    .filter((link) => link.getAttribute("aria-current") === "page");
+  return screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page");
 }
 
-describe("PrimaryNav — section composition", () => {
-  it("keeps the collapsed IA to six primary sections with one AI Workflows entry", () => {
-    render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
+describe("PrimaryNav — two-level decision-area surface (CHAOS-2075)", () => {
+  it("always renders the six area rows", () => {
+    render(<PrimaryNav filters={makeFilter()} active="home" />);
 
-    const sectionHeadings = screen
-      .getAllByRole("button")
-      .map((button) => (button.textContent ?? "").replace(/\s+/g, " ").trim());
-
-    expect(sectionHeadings).toHaveLength(6);
-    expect(sectionHeadings).toEqual([
-      "Cockpit",
-      "Diagnose",
-      "Improve",
-      "Govern",
-      "Reports",
-      "Admin",
-    ]);
-
-    const aiLinks = screen.getAllByRole("link", { name: /^AI Workflows$/i });
-    expect(aiLinks).toHaveLength(1);
-    expect(aiLinks[0]).toHaveAttribute("href", expect.stringContaining("/ai"));
+    for (const name of [
+      /^Cockpit$/i,
+      /^Diagnose$/i,
+      /^Improve$/i,
+      /^Govern$/i,
+      /^Reports$/i,
+      /^Admin$/i,
+    ]) {
+      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    }
   });
 
-  it("renders the 'Cognitive Load' nav item exactly once (regression: CHAOS-1747)", () => {
-    render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
+  it("on a childless area (Cockpit) renders only the six area rows", () => {
+    // Cockpit has no expandable children, so the sidebar shows exactly the areas.
+    navigationMock.pathname = "/dashboard";
+    render(<PrimaryNav filters={makeFilter()} active="home" />);
 
-    // CHAOS-1747: the entry was duplicated under both Observe and Investigate.
-    // Cognitive Load is a wellbeing/focus surface and belongs only under Diagnose.
-    const cognitiveLoadLinks = screen.getAllByRole("link", {
-      name: /cognitive load/i,
-    });
-    expect(cognitiveLoadLinks).toHaveLength(1);
-    expect(cognitiveLoadLinks[0]).toHaveAttribute(
-      "href",
-      expect.stringContaining("/cognitive-load"),
-    );
+    const linkNames = screen
+      .getAllByRole("link")
+      .map((link) => (link.textContent ?? "").replace(/\s+/g, " ").trim());
+
+    expect(linkNames).toEqual(["Cockpit", "Diagnose", "Improve", "Govern", "Reports", "Admin"]);
   });
 
-  it("preserves canonical section ordering: Cockpit, Diagnose, Improve, Govern", () => {
-    render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
-
-    const sectionHeadings = screen
-      .getAllByRole("button")
-      .map((b) => b.textContent ?? "")
-      .filter((t) => /cockpit|diagnose|improve|govern/i.test(t));
-
-    // Quick sanity that the four primary sections exist and are ordered correctly.
-    // Loose match — exact heading text may include counts/icons.
-    const indexOf = (label: string) =>
-      sectionHeadings.findIndex((h) => new RegExp(label, "i").test(h));
-
-    const cockpitIdx = indexOf("cockpit");
-    const diagnoseIdx = indexOf("diagnose");
-    const improveIdx = indexOf("improve");
-    const governIdx = indexOf("govern");
-
-    expect(cockpitIdx).toBeGreaterThanOrEqual(0);
-    expect(diagnoseIdx).toBeGreaterThan(cockpitIdx);
-    expect(improveIdx).toBeGreaterThan(diagnoseIdx);
-    expect(governIdx).toBeGreaterThan(improveIdx);
+  it("renders no expand/collapse buttons — rows are links, not toggles", () => {
+    render(<PrimaryNav filters={makeFilter()} active="home" />);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 
-  it("renders the 'Bottlenecks' nav item under Diagnose (CHAOS-1742)", () => {
-    render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
+  it("expands ONLY the active area's children; inactive areas stay collapsed", () => {
+    navigationMock.pathname = "/work";
+    render(<PrimaryNav filters={makeFilter()} active="work" />);
 
-    const bottleneckLinks = screen.getAllByRole("link", {
-      name: /bottlenecks/i,
-    });
-    // Exactly one Bottlenecks link — under the Diagnose section.
-    expect(bottleneckLinks).toHaveLength(1);
-    expect(bottleneckLinks[0]).toHaveAttribute("href", expect.stringContaining("/bottleneck"));
+    // Diagnose is active → its children render as indented rows.
+    expect(screen.getByTestId("nav-children-diagnose")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Metrics$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Bottlenecks$/i })).toBeInTheDocument();
+
+    // Govern is NOT active → none of its children appear.
+    expect(screen.queryByTestId("nav-children-govern")).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Pipelines$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Security$/i })).toBeNull();
+  });
+
+  it("never renders preview (navVisible:false) children — verified via main area", () => {
+    // Use a main-placement area to confirm preview rows are suppressed. Utility
+    // areas (Reports, Admin) no longer expand at all (owner directive), so the
+    // preview guard is now exercised through Govern's navVisible:false rows (none
+    // exist in prod) or indirectly — the utility-area gate tests cover that path.
+    // Here we use Improve: all its children are navVisible, no previews.
+    navigationMock.pathname = "/opportunities";
+    render(<PrimaryNav filters={makeFilter()} active="opportunities" />);
+
+    // Improve's children render (main area, active, navVisible).
+    expect(screen.getByRole("link", { name: /^Opportunities$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^AI Workflows$/i })).toBeInTheDocument();
+    // No phantom/preview rows ever rendered (none exist in Improve).
+    expect(screen.queryByRole("link", { name: /^Weekly Review$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Executive Summary$/i })).toBeNull();
+  });
+
+  it("never renders tab subviews (AI/Work) as sidebar children", () => {
+    // Improve active on an AI tab: AI Workflows shows as ONE child row; its tab
+    // subviews (Impact/Attribution/…) are NOT sidebar rows (Framework A2).
+    navigationMock.pathname = "/ai/impact";
+    render(<PrimaryNav filters={makeFilter()} active="ai-workflows" />);
+
+    expect(screen.getByRole("link", { name: /^AI Workflows$/i })).toBeInTheDocument();
+    for (const tab of [
+      /^Impact$/i,
+      /^Attribution$/i,
+      /^Review Load$/i,
+      /^Test Gaps$/i,
+      /^Automations$/i,
+    ]) {
+      expect(screen.queryByRole("link", { name: tab })).toBeNull();
+    }
+  });
+
+  it("renders the Govern cluster as a single combined row", () => {
+    navigationMock.pathname = "/testops/coverage";
+    render(<PrimaryNav filters={makeFilter()} active="coverage" />);
+
+    // One clustered row — not separate Tests / Quality / Coverage rows.
+    expect(screen.getByRole("link", { name: /Tests · Quality · Coverage/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Tests$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Quality$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Coverage$/i })).toBeNull();
+    // Pipelines stays its own row.
+    expect(screen.getByRole("link", { name: /^Pipelines$/i })).toBeInTheDocument();
+  });
+
+  it("links each area to its landing route", () => {
+    render(<PrimaryNav filters={makeFilter()} active="home" />);
+
+    const expectations: Array<[RegExp, string]> = [
+      [/^Cockpit$/i, "/dashboard"],
+      [/^Diagnose$/i, "/work"],
+      [/^Improve$/i, "/opportunities"],
+      [/^Govern$/i, "/testops"],
+      [/^Reports$/i, "/reports"],
+      [/^Admin$/i, "/admin"],
+    ];
+
+    for (const [name, href] of expectations) {
+      expect(screen.getByRole("link", { name })).toHaveAttribute(
+        "href",
+        expect.stringContaining(href),
+      );
+    }
   });
 });
 
-it("renders the 'Complexity' nav item under Diagnose (CHAOS-1745)", () => {
-  render(<PrimaryNav filters={makeFilter()} active="dashboard" />);
-
-  const complexityLinks = screen.getAllByRole("link", {
-    name: /complexity/i,
-  });
-  // Exactly one Complexity link — under the Diagnose section.
-  expect(complexityLinks).toHaveLength(1);
-  expect(complexityLinks[0]).toHaveAttribute("href", expect.stringContaining("/complexity"));
-});
-
-it("renders and highlights the 'Quality' nav item for /quality (CHAOS-1763)", () => {
-  navigationMock.pathname = "/quality";
-  render(<PrimaryNav filters={makeFilter()} active="quality" />);
-
-  const qualityLinks = screen.getAllByRole("link", {
-    name: /^Quality$/i,
-  });
-
-  expect(qualityLinks).toHaveLength(1);
-  expect(qualityLinks[0]).toHaveAttribute("href", expect.stringContaining("/quality"));
-  expect(qualityLinks[0]).toHaveAttribute("aria-current", "page");
-  expect(currentPageLinks()).toHaveLength(1);
-});
-
-it.each([
-  { pathname: "/dashboard", active: "home", label: /^Home$/i, href: "/dashboard" },
-  { pathname: "/work", active: "work", label: /^Work$/i, href: "/work" },
-  { pathname: "/metrics", active: "metrics", label: /^Metrics$/i, href: "/metrics" },
-  { pathname: "/ai/impact", active: "ai-workflows", label: /^AI Workflows$/i, href: "/ai" },
-  { pathname: "/testops", active: "testops", label: /^TestOps$/i, href: "/testops" },
-  { pathname: "/reports", active: "reports", label: /^Report Center$/i, href: "/reports" },
-  { pathname: "/admin", active: "admin", label: /^Settings$/i, href: "/admin" },
-])(
-  "highlights $active from $pathname as the active nav item for representative routes",
-  ({ pathname, active, label, href }) => {
+describe("PrimaryNav — active child highlight (A10: one selected, distinct hover)", () => {
+  it.each([
+    { pathname: "/metrics", active: "metrics", child: /^Metrics$/i },
+    { pathname: "/ai/impact", active: "ai-workflows", child: /^AI Workflows$/i },
+    { pathname: "/operating-review", active: "operating-review", child: /^Operating Review$/i },
+    // Note: /admin/settings is NOT here — Admin is a utility area and does not
+    // expand children (owner directive). Its behaviour is covered by the
+    // "utility-area gate" describe block below.
+    {
+      pathname: "/testops/coverage",
+      active: "coverage",
+      child: /Tests · Quality · Coverage/i,
+    },
+    { pathname: "/quality", active: "quality", child: /Tests · Quality · Coverage/i },
+    { pathname: "/testops/tests", active: "tests", child: /Tests · Quality · Coverage/i },
+  ])("marks exactly the child $child current for $pathname", ({ pathname, active, child }) => {
     navigationMock.pathname = pathname;
     render(<PrimaryNav filters={makeFilter()} active={active} />);
 
-    const link = screen.getByRole("link", { name: label });
-    expect(link).toHaveAttribute("href", expect.stringContaining(href));
-    expect(link).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: child })).toHaveAttribute("aria-current", "page");
+    // A10: exactly one selected destination across the whole sidebar.
     expect(currentPageLinks()).toHaveLength(1);
-  },
-);
+  });
 
-it("uses the longest pathname match and ignores a stale active prop", () => {
-  navigationMock.pathname = "/testops/risk";
-  render(<PrimaryNav filters={makeFilter()} active="coverage" />);
+  it("highlights the area row (not a child) on the area landing route", () => {
+    // /dashboard → Cockpit (no children); the area row itself is current.
+    navigationMock.pathname = "/dashboard";
+    render(<PrimaryNav filters={makeFilter()} active="home" />);
 
-  const deliveryRisk = screen.getByRole("link", { name: /^Delivery Risk$/i });
-  const testOps = screen.getByRole("link", { name: /^TestOps$/i });
-  const coverage = screen.getByRole("link", { name: /^Coverage$/i });
+    expect(screen.getByRole("link", { name: /^Cockpit$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(currentPageLinks()).toHaveLength(1);
+  });
 
-  expect(deliveryRisk).toHaveAttribute("aria-current", "page");
-  expect(testOps).not.toHaveAttribute("aria-current");
-  expect(coverage).not.toHaveAttribute("aria-current");
-  expect(currentPageLinks()).toHaveLength(1);
+  it("does not mark the area row current when one of its children is active", () => {
+    // On /metrics the active destination is the Metrics CHILD, so the Diagnose
+    // AREA row must NOT also carry aria-current (no double-selection, A10).
+    navigationMock.pathname = "/metrics";
+    render(<PrimaryNav filters={makeFilter()} active="metrics" />);
+
+    expect(screen.getByRole("link", { name: /^Diagnose$/i })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: /^Metrics$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
 });
 
-it("falls back to the active prop only when no nav href matches the pathname", () => {
-  navigationMock.pathname = "/prs/123";
-  render(<PrimaryNav filters={makeFilter()} active="people" />);
+describe("PrimaryNav — active-area resolution (A10: one selected at a time)", () => {
+  // Each row resolves to its owning area, and exactly one destination is
+  // selected sidebar-wide (A10). On an area-LANDING route the area row is the
+  // selection; on a CHILD route a child row inside that area is. `landing`
+  // flags whether the area row itself should carry aria-current.
+  it.each([
+    { pathname: "/dashboard", active: "home", area: /^Cockpit$/i, landing: true },
+    // Operating Review moved Cockpit → Improve (CHAOS-2075); it is a child route.
+    {
+      pathname: "/operating-review",
+      active: "operating-review",
+      area: /^Improve$/i,
+      landing: false,
+    },
+    { pathname: "/work", active: "work", area: /^Diagnose$/i, landing: true },
+    { pathname: "/metrics", active: "metrics", area: /^Diagnose$/i, landing: false },
+    { pathname: "/people", active: "people", area: /^Diagnose$/i, landing: false },
+    { pathname: "/complexity", active: "complexity", area: /^Diagnose$/i, landing: false },
+    { pathname: "/bottleneck", active: "bottleneck", area: /^Diagnose$/i, landing: false },
+    {
+      pathname: "/explore/landscape",
+      active: "landscape",
+      area: /^Diagnose$/i,
+      landing: false,
+    },
+    {
+      pathname: "/opportunities",
+      active: "opportunities",
+      area: /^Improve$/i,
+      landing: true,
+    },
+    {
+      pathname: "/capacity-planning",
+      active: "capacity-planning",
+      area: /^Improve$/i,
+      landing: false,
+    },
+    { pathname: "/ai/impact", active: "ai-workflows", area: /^Improve$/i, landing: false },
+    { pathname: "/testops", active: "testops", area: /^Govern$/i, landing: true },
+    { pathname: "/testops/risk", active: "risk", area: /^Govern$/i, landing: false },
+    { pathname: "/quality", active: "quality", area: /^Govern$/i, landing: false },
+    { pathname: "/security", active: "security", area: /^Govern$/i, landing: false },
+    {
+      pathname: "/risk/compounding",
+      active: "risk-compounding",
+      area: /^Govern$/i,
+      landing: false,
+    },
+    { pathname: "/reports", active: "reports", area: /^Reports$/i, landing: true },
+    { pathname: "/admin", active: "admin", area: /^Admin$/i, landing: true },
+  ])(
+    "resolves route $pathname to its owning area with exactly one selection",
+    ({ pathname, active, area, landing }) => {
+      navigationMock.pathname = pathname;
+      render(<PrimaryNav filters={makeFilter()} active={active} />);
 
-  const people = screen.getByRole("link", { name: /^People$/i });
+      // The owning area row is always rendered.
+      const areaRow = screen.getByRole("link", { name: area });
+      expect(areaRow).toBeInTheDocument();
+      // The area row carries aria-current only on its own landing route.
+      if (landing) {
+        expect(areaRow).toHaveAttribute("aria-current", "page");
+      } else {
+        expect(areaRow).not.toHaveAttribute("aria-current");
+      }
+      // A10: exactly one selected destination across the whole sidebar.
+      expect(currentPageLinks()).toHaveLength(1);
+    },
+  );
 
-  expect(people).toHaveAttribute("aria-current", "page");
-  expect(currentPageLinks()).toHaveLength(1);
+  it("uses the longest pathname match and ignores a stale active prop", () => {
+    // /testops/risk belongs to Govern; the stale active="people" (Diagnose) must lose.
+    navigationMock.pathname = "/testops/risk";
+    render(<PrimaryNav filters={makeFilter()} active="people" />);
+
+    // Govern is the active area (its Delivery Risk child is the selection).
+    expect(screen.getByTestId("nav-children-govern")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Delivery Risk$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // Diagnose lost: not selected and not expanded.
+    expect(screen.getByRole("link", { name: /^Diagnose$/i })).not.toHaveAttribute("aria-current");
+    expect(screen.queryByTestId("nav-children-diagnose")).toBeNull();
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+
+  it("falls back to the active prop's area when no pathname prefix matches", () => {
+    // Evidence/detail routes (e.g. /prs/[id]) are not owned by any area prefix.
+    navigationMock.pathname = "/prs/123";
+    render(<PrimaryNav filters={makeFilter()} active="people" />);
+
+    expect(screen.getByRole("link", { name: /^Diagnose$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+
+  // REVIEW W1: /testops → Govern row active; Overview child rendered but NOT active.
+  it("pathname /testops → Govern area row active, Overview child rendered but not active (W1)", () => {
+    navigationMock.pathname = "/testops";
+    render(<PrimaryNav filters={makeFilter()} active="testops" />);
+
+    // Govern area row is the current page (area landing).
+    expect(screen.getByRole("link", { name: /^Govern$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // Overview child is rendered (Govern is a main area and is active).
+    expect(screen.getByRole("link", { name: /^Overview$/i })).toBeInTheDocument();
+    // Overview child is NOT marked current (the area row owns the highlight).
+    expect(screen.getByRole("link", { name: /^Overview$/i })).not.toHaveAttribute("aria-current");
+    // A10: exactly one current-page link.
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+
+  // REVIEW W2: /testops/pipelines → Pipelines child active; cluster + Overview NOT active.
+  it("pathname /testops/pipelines → Pipelines child active, not the cluster or Overview (W2)", () => {
+    navigationMock.pathname = "/testops/pipelines";
+    render(<PrimaryNav filters={makeFilter()} active="pipelines" />);
+
+    // Pipelines child is the current page.
+    expect(screen.getByRole("link", { name: /^Pipelines$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // Tests · Quality · Coverage cluster is rendered but NOT active.
+    expect(
+      screen.getByRole("link", { name: /Tests · Quality · Coverage/i }),
+    ).not.toHaveAttribute("aria-current");
+    // Overview is rendered but NOT active.
+    expect(screen.getByRole("link", { name: /^Overview$/i })).not.toHaveAttribute("aria-current");
+    // A10: exactly one current-page link.
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+});
+
+describe("PrimaryNav — utility-area gate (owner directive)", () => {
+  // Utility-placement areas (Reports, Admin) must render as plain rows with NO
+  // child expansion even when active. Only main-placement areas expand.
+
+  it("Reports area renders NO child rows when active at /reports", () => {
+    navigationMock.pathname = "/reports";
+    render(<PrimaryNav filters={makeFilter()} active="reports" />);
+
+    // Reports row is rendered and marked current (it's the area landing).
+    expect(screen.getByRole("link", { name: /^Reports$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // NO child container rendered for Reports.
+    expect(screen.queryByTestId("nav-children-reports")).toBeNull();
+    // Report Center (a navVisible child) must NOT appear in the sidebar.
+    expect(screen.queryByRole("link", { name: /^Report Center$/i })).toBeNull();
+    // Preview rows also absent (they were already suppressed, still absent).
+    expect(screen.queryByRole("link", { name: /^Weekly Review$/i })).toBeNull();
+    // A10: exactly one current-page link.
+    expect(currentPageLinks()).toHaveLength(1);
+  });
+
+  it("Admin area renders NO child rows when active at /admin/settings", () => {
+    navigationMock.pathname = "/admin/settings";
+    render(<PrimaryNav filters={makeFilter()} active="settings" />);
+
+    // Admin row is active (but the child Settings would have been current if expanded).
+    // Under the utility gate, no children render at all.
+    expect(screen.queryByTestId("nav-children-admin")).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Settings$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Connections$/i })).toBeNull();
+    // The Admin area row itself is the sole current-page link (no child selection).
+    expect(screen.getByRole("link", { name: /^Admin$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(currentPageLinks()).toHaveLength(1);
+  });
 });
