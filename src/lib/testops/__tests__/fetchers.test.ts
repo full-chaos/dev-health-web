@@ -64,7 +64,9 @@ describe("resolveOrgId via fetchTestOpsData", () => {
 
     expect(auth).toHaveBeenCalled();
     expect(graphqlFetch).toHaveBeenCalled();
-    const firstCallVars = vi.mocked(graphqlFetch).mock.calls[0][1] as { orgId: string };
+    const firstCallVars = vi.mocked(graphqlFetch).mock.calls[0][1] as {
+      orgId: string;
+    };
     expect(firstCallVars.orgId).toBe("org-session-123");
   });
 
@@ -74,7 +76,9 @@ describe("resolveOrgId via fetchTestOpsData", () => {
 
     await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
 
-    const callVars = vi.mocked(graphqlFetch).mock.calls[0][1] as { orgId: string };
+    const callVars = vi.mocked(graphqlFetch).mock.calls[0][1] as {
+      orgId: string;
+    };
     expect(callVars.orgId).toBe("default-org");
   });
 
@@ -84,7 +88,58 @@ describe("resolveOrgId via fetchTestOpsData", () => {
     await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false, "org-override");
 
     expect(auth).not.toHaveBeenCalled();
-    const callVars = vi.mocked(graphqlFetch).mock.calls[0][1] as { orgId: string };
+    const callVars = vi.mocked(graphqlFetch).mock.calls[0][1] as {
+      orgId: string;
+    };
     expect(callVars.orgId).toBe("org-override");
+  });
+});
+
+describe("fetchCoverageMetrics schema hardening (CHAOS-2078)", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("fails closed with empty analytics when the backend returns a malformed shape", async () => {
+    mockAuth({ user: { org_id: "org-1" } });
+    // Real-data hazard: backend returns a null nested array that would
+    // otherwise crash the coverage page's lineCoverageSeries.buckets.map().
+    vi.mocked(graphqlFetch).mockResolvedValue({
+      analytics: {
+        timeseries: [
+          {
+            dimension: "TEAM",
+            dimensionValue: "x",
+            measure: "COVERAGE_LINE_PCT",
+            buckets: null,
+          },
+        ],
+        breakdowns: [],
+      },
+    });
+
+    const result = await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
+
+    expect(result).toEqual(emptyAnalytics);
+  });
+
+  it("returns parsed analytics for a well-formed response", async () => {
+    mockAuth({ user: { org_id: "org-1" } });
+    const good = {
+      timeseries: [
+        {
+          dimension: "TEAM",
+          dimensionValue: "x",
+          measure: "COVERAGE_LINE_PCT",
+          buckets: [{ date: "2026-01-01", value: 80 }],
+        },
+      ],
+      breakdowns: [],
+    };
+    vi.mocked(graphqlFetch).mockResolvedValue({ analytics: good });
+
+    const result = await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
+
+    expect(result).toEqual(good);
   });
 });
