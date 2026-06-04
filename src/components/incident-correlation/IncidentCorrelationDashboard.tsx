@@ -31,6 +31,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { Contributor, MetricDelta, SankeyLink, SankeyNode } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
+import { hasRenderableSeries, isFiniteNumber } from "@/lib/guards/numbers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,12 +80,6 @@ const DORA_METRIC_KEYS = ["change_failure_rate", "deployment_frequency", "mttr"]
 
 const MAX_SANKEY_INCIDENTS = 10;
 const MAX_LINKS_PER_INCIDENT = 3;
-
-const isFiniteNumber = (value: number | null | undefined): value is number =>
-  typeof value === "number" && Number.isFinite(value);
-
-const hasRenderableSeries = (series: Array<{ value: number }>) =>
-  series.filter((point) => isFiniteNumber(point.value)).length >= 2;
 
 const hasMeaningfulAssociations = (items: Contributor[]) =>
   items.some((item) => isFiniteNumber(item.delta_pct) && Math.abs(item.delta_pct) > 0);
@@ -244,11 +239,6 @@ export function IncidentCorrelationDashboard({
   }
 
   const cfrDelta = deltas.find((d) => d.metric === "change_failure_rate");
-  const cfrTrendData =
-    cfrDelta?.spark
-      .filter((point) => isFiniteNumber(point.value))
-      .map((point) => ({ day: point.ts, value: point.value })) ?? [];
-  const hasCfrTrend = hasRenderableSeries(cfrTrendData);
 
   return (
     <div className="flex flex-col gap-8" data-testid="incident-correlation-dashboard">
@@ -273,36 +263,43 @@ export function IncidentCorrelationDashboard({
         </section>
       )}
 
-      {cfrDelta && (
-        <section
-          className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
-          aria-label="Change failure rate trend"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="font-(--font-display) text-xl">Change Failure Rate — Trend</h2>
-            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-              Recent trend
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-(--ink-muted)">
-            Deployment and incident trends appear when the connected source provides enough history
-            for the selected window.
-          </p>
-          {hasCfrTrend ? (
-            <div className="mt-4 h-64" data-testid="cfr-trend-chart">
-              <TimeseriesChart data={cfrTrendData} height="100%" />
-            </div>
-          ) : (
-            <DataState
-              variant="insufficient-confidence"
-              title="No trend data for this window"
-              description="Change failure rate needs at least two finite points before a trend can be drawn."
-              className="mt-4"
-              data-testid="cfr-trend-empty"
-            />
-          )}
-        </section>
-      )}
+      {cfrDelta &&
+        (() => {
+          const cfrTrendData = cfrDelta.spark
+            .filter((point) => isFiniteNumber(point.value))
+            .map((point) => ({ day: point.ts, value: point.value }));
+          const hasCfrTrend = hasRenderableSeries(cfrTrendData);
+          return (
+            <section
+              className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
+              aria-label="Change failure rate trend"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="font-(--font-display) text-xl">Change Failure Rate — Trend</h2>
+                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                  Recent trend
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-(--ink-muted)">
+                Deployment and incident trends appear when the connected source provides enough
+                history for the selected window.
+              </p>
+              {hasCfrTrend ? (
+                <div className="mt-4 h-64" data-testid="cfr-trend-chart">
+                  <TimeseriesChart data={cfrTrendData} height="100%" />
+                </div>
+              ) : (
+                <DataState
+                  variant="insufficient-confidence"
+                  title="No trend data for this window"
+                  description="Change failure rate needs at least two finite points before a trend can be drawn."
+                  className="mt-4"
+                  data-testid="cfr-trend-empty"
+                />
+              )}
+            </section>
+          );
+        })()}
 
       {/* ── Drivers + Contributors ──────────────────────────────────────────── */}
       {hasExplainData && (

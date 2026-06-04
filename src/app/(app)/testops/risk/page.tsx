@@ -15,16 +15,11 @@ import { fetchRiskMetrics } from "@/lib/testops/fetchers";
 import { getServerEnv } from "@/lib/config";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { isFiniteNumber } from "@/lib/guards/numbers";
 
 type RiskPageProps = {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-const isFiniteNumber = (value: number | null | undefined): value is number =>
-	typeof value === "number" && Number.isFinite(value);
-
-const normalizePercent = (value: number) =>
-	value >= 0 && value <= 1 ? value * 100 : value;
 
 export default async function RiskPage({ searchParams }: RiskPageProps) {
 	const params = (await searchParams) ?? {};
@@ -123,8 +118,8 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 					) {
 						return [];
 					}
-					const x = normalizePercent(item.pipeline_success_rate);
-					const y = normalizePercent(item.test_pass_rate);
+					const x = item.pipeline_success_rate;
+					const y = item.test_pass_rate;
 					if (x < 0 || x > 100 || y < 0 || y > 100) {
 						return [];
 					}

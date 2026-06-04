@@ -6,6 +6,7 @@ import {
   AnalyticsResultSchema,
 } from "@/lib/graphql/schemas/analytics";
 import { logger } from "@/lib/logger";
+import { normalizePercent } from "@/lib/guards/numbers";
 import {
   TESTOPS_PIPELINE_QUERY,
   TESTOPS_TEST_QUERY,
@@ -176,8 +177,8 @@ export async function fetchRiskMetrics(
             .find((b) => b.measure === "PIPELINE_SUCCESS_RATE")
             ?.items.map((item) => ({
               id: item.key,
-              pipeline_success_rate: item.value,
-              test_pass_rate: 100 - latestTestFlake,
+              pipeline_success_rate: normalizePercent(item.value),
+              test_pass_rate: normalizePercent(100 - latestTestFlake),
             })) || []
         : [];
 
