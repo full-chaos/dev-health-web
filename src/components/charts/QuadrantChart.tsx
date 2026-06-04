@@ -17,6 +17,7 @@ import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 import { Chart } from "./Chart";
 import { type ChartTheme, useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
+import { formatNumber } from "@/lib/formatters";
 
 echarts.use([ScatterChart]);
 
@@ -25,15 +26,15 @@ const formatValue = (value: number, unit: string) => {
 		return "--";
 	}
 	if (unit === "%") {
-		return `${value.toFixed(1)}%`;
+		return `${formatNumber(value, { maximumFractionDigits: 1 })}%`;
 	}
 	if (unit === "days") {
-		return `${value.toFixed(1)}d`;
+		return `${formatNumber(value, { maximumFractionDigits: 1 })}d`;
 	}
 	if (unit === "hours") {
-		return `${value.toFixed(1)}h`;
+		return `${formatNumber(value, { maximumFractionDigits: 1 })}h`;
 	}
-	return `${value.toFixed(1)} ${unit}`.trim();
+	return `${formatNumber(value, { maximumFractionDigits: 1 })} ${unit}`.trim();
 };
 
 const normalizeScopeType = (
@@ -403,7 +404,7 @@ type QuadrantChartProps = {
 	width?: number | string;
 	className?: string;
 	style?: CSSProperties;
-	onPointSelect?: (point: QuadrantPoint) => void;
+	onPointSelectAction?: (point: QuadrantPoint) => void;
 	focusEntityIds?: string[];
 	scopeType?:
 		| "org"
@@ -424,7 +425,7 @@ export function QuadrantChart({
 	width = "100%",
 	className,
 	style,
-	onPointSelect,
+	onPointSelectAction,
 	focusEntityIds,
 	scopeType,
 	zoneOverlay,
@@ -438,8 +439,8 @@ export function QuadrantChart({
 	const handleClick = (params: unknown) => {
 		const entry = getParamsEntry(params);
 		const point = entry ? toPoint(entry.data) : null;
-		if (point && onPointSelect) {
-			onPointSelect(point);
+		if (point && onPointSelectAction) {
+			onPointSelectAction(point);
 		}
 	};
 

@@ -10,6 +10,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
+import { formatPercent } from "@/lib/formatters";
 
 echarts.use([EChartsTreemapChart]);
 
@@ -33,9 +34,9 @@ type TreemapChartProps = {
   style?: CSSProperties;
   useInputColors?: boolean;
   showBreadcrumb?: boolean;
-  labelFormatter?: (params: unknown, totalValue: number) => string;
-  tooltipFormatter?: (params: unknown, totalValue: number, unit: string) => string;
-  onNodeClick?: (node: {
+  labelFormatterAction?: (params: unknown, totalValue: number) => string;
+  tooltipFormatterAction?: (params: unknown, totalValue: number, unit: string) => string;
+  onNodeClickAction?: (node: {
     name: string;
     value: number;
     path: string[];
@@ -57,9 +58,9 @@ export function TreemapChart({
   style,
   useInputColors = false,
   showBreadcrumb = true,
-  labelFormatter,
-  tooltipFormatter,
-  onNodeClick,
+  labelFormatterAction,
+  tooltipFormatterAction,
+  onNodeClickAction,
 }: TreemapChartProps) {
   const chartTheme = useChartTheme();
   const chartColors = useChartColors();
@@ -90,7 +91,7 @@ export function TreemapChart({
 
   const handleClick = useCallback(
     (params: unknown) => {
-      if (!onNodeClick || !params || typeof params !== "object") return;
+      if (!onNodeClickAction || !params || typeof params !== "object") return;
       const entry = params as {
         data?: { name?: string; value?: number };
         treePathInfo?: Array<{ name: string; value: number }>;
@@ -102,9 +103,15 @@ export function TreemapChart({
       const value = nodeData.value ?? 0;
       const percent = calcPercent(value, totalValue);
 
-      onNodeClick({ name: nodeData.name, value, path, percent, data: nodeData });
+      onNodeClickAction({
+        name: nodeData.name,
+        value,
+        path,
+        percent,
+        data: nodeData,
+      });
     },
-    [onNodeClick, totalValue],
+    [onNodeClickAction, totalValue],
   );
 
   const option = useMemo(
@@ -118,8 +125,8 @@ export function TreemapChart({
             color: chartTheme.text,
           },
           formatter: (params: unknown) => {
-            if (tooltipFormatter) {
-              return tooltipFormatter(params, totalValue, unit);
+            if (tooltipFormatterAction) {
+              return tooltipFormatterAction(params, totalValue, unit);
             }
             if (!params || typeof params !== "object") return "";
             const entry = params as {
@@ -173,15 +180,15 @@ export function TreemapChart({
             label: {
               show: true,
               formatter: (params: unknown) => {
-                if (labelFormatter) {
-                  return labelFormatter(params, totalValue);
+                if (labelFormatterAction) {
+                  return labelFormatterAction(params, totalValue);
                 }
                 const p = params as { name?: string; value?: number };
                 const name = p.name ?? "";
                 const value = typeof p.value === "number" ? p.value : 0;
                 const pct = calcPercent(value, totalValue);
                 if (pct < 3) return ""; // Hide tiny labels
-                return `${name}\n${pct.toFixed(0)}%`;
+                return `${name}\n${formatPercent(pct)}`;
               },
               color: chartTheme.text,
               fontSize: 11,
@@ -230,7 +237,15 @@ export function TreemapChart({
           },
         ],
       }) as EChartsOption,
-    [coloredData, totalValue, unit, chartTheme, tooltipFormatter, labelFormatter, showBreadcrumb],
+    [
+      coloredData,
+      totalValue,
+      unit,
+      chartTheme,
+      tooltipFormatterAction,
+      labelFormatterAction,
+      showBreadcrumb,
+    ],
   );
 
   return (

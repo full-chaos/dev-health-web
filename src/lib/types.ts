@@ -143,6 +143,12 @@ export type Contributor = {
 	value: number;
 	delta_pct: number;
 	evidence_link: string;
+	/**
+	 * Server-resolved human display name (CHAOS-2089, Framework A7). Preferred
+	 * over `id`/`label` for rendering via EntityLabel. `null`/absent means the
+	 * server genuinely could not resolve the entity → controlled Unresolved badge.
+	 */
+	display_name?: string | null;
 };
 
 export type ExplainResponse = {

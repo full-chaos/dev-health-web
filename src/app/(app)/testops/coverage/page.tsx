@@ -8,6 +8,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { checkApiHealth } from "@/lib/api/system";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchCoverageMetrics } from "@/lib/testops/fetchers";
@@ -132,17 +133,18 @@ export default async function CoveragePage({
 			}))
 		: [];
 
-	const repoIds = repoBreakdown?.items
-		? repoBreakdown.items.map((item: BreakdownItem) => item.key)
-		: [];
-	const repoValues = repoBreakdown?.items
-		? repoBreakdown.items.map((item: BreakdownItem) => item.value)
-		: [];
-	// Render-safe labels: never expose a raw repo UUID as an axis label;
-	// unresolved ids degrade to a stable short label with the full id in the tooltip.
+	const repoItems = repoBreakdown?.items ?? [];
+	const repoIds = repoItems.map((item: BreakdownItem) => item.key);
+	const repoValues = repoItems.map((item: BreakdownItem) => item.value);
+	// Render-safe labels (A7): prefer the server-resolved display name; a
+	// genuinely-unresolved repo id degrades to a stable short label with the full
+	// id in the tooltip — never a bare UUID as the axis label.
 	const { labels: repoCategories, titles: repoTitles } = resolveEntityLabels(
 		repoIds,
-		{ unresolvedFallback: "Unresolved" },
+		(_id, i) => ({
+			name: repoItems[i]?.label ?? undefined,
+			unresolvedFallback: "Unresolved",
+		}),
 	);
 
 	return (
@@ -164,7 +166,7 @@ export default async function CoveragePage({
 							href={withFilterParam("/", filters, activeRole)}
 							className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
 						>
-							Back to cockpit
+							{CTA_LABELS.backToCockpit}
 						</Link>
 					</header>
 
@@ -206,7 +208,7 @@ export default async function CoveragePage({
 								Line Coverage Trend
 							</h2>
 							<div className="h-64">
-								<TimeseriesChart data={timeseriesData} />
+								<TimeseriesChart data={timeseriesData} valueFormat="percent" />
 							</div>
 						</div>
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
@@ -218,6 +220,7 @@ export default async function CoveragePage({
 									categories={repoCategories}
 									values={repoValues}
 									categoryTitles={repoTitles}
+									valueFormat="percent"
 								/>
 							</div>
 						</div>

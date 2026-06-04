@@ -15,7 +15,7 @@ import { fetchRiskMetrics } from "@/lib/testops/fetchers";
 import { getServerEnv } from "@/lib/config";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { isFiniteNumber } from "@/lib/guards/numbers";
+import { isFiniteNumber, normalizePercent } from "@/lib/guards/numbers";
 
 type RiskPageProps = {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -118,19 +118,14 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 					) {
 						return [];
 					}
-					const x = item.pipeline_success_rate;
-					const y = item.test_pass_rate;
-					if (x < 0 || x > 100 || y < 0 || y > 100) {
-						return [];
-					}
 					return [
 						{
 							entity_id: item.id,
 							// Render-safe (A7): never feed a raw repo UUID as the quadrant's
 							// primary label — unresolved ids degrade to a stable short token.
 							entity_label: chartEntityLabel(item.id),
-							x,
-							y,
+							x: normalizePercent(item.pipeline_success_rate),
+							y: normalizePercent(item.test_pass_rate),
 							window_start: startDate,
 							window_end: endDate,
 							evidence_link: "#",
@@ -229,7 +224,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
 							<h2 className="font-(--font-display) text-xl mb-4">Risk Trend</h2>
 							<div className="h-64">
-								<TimeseriesChart data={timeseriesData} />
+								<TimeseriesChart data={timeseriesData} valueFormat="percent" />
 							</div>
 						</div>
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
@@ -240,6 +235,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 								<HorizontalBarChart
 									categories={dragCategories}
 									values={dragValues}
+									valueFormat="hours"
 								/>
 							</div>
 						</div>

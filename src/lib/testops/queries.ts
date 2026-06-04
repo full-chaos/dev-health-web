@@ -61,10 +61,11 @@ query TestOpsCoverage($orgId: String!, $batch: AnalyticsRequestInput!) {
     breakdowns {
       dimension
       measure
-      items {
-        key
+items {
+key
         value
-      }
+        label
+}
     }
   }
 }
