@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { decodeFilter, encodeFilterParam } from "../src/lib/filters/encode";
 import { defaultMetricFilter } from "../src/lib/filters/defaults";
 import { clickUntilUrl } from "./helpers/nav";
@@ -7,6 +7,14 @@ const filterWith30d = encodeFilterParam({
   ...defaultMetricFilter,
   time: { ...defaultMetricFilter.time, range_days: 30, compare_days: 30 },
 });
+
+// J1 (CHAOS-2080): Diagnose is now a top-level area that expands to its
+// navVisible children in the sidebar (Flow -> /metrics, Investment ->
+// /investment, ...). Those rows share labels with the in-page Work tab strip,
+// so tab locators MUST be scoped to the <nav aria-label="Work views"> strip to
+// stay unambiguous under Playwright strict mode.
+const workTab = (page: Page, name: RegExp) =>
+  page.getByRole("navigation", { name: "Work views" }).getByRole("link", { name });
 
 test.describe("Work Tabbed Navigation", () => {
   test.beforeEach(async ({ page }) => {
@@ -27,18 +35,18 @@ test.describe("Work Tabbed Navigation", () => {
     // Resilient tab clicks: under load the test-mode dev server can swallow the
     // first <Link> click (handler not yet attached / mid re-render), so retry the
     // whole click+assert until the URL lands (matches the nav-reachability pattern).
-    await clickUntilUrl(page, page.getByRole("link", { name: /^Heatmap$/i }), /tab=heatmap/);
+    await clickUntilUrl(page, workTab(page, /^Heatmap$/i), /tab=heatmap/);
     await expect(page.getByText("Review wait density")).toBeVisible();
 
-    await clickUntilUrl(page, page.getByRole("link", { name: /^Flow$/i }), /tab=flow/);
+    await clickUntilUrl(page, workTab(page, /^Flow$/i), /tab=flow/);
     await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
     await expect(page.getByTestId("flow-chart-container")).toBeVisible();
 
-    await clickUntilUrl(page, page.getByRole("link", { name: /^Investment$/i }), /tab=investment/);
+    await clickUntilUrl(page, workTab(page, /^Investment$/i), /tab=investment/);
     await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Treemap" })).toBeVisible();
 
-    await clickUntilUrl(page, page.getByRole("link", { name: /^Flame$/i }), /tab=flame/);
+    await clickUntilUrl(page, workTab(page, /^Flame$/i), /tab=flame/);
     await expect(page.getByRole("heading", { name: "Elapsed Time Breakdown" })).toBeVisible();
     await expect(page.getByTestId("chart-flame")).toBeVisible();
   });
@@ -47,7 +55,7 @@ test.describe("Work Tabbed Navigation", () => {
     await page.goto(`/work?tab=investment&f=${filterWith30d}`);
     await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
 
-    await page.getByRole("link", { name: /^Flow$/i }).click();
+    await workTab(page, /^Flow$/i).click();
     await expect(page).toHaveURL(/tab=flow/);
     const filters = decodeFilter(new URL(page.url()).searchParams.get("f"));
     expect(filters.time.range_days).toBe(30);
@@ -57,7 +65,7 @@ test.describe("Work Tabbed Navigation", () => {
     await page.goto(`/work?tab=flow&f=${filterWith30d}`);
     await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
 
-    await page.getByRole("link", { name: /^Heatmap$/i }).click();
+    await workTab(page, /^Heatmap$/i).click();
     await expect(page).toHaveURL(/tab=heatmap/);
     const filters = decodeFilter(new URL(page.url()).searchParams.get("f"));
     expect(filters.time.range_days).toBe(30);
