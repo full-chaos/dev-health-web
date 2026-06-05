@@ -368,7 +368,7 @@ describe("IA preservation invariant #7 — reachable redirect aliases stay guard
         });
 
     it("registers every redirect-only route in legacyAliasRoutes (no unguarded aliases)", () => {
-        const registered = new Set(
+        const registered = new Set<string>(
             iaPreservationBaseline.legacyAliasRoutes.map((alias) => alias.route),
         );
         const unguarded = scanRedirectOnlyRoutes(appRoot).filter(
