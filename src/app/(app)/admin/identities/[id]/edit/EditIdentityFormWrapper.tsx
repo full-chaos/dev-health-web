@@ -10,50 +10,50 @@ import { updateIdentity } from "@/lib/admin/server";
 import type { IdentityMapping } from "@/lib/admin/types";
 
 type EditIdentityFormWrapperProps = {
-  identity: IdentityMapping;
-  teams: Team[];
+    identity: IdentityMapping;
+    teams: Team[];
 };
 
 export function EditIdentityFormWrapper({ identity, teams }: EditIdentityFormWrapperProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
+    const [isLoading, setIsLoading] = useState(false);
 
-  const initialData: Identity = {
-    canonical_id: identity.canonical_id,
-    display_name: identity.display_name,
-    email: identity.email,
-    team_ids: identity.team_ids,
-    provider_identities: identity.provider_identities,
-  };
+    const initialData: Identity = {
+        canonical_id: identity.canonical_id,
+        display_name: identity.display_name,
+        email: identity.email,
+        team_ids: identity.team_ids,
+        provider_identities: identity.provider_identities,
+    };
 
-  const handleSubmit = async (data: Identity) => {
-    setIsLoading(true);
+    const handleSubmit = async (data: Identity) => {
+        setIsLoading(true);
 
-    const result = await updateIdentity(identity.id, {
-      display_name: data.display_name || undefined,
-      email: data.email || undefined,
-      provider_identities: data.provider_identities,
-      team_ids: data.team_ids,
-    });
+        const result = await updateIdentity(identity.id, {
+            display_name: data.display_name || undefined,
+            email: data.email || undefined,
+            provider_identities: data.provider_identities,
+            team_ids: data.team_ids,
+        });
 
-    setIsLoading(false);
+        setIsLoading(false);
 
-    if (result.error) {
-      toast.error(result.error);
-      return;
-    }
+        if (result.error) {
+            toast.error(result.error);
+            return;
+        }
 
-    router.push("/admin/identities");
-    router.refresh();
-  };
+        router.push("/admin/identities");
+        router.refresh();
+    };
 
-  return (
-    <IdentityForm
-      initialData={initialData}
-      teams={teams}
-      onSubmit={handleSubmit}
-      isEditing
-      isLoading={isLoading}
-    />
-  );
+    return (
+        <IdentityForm
+            initialData={initialData}
+            teams={teams}
+            onSubmit={handleSubmit}
+            isEditing
+            isLoading={isLoading}
+        />
+    );
 }

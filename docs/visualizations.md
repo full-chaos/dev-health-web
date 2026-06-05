@@ -33,21 +33,21 @@ evidence and follow up with heatmaps or flame diagrams for diagnosis.
 ### Required quadrants
 
 1. Churn × Throughput
-   - Detect thrashing vs stable progress.
-   - High churn + high throughput can indicate deliberate refactors.
-   - Low churn + low throughput can signal constraints or hidden blocks.
+    - Detect thrashing vs stable progress.
+    - High churn + high throughput can indicate deliberate refactors.
+    - Low churn + low throughput can signal constraints or hidden blocks.
 
 2. Cycle Time × Throughput
-   - Rising cycle time with stable throughput indicates coordination debt.
-   - Slow-and-steady systems can mask accumulating queues.
+    - Rising cycle time with stable throughput indicates coordination debt.
+    - Slow-and-steady systems can mask accumulating queues.
 
 3. WIP × Throughput
-   - Flat throughput with rising WIP is an early saturation warning.
-   - Use to spot local optimization before teams feel pain.
+    - Flat throughput with rising WIP is an early saturation warning.
+    - Use to spot local optimization before teams feel pain.
 
 4. Review Load × Review Latency
-   - Identify structural review bottlenecks and reviewer concentration.
-   - Pair with flame diagrams to see handoff loops.
+    - Identify structural review bottlenecks and reviewer concentration.
+    - Pair with flame diagrams to see handoff loops.
 
 ### Zone maps (experimental)
 

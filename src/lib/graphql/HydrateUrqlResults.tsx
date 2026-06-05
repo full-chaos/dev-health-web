@@ -16,14 +16,14 @@ import type { SSRData } from "@urql/core";
 import { useSsr } from "./provider";
 
 export function HydrateUrqlResults({ payload }: { payload: SSRData | null | undefined }): null {
-  const ssr = useSsr();
+    const ssr = useSsr();
 
-  useState(() => {
-    if (ssr && payload) {
-      ssr.restoreData(payload);
-    }
+    useState(() => {
+        if (ssr && payload) {
+            ssr.restoreData(payload);
+        }
+        return null;
+    });
+
     return null;
-  });
-
-  return null;
 }

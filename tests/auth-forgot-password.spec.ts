@@ -17,12 +17,12 @@
 import { expect, test } from "@playwright/test";
 
 test("forgot-password page is accessible while authenticated", async ({ page }) => {
-  await page.goto("/auth/forgot-password");
+    await page.goto("/auth/forgot-password");
 
-  await expect(page).toHaveURL(/\/auth\/forgot-password/);
-  await expect(page.getByRole("heading", { name: /forgot your password/i })).toBeVisible();
-  await expect(page.getByLabel("Email address")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Send reset link" })).toBeVisible();
+    await expect(page).toHaveURL(/\/auth\/forgot-password/);
+    await expect(page.getByRole("heading", { name: /forgot your password/i })).toBeVisible();
+    await expect(page.getByLabel("Email address")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send reset link" })).toBeVisible();
 });
 
 /**
@@ -35,36 +35,38 @@ test("forgot-password page is accessible while authenticated", async ({ page }) 
  * redirect so the login form is always rendered after a password-reset flow.
  */
 test("forgot-password: Back to Sign in after submit lands on sign-in form, not /dashboard (CHAOS-1769)", async ({
-  page,
+    page,
 }) => {
-  // 1. Navigate to forgot-password (starting from authenticated state)
-  await page.goto("/auth/forgot-password");
-  await expect(page).toHaveURL(/\/auth\/forgot-password/);
+    // 1. Navigate to forgot-password (starting from authenticated state)
+    await page.goto("/auth/forgot-password");
+    await expect(page).toHaveURL(/\/auth\/forgot-password/);
 
-  // 2. Fill and submit the reset-email form
-  await page.getByLabel("Email address").fill("test@example.com");
-  await page.getByRole("button", { name: "Send reset link" }).click();
+    // 2. Fill and submit the reset-email form
+    await page.getByLabel("Email address").fill("test@example.com");
+    await page.getByRole("button", { name: "Send reset link" }).click();
 
-  // 3. Success banner must appear.
-  await expect(
-    page.getByText("If an account exists with that email, a password reset link has been sent."),
-  ).toBeVisible({ timeout: 10_000 });
+    // 3. Success banner must appear.
+    await expect(
+        page.getByText(
+            "If an account exists with that email, a password reset link has been sent.",
+        ),
+    ).toBeVisible({ timeout: 10_000 });
 
-  // 4. Click "Back to Sign in"
-  await page.getByRole("link", { name: "Back to Sign in" }).click();
+    // 4. Click "Back to Sign in"
+    await page.getByRole("link", { name: "Back to Sign in" }).click();
 
-  // 5. Must land on /auth/signin?from=reset — NOT /dashboard.
-  //    The ?from=reset param prevents the authenticated-user redirect in signin/page.tsx.
-  await expect(page).toHaveURL(/\/auth\/signin\?from=reset/, { timeout: 10_000 });
+    // 5. Must land on /auth/signin?from=reset — NOT /dashboard.
+    //    The ?from=reset param prevents the authenticated-user redirect in signin/page.tsx.
+    await expect(page).toHaveURL(/\/auth\/signin\?from=reset/, { timeout: 10_000 });
 
-  // 6. Sign-in form must be visible (confirms no dashboard redirect).
-  await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible({ timeout: 10_000 });
+    // 6. Sign-in form must be visible (confirms no dashboard redirect).
+    await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible({ timeout: 10_000 });
 });
 
 test("forgot-password: Remember your password link navigates to sign-in", async ({ page }) => {
-  await page.goto("/auth/forgot-password");
+    await page.goto("/auth/forgot-password");
 
-  await page.getByRole("link", { name: "Remember your password?" }).click();
+    await page.getByRole("link", { name: "Remember your password?" }).click();
 
-  await expect(page).toHaveURL(/\/auth\/signin/);
+    await expect(page).toHaveURL(/\/auth\/signin/);
 });

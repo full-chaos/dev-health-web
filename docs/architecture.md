@@ -10,33 +10,33 @@
 ## Route Groups
 
 - **`(app)`**: Main authenticated shell.
-  - **Layout**: `src/app/(app)/layout.tsx`. Wraps in `SessionProvider` + `GraphQLProvider`. Calls `requireSession()`.
-  - **`admin/`**: Sub-group. Uses `requireRole(["admin", "owner"])` + `AdminSidebar`.
-  - **`superadmin/`**: Sub-group. Uses `requireSuperuser()` + `SuperadminSidebar`.
-  - **Dashboard**: `(app)/dashboard/page.tsx`.
+    - **Layout**: `src/app/(app)/layout.tsx`. Wraps in `SessionProvider` + `GraphQLProvider`. Calls `requireSession()`.
+    - **`admin/`**: Sub-group. Uses `requireRole(["admin", "owner"])` + `AdminSidebar`.
+    - **`superadmin/`**: Sub-group. Uses `requireSuperuser()` + `SuperadminSidebar`.
+    - **Dashboard**: `(app)/dashboard/page.tsx`.
 - **`(auth)`**: Public auth flows (signin, onboard, error).
-  - **Layout**: `src/app/(auth)/layout.tsx`. Includes `Toaster`.
+    - **Layout**: `src/app/(auth)/layout.tsx`. Includes `Toaster`.
 - **`(marketing)`**: Public marketing landing.
-  - **Layout**: `src/app/(marketing)/layout.tsx`. No auth required.
+    - **Layout**: `src/app/(marketing)/layout.tsx`. No auth required.
 - **Root Layout**: `src/app/layout.tsx`. Sets fonts, theme script (prevents FOUC), includes `runtime-config.js`.
 
 ## Request Proxy
 
 - **Middleware**: `src/proxy.ts` (Next.js 16 proxy, NOT `middleware.ts`).
 - **Functionality**:
-  - Auth redirects.
-  - Rewrites `/api/` and `/graphql` to backend with `Authorization` bearer token.
-  - `PUBLIC_PATHS` list defines unauthenticated routes.
+    - Auth redirects.
+    - Rewrites `/api/` and `/graphql` to backend with `Authorization` bearer token.
+    - `PUBLIC_PATHS` list defines unauthenticated routes.
 
 ## Data Fetching
 
 - **REST**:
-  - `src/lib/apiClient.ts`: Fetch wrapper with auto auth header (server-side).
-  - `src/lib/api.ts`: Domain functions.
+    - `src/lib/apiClient.ts`: Fetch wrapper with auto auth header (server-side).
+    - `src/lib/api.ts`: Domain functions.
 - **GraphQL (urql)**:
-  - Provider: `src/lib/graphql/provider.tsx`.
-  - Client: `src/lib/graphql/urqlClient.ts`.
-  - Fallbacks: Feature-flagged GraphQL fallbacks in `api.ts`.
+    - Provider: `src/lib/graphql/provider.tsx`.
+    - Client: `src/lib/graphql/urqlClient.ts`.
+    - Fallbacks: Feature-flagged GraphQL fallbacks in `api.ts`.
 - **Server Components**: Direct `await` fetch.
 
 ## Navigation
@@ -246,7 +246,7 @@ Sentry.captureMessage("User hit edge case X");
 
 // Add a performance span
 Sentry.startSpan({ name: "my-operation" }, () => {
-  // ... code to measure ...
+    // ... code to measure ...
 });
 
 // Set user context (e.g., after sign-in)

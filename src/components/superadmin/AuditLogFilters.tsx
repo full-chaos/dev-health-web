@@ -3,6 +3,6 @@
  * Maintained for backward compatibility.
  */
 export {
-  AuditLogFilters,
-  type AdminAuditFilter as AuditLogFilter,
+    AuditLogFilters,
+    type AdminAuditFilter as AuditLogFilter,
 } from "@/components/shared/AuditLogFilters";

@@ -10,9 +10,9 @@ import type { MetricFilter } from "@/lib/filters/types";
 export type PlanForecastView = "delivery-forecast" | "monte-carlo";
 
 export type PlanForecastTab = {
-  id: PlanForecastView;
-  label: string;
-  href: string;
+    id: PlanForecastView;
+    label: string;
+    href: string;
 };
 
 /**
@@ -20,16 +20,16 @@ export type PlanForecastTab = {
  * role context on every destination.
  */
 export function planForecastTabs(filters: MetricFilter, role?: string): PlanForecastTab[] {
-  return [
-    {
-      id: "delivery-forecast",
-      label: "Delivery Forecast",
-      href: withFilterParam("/plan/delivery-forecast", filters, role),
-    },
-    {
-      id: "monte-carlo",
-      label: "Monte Carlo",
-      href: withFilterParam("/plan/capacity", filters, role),
-    },
-  ];
+    return [
+        {
+            id: "delivery-forecast",
+            label: "Delivery Forecast",
+            href: withFilterParam("/plan/delivery-forecast", filters, role),
+        },
+        {
+            id: "monte-carlo",
+            label: "Monte Carlo",
+            href: withFilterParam("/plan/capacity", filters, role),
+        },
+    ];
 }

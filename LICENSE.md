@@ -26,9 +26,9 @@ You may use the Licensed Work for any purpose, including production use, provide
 You may NOT use the Licensed Work to:
 
 1. **Offer Competing Services**: Provide a commercial product or service that competes with Full Chaos Studio's hosted offerings, including but not limited to:
-   - Hosting the Licensed Work as a managed service for third parties
-   - Offering the Licensed Work's functionality as part of a SaaS platform
-   - Reselling access to the Licensed Work
+    - Hosting the Licensed Work as a managed service for third parties
+    - Offering the Licensed Work's functionality as part of a SaaS platform
+    - Reselling access to the Licensed Work
 
 2. **Circumvent Licensing**: Remove, disable, or circumvent any license key validation, feature flags, or usage tracking mechanisms.
 

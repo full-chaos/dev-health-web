@@ -52,71 +52,71 @@ query ProductTelemetryDashboard($orgId: String!, $input: ProductTelemetryDashboa
 `;
 
 export type ProductTelemetryDashboardData = {
-  dailyActiveUsers: Array<{ day: string; activeAnonymousUsers: number }>;
-  topRoutes: Array<{
-    routePattern: string;
-    events: number;
-    sessions: number;
-    anonymousUsers: number;
-  }>;
-  featureViews: Array<{
-    feature: string;
-    surface: string;
-    views: number;
-    anonymousUsers: number;
-  }>;
-  filterChanges: Array<{
-    view: string;
-    filterKey: string;
-    changes: number;
-    avgValueCount?: number | null;
-  }>;
-  chartInteractions: Array<{
-    chart: string;
-    action: string;
-    surface: string;
-    interactions: number;
-    sessions: number;
-  }>;
-  clientErrors: Array<{
-    routePattern: string;
-    boundary: string;
-    errorClass: string;
-    errors: number;
-    affectedAnonymousUsers: number;
-  }>;
-  sessionSummary: {
-    p50DurationMs?: number | null;
-    p75DurationMs?: number | null;
-    p90DurationMs?: number | null;
-    p95DurationMs?: number | null;
-    avgPagesViewed?: number | null;
-    avgInteractions?: number | null;
-  };
+    dailyActiveUsers: Array<{ day: string; activeAnonymousUsers: number }>;
+    topRoutes: Array<{
+        routePattern: string;
+        events: number;
+        sessions: number;
+        anonymousUsers: number;
+    }>;
+    featureViews: Array<{
+        feature: string;
+        surface: string;
+        views: number;
+        anonymousUsers: number;
+    }>;
+    filterChanges: Array<{
+        view: string;
+        filterKey: string;
+        changes: number;
+        avgValueCount?: number | null;
+    }>;
+    chartInteractions: Array<{
+        chart: string;
+        action: string;
+        surface: string;
+        interactions: number;
+        sessions: number;
+    }>;
+    clientErrors: Array<{
+        routePattern: string;
+        boundary: string;
+        errorClass: string;
+        errors: number;
+        affectedAnonymousUsers: number;
+    }>;
+    sessionSummary: {
+        p50DurationMs?: number | null;
+        p75DurationMs?: number | null;
+        p90DurationMs?: number | null;
+        p95DurationMs?: number | null;
+        avgPagesViewed?: number | null;
+        avgInteractions?: number | null;
+    };
 };
 
 type ProductTelemetryDashboardResponse = {
-  productTelemetryDashboard: ProductTelemetryDashboardData;
+    productTelemetryDashboard: ProductTelemetryDashboardData;
 };
 
 type ProductTelemetryDashboardParams = {
-  orgId: string;
-  startDate: string;
-  endDate: string;
+    orgId: string;
+    startDate: string;
+    endDate: string;
 };
 
 export async function getProductTelemetryDashboardViaGraphQL({
-  orgId,
-  startDate,
-  endDate,
+    orgId,
+    startDate,
+    endDate,
 }: ProductTelemetryDashboardParams): Promise<ProductTelemetryDashboardData> {
-  const response = await graphqlFetch<ProductTelemetryDashboardResponse>(
-    PRODUCT_TELEMETRY_DASHBOARD_QUERY,
-    { orgId, input: { startDate, endDate } },
-    { orgId },
-  );
+    const response = await graphqlFetch<ProductTelemetryDashboardResponse>(
+        PRODUCT_TELEMETRY_DASHBOARD_QUERY,
+        { orgId, input: { startDate, endDate } },
+        { orgId },
+    );
 
-  return response.productTelemetryDashboard;
+    return response.productTelemetryDashboard;
 }
 
 // =============================================================================
@@ -193,48 +193,48 @@ query ProductTelemetryPlatformDashboard($input: ProductTelemetryDashboardInput!)
 `;
 
 export type ProductTelemetryPlatformTotals = {
-  activeOrgs: number;
-  anonymousUsers: number;
-  sessions: number;
-  events: number;
+    activeOrgs: number;
+    anonymousUsers: number;
+    sessions: number;
+    events: number;
 };
 
 export type ProductTelemetryTopOrg = {
-  orgIdHash: string;
-  events: number;
-  sessions: number;
-  anonymousUsers: number;
-  orgId?: string | null;
-  orgName?: string | null;
-  orgSlug?: string | null;
+    orgIdHash: string;
+    events: number;
+    sessions: number;
+    anonymousUsers: number;
+    orgId?: string | null;
+    orgName?: string | null;
+    orgSlug?: string | null;
 };
 
 export type ProductTelemetryPlatformDashboardData = ProductTelemetryDashboardData & {
-  totals: ProductTelemetryPlatformTotals;
-  topOrgs: ProductTelemetryTopOrg[];
+    totals: ProductTelemetryPlatformTotals;
+    topOrgs: ProductTelemetryTopOrg[];
 };
 
 type ProductTelemetryPlatformDashboardResponse = {
-  productTelemetryPlatformDashboard: ProductTelemetryPlatformDashboardData;
+    productTelemetryPlatformDashboard: ProductTelemetryPlatformDashboardData;
 };
 
 type ProductTelemetryPlatformDashboardParams = {
-  startDate: string;
-  endDate: string;
+    startDate: string;
+    endDate: string;
 };
 
 export async function getProductTelemetryPlatformDashboardViaGraphQL({
-  startDate,
-  endDate,
+    startDate,
+    endDate,
 }: ProductTelemetryPlatformDashboardParams): Promise<ProductTelemetryPlatformDashboardData> {
-  // No orgId — the resolver is gated by is_superuser and aggregates across
-  // every tenant. The graphqlFetch helper still receives an empty orgId so
-  // existing org-scoped middleware doesn't reject the call.
-  const response = await graphqlFetch<ProductTelemetryPlatformDashboardResponse>(
-    PRODUCT_TELEMETRY_PLATFORM_DASHBOARD_QUERY,
-    { input: { startDate, endDate } },
-    { orgId: "" },
-  );
+    // No orgId — the resolver is gated by is_superuser and aggregates across
+    // every tenant. The graphqlFetch helper still receives an empty orgId so
+    // existing org-scoped middleware doesn't reject the call.
+    const response = await graphqlFetch<ProductTelemetryPlatformDashboardResponse>(
+        PRODUCT_TELEMETRY_PLATFORM_DASHBOARD_QUERY,
+        { input: { startDate, endDate } },
+        { orgId: "" },
+    );
 
-  return response.productTelemetryPlatformDashboard;
+    return response.productTelemetryPlatformDashboard;
 }

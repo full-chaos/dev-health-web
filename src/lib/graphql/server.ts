@@ -38,13 +38,13 @@
  */
 
 import {
-  createClient,
-  fetchExchange,
-  cacheExchange,
-  ssrExchange as createSsrExchange,
-  type Client,
-  type SSRData,
-  type TypedDocumentNode,
+    createClient,
+    fetchExchange,
+    cacheExchange,
+    ssrExchange as createSsrExchange,
+    type Client,
+    type SSRData,
+    type TypedDocumentNode,
 } from "@urql/core";
 import { registerUrql } from "@urql/next/rsc";
 import { ValidationErrors, graphQlErrorMessage } from "@/lib/constants/errors";
@@ -54,13 +54,13 @@ import { errorExchange, timingExchange } from "./urqlExchanges";
 const GRAPHQL_PATH = "/graphql";
 
 function makeServerClient(): Client {
-  const url = new URL(GRAPHQL_PATH, resolveOrigin());
+    const url = new URL(GRAPHQL_PATH, resolveOrigin());
 
-  return createClient({
-    url: url.toString(),
-    exchanges: [timingExchange, errorExchange, cacheExchange, fetchExchange],
-    requestPolicy: "cache-first",
-  });
+    return createClient({
+        url: url.toString(),
+        exchanges: [timingExchange, errorExchange, cacheExchange, fetchExchange],
+        requestPolicy: "cache-first",
+    });
 }
 
 const { getClient: _getServerClient } = registerUrql(makeServerClient);
@@ -72,12 +72,12 @@ const { getClient: _getServerClient } = registerUrql(makeServerClient);
  *   through `graphqlFetch()` today to get per-operation `X-Org-Id` injection.
  */
 export function getServerClient(_orgId?: string): Client {
-  void _orgId;
-  return _getServerClient();
+    void _orgId;
+    return _getServerClient();
 }
 
 interface GraphQLFetchOptions {
-  orgId?: string;
+    orgId?: string;
 }
 
 /**
@@ -93,46 +93,46 @@ interface GraphQLFetchOptions {
  * @throws Error if the query returns GraphQL errors or missing data
  */
 export async function graphqlFetch<T>(
-  query: string | TypedDocumentNode<T, Record<string, unknown>>,
-  variables: Record<string, unknown> = {},
-  options: GraphQLFetchOptions = {},
+    query: string | TypedDocumentNode<T, Record<string, unknown>>,
+    variables: Record<string, unknown> = {},
+    options: GraphQLFetchOptions = {},
 ): Promise<T> {
-  const client = getServerClient(options.orgId);
+    const client = getServerClient(options.orgId);
 
-  const headers: Record<string, string> = {};
-  if (options.orgId) headers["X-Org-Id"] = options.orgId;
+    const headers: Record<string, string> = {};
+    if (options.orgId) headers["X-Org-Id"] = options.orgId;
 
-  // Auth must be awaited here because urql's client-level fetchOptions is
-  // sync-only. Per-operation injection keeps the token fresh and scoped.
-  try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth();
-    if (session?.access_token) {
-      headers["Authorization"] = `Bearer ${session.access_token}`;
+    // Auth must be awaited here because urql's client-level fetchOptions is
+    // sync-only. Per-operation injection keeps the token fresh and scoped.
+    try {
+        const { auth } = await import("@/lib/auth");
+        const session = await auth();
+        if (session?.access_token) {
+            headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+    } catch {
+        // Unauthenticated fetch (codegen / tests / unauthenticated pages):
+        // proceed without auth; the backend will reject if it is required.
     }
-  } catch {
-    // Unauthenticated fetch (codegen / tests / unauthenticated pages):
-    // proceed without auth; the backend will reject if it is required.
-  }
 
-  const operationContext =
-    Object.keys(headers).length > 0 ? { fetchOptions: { headers } } : undefined;
+    const operationContext =
+        Object.keys(headers).length > 0 ? { fetchOptions: { headers } } : undefined;
 
-  const isMutation = typeof query === "string" && /^\s*mutation\b/i.test(query);
+    const isMutation = typeof query === "string" && /^\s*mutation\b/i.test(query);
 
-  const result = isMutation
-    ? await client.mutation<T>(query, variables, operationContext).toPromise()
-    : await client.query<T>(query, variables, operationContext).toPromise();
+    const result = isMutation
+        ? await client.mutation<T>(query, variables, operationContext).toPromise()
+        : await client.query<T>(query, variables, operationContext).toPromise();
 
-  if (result.error) {
-    throw new Error(graphQlErrorMessage(result.error.message));
-  }
+    if (result.error) {
+        throw new Error(graphQlErrorMessage(result.error.message));
+    }
 
-  if (!result.data) {
-    throw new Error(ValidationErrors.GraphQLResponseMissingData);
-  }
+    if (!result.data) {
+        throw new Error(ValidationErrors.GraphQLResponseMissingData);
+    }
 
-  return result.data;
+    return result.data;
 }
 
 /**
@@ -151,49 +151,49 @@ export async function graphqlFetch<T>(
  * key differs and hydration silently misses.
  */
 export async function graphqlFetchForHydration<T>(
-  query: string | TypedDocumentNode<T, Record<string, unknown>>,
-  variables: Record<string, unknown> = {},
-  options: GraphQLFetchOptions = {},
+    query: string | TypedDocumentNode<T, Record<string, unknown>>,
+    variables: Record<string, unknown> = {},
+    options: GraphQLFetchOptions = {},
 ): Promise<{ data: T; hydrationPayload: SSRData }> {
-  const ssr = createSsrExchange({ isClient: false });
+    const ssr = createSsrExchange({ isClient: false });
 
-  const url = new URL(GRAPHQL_PATH, resolveOrigin());
+    const url = new URL(GRAPHQL_PATH, resolveOrigin());
 
-  const headers: Record<string, string> = {};
-  if (options.orgId) headers["X-Org-Id"] = options.orgId;
+    const headers: Record<string, string> = {};
+    if (options.orgId) headers["X-Org-Id"] = options.orgId;
 
-  try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth();
-    if (session?.access_token) {
-      headers["Authorization"] = `Bearer ${session.access_token}`;
+    try {
+        const { auth } = await import("@/lib/auth");
+        const session = await auth();
+        if (session?.access_token) {
+            headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+    } catch {
+        // Unauthenticated fetch (codegen / tests / unauthenticated pages).
     }
-  } catch {
-    // Unauthenticated fetch (codegen / tests / unauthenticated pages).
-  }
 
-  const client = createClient({
-    url: url.toString(),
-    exchanges: [timingExchange, errorExchange, cacheExchange, ssr, fetchExchange],
-    requestPolicy: "cache-first",
-  });
+    const client = createClient({
+        url: url.toString(),
+        exchanges: [timingExchange, errorExchange, cacheExchange, ssr, fetchExchange],
+        requestPolicy: "cache-first",
+    });
 
-  const operationContext =
-    Object.keys(headers).length > 0 ? { fetchOptions: { headers } } : undefined;
+    const operationContext =
+        Object.keys(headers).length > 0 ? { fetchOptions: { headers } } : undefined;
 
-  const isMutation = typeof query === "string" && /^\s*mutation\b/i.test(query);
+    const isMutation = typeof query === "string" && /^\s*mutation\b/i.test(query);
 
-  const result = isMutation
-    ? await client.mutation<T>(query, variables, operationContext).toPromise()
-    : await client.query<T>(query, variables, operationContext).toPromise();
+    const result = isMutation
+        ? await client.mutation<T>(query, variables, operationContext).toPromise()
+        : await client.query<T>(query, variables, operationContext).toPromise();
 
-  if (result.error) {
-    throw new Error(graphQlErrorMessage(result.error.message));
-  }
+    if (result.error) {
+        throw new Error(graphQlErrorMessage(result.error.message));
+    }
 
-  if (!result.data) {
-    throw new Error(ValidationErrors.GraphQLResponseMissingData);
-  }
+    if (!result.data) {
+        throw new Error(ValidationErrors.GraphQLResponseMissingData);
+    }
 
-  return { data: result.data, hydrationPayload: ssr.extractData() };
+    return { data: result.data, hydrationPayload: ssr.extractData() };
 }

@@ -14,79 +14,81 @@ import { withFilterParam } from "@/lib/filters/url";
 import { getServerEnv } from "@/lib/config";
 
 type OpportunitiesPageProps = {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default async function OpportunitiesPage({ searchParams }: OpportunitiesPageProps) {
-  const params = (await searchParams) ?? {};
-  const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+    const params = (await searchParams) ?? {};
+    const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-  const env = getServerEnv();
-  const isTestMode =
-    env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    const env = getServerEnv();
+    const isTestMode =
+        env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
-  const [health, data, improveSignals] = await Promise.all([
-    checkApiHealth(),
-    fetchOrNull(getOpportunities(filters), "opportunities/data"),
-    getAreaSignals("improve", filters, isTestMode),
-  ]);
+    const [health, data, improveSignals] = await Promise.all([
+        checkApiHealth(),
+        fetchOrNull(getOpportunities(filters), "opportunities/data"),
+        getAreaSignals("improve", filters, isTestMode),
+    ]);
 
-  if (!health.ok && !isTestMode) {
-    return <ServiceUnavailable />;
-  }
+    if (!health.ok && !isTestMode) {
+        return <ServiceUnavailable />;
+    }
 
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="opportunities" role={activeRole} />
-        <main className="flex min-w-0 flex-1 flex-col gap-8">
-          <header className="flex flex-col gap-4">
-            <BackLink href={withFilterParam("/", filters, activeRole)} />
-            <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Improve</p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">Opportunities</h1>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Evidence-linked improvement opportunities with clear artifacts and recommended next
-                steps.
-              </p>
+    return (
+        <div className="min-h-screen bg-background text-foreground">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+                <PrimaryNav filters={filters} active="opportunities" role={activeRole} />
+                <main className="flex min-w-0 flex-1 flex-col gap-8">
+                    <header className="flex flex-col gap-4">
+                        <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                Improve
+                            </p>
+                            <h1 className="mt-2 font-(--font-display) text-3xl">Opportunities</h1>
+                            <p className="mt-2 text-sm text-(--ink-muted)">
+                                Evidence-linked improvement opportunities with clear artifacts and
+                                recommended next steps.
+                            </p>
+                        </div>
+                    </header>
+
+                    <GlobalContextBar filters={filters} />
+                    <FilterBar view="opportunities" />
+
+                    <section className="grid gap-6 md:grid-cols-2" aria-label="Opportunities">
+                        {(data?.items ?? []).map((card) => (
+                            <OpportunityCard
+                                key={card.id}
+                                card={card}
+                                filters={filters}
+                                activeRole={activeRole}
+                            />
+                        ))}
+                        {!data?.items?.length && (
+                            <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                                Opportunity data unavailable.
+                            </div>
+                        )}
+                    </section>
+
+                    {improveSignals.length > 0 ? (
+                        <AreaOverview
+                            areaId="improve"
+                            signals={improveSignals}
+                            filters={filters}
+                            role={activeRole}
+                            title="Improve area"
+                            description="Improvement workflows, ordered by severity."
+                        />
+                    ) : null}
+                </main>
             </div>
-          </header>
-
-          <GlobalContextBar filters={filters} />
-          <FilterBar view="opportunities" />
-
-          <section className="grid gap-6 md:grid-cols-2" aria-label="Opportunities">
-            {(data?.items ?? []).map((card) => (
-              <OpportunityCard
-                key={card.id}
-                card={card}
-                filters={filters}
-                activeRole={activeRole}
-              />
-            ))}
-            {!data?.items?.length && (
-              <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
-                Opportunity data unavailable.
-              </div>
-            )}
-          </section>
-
-          {improveSignals.length > 0 ? (
-            <AreaOverview
-              areaId="improve"
-              signals={improveSignals}
-              filters={filters}
-              role={activeRole}
-              title="Improve area"
-              description="Improvement workflows, ordered by severity."
-            />
-          ) : null}
-        </main>
-      </div>
-    </div>
-  );
+        </div>
+    );
 }

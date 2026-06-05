@@ -10,12 +10,12 @@ export { useCatalog, useDimensionValues } from "./useCatalog";
 export { useCapacityForecast } from "./useCapacityForecast";
 export { useInvestmentMix, useInvestmentFlow, useInvestmentRepoTeamFlow } from "./useInvestment";
 export {
-  useMetricsUpdated,
-  useTaskStatus,
-  useSyncProgress,
-  type MetricsUpdate,
-  type TaskStatus,
-  type SyncProgress,
+    useMetricsUpdated,
+    useTaskStatus,
+    useSyncProgress,
+    type MetricsUpdate,
+    type TaskStatus,
+    type SyncProgress,
 } from "./useSubscription";
 export { useWorkGraphEdges, useNodeEdges } from "./useWorkGraph";
 export { useSecurityOverview, useSecurityAlerts } from "./useSecurity";

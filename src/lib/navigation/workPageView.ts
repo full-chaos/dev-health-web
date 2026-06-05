@@ -14,14 +14,14 @@ export type DiagnoseView = "overview" | "work";
 export const DIAGNOSE_VIEWS: DiagnoseView[] = ["overview", "work"];
 
 export const WORK_TABS = [
-  "landscape",
-  "heatmap",
-  "flow",
-  "investment",
-  "capacity",
-  "flame",
-  "evidence",
-  "graph",
+    "landscape",
+    "heatmap",
+    "flow",
+    "investment",
+    "capacity",
+    "flame",
+    "evidence",
+    "graph",
 ] as const;
 
 /**
@@ -31,15 +31,19 @@ export const WORK_TABS = [
  * @param tabParam  - the raw `tab` query param value (string | undefined)
  */
 export function resolveActiveView(
-  viewParam: string | undefined,
-  tabParam: string | undefined,
+    viewParam: string | undefined,
+    tabParam: string | undefined,
 ): DiagnoseView {
-  if (DIAGNOSE_VIEWS.includes(viewParam as DiagnoseView)) {
-    return viewParam as DiagnoseView;
-  }
-  // Legacy ?tab= deep link: no explicit view but a valid work tab → show Work.
-  if (!viewParam && typeof tabParam === "string" && (WORK_TABS as readonly string[]).includes(tabParam)) {
-    return "work";
-  }
-  return "overview";
+    if (DIAGNOSE_VIEWS.includes(viewParam as DiagnoseView)) {
+        return viewParam as DiagnoseView;
+    }
+    // Legacy ?tab= deep link: no explicit view but a valid work tab → show Work.
+    if (
+        !viewParam &&
+        typeof tabParam === "string" &&
+        (WORK_TABS as readonly string[]).includes(tabParam)
+    ) {
+        return "work";
+    }
+    return "overview";
 }

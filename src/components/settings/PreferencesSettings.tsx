@@ -7,87 +7,87 @@ import { isTelemetryOptedOut, setTelemetryOptOut } from "@/lib/telemetry/config"
 
 type Theme = "light" | "dark";
 type Palette =
-  | "material"
-  | "echarts"
-  | "fullchaos"
-  | "fullchaos-cosmic-train"
-  | "fullchaos-infinity-knot"
-  | "fullchaos-infinity-knot-redux"
-  | "flat";
+    | "material"
+    | "echarts"
+    | "fullchaos"
+    | "fullchaos-cosmic-train"
+    | "fullchaos-infinity-knot"
+    | "fullchaos-infinity-knot-redux"
+    | "flat";
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
 const subscribe = (listener: Listener) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+    listeners.add(listener);
+    return () => listeners.delete(listener);
 };
 
 const notify = () => {
-  listeners.forEach((listener) => {
-    listener();
-  });
+    listeners.forEach((listener) => {
+        listener();
+    });
 };
 
 const getStoredTheme = (): Theme | null => {
-  const stored = getLocalStorage()?.getItem("theme");
-  return stored === "light" || stored === "dark" ? stored : null;
+    const stored = getLocalStorage()?.getItem("theme");
+    return stored === "light" || stored === "dark" ? stored : null;
 };
 
 const normalizePalette = (value: string | null): Palette | null => {
-  if (value === "tailwind") return "echarts";
-  const valid: Palette[] = [
-    "material",
-    "echarts",
-    "fullchaos",
-    "fullchaos-cosmic-train",
-    "fullchaos-infinity-knot",
-    "fullchaos-infinity-knot-redux",
-    "flat",
-  ];
-  return valid.includes(value as Palette) ? (value as Palette) : null;
+    if (value === "tailwind") return "echarts";
+    const valid: Palette[] = [
+        "material",
+        "echarts",
+        "fullchaos",
+        "fullchaos-cosmic-train",
+        "fullchaos-infinity-knot",
+        "fullchaos-infinity-knot-redux",
+        "flat",
+    ];
+    return valid.includes(value as Palette) ? (value as Palette) : null;
 };
 
 const getStoredPalette = (): Palette | null => {
-  const stored = getLocalStorage()?.getItem("palette") ?? null;
-  return normalizePalette(stored);
+    const stored = getLocalStorage()?.getItem("palette") ?? null;
+    return normalizePalette(stored);
 };
 
 const getSystemTheme = (): Theme => {
-  const win = getWindow();
-  if (!win) return "light";
-  return win.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const win = getWindow();
+    if (!win) return "light";
+    return win.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 
 const applyTheme = (theme: Theme) => {
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
-  localStorage.setItem("theme", theme);
-  notify();
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    localStorage.setItem("theme", theme);
+    notify();
 };
 
 const applyPalette = (palette: Palette) => {
-  document.documentElement.dataset.palette = palette;
-  localStorage.setItem("palette", palette);
-  notify();
+    document.documentElement.dataset.palette = palette;
+    localStorage.setItem("palette", palette);
+    notify();
 };
 
 const getThemeSnapshot = (): Theme => {
-  if (isServer) return "light";
-  const stored = getStoredTheme();
-  if (stored) return stored;
-  const fromDataset = document.documentElement.dataset.theme;
-  if (fromDataset === "light" || fromDataset === "dark") return fromDataset;
-  return getSystemTheme();
+    if (isServer) return "light";
+    const stored = getStoredTheme();
+    if (stored) return stored;
+    const fromDataset = document.documentElement.dataset.theme;
+    if (fromDataset === "light" || fromDataset === "dark") return fromDataset;
+    return getSystemTheme();
 };
 
 const getPaletteSnapshot = (): Palette => {
-  if (isServer) return "fullchaos-infinity-knot-redux";
-  const stored = getStoredPalette();
-  if (stored) return stored;
-  const fromDataset = document.documentElement.dataset.palette ?? null;
-  const normalized = normalizePalette(fromDataset);
-  return normalized ?? "fullchaos-infinity-knot-redux";
+    if (isServer) return "fullchaos-infinity-knot-redux";
+    const stored = getStoredPalette();
+    if (stored) return stored;
+    const fromDataset = document.documentElement.dataset.palette ?? null;
+    const normalized = normalizePalette(fromDataset);
+    return normalized ?? "fullchaos-infinity-knot-redux";
 };
 
 const getThemeServerSnapshot = (): Theme => "light";
@@ -96,118 +96,125 @@ const getTelemetrySnapshot = (): boolean => (isServer ? false : isTelemetryOpted
 const getTelemetryServerSnapshot = (): boolean => false;
 
 const PALETTES: { value: Palette; label: string }[] = [
-  { value: "fullchaos", label: "Full Chaos" },
-  { value: "fullchaos-cosmic-train", label: "Cosmic Train" },
-  { value: "fullchaos-infinity-knot", label: "Infinity Knot" },
-  { value: "fullchaos-infinity-knot-redux", label: "Infinity Knot Redux" },
-  { value: "material", label: "Material" },
-  { value: "echarts", label: "ECharts" },
-  { value: "flat", label: "Flat UI" },
+    { value: "fullchaos", label: "Full Chaos" },
+    { value: "fullchaos-cosmic-train", label: "Cosmic Train" },
+    { value: "fullchaos-infinity-knot", label: "Infinity Knot" },
+    { value: "fullchaos-infinity-knot-redux", label: "Infinity Knot Redux" },
+    { value: "material", label: "Material" },
+    { value: "echarts", label: "ECharts" },
+    { value: "flat", label: "Flat UI" },
 ];
 
 export function PreferencesSettings() {
-  const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);
-  const palette = useSyncExternalStore(subscribe, getPaletteSnapshot, getPaletteServerSnapshot);
-  const telemetryOptedOut = useSyncExternalStore(subscribe, getTelemetrySnapshot, getTelemetryServerSnapshot);
+    const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);
+    const palette = useSyncExternalStore(subscribe, getPaletteSnapshot, getPaletteServerSnapshot);
+    const telemetryOptedOut = useSyncExternalStore(
+        subscribe,
+        getTelemetrySnapshot,
+        getTelemetryServerSnapshot,
+    );
 
-  const applyTelemetryOptOut = (optedOut: boolean) => {
-    setTelemetryOptOut(optedOut);
-    notify();
-  };
+    const applyTelemetryOptOut = (optedOut: boolean) => {
+        setTelemetryOptOut(optedOut);
+        notify();
+    };
 
-  return (
-    <SettingsSection
-      title="Preferences"
-      description="Customize your display settings. These preferences are stored locally in your browser."
-    >
-      <div className="space-y-6">
-        <div>
-          <p className="block text-sm font-medium text-(--foreground) mb-2">Theme</p>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => applyTheme("light")}
-              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                theme === "light"
-                  ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                  : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-              }`}
-            >
-              <span className="block text-lg mb-1">☀️</span>
-              Light
-            </button>
-            <button
-              type="button"
-              onClick={() => applyTheme("dark")}
-              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                theme === "dark"
-                  ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                  : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-              }`}
-            >
-              <span className="block text-lg mb-1">🌙</span>
-              Dark
-            </button>
-          </div>
-        </div>
+    return (
+        <SettingsSection
+            title="Preferences"
+            description="Customize your display settings. These preferences are stored locally in your browser."
+        >
+            <div className="space-y-6">
+                <div>
+                    <p className="block text-sm font-medium text-(--foreground) mb-2">Theme</p>
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={() => applyTheme("light")}
+                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                                theme === "light"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                            }`}
+                        >
+                            <span className="block text-lg mb-1">☀️</span>
+                            Light
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => applyTheme("dark")}
+                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                                theme === "dark"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                            }`}
+                        >
+                            <span className="block text-lg mb-1">🌙</span>
+                            Dark
+                        </button>
+                    </div>
+                </div>
 
-        <div>
-          <p className="block text-sm font-medium text-(--foreground) mb-2">
-            Color Palette
-          </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {PALETTES.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                onClick={() => applyPalette(p.value)}
-                className={`rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                  palette === p.value
-                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
+                <div>
+                    <p className="block text-sm font-medium text-(--foreground) mb-2">
+                        Color Palette
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {PALETTES.map((p) => (
+                            <button
+                                key={p.value}
+                                type="button"
+                                onClick={() => applyPalette(p.value)}
+                                className={`rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                                    palette === p.value
+                                        ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                        : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                                }`}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
-        <div>
-          <p className="block text-sm font-medium text-(--foreground) mb-2">Product telemetry</p>
-          <p className="mb-3 text-sm text-(--ink-muted)">
-            Privacy-safe product events help improve Dev Health. We collect route patterns, stable feature IDs,
-            counts, and chart actions only — no names, emails, query strings, or user-entered text. Browser Do Not
-            Track is respected.
-          </p>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              aria-pressed={!telemetryOptedOut}
-              onClick={() => applyTelemetryOptOut(false)}
-              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                !telemetryOptedOut
-                  ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                  : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-              }`}
-            >
-              Enabled
-            </button>
-            <button
-              type="button"
-              aria-pressed={telemetryOptedOut}
-              onClick={() => applyTelemetryOptOut(true)}
-              className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                telemetryOptedOut
-                  ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                  : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-              }`}
-            >
-              Disabled
-            </button>
-          </div>
-        </div>
-      </div>
-    </SettingsSection>
-  );
+                <div>
+                    <p className="block text-sm font-medium text-(--foreground) mb-2">
+                        Product telemetry
+                    </p>
+                    <p className="mb-3 text-sm text-(--ink-muted)">
+                        Privacy-safe product events help improve Dev Health. We collect route
+                        patterns, stable feature IDs, counts, and chart actions only — no names,
+                        emails, query strings, or user-entered text. Browser Do Not Track is
+                        respected.
+                    </p>
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            aria-pressed={!telemetryOptedOut}
+                            onClick={() => applyTelemetryOptOut(false)}
+                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                                !telemetryOptedOut
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                            }`}
+                        >
+                            Enabled
+                        </button>
+                        <button
+                            type="button"
+                            aria-pressed={telemetryOptedOut}
+                            onClick={() => applyTelemetryOptOut(true)}
+                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                                telemetryOptedOut
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                            }`}
+                        >
+                            Disabled
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </SettingsSection>
+    );
 }

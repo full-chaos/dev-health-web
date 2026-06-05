@@ -7,48 +7,48 @@ import { AIOpportunityList } from "./AIOpportunityList";
 import { AIPanelCard } from "./AIPanelCard";
 
 type AIAutomationsDashboardProps = {
-  filter: AIFilter;
+    filter: AIFilter;
 };
 
 export function AIAutomationsDashboard({ filter }: AIAutomationsDashboardProps) {
-  const opportunitiesResult = useAIOpportunities(filter);
-  const opportunities = opportunitiesResult.data?.aiOpportunities;
+    const opportunitiesResult = useAIOpportunities(filter);
+    const opportunities = opportunitiesResult.data?.aiOpportunities;
 
-  if (opportunitiesResult.error) {
+    if (opportunitiesResult.error) {
+        return (
+            <ErrorCard
+                title="AI automation opportunities could not load"
+                message={opportunitiesResult.error.message ?? "Please retry the request."}
+            />
+        );
+    }
+
+    if (opportunitiesResult.fetching && !opportunities) {
+        return <AutomationsSkeleton />;
+    }
+
     return (
-      <ErrorCard
-        title="AI automation opportunities could not load"
-        message={opportunitiesResult.error.message ?? "Please retry the request."}
-      />
+        <div className="flex flex-col gap-6" data-testid="ai-automations-dashboard">
+            <AIPanelCard
+                title="Best-fit automation opportunities"
+                description="Repeatable work patterns that may be good candidates for responsible automation, scoped to your current selection."
+            >
+                <AIOpportunityList
+                    detectorReady={opportunities?.detectorReady}
+                    recommendations={opportunities?.recommendations}
+                />
+            </AIPanelCard>
+        </div>
     );
-  }
-
-  if (opportunitiesResult.fetching && !opportunities) {
-    return <AutomationsSkeleton />;
-  }
-
-  return (
-    <div className="flex flex-col gap-6" data-testid="ai-automations-dashboard">
-      <AIPanelCard
-        title="Best-fit automation opportunities"
-        description="Repeatable work patterns that may be good candidates for responsible automation, scoped to your current selection."
-      >
-        <AIOpportunityList
-          detectorReady={opportunities?.detectorReady}
-          recommendations={opportunities?.recommendations}
-        />
-      </AIPanelCard>
-    </div>
-  );
 }
 
 function AutomationsSkeleton() {
-  return (
-    <div
-      className="rounded-3xl border border-(--card-stroke) bg-card p-5"
-      data-testid="ai-automations-loading"
-    >
-      <div className="h-40 animate-pulse rounded-2xl bg-(--card-80)" />
-    </div>
-  );
+    return (
+        <div
+            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+            data-testid="ai-automations-loading"
+        >
+            <div className="h-40 animate-pulse rounded-2xl bg-(--card-80)" />
+        </div>
+    );
 }

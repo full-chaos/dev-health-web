@@ -12,17 +12,17 @@ import type { AreaSignal, AreaSignalState } from "./types";
 
 /** Lower rank = higher up the list. Unavailable always last. */
 export const STATE_RANK: Record<AreaSignalState, number> = {
-	critical: 0,
-	high: 1,
-	medium: 2,
-	low: 3,
-	neutral: 4,
-	unavailable: 5,
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
+    neutral: 4,
+    unavailable: 5,
 };
 
 /** True when the signal has a real, surfaced value (not the honest-empty state). */
 export function isAvailable(signal: AreaSignal): boolean {
-	return signal.state !== "unavailable";
+    return signal.state !== "unavailable";
 }
 
 /**
@@ -30,18 +30,18 @@ export function isAvailable(signal: AreaSignal): boolean {
  * order (so resolvers control intra-band ordering). Does not mutate the input.
  */
 export function sortBySeverity(signals: readonly AreaSignal[]): AreaSignal[] {
-	return signals
-		.map((signal, index) => ({ signal, index }))
-		.sort((a, b) => {
-			const byDemotion =
-				Number(a.signal.demoted === true) - Number(b.signal.demoted === true);
-			if (byDemotion !== 0 && isAvailable(a.signal) && isAvailable(b.signal)) {
-				return byDemotion;
-			}
-			const byState = STATE_RANK[a.signal.state] - STATE_RANK[b.signal.state];
-			return byState !== 0 ? byState : a.index - b.index;
-		})
-		.map(({ signal }) => signal);
+    return signals
+        .map((signal, index) => ({ signal, index }))
+        .sort((a, b) => {
+            const byDemotion =
+                Number(a.signal.demoted === true) - Number(b.signal.demoted === true);
+            if (byDemotion !== 0 && isAvailable(a.signal) && isAvailable(b.signal)) {
+                return byDemotion;
+            }
+            const byState = STATE_RANK[a.signal.state] - STATE_RANK[b.signal.state];
+            return byState !== 0 ? byState : a.index - b.index;
+        })
+        .map(({ signal }) => signal);
 }
 
 /**
@@ -49,17 +49,14 @@ export function sortBySeverity(signals: readonly AreaSignal[]): AreaSignal[] {
  * leading sub-area signal(s) up to the area overview (Framework A2a). Only
  * available signals bubble — an unavailable metric is never "the top signal".
  */
-export function topSignals(
-	signals: readonly AreaSignal[],
-	count = 3,
-): AreaSignal[] {
-	return sortBySeverity(signals.filter(isAvailable)).slice(0, count);
+export function topSignals(signals: readonly AreaSignal[], count = 3): AreaSignal[] {
+    return sortBySeverity(signals.filter(isAvailable)).slice(0, count);
 }
 
 export type SignalCluster = {
-	/** Cluster header, or `undefined` for the flat (unclustered) bucket. */
-	cluster: string | undefined;
-	signals: AreaSignal[];
+    /** Cluster header, or `undefined` for the flat (unclustered) bucket. */
+    cluster: string | undefined;
+    signals: AreaSignal[];
 };
 
 /**
@@ -67,23 +64,21 @@ export type SignalCluster = {
  * order. Returns a single `{ cluster: undefined }` bucket when no signal carries
  * a cluster (light areas degrade to a flat grid).
  */
-export function groupByCluster(
-	signals: readonly AreaSignal[],
-): SignalCluster[] {
-	const order: (string | undefined)[] = [];
-	const byCluster = new Map<string | undefined, AreaSignal[]>();
+export function groupByCluster(signals: readonly AreaSignal[]): SignalCluster[] {
+    const order: (string | undefined)[] = [];
+    const byCluster = new Map<string | undefined, AreaSignal[]>();
 
-	for (const signal of signals) {
-		const key = signal.cluster;
-		if (!byCluster.has(key)) {
-			byCluster.set(key, []);
-			order.push(key);
-		}
-		byCluster.get(key)!.push(signal);
-	}
+    for (const signal of signals) {
+        const key = signal.cluster;
+        if (!byCluster.has(key)) {
+            byCluster.set(key, []);
+            order.push(key);
+        }
+        byCluster.get(key)!.push(signal);
+    }
 
-	return order.map((cluster) => ({
-		cluster,
-		signals: sortBySeverity(byCluster.get(cluster)!),
-	}));
+    return order.map((cluster) => ({
+        cluster,
+        signals: sortBySeverity(byCluster.get(cluster)!),
+    }));
 }

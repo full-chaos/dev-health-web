@@ -71,10 +71,10 @@ const providers = getAvailableSocialProviders();
 3. Set **Authorization callback URL** to `http://localhost:3000/api/auth/callback/github`.
 4. Copy the **Client ID** and generate a **Client secret**.
 5. Add to your `.env.local`:
-   ```
-   AUTH_GITHUB_ID=<client_id>
-   AUTH_GITHUB_SECRET=<client_secret>
-   ```
+    ```
+    AUTH_GITHUB_ID=<client_id>
+    AUTH_GITHUB_SECRET=<client_secret>
+    ```
 6. Restart the dev server. The GitHub button will appear on the sign-in page.
 
 ## Error handling

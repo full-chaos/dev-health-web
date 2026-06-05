@@ -27,10 +27,10 @@ Stores a per-key timestamp array in a module-level `Map`. Timestamps older than 
 
 ```ts
 type RateLimitOptions = {
-  failClosed?: boolean; // default: false
-  windowMs?: number; // default: RATE_LIMIT_WINDOW_MS (1h)
-  maxRequests?: number; // default: RATE_LIMIT_MAX_REQUESTS (5)
-  namespace?: string; // prefixes the Redis key
+    failClosed?: boolean; // default: false
+    windowMs?: number; // default: RATE_LIMIT_WINDOW_MS (1h)
+    maxRequests?: number; // default: RATE_LIMIT_MAX_REQUESTS (5)
+    namespace?: string; // prefixes the Redis key
 };
 ```
 

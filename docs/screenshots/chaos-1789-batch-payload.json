@@ -1,89 +1,89 @@
 {
-  "capturedAt": "2026-05-25T18:28:29.867Z",
-  "request": {
-    "method": "POST",
-    "path": "/api/v1/product-telemetry/events",
-    "payload": {
-      "source": "dev-health-web",
-      "orgIdHash": null,
-      "events": [
-        {
-          "name": "session_started",
-          "schemaVersion": "2026-05-telemetry-v1",
-          "eventId": "4f849c20-4e6e-417b-aa0f-654008e133d7",
-          "ts": "2026-05-25T18:28:16.745Z",
-          "sessionId": "a8dde656-5b59-4e29-b272-739c614babb1",
-          "anonymousUserId": "5961b955-6381-4f10-8d59-376abf79af22",
-          "orgIdHash": null,
-          "routePattern": "/metrics",
-          "payload": {
-            "entryRoutePattern": "/metrics"
-          }
-        },
-        {
-          "name": "page_viewed",
-          "schemaVersion": "2026-05-telemetry-v1",
-          "eventId": "76c59b2b-7f25-42fe-ad2d-72d3b55ecd48",
-          "ts": "2026-05-25T18:28:16.745Z",
-          "sessionId": "a8dde656-5b59-4e29-b272-739c614babb1",
-          "anonymousUserId": "5961b955-6381-4f10-8d59-376abf79af22",
-          "orgIdHash": null,
-          "routePattern": "/metrics",
-          "payload": {
-            "routePattern": "/metrics",
-            "page": "/metrics",
-            "referrerRoutePattern": null
-          }
-        },
-        {
-          "name": "feature_viewed",
-          "schemaVersion": "2026-05-telemetry-v1",
-          "eventId": "1532bb43-d756-4e7a-b7f9-11343f29e352",
-          "ts": "2026-05-25T18:28:16.745Z",
-          "sessionId": "a8dde656-5b59-4e29-b272-739c614babb1",
-          "anonymousUserId": "5961b955-6381-4f10-8d59-376abf79af22",
-          "orgIdHash": null,
-          "routePattern": "/metrics",
-          "payload": {
-            "feature": "metrics",
-            "surface": "metrics",
-            "routePattern": "/metrics"
-          }
-        },
-        {
-          "name": "filter_changed",
-          "schemaVersion": "2026-05-telemetry-v1",
-          "eventId": "a06813fd-1de1-46a6-978e-c9745f262ade",
-          "ts": "2026-05-25T18:28:17.863Z",
-          "sessionId": "a8dde656-5b59-4e29-b272-739c614babb1",
-          "anonymousUserId": "15892aac40258de80e4ebb0b7cf7d5b4872236293dc48ebfb7552a7ddfa0268c",
-          "orgIdHash": "173dc697e07c3b386ac7ee891b0378c7aeb0ad3df0cd5f7262eb57fb689dec6e",
-          "routePattern": "/metrics",
-          "payload": {
-            "view": "metrics",
-            "filterKey": "date",
-            "valueCount": 1,
-            "isCustomDateRange": false
-          }
+    "capturedAt": "2026-05-25T18:28:29.867Z",
+    "request": {
+        "method": "POST",
+        "path": "/api/v1/product-telemetry/events",
+        "payload": {
+            "source": "dev-health-web",
+            "orgIdHash": null,
+            "events": [
+                {
+                    "name": "session_started",
+                    "schemaVersion": "2026-05-telemetry-v1",
+                    "eventId": "4f849c20-4e6e-417b-aa0f-654008e133d7",
+                    "ts": "2026-05-25T18:28:16.745Z",
+                    "sessionId": "a8dde656-5b59-4e29-b272-739c614babb1",
+                    "anonymousUserId": "5961b955-6381-4f10-8d59-376abf79af22",
+                    "orgIdHash": null,
+                    "routePattern": "/metrics",
+                    "payload": {
+                        "entryRoutePattern": "/metrics"
+                    }
+                },
+                {
+                    "name": "page_viewed",
+                    "schemaVersion": "2026-05-telemetry-v1",
+                    "eventId": "76c59b2b-7f25-42fe-ad2d-72d3b55ecd48",
+                    "ts": "2026-05-25T18:28:16.745Z",
+                    "sessionId": "a8dde656-5b59-4e29-b272-739c614babb1",
+                    "anonymousUserId": "5961b955-6381-4f10-8d59-376abf79af22",
+                    "orgIdHash": null,
+                    "routePattern": "/metrics",
+                    "payload": {
+                        "routePattern": "/metrics",
+                        "page": "/metrics",
+                        "referrerRoutePattern": null
+                    }
+                },
+                {
+                    "name": "feature_viewed",
+                    "schemaVersion": "2026-05-telemetry-v1",
+                    "eventId": "1532bb43-d756-4e7a-b7f9-11343f29e352",
+                    "ts": "2026-05-25T18:28:16.745Z",
+                    "sessionId": "a8dde656-5b59-4e29-b272-739c614babb1",
+                    "anonymousUserId": "5961b955-6381-4f10-8d59-376abf79af22",
+                    "orgIdHash": null,
+                    "routePattern": "/metrics",
+                    "payload": {
+                        "feature": "metrics",
+                        "surface": "metrics",
+                        "routePattern": "/metrics"
+                    }
+                },
+                {
+                    "name": "filter_changed",
+                    "schemaVersion": "2026-05-telemetry-v1",
+                    "eventId": "a06813fd-1de1-46a6-978e-c9745f262ade",
+                    "ts": "2026-05-25T18:28:17.863Z",
+                    "sessionId": "a8dde656-5b59-4e29-b272-739c614babb1",
+                    "anonymousUserId": "15892aac40258de80e4ebb0b7cf7d5b4872236293dc48ebfb7552a7ddfa0268c",
+                    "orgIdHash": "173dc697e07c3b386ac7ee891b0378c7aeb0ad3df0cd5f7262eb57fb689dec6e",
+                    "routePattern": "/metrics",
+                    "payload": {
+                        "view": "metrics",
+                        "filterKey": "date",
+                        "valueCount": 1,
+                        "isCustomDateRange": false
+                    }
+                }
+            ]
         }
-      ]
+    },
+    "sanitizedCheck": {
+        "ok": true,
+        "textLength": 1625,
+        "checkedForbiddenPatterns": [
+            "/admin@/i",
+            "/devhealth\\.example/i",
+            "/Fixture Org/i",
+            "/900f96be-804c-42fb-9e93-de73c499a22d/i",
+            "/\\?[^\\\"]+/",
+            "/email/i",
+            "/userName/i",
+            "/username/i",
+            "/\"title\"\\s*:/i",
+            "/\"message\"\\s*:/i",
+            "/\"label\"\\s*:/i"
+        ]
     }
-  },
-  "sanitizedCheck": {
-    "ok": true,
-    "textLength": 1625,
-    "checkedForbiddenPatterns": [
-      "/admin@/i",
-      "/devhealth\\.example/i",
-      "/Fixture Org/i",
-      "/900f96be-804c-42fb-9e93-de73c499a22d/i",
-      "/\\?[^\\\"]+/",
-      "/email/i",
-      "/userName/i",
-      "/username/i",
-      "/\"title\"\\s*:/i",
-      "/\"message\"\\s*:/i",
-      "/\"label\"\\s*:/i"
-    ]
-  }
 }

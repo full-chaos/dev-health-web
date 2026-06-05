@@ -8,7 +8,7 @@
 
 /** Narrow to a finite `number`, rejecting null/undefined/NaN/Infinity. */
 export const isFiniteNumber = (value: number | null | undefined): value is number =>
-  typeof value === "number" && Number.isFinite(value);
+    typeof value === "number" && Number.isFinite(value);
 
 /**
  * A series is renderable when it carries at least two finite points — fewer
@@ -16,7 +16,7 @@ export const isFiniteNumber = (value: number | null | undefined): value is numbe
  * state instead.
  */
 export const hasRenderableSeries = (series: Array<{ value: number }>): boolean =>
-  series.filter((point) => isFiniteNumber(point.value)).length >= 2;
+    series.filter((point) => isFiniteNumber(point.value)).length >= 2;
 
 /**
  * Enforce the 0–100 percentage contract.

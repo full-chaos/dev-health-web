@@ -267,9 +267,9 @@ Chart-specific behaviors
 - `Core` button appears in investigation context.
 - `View Flow` deep-links into `/work?tab=flow`.
 - Flame mode selector supports:
-  - `Elapsed Time Breakdown`
-  - `Throughput Breakdown`
-  - `Code Hotspots`
+    - `Elapsed Time Breakdown`
+    - `Throughput Breakdown`
+    - `Code Hotspots`
 - Flame mode changes update `mode=` query parameter.
 
 ```mermaid
@@ -370,9 +370,9 @@ Pricing page expectations
 
 - Heading `Simple, transparent pricing`.
 - Three tiers:
-  - Community = Free
-  - Team = $49
-  - Enterprise = $129
+    - Community = Free
+    - Team = $49
+    - Enterprise = $129
 - Dynamic prices sourced from billing API.
 - Comparison table present.
 - CTA buttons navigate to `/auth/signup`.

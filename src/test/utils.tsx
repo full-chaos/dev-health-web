@@ -12,11 +12,11 @@ export { default as userEvent } from "@testing-library/user-event";
 
 /** Minimal wrapper — add providers here as the app grows */
 function Providers({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+    return <>{children}</>;
 }
 
 function customRender(ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) {
-  return render(ui, { wrapper: Providers, ...options });
+    return render(ui, { wrapper: Providers, ...options });
 }
 
 export { customRender as render };
@@ -26,11 +26,11 @@ export { customRender as render };
  * Use this instead of bare `render()` for any component that calls `toast.*`.
  */
 export function renderWithToaster(ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) {
-  return customRender(
-    <>
-      {ui}
-      <Toaster />
-    </>,
-    options,
-  );
+    return customRender(
+        <>
+            {ui}
+            <Toaster />
+        </>,
+        options,
+    );
 }

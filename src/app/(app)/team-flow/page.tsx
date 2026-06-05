@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
 
 export default async function TeamFlowAlias({
-  searchParams,
+    searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[]>>;
+    searchParams: Promise<Record<string, string | string[]>>;
 }) {
-  const params = await searchParams;
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (Array.isArray(v)) v.forEach((x) => qs.append(k, x));
-    else if (v !== undefined) qs.append(k, v);
-  }
-  const tail = qs.toString();
-  redirect(tail ? `/work?${tail}` : "/work");
+    const params = await searchParams;
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+        if (Array.isArray(v)) v.forEach((x) => qs.append(k, x));
+        else if (v !== undefined) qs.append(k, v);
+    }
+    const tail = qs.toString();
+    redirect(tail ? `/work?${tail}` : "/work");
 }

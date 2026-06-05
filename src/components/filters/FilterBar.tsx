@@ -9,46 +9,46 @@
 import { Suspense } from "react";
 import { FilterBarClient } from "./FilterBarClient";
 import {
-  type FilterBarClientProps,
-  type FilterBarView,
-  resolveScopeLock,
-  resolveVisibility,
+    type FilterBarClientProps,
+    type FilterBarView,
+    resolveScopeLock,
+    resolveVisibility,
 } from "./filterBarConfig";
 
 type FilterBarProps = {
-  condensed?: boolean;
-  view?: FilterBarView;
-  tab?: string;
+    condensed?: boolean;
+    view?: FilterBarView;
+    tab?: string;
 };
 
 export function FilterBar({ condensed, view, tab }: FilterBarProps) {
-  const baseVisibility = resolveVisibility(view, tab);
-  const resolvedVisibility = {
-    ...baseVisibility,
-    scope: false,
-    date: false,
-    repo: false,
-  };
-  const resolvedScopeLock = resolveScopeLock(view);
-  const hasPageFilters = Boolean(
-    resolvedVisibility.developer || resolvedVisibility.workType || resolvedVisibility.flowStage,
-  );
+    const baseVisibility = resolveVisibility(view, tab);
+    const resolvedVisibility = {
+        ...baseVisibility,
+        scope: false,
+        date: false,
+        repo: false,
+    };
+    const resolvedScopeLock = resolveScopeLock(view);
+    const hasPageFilters = Boolean(
+        resolvedVisibility.developer || resolvedVisibility.workType || resolvedVisibility.flowStage,
+    );
 
-  if (!hasPageFilters) {
-    return null;
-  }
+    if (!hasPageFilters) {
+        return null;
+    }
 
-  const clientProps: FilterBarClientProps = {
-    condensed,
-    view,
-    tab,
-    resolvedVisibility,
-    resolvedScopeLock,
-  };
+    const clientProps: FilterBarClientProps = {
+        condensed,
+        view,
+        tab,
+        resolvedVisibility,
+        resolvedScopeLock,
+    };
 
-  return (
-    <Suspense fallback={<div className="h-14 animate-pulse rounded-2xl bg-(--card-80)" />}>
-      <FilterBarClient {...clientProps} />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={<div className="h-14 animate-pulse rounded-2xl bg-(--card-80)" />}>
+            <FilterBarClient {...clientProps} />
+        </Suspense>
+    );
 }

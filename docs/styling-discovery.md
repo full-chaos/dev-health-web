@@ -34,18 +34,18 @@
 
 /* Light mode: subtle cool gradient anchored top-left */
 --app-gradient: radial-gradient(
-  ellipse at 10% 0%,
-  color-mix(in srgb, var(--accent) 4%, var(--background)) 0%,
-  var(--background) 60%
+    ellipse at 10% 0%,
+    color-mix(in srgb, var(--accent) 4%, var(--background)) 0%,
+    var(--background) 60%
 );
 
 /* Dark mode: very subtle glow anchored top */
 [data-theme="dark"] {
-  --app-gradient: radial-gradient(
-    ellipse at 50% -10%,
-    color-mix(in srgb, var(--accent) 6%, var(--background)) 0%,
-    var(--background) 50%
-  );
+    --app-gradient: radial-gradient(
+        ellipse at 50% -10%,
+        color-mix(in srgb, var(--accent) 6%, var(--background)) 0%,
+        var(--background) 50%
+    );
 }
 ```
 
@@ -96,23 +96,23 @@ Pattern:
 
 ```tsx
 export default function Loading() {
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Header skeleton */}
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-8 w-64" />
-      </div>
-      {/* Metric cards skeleton */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 rounded-3xl" />
-        ))}
-      </div>
-      {/* Chart skeleton */}
-      <Skeleton className="h-64 rounded-3xl" />
-    </div>
-  );
+    return (
+        <div className="flex flex-col gap-6">
+            {/* Header skeleton */}
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-8 w-64" />
+            </div>
+            {/* Metric cards skeleton */}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-32 rounded-3xl" />
+                ))}
+            </div>
+            {/* Chart skeleton */}
+            <Skeleton className="h-64 rounded-3xl" />
+        </div>
+    );
 }
 ```
 
@@ -126,17 +126,17 @@ export default function Loading() {
 
 ```tsx
 function EmptyState({ icon, title, description, action }: Props) {
-  return (
-    <div
-      className="flex flex-col items-center gap-3 rounded-3xl border border-dashed
+    return (
+        <div
+            className="flex flex-col items-center gap-3 rounded-3xl border border-dashed
                     border-(--card-stroke) bg-(--card-70) py-12 text-center"
-    >
-      <div className="rounded-full bg-(--accent)/10 p-3 text-(--accent)">{icon}</div>
-      <p className="font-(--font-display) text-lg font-semibold">{title}</p>
-      <p className="max-w-sm text-sm text-(--ink-muted)">{description}</p>
-      {action}
-    </div>
-  );
+        >
+            <div className="rounded-full bg-(--accent)/10 p-3 text-(--accent)">{icon}</div>
+            <p className="font-(--font-display) text-lg font-semibold">{title}</p>
+            <p className="max-w-sm text-sm text-(--ink-muted)">{description}</p>
+            {action}
+        </div>
+    );
 }
 ```
 
@@ -151,12 +151,12 @@ function EmptyState({ icon, title, description, action }: Props) {
 ```css
 /* Row hover */
 tr:hover td {
-  background: var(--card-70);
+    background: var(--card-70);
 }
 
 /* Optional zebra — use odd rows to avoid header conflict */
 tbody tr:nth-child(odd) {
-  background: color-mix(in srgb, var(--card) 5%, transparent);
+    background: color-mix(in srgb, var(--card) 5%, transparent);
 }
 ```
 
@@ -173,16 +173,16 @@ Keep it subtle — the current minimal style is intentional, but a hover state i
 ```css
 /* Fast — color/opacity changes */
 .transition-fast {
-  transition:
-    color 150ms,
-    background-color 150ms,
-    border-color 150ms,
-    opacity 150ms;
+    transition:
+        color 150ms,
+        background-color 150ms,
+        border-color 150ms,
+        opacity 150ms;
 }
 
 /* Standard — transforms, layout */
 .transition-standard {
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 ```
 
@@ -190,17 +190,17 @@ Add page-level entrance animation for content sections:
 
 ```css
 @keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 .animate-fade-up {
-  animation: fade-up 300ms ease-out;
+    animation: fade-up 300ms ease-out;
 }
 ```
 
@@ -234,19 +234,19 @@ The `backdrop-blur-sm` + semi-transparent background creates a frosted-glass eff
 ```css
 /* Active nav item */
 .nav-active {
-  position: relative;
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
+    position: relative;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 .nav-active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 25%;
-  height: 50%;
-  width: 3px;
-  border-radius: 9999px;
-  background: var(--accent);
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 25%;
+    height: 50%;
+    width: 3px;
+    border-radius: 9999px;
+    background: var(--accent);
 }
 ```
 
@@ -277,10 +277,10 @@ Audit and align existing uses. No visual change for most, but makes future work 
 
 ```css
 .metric-hero {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 ```
 
@@ -296,9 +296,9 @@ Use sparingly — only 1–2 hero values per page, not every metric card.
 
 ```css
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: inherit;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: inherit;
 }
 ```
 
@@ -314,22 +314,22 @@ This ensures keyboard navigation works everywhere and meets WCAG 2.1 AA (2.4.7 F
 
 ```tsx
 function ErrorCard({ title, message, action }: Props) {
-  return (
-    <div
-      className="mx-auto max-w-md rounded-3xl border border-(--accent-negative)/30
+    return (
+        <div
+            className="mx-auto max-w-md rounded-3xl border border-(--accent-negative)/30
                     bg-(--card-80) p-8 text-center"
-    >
-      <div
-        className="mx-auto mb-4 h-12 w-12 rounded-full bg-(--accent-negative)/10
+        >
+            <div
+                className="mx-auto mb-4 h-12 w-12 rounded-full bg-(--accent-negative)/10
                       flex items-center justify-center text-(--accent-negative)"
-      >
-        ⚠
-      </div>
-      <h2 className="font-(--font-display) text-xl font-semibold">{title}</h2>
-      <p className="mt-2 text-sm text-(--ink-muted)">{message}</p>
-      {action && <div className="mt-6">{action}</div>}
-    </div>
-  );
+            >
+                ⚠
+            </div>
+            <h2 className="font-(--font-display) text-xl font-semibold">{title}</h2>
+            <p className="mt-2 text-sm text-(--ink-muted)">{message}</p>
+            {action && <div className="mt-6">{action}</div>}
+        </div>
+    );
 }
 ```
 

@@ -8,193 +8,193 @@ import type { ActionResult } from "@/lib/result";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function validateId(id: string): string {
-  if (!UUID_RE.test(id)) {
-    throw new Error(ValidationErrors.InvalidAuditEntryId);
-  }
-  return id;
+    if (!UUID_RE.test(id)) {
+        throw new Error(ValidationErrors.InvalidAuditEntryId);
+    }
+    return id;
 }
 
 export type BillingAuditEntry = {
-  id: string;
-  org_id: string;
-  actor_id: string | null;
-  action: string;
-  resource_type: string;
-  resource_id: string;
-  description: string;
-  stripe_event_id: string | null;
-  local_state: Record<string, unknown> | null;
-  stripe_state: Record<string, unknown> | null;
-  reconciliation_status: string | null;
-  created_at: string;
+    id: string;
+    org_id: string;
+    actor_id: string | null;
+    action: string;
+    resource_type: string;
+    resource_id: string;
+    description: string;
+    stripe_event_id: string | null;
+    local_state: Record<string, unknown> | null;
+    stripe_state: Record<string, unknown> | null;
+    reconciliation_status: string | null;
+    created_at: string;
 };
 
 export type BillingAuditListResponse = {
-  items: BillingAuditEntry[];
-  total: number;
-  limit: number;
-  offset: number;
+    items: BillingAuditEntry[];
+    total: number;
+    limit: number;
+    offset: number;
 };
 
 export type ReconciliationReport = {
-  started_at: string;
-  completed_at: string;
-  subscriptions_checked: number;
-  invoices_checked: number;
-  refunds_checked: number;
-  mismatches: Array<{
-    resource_type: string;
-    resource_id: string;
-    stripe_id: string;
-    field: string;
-    local_value: unknown;
-    stripe_value: unknown;
-    severity: string;
-  }>;
-  missing_local: string[];
-  missing_stripe: string[];
+    started_at: string;
+    completed_at: string;
+    subscriptions_checked: number;
+    invoices_checked: number;
+    refunds_checked: number;
+    mismatches: Array<{
+        resource_type: string;
+        resource_id: string;
+        stripe_id: string;
+        field: string;
+        local_value: unknown;
+        stripe_value: unknown;
+        severity: string;
+    }>;
+    missing_local: string[];
+    missing_stripe: string[];
 };
 
 export type BillingAuditFilters = {
-  org_id?: string;
-  resource_type?: string;
-  resource_id?: string;
-  action?: string;
-  reconciliation_status?: string;
-  from_date?: string;
-  to_date?: string;
-  limit?: number;
-  offset?: number;
+    org_id?: string;
+    resource_type?: string;
+    resource_id?: string;
+    action?: string;
+    reconciliation_status?: string;
+    from_date?: string;
+    to_date?: string;
+    limit?: number;
+    offset?: number;
 };
 
 async function withAuthHeaders(): Promise<HeadersInit | null> {
-  const session = await auth();
-  if (!session?.access_token) {
-    return null;
-  }
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session.access_token}`,
-  };
+    const session = await auth();
+    if (!session?.access_token) {
+        return null;
+    }
+    return {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+    };
 }
 
 export async function getAuditLog(
-  filters: BillingAuditFilters = {},
+    filters: BillingAuditFilters = {},
 ): Promise<ActionResult<BillingAuditListResponse>> {
-  try {
-    const headers = await withAuthHeaders();
-    if (!headers) {
-      return { error: "Unauthorized" };
-    }
+    try {
+        const headers = await withAuthHeaders();
+        if (!headers) {
+            return { error: "Unauthorized" };
+        }
 
-    const session = await auth();
-    const isSuperuser = Boolean(session?.user?.is_superuser);
-    const resolvedOrgId = filters.org_id ?? (isSuperuser ? undefined : session?.user?.org_id);
-    if (!isSuperuser && !resolvedOrgId) {
-      return { error: "No organization found" };
-    }
+        const session = await auth();
+        const isSuperuser = Boolean(session?.user?.is_superuser);
+        const resolvedOrgId = filters.org_id ?? (isSuperuser ? undefined : session?.user?.org_id);
+        if (!isSuperuser && !resolvedOrgId) {
+            return { error: "No organization found" };
+        }
 
-    const params = new URLSearchParams();
-    if (resolvedOrgId) {
-      params.set("org_id", resolvedOrgId);
-    }
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "" && key !== "org_id") {
-        params.set(key, String(value));
-      }
-    });
+        const params = new URLSearchParams();
+        if (resolvedOrgId) {
+            params.set("org_id", resolvedOrgId);
+        }
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== "" && key !== "org_id") {
+                params.set(key, String(value));
+            }
+        });
 
-    const url = `${getBackendUrl()}/api/v1/billing/audit${params.size > 0 ? `?${params.toString()}` : ""}`;
-    const response = await fetch(url, { method: "GET", headers, cache: "no-store" });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({ detail: response.statusText }));
-      return { error: body.detail ?? `Failed to fetch audit log (${response.status})` };
-    }
+        const url = `${getBackendUrl()}/api/v1/billing/audit${params.size > 0 ? `?${params.toString()}` : ""}`;
+        const response = await fetch(url, { method: "GET", headers, cache: "no-store" });
+        if (!response.ok) {
+            const body = await response.json().catch(() => ({ detail: response.statusText }));
+            return { error: body.detail ?? `Failed to fetch audit log (${response.status})` };
+        }
 
-    return { data: (await response.json()) as BillingAuditListResponse };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unknown error" };
-  }
+        return { data: (await response.json()) as BillingAuditListResponse };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Unknown error" };
+    }
 }
 
 export async function getAuditEntry(id: string): Promise<ActionResult<BillingAuditEntry>> {
-  try {
-    const headers = await withAuthHeaders();
-    if (!headers) {
-      return { error: "Unauthorized" };
+    try {
+        const headers = await withAuthHeaders();
+        if (!headers) {
+            return { error: "Unauthorized" };
+        }
+        const safeId = validateId(id);
+        const response = await fetch(`${getBackendUrl()}/api/v1/billing/audit/${safeId}`, {
+            method: "GET",
+            headers,
+            cache: "no-store",
+        });
+        if (!response.ok) {
+            const body = await response.json().catch(() => ({ detail: response.statusText }));
+            return { error: body.detail ?? `Failed to fetch audit entry (${response.status})` };
+        }
+        return { data: (await response.json()) as BillingAuditEntry };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Unknown error" };
     }
-    const safeId = validateId(id);
-    const response = await fetch(`${getBackendUrl()}/api/v1/billing/audit/${safeId}`, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({ detail: response.statusText }));
-      return { error: body.detail ?? `Failed to fetch audit entry (${response.status})` };
-    }
-    return { data: (await response.json()) as BillingAuditEntry };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unknown error" };
-  }
 }
 
 export async function resolveAuditMismatch(
-  id: string,
-  resolution: string,
+    id: string,
+    resolution: string,
 ): Promise<ActionResult<BillingAuditEntry>> {
-  try {
-    const headers = await withAuthHeaders();
-    if (!headers) {
-      return { error: "Unauthorized" };
+    try {
+        const headers = await withAuthHeaders();
+        if (!headers) {
+            return { error: "Unauthorized" };
+        }
+        const safeId = validateId(id);
+        const response = await fetch(`${getBackendUrl()}/api/v1/billing/audit/${safeId}/resolve`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ resolution }),
+        });
+        if (!response.ok) {
+            const body = await response.json().catch(() => ({ detail: response.statusText }));
+            return { error: body.detail ?? `Failed to resolve mismatch (${response.status})` };
+        }
+        return { data: (await response.json()) as BillingAuditEntry };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Unknown error" };
     }
-    const safeId = validateId(id);
-    const response = await fetch(`${getBackendUrl()}/api/v1/billing/audit/${safeId}/resolve`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ resolution }),
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({ detail: response.statusText }));
-      return { error: body.detail ?? `Failed to resolve mismatch (${response.status})` };
-    }
-    return { data: (await response.json()) as BillingAuditEntry };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unknown error" };
-  }
 }
 
 export async function triggerReconciliation(
-  orgId?: string,
+    orgId?: string,
 ): Promise<ActionResult<ReconciliationReport>> {
-  try {
-    const headers = await withAuthHeaders();
-    if (!headers) {
-      return { error: "Unauthorized" };
-    }
+    try {
+        const headers = await withAuthHeaders();
+        if (!headers) {
+            return { error: "Unauthorized" };
+        }
 
-    const session = await auth();
-    const isSuperuser = Boolean(session?.user?.is_superuser);
-    const resolvedOrgId = orgId ?? session?.user?.org_id;
-    if (!isSuperuser && !resolvedOrgId) {
-      return { error: "No organization found" };
-    }
+        const session = await auth();
+        const isSuperuser = Boolean(session?.user?.is_superuser);
+        const resolvedOrgId = orgId ?? session?.user?.org_id;
+        if (!isSuperuser && !resolvedOrgId) {
+            return { error: "No organization found" };
+        }
 
-    const params = new URLSearchParams();
-    if (resolvedOrgId) {
-      params.set("org_id", resolvedOrgId);
+        const params = new URLSearchParams();
+        if (resolvedOrgId) {
+            params.set("org_id", resolvedOrgId);
+        }
+        const query = params.size > 0 ? `?${params.toString()}` : "";
+        const response = await fetch(`${getBackendUrl()}/api/v1/billing/reconcile${query}`, {
+            method: "POST",
+            headers,
+        });
+        if (!response.ok) {
+            const body = await response.json().catch(() => ({ detail: response.statusText }));
+            return { error: body.detail ?? `Failed to run reconciliation (${response.status})` };
+        }
+        return { data: (await response.json()) as ReconciliationReport };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "Unknown error" };
     }
-    const query = params.size > 0 ? `?${params.toString()}` : "";
-    const response = await fetch(`${getBackendUrl()}/api/v1/billing/reconcile${query}`, {
-      method: "POST",
-      headers,
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({ detail: response.statusText }));
-      return { error: body.detail ?? `Failed to run reconciliation (${response.status})` };
-    }
-    return { data: (await response.json()) as ReconciliationReport };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unknown error" };
-  }
 }

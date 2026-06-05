@@ -24,10 +24,10 @@ import type { AreaSignal } from "./types";
  * @param isTestMode  Render deterministic sample data without hitting the API.
  */
 export function getImproveSignals(
-	filters: MetricFilter,
-	isTestMode = false,
+    filters: MetricFilter,
+    isTestMode = false,
 ): Promise<AreaSignal[]> {
-	void filters;
-	void isTestMode;
-	return Promise.resolve([]);
+    void filters;
+    void isTestMode;
+    return Promise.resolve([]);
 }

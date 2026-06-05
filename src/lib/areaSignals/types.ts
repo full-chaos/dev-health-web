@@ -26,30 +26,30 @@ import type { ConfidenceLevel, SignalDirection, SignalSeverity } from "@/lib/typ
 export type AreaSignalState = SignalSeverity | "neutral" | "unavailable";
 
 export type AreaSignal = {
-  /** Stable id, mirrors the originating `NavAreaHubItem.id`. */
-  id: string;
-  /** Sub-area label (e.g. "Coverage", "Security"). */
-  label: string;
-  /** Destination route (already filter-decorated by AreaHub at render time). */
-  href: string;
-  /** Optional sub-group header within the area (Govern: "Quality" | "Risk"). */
-  cluster?: string;
-  /** Short metric name shown on the card (e.g. "Line coverage", "Open criticals"). */
-  metricLabel: string;
-  /**
-   * Pre-formatted headline value via `@/lib/formatters` (e.g. "83%", "2").
-   * Empty string when `state === "unavailable"`.
-   */
-  value: string;
-  /** Severity ladder, widened with "neutral" / "unavailable" (honest states). */
-  state: AreaSignalState;
-  /** Optional trend glyph direction for the metric. */
-  direction?: SignalDirection;
-  /** Optional confidence in the resolved value. */
-  confidence?: ConfidenceLevel;
-  /**
-   * R4-style low-value single surface (e.g. Feature Flags): render visually
-   * secondary within its cluster rather than at equal billing.
-   */
-  demoted?: boolean;
+    /** Stable id, mirrors the originating `NavAreaHubItem.id`. */
+    id: string;
+    /** Sub-area label (e.g. "Coverage", "Security"). */
+    label: string;
+    /** Destination route (already filter-decorated by AreaHub at render time). */
+    href: string;
+    /** Optional sub-group header within the area (Govern: "Quality" | "Risk"). */
+    cluster?: string;
+    /** Short metric name shown on the card (e.g. "Line coverage", "Open criticals"). */
+    metricLabel: string;
+    /**
+     * Pre-formatted headline value via `@/lib/formatters` (e.g. "83%", "2").
+     * Empty string when `state === "unavailable"`.
+     */
+    value: string;
+    /** Severity ladder, widened with "neutral" / "unavailable" (honest states). */
+    state: AreaSignalState;
+    /** Optional trend glyph direction for the metric. */
+    direction?: SignalDirection;
+    /** Optional confidence in the resolved value. */
+    confidence?: ConfidenceLevel;
+    /**
+     * R4-style low-value single surface (e.g. Feature Flags): render visually
+     * secondary within its cluster rather than at equal billing.
+     */
+    demoted?: boolean;
 };

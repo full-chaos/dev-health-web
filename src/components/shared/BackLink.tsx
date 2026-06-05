@@ -3,22 +3,22 @@ import Link from "next/link";
 import { CTA_LABELS, backToArea } from "@/lib/design/cta";
 
 type BackLinkBaseProps = {
-  href: string;
-  className?: string;
+    href: string;
+    className?: string;
 };
 
 type BackLinkProps = BackLinkBaseProps &
-  (
-    | {
-        /** Explicit label (must originate from the CTA registry). */ label: string;
-        area?: never;
-      }
-    | {
-        /** Named decision area → renders `Back to {area}`. */ area: string;
-        label?: never;
-      }
-    | { label?: never; area?: never }
-  );
+    (
+        | {
+              /** Explicit label (must originate from the CTA registry). */ label: string;
+              area?: never;
+          }
+        | {
+              /** Named decision area → renders `Back to {area}`. */ area: string;
+              label?: never;
+          }
+        | { label?: never; area?: never }
+    );
 
 /**
  * Return-path link primitive (framework A5).
@@ -32,17 +32,17 @@ type BackLinkProps = BackLinkBaseProps &
  * `area` to render the canonical `Back to {area}` form.
  */
 export function BackLink({ href, label, area, className }: BackLinkProps) {
-  const text = label ?? (area ? backToArea(area) : CTA_LABELS.backToCockpit);
+    const text = label ?? (area ? backToArea(area) : CTA_LABELS.backToCockpit);
 
-  return (
-    <Link
-      href={href}
-      className={`group inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition-colors hover:text-foreground ${className ?? ""}`.trim()}
-    >
-      <span aria-hidden="true" className="transition-transform group-hover:-translate-x-0.5">
-        &larr;
-      </span>
-      {text}
-    </Link>
-  );
+    return (
+        <Link
+            href={href}
+            className={`group inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition-colors hover:text-foreground ${className ?? ""}`.trim()}
+        >
+            <span aria-hidden="true" className="transition-transform group-hover:-translate-x-0.5">
+                &larr;
+            </span>
+            {text}
+        </Link>
+    );
 }

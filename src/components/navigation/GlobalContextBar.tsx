@@ -13,15 +13,15 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { GlobalContextBarClient } from "./GlobalContextBarClient";
 
 type GlobalContextBarProps = {
-  filters: MetricFilter;
-  origin?: string | null;
-  orgName?: string;
+    filters: MetricFilter;
+    origin?: string | null;
+    orgName?: string;
 };
 
 export function GlobalContextBar({ filters, origin, orgName }: GlobalContextBarProps) {
-  return (
-    <Suspense fallback={<div className="h-14 animate-pulse rounded-2xl bg-(--card-80)" />}>
-      <GlobalContextBarClient filters={filters} origin={origin} orgName={orgName} />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={<div className="h-14 animate-pulse rounded-2xl bg-(--card-80)" />}>
+            <GlobalContextBarClient filters={filters} origin={origin} orgName={orgName} />
+        </Suspense>
+    );
 }

@@ -9,28 +9,28 @@ import { Toaster } from "sonner";
 import { requireSession } from "@/lib/auth";
 
 export default async function AppLayout({
-  children,
+    children,
 }: Readonly<{
-  children: React.ReactNode;
+    children: React.ReactNode;
 }>) {
-  const session = await requireSession();
+    const session = await requireSession();
 
-  return (
-    <SessionProvider>
-      <GraphQLProvider orgId={session.user.org_id}>
-        <TelemetryProvider orgId={session.user.org_id} userId={session.user.id}>
-          <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
-            <div className="fixed right-6 top-6 z-50">
-              <UserMenu />
-            </div>
-            <ImpersonationBanner />
-            <TrialBanner />
-            {children}
-            <BugReportButton />
-            <Toaster richColors position="top-right" theme="dark" />
-          </div>
-        </TelemetryProvider>
-      </GraphQLProvider>
-    </SessionProvider>
-  );
+    return (
+        <SessionProvider>
+            <GraphQLProvider orgId={session.user.org_id}>
+                <TelemetryProvider orgId={session.user.org_id} userId={session.user.id}>
+                    <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
+                        <div className="fixed right-6 top-6 z-50">
+                            <UserMenu />
+                        </div>
+                        <ImpersonationBanner />
+                        <TrialBanner />
+                        {children}
+                        <BugReportButton />
+                        <Toaster richColors position="top-right" theme="dark" />
+                    </div>
+                </TelemetryProvider>
+            </GraphQLProvider>
+        </SessionProvider>
+    );
 }

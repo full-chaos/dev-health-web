@@ -13,200 +13,189 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentMixAggregate } from "@/lib/investmentMix";
 
 type LandscapeViewProps = {
-	filters: MetricFilter;
-	activeRole?: string;
-	deltas: MetricDelta[];
-	placeholderDeltas: boolean;
-	investmentMix: InvestmentMixAggregate | null;
-	cycleThroughput: QuadrantResponse | null;
-	wipThroughput: QuadrantResponse | null;
-	reviewLoadLatency: QuadrantResponse | null;
-	planned: { value: number } | null;
-	unplanned: { value: number } | null;
-	plannedPct: number | null;
-	unplannedPct: number | null;
+    filters: MetricFilter;
+    activeRole?: string;
+    deltas: MetricDelta[];
+    placeholderDeltas: boolean;
+    investmentMix: InvestmentMixAggregate | null;
+    cycleThroughput: QuadrantResponse | null;
+    wipThroughput: QuadrantResponse | null;
+    reviewLoadLatency: QuadrantResponse | null;
+    planned: { value: number } | null;
+    unplanned: { value: number } | null;
+    plannedPct: number | null;
+    unplannedPct: number | null;
 };
 
 export function LandscapeView({
-	filters,
-	activeRole,
-	deltas,
-	placeholderDeltas,
-	investmentMix,
-	cycleThroughput,
-	wipThroughput,
-	reviewLoadLatency,
-	planned,
-	unplanned,
-	plannedPct,
-	unplannedPct,
+    filters,
+    activeRole,
+    deltas,
+    placeholderDeltas,
+    investmentMix,
+    cycleThroughput,
+    wipThroughput,
+    reviewLoadLatency,
+    planned,
+    unplanned,
+    plannedPct,
+    unplannedPct,
 }: LandscapeViewProps) {
-	const getMetric = (metric: string) =>
-		deltas.find((item) => item.metric === metric);
+    const getMetric = (metric: string) => deltas.find((item) => item.metric === metric);
 
-	const wipMetric = getMetric("wip_saturation");
+    const wipMetric = getMetric("wip_saturation");
 
-	return (
-		<div className="flex flex-col gap-8">
-			<section className="grid gap-4 lg:grid-cols-3">
-				<MetricCard
-					label={wipMetric?.label ?? "WIP"}
-					href={buildExploreUrl({
-						metric: "wip_saturation",
-						filters,
-						role: activeRole,
-					})}
-					value={placeholderDeltas ? undefined : wipMetric?.value}
-					unit={wipMetric?.unit}
-					delta={placeholderDeltas ? undefined : wipMetric?.delta_pct}
-					spark={wipMetric?.spark}
-					caption="WIP saturation"
-				/>
-				<MetricCard
-					label={getMetric("blocked_work")?.label ?? "Blocked"}
-					href={buildExploreUrl({
-						metric: "blocked_work",
-						filters,
-						role: activeRole,
-					})}
-					value={
-						placeholderDeltas ? undefined : getMetric("blocked_work")?.value
-					}
-					unit={getMetric("blocked_work")?.unit}
-					delta={
-						placeholderDeltas ? undefined : getMetric("blocked_work")?.delta_pct
-					}
-					spark={getMetric("blocked_work")?.spark}
-					caption="Blocked work"
-				/>
-				<MetricCard
-					label={getMetric("throughput")?.label ?? "Throughput"}
-					href={buildExploreUrl({
-						metric: "throughput",
-						filters,
-						role: activeRole,
-					})}
-					value={placeholderDeltas ? undefined : getMetric("throughput")?.value}
-					unit={getMetric("throughput")?.unit}
-					delta={
-						placeholderDeltas ? undefined : getMetric("throughput")?.delta_pct
-					}
-					spark={getMetric("throughput")?.spark}
-					caption="Delivery volume"
-				/>
-			</section>
+    return (
+        <div className="flex flex-col gap-8">
+            <section className="grid gap-4 lg:grid-cols-3">
+                <MetricCard
+                    label={wipMetric?.label ?? "WIP"}
+                    href={buildExploreUrl({
+                        metric: "wip_saturation",
+                        filters,
+                        role: activeRole,
+                    })}
+                    value={placeholderDeltas ? undefined : wipMetric?.value}
+                    unit={wipMetric?.unit}
+                    delta={placeholderDeltas ? undefined : wipMetric?.delta_pct}
+                    spark={wipMetric?.spark}
+                    caption="WIP saturation"
+                />
+                <MetricCard
+                    label={getMetric("blocked_work")?.label ?? "Blocked"}
+                    href={buildExploreUrl({
+                        metric: "blocked_work",
+                        filters,
+                        role: activeRole,
+                    })}
+                    value={placeholderDeltas ? undefined : getMetric("blocked_work")?.value}
+                    unit={getMetric("blocked_work")?.unit}
+                    delta={placeholderDeltas ? undefined : getMetric("blocked_work")?.delta_pct}
+                    spark={getMetric("blocked_work")?.spark}
+                    caption="Blocked work"
+                />
+                <MetricCard
+                    label={getMetric("throughput")?.label ?? "Throughput"}
+                    href={buildExploreUrl({
+                        metric: "throughput",
+                        filters,
+                        role: activeRole,
+                    })}
+                    value={placeholderDeltas ? undefined : getMetric("throughput")?.value}
+                    unit={getMetric("throughput")?.unit}
+                    delta={placeholderDeltas ? undefined : getMetric("throughput")?.delta_pct}
+                    spark={getMetric("throughput")?.spark}
+                    caption="Delivery volume"
+                />
+            </section>
 
-			<section className="flex flex-col gap-6">
-				<QuadrantPanel
-					title="Elapsed Time × Throughput"
-					description="Operating modes under time in flight and delivery pace."
-					data={cycleThroughput}
-					filters={filters}
-					emptyState="Quadrant data unavailable for this scope."
-				/>
-				<QuadrantPanel
-					title="WIP × Throughput"
-					description="Operating modes under work in flight and delivery pace."
-					data={wipThroughput}
-					filters={filters}
-					emptyState="Quadrant data unavailable for this scope."
-				/>
-				<QuadrantPanel
-					title="Review Load × Review Latency"
-					description="Operating modes under review demand and turnaround."
-					data={reviewLoadLatency}
-					filters={filters}
-					emptyState="Quadrant data unavailable for this scope."
-				/>
-			</section>
+            <section className="flex flex-col gap-6">
+                <QuadrantPanel
+                    title="Elapsed Time × Throughput"
+                    description="Operating modes under time in flight and delivery pace."
+                    data={cycleThroughput}
+                    filters={filters}
+                    emptyState="Quadrant data unavailable for this scope."
+                />
+                <QuadrantPanel
+                    title="WIP × Throughput"
+                    description="Operating modes under work in flight and delivery pace."
+                    data={wipThroughput}
+                    filters={filters}
+                    emptyState="Quadrant data unavailable for this scope."
+                />
+                <QuadrantPanel
+                    title="Review Load × Review Latency"
+                    description="Operating modes under review demand and turnaround."
+                    data={reviewLoadLatency}
+                    filters={filters}
+                    emptyState="Quadrant data unavailable for this scope."
+                />
+            </section>
 
-			<section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-				<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-					<div className="flex flex-wrap items-center justify-between gap-2">
-						<h2 className="font-(--font-display) text-xl">Investment Mix</h2>
-						<div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-							<Link
-								href={withFilterParam("/work?tab=flow", filters, activeRole)}
-							>
-								{CTA_LABELS.openMetrics}
-							</Link>
-							<Link
-								href={buildExploreUrl({
-									metric: "throughput",
-									filters,
-									role: activeRole,
-								})}
-							>
-								{CTA_LABELS.inspectAssociations}
-							</Link>
-						</div>
-					</div>
-					<div className="mt-4">
-						{investmentMix &&
-						Object.keys(investmentMix.theme_distribution ?? {}).length ? (
-							<InvestmentChart
-								themeDistribution={investmentMix.theme_distribution}
-								subcategoryDistribution={investmentMix.subcategory_distribution}
-								evidenceQualityDistribution={
-									investmentMix.evidence_quality_distribution
-								}
-								unit={investmentMix.unit ?? "units"}
-							/>
-						) : (
-							<div className="flex min-h-72 items-center justify-center rounded-3xl border border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
-								Investment data unavailable.
-							</div>
-						)}
-					</div>
-				</div>
+            <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h2 className="font-(--font-display) text-xl">Investment Mix</h2>
+                        <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
+                            <Link href={withFilterParam("/work?tab=flow", filters, activeRole)}>
+                                {CTA_LABELS.openMetrics}
+                            </Link>
+                            <Link
+                                href={buildExploreUrl({
+                                    metric: "throughput",
+                                    filters,
+                                    role: activeRole,
+                                })}
+                            >
+                                {CTA_LABELS.inspectAssociations}
+                            </Link>
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        {investmentMix &&
+                        Object.keys(investmentMix.theme_distribution ?? {}).length ? (
+                            <InvestmentChart
+                                themeDistribution={investmentMix.theme_distribution}
+                                subcategoryDistribution={investmentMix.subcategory_distribution}
+                                evidenceQualityDistribution={
+                                    investmentMix.evidence_quality_distribution
+                                }
+                                unit={investmentMix.unit ?? "units"}
+                            />
+                        ) : (
+                            <div className="flex min-h-72 items-center justify-center rounded-3xl border border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                                Investment data unavailable.
+                            </div>
+                        )}
+                    </div>
+                </div>
 
-				<div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
-					<div className="flex items-center justify-between">
-						<h2 className="font-(--font-display) text-xl">
-							Planned vs Unplanned
-						</h2>
-						<Link
-							href={withFilterParam("/work?tab=flow", filters, activeRole)}
-							className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-						>
-							{CTA_LABELS.openMetrics}
-						</Link>
-					</div>
-					{planned && unplanned ? (
-						<div className="mt-4 space-y-4">
-							<div className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3">
-								<p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-									Planned
-								</p>
-								<p className="mt-2 text-2xl font-semibold">
-									{formatPercent((plannedPct ?? 0) * 100)}
-								</p>
-								<p className="mt-2 text-xs text-(--ink-muted)">
-									{formatNumber(planned.value)} units
-								</p>
-							</div>
-							<div className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3">
-								<p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-									Unplanned
-								</p>
-								<p className="mt-2 text-2xl font-semibold">
-									{formatPercent((unplannedPct ?? 0) * 100)}
-								</p>
-								<p className="mt-2 text-xs text-(--ink-muted)">
-									{formatNumber(unplanned.value)} units
-								</p>
-							</div>
-						</div>
-					) : (
-						<DataState
-							variant="insufficient-confidence"
-							title="Planned mix unavailable"
-							description="Planned and unplanned work appears when work categories are tagged for the selected window."
-							className="mt-4"
-						/>
-					)}
-				</div>
-			</section>
-		</div>
-	);
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">Planned vs Unplanned</h2>
+                        <Link
+                            href={withFilterParam("/work?tab=flow", filters, activeRole)}
+                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                        >
+                            {CTA_LABELS.openMetrics}
+                        </Link>
+                    </div>
+                    {planned && unplanned ? (
+                        <div className="mt-4 space-y-4">
+                            <div className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3">
+                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                    Planned
+                                </p>
+                                <p className="mt-2 text-2xl font-semibold">
+                                    {formatPercent((plannedPct ?? 0) * 100)}
+                                </p>
+                                <p className="mt-2 text-xs text-(--ink-muted)">
+                                    {formatNumber(planned.value)} units
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3">
+                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                    Unplanned
+                                </p>
+                                <p className="mt-2 text-2xl font-semibold">
+                                    {formatPercent((unplannedPct ?? 0) * 100)}
+                                </p>
+                                <p className="mt-2 text-xs text-(--ink-muted)">
+                                    {formatNumber(unplanned.value)} units
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <DataState
+                            variant="insufficient-confidence"
+                            title="Planned mix unavailable"
+                            description="Planned and unplanned work appears when work categories are tagged for the selected window."
+                            className="mt-4"
+                        />
+                    )}
+                </div>
+            </section>
+        </div>
+    );
 }

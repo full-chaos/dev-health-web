@@ -11,9 +11,9 @@
  * titleCase("my key")      // "My Key"
  */
 export const titleCase = (value: string): string =>
-  value
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+    value
+        .replace(/[_-]+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
