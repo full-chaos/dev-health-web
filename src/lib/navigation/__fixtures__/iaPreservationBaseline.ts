@@ -243,6 +243,16 @@ export const iaPreservationBaseline = {
             intent: "open metrics (flow)",
             href: "/metrics?tab=flow",
             expectedPath: "/metrics",
+            expectedTab: "flow",
         },
+    ],
+    // Legacy alias routes: reachable redirect-only pages that preserve the query and
+    // forward to a real destination. Guarded so a future cleanup cannot delete a
+    // reachable alias (the #609/#610 failure mode) unnoticed. Invariant #7 cross-checks
+    // this list against an INDEPENDENT filesystem scan of redirect-only route files.
+    legacyAliasRoutes: [
+        { route: "/team-flow", redirectsTo: "/work" },
+        { route: "/capacity-planning", redirectsTo: "/plan/delivery-forecast" },
+        { route: "/explore/landscape", redirectsTo: "/landscape" },
     ],
 } as const;
