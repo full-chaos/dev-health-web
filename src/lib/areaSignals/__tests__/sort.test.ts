@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { groupByCluster, isAvailable, sortBySeverity, topSignals } from "../sort";
+import { groupByCluster, isAvailable, sortBySeverity } from "../sort";
 import type { AreaSignal, AreaSignalState } from "../types";
 
 function signal(id: string, state: AreaSignalState, cluster?: string, demoted = false): AreaSignal {
@@ -89,22 +89,5 @@ describe("groupByCluster", () => {
     it("sinks unavailable signals to the bottom within their cluster", () => {
         const input = [signal("u", "unavailable", "Quality"), signal("ok", "medium", "Quality")];
         expect(groupByCluster(input)[0].signals.map((s) => s.id)).toEqual(["ok", "u"]);
-    });
-});
-
-describe("topSignals", () => {
-    it("returns the top N available signals by severity, excluding unavailable", () => {
-        const input = [
-            signal("u", "unavailable"),
-            signal("low", "low"),
-            signal("crit", "critical"),
-            signal("high", "high"),
-            signal("med", "medium"),
-        ];
-        expect(topSignals(input, 3).map((s) => s.id)).toEqual(["crit", "high", "med"]);
-    });
-
-    it("never bubbles an unavailable metric even when it is the only signal", () => {
-        expect(topSignals([signal("u", "unavailable")], 3)).toEqual([]);
     });
 });

@@ -118,7 +118,7 @@ export function LandscapeView({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <h2 className="font-(--font-display) text-xl">Investment Mix</h2>
                         <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-                            <Link href={withFilterParam("/work?tab=flow", filters, activeRole)}>
+                            <Link href={withFilterParam("/metrics?tab=flow", filters, activeRole)}>
                                 {CTA_LABELS.openMetrics}
                             </Link>
                             <Link
@@ -155,7 +155,7 @@ export function LandscapeView({
                     <div className="flex items-center justify-between">
                         <h2 className="font-(--font-display) text-xl">Planned vs Unplanned</h2>
                         <Link
-                            href={withFilterParam("/work?tab=flow", filters, activeRole)}
+                            href={withFilterParam("/metrics?tab=flow", filters, activeRole)}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
                             {CTA_LABELS.openMetrics}
