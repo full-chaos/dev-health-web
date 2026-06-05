@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <quality|build|unit|integration|e2e|live-e2e|design-lint|ci>" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|integration|e2e|live-e2e|design-lint|ci>" >&2
 }
 
 if [[ $# -ne 1 ]]; then
@@ -88,6 +88,10 @@ run_unit() {
   run_pnpm_script test:unit
 }
 
+run_format() {
+  run_pnpm_script format:check:changed
+}
+
 run_quality() {
   echo "==> pnpm audit --audit-level=high --prod"
   pnpm audit --audit-level=high --prod
@@ -126,6 +130,9 @@ run_live_e2e() {
 }
 
 case "${tier}" in
+  format)
+    run_format
+    ;;
   quality)
     run_quality
     ;;
@@ -149,6 +156,7 @@ case "${tier}" in
     ;;
   ci)
     export CI=true
+    run_format
     run_quality
     run_build
     run_unit
