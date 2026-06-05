@@ -9,47 +9,41 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
 type AIImpactPageProps = {
-	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function AIImpactPage({
-	searchParams,
-}: AIImpactPageProps) {
-	const params = (await searchParams) ?? {};
-	const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-	const filters = encodedFilter
-		? decodeFilter(encodedFilter)
-		: filterFromQueryParams(params);
-	const aiFilter = metricFilterToAIFilter(filters);
-	const health = await checkApiHealth();
+export default async function AIImpactPage({ searchParams }: AIImpactPageProps) {
+    const params = (await searchParams) ?? {};
+    const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const aiFilter = metricFilterToAIFilter(filters);
+    const health = await checkApiHealth();
 
-	if (!health.ok) {
-		return <ServiceUnavailable />;
-	}
+    if (!health.ok) {
+        return <ServiceUnavailable />;
+    }
 
-	return (
-		<>
-			<AIPageHeader
-				eyebrow="AI"
-				title="Impact"
-				breadcrumbs={[
-					...navTrailForPathname("/ai/impact").map((c) => ({
-						...c,
-						href: c.href ?? "/ai",
-					})),
-					{ label: "Impact" },
-				]}
-			>
-				Org-wide view of how AI-assisted workflows appear to influence delivery,
-				review load, quality gaps, and operational drag.
-			</AIPageHeader>
+    return (
+        <>
+            <AIPageHeader
+                eyebrow="AI"
+                title="Impact"
+                breadcrumbs={[
+                    ...navTrailForPathname("/ai/impact").map((c) => ({
+                        ...c,
+                        href: c.href ?? "/ai",
+                    })),
+                    { label: "Impact" },
+                ]}
+            >
+                Org-wide view of how AI-assisted workflows appear to influence delivery, review
+                load, quality gaps, and operational drag.
+            </AIPageHeader>
 
-			<GlobalContextBar filters={filters} />
-			<FilterBar view="ai" />
-			<AIImpactDashboard filter={aiFilter} />
-			<p className="sr-only">
-				Encoded AI filter: {encodeAIFilterParam(aiFilter)}
-			</p>
-		</>
-	);
+            <GlobalContextBar filters={filters} />
+            <FilterBar view="ai" />
+            <AIImpactDashboard filter={aiFilter} />
+            <p className="sr-only">Encoded AI filter: {encodeAIFilterParam(aiFilter)}</p>
+        </>
+    );
 }

@@ -11,75 +11,75 @@ import { echarts } from "@/lib/echartsInit";
 echarts.use([LineChart]);
 
 type SparklineChartProps = {
-  data: number[];
-  categories?: Array<string | number>;
-  height?: number | string;
-  width?: number | string;
-  className?: string;
-  style?: CSSProperties;
+    data: number[];
+    categories?: Array<string | number>;
+    height?: number | string;
+    width?: number | string;
+    className?: string;
+    style?: CSSProperties;
 };
 
 export function SparklineChart({
-  data,
-  categories,
-  height = 120,
-  width = "100%",
-  className,
-  style,
+    data,
+    categories,
+    height = 120,
+    width = "100%",
+    className,
+    style,
 }: SparklineChartProps) {
-  const chartTheme = useChartTheme();
-  const xCategories = categories ?? data.map((_, index) => index + 1);
+    const chartTheme = useChartTheme();
+    const xCategories = categories ?? data.map((_, index) => index + 1);
 
-  const mergedStyle: CSSProperties = {
-    height,
-    width,
-    ...style,
-  };
+    const mergedStyle: CSSProperties = {
+        height,
+        width,
+        ...style,
+    };
 
-  return (
-    <Chart
-      option={{
-        tooltip: {
-          trigger: "axis",
-          confine: true,
-          backgroundColor: chartTheme.background,
-          borderColor: chartTheme.stroke,
-          textStyle: {
-            color: chartTheme.text,
-          },
-          axisPointer: { type: "line" },
-        },
-        grid: { left: 8, right: 8, top: 10, bottom: 10 },
-        xAxis: {
-          type: "category",
-          data: xCategories,
-          boundaryGap: false,
-          axisLabel: { show: false },
-          axisLine: { show: false },
-          axisTick: { show: false },
-        },
-        yAxis: {
-          type: "value",
-          axisLabel: { show: false },
-          splitLine: { show: false },
-        },
-        series: [
-          {
-            type: "line",
-            data,
-            smooth: true,
-            symbol: "circle",
-            symbolSize: 6,
-            lineStyle: { width: 2 },
-            areaStyle: { opacity: 0.15 },
-            emphasis: { scale: true },
-            itemStyle: { color: chartTheme.muted },
-          },
-        ],
-      }}
-      className={className}
-      style={mergedStyle}
-      chartTheme={chartTheme}
-    />
-  );
+    return (
+        <Chart
+            option={{
+                tooltip: {
+                    trigger: "axis",
+                    confine: true,
+                    backgroundColor: chartTheme.background,
+                    borderColor: chartTheme.stroke,
+                    textStyle: {
+                        color: chartTheme.text,
+                    },
+                    axisPointer: { type: "line" },
+                },
+                grid: { left: 8, right: 8, top: 10, bottom: 10 },
+                xAxis: {
+                    type: "category",
+                    data: xCategories,
+                    boundaryGap: false,
+                    axisLabel: { show: false },
+                    axisLine: { show: false },
+                    axisTick: { show: false },
+                },
+                yAxis: {
+                    type: "value",
+                    axisLabel: { show: false },
+                    splitLine: { show: false },
+                },
+                series: [
+                    {
+                        type: "line",
+                        data,
+                        smooth: true,
+                        symbol: "circle",
+                        symbolSize: 6,
+                        lineStyle: { width: 2 },
+                        areaStyle: { opacity: 0.15 },
+                        emphasis: { scale: true },
+                        itemStyle: { color: chartTheme.muted },
+                    },
+                ],
+            }}
+            className={className}
+            style={mergedStyle}
+            chartTheme={chartTheme}
+        />
+    );
 }

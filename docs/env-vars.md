@@ -67,11 +67,11 @@ The file is served as a static asset and sets `window.__DEV_HEALTH_RUNTIME__`:
 
 ```js
 window.__DEV_HEALTH_RUNTIME__ = {
-  publicEnv: {
-    NEXT_PUBLIC_SENTRY_DSN: "...",
-    NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: "true",
-    // ...
-  },
+    publicEnv: {
+        NEXT_PUBLIC_SENTRY_DSN: "...",
+        NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS: "true",
+        // ...
+    },
 };
 ```
 
@@ -85,6 +85,6 @@ window.__DEV_HEALTH_RUNTIME__ = {
 
 The application uses the following local storage keys for client-side preferences and state:
 
-| Key | Type | Description |
-|-----|------|-------------|
+| Key                                   | Type    | Description                                      |
+| ------------------------------------- | ------- | ------------------------------------------------ |
 | `devhealth-product-telemetry-opt-out` | boolean | Set to `"true"` to opt out of product telemetry. |

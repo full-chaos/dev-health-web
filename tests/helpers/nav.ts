@@ -7,9 +7,9 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * leaving the URL unchanged — especially on the chart-heavy dashboard under CI load.
  */
 export async function waitForHydration(page: Page, timeout = 15000) {
-  await page.waitForFunction(() => new URL(window.location.href).searchParams.get("f"), {
-    timeout,
-  });
+    await page.waitForFunction(() => new URL(window.location.href).searchParams.get("f"), {
+        timeout,
+    });
 }
 
 /**
@@ -19,15 +19,15 @@ export async function waitForHydration(page: Page, timeout = 15000) {
  * whole click+assert is the robust fix for these lost clicks.
  */
 export async function clickUntilUrl(
-  page: Page,
-  locator: Locator,
-  urlPattern: RegExp,
-  timeout = 30000,
+    page: Page,
+    locator: Locator,
+    urlPattern: RegExp,
+    timeout = 30000,
 ) {
-  await expect(async () => {
-    await locator.click();
-    await expect(page).toHaveURL(urlPattern, { timeout: 3000 });
-  }).toPass({ timeout, intervals: [300, 700, 1500] });
+    await expect(async () => {
+        await locator.click();
+        await expect(page).toHaveURL(urlPattern, { timeout: 3000 });
+    }).toPass({ timeout, intervals: [300, 700, 1500] });
 }
 
 /**
@@ -35,8 +35,8 @@ export async function clickUntilUrl(
  * destination is identified by its rendered <h1> rather than a URL change.
  */
 export async function clickUntilHeading(page: Page, locator: Locator, heading: Locator) {
-  await expect(async () => {
-    await locator.click();
-    await expect(heading).toBeVisible({ timeout: 3000 });
-  }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
+    await expect(async () => {
+        await locator.click();
+        await expect(heading).toBeVisible({ timeout: 3000 });
+    }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
 }

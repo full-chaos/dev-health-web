@@ -30,40 +30,40 @@
 #   git push --no-verify
 
 commit-msg:
-  commands:
-    strip-agent-attribution:
-      # AGENTS.md rule: "Never add contribution attribution for agents in
-      # commits." Sisyphus / oh-my-openagent / Claude Code inject trailers
-      # despite the rule; this hook removes them before the commit lands.
-      run: node scripts/strip-agent-attribution.mjs {1}
+    commands:
+        strip-agent-attribution:
+            # AGENTS.md rule: "Never add contribution attribution for agents in
+            # commits." Sisyphus / oh-my-openagent / Claude Code inject trailers
+            # despite the rule; this hook removes them before the commit lands.
+            run: node scripts/strip-agent-attribution.mjs {1}
 
 pre-commit:
-  parallel: true
-  commands:
-    prettier-write:
-      glob: "*.{ts,tsx,js,mjs,cjs,jsx,json,md,css,yaml,yml}"
-      run: pnpm exec prettier --write {staged_files}
-      stage_fixed: true
-    eslint-fix:
-      glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
-      run: pnpm exec eslint --fix {staged_files}
-      stage_fixed: true
-    design-lint:
-      glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
-      run: pnpm design-lint || true
+    parallel: true
+    commands:
+        prettier-write:
+            glob: "*.{ts,tsx,js,mjs,cjs,jsx,json,md,css,yaml,yml}"
+            run: pnpm exec prettier --write {staged_files}
+            stage_fixed: true
+        eslint-fix:
+            glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+            run: pnpm exec eslint --fix {staged_files}
+            stage_fixed: true
+        design-lint:
+            glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+            run: pnpm design-lint || true
 
 pre-push:
-  parallel: true
-  commands:
-    prettier-check:
-      glob: "*.{ts,tsx,js,mjs,cjs,jsx,json,md,css,yaml,yml}"
-      run: pnpm exec prettier --check {push_files}
-      fail_text: "Run `pnpm format` locally, commit the result, push again. Or `git push --no-verify` to bypass."
-    eslint-check:
-      glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
-      run: pnpm exec eslint {push_files}
-      fail_text: "Run `pnpm lint --fix` locally, commit the result, push again. Or `git push --no-verify` to bypass."
-    design-lint:
-      glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
-      run: pnpm design-lint || true
-      fail_text: "Design lint is advisory until existing violations are triaged. Run `pnpm design-lint` locally for details."
+    parallel: true
+    commands:
+        prettier-check:
+            glob: "*.{ts,tsx,js,mjs,cjs,jsx,json,md,css,yaml,yml}"
+            run: pnpm exec prettier --check {push_files}
+            fail_text: "Run `pnpm format` locally, commit the result, push again. Or `git push --no-verify` to bypass."
+        eslint-check:
+            glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+            run: pnpm exec eslint {push_files}
+            fail_text: "Run `pnpm lint --fix` locally, commit the result, push again. Or `git push --no-verify` to bypass."
+        design-lint:
+            glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
+            run: pnpm design-lint || true
+            fail_text: "Design lint is advisory until existing violations are triaged. Run `pnpm design-lint` locally for details."

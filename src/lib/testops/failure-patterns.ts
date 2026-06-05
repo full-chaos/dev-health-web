@@ -31,16 +31,16 @@ const MISSING_KEY_TOKENS = new Set(["", "none", "null", "undefined", "n/a", "na"
 
 /** True when a breakdown key carries no real grouping information. */
 export function isMissingKey(key: string | null | undefined): boolean {
-  if (key == null) return true;
-  return MISSING_KEY_TOKENS.has(key.trim().toLowerCase());
+    if (key == null) return true;
+    return MISSING_KEY_TOKENS.has(key.trim().toLowerCase());
 }
 
 export type FailurePatternsModel = {
-  heatmap: HeatmapResponse;
-  /** True when the dimension genuinely has no failure data for the window/scope. */
-  isEmpty: boolean;
-  /** True when at least one failure value was bucketed as Unattributed. */
-  hasUnattributed: boolean;
+    heatmap: HeatmapResponse;
+    /** True when the dimension genuinely has no failure data for the window/scope. */
+    isEmpty: boolean;
+    /** True when at least one failure value was bucketed as Unattributed. */
+    hasUnattributed: boolean;
 };
 
 /**
@@ -50,59 +50,59 @@ export type FailurePatternsModel = {
  * {@link UNATTRIBUTED_LABEL} bucket (rendered last) rather than a silent "None".
  */
 export function buildFailurePatternsModel(
-  breakdown: BreakdownResult | undefined,
-  unit = "%",
+    breakdown: BreakdownResult | undefined,
+    unit = "%",
 ): FailurePatternsModel {
-  const items = breakdown?.items ?? [];
+    const items = breakdown?.items ?? [];
 
-  if (items.length === 0) {
-    return {
-      heatmap: {
-        axes: { x: [], y: [FAILURE_ROW_LABEL] },
-        cells: [],
-        legend: { unit, scale: "linear" },
-      },
-      isEmpty: true,
-      hasUnattributed: false,
-    };
-  }
-
-  // Aggregate values per normalized key so that multiple missing keys collapse
-  // into one Unattributed bucket and duplicate real keys are summed.
-  const attributed = new Map<string, number>();
-  let unattributed = 0;
-  let hasUnattributed = false;
-
-  for (const item of items) {
-    const value = Number.isFinite(item.value) ? item.value : 0;
-    if (isMissingKey(item.key)) {
-      unattributed += value;
-      hasUnattributed = true;
-      continue;
+    if (items.length === 0) {
+        return {
+            heatmap: {
+                axes: { x: [], y: [FAILURE_ROW_LABEL] },
+                cells: [],
+                legend: { unit, scale: "linear" },
+            },
+            isEmpty: true,
+            hasUnattributed: false,
+        };
     }
-    attributed.set(item.key, (attributed.get(item.key) ?? 0) + value);
-  }
 
-  // Preserve the original ordering of real keys; append Unattributed last.
-  const orderedKeys = [...attributed.keys()];
-  if (hasUnattributed) {
-    orderedKeys.push(UNATTRIBUTED_LABEL);
-    attributed.set(UNATTRIBUTED_LABEL, unattributed);
-  }
+    // Aggregate values per normalized key so that multiple missing keys collapse
+    // into one Unattributed bucket and duplicate real keys are summed.
+    const attributed = new Map<string, number>();
+    let unattributed = 0;
+    let hasUnattributed = false;
 
-  const cells = orderedKeys.map((key) => ({
-    x: key,
-    y: FAILURE_ROW_LABEL,
-    value: attributed.get(key) ?? 0,
-  }));
+    for (const item of items) {
+        const value = Number.isFinite(item.value) ? item.value : 0;
+        if (isMissingKey(item.key)) {
+            unattributed += value;
+            hasUnattributed = true;
+            continue;
+        }
+        attributed.set(item.key, (attributed.get(item.key) ?? 0) + value);
+    }
 
-  return {
-    heatmap: {
-      axes: { x: orderedKeys, y: [FAILURE_ROW_LABEL] },
-      cells,
-      legend: { unit, scale: "linear" },
-    },
-    isEmpty: cells.length === 0,
-    hasUnattributed,
-  };
+    // Preserve the original ordering of real keys; append Unattributed last.
+    const orderedKeys = [...attributed.keys()];
+    if (hasUnattributed) {
+        orderedKeys.push(UNATTRIBUTED_LABEL);
+        attributed.set(UNATTRIBUTED_LABEL, unattributed);
+    }
+
+    const cells = orderedKeys.map((key) => ({
+        x: key,
+        y: FAILURE_ROW_LABEL,
+        value: attributed.get(key) ?? 0,
+    }));
+
+    return {
+        heatmap: {
+            axes: { x: orderedKeys, y: [FAILURE_ROW_LABEL] },
+            cells,
+            legend: { unit, scale: "linear" },
+        },
+        isEmpty: cells.length === 0,
+        hasUnattributed,
+    };
 }

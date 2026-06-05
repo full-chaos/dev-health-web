@@ -13,10 +13,10 @@
 import { logger } from "@/lib/logger";
 
 export async function fetchOrNull<T>(promise: Promise<T>, label: string): Promise<T | null> {
-  try {
-    return await promise;
-  } catch (err: unknown) {
-    logger.warn({ err, label }, `fetchOrNull: ${label} failed, returning null`);
-    return null;
-  }
+    try {
+        return await promise;
+    } catch (err: unknown) {
+        logger.warn({ err, label }, `fetchOrNull: ${label} failed, returning null`);
+        return null;
+    }
 }

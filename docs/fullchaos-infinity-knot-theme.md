@@ -31,32 +31,32 @@ Keep typography clean and structured so the palette carries the drama instead of
 
 ```css
 :root {
-  --fullchaos-charcoal-core: #101722;
-  --fullchaos-signal-orange: #f89d28;
-  --fullchaos-ember-edge: #f05a1a;
-  --fullchaos-electric-cyan: #14bdd6;
-  --fullchaos-steel-mist: #6f7d8d;
-  --fullchaos-porcelain-white: #f7f5f2;
+    --fullchaos-charcoal-core: #101722;
+    --fullchaos-signal-orange: #f89d28;
+    --fullchaos-ember-edge: #f05a1a;
+    --fullchaos-electric-cyan: #14bdd6;
+    --fullchaos-steel-mist: #6f7d8d;
+    --fullchaos-porcelain-white: #f7f5f2;
 }
 
 body {
-  background: var(--fullchaos-charcoal-core);
-  color: #f5f7fb;
+    background: var(--fullchaos-charcoal-core);
+    color: #f5f7fb;
 }
 
 .metric-hero {
-  background: linear-gradient(
-    120deg,
-    var(--fullchaos-signal-orange),
-    var(--fullchaos-ember-edge) 45%,
-    var(--fullchaos-electric-cyan)
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+    background: linear-gradient(
+        120deg,
+        var(--fullchaos-signal-orange),
+        var(--fullchaos-ember-edge) 45%,
+        var(--fullchaos-electric-cyan)
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .card-accent {
-  border-color: color-mix(in srgb, var(--fullchaos-electric-cyan) 35%, transparent);
-  box-shadow: 0 0 32px color-mix(in srgb, var(--fullchaos-ember-edge) 24%, transparent);
+    border-color: color-mix(in srgb, var(--fullchaos-electric-cyan) 35%, transparent);
+    box-shadow: 0 0 32px color-mix(in srgb, var(--fullchaos-ember-edge) 24%, transparent);
 }
 ```

@@ -16,8 +16,8 @@ import type { SSRExchange } from "@urql/core";
 import { createGraphQLClientOptions } from "./providerClient";
 
 interface GraphQLProviderProps {
-  children: ReactNode;
-  orgId?: string;
+    children: ReactNode;
+    orgId?: string;
 }
 
 const OrgIdContext = createContext<string | undefined>(undefined);
@@ -51,32 +51,32 @@ const SsrContext = createContext<SSRExchange | null>(null);
  * ```
  */
 export function GraphQLProvider({ children, orgId }: GraphQLProviderProps): React.ReactNode {
-  const [client, ssr] = useMemo(() => {
-    const ssr = ssrExchange({
-      isClient: typeof window !== "undefined",
-    });
+    const [client, ssr] = useMemo(() => {
+        const ssr = ssrExchange({
+            isClient: typeof window !== "undefined",
+        });
 
-    const client = createClient(createGraphQLClientOptions({ orgId, ssr }));
+        const client = createClient(createGraphQLClientOptions({ orgId, ssr }));
 
-    return [client, ssr] as const;
-  }, [orgId]);
+        return [client, ssr] as const;
+    }, [orgId]);
 
-  return (
-    <OrgIdContext.Provider value={orgId}>
-      <SsrContext.Provider value={ssr}>
-        <UrqlProvider client={client} ssr={ssr}>
-          {children}
-        </UrqlProvider>
-      </SsrContext.Provider>
-    </OrgIdContext.Provider>
-  );
+    return (
+        <OrgIdContext.Provider value={orgId}>
+            <SsrContext.Provider value={ssr}>
+                <UrqlProvider client={client} ssr={ssr}>
+                    {children}
+                </UrqlProvider>
+            </SsrContext.Provider>
+        </OrgIdContext.Provider>
+    );
 }
 
 /**
  * Hook to access the current org ID from the GraphQL provider.
  */
 export function useOrgId(): string | undefined {
-  return useContext(OrgIdContext);
+    return useContext(OrgIdContext);
 }
 
 /**
@@ -87,7 +87,7 @@ export function useOrgId(): string | undefined {
  * double-fetch. Returns `null` if called outside a `GraphQLProvider`.
  */
 export function useSsr(): SSRExchange | null {
-  return useContext(SsrContext);
+    return useContext(SsrContext);
 }
 
 /**
@@ -98,14 +98,14 @@ export function useSsr(): SSRExchange | null {
  * @returns Wrapped component
  */
 export function withGraphQL<P extends object>(
-  Component: React.ComponentType<P>,
-  orgId?: string,
+    Component: React.ComponentType<P>,
+    orgId?: string,
 ): React.FC<P> {
-  return function WithGraphQL(props: P) {
-    return (
-      <GraphQLProvider orgId={orgId}>
-        <Component {...props} />
-      </GraphQLProvider>
-    );
-  };
+    return function WithGraphQL(props: P) {
+        return (
+            <GraphQLProvider orgId={orgId}>
+                <Component {...props} />
+            </GraphQLProvider>
+        );
+    };
 }

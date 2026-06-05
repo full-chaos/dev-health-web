@@ -27,84 +27,79 @@ import { AreaSignalCard } from "./AreaSignalCard";
 // `getAreaSignals`) and passes it in. No data-fetching here.
 
 type AreaOverviewProps = {
-	areaId: NavAreaId;
-	/** Resolved signals for this area (from the landing RSC via getAreaSignals). */
-	signals: AreaSignal[];
-	filters: MetricFilter;
-	role?: string;
-	/** Eyebrow label above the hero. Defaults to "<Area> area". */
-	title?: string;
-	/** Optional one-line description under the eyebrow. */
-	description?: string;
+    areaId: NavAreaId;
+    /** Resolved signals for this area (from the landing RSC via getAreaSignals). */
+    signals: AreaSignal[];
+    filters: MetricFilter;
+    role?: string;
+    /** Eyebrow label above the hero. Defaults to "<Area> area". */
+    title?: string;
+    /** Optional one-line description under the eyebrow. */
+    description?: string;
 };
 
 export function AreaOverview({
-	areaId,
-	signals,
-	filters,
-	role,
-	title,
-	description,
+    areaId,
+    signals,
+    filters,
+    role,
+    title,
+    description,
 }: AreaOverviewProps) {
-	const area = getAreaById(areaId);
-	if (!area) return null;
+    const area = getAreaById(areaId);
+    if (!area) return null;
 
-	// Real-data signals sort by severity; empty / unconnected sub-areas sink to
-	// the muted tier at the bottom. Partitioning here (not just sorting) keeps the
-	// hero selection honest — an unavailable metric is never "the top signal".
-	const available = sortBySeverity(signals.filter(isAvailable));
-	const unavailable = signals.filter((signal) => !isAvailable(signal));
+    // Real-data signals sort by severity; empty / unconnected sub-areas sink to
+    // the muted tier at the bottom. Partitioning here (not just sorting) keeps the
+    // hero selection honest — an unavailable metric is never "the top signal".
+    const available = sortBySeverity(signals.filter(isAvailable));
+    const unavailable = signals.filter((signal) => !isAvailable(signal));
 
-	// The single top signal becomes the hero and is dropped from the grid so no
-	// card appears in both hero and grid (CHAOS-2082 acceptance).
-	const [hero, ...restAvailable] = available;
+    // The single top signal becomes the hero and is dropped from the grid so no
+    // card appears in both hero and grid (CHAOS-2082 acceptance).
+    const [hero, ...restAvailable] = available;
 
-	// Grid = remaining real-data cards first, then the muted empty tier, last.
-	const gridSignals = [...restAvailable, ...unavailable];
+    // Grid = remaining real-data cards first, then the muted empty tier, last.
+    const gridSignals = [...restAvailable, ...unavailable];
 
-	if (!hero && gridSignals.length === 0) return null;
+    if (!hero && gridSignals.length === 0) return null;
 
-	return (
-		<section
-			aria-label={`${area.label} overview`}
-			data-testid="area-overview"
-			className="flex flex-col gap-6"
-		>
-			<div>
-				<p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-					{title ?? `${area.label} area`}
-				</p>
-				{description ? (
-					<p className="mt-1 text-sm text-(--ink-muted)">{description}</p>
-				) : null}
-			</div>
+    return (
+        <section
+            aria-label={`${area.label} overview`}
+            data-testid="area-overview"
+            className="flex flex-col gap-6"
+        >
+            <div>
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                    {title ?? `${area.label} area`}
+                </p>
+                {description ? (
+                    <p className="mt-1 text-sm text-(--ink-muted)">{description}</p>
+                ) : null}
+            </div>
 
-			{hero ? (
-				<div data-testid="area-overview-hero">
-					<AreaSignalCard
-						signal={hero}
-						filters={filters}
-						role={role}
-						emphasized
-					/>
-				</div>
-			) : null}
+            {hero ? (
+                <div data-testid="area-overview-hero">
+                    <AreaSignalCard signal={hero} filters={filters} role={role} emphasized />
+                </div>
+            ) : null}
 
-			{gridSignals.length > 0 ? (
-				<div
-					data-testid="area-overview-grid"
-					className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
-				>
-					{gridSignals.map((signal) => (
-						<AreaSignalCard
-							key={signal.id}
-							signal={signal}
-							filters={filters}
-							role={role}
-						/>
-					))}
-				</div>
-			) : null}
-		</section>
-	);
+            {gridSignals.length > 0 ? (
+                <div
+                    data-testid="area-overview-grid"
+                    className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+                >
+                    {gridSignals.map((signal) => (
+                        <AreaSignalCard
+                            key={signal.id}
+                            signal={signal}
+                            filters={filters}
+                            role={role}
+                        />
+                    ))}
+                </div>
+            ) : null}
+        </section>
+    );
 }

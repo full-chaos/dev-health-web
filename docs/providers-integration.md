@@ -29,20 +29,20 @@ Human-readable labels and the sync targets each provider supports are also decla
 ```ts
 // src/lib/admin/types.ts:522
 export const PROVIDER_LABELS: Record<Provider, string> = {
-  github: "GitHub",
-  gitlab: "GitLab",
-  jira: "Jira",
-  linear: "Linear",
-  launchdarkly: "LaunchDarkly",
+    github: "GitHub",
+    gitlab: "GitLab",
+    jira: "Jira",
+    linear: "Linear",
+    launchdarkly: "LaunchDarkly",
 };
 
 // src/lib/admin/types.ts:530
 export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
-  github: ["git", "prs", "cicd", "deployments", "incidents", "work-items"],
-  gitlab: ["git", "prs", "cicd", "deployments", "incidents", "work-items", "feature-flags"],
-  jira: ["work-items"],
-  linear: ["work-items"],
-  launchdarkly: ["feature-flags"],
+    github: ["git", "prs", "cicd", "deployments", "incidents", "work-items"],
+    gitlab: ["git", "prs", "cicd", "deployments", "incidents", "work-items", "feature-flags"],
+    jira: ["work-items"],
+    linear: ["work-items"],
+    launchdarkly: ["feature-flags"],
 };
 ```
 
@@ -53,9 +53,11 @@ export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
 ```tsx
 // src/components/admin/sync/SyncConfigForm.tsx:290
 {
-  (formData.provider === "github" || formData.provider === "gitlab") && (
-    <div className="space-y-4">{/* Owner / Organization input, RepoSelector, GitLab URL */}</div>
-  );
+    (formData.provider === "github" || formData.provider === "gitlab") && (
+        <div className="space-y-4">
+            {/* Owner / Organization input, RepoSelector, GitLab URL */}
+        </div>
+    );
 }
 ```
 
@@ -66,7 +68,7 @@ A second guard at line 307 further restricts the GitLab-specific URL field:
 ```tsx
 // src/components/admin/sync/SyncConfigForm.tsx:307
 {
-  formData.provider === "gitlab" && <div>{/* GitLab URL input */}</div>;
+    formData.provider === "gitlab" && <div>{/* GitLab URL input */}</div>;
 }
 ```
 

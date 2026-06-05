@@ -29,41 +29,41 @@ import * as Sentry from "@sentry/nextjs";
 const DEFAULT_REPLAY_ROUTE_PREFIXES = ["/admin", "/superadmin"] as const;
 
 function getReplayRoutePrefixes(): readonly string[] {
-  const raw = process.env.NEXT_PUBLIC_SENTRY_REPLAY_ROUTES;
-  if (raw === undefined) return DEFAULT_REPLAY_ROUTE_PREFIXES;
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
+    const raw = process.env.NEXT_PUBLIC_SENTRY_REPLAY_ROUTES;
+    if (raw === undefined) return DEFAULT_REPLAY_ROUTE_PREFIXES;
+    return raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 }
 
 function shouldLoadReplay(): boolean {
-  if (typeof window === "undefined") return false;
-  const prefixes = getReplayRoutePrefixes();
-  if (prefixes.length === 0) return false;
-  const path = window.location.pathname;
-  return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+    if (typeof window === "undefined") return false;
+    const prefixes = getReplayRoutePrefixes();
+    if (prefixes.length === 0) return false;
+    const path = window.location.pathname;
+    return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
 Sentry.init(
-  attachBeforeSend({
-    dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN,
-    environment: process.env.NODE_ENV,
-    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-    replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-    replaysOnErrorSampleRate: 1.0,
-    sendDefaultPii: false,
-  }),
+    attachBeforeSend({
+        dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN,
+        environment: process.env.NODE_ENV,
+        tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+        replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+        replaysOnErrorSampleRate: 1.0,
+        sendDefaultPii: false,
+    }),
 );
 
 if (shouldLoadReplay()) {
-  void Sentry.lazyLoadIntegration("replayIntegration")
-    .then((replayIntegration) => {
-      if (replayIntegration) {
-        Sentry.addIntegration(replayIntegration());
-      }
-    })
-    .catch((error) => {
-      console.warn("[sentry] Failed to lazy-load Replay integration", error);
-    });
+    void Sentry.lazyLoadIntegration("replayIntegration")
+        .then((replayIntegration) => {
+            if (replayIntegration) {
+                Sentry.addIntegration(replayIntegration());
+            }
+        })
+        .catch((error) => {
+            console.warn("[sentry] Failed to lazy-load Replay integration", error);
+        });
 }

@@ -16,18 +16,20 @@ import path from "path";
 const SCREENSHOTS = path.resolve(__dirname, "../docs/screenshots");
 
 test.describe("CHAOS-2035 screenshots", () => {
-  test("churn & ownership hotspot evidence (authenticated)", async ({ page }) => {
-    await page.goto("/code");
-    await page.waitForSelector("main", { timeout: 10000 });
-    await page.getByRole("heading", { name: "Churn and Ownership" }).waitFor({ timeout: 10000 });
-    await page
-      .getByText(/Leading hotspots:/)
-      .first()
-      .waitFor({ timeout: 10000 });
-    await page.waitForTimeout(1000);
-    await page.screenshot({
-      path: path.join(SCREENSHOTS, "CHAOS-2035/churn-ownership-evidence.png"),
-      fullPage: true,
+    test("churn & ownership hotspot evidence (authenticated)", async ({ page }) => {
+        await page.goto("/code");
+        await page.waitForSelector("main", { timeout: 10000 });
+        await page
+            .getByRole("heading", { name: "Churn and Ownership" })
+            .waitFor({ timeout: 10000 });
+        await page
+            .getByText(/Leading hotspots:/)
+            .first()
+            .waitFor({ timeout: 10000 });
+        await page.waitForTimeout(1000);
+        await page.screenshot({
+            path: path.join(SCREENSHOTS, "CHAOS-2035/churn-ownership-evidence.png"),
+            fullPage: true,
+        });
     });
-  });
 });

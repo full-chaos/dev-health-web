@@ -7,24 +7,24 @@
 import { type ZodSchema, ZodError } from "zod";
 import { validationFailedMessage } from "@/lib/constants/errors";
 import {
-  AnalyticsResultSchema,
-  CatalogResultSchema,
-  type AnalyticsResult,
-  type CatalogResult,
+    AnalyticsResultSchema,
+    CatalogResultSchema,
+    type AnalyticsResult,
+    type CatalogResult,
 } from "./schemas";
 
 export interface ValidationResult<T> {
-  success: boolean;
-  data?: T;
-  error?: ValidationError;
+    success: boolean;
+    data?: T;
+    error?: ValidationError;
 }
 
 export interface ValidationError {
-  message: string;
-  issues: Array<{
-    path: string;
     message: string;
-  }>;
+    issues: Array<{
+        path: string;
+        message: string;
+    }>;
 }
 
 /**
@@ -35,30 +35,30 @@ export interface ValidationError {
  * @returns Validation result with typed data or error
  */
 export function validate<T>(schema: ZodSchema<T>, data: unknown): ValidationResult<T> {
-  try {
-    const parsed = schema.parse(data);
-    return { success: true, data: parsed };
-  } catch (err) {
-    if (err instanceof ZodError) {
-      return {
-        success: false,
-        error: {
-          message: "Validation failed",
-          issues: err.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message,
-          })),
-        },
-      };
+    try {
+        const parsed = schema.parse(data);
+        return { success: true, data: parsed };
+    } catch (err) {
+        if (err instanceof ZodError) {
+            return {
+                success: false,
+                error: {
+                    message: "Validation failed",
+                    issues: err.issues.map((issue) => ({
+                        path: issue.path.join("."),
+                        message: issue.message,
+                    })),
+                },
+            };
+        }
+        return {
+            success: false,
+            error: {
+                message: err instanceof Error ? err.message : "Unknown validation error",
+                issues: [],
+            },
+        };
     }
-    return {
-      success: false,
-      error: {
-        message: err instanceof Error ? err.message : "Unknown validation error",
-        issues: [],
-      },
-    };
-  }
 }
 
 /**
@@ -70,14 +70,14 @@ export function validate<T>(schema: ZodSchema<T>, data: unknown): ValidationResu
  * @throws Error if validation fails
  */
 export function validateOrThrow<T>(schema: ZodSchema<T>, data: unknown): T {
-  const result = validate(schema, data);
-  if (!result.success) {
-    const issues = result.error?.issues.map((i) => `${i.path}: ${i.message}`).join("; ");
-    throw new Error(
-      validationFailedMessage(issues || result.error?.message || "Unknown validation error"),
-    );
-  }
-  return result.data!;
+    const result = validate(schema, data);
+    if (!result.success) {
+        const issues = result.error?.issues.map((i) => `${i.path}: ${i.message}`).join("; ");
+        throw new Error(
+            validationFailedMessage(issues || result.error?.message || "Unknown validation error"),
+        );
+    }
+    return result.data!;
 }
 
 /**
@@ -87,7 +87,7 @@ export function validateOrThrow<T>(schema: ZodSchema<T>, data: unknown): T {
  * @returns Validation result
  */
 export function validateAnalyticsResponse(data: unknown): ValidationResult<AnalyticsResult> {
-  return validate(AnalyticsResultSchema, data);
+    return validate(AnalyticsResultSchema, data);
 }
 
 /**
@@ -97,7 +97,7 @@ export function validateAnalyticsResponse(data: unknown): ValidationResult<Analy
  * @returns Validation result
  */
 export function validateCatalogResponse(data: unknown): ValidationResult<CatalogResult> {
-  return validate(CatalogResultSchema, data);
+    return validate(CatalogResultSchema, data);
 }
 
 /**
@@ -108,8 +108,8 @@ export function validateCatalogResponse(data: unknown): ValidationResult<Catalog
  * @returns Parsed data or undefined
  */
 export function safeParse<T>(schema: ZodSchema<T>, data: unknown): T | undefined {
-  const result = schema.safeParse(data);
-  return result.success ? result.data : undefined;
+    const result = schema.safeParse(data);
+    return result.success ? result.data : undefined;
 }
 
 /**
@@ -120,5 +120,5 @@ export function safeParse<T>(schema: ZodSchema<T>, data: unknown): T | undefined
  * @returns True if data matches schema
  */
 export function matches<T>(schema: ZodSchema<T>, data: unknown): data is T {
-  return schema.safeParse(data).success;
+    return schema.safeParse(data).success;
 }

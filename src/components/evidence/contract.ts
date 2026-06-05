@@ -16,13 +16,13 @@
 
 /** Artifact kinds the Evidence section is permitted to render. */
 export type EvidenceArtifactType =
-  | "PR"
-  | "commit"
-  | "review"
-  | "pipeline"
-  | "incident"
-  | "test"
-  | "deployment";
+    | "PR"
+    | "commit"
+    | "review"
+    | "pipeline"
+    | "incident"
+    | "test"
+    | "deployment";
 
 /**
  * A single real, traceable artifact. Every field is required except `url`
@@ -30,15 +30,15 @@ export type EvidenceArtifactType =
  * values of this shape.
  */
 export type EvidenceArtifact = {
-  type: EvidenceArtifactType;
-  /** Short human-facing identifier, e.g. "PR #412" or "deploy 8f3a1c2". */
-  label: string;
-  /** One-line plain-language description of what the artifact shows. */
-  humanSummary: string;
-  /** ISO-8601 timestamp for when the artifact occurred. */
-  timestamp: string;
-  /** Canonical link to the artifact, when one exists. */
-  url?: string;
+    type: EvidenceArtifactType;
+    /** Short human-facing identifier, e.g. "PR #412" or "deploy 8f3a1c2". */
+    label: string;
+    /** One-line plain-language description of what the artifact shows. */
+    humanSummary: string;
+    /** ISO-8601 timestamp for when the artifact occurred. */
+    timestamp: string;
+    /** Canonical link to the artifact, when one exists. */
+    url?: string;
 };
 
 /** Confidence band for the panel's claim. */
@@ -50,28 +50,28 @@ export type EvidenceConfidence = "high" | "medium" | "low";
  * disabled/renamed by the consuming UI.
  */
 export type EvidencePanelContract = {
-  /** The single, falsifiable claim the panel is making. */
-  claim: string;
-  /** Metric key the claim is grounded in. */
-  metric: string;
-  /** Current value, pre-formatted for display. */
-  currentValue: string;
-  /** Prior-window value, pre-formatted for display. */
-  priorValue?: string;
-  /** Pre-formatted delta between prior and current. */
-  delta?: string;
-  confidence: EvidenceConfidence;
-  /** Typed artifacts — the ONLY thing the Evidence section renders. */
-  evidenceItems: EvidenceArtifact[];
-  /** What the evidence appears to suggest (read-only narration). */
-  interpretation: string;
-  /** A single recommendation. Lives outside the Evidence section. */
-  recommendedNextStep: string;
-  /** Honest limits on the claim (sampling, partial data, etc.). */
-  caveats: string[];
+    /** The single, falsifiable claim the panel is making. */
+    claim: string;
+    /** Metric key the claim is grounded in. */
+    metric: string;
+    /** Current value, pre-formatted for display. */
+    currentValue: string;
+    /** Prior-window value, pre-formatted for display. */
+    priorValue?: string;
+    /** Pre-formatted delta between prior and current. */
+    delta?: string;
+    confidence: EvidenceConfidence;
+    /** Typed artifacts — the ONLY thing the Evidence section renders. */
+    evidenceItems: EvidenceArtifact[];
+    /** What the evidence appears to suggest (read-only narration). */
+    interpretation: string;
+    /** A single recommendation. Lives outside the Evidence section. */
+    recommendedNextStep: string;
+    /** Honest limits on the claim (sampling, partial data, etc.). */
+    caveats: string[];
 };
 
 /** Returns true when the panel has at least one real artifact to show. */
 export function hasEvidenceArtifacts(panel: Pick<EvidencePanelContract, "evidenceItems">): boolean {
-  return panel.evidenceItems.length > 0;
+    return panel.evidenceItems.length > 0;
 }

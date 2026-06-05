@@ -6,88 +6,92 @@ import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import type { SparkPoint } from "@/lib/types";
 
 const deltaTone = (value?: number) => {
-  if (value === undefined || value === null) {
-    return "text-(--ink-muted)";
-  }
-  return value > 0
-    ? "text-(--accent-3)"
-    : value < 0
-      ? "text-(--accent-negative)"
-      : "text-(--ink-muted)";
+    if (value === undefined || value === null) {
+        return "text-(--ink-muted)";
+    }
+    return value > 0
+        ? "text-(--accent-3)"
+        : value < 0
+          ? "text-(--accent-negative)"
+          : "text-(--ink-muted)";
 };
 
 type MetricCardProps = {
-  label: string;
-  href: string;
-  value?: number;
-  unit?: string;
-  delta?: number;
-  /** Label shown in the delta slot when no delta is available (never a bare "--"). */
-  deltaUnavailableLabel?: string;
-  spark?: SparkPoint[];
-  caption?: string;
-  className?: string;
-  lineageMetricId?: string;
+    label: string;
+    href: string;
+    value?: number;
+    unit?: string;
+    delta?: number;
+    /** Label shown in the delta slot when no delta is available (never a bare "--"). */
+    deltaUnavailableLabel?: string;
+    spark?: SparkPoint[];
+    caption?: string;
+    className?: string;
+    lineageMetricId?: string;
 };
 
 export function MetricCard({
-  label,
-  href,
-  value,
-  unit,
-  delta,
-  deltaUnavailableLabel = "No prior period",
-  spark,
-  caption,
-  className,
-  lineageMetricId,
+    label,
+    href,
+    value,
+    unit,
+    delta,
+    deltaUnavailableLabel = "No prior period",
+    spark,
+    caption,
+    className,
+    lineageMetricId,
 }: MetricCardProps) {
-  const sparkValues = spark?.map((point) => point.value) ?? [];
-  const sparkLabels = spark?.map((point) => point.ts) ?? [];
+    const sparkValues = spark?.map((point) => point.value) ?? [];
+    const sparkLabels = spark?.map((point) => point.ts) ?? [];
 
-  return (
-    <Link
-      href={href}
-      className={`group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg ${className ?? ""}`}
-    >
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-        <div className="flex items-center">
-          <span>{label}</span>
-          {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
-        </div>
-        <span className={deltaTone(delta)}>
-          {delta === undefined || delta === null ? (
-            <span
-              title="No prior period available to compute a change"
-              className="text-[10px] normal-case tracking-normal"
-            >
-              {deltaUnavailableLabel}
-            </span>
-          ) : (
-            formatDelta(delta)
-          )}
-        </span>
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-2xl font-semibold metric-hero">
-            {value === undefined || value === null ? "--" : formatMetricValue(value, unit ?? "")}
-          </p>
-          <p className="mt-2 text-xs text-(--ink-muted)">{caption ?? "Open in Explore"}</p>
-        </div>
-        <div className="h-16 w-full">
-          {sparkValues.length > 1 ? (
-            <SparklineChart data={sparkValues} categories={sparkLabels} height={64} />
-          ) : (
-            <div
-              title="Not enough data points to plot a trend yet"
-              className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-2 text-center text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
-            >
-              No trend yet
+    return (
+        <Link
+            href={href}
+            className={`group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg ${className ?? ""}`}
+        >
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                <div className="flex items-center">
+                    <span>{label}</span>
+                    {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
+                </div>
+                <span className={deltaTone(delta)}>
+                    {delta === undefined || delta === null ? (
+                        <span
+                            title="No prior period available to compute a change"
+                            className="text-[10px] normal-case tracking-normal"
+                        >
+                            {deltaUnavailableLabel}
+                        </span>
+                    ) : (
+                        formatDelta(delta)
+                    )}
+                </span>
             </div>
-          )}
-        </div>
-      </div>
-    </Link>
-  );
+            <div className="mt-3 flex items-center justify-between gap-4">
+                <div>
+                    <p className="text-2xl font-semibold metric-hero">
+                        {value === undefined || value === null
+                            ? "--"
+                            : formatMetricValue(value, unit ?? "")}
+                    </p>
+                    <p className="mt-2 text-xs text-(--ink-muted)">
+                        {caption ?? "Open in Explore"}
+                    </p>
+                </div>
+                <div className="h-16 w-full">
+                    {sparkValues.length > 1 ? (
+                        <SparklineChart data={sparkValues} categories={sparkLabels} height={64} />
+                    ) : (
+                        <div
+                            title="Not enough data points to plot a trend yet"
+                            className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-2 text-center text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                        >
+                            No trend yet
+                        </div>
+                    )}
+                </div>
+            </div>
+        </Link>
+    );
 }

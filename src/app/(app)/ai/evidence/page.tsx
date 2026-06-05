@@ -7,21 +7,21 @@ import { AITabPreview } from "@/components/ai/AITabPreview";
  * evidence panel.
  */
 export default function AIEvidencePage() {
-	return (
-		<>
-			<AIPageHeader eyebrow="AI" title="AI Evidence">
-				A consolidated evidence trail for AI signals is coming. Today the
-				closest summary lives on the Operating Review.
-			</AIPageHeader>
-			<AITabPreview
-				whereNow={{
-					label: "View AI summary on Operating Review",
-					href: "/operating-review#ai-workflow-intelligence",
-				}}
-			>
-				Evidence will surface here when it can stand as a complete view. No
-				fabricated evidence is shown before that data is available.
-			</AITabPreview>
-		</>
-	);
+    return (
+        <>
+            <AIPageHeader eyebrow="AI" title="AI Evidence">
+                A consolidated evidence trail for AI signals is coming. Today the closest summary
+                lives on the Operating Review.
+            </AIPageHeader>
+            <AITabPreview
+                whereNow={{
+                    label: "View AI summary on Operating Review",
+                    href: "/operating-review#ai-workflow-intelligence",
+                }}
+            >
+                Evidence will surface here when it can stand as a complete view. No fabricated
+                evidence is shown before that data is available.
+            </AITabPreview>
+        </>
+    );
 }

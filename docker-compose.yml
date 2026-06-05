@@ -1,37 +1,37 @@
 services:
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
-    image: dev-health-web:latest
-    ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      NEXT_TELEMETRY_DISABLED: "1"
-      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
-      REDIS_URL: redis://valkey:6379/0
-    depends_on:
-      valkey:
-        condition: service_healthy
+    web:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
+        image: dev-health-web:latest
+        ports:
+            - "3000:3000"
+        environment:
+            NODE_ENV: production
+            NEXT_TELEMETRY_DISABLED: "1"
+            BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8000}
+            REDIS_URL: redis://valkey:6379/0
+        depends_on:
+            valkey:
+                condition: service_healthy
 
-  valkey:
-    image: valkey/valkey:8-alpine
-    restart: unless-stopped
-    command: >
-      valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - valkey_data:/data
-    healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
+    valkey:
+        image: valkey/valkey:8-alpine
+        restart: unless-stopped
+        command: >
+            valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+        ports:
+            - "${REDIS_PORT:-6379}:6379"
+        volumes:
+            - valkey_data:/data
+        healthcheck:
+            test: ["CMD", "valkey-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+            start_period: 5s
 
 volumes:
-  valkey_data:
+    valkey_data:

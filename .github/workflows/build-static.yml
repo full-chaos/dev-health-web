@@ -1,228 +1,228 @@
 name: Build Static Assets
 
 on:
-  push:
-    branches:
-      - main
-      - "release/**"
-    tags:
-      - "v*.*.*"
-  pull_request:
-    branches:
-      - main
-  merge_group:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Build tag (e.g., v1.0.0, pr-123, feature-xyz)"
-        required: false
-        default: ""
+    push:
+        branches:
+            - main
+            - "release/**"
+        tags:
+            - "v*.*.*"
+    pull_request:
+        branches:
+            - main
+    merge_group:
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: "Build tag (e.g., v1.0.0, pr-123, feature-xyz)"
+                required: false
+                default: ""
 
 permissions:
-  contents: read
+    contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
 
 env:
-  # Cloudflare project name - defaults to 'dev-health-web' if secret is not set
-  # Public Cloudflare project name; if the secret is unset or empty, use a non-secret default.
-  CLOUDFLARE_PROJECT_NAME: "${{ secrets.CLOUDFLARE_PROJECT_NAME || 'dev-health-web' }}"
+    # Cloudflare project name - defaults to 'dev-health-web' if secret is not set
+    # Public Cloudflare project name; if the secret is unset or empty, use a non-secret default.
+    CLOUDFLARE_PROJECT_NAME: "${{ secrets.CLOUDFLARE_PROJECT_NAME || 'dev-health-web' }}"
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      code: ${{ steps.filter.outputs.code }}
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: filter
-        # Always run on workflow_dispatch and tag pushes
-        if: github.event_name == 'pull_request' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
-        with:
-          filters: |
-            code:
-              - 'src/**'
-              - 'tests/**'
-              - 'ci/**'
-              - 'public/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.json'
-              - 'next.config.*'
-              - 'vitest.config.*'
-              - 'playwright.config.*'
-              - 'eslint.config.*'
-              - 'eslint-plugin-design-lint/**'
-              - 'scripts/design-lint.mjs'
-              - 'design-lint.allowlist.json'
-              - 'postcss.config.*'
-              - 'codegen.ts'
-              - 'instrumentation.ts'
-              - 'sentry.*.config.ts'
+    changes:
+        runs-on: ubuntu-latest
+        outputs:
+            code: ${{ steps.filter.outputs.code }}
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+            - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+              id: filter
+              # Always run on workflow_dispatch and tag pushes
+              if: github.event_name == 'pull_request' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+              with:
+                  filters: |
+                      code:
+                        - 'src/**'
+                        - 'tests/**'
+                        - 'ci/**'
+                        - 'public/**'
+                        - 'package.json'
+                        - 'package-lock.json'
+                        - 'tsconfig.json'
+                        - 'next.config.*'
+                        - 'vitest.config.*'
+                        - 'playwright.config.*'
+                        - 'eslint.config.*'
+                        - 'eslint-plugin-design-lint/**'
+                        - 'scripts/design-lint.mjs'
+                        - 'design-lint.allowlist.json'
+                        - 'postcss.config.*'
+                        - 'codegen.ts'
+                        - 'instrumentation.ts'
+                        - 'sentry.*.config.ts'
 
-  build:
-    name: Build Static Assets
-    needs: [changes]
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
-      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+    build:
+        name: Build Static Assets
+        needs: [changes]
+        runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.meta.outputs.version }}
+            artifact_name: ${{ steps.meta.outputs.artifact_name }}
 
-    env:
-      SHOULD_BUILD: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.changes.outputs.code == 'true' }}
-
-    steps:
-      - name: Skip if no relevant changes
-        if: env.SHOULD_BUILD != 'true'
-        run: |
-          echo "No build-relevant files changed; emitting success without building."
-          echo "Keeps 'Build Static Assets' as a consistent required status check regardless of PR scope."
-      - name: Checkout code
-        if: env.SHOULD_BUILD == 'true'
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          fetch-depth: 0
-
-      - name: Generate build metadata
-        if: env.SHOULD_BUILD == 'true'
-        id: meta
-        run: |
-          # Use shared script to generate version tag
-          VERSION=$(bash .github/scripts/generate-version-tag.sh "${{ github.event.inputs.tag }}" "false")
-
-          ARTIFACT_NAME="static-build-${VERSION}"
-
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
-
-          echo "### Build Info" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Artifact**: ${ARTIFACT_NAME}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
         env:
-          GITHUB_EVENT_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+            SHOULD_BUILD: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.changes.outputs.code == 'true' }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-        with:
-          version: 11.1.1
+        steps:
+            - name: Skip if no relevant changes
+              if: env.SHOULD_BUILD != 'true'
+              run: |
+                  echo "No build-relevant files changed; emitting success without building."
+                  echo "Keeps 'Build Static Assets' as a consistent required status check regardless of PR scope."
+            - name: Checkout code
+              if: env.SHOULD_BUILD == 'true'
+              uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  fetch-depth: 0
 
-      - name: Setup Node.js
-        if: env.SHOULD_BUILD == 'true'
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: "22"
-          cache: "pnpm"
+            - name: Generate build metadata
+              if: env.SHOULD_BUILD == 'true'
+              id: meta
+              run: |
+                  # Use shared script to generate version tag
+                  VERSION=$(bash .github/scripts/generate-version-tag.sh "${{ github.event.inputs.tag }}" "false")
 
-      - name: Install dependencies
-        if: env.SHOULD_BUILD == 'true'
-        run: pnpm install --frozen-lockfile
+                  ARTIFACT_NAME="static-build-${VERSION}"
 
-      - name: Run linting
-        if: env.SHOULD_BUILD == 'true'
-        run: pnpm lint
+                  echo "version=${VERSION}" >> $GITHUB_OUTPUT
+                  echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Run unit tests
-        if: env.SHOULD_BUILD == 'true'
-        run: pnpm test:unit
+                  echo "### Build Info" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Version**: ${VERSION}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Artifact**: ${ARTIFACT_NAME}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+              env:
+                  GITHUB_EVENT_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
 
-      - name: Build application
-        if: env.SHOULD_BUILD == 'true'
-        env:
-          BACKEND_URL: ${{ secrets.BACKEND_URL || 'https://api.dev-health.io' }}
-        run: pnpm build
+            - name: Setup pnpm
+              uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+              with:
+                  version: 11.1.1
 
-      - name: Create build metadata
-        if: env.SHOULD_BUILD == 'true'
-        run: |
-          mkdir -p .next/meta
-          cat > .next/meta/build-info.json << EOF
-          {
-            "version": "${{ steps.meta.outputs.version }}",
-            "commit": "${{ github.sha }}",
-            "branch": "${{ github.ref_name }}",
-            "buildTime": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-            "workflow": "${{ github.workflow }}",
-            "runId": "${{ github.run_id }}",
-            "actor": "${{ github.actor }}"
-          }
-          EOF
+            - name: Setup Node.js
+              if: env.SHOULD_BUILD == 'true'
+              uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+              with:
+                  node-version: "22"
+                  cache: "pnpm"
 
-          # Also create individual files for easy access
-          echo "${{ steps.meta.outputs.version }}" > .next/meta/version.txt
-          echo "${{ github.sha }}" > .next/meta/commit.txt
+            - name: Install dependencies
+              if: env.SHOULD_BUILD == 'true'
+              run: pnpm install --frozen-lockfile
 
-      - name: Upload build artifact
-        if: env.SHOULD_BUILD == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ steps.meta.outputs.artifact_name }}
-          path: |
-            .next
-            public
-            package.json
-            package-lock.json
-            next.config.*
-          retention-days: 14
-          compression-level: 9
+            - name: Run linting
+              if: env.SHOULD_BUILD == 'true'
+              run: pnpm lint
 
-      - name: Output build results
-        if: env.SHOULD_BUILD == 'true'
-        run: |
-          echo "### Build Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Artifact: \`${{ steps.meta.outputs.artifact_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "To deploy this build (replace with your deployment workflow):" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "gh workflow run <your-deploy-workflow.yml> -f build_tag=${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+            - name: Run unit tests
+              if: env.SHOULD_BUILD == 'true'
+              run: pnpm test:unit
 
-  test-e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: >-
-      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-      && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.changes.outputs.code == 'true')
+            - name: Build application
+              if: env.SHOULD_BUILD == 'true'
+              env:
+                  BACKEND_URL: ${{ secrets.BACKEND_URL || 'https://api.dev-health.io' }}
+              run: pnpm build
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+            - name: Create build metadata
+              if: env.SHOULD_BUILD == 'true'
+              run: |
+                  mkdir -p .next/meta
+                  cat > .next/meta/build-info.json << EOF
+                  {
+                    "version": "${{ steps.meta.outputs.version }}",
+                    "commit": "${{ github.sha }}",
+                    "branch": "${{ github.ref_name }}",
+                    "buildTime": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+                    "workflow": "${{ github.workflow }}",
+                    "runId": "${{ github.run_id }}",
+                    "actor": "${{ github.actor }}"
+                  }
+                  EOF
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-        with:
-          version: 11.1.1
+                  # Also create individual files for easy access
+                  echo "${{ steps.meta.outputs.version }}" > .next/meta/version.txt
+                  echo "${{ github.sha }}" > .next/meta/commit.txt
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: "22"
-          cache: "pnpm"
+            - name: Upload build artifact
+              if: env.SHOULD_BUILD == 'true'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: ${{ steps.meta.outputs.artifact_name }}
+                  path: |
+                      .next
+                      public
+                      package.json
+                      package-lock.json
+                      next.config.*
+                  retention-days: 14
+                  compression-level: 9
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Output build results
+              if: env.SHOULD_BUILD == 'true'
+              run: |
+                  echo "### Build Complete" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "Artifact: \`${{ steps.meta.outputs.artifact_name }}\`" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "To deploy this build (replace with your deployment workflow):" >> $GITHUB_STEP_SUMMARY
+                  echo '```bash' >> $GITHUB_STEP_SUMMARY
+                  echo "gh workflow run <your-deploy-workflow.yml> -f build_tag=${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+                  echo '```' >> $GITHUB_STEP_SUMMARY
 
-      - name: Run E2E tests
-        run: bash ci/run_tests.sh e2e
+    test-e2e:
+        name: E2E Tests
+        runs-on: ubuntu-latest
+        needs: [changes]
+        if: >-
+            (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+            && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.changes.outputs.code == 'true')
 
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
-          path: playwright-report/
-          if-no-files-found: warn
-          retention-days: 7
-      - name: Upload Playwright raw results and JUnit
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: playwright-results-${{ github.run_id }}-${{ github.run_attempt }}
-          path: test-results/playwright/
-          if-no-files-found: warn
-          retention-days: 7
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+              with:
+                  version: 11.1.1
+
+            - name: Setup Node.js
+              uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+              with:
+                  node-version: "22"
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Run E2E tests
+              run: bash ci/run_tests.sh e2e
+
+            - name: Upload Playwright report
+              if: always()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: playwright-report/
+                  if-no-files-found: warn
+                  retention-days: 7
+            - name: Upload Playwright raw results and JUnit
+              if: always()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: playwright-results-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: test-results/playwright/
+                  if-no-files-found: warn
+                  retention-days: 7

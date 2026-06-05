@@ -25,41 +25,41 @@ let _client: RedisClient | null | undefined;
  * as "Redis unavailable" and fall back gracefully.
  */
 export function getRedis(): RedisClient | null {
-  if (_client !== undefined) return _client;
+    if (_client !== undefined) return _client;
 
-  const url = getServerEnv().REDIS_URL;
-  if (!url) {
-    _client = null;
-    return null;
-  }
+    const url = getServerEnv().REDIS_URL;
+    if (!url) {
+        _client = null;
+        return null;
+    }
 
-  try {
-    // Dynamic import so the ioredis module is only loaded when REDIS_URL is set.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Redis = require("ioredis").default ?? require("ioredis");
+    try {
+        // Dynamic import so the ioredis module is only loaded when REDIS_URL is set.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const Redis = require("ioredis").default ?? require("ioredis");
 
-    const client: RedisClient = new Redis(url, {
-      lazyConnect: true,
-      connectTimeout: 5_000,
-      maxRetriesPerRequest: 1,
-      // enableOfflineQueue defaults to true — commands issued while the TCP
-      // handshake is in progress are buffered and replayed once the socket is
-      // ready.  Setting this to false caused a 429 on the very first request
-      // after a web-container restart (CHAOS-1768).
-    });
+        const client: RedisClient = new Redis(url, {
+            lazyConnect: true,
+            connectTimeout: 5_000,
+            maxRetriesPerRequest: 1,
+            // enableOfflineQueue defaults to true — commands issued while the TCP
+            // handshake is in progress are buffered and replayed once the socket is
+            // ready.  Setting this to false caused a 429 on the very first request
+            // after a web-container restart (CHAOS-1768).
+        });
 
-    client.on("error", (err: Error) => {
-      logger.error({ err }, "Redis connection error");
-    });
+        client.on("error", (err: Error) => {
+            logger.error({ err }, "Redis connection error");
+        });
 
-    _client = client;
-    logger.info("Redis client initialised (lazy connect)");
-    return client;
-  } catch (err) {
-    logger.error({ err }, "Failed to create Redis client — falling back to in-memory");
-    _client = null;
-    return null;
-  }
+        _client = client;
+        logger.info("Redis client initialised (lazy connect)");
+        return client;
+    } catch (err) {
+        logger.error({ err }, "Failed to create Redis client — falling back to in-memory");
+        _client = null;
+        return null;
+    }
 }
 
 /**
@@ -67,8 +67,8 @@ export function getRedis(): RedisClient | null {
  * @internal
  */
 export function _resetRedisClient(): void {
-  if (_client) {
-    _client.disconnect();
-  }
-  _client = undefined;
+    if (_client) {
+        _client.disconnect();
+    }
+    _client = undefined;
 }

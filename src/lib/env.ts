@@ -23,29 +23,29 @@ export const isBrowser = !isServer;
  * const stored = runOnClient(() => localStorage.getItem("key"));
  */
 export function runOnClient<T>(callback: () => T): T | undefined {
-  if (isServer) {
-    return undefined;
-  }
-  return callback();
+    if (isServer) {
+        return undefined;
+    }
+    return callback();
 }
 
 /**
  * Get window object if available, undefined on server.
  */
 export function getWindow(): Window | undefined {
-  return isBrowser ? window : undefined;
+    return isBrowser ? window : undefined;
 }
 
 /**
  * Get document object if available, undefined on server.
  */
 export function getDocument(): Document | undefined {
-  return isBrowser ? document : undefined;
+    return isBrowser ? document : undefined;
 }
 
 /**
  * Get localStorage if available, undefined on server.
  */
 export function getLocalStorage(): Storage | undefined {
-  return runOnClient(() => localStorage);
+    return runOnClient(() => localStorage);
 }

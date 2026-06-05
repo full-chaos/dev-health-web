@@ -19,13 +19,13 @@ export const AI_CATEGORY = "ai" as const;
 
 /** Structural subset of a cockpit signal that the gate reads. */
 export type AiGateSignal = {
-	category: string;
+    category: string;
 };
 
 /** Structural input to {@link isAiDominant}. */
 export type AiGateInput = {
-	/** Pre-sorted by dominance; index 0 is the top signal. */
-	signals?: readonly AiGateSignal[] | null;
+    /** Pre-sorted by dominance; index 0 is the top signal. */
+    signals?: readonly AiGateSignal[] | null;
 };
 
 /**
@@ -33,9 +33,9 @@ export type AiGateInput = {
  * `signals` is contractually pre-sorted, so the top signal is index 0.
  */
 export function topSignal(
-	signals: readonly AiGateSignal[] | null | undefined,
+    signals: readonly AiGateSignal[] | null | undefined,
 ): AiGateSignal | undefined {
-	return signals && signals.length > 0 ? signals[0] : undefined;
+    return signals && signals.length > 0 ? signals[0] : undefined;
 }
 
 /**
@@ -46,5 +46,5 @@ export function topSignal(
  * treated as AI dominance.
  */
 export function isAiDominant(input: AiGateInput | null | undefined): boolean {
-	return topSignal(input?.signals)?.category === AI_CATEGORY;
+    return topSignal(input?.signals)?.category === AI_CATEGORY;
 }

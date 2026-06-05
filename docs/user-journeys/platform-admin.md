@@ -158,8 +158,8 @@ Change Plan modal behavior
 Backend event model
 
 - Webhook-driven state changes via:
-  - `customer.subscription.created`
-  - `customer.subscription.updated`
+    - `customer.subscription.created`
+    - `customer.subscription.updated`
 
 ```mermaid
 sequenceDiagram

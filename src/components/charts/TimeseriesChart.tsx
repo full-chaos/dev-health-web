@@ -12,94 +12,94 @@ import { echarts } from "@/lib/echartsInit";
 echarts.use([LineChart]);
 
 type TimeseriesChartProps = {
-  data: Array<{ day: string; value: number }>;
-  height?: number | string;
-  width?: number | string;
-  className?: string;
-  style?: CSSProperties;
-  valueFormat?: ChartValueFormat;
+    data: Array<{ day: string; value: number }>;
+    height?: number | string;
+    width?: number | string;
+    className?: string;
+    style?: CSSProperties;
+    valueFormat?: ChartValueFormat;
 };
 
 type NumericChartParam = {
-  name?: string;
-  value?: number | string;
-  marker?: string;
+    name?: string;
+    value?: number | string;
+    marker?: string;
 };
 
 export function TimeseriesChart({
-  data,
-  height = 280,
-  width = "100%",
-  className,
-  style,
-  valueFormat = "number",
+    data,
+    height = 280,
+    width = "100%",
+    className,
+    style,
+    valueFormat = "number",
 }: TimeseriesChartProps) {
-  const chartTheme = useChartTheme();
-  const ordered = [...data].sort((a, b) => a.day.localeCompare(b.day));
-  const categories = ordered.map((point) => point.day);
-  const values = ordered.map((point) => point.value);
+    const chartTheme = useChartTheme();
+    const ordered = [...data].sort((a, b) => a.day.localeCompare(b.day));
+    const categories = ordered.map((point) => point.day);
+    const values = ordered.map((point) => point.value);
 
-  const mergedStyle: CSSProperties = {
-    height,
-    width,
-    ...style,
-  };
+    const mergedStyle: CSSProperties = {
+        height,
+        width,
+        ...style,
+    };
 
-  const formatValue = (value: number | string | undefined): string => {
-    const numeric = typeof value === "number" ? value : Number(value);
-    return Number.isFinite(numeric) ? formatChartValue(numeric, valueFormat) : `${value ?? ""}`;
-  };
+    const formatValue = (value: number | string | undefined): string => {
+        const numeric = typeof value === "number" ? value : Number(value);
+        return Number.isFinite(numeric) ? formatChartValue(numeric, valueFormat) : `${value ?? ""}`;
+    };
 
-  return (
-    <Chart
-      option={{
-        tooltip: {
-          trigger: "axis",
-          confine: true,
-          backgroundColor: chartTheme.background,
-          borderColor: chartTheme.stroke,
-          textStyle: {
-            color: chartTheme.text,
-          },
-          formatter: (params: unknown): string => {
-            const list = Array.isArray(params) ? params : [params];
-            return list
-              .map((entry) => {
-                const item = entry as NumericChartParam;
-                const label = item.name ?? "Value";
-                return `${item.marker ?? ""}${label}: ${formatValue(item.value)}`;
-              })
-              .join("<br/>");
-          },
-        },
-        grid: { left: 24, right: 16, top: 32, bottom: 32, containLabel: true },
-        xAxis: {
-          type: "category",
-          data: categories,
-          axisTick: { show: false },
-          axisLine: { lineStyle: { color: chartTheme.grid } },
-          axisLabel: { color: chartTheme.muted, formatter: formatValue },
-        },
-        yAxis: {
-          type: "value",
-          splitLine: { lineStyle: { color: chartTheme.grid } },
-          axisLabel: { color: chartTheme.muted },
-        },
-        series: [
-          {
-            type: "line",
-            data: values,
-            smooth: true,
-            symbol: "circle",
-            symbolSize: 6,
-            lineStyle: { width: 2 },
-            areaStyle: { opacity: 0.12 },
-          },
-        ],
-      }}
-      className={className}
-      style={mergedStyle}
-      chartTheme={chartTheme}
-    />
-  );
+    return (
+        <Chart
+            option={{
+                tooltip: {
+                    trigger: "axis",
+                    confine: true,
+                    backgroundColor: chartTheme.background,
+                    borderColor: chartTheme.stroke,
+                    textStyle: {
+                        color: chartTheme.text,
+                    },
+                    formatter: (params: unknown): string => {
+                        const list = Array.isArray(params) ? params : [params];
+                        return list
+                            .map((entry) => {
+                                const item = entry as NumericChartParam;
+                                const label = item.name ?? "Value";
+                                return `${item.marker ?? ""}${label}: ${formatValue(item.value)}`;
+                            })
+                            .join("<br/>");
+                    },
+                },
+                grid: { left: 24, right: 16, top: 32, bottom: 32, containLabel: true },
+                xAxis: {
+                    type: "category",
+                    data: categories,
+                    axisTick: { show: false },
+                    axisLine: { lineStyle: { color: chartTheme.grid } },
+                    axisLabel: { color: chartTheme.muted, formatter: formatValue },
+                },
+                yAxis: {
+                    type: "value",
+                    splitLine: { lineStyle: { color: chartTheme.grid } },
+                    axisLabel: { color: chartTheme.muted },
+                },
+                series: [
+                    {
+                        type: "line",
+                        data: values,
+                        smooth: true,
+                        symbol: "circle",
+                        symbolSize: 6,
+                        lineStyle: { width: 2 },
+                        areaStyle: { opacity: 0.12 },
+                    },
+                ],
+            }}
+            className={className}
+            style={mergedStyle}
+            chartTheme={chartTheme}
+        />
+    );
 }

@@ -8,12 +8,12 @@
 import { graphqlFetch } from "./urqlClient";
 import { CAPACITY_FORECAST_QUERY, THROUGHPUT_FORECAST_QUERY } from "./queries";
 import type {
-  CapacityForecast,
-  CapacityForecastInput,
-  CapacityForecastQueryResponse,
-  ThroughputForecast,
-  ThroughputForecastInput,
-  ThroughputForecastQueryResponse,
+    CapacityForecast,
+    CapacityForecastInput,
+    CapacityForecastQueryResponse,
+    ThroughputForecast,
+    ThroughputForecastInput,
+    ThroughputForecastQueryResponse,
 } from "./types";
 
 /**
@@ -24,27 +24,27 @@ import type {
  * @returns Capacity forecast or null if not available
  */
 export async function getCapacityForecastViaGraphQL(
-  orgId: string,
-  input?: CapacityForecastInput,
+    orgId: string,
+    input?: CapacityForecastInput,
 ): Promise<CapacityForecast | null> {
-  const response = await graphqlFetch<CapacityForecastQueryResponse>(
-    CAPACITY_FORECAST_QUERY,
-    { orgId, input: input ?? null },
-    { orgId },
-  );
+    const response = await graphqlFetch<CapacityForecastQueryResponse>(
+        CAPACITY_FORECAST_QUERY,
+        { orgId, input: input ?? null },
+        { orgId },
+    );
 
-  return response.capacityForecast;
+    return response.capacityForecast;
 }
 
 export async function getThroughputForecastViaGraphQL(
-  orgId: string,
-  input: ThroughputForecastInput,
+    orgId: string,
+    input: ThroughputForecastInput,
 ): Promise<ThroughputForecast | null> {
-  const response = await graphqlFetch<ThroughputForecastQueryResponse>(
-    THROUGHPUT_FORECAST_QUERY,
-    { orgId, input },
-    { orgId },
-  );
+    const response = await graphqlFetch<ThroughputForecastQueryResponse>(
+        THROUGHPUT_FORECAST_QUERY,
+        { orgId, input },
+        { orgId },
+    );
 
-  return response.throughputForecast;
+    return response.throughputForecast;
 }

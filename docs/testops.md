@@ -105,21 +105,21 @@ All four routes use the `AnalyticsRequestInput` / `AnalyticsResult` types from `
 
 ```ts
 type AnalyticsResult = {
-  timeseries: TimeseriesResult[]; // one entry per measure
-  breakdowns: BreakdownResult[]; // one entry per breakdown dimension
+    timeseries: TimeseriesResult[]; // one entry per measure
+    breakdowns: BreakdownResult[]; // one entry per breakdown dimension
 };
 
 type TimeseriesResult = {
-  dimension: string;
-  dimensionValue: string;
-  measure: string;
-  buckets: TimeseriesBucket[]; // { date: string; value: number }[]
+    dimension: string;
+    dimensionValue: string;
+    measure: string;
+    buckets: TimeseriesBucket[]; // { date: string; value: number }[]
 };
 
 type BreakdownResult = {
-  dimension: string;
-  measure: string;
-  items: BreakdownItem[]; // { key: string; value: number }[]
+    dimension: string;
+    measure: string;
+    items: BreakdownItem[]; // { key: string; value: number }[]
 };
 ```
 

@@ -56,9 +56,9 @@ function MyComponent() {
 const [teams, setTeams] = useState([]);
 
 useEffect(() => {
-  fetch("/api/v1/filters/options")
-    .then((r) => r.json())
-    .then((d) => setTeams(d.teams));
+    fetch("/api/v1/filters/options")
+        .then((r) => r.json())
+        .then((d) => setTeams(d.teams));
 }, []);
 ```
 
@@ -68,12 +68,12 @@ useEffect(() => {
 import { useDimensionValues } from "@/lib/graphql/hooks";
 
 function TeamFilter() {
-  const { values, loading } = useDimensionValues({
-    orgId: "my-org",
-    dimension: "TEAM",
-  });
+    const { values, loading } = useDimensionValues({
+        orgId: "my-org",
+        dimension: "TEAM",
+    });
 
-  // values = [{ value: 'Team A', count: 10 }, ...]
+    // values = [{ value: 'Team A', count: 10 }, ...]
 }
 ```
 
@@ -83,8 +83,8 @@ function TeamFilter() {
 
 ```tsx
 useEffect(() => {
-  const interval = setInterval(refetch, 60000);
-  return () => clearInterval(interval);
+    const interval = setInterval(refetch, 60000);
+    return () => clearInterval(interval);
 }, []);
 ```
 
@@ -94,10 +94,10 @@ useEffect(() => {
 import { useMetricsUpdated } from "@/lib/graphql/hooks";
 
 function Dashboard() {
-  useMetricsUpdated({
-    orgId: "my-org",
-    onUpdate: () => refetch(),
-  });
+    useMetricsUpdated({
+        orgId: "my-org",
+        onUpdate: () => refetch(),
+    });
 }
 ```
 
@@ -110,7 +110,7 @@ Ensure your component tree has the GraphQL provider:
 import { GraphQLProvider } from "@/lib/graphql/provider";
 
 export default function Layout({ children }) {
-  return <GraphQLProvider orgId={currentOrgId}>{children}</GraphQLProvider>;
+    return <GraphQLProvider orgId={currentOrgId}>{children}</GraphQLProvider>;
 }
 ```
 
@@ -122,18 +122,18 @@ For development, add Zod validation to catch API changes:
 import { validateAnalyticsResponse } from "@/lib/graphql/validate";
 
 function useValidatedAnalytics(options) {
-  const result = useAnalytics(options);
+    const result = useAnalytics(options);
 
-  useEffect(() => {
-    if (result.data && process.env.NODE_ENV === "development") {
-      const validation = validateAnalyticsResponse(result.data);
-      if (!validation.success) {
-        console.warn("Analytics response validation failed:", validation.error);
-      }
-    }
-  }, [result.data]);
+    useEffect(() => {
+        if (result.data && process.env.NODE_ENV === "development") {
+            const validation = validateAnalyticsResponse(result.data);
+            if (!validation.success) {
+                console.warn("Analytics response validation failed:", validation.error);
+            }
+        }
+    }, [result.data]);
 
-  return result;
+    return result;
 }
 ```
 
@@ -145,19 +145,19 @@ function useValidatedAnalytics(options) {
 
 ```tsx
 function InvestmentChart({ filters }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    apiClient
-      .postJson("/api/v1/investment", { filters })
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, [filters]);
+    useEffect(() => {
+        setLoading(true);
+        apiClient
+            .postJson("/api/v1/investment", { filters })
+            .then(setData)
+            .finally(() => setLoading(false));
+    }, [filters]);
 
-  if (loading) return <Spinner />;
-  return <Chart data={data.breakdown} />;
+    if (loading) return <Spinner />;
+    return <Chart data={data.breakdown} />;
 }
 ```
 
@@ -165,17 +165,17 @@ function InvestmentChart({ filters }) {
 
 ```tsx
 function InvestmentChart({ filters }) {
-  const { data, loading } = useBreakdown({
-    orgId: filters.orgId,
-    dimension: "THEME",
-    measure: "COUNT",
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    topN: 10,
-  });
+    const { data, loading } = useBreakdown({
+        orgId: filters.orgId,
+        dimension: "THEME",
+        measure: "COUNT",
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        topN: 10,
+    });
 
-  if (loading) return <Spinner />;
-  return <Chart data={data?.breakdowns[0]?.items ?? []} />;
+    if (loading) return <Spinner />;
+    return <Chart data={data?.breakdowns[0]?.items ?? []} />;
 }
 ```
 
@@ -185,18 +185,18 @@ function InvestmentChart({ filters }) {
 
 ```tsx
 function FlowDiagram({ filters }) {
-  const [sankey, setSankey] = useState(null);
+    const [sankey, setSankey] = useState(null);
 
-  useEffect(() => {
-    apiClient
-      .postJson("/api/v1/sankey", {
-        path: ["theme", "team"],
-        filters,
-      })
-      .then(setSankey);
-  }, [filters]);
+    useEffect(() => {
+        apiClient
+            .postJson("/api/v1/sankey", {
+                path: ["theme", "team"],
+                filters,
+            })
+            .then(setSankey);
+    }, [filters]);
 
-  return <SankeyChart nodes={sankey?.nodes} edges={sankey?.edges} />;
+    return <SankeyChart nodes={sankey?.nodes} edges={sankey?.edges} />;
 }
 ```
 
@@ -204,15 +204,15 @@ function FlowDiagram({ filters }) {
 
 ```tsx
 function FlowDiagram({ filters }) {
-  const { data, loading } = useSankey({
-    orgId: filters.orgId,
-    path: ["THEME", "TEAM"],
-    measure: "COUNT",
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-  });
+    const { data, loading } = useSankey({
+        orgId: filters.orgId,
+        path: ["THEME", "TEAM"],
+        measure: "COUNT",
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+    });
 
-  return <SankeyChart nodes={data?.sankey?.nodes ?? []} edges={data?.sankey?.edges ?? []} />;
+    return <SankeyChart nodes={data?.sankey?.nodes ?? []} edges={data?.sankey?.edges ?? []} />;
 }
 ```
 
@@ -230,9 +230,9 @@ Or check programmatically:
 import { runtimeConfig } from "@/lib/runtimeConfig";
 
 if (runtimeConfig.useGraphQLAnalytics()) {
-  // Use GraphQL
+    // Use GraphQL
 } else {
-  // Use REST
+    // Use REST
 }
 ```
 
@@ -245,16 +245,16 @@ import { Provider } from "urql";
 import { fromValue } from "wonka";
 
 const mockClient = {
-  executeQuery: () =>
-    fromValue({
-      data: { analytics: mockData },
-    }),
+    executeQuery: () =>
+        fromValue({
+            data: { analytics: mockData },
+        }),
 };
 
 render(
-  <Provider value={mockClient}>
-    <MyComponent />
-  </Provider>,
+    <Provider value={mockClient}>
+        <MyComponent />
+    </Provider>,
 );
 ```
 

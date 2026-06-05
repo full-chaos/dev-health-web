@@ -12,9 +12,9 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { CAPACITY_FORECAST_QUERY } from "./queries";
 import { graphqlFetchForHydration } from "./server";
 import type {
-  CapacityForecast,
-  CapacityForecastInput,
-  CapacityForecastQueryResponse,
+    CapacityForecast,
+    CapacityForecastInput,
+    CapacityForecastQueryResponse,
 } from "./types";
 
 /**
@@ -24,23 +24,23 @@ import type {
  * reimplementing the shape; keep the two in sync.
  */
 export function buildCapacityForecastVariables(
-  filters: MetricFilter,
-  orgId: string,
+    filters: MetricFilter,
+    orgId: string,
 ): { orgId: string; input: CapacityForecastInput } {
-  const teamId =
-    filters.scope.level === "team" && filters.scope.ids.length > 0
-      ? filters.scope.ids[0]
-      : undefined;
+    const teamId =
+        filters.scope.level === "team" && filters.scope.ids.length > 0
+            ? filters.scope.ids[0]
+            : undefined;
 
-  const historyDays = filters.time.range_days ?? 90;
+    const historyDays = filters.time.range_days ?? 90;
 
-  return {
-    orgId,
-    input: {
-      teamId,
-      historyDays,
-    },
-  };
+    return {
+        orgId,
+        input: {
+            teamId,
+            historyDays,
+        },
+    };
 }
 
 /**
@@ -50,18 +50,19 @@ export function buildCapacityForecastVariables(
  * server → client double-fetch.
  */
 export async function getCapacityForecastForHydration(
-  filters: MetricFilter,
-  orgId: string,
+    filters: MetricFilter,
+    orgId: string,
 ): Promise<{ data: CapacityForecast | null; hydrationPayload: SSRData }> {
-  const variables = buildCapacityForecastVariables(filters, orgId);
-  const { data, hydrationPayload } = await graphqlFetchForHydration<CapacityForecastQueryResponse>(
-    CAPACITY_FORECAST_QUERY,
-    variables,
-    { orgId },
-  );
+    const variables = buildCapacityForecastVariables(filters, orgId);
+    const { data, hydrationPayload } =
+        await graphqlFetchForHydration<CapacityForecastQueryResponse>(
+            CAPACITY_FORECAST_QUERY,
+            variables,
+            { orgId },
+        );
 
-  return {
-    data: data.capacityForecast,
-    hydrationPayload,
-  };
+    return {
+        data: data.capacityForecast,
+        hydrationPayload,
+    };
 }

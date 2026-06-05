@@ -72,26 +72,26 @@ import { buildChordDataset } from "@/lib/chord";
 import type { ChordRecord } from "@/lib/types";
 
 const records: ChordRecord[] = [
-  { source: "Growth", target: "Mobile", value: 24 },
-  { source: "Mobile", target: "Growth", value: 20 },
-  { source: "Platform", target: "Core", value: 12 },
-  { source: "Core", target: "Platform", value: 4 },
+    { source: "Growth", target: "Mobile", value: 24 },
+    { source: "Mobile", target: "Growth", value: 20 },
+    { source: "Platform", target: "Core", value: 12 },
+    { source: "Core", target: "Platform", value: 4 },
 ];
 
 const dataset = buildChordDataset(records, {
-  grouping: "team",
-  direction: "bilateral",
-  topN: 8,
-  unit: "reviews",
+    grouping: "team",
+    direction: "bilateral",
+    topN: 8,
+    unit: "reviews",
 });
 
 export function Example() {
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-      <ChordChart dataset={dataset} unit="reviews" />
-      <ChordSummaryPanel dataset={dataset} unit="reviews" />
-    </div>
-  );
+    return (
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+            <ChordChart dataset={dataset} unit="reviews" />
+            <ChordSummaryPanel dataset={dataset} unit="reviews" />
+        </div>
+    );
 }
 ```
 
@@ -106,14 +106,14 @@ Custom tooltip + click handling:
 
 ```tsx
 <ChordChart
-  dataset={dataset}
-  unit="hours"
-  tooltipFormatter={(params) => `<strong>Exchange</strong><br />${JSON.stringify(params)}`}
-  onItemClick={(item) => {
-    if (item.type === "node" && item.name) {
-      console.log("drill into entity", item.name);
-    }
-  }}
+    dataset={dataset}
+    unit="hours"
+    tooltipFormatter={(params) => `<strong>Exchange</strong><br />${JSON.stringify(params)}`}
+    onItemClick={(item) => {
+        if (item.type === "node" && item.name) {
+            console.log("drill into entity", item.name);
+        }
+    }}
 />
 ```
 
@@ -132,12 +132,12 @@ const searchParams = useSearchParams();
 const [controls, setControls] = useState(() => parseChordControlsFromSearchParams(searchParams));
 
 const updateControls = (next: ChordControlsValue) => {
-  setControls(next);
-  const params = serializeChordControlsToSearchParams(
-    next,
-    new URLSearchParams(searchParams.toString()),
-  );
-  window.history.replaceState(window.history.state, "", `?${params.toString()}`);
+    setControls(next);
+    const params = serializeChordControlsToSearchParams(
+        next,
+        new URLSearchParams(searchParams.toString()),
+    );
+    window.history.replaceState(window.history.state, "", `?${params.toString()}`);
 };
 ```
 

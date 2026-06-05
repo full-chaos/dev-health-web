@@ -21,7 +21,7 @@ Wrap your app or page with the GraphQL provider:
 import { GraphQLProvider } from "@/lib/graphql/provider";
 
 export default function Layout({ children }) {
-  return <GraphQLProvider orgId="my-org">{children}</GraphQLProvider>;
+    return <GraphQLProvider orgId="my-org">{children}</GraphQLProvider>;
 }
 ```
 
@@ -43,9 +43,9 @@ The browser `GraphQLProvider` now defaults urql queries to `requestPolicy: "cach
 
 ```tsx
 const [result] = useQuery({
-  query: SECURITY_OVERVIEW_QUERY,
-  variables: { orgId, filters },
-  requestPolicy: "cache-and-network",
+    query: SECURITY_OVERVIEW_QUERY,
+    variables: { orgId, filters },
+    requestPolicy: "cache-and-network",
 });
 ```
 
@@ -59,25 +59,25 @@ Fetch analytics data (breakdowns, timeseries, sankey):
 import { useAnalytics } from "@/lib/graphql/hooks";
 
 function InvestmentChart() {
-  const { data, loading, error } = useAnalytics({
-    orgId: "my-org",
-    batch: {
-      breakdowns: [
-        {
-          dimension: "THEME",
-          measure: "COUNT",
-          dateRange: { startDate: "2024-01-01", endDate: "2024-01-31" },
-          topN: 10,
+    const { data, loading, error } = useAnalytics({
+        orgId: "my-org",
+        batch: {
+            breakdowns: [
+                {
+                    dimension: "THEME",
+                    measure: "COUNT",
+                    dateRange: { startDate: "2024-01-01", endDate: "2024-01-31" },
+                    topN: 10,
+                },
+            ],
+            timeseries: [],
         },
-      ],
-      timeseries: [],
-    },
-  });
+    });
 
-  if (loading) return <Spinner />;
-  if (error) return <Error message={error.message} />;
+    if (loading) return <Spinner />;
+    if (error) return <Error message={error.message} />;
 
-  return <Chart data={data.breakdowns[0].items} />;
+    return <Chart data={data.breakdowns[0].items} />;
 }
 ```
 
@@ -89,16 +89,16 @@ Simplified hook for single breakdown queries:
 import { useBreakdown } from "@/lib/graphql/hooks";
 
 function TeamBreakdown() {
-  const { data, loading } = useBreakdown({
-    orgId: "my-org",
-    dimension: "TEAM",
-    measure: "THROUGHPUT",
-    startDate: "2024-01-01",
-    endDate: "2024-01-31",
-    topN: 10,
-  });
+    const { data, loading } = useBreakdown({
+        orgId: "my-org",
+        dimension: "TEAM",
+        measure: "THROUGHPUT",
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+        topN: 10,
+    });
 
-  // ...
+    // ...
 }
 ```
 
@@ -110,17 +110,17 @@ Fetch Sankey flow data:
 import { useSankey } from "@/lib/graphql/hooks";
 
 function FlowChart() {
-  const { data, loading } = useSankey({
-    orgId: "my-org",
-    path: ["THEME", "TEAM"],
-    measure: "COUNT",
-    startDate: "2024-01-01",
-    endDate: "2024-01-31",
-    maxNodes: 50,
-    maxEdges: 200,
-  });
+    const { data, loading } = useSankey({
+        orgId: "my-org",
+        path: ["THEME", "TEAM"],
+        measure: "COUNT",
+        startDate: "2024-01-01",
+        endDate: "2024-01-31",
+        maxNodes: 50,
+        maxEdges: 200,
+    });
 
-  // data.sankey.nodes, data.sankey.edges
+    // data.sankey.nodes, data.sankey.edges
 }
 ```
 
@@ -132,11 +132,11 @@ Fetch catalog metadata:
 import { useCatalog } from "@/lib/graphql/hooks";
 
 function FilterBar() {
-  const { data, loading } = useCatalog({
-    orgId: "my-org",
-  });
+    const { data, loading } = useCatalog({
+        orgId: "my-org",
+    });
 
-  // data.dimensions, data.measures, data.limits
+    // data.dimensions, data.measures, data.limits
 }
 ```
 
@@ -148,20 +148,20 @@ Fetch distinct values for a dimension:
 import { useDimensionValues } from "@/lib/graphql/hooks";
 
 function TeamSelect() {
-  const { values, loading } = useDimensionValues({
-    orgId: "my-org",
-    dimension: "TEAM",
-  });
+    const { values, loading } = useDimensionValues({
+        orgId: "my-org",
+        dimension: "TEAM",
+    });
 
-  return (
-    <Select>
-      {values.map((v) => (
-        <Option key={v.value} value={v.value}>
-          {v.value} ({v.count})
-        </Option>
-      ))}
-    </Select>
-  );
+    return (
+        <Select>
+            {values.map((v) => (
+                <Option key={v.value} value={v.value}>
+                    {v.value} ({v.count})
+                </Option>
+            ))}
+        </Select>
+    );
 }
 ```
 
@@ -175,15 +175,15 @@ Subscribe to metrics updates:
 import { useMetricsUpdated } from "@/lib/graphql/hooks";
 
 function Dashboard() {
-  useMetricsUpdated({
-    orgId: "my-org",
-    onUpdate: (update) => {
-      console.log(`Metrics updated for ${update.day}`);
-      refetchData();
-    },
-  });
+    useMetricsUpdated({
+        orgId: "my-org",
+        onUpdate: (update) => {
+            console.log(`Metrics updated for ${update.day}`);
+            refetchData();
+        },
+    });
 
-  // ...
+    // ...
 }
 ```
 
@@ -195,16 +195,16 @@ Monitor background task progress:
 import { useTaskStatus } from "@/lib/graphql/hooks";
 
 function TaskProgress({ taskId }) {
-  const { data } = useTaskStatus({
-    taskId,
-    onUpdate: (status) => {
-      if (status.status === "completed") {
-        showSuccess("Task complete!");
-      }
-    },
-  });
+    const { data } = useTaskStatus({
+        taskId,
+        onUpdate: (status) => {
+            if (status.status === "completed") {
+                showSuccess("Task complete!");
+            }
+        },
+    });
 
-  return <ProgressBar value={data?.progress ?? 0} />;
+    return <ProgressBar value={data?.progress ?? 0} />;
 }
 ```
 
@@ -219,7 +219,7 @@ import { AnalyticsResultSchema } from "@/lib/graphql/schemas";
 // Validate raw data
 const result = validateAnalyticsResponse(rawData);
 if (!result.success) {
-  console.error("Validation failed:", result.error);
+    console.error("Validation failed:", result.error);
 }
 
 // Or validate with schema directly

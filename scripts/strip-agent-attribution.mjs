@@ -37,14 +37,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 // line including optional surrounding whitespace; we run them in MULTILINE mode
 // so `^`/`$` anchor to line boundaries.
 const AGENT_LINE_PATTERNS = [
-  // "Ultraworked with [Sisyphus](https://...)"
-  /^Ultraworked with \[[^\]]+\]\([^)]*\)\s*$/gm,
-  // "Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>"
-  /^Co-authored-by:\s+Sisyphus\s+<[^>]*>\s*$/gm,
-  // "Co-authored-by: Claude <noreply@anthropic.com>"
-  /^Co-authored-by:\s+Claude\s+<[^>]*>\s*$/gm,
-  // "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
-  /^🤖 Generated with \[?[^\]\n]+\]?\([^)]*\)?\s*$/gm,
+    // "Ultraworked with [Sisyphus](https://...)"
+    /^Ultraworked with \[[^\]]+\]\([^)]*\)\s*$/gm,
+    // "Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>"
+    /^Co-authored-by:\s+Sisyphus\s+<[^>]*>\s*$/gm,
+    // "Co-authored-by: Claude <noreply@anthropic.com>"
+    /^Co-authored-by:\s+Claude\s+<[^>]*>\s*$/gm,
+    // "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+    /^🤖 Generated with \[?[^\]\n]+\]?\([^)]*\)?\s*$/gm,
 ];
 
 /**
@@ -55,14 +55,14 @@ const AGENT_LINE_PATTERNS = [
  * @returns {string}
  */
 export function stripAgentAttribution(message) {
-  let cleaned = message;
-  for (const pattern of AGENT_LINE_PATTERNS) {
-    cleaned = cleaned.replace(pattern, "");
-  }
-  // Collapse runs of 3+ blank lines to a single blank line.
-  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
-  // Ensure exactly one trailing newline.
-  return cleaned.replace(/\s+$/, "") + "\n";
+    let cleaned = message;
+    for (const pattern of AGENT_LINE_PATTERNS) {
+        cleaned = cleaned.replace(pattern, "");
+    }
+    // Collapse runs of 3+ blank lines to a single blank line.
+    cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+    // Ensure exactly one trailing newline.
+    return cleaned.replace(/\s+$/, "") + "\n";
 }
 
 /**
@@ -70,31 +70,31 @@ export function stripAgentAttribution(message) {
  * @returns {number} exit code
  */
 export function main(argv) {
-  if (argv.length !== 1) {
-    process.stderr.write("usage: strip-agent-attribution.mjs <commit-msg-file>\n");
-    return 2;
-  }
-  const path = argv[0];
-  let original;
-  try {
-    original = readFileSync(path, "utf8");
-  } catch (err) {
-    process.stderr.write(`strip-agent-attribution: cannot read ${path}: ${err.message}\n`);
-    return 1;
-  }
-  const cleaned = stripAgentAttribution(original);
-  if (cleaned !== original) {
-    try {
-      writeFileSync(path, cleaned);
-    } catch (err) {
-      process.stderr.write(`strip-agent-attribution: cannot write ${path}: ${err.message}\n`);
-      return 1;
+    if (argv.length !== 1) {
+        process.stderr.write("usage: strip-agent-attribution.mjs <commit-msg-file>\n");
+        return 2;
     }
-  }
-  return 0;
+    const path = argv[0];
+    let original;
+    try {
+        original = readFileSync(path, "utf8");
+    } catch (err) {
+        process.stderr.write(`strip-agent-attribution: cannot read ${path}: ${err.message}\n`);
+        return 1;
+    }
+    const cleaned = stripAgentAttribution(original);
+    if (cleaned !== original) {
+        try {
+            writeFileSync(path, cleaned);
+        } catch (err) {
+            process.stderr.write(`strip-agent-attribution: cannot write ${path}: ${err.message}\n`);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 // CLI entrypoint: only run when invoked directly, not when imported by tests.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  process.exit(main(process.argv.slice(2)));
+    process.exit(main(process.argv.slice(2)));
 }

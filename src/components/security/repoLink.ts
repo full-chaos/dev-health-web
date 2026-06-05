@@ -4,6 +4,6 @@
  * narrowing survives the navigation.
  */
 export function buildRepoHref(repoId: string, f?: string): string {
-  const base = `/security/repos/${encodeURIComponent(repoId)}`;
-  return f ? `${base}?f=${f}` : base;
+    const base = `/security/repos/${encodeURIComponent(repoId)}`;
+    return f ? `${base}?f=${f}` : base;
 }

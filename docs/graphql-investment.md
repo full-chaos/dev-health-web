@@ -65,16 +65,16 @@ NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=true npm start
 
 ```graphql
 query InvestmentBreakdown($orgId: String!, $batch: AnalyticsRequestInput!) {
-  analytics(orgId: $orgId, batch: $batch) {
-    breakdowns {
-      dimension
-      measure
-      items {
-        key
-        value
-      }
+    analytics(orgId: $orgId, batch: $batch) {
+        breakdowns {
+            dimension
+            measure
+            items {
+                key
+                value
+            }
+        }
     }
-  }
 }
 ```
 
@@ -82,23 +82,23 @@ Variables:
 
 ```json
 {
-  "orgId": "my-org",
-  "batch": {
-    "breakdowns": [
-      {
-        "dimension": "THEME",
-        "measure": "CHURN_LOC",
-        "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
-        "topN": 50
-      },
-      {
-        "dimension": "SUBCATEGORY",
-        "measure": "CHURN_LOC",
-        "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
-        "topN": 100
-      }
-    ]
-  }
+    "orgId": "my-org",
+    "batch": {
+        "breakdowns": [
+            {
+                "dimension": "THEME",
+                "measure": "CHURN_LOC",
+                "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
+                "topN": 50
+            },
+            {
+                "dimension": "SUBCATEGORY",
+                "measure": "CHURN_LOC",
+                "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
+                "topN": 100
+            }
+        ]
+    }
 }
 ```
 
@@ -106,21 +106,21 @@ Variables:
 
 ```graphql
 query InvestmentSankey($orgId: String!, $batch: AnalyticsRequestInput!) {
-  analytics(orgId: $orgId, batch: $batch) {
-    sankey {
-      nodes {
-        id
-        label
-        dimension
-        value
-      }
-      edges {
-        source
-        target
-        value
-      }
+    analytics(orgId: $orgId, batch: $batch) {
+        sankey {
+            nodes {
+                id
+                label
+                dimension
+                value
+            }
+            edges {
+                source
+                target
+                value
+            }
+        }
     }
-  }
 }
 ```
 
@@ -128,16 +128,16 @@ Variables:
 
 ```json
 {
-  "orgId": "my-org",
-  "batch": {
-    "sankey": {
-      "path": ["TEAM", "THEME", "REPO"],
-      "measure": "CHURN_LOC",
-      "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
-      "maxNodes": 50,
-      "maxEdges": 200
+    "orgId": "my-org",
+    "batch": {
+        "sankey": {
+            "path": ["TEAM", "THEME", "REPO"],
+            "measure": "CHURN_LOC",
+            "dateRange": { "startDate": "2025-01-01", "endDate": "2025-01-31" },
+            "maxNodes": 50,
+            "maxEdges": 200
+        }
     }
-  }
 }
 ```
 

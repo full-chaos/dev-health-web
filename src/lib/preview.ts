@@ -20,12 +20,12 @@ export type PreviewFeatureId = "ai-opportunities";
  * to mark a destination as preview across nav + headers.
  */
 export const PREVIEW_FEATURES: Record<PreviewFeatureId, { label: string }> = {
-  // /ai/automations — best-fit automation candidates depend on the
-  // recommendation detector, which is not yet generally available.
-  "ai-opportunities": { label: "Automation candidates" },
+    // /ai/automations — best-fit automation candidates depend on the
+    // recommendation detector, which is not yet generally available.
+    "ai-opportunities": { label: "Automation candidates" },
 };
 
 /** True when `id` names a feature that should be marked as preview. */
 export function isPreviewFeature(id: string): id is PreviewFeatureId {
-  return Object.prototype.hasOwnProperty.call(PREVIEW_FEATURES, id);
+    return Object.prototype.hasOwnProperty.call(PREVIEW_FEATURES, id);
 }

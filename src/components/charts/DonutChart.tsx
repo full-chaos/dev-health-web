@@ -11,75 +11,75 @@ import { echarts } from "@/lib/echartsInit";
 echarts.use([PieChart]);
 
 type DonutChartProps = {
-  data: Array<{ name: string; value: number }>;
-  selectedIndex?: number;
-  height?: number | string;
-  width?: number | string;
-  className?: string;
-  style?: CSSProperties;
+    data: Array<{ name: string; value: number }>;
+    selectedIndex?: number;
+    height?: number | string;
+    width?: number | string;
+    className?: string;
+    style?: CSSProperties;
 };
 
 export function DonutChart({
-  data,
-  selectedIndex = 0,
-  height = 280,
-  width = "100%",
-  className,
-  style,
+    data,
+    selectedIndex = 0,
+    height = 280,
+    width = "100%",
+    className,
+    style,
 }: DonutChartProps) {
-  const chartTheme = useChartTheme();
-  const segments = data.map((segment, index) => ({
-    ...segment,
-    selected: index === selectedIndex,
-  }));
+    const chartTheme = useChartTheme();
+    const segments = data.map((segment, index) => ({
+        ...segment,
+        selected: index === selectedIndex,
+    }));
 
-  const mergedStyle: CSSProperties = {
-    height,
-    width,
-    ...style,
-  };
+    const mergedStyle: CSSProperties = {
+        height,
+        width,
+        ...style,
+    };
 
-  return (
-    <Chart
-      option={{
-        tooltip: {
-          trigger: "item",
-          confine: true,
-          backgroundColor: chartTheme.background,
-          borderColor: chartTheme.stroke,
-          textStyle: {
-            color: chartTheme.text,
-          },
-        },
-        legend: {
-          bottom: 0,
-          textStyle: { color: chartTheme.muted },
-        },
-        series: [
-          {
-            type: "pie",
-            radius: ["52%", "72%"],
-            center: ["50%", "45%"],
-            selectedMode: "single",
-            selectedOffset: 10,
-            padAngle: 2,
-            itemStyle: {
-              borderRadius: 6,
-              shadowBlur: 12,
-              shadowOffsetY: 6,
-              shadowColor: "rgba(0,0,0,0.15)",
-            },
-            label: {
-              color: chartTheme.muted,
-              formatter: "{b}: {d}%",
-            },
-            data: segments,
-          },
-        ],
-      }}
-      className={className}
-      style={mergedStyle}
-      chartTheme={chartTheme}
-    />
-  );
+    return (
+        <Chart
+            option={{
+                tooltip: {
+                    trigger: "item",
+                    confine: true,
+                    backgroundColor: chartTheme.background,
+                    borderColor: chartTheme.stroke,
+                    textStyle: {
+                        color: chartTheme.text,
+                    },
+                },
+                legend: {
+                    bottom: 0,
+                    textStyle: { color: chartTheme.muted },
+                },
+                series: [
+                    {
+                        type: "pie",
+                        radius: ["52%", "72%"],
+                        center: ["50%", "45%"],
+                        selectedMode: "single",
+                        selectedOffset: 10,
+                        padAngle: 2,
+                        itemStyle: {
+                            borderRadius: 6,
+                            shadowBlur: 12,
+                            shadowOffsetY: 6,
+                            shadowColor: "rgba(0,0,0,0.15)",
+                        },
+                        label: {
+                            color: chartTheme.muted,
+                            formatter: "{b}: {d}%",
+                        },
+                        data: segments,
+                    },
+                ],
+            }}
+            className={className}
+            style={mergedStyle}
+            chartTheme={chartTheme}
+        />
+    );
 }
