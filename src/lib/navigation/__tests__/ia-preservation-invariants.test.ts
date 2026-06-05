@@ -23,6 +23,8 @@ type WorkTab = (typeof WORK_TABS)[number];
 const appRoot = join(process.cwd(), "src/app/(app)");
 const workPagePath = join(appRoot, "work/page.tsx");
 const workPageSource = readFileSync(workPagePath, "utf8");
+const metricsPagePath = join(appRoot, "metrics/page.tsx");
+const metricsPageSource = readFileSync(metricsPagePath, "utf8");
 
 const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/ai/automations/page.tsx",
@@ -197,7 +199,7 @@ describe("IA preservation invariant #3 — no dead investigation deep-links", ()
     );
 
     it.each(iaPreservationBaseline.directDestinationLinks)(
-        "points $source $intent straight at $expectedPath (no /work loopback)",
+        "points $source $intent straight at $expectedPath rendering the real $expectedTab content",
         (entry) => {
             const url = parseHref(entry.href);
             expect(
@@ -205,6 +207,32 @@ describe("IA preservation invariant #3 — no dead investigation deep-links", ()
                 `${entry.href} should be a direct destination, not a /work workbench loopback`,
             ).toBe(entry.expectedPath);
             expect(routePageExists(entry.href), entry.href).toBe(true);
+
+            // Content guard: routePageExists strips the query, so a route can exist while
+            // the deep-linked tab is gone. For the Metrics destination, assert the page
+            // resolves ?tab from the query AND defines the expected tab id, so a removed or
+            // renamed Flow tab fails here instead of silently dropping to the default tab.
+            const tab = url.searchParams.get("tab");
+            if (entry.expectedPath === "/metrics" && tab) {
+                expect(tab, entry.href).toBe(entry.expectedTab);
+                expect(
+                    metricsPageSource,
+                    `metrics page must resolve ?tab from the query for ${entry.href}`,
+                ).toContain("tab.id === tabParam");
+                expect(
+                    metricsPageSource,
+                    `metrics page must define the "${entry.expectedTab}" tab for ${entry.href}`,
+                ).toContain(`id: "${entry.expectedTab}"`);
+            }
+        },
+    );
+
+    it.each(WORK_TABS)(
+        "preserves the legacy bare /work?tab=%s deep link (resolver still routes it to Work)",
+        (tab) => {
+            // Splits canonical-emitted policy (links SHOULD carry view=work) from the
+            // preservation guarantee (legacy bare ?tab= links MUST keep resolving to Work).
+            expect(resolveActiveView(undefined, tab), `/work?tab=${tab}`).toBe("work");
         },
     );
 });
@@ -309,4 +337,57 @@ describe("IA preservation invariant #6 — route safety", () => {
             }
         }
     });
+});
+
+describe("IA preservation invariant #7 — reachable redirect aliases stay guarded", () => {
+    // De-circularizes the baseline for redirect aliases: instead of trusting the hand
+    // fixture, scan the filesystem for redirect-only route pages and require each to be
+    // registered. Closes the /team-flow blind spot the adversarial review found — a new
+    // reachable alias cannot go unguarded, and a deleted alias/target is caught.
+    const knownNonAliasRedirectPages = new Set<string>([
+        // Pages that call redirect() as a guard rather than as a reachable alias.
+        // Empty today; add with justification if an in-page guard-redirect appears.
+    ]);
+
+    const routeForPageFile = (filePath: string): string => {
+        const segments = relative(appRoot, dirname(filePath))
+            .split("/")
+            .filter((seg) => seg.length > 0 && !(seg.startsWith("(") && seg.endsWith(")")));
+        return `/${segments.join("/")}`;
+    };
+
+    const scanRedirectOnlyRoutes = (dir: string): string[] =>
+        readdirSync(dir).flatMap((entry) => {
+            const full = join(dir, entry);
+            if (statSync(full).isDirectory()) return scanRedirectOnlyRoutes(full);
+            if (entry !== "page.tsx") return [];
+            const src = readFileSync(full, "utf8");
+            return /\bredirect\s*\(/.test(src) && src.includes("next/navigation")
+                ? [routeForPageFile(full)]
+                : [];
+        });
+
+    it("registers every redirect-only route in legacyAliasRoutes (no unguarded aliases)", () => {
+        const registered = new Set<string>(
+            iaPreservationBaseline.legacyAliasRoutes.map((alias) => alias.route),
+        );
+        const unguarded = scanRedirectOnlyRoutes(appRoot).filter(
+            (route) => !registered.has(route) && !knownNonAliasRedirectPages.has(route),
+        );
+        expect(
+            unguarded,
+            `redirect-only routes reachable on disk but not in legacyAliasRoutes: ${unguarded.join(", ")}`,
+        ).toEqual([]);
+    });
+
+    it.each(iaPreservationBaseline.legacyAliasRoutes)(
+        "keeps alias $route redirecting to the live destination $redirectsTo",
+        (alias) => {
+            expect(routePageExists(alias.route), `${alias.route} alias page missing`).toBe(true);
+            expect(
+                routePageExists(alias.redirectsTo),
+                `${alias.route} redirects to a dead destination ${alias.redirectsTo}`,
+            ).toBe(true);
+        },
+    );
 });
