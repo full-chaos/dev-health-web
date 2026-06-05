@@ -46,6 +46,7 @@ const reachableRoutes = [
 	"/dashboard",
 	"/plan",
 	"/plan/delivery-forecast",
+	"/plan/capacity",
 	"/operating-review",
 	"/work",
 	"/metrics",
@@ -306,6 +307,7 @@ test.describe("primary navigation reachability", () => {
 			{ path: "/bottleneck", selectedLabel: "Diagnose" },
 			{ path: "/risk/compounding", selectedLabel: "Govern" },
 			{ path: "/plan/delivery-forecast", selectedLabel: "Plan" },
+			{ path: "/plan/capacity", selectedLabel: "Plan" },
 			{ path: "/operating-review", selectedLabel: "Plan" },
 		]) {
 			await expectSingleSelectedArea(page, route.path, route.selectedLabel);
