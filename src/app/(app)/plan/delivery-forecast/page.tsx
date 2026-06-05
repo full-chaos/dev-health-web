@@ -3,12 +3,12 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
+import { ModeTabs } from "@/components/shared/ModeTabs";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
+import { planForecastTabs, type PlanForecastView } from "@/lib/navigation/planForecastTabs";
 import { formatNumber } from "@/lib/formatters";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
 import type { ThroughputRiskOverlay } from "@/lib/graphql/types";
@@ -16,8 +16,6 @@ import type { ThroughputRiskOverlay } from "@/lib/graphql/types";
 type DeliveryForecastPageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-type DeliveryForecastView = "monte-carlo";
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -125,18 +123,10 @@ export default async function DeliveryForecastPage({ searchParams }: DeliveryFor
             </div>
           </header>
 
-          <ModeTabs<DeliveryForecastView>
-            items={
-              [
-                {
-                  id: "monte-carlo",
-                  label: "Monte Carlo",
-                  href: withFilterParam("/plan/delivery-forecast", filters, activeRole),
-                },
-              ] satisfies ReadonlyArray<ModeTabItem<DeliveryForecastView>>
-            }
-            activeId="monte-carlo"
-            ariaLabel="Delivery Forecast views"
+          <ModeTabs<PlanForecastView>
+            items={planForecastTabs(filters, activeRole)}
+            activeId="delivery-forecast"
+            ariaLabel="Plan forecast views"
           />
 
           <GlobalContextBar filters={filters} origin={originParam} />

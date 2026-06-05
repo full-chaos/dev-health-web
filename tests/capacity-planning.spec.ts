@@ -40,12 +40,34 @@ test.describe("Delivery Forecast page", () => {
     await expect(page.getByText(/Scope:\s*All teams/i)).toBeVisible();
   });
 
-  test("renders Monte Carlo as the local delivery forecast view", async ({ page }) => {
+  test("exposes Delivery Forecast (active) and Monte Carlo sibling tabs", async ({ page }) => {
     await page.goto("/plan/delivery-forecast");
 
-    const link = page.getByRole("link", { name: /^Monte Carlo$/i });
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("aria-current", "page");
+    const tabs = page.getByRole("navigation", { name: "Plan forecast views" });
+    await expect(tabs.getByRole("link", { name: /^Delivery Forecast$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // CHAOS-2079 / J4: the Monte Carlo tab must point at the REAL forecast route
+    // (/plan/capacity), not self-link back to the summary.
+    const monteCarlo = tabs.getByRole("link", { name: /^Monte Carlo$/i });
+    await expect(monteCarlo).toHaveAttribute("href", /\/plan\/capacity/);
+    await expect(monteCarlo).not.toHaveAttribute("aria-current", "page");
+  });
+
+  test("Monte Carlo view at /plan/capacity renders the real forecast surface", async ({ page }) => {
+    await page.goto("/plan/capacity");
+
+    await expect(page.getByRole("heading", { name: /Monte Carlo Forecast/i })).toBeVisible();
+    const tabs = page.getByRole("navigation", { name: "Plan forecast views" });
+    await expect(tabs.getByRole("link", { name: /^Monte Carlo$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(tabs.getByRole("link", { name: /^Delivery Forecast$/i })).toHaveAttribute(
+      "href",
+      /\/plan\/delivery-forecast/,
+    );
   });
 
   test("renders the unified global context bar above the forecast (CHAOS-2081)", async ({

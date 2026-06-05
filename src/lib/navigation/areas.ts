@@ -327,8 +327,7 @@ export const navAreas: readonly NavArea[] = [
 				id: "capacity",
 				label: "Capacity",
 				path: "/plan/capacity",
-				navVisible: false,
-				preview: true,
+				navVisible: true,
 			},
 			{
 				id: "backlog-risk",
