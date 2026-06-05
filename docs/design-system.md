@@ -62,6 +62,7 @@ The only sanctioned implementations: `EntityLabel` (A7), `DataState` (A11), `Evi
 
     > Conforms to the Design & Style Framework; uses the shared primitives; backing queries return resolved names (no unresolved ids surfaced); `npm run design-lint` passes; an after-screenshot or visual-regression assertion is attached.
 
+- **IA preservation rule (R-guard):** No IA change may remove or relocate a reachable analytical view, route, or deep-link target unless (a) its replacement destination is named in the issue, (b) the old path redirects to it (not to a generic overview), and (c) a test asserts the destination renders real content. Enforced by the IA invariant suite in `src/lib/navigation/__tests__/`.
 - **design-lint (ESLint/custom):** ban raw UUID/hash regex in JSX text and label props; ban hardcoded hex/px in components; ban non-registry CTA strings; ban `/api/`, `api/graphql`, `CHAOS-\\d+`, edge-name and detector/telemetry tokens in user-facing strings; require `formatNumber` on chart value labels.
 - **Dev guard:** throw in dev if an unresolved hash reaches a primary label slot.
 - **Visual gate:** tie "Done" to the Visual User Journey Evidence & UX Acceptance Coverage milestone, an after-screenshot or visual-regression assertion per fix, so "Done" means _verified_, not just merged.
