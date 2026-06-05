@@ -106,6 +106,10 @@ const expectDeepLinkResolvesToWorkbenchTab = (href: string, expectedTab: string)
         throw new Error(`${href} does not target a registered Work tab`);
     }
     expect(activeView, `${href} should not fall through to Diagnose Overview`).toBe("work");
+    expect(
+        url.searchParams.get("view"),
+        `${href} should canonically pin view=work so a future resolver change can't reintroduce the loopback`,
+    ).toBe("work");
 };
 
 const listRouteFiles = (directory: string): string[] => {
@@ -189,6 +193,18 @@ describe("IA preservation invariant #3 — no dead investigation deep-links", ()
         "resolves $source $intent to its $expectedTab workbench view",
         (entry) => {
             expectDeepLinkResolvesToWorkbenchTab(entry.href, entry.expectedTab);
+        },
+    );
+
+    it.each(iaPreservationBaseline.directDestinationLinks)(
+        "points $source $intent straight at $expectedPath (no /work loopback)",
+        (entry) => {
+            const url = parseHref(entry.href);
+            expect(
+                url.pathname,
+                `${entry.href} should be a direct destination, not a /work workbench loopback`,
+            ).toBe(entry.expectedPath);
+            expect(routePageExists(entry.href), entry.href).toBe(true);
         },
     );
 });

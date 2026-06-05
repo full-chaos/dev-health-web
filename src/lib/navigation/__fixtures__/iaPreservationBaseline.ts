@@ -200,44 +200,49 @@ export const iaPreservationBaseline = {
         {
             source: "InvestigationPanel",
             intent: "cycle breakdown flame view",
-            href: "/work?tab=flame&mode=cycle_breakdown",
+            href: "/work?view=work&tab=flame&mode=cycle_breakdown",
             expectedTab: "flame",
         },
         {
             source: "InvestigationPanel",
             intent: "throughput flame view",
-            href: "/work?tab=flame&mode=throughput",
+            href: "/work?view=work&tab=flame&mode=throughput",
             expectedTab: "flame",
         },
         {
             source: "InvestigationPanel",
             intent: "code hotspots flame view",
-            href: "/work?tab=flame&mode=code_hotspots",
+            href: "/work?view=work&tab=flame&mode=code_hotspots",
             expectedTab: "flame",
         },
         {
             source: "InvestigationPanel",
             intent: "related patterns heatmap view",
-            href: "/work?tab=heatmap",
+            href: "/work?view=work&tab=heatmap",
             expectedTab: "heatmap",
         },
         {
             source: "FlowView",
             intent: "selected node flame view",
-            href: "/work?tab=flame&mode=throughput&context_node=Selected%20Node",
+            href: "/work?view=work&tab=flame&mode=throughput&context_node=Selected%20Node",
             expectedTab: "flame",
         },
         {
             source: "FlowView/InspectPanel",
             intent: "work graph view",
-            href: "/work?tab=graph",
+            href: "/work?view=work&tab=graph",
             expectedTab: "graph",
         },
+    ],
+    // Direct destination links (NOT Work workbench deep-links): these point at a
+    // real area destination. LandscapeView's 'Open metrics' CTA goes straight to the
+    // Flow destination (/metrics?tab=flow), reversing the old 2-hop /work?tab=flow.
+    directDestinationLinks: [
         {
             source: "LandscapeView",
-            intent: "flow view",
-            href: "/work?tab=flow",
-            expectedTab: "flow",
+            intent: "open metrics (flow)",
+            href: "/metrics?tab=flow",
+            expectedPath: "/metrics",
         },
     ],
 } as const;

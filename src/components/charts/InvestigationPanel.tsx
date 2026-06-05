@@ -33,25 +33,25 @@ export function InvestigationPanel({
     const origin = title ? `From: ${title}` : `From: ${data.axes.x.label} × ${data.axes.y.label}`;
 
     const cycleBreakdownFlameHref = withFilterParam(
-        "/work?tab=flame&mode=cycle_breakdown",
+        "/work?view=work&tab=flame&mode=cycle_breakdown",
         filters,
         undefined,
         origin,
     );
     const throughputFlameHref = withFilterParam(
-        "/work?tab=flame&mode=throughput",
+        "/work?view=work&tab=flame&mode=throughput",
         filters,
         undefined,
         origin,
     );
     const hotspotsFlameHref = withFilterParam(
-        "/work?tab=flame&mode=code_hotspots",
+        "/work?view=work&tab=flame&mode=code_hotspots",
         filters,
         undefined,
         origin,
     );
 
-    const heatmapPath = "/work?tab=heatmap";
+    const heatmapPath = "/work?view=work&tab=heatmap";
     const heatmapHref = withFilterParam(heatmapPath, filters, undefined, origin);
 
     const investmentHref = withFilterParam(
@@ -63,8 +63,18 @@ export function InvestigationPanel({
 
     const investigationPaths = useMemo(() => {
         const paths = [
-            { id: "explain", label: "Explain this state", href: metricExplainHref, type: "review" },
-            { id: "heatmaps", label: "View related patterns", href: heatmapHref, type: "wip" },
+            {
+                id: "explain",
+                label: "Explain this state",
+                href: metricExplainHref,
+                type: "review",
+            },
+            {
+                id: "heatmaps",
+                label: "View related patterns",
+                href: heatmapHref,
+                type: "wip",
+            },
             {
                 id: "cycle",
                 label: "View time breakdown",
@@ -83,7 +93,12 @@ export function InvestigationPanel({
                 href: hotspotsFlameHref,
                 type: "churn",
             },
-            { id: "investment", label: "View flow", href: investmentHref, type: "investment" },
+            {
+                id: "investment",
+                label: "View flow",
+                href: investmentHref,
+                type: "investment",
+            },
         ];
 
         const sorted = [...paths].sort((a, b) => {

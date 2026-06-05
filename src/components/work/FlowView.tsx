@@ -171,7 +171,12 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
     }, []);
 
     const { handleTreemapClick, handleInvestmentMixClick, handleSankeyClick, handleAreaClick } =
-        useFlowHandlers({ investmentMix, dataset, setSelection, setInvestmentMixFocusTheme });
+        useFlowHandlers({
+            investmentMix,
+            dataset,
+            setSelection,
+            setInvestmentMixFocusTheme,
+        });
 
     const isLoading = resolvedKey !== requestKey;
     const hasData = !!(dataset && dataset.nodes.length > 0);
@@ -197,7 +202,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         if (!selection) return null;
         const nodeName = selection.key ?? selection.path[selection.path.length - 1];
         return withFilterParam(
-            `/work?tab=flame&mode=${flameMode}&context_node=${nodeName}`,
+            `/work?view=work&tab=flame&mode=${flameMode}&context_node=${nodeName}`,
             filters,
             activeRole,
         );

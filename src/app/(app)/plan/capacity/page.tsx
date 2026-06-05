@@ -50,7 +50,7 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-    const graphqlEnabled = runtimeConfig["useGraphQLAnalytics"]();
+    const graphqlEnabled = runtimeConfig.useGraphQLAnalytics();
     let hydrationOrgId: string | undefined;
     if (graphqlEnabled) {
         const { auth } = await import("@/lib/auth");

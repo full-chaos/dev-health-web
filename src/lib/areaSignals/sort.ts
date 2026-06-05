@@ -44,15 +44,6 @@ export function sortBySeverity(signals: readonly AreaSignal[]): AreaSignal[] {
         .map(({ signal }) => signal);
 }
 
-/**
- * The top N signals across the whole area by severity, used to bubble the
- * leading sub-area signal(s) up to the area overview (Framework A2a). Only
- * available signals bubble — an unavailable metric is never "the top signal".
- */
-export function topSignals(signals: readonly AreaSignal[], count = 3): AreaSignal[] {
-    return sortBySeverity(signals.filter(isAvailable)).slice(0, count);
-}
-
 export type SignalCluster = {
     /** Cluster header, or `undefined` for the flat (unclustered) bucket. */
     cluster: string | undefined;
