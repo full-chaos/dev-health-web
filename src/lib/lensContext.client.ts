@@ -14,6 +14,6 @@ import type { LensId } from "./lensContext";
 
 /** Hook — returns the active lens ID, defaulting to "neutral". Client-only. */
 export function useActiveLens(): LensId {
-	const searchParams = useSearchParams();
-	return getLensFromSearchParams(searchParams) ?? "neutral";
+    const searchParams = useSearchParams();
+    return getLensFromSearchParams(searchParams) ?? "neutral";
 }
