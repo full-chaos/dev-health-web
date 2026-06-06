@@ -59,10 +59,9 @@ export function AreaOverview({
     // card appears in both hero and grid (CHAOS-2082 acceptance).
     const [hero, ...restAvailable] = available;
 
-    // Grid = remaining real-data cards first, then the muted empty tier, last.
-    const gridSignals = [...restAvailable, ...unavailable];
+    const gridSignals = restAvailable;
 
-    if (!hero && gridSignals.length === 0) return null;
+    if (!hero && gridSignals.length === 0 && unavailable.length === 0) return null;
 
     return (
         <section
@@ -98,6 +97,24 @@ export function AreaOverview({
                             role={role}
                         />
                     ))}
+                </div>
+            ) : null}
+
+            {unavailable.length > 0 ? (
+                <div
+                    data-testid="area-overview-empty-tier"
+                    className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-4 opacity-80"
+                >
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        {unavailable.map((signal) => (
+                            <AreaSignalCard
+                                key={signal.id}
+                                signal={signal}
+                                filters={filters}
+                                role={role}
+                            />
+                        ))}
+                    </div>
                 </div>
             ) : null}
         </section>
