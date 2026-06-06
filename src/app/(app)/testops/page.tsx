@@ -2,28 +2,21 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { BackLink } from "@/components/shared/BackLink";
-import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
-import { getGovernSignals } from "@/lib/areaSignals";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
 import { TimeseriesResult, TimeseriesBucket } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
+import { TestOpsTabs } from "./TestOpsTabs";
+
 type TestOpsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-// Govern landing sub-views (Framework A2). "Overview" is the area summary +
-// signal grid; "TestOps" preserves the borrowed pipeline/test/coverage metric
-// grid (A6: the area is named "Govern", not its borrowed leaf).
-type GovernView = "overview" | "testops";
-const GOVERN_VIEWS: GovernView[] = ["overview", "testops"];
 
 function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
     const series = timeseries.find((s) => s.measure === measureId);
@@ -45,10 +38,6 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
-    const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
-    const activeView: GovernView = GOVERN_VIEWS.includes(viewParam as GovernView)
-        ? (viewParam as GovernView)
-        : "overview";
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
@@ -64,11 +53,6 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
     const dateRange = { startDate, endDate };
 
-    // Resolve the area's sub-area signals (Govern reference resolver) and the
-    // borrowed TestOps metric grid in parallel — no waterfall.
-    // testOpsData is fetched once here; getGovernSignals reuses it via `prefetched`
-    // to avoid a duplicate analytics POST (PIPELINE_SUCCESS_RATE / TEST_FLAKE_RATE /
-    // COVERAGE_LINE_PCT are all present in the batch below).
     const [health, testOpsData] = await Promise.all([
         checkApiHealth(),
         fetchTestOpsData(
@@ -122,9 +106,6 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
             isTestMode,
         ),
     ]);
-    const governSignals = await getGovernSignals(filters, isTestMode, {
-        testOpsData,
-    });
 
     if (!health.ok && !isTestMode) {
         return <ServiceUnavailable />;
@@ -144,19 +125,6 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
         { id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
     ];
 
-    const tabs: ReadonlyArray<ModeTabItem<GovernView>> = [
-        {
-            id: "overview",
-            label: "Overview",
-            href: withFilterParam("/testops", filters, activeRole),
-        },
-        {
-            id: "testops",
-            label: "TestOps",
-            href: withFilterParam("/testops?view=testops", filters, activeRole),
-        },
-    ];
-
     return (
         <div className="min-h-screen bg-background text-foreground">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
@@ -165,62 +133,57 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                     <header className="flex flex-col gap-4">
                         <BackLink href={withFilterParam("/", filters, activeRole)} />
                         <div>
-                            {/* A6: the area is named by the AREA ("Govern"), not a borrowed leaf. */}
                             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Govern
+                                TestOps
                             </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Govern</h1>
+                            <h1 className="mt-2 font-(--font-display) text-3xl">TestOps</h1>
                             <p className="mt-2 text-sm text-(--ink-muted)">
-                                Quality and risk across pipelines, tests, coverage, security, and
-                                delivery.
+                                Pipeline, test, and coverage operations in one durable destination.
                             </p>
                         </div>
                     </header>
 
-                    <ModeTabs items={tabs} activeId={activeView} ariaLabel="Govern views" />
+                    <TestOpsTabs activeId="overview" filters={filters} role={activeRole} />
 
-                    {activeView === "testops" ? (
-                        <>
-                            <GlobalContextBar filters={filters} />
-                            <FilterBar view="testops" />
-                            <section className="grid gap-4 lg:grid-cols-3">
-                                {measures.map(({ id, ts }) => {
-                                    const def = TESTOPS_MEASURES[id];
-                                    if (!def) return null;
+                    <GlobalContextBar filters={filters} />
+                    <FilterBar view="testops" />
 
-                                    const value = getLatestValue(ts, id);
-                                    const spark = getSparkline(ts, id);
+                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                            TestOps summary
+                        </p>
+                        <p className="mt-2 text-sm text-(--ink-muted)">
+                            Overview of pipeline stability, test reliability, and coverage health.
+                        </p>
+                    </section>
 
-                                    return (
-                                        <MetricCard
-                                            key={id}
-                                            label={def.label}
-                                            href="#"
-                                            value={value}
-                                            unit={
-                                                def.unit === "percentage"
-                                                    ? "%"
-                                                    : def.unit === "duration"
-                                                      ? "m"
-                                                      : ""
-                                            }
-                                            spark={spark}
-                                            caption={def.description}
-                                        />
-                                    );
-                                })}
-                            </section>
-                        </>
-                    ) : (
-                        <AreaOverview
-                            areaId="govern"
-                            signals={governSignals}
-                            filters={filters}
-                            role={activeRole}
-                            title="Related workflows"
-                            description="Quality and risk sub-areas, ordered by severity."
-                        />
-                    )}
+                    <section className="grid gap-4 lg:grid-cols-3">
+                        {measures.map(({ id, ts }) => {
+                            const def = TESTOPS_MEASURES[id];
+                            if (!def) return null;
+
+                            const value = getLatestValue(ts, id);
+                            const spark = getSparkline(ts, id);
+
+                            return (
+                                <MetricCard
+                                    key={id}
+                                    label={def.label}
+                                    href="#"
+                                    value={value}
+                                    unit={
+                                        def.unit === "percentage"
+                                            ? "%"
+                                            : def.unit === "duration"
+                                              ? "m"
+                                              : ""
+                                    }
+                                    spark={spark}
+                                    caption={def.description}
+                                />
+                            );
+                        })}
+                    </section>
                 </main>
             </div>
         </div>
