@@ -78,7 +78,7 @@ describe("navArea.children — locked child navigation", () => {
                 "Cognitive Load",
                 "Bottlenecks",
             ],
-            Plan: ["Overview", "Delivery Forecast", "Capacity", "Backlog Risk", "Operating Review"],
+            Plan: ["Overview", "Capacity Forecast", "Backlog Risk", "Operating Review"],
             Improve: ["Opportunities", "Experiments", "Automations"],
             Govern: [
                 "Overview",
@@ -204,12 +204,17 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         {
             areaId: "plan",
             pathname: "/plan/delivery-forecast",
-            childId: "delivery-forecast",
+            childId: "plan-overview",
+        },
+        {
+            areaId: "plan",
+            pathname: "/plan/capacity",
+            childId: "capacity",
         },
         {
             areaId: "plan",
             pathname: "/operating-review",
-            childId: "operating-review",
+            childId: undefined,
         },
         { areaId: "improve", pathname: "/opportunities", childId: "opportunities" },
         { areaId: "ai", pathname: "/ai", childId: "ai-overview" },
@@ -260,7 +265,8 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/metrics")).toBe("Flow");
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
         expect(navTitleForPathname("/plan")).toBe("Overview");
-        expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Delivery Forecast");
+        expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
+        expect(navTitleForPathname("/plan/capacity")).toBe("Capacity Forecast");
         expect(navTitleForPathname("/ai/impact")).toBe("Impact");
         expect(navTitleForPathname("/ai/review-load")).toBe("Review Load");
         expect(navTitleForPathname("/quality")).toBe("Quality");

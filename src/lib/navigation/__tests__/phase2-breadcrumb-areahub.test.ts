@@ -1,20 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { navTrailForPathname, navTitleForPathname, getAreaById } from "../areas";
 
-describe("navTrailForPathname — operating-review (Plan child)", () => {
-    it("returns a two-crumb trail: Plan (linked) → Operating Review (current)", () => {
+describe("navTrailForPathname — operating-review (hidden Plan preview)", () => {
+    it("returns the Plan area crumb only while Operating Review is deferred", () => {
         const trail = navTrailForPathname("/operating-review");
-        expect(trail).toHaveLength(2);
+        expect(trail).toHaveLength(1);
         expect(trail[0]?.label).toBe("Plan");
-        expect(trail[0]?.href).toBe(getAreaById("plan")?.href);
-        expect(trail[1]?.label).toBe("Operating Review");
-        expect(trail[1]?.href).toBeUndefined();
+        expect(trail[0]?.href).toBeUndefined();
     });
 
-    it("trail label matches the sidebar child label verbatim (A6)", () => {
-        const trail = navTrailForPathname("/operating-review");
+    it("keeps Operating Review hidden from visible Plan child destinations", () => {
         const child = getAreaById("plan")?.children.find((c) => c.id === "operating-review");
-        expect(trail[trail.length - 1]?.label).toBe(child?.label);
+        expect(child?.navVisible).toBe(false);
+        expect(child?.preview).toBe(true);
     });
 
     it("area crumb label matches the Plan area label verbatim (A6)", () => {
@@ -22,8 +20,8 @@ describe("navTrailForPathname — operating-review (Plan child)", () => {
         expect(trail[0]?.label).toBe(getAreaById("plan")?.label);
     });
 
-    it("title for /operating-review is 'Operating Review' (child label, not area label)", () => {
-        expect(navTitleForPathname("/operating-review")).toBe("Operating Review");
+    it("title for /operating-review falls back to Plan while the child is deferred", () => {
+        expect(navTitleForPathname("/operating-review")).toBe("Plan");
     });
 });
 
