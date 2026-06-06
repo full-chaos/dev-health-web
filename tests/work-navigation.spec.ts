@@ -10,20 +10,21 @@ const filterWith30d = encodeFilterParam({
 });
 
 const diagnoseChildren = [
-    { label: "Overview", href: /\/work(?:[?#].*)?$/ },
+    { label: "Overview", href: /\/diagnose(?:[?#].*)?$/ },
     { label: "Flow", href: /\/metrics(?:[?#].*)?$/ },
     { label: "Investment", href: /\/investment(?:[?#].*)?$/ },
     { label: "Landscape", href: /\/landscape(?:[?#].*)?$/ },
-    { label: "People", href: /\/people(?:[?#].*)?$/ },
-    { label: "Code", href: /\/code(?:[?#].*)?$/ },
+    { label: "Work Graph", href: /\/diagnose\/work-graph(?:[?#].*)?$/ },
     { label: "Complexity", href: /\/complexity(?:[?#].*)?$/ },
     { label: "Cognitive Load", href: /\/cognitive-load(?:[?#].*)?$/ },
     { label: "Bottlenecks", href: /\/bottleneck(?:[?#].*)?$/ },
+    { label: "People", href: /\/people(?:[?#].*)?$/ },
+    { label: "Code", href: /\/code(?:[?#].*)?$/ },
 ] as const;
 
 test.describe("Diagnose navigation", () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto("/work");
+        await page.goto("/diagnose");
         await waitForHydration(page);
         await expect(page.getByRole("heading", { name: "Diagnose", level: 1 })).toBeVisible({
             timeout: 15000,
@@ -34,12 +35,7 @@ test.describe("Diagnose navigation", () => {
         await expect(page.getByTestId("area-overview")).toBeVisible();
         await expect(page.getByRole("navigation", { name: "Diagnose views" })).toHaveCount(0);
         await expect(page.getByRole("navigation", { name: "Work views" })).toHaveCount(0);
-        // The overview must not expose an in-page "Work" mode-tab. The sidebar
-        // "Work" destination (a Diagnose child) is intentional and lives in <aside>,
-        // outside <main>.
-        await expect(
-            page.getByRole("main").getByRole("link", { name: "Work", exact: true }),
-        ).toHaveCount(0);
+        await expect(page.getByRole("link", { name: "Work", exact: true })).toHaveCount(0);
     });
 
     test("sidebar exposes first-class Diagnose children", async ({ page }) => {
@@ -63,7 +59,7 @@ test.describe("Diagnose navigation", () => {
         );
         await expect(page.getByRole("heading", { name: "Monitoring view" })).toBeVisible();
 
-        await page.goto("/work");
+        await page.goto("/diagnose");
         await clickUntilUrl(
             page,
             page.getByTestId("nav-children-diagnose").getByRole("link", {
@@ -75,7 +71,7 @@ test.describe("Diagnose navigation", () => {
         await expect(page.getByRole("heading", { name: "Unlock investment view" })).toBeVisible();
         await expect(page.getByRole("link", { name: "Upgrade to Team" })).toBeVisible();
 
-        await page.goto("/work");
+        await page.goto("/diagnose");
         await clickUntilUrl(
             page,
             page.getByTestId("nav-children-diagnose").getByRole("link", {
@@ -94,10 +90,15 @@ test.describe("Diagnose navigation", () => {
         // in the hub — the server redirects to the first-class destination and
         // forwards the f= filter param.
         const redirectCases = [
+            { tab: "overview", targetPattern: /\/diagnose(?:[?#].*)?$/ },
             { tab: "flow", targetPattern: /\/metrics(?:[?#].*)?$/ },
             { tab: "investment", targetPattern: /\/investment(?:[?#].*)?$/ },
             { tab: "landscape", targetPattern: /\/landscape(?:[?#].*)?$/ },
             { tab: "capacity", targetPattern: /\/plan\/capacity(?:[?#].*)?$/ },
+            { tab: "heatmap", targetPattern: /\/cognitive-load(?:[?#].*)?$/ },
+            { tab: "flame", targetPattern: /\/complexity(?:[?#].*)?$/ },
+            { tab: "graph", targetPattern: /\/diagnose\/work-graph(?:[?#].*)?$/ },
+            { tab: "evidence", targetPattern: /\/diagnose\/work-graph(?:[?#].*)?$/ },
         ] as const;
 
         for (const { tab, targetPattern } of redirectCases) {
@@ -114,32 +115,15 @@ test.describe("Diagnose navigation", () => {
         }
     });
 
-    test("legacy Work deep links: WORK_TABS (flame/heatmap/evidence/graph) stay in the hub", async ({
+    test("legacy Work deep links: bare work view redirects to Work Graph instead of overview", async ({
         page,
     }) => {
-        // WORK_TABS = [overview, heatmap, flame, evidence, graph] — these remain
-        // in /work hub and are NOT redirected.
-        const hubCases = [{ tab: "flame", label: "Flame" }] as const;
+        await page.goto(`/work?view=work&f=${filterWith30d}`);
+        await waitForHydration(page);
 
-        for (const { tab, label } of hubCases) {
-            await page.goto(`/work?tab=${tab}&f=${filterWith30d}`);
-            await waitForHydration(page);
-
-            // Stays in the hub — no redirect away to a first-class route.
-            await expect(page).toHaveURL(new RegExp(`/work\\?tab=${tab}`));
-
-            // The Work views tab strip is present and the deep-linked tab is active.
-            const workNav = page.getByRole("tablist", { name: "Work views" });
-            await expect(workNav).toBeVisible();
-            await expect(workNav.getByRole("tab", { name: label, exact: true })).toHaveAttribute(
-                "aria-current",
-                "page",
-            );
-
-            // Filter context is preserved across the deep link.
-            expect(decodeFilter(new URL(page.url()).searchParams.get("f")).time.range_days).toBe(
-                30,
-            );
-        }
+        await expect(page).toHaveURL(/\/diagnose\/work-graph(?:[?#].*)?$/);
+        await expect(page.getByRole("heading", { name: "Work Graph", level: 1 })).toBeVisible();
+        await expect(page.getByRole("tablist", { name: "Work views" })).toHaveCount(0);
+        expect(decodeFilter(new URL(page.url()).searchParams.get("f")).time.range_days).toBe(30);
     });
 });
