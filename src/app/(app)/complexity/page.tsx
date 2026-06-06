@@ -9,11 +9,11 @@
  * 50 hotspot rows.
  */
 
-import Link from "next/link";
-
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { BackLink } from "@/components/shared/BackLink";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
 import type { ComplexityPoint, HotspotRow } from "@/components/complexity/ComplexityDashboard";
 import { requireSession } from "@/lib/auth";
@@ -114,8 +114,42 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
 
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
+    const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    const activeTab = typeof tabParam === "string" ? tabParam : "overview";
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const tabs: ViewSetItem[] = [
+        {
+            id: "overview",
+            label: "Overview",
+            path: withFilterParam("/complexity", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "flame",
+            label: "Flame",
+            path: withFilterParam("/complexity?tab=flame", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "hotspots",
+            label: "Hotspots",
+            path: withFilterParam("/complexity?tab=hotspots", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "ownership-risk",
+            label: "Ownership Risk",
+            path: withFilterParam("/complexity?tab=ownership-risk", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "churn",
+            label: "Churn",
+            path: withFilterParam("/complexity?tab=churn", filters, activeRole),
+            navVisible: true,
+        },
+    ];
 
     const orgId = session.user?.org_id ?? "demo-org";
 
@@ -152,17 +186,20 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                                 Every score traces to cyclomatic complexity and churn evidence.
                             </p>
                         </div>
-                        <Link
-                            href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            Back to cockpit
-                        </Link>
+                        <BackLink href={withFilterParam("/", filters, activeRole)} />
                     </header>
 
                     <FilterBar view="complexity" />
 
                     <ContextStrip filters={filters} origin={activeOrigin} />
+
+                    <ViewSet
+                        orientation="tabs"
+                        items={tabs}
+                        activeId={activeTab}
+                        overviewId="overview"
+                        ariaLabel="Complexity views"
+                    />
 
                     <ComplexityDashboard orgId={orgId} points={points} hotspotRows={hotspotRows} />
                 </main>
