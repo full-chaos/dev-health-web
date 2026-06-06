@@ -4,19 +4,26 @@ import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getImproveSignals } from "../improve";
 
-// Improve's locked taxonomy (CHAOS-2079) is Opportunities / Experiments /
-// Automations. Capacity Planning moved to Plan and AI Workflows became the
-// first-class AI area, so neither is an Improve sub-area any more. The
-// resolver-backed Improve hub signal cards are J5 scope, so until then the
-// resolver returns no cards (honest empty — never a fabricated card).
 describe("getImproveSignals — Improve taxonomy (CHAOS-2079)", () => {
-    it("returns no signal cards (Improve hub resolvers are J5 scope)", async () => {
+    it("returns the real Opportunities route as an unavailable summary signal", async () => {
         const signals = await getImproveSignals(defaultMetricFilter);
-        expect(signals).toEqual([]);
+        expect(signals).toEqual([
+            expect.objectContaining({
+                id: "opportunities",
+                label: "Opportunities",
+                href: "/opportunities",
+                state: "unavailable",
+                value: "",
+            }),
+        ]);
     });
 
-    it("returns no signal cards in test mode", async () => {
+    it("returns the same unavailable summary signal in test mode", async () => {
         const signals = await getImproveSignals(defaultMetricFilter, true);
-        expect(signals).toEqual([]);
+        expect(signals).toHaveLength(1);
+        expect(signals[0]).toMatchObject({
+            id: "opportunities",
+            state: "unavailable",
+        });
     });
 });
