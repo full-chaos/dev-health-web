@@ -382,9 +382,10 @@ export const navAreas: readonly NavArea[] = [
     {
         id: "govern",
         label: "Govern",
-        href: "/testops",
+        href: "/govern",
         placement: "main",
         ownedPathPrefixes: [
+            "/govern",
             "/testops",
             "/quality",
             "/security",
@@ -410,28 +411,12 @@ export const navAreas: readonly NavArea[] = [
         hubItems: [
             // ── Cluster: Quality ──────────────────────────────────────────────────
             {
-                id: "coverage",
-                label: "Coverage",
-                href: "/testops/coverage",
-                description: "Coverage delta.",
+                id: "testops",
+                label: "TestOps",
+                href: "/testops",
+                description: "Pipeline, test, and coverage health.",
                 cluster: "Quality",
-                metricLabel: "Line coverage",
-            },
-            {
-                id: "tests",
-                label: "Tests",
-                href: "/testops/tests",
-                description: "Test reliability and flake.",
-                cluster: "Quality",
-                metricLabel: "Flake rate",
-            },
-            {
-                id: "pipelines",
-                label: "Pipelines",
-                href: "/testops/pipelines",
-                description: "Pipeline stability.",
-                cluster: "Quality",
-                metricLabel: "Success rate",
+                metricLabel: "Worst TestOps signal",
             },
             {
                 id: "quality",
@@ -486,24 +471,29 @@ export const navAreas: readonly NavArea[] = [
             },
         ],
         children: [
-            { id: "testops", label: "Overview", path: "/testops", navVisible: true },
             {
-                id: "pipelines",
-                label: "Pipelines",
-                path: "/testops/pipelines",
+                id: "govern-overview",
+                label: "Overview",
+                path: "/govern",
                 navVisible: true,
             },
-            { id: "tests", label: "Tests", path: "/testops/tests", navVisible: true },
+            {
+                id: "testops",
+                label: "TestOps",
+                path: "/testops",
+                navVisible: true,
+                ownedPaths: [
+                    "/testops",
+                    "/testops/pipelines",
+                    "/testops/tests",
+                    "/testops/coverage",
+                ],
+                isCluster: true,
+            },
             {
                 id: "quality",
                 label: "Quality",
                 path: "/quality",
-                navVisible: true,
-            },
-            {
-                id: "coverage",
-                label: "Coverage",
-                path: "/testops/coverage",
                 navVisible: true,
             },
             {

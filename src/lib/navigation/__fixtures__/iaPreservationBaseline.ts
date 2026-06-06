@@ -77,33 +77,21 @@ export const iaPreservationBaseline = {
         },
         {
             areaId: "govern",
-            childId: "testops",
+            childId: "govern-overview",
             label: "Overview",
+            path: "/govern",
+        },
+        {
+            areaId: "govern",
+            childId: "testops",
+            label: "TestOps",
             path: "/testops",
-        },
-        {
-            areaId: "govern",
-            childId: "pipelines",
-            label: "Pipelines",
-            path: "/testops/pipelines",
-        },
-        {
-            areaId: "govern",
-            childId: "tests",
-            label: "Tests",
-            path: "/testops/tests",
         },
         {
             areaId: "govern",
             childId: "quality",
             label: "Quality",
             path: "/quality",
-        },
-        {
-            areaId: "govern",
-            childId: "coverage",
-            label: "Coverage",
-            path: "/testops/coverage",
         },
         {
             areaId: "govern",
