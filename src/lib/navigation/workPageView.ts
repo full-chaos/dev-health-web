@@ -14,15 +14,29 @@ export type DiagnoseView = "overview" | "work";
 export const DIAGNOSE_VIEWS: DiagnoseView[] = ["overview", "work"];
 
 export const WORK_TABS = [
-    "landscape",
-    "heatmap",
-    "flow",
-    "investment",
-    "capacity",
-    "flame",
-    "evidence",
-    "graph",
+	"overview",
+	"heatmap",
+	"flame",
+	"evidence",
+	"graph",
 ] as const;
+
+export const REMOVED_WORK_TAB_REDIRECTS = {
+	flow: "/metrics",
+	investment: "/investment",
+	landscape: "/landscape",
+	capacity: "/plan/capacity",
+} as const;
+
+export type WorkTab = (typeof WORK_TABS)[number];
+export type RemovedWorkTab = keyof typeof REMOVED_WORK_TAB_REDIRECTS;
+
+export function resolveRemovedWorkTabRedirect(
+	tabParam: string | undefined,
+): string | null {
+	if (!tabParam) return null;
+	return REMOVED_WORK_TAB_REDIRECTS[tabParam as RemovedWorkTab] ?? null;
+}
 
 /**
  * Resolve the active DiagnoseView from raw URL search params.
@@ -31,19 +45,19 @@ export const WORK_TABS = [
  * @param tabParam  - the raw `tab` query param value (string | undefined)
  */
 export function resolveActiveView(
-    viewParam: string | undefined,
-    tabParam: string | undefined,
+	viewParam: string | undefined,
+	tabParam: string | undefined,
 ): DiagnoseView {
-    if (DIAGNOSE_VIEWS.includes(viewParam as DiagnoseView)) {
-        return viewParam as DiagnoseView;
-    }
-    // Legacy ?tab= deep link: no explicit view but a valid work tab → show Work.
-    if (
-        !viewParam &&
-        typeof tabParam === "string" &&
-        (WORK_TABS as readonly string[]).includes(tabParam)
-    ) {
-        return "work";
-    }
-    return "overview";
+	if (DIAGNOSE_VIEWS.includes(viewParam as DiagnoseView)) {
+		return viewParam as DiagnoseView;
+	}
+	// Legacy ?tab= deep link: no explicit view but a valid work tab → show Work.
+	if (
+		!viewParam &&
+		typeof tabParam === "string" &&
+		(WORK_TABS as readonly string[]).includes(tabParam)
+	) {
+		return "work";
+	}
+	return "overview";
 }

@@ -1,42 +1,42 @@
 "use client";
 
-import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
+import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
+import type { WorkTab } from "@/lib/navigation/workPageView";
 
-export type WorkTab =
-    | "landscape"
-    | "heatmap"
-    | "flow"
-    | "investment"
-    | "flame"
-    | "evidence"
-    | "capacity"
-    | "graph";
+export type { WorkTab };
 
 type WorkTabNavProps = {
-    activeTab: WorkTab;
-    filters: MetricFilter;
-    role?: string;
+	activeTab: WorkTab;
+	filters: MetricFilter;
+	role?: string;
 };
 
 const tabs = [
-    { id: "landscape", label: "Landscape" },
-    { id: "heatmap", label: "Heatmap" },
-    { id: "flow", label: "Flow" },
-    { id: "investment", label: "Investment" },
-    { id: "capacity", label: "Capacity" },
-    { id: "flame", label: "Flame" },
-    { id: "evidence", label: "Evidence" },
-    { id: "graph", label: "Work Graph" },
+	{ id: "overview", label: "Overview" },
+	{ id: "heatmap", label: "Heatmap" },
+	{ id: "flame", label: "Flame" },
+	{ id: "evidence", label: CTA_LABELS.evidence },
+	{ id: "graph", label: "Work Graph" },
 ] as const;
 
 export function WorkTabNav({ activeTab, filters, role }: WorkTabNavProps) {
-    const items: ModeTabItem<WorkTab>[] = tabs.map((tab) => ({
-        id: tab.id,
-        label: tab.label,
-        href: withFilterParam(`/work?tab=${tab.id}`, filters, role),
-    }));
+	const items: ViewSetItem[] = tabs.map((tab) => ({
+		id: tab.id,
+		label: tab.label,
+		path: withFilterParam(`/work?view=work&tab=${tab.id}`, filters, role),
+		navVisible: true,
+	}));
 
-    return <ModeTabs items={items} activeId={activeTab} ariaLabel="Work views" />;
+	return (
+		<ViewSet
+			orientation="tabs"
+			items={items}
+			activeId={activeTab}
+			overviewId="overview"
+			ariaLabel="Work views"
+		/>
+	);
 }
