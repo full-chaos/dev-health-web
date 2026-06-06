@@ -14,6 +14,8 @@ const signals = [
         label: "PR interruption load",
         value: "18",
         delta: "-12% vs prior week",
+        deltaTone: "text-emerald-600",
+        interpretation: "Easing",
         description:
             "Reviews, first-review events, and review feedback interrupting focused delivery.",
     },
@@ -21,6 +23,8 @@ const signals = [
         label: "Context spread",
         value: "7",
         delta: "+2 active contexts",
+        deltaTone: "text-amber-600",
+        interpretation: "Watch",
         description:
             "Distinct repos, PRs, reviews, and touched file areas in the selected team scope.",
     },
@@ -28,6 +32,8 @@ const signals = [
         label: "Review request load",
         value: "11",
         delta: "+4 requests",
+        deltaTone: "text-rose-600",
+        interpretation: "Rising",
         description:
             "Aggregate review requests handled by the team, never a person-level queue ranking.",
     },
@@ -35,17 +41,29 @@ const signals = [
         label: "After-hours trend",
         value: "14%",
         delta: "flat 3-week trend",
+        deltaTone: "text-(--ink-muted)",
+        interpretation: "Stable",
         description: "Existing commit-time rollups outside weekday business hours.",
     },
     {
         label: "Weekend trend",
         value: "6%",
         delta: "down 3 points",
+        deltaTone: "text-emerald-600",
+        interpretation: "Lower",
         description: "Existing weekend activity ratio, aggregated before it reaches this surface.",
     },
 ];
 
-const trend = [28, 34, 26, 31, 24, 20, 18];
+const trend = [
+    { day: "D1", value: 28 },
+    { day: "D2", value: 34 },
+    { day: "D3", value: 26 },
+    { day: "D4", value: 31 },
+    { day: "D5", value: 24 },
+    { day: "D6", value: 20 },
+    { day: "D7", value: 18 },
+];
 
 export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadPageProps) {
     const session = await requireSession();
@@ -147,26 +165,55 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                                 </section>
                             )}
 
-                            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                                {signals.map((signal) => (
-                                    <article
-                                        key={signal.label}
-                                        className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
-                                    >
-                                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
-                                            {signal.label}
+                            <section className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
+                                            Interpretive load view
                                         </p>
-                                        <p className="mt-5 text-4xl font-semibold tabular-nums">
-                                            {signal.value}
-                                        </p>
-                                        <p className="mt-2 text-xs font-medium text-emerald-600">
-                                            {signal.delta}
-                                        </p>
-                                        <p className="mt-4 text-sm leading-6 text-(--ink-muted)">
-                                            {signal.description}
-                                        </p>
-                                    </article>
-                                ))}
+                                        <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                                            What is pulling attention apart?
+                                        </h2>
+                                    </div>
+                                    <span className="rounded-full border border-(--accent)/30 bg-(--accent)/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent)">
+                                        Team signal
+                                    </span>
+                                </div>
+                                <p className="mt-3 max-w-3xl text-sm leading-6 text-(--ink-muted)">
+                                    Read these as pressure cues. The values point to review load,
+                                    context spread, and time-boundary strain so teams can decide
+                                    where to reduce interruption before it becomes burnout risk.
+                                </p>
+                                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                                    {signals.map((signal) => (
+                                        <article
+                                            key={signal.label}
+                                            className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                                                    {signal.label}
+                                                </p>
+                                                <span className="rounded-full bg-(--accent-2)/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--accent-2)">
+                                                    {signal.interpretation}
+                                                </span>
+                                            </div>
+                                            <div className="mt-5 flex items-baseline gap-2">
+                                                <p className="text-4xl font-semibold tabular-nums">
+                                                    {signal.value}
+                                                </p>
+                                                <p
+                                                    className={`text-xs font-medium ${signal.deltaTone}`}
+                                                >
+                                                    {signal.delta}
+                                                </p>
+                                            </div>
+                                            <p className="mt-4 text-sm leading-6 text-(--ink-muted)">
+                                                {signal.description}
+                                            </p>
+                                        </article>
+                                    ))}
+                                </div>
                             </section>
                         </>
                     )}
@@ -198,24 +245,25 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                                         </h2>
                                     </div>
                                     <span className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs text-(--ink-muted)">
-                                        Sample data
+                                        Pressure index
                                     </span>
                                 </div>
                                 <div
+                                    role="img"
                                     className="mt-8 flex h-32 items-end gap-3"
-                                    aria-label="Seven-day load index sample bars"
+                                    aria-label="Seven-day load index pressure bars"
                                 >
-                                    {trend.map((value, index) => (
+                                    {trend.map((point) => (
                                         <div
-                                            key={`${value}-${index}`}
+                                            key={point.day}
                                             className="flex flex-1 flex-col items-center gap-2"
                                         >
                                             <div
                                                 className="w-full rounded-t-2xl bg-(--accent)"
-                                                style={{ height: `${value * 3}px` }}
+                                                style={{ height: `${point.value * 3}px` }}
                                             />
                                             <span className="text-[0.65rem] text-(--ink-muted)">
-                                                D{index + 1}
+                                                {point.day}
                                             </span>
                                         </div>
                                     ))}

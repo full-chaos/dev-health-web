@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@/test/utils";
 
 import { AreaOverview } from "./AreaOverview";
-import { AREA_UNAVAILABLE_EMPTY_STATE } from "@/lib/design/emptyState";
 import type { AreaSignal, AreaSignalState } from "@/lib/areaSignals/types";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
@@ -100,11 +99,12 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         expect(gridCards.map((c) => c.getAttribute("data-signal-id"))).toEqual(["med"]);
 
         const emptyTier = screen.getByTestId("area-overview-empty-tier");
-        const gap = within(emptyTier).getByTestId("area-signal-card");
-        expect(gap.getAttribute("data-state")).toBe("unavailable");
-        // The empty card renders through the muted tier — visibly quieter.
-        expect(gap.getAttribute("data-tier")).toBe("muted");
-        expect(within(gap).getByText(AREA_UNAVAILABLE_EMPTY_STATE.title)).toBeInTheDocument();
+        expect(within(emptyTier).getByText("Not yet connected")).toBeInTheDocument();
+        expect(within(emptyTier).getByRole("link", { name: "gap" })).toHaveAttribute(
+            "data-signal-id",
+            "gap",
+        );
+        expect(within(emptyTier).queryByTestId("area-signal-card")).toBeNull();
     });
 
     it("never surfaces the 'No area metric unavailable' double-negative copy", () => {
@@ -122,8 +122,7 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         expect(screen.queryByTestId("area-overview-hero")).toBeNull();
         expect(screen.queryByTestId("area-overview-grid")).toBeNull();
         const emptyTier = screen.getByTestId("area-overview-empty-tier");
-        const cards = within(emptyTier).getAllByTestId("area-signal-card");
-        expect(cards).toHaveLength(2);
-        expect(cards.every((c) => c.getAttribute("data-tier") === "muted")).toBe(true);
+        expect(within(emptyTier).getAllByRole("link")).toHaveLength(2);
+        expect(within(emptyTier).queryAllByTestId("area-signal-card")).toHaveLength(0);
     });
 });

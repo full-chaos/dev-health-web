@@ -315,10 +315,9 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
 
     it("clamps Landscape role primary quadrants to metrics still rendered on Landscape", () => {
         expect(landscapePageSource).toContain("landscapePrimaryType");
-        expect(landscapePageSource).toContain(
-            "WIP and Review-Load pressures live in Bottlenecks now",
-        );
-        expect(landscapePageSource).toContain(': "cycle_throughput"');
+        expect(landscapePageSource).toContain('const landscapePrimaryType = "cycle_throughput"');
+        expect(landscapePageSource).not.toContain("primaryQuadrant");
+        expect(landscapePageSource).not.toContain("getRoleConfig");
     });
 });
 

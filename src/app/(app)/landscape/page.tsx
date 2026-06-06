@@ -14,7 +14,6 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { navTrailForPathname } from "@/lib/navigation/areas";
-import { getRoleConfig } from "@/lib/roleContext";
 
 const QUADRANT_CARDS = [
     {
@@ -48,14 +47,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
 
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
-    const roleConfig = getRoleConfig(roleParam);
-    // WIP and Review-Load pressures live in Bottlenecks now; Landscape only
-    // highlights quadrants still rendered on this page.
-    const landscapePrimaryType = QUADRANT_CARDS.some(
-        (card) => card.type === roleConfig.primaryQuadrant,
-    )
-        ? roleConfig.primaryQuadrant
-        : "cycle_throughput";
+    const landscapePrimaryType = "cycle_throughput";
 
     const bucketParam = Array.isArray(params.bucket) ? params.bucket[0] : params.bucket;
     const bucket = bucketParam === "month" ? "month" : "week";
@@ -153,11 +145,6 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
 
                     <section className="flex flex-col gap-10">
                         <div className="rounded-3xl border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
-                            <div className="mb-6 flex items-center justify-between">
-                                <span className="rounded-full bg-(--accent-2)/20 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.25em] text-(--accent-2)">
-                                    Lens: {roleConfig.label}
-                                </span>
-                            </div>
                             <QuadrantPanel
                                 key={primaryCard.type}
                                 title={primaryCard.title}

@@ -11,6 +11,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { RoleFraming, RoleSelectorWithSuspense } from "@/components/RoleSelectorWrapper";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getHomeData } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -118,7 +119,9 @@ export default async function Home({ searchParams }: HomePageProps) {
                                         System patterns over the last {filters.time.range_days}{" "}
                                         days.
                                     </p>
+                                    <RoleFraming />
                                 </div>
+                                <RoleSelectorWithSuspense className="justify-end" />
                             </div>
 
                             <div className="flex items-center justify-between">

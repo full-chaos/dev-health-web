@@ -1,5 +1,31 @@
 import { expect, test } from "@playwright/test";
 
+test.describe("IA rejection regressions", () => {
+    test("Cockpit exposes the Lens control", async ({ page }) => {
+        await page.goto("/dashboard");
+
+        await expect(page.getByRole("radiogroup", { name: "Lens" })).toBeVisible();
+    });
+
+    test("Landscape does not show a selected Lens state", async ({ page }) => {
+        await page.goto("/landscape?role=leadership");
+
+        await expect(page.getByText(/Lens:/i)).not.toBeVisible();
+        await expect(page.getByTestId("role-selector")).not.toBeVisible();
+    });
+
+    test("Diagnose overview keeps unavailable workflows compact", async ({ page }) => {
+        await page.goto("/work");
+
+        const emptyTier = page.getByTestId("area-overview-empty-tier");
+        await expect(emptyTier).toBeVisible();
+        await expect(emptyTier.getByTestId("area-signal-unavailable")).toHaveCount(0);
+        await expect(emptyTier.getByRole("link", { name: "People" })).toBeVisible();
+        await expect(emptyTier.getByRole("link", { name: "Landscape" })).toBeVisible();
+        await expect(emptyTier.getByRole("link", { name: "Cognitive Load" })).toBeVisible();
+    });
+});
+
 test.describe("Cognitive Load dashboard", () => {
     test("renders privacy-first team/repo cognitive load signals", async ({ page }) => {
         await page.goto("/cognitive-load");
@@ -7,13 +33,17 @@ test.describe("Cognitive Load dashboard", () => {
         const dashboard = page.getByTestId("cognitive-load-dashboard");
         await expect(dashboard).toBeVisible();
         await expect(
-            dashboard.getByRole("heading", { name: /Focus fragmentation, not surveillance/i }),
+            dashboard.getByRole("heading", {
+                name: /Focus fragmentation, not surveillance/i,
+            }),
         ).toBeVisible();
         await expect(dashboard.getByText("PR interruption load")).toBeVisible();
         await expect(dashboard.getByText("Context spread", { exact: true })).toBeVisible();
         await expect(dashboard.getByText("Review request load", { exact: true })).toBeVisible();
         await expect(dashboard.getByText("After-hours trend", { exact: true })).toBeVisible();
         await expect(dashboard.getByText("Weekend trend", { exact: true })).toBeVisible();
+        await expect(dashboard.getByText("Interpretive load view")).toBeVisible();
+        await expect(dashboard.getByText("Sample data")).not.toBeVisible();
     });
 
     test("states the no-surveillance guardrails", async ({ page }) => {
