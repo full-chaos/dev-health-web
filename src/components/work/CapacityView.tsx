@@ -53,12 +53,13 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-xl font-semibold text-foreground">Capacity Planning</h2>
+                    <h2 className="text-xl font-semibold text-foreground">Capacity Forecast</h2>
                     <p className="mt-1 text-sm text-(--ink-muted)">
                         Monte Carlo forecast for work completion
                     </p>
                 </div>
                 <button
+                    type="button"
                     onClick={() => refetch()}
                     disabled={isLoading}
                     className="rounded-lg border border-(--card-stroke) bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) disabled:opacity-50 disabled:cursor-not-allowed"
@@ -84,13 +85,13 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                             height={320}
                         />
                     ) : isLoading ? (
-                        <div className="h-[320px] flex items-center justify-center">
+                        <div className="flex h-80 items-center justify-center">
                             <div className="animate-pulse text-sm text-(--ink-muted)">
                                 Loading chart...
                             </div>
                         </div>
                     ) : (
-                        <div className="h-[320px] flex items-center justify-center text-sm text-(--ink-muted)">
+                        <div className="flex h-80 items-center justify-center text-sm text-(--ink-muted)">
                             No forecast data available
                         </div>
                     )}
