@@ -53,21 +53,9 @@ export const iaPreservationBaseline = {
         },
         {
             areaId: "plan",
-            childId: "delivery-forecast",
-            label: "Delivery Forecast",
-            path: "/plan/delivery-forecast",
-        },
-        {
-            areaId: "plan",
             childId: "capacity",
-            label: "Capacity",
+            label: "Capacity Forecast",
             path: "/plan/capacity",
-        },
-        {
-            areaId: "plan",
-            childId: "operating-review",
-            label: "Operating Review",
-            path: "/operating-review",
         },
         {
             areaId: "improve",
@@ -246,7 +234,8 @@ export const iaPreservationBaseline = {
     // this list against an INDEPENDENT filesystem scan of redirect-only route files.
     legacyAliasRoutes: [
         { route: "/team-flow", redirectsTo: "/work" },
-        { route: "/capacity-planning", redirectsTo: "/plan/delivery-forecast" },
+        { route: "/capacity-planning", redirectsTo: "/plan/capacity" },
+        { route: "/plan/delivery-forecast", redirectsTo: "/plan" },
         { route: "/explore/landscape", redirectsTo: "/landscape" },
     ],
 } as const;

@@ -296,18 +296,11 @@ export const navAreas: readonly NavArea[] = [
         ],
         hubItems: [
             {
-                id: "delivery-forecast",
-                label: "Delivery Forecast",
-                href: "/plan/delivery-forecast",
+                id: "capacity",
+                label: "Capacity Forecast",
+                href: "/plan/capacity",
                 description: "Monte Carlo throughput forecasting.",
                 metricLabel: "Forecast window",
-            },
-            {
-                id: "operating-review",
-                label: "Operating Review",
-                href: "/operating-review",
-                description: "Weekly planning and review agenda.",
-                metricLabel: "Review cadence",
             },
         ],
         children: [
@@ -318,14 +311,8 @@ export const navAreas: readonly NavArea[] = [
                 navVisible: true,
             },
             {
-                id: "delivery-forecast",
-                label: "Delivery Forecast",
-                path: "/plan/delivery-forecast",
-                navVisible: true,
-            },
-            {
                 id: "capacity",
-                label: "Capacity",
+                label: "Capacity Forecast",
                 path: "/plan/capacity",
                 navVisible: true,
             },
@@ -340,7 +327,8 @@ export const navAreas: readonly NavArea[] = [
                 id: "operating-review",
                 label: "Operating Review",
                 path: "/operating-review",
-                navVisible: true,
+                navVisible: false,
+                preview: true,
             },
         ],
     },

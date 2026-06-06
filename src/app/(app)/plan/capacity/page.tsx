@@ -4,7 +4,6 @@ import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { BackLink } from "@/components/shared/BackLink";
-import { ModeTabs } from "@/components/shared/ModeTabs";
 import { CapacityView } from "@/components/work/CapacityView";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { checkApiHealth } from "@/lib/api/system";
@@ -13,7 +12,6 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { getCapacityForecastForHydration } from "@/lib/graphql/capacityHydration";
 import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
-import { planForecastTabs, type PlanForecastView } from "@/lib/navigation/planForecastTabs";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 
 type PlanCapacityPageProps = {
@@ -50,7 +48,7 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-    const graphqlEnabled = runtimeConfig.useGraphQLAnalytics();
+    const graphqlEnabled = runtimeConfig["useGraphQLAnalytics"]();
     let hydrationOrgId: string | undefined;
     if (graphqlEnabled) {
         const { auth } = await import("@/lib/auth");
@@ -68,8 +66,6 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
 
     const capacityHydrationPayload = capacityResult?.hydrationPayload ?? null;
 
-    const forecastTabs = planForecastTabs(filters, activeRole);
-
     return (
         <div className="min-h-screen bg-background text-foreground">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
@@ -78,25 +74,19 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
                     <header className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Plan
+                                Capacity Forecast
                             </p>
                             <h1 className="mt-2 font-(--font-display) text-3xl">
-                                Monte Carlo Forecast
+                                Capacity Forecast
                             </h1>
                             <p className="mt-2 text-sm text-(--ink-muted)">
-                                Monte Carlo simulation of work completion (P50/P85/P95) from
-                                historical throughput. Adjust the date range to control how much
-                                history informs the forecast.
+                                Monte Carlo is the method behind this completion projection,
+                                throughput distribution, and confidence bands. Adjust the date range
+                                to control how much history informs the forecast.
                             </p>
                         </div>
                         <BackLink href={withFilterParam("/plan", filters, activeRole)} />
                     </header>
-
-                    <ModeTabs<PlanForecastView>
-                        items={forecastTabs}
-                        activeId="monte-carlo"
-                        ariaLabel="Plan forecast views"
-                    />
 
                     <GlobalContextBar filters={filters} origin={activeOrigin} />
                     <FilterBar view="capacity-planning" />
