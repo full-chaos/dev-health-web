@@ -23,8 +23,8 @@ describe("buildInvestmentWorkGraphUrl", () => {
         const url = new URL(href, "http://localhost");
         const encodedFilter = url.searchParams.get("f");
 
-        expect(url.pathname).toBe("/work");
-        expect(url.searchParams.get("tab")).toBe("graph");
+        expect(url.pathname).toBe("/diagnose/work-graph");
+        expect(url.searchParams.get("tab")).toBeNull();
         expect(url.searchParams.get("role")).toBe("manager");
         expect(url.searchParams.get("graph_theme")).toBe("quality");
         expect(url.searchParams.get("graph_subcategory")).toBeNull();

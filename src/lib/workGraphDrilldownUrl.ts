@@ -18,5 +18,5 @@ export const buildInvestmentWorkGraphUrl = ({
     if (subcategoryKey) {
         graphParams.set("graph_subcategory", subcategoryKey);
     }
-    return `${withFilterParam("/work?tab=graph", filters, role)}&${graphParams.toString()}`;
+    return `${withFilterParam("/diagnose/work-graph", filters, role)}&${graphParams.toString()}`;
 };
