@@ -46,7 +46,7 @@ export default async function AIWorkflowsPage({ searchParams }: AIWorkflowsPageP
                 filters={filters}
                 role={activeRole}
                 title="AI workflows"
-                description="Real AI views that summarize impact, review pressure, governance risk, and automation opportunities."
+                description="Available AI views summarize impact, review pressure, governance risk, and automation opportunities."
             />
         </>
     );

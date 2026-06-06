@@ -51,6 +51,12 @@ describe("AIWorkspaceChrome", () => {
         expect(screen.getByRole("heading", { level: 1, name: "AI" })).toBeInTheDocument();
     });
 
+    it("uses tentative AI copy instead of definitive implementation language", () => {
+        render(<AIWorkspaceChrome>content</AIWorkspaceChrome>);
+        expect(screen.getByText(/AI appears to change/i)).toBeInTheDocument();
+        expect(screen.queryByText(/What AI is changing/i)).not.toBeInTheDocument();
+    });
+
     it("demotes the per-tab title to a subordinate h2", () => {
         render(
             <AIWorkspaceChrome>
