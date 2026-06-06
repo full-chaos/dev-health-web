@@ -384,4 +384,67 @@ describe("IncidentCorrelationDashboard", () => {
         expect(screen.getByText("Unresolved")).toBeInTheDocument();
         expect(screen.queryByText(/4e00fff2-df66/)).not.toBeInTheDocument();
     });
+
+    it("incident table renders server-resolved name for a UUID incident id (CHAOS-2089)", () => {
+        // DEPLOYS edge carries targetDisplayName = resolved incident name.
+        // joinEdges must propagate it to IncidentRow.incidentDisplayName.
+        // EntityLabel must render the resolved name, never the raw UUID.
+        const deploys = [
+            makeEdge("d1", "dep-a", "4e00fff2-df66-5028-8ebd-e4535332300b", "DEPLOYS", {
+                targetDisplayName: "INC-2025-001",
+            }),
+        ];
+        render(
+            <IncidentCorrelationDashboard
+                {...baseProps}
+                deploysEdges={deploys}
+                incidentEdges={[]}
+            />,
+        );
+        expect(screen.getByTestId("incident-linkage-table")).toBeInTheDocument();
+        expect(screen.getByText("INC-2025-001")).toBeInTheDocument();
+        expect(screen.queryByText(/4e00fff2-df66/)).not.toBeInTheDocument();
+    });
+
+    it("incident table shows Unresolved badge for a UUID incident id with no display name (CHAOS-2089)", () => {
+        // When targetDisplayName is null (backend could not resolve), EntityLabel
+        // degrades to a controlled short token + Unresolved badge — never raw UUID.
+        const deploys = [
+            makeEdge("d1", "dep-a", "698c0211-0000-0000-0000-0000fee29c84", "DEPLOYS", {
+                targetDisplayName: null,
+            }),
+        ];
+        render(
+            <IncidentCorrelationDashboard
+                {...baseProps}
+                deploysEdges={deploys}
+                incidentEdges={[]}
+            />,
+        );
+        expect(screen.getByTestId("incident-linkage-table")).toBeInTheDocument();
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+        expect(screen.queryByText(/698c0211-0000/)).not.toBeInTheDocument();
+    });
+
+    it("joinEdges carries targetDisplayName from DEPLOYS edge as incidentDisplayName", () => {
+        const deploys = [
+            makeEdge("d1", "dep-a", "uuid-inc-1", "DEPLOYS", {
+                targetDisplayName: "INC-PROD-042",
+            }),
+        ];
+        const rows = joinEdges(deploys, []);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].incidentId).toBe("uuid-inc-1");
+        expect(rows[0].incidentDisplayName).toBe("INC-PROD-042");
+    });
+
+    it("joinEdges sets incidentDisplayName to null when edge has no targetDisplayName", () => {
+        const deploys = [
+            makeEdge("d1", "dep-a", "uuid-inc-1", "DEPLOYS", {
+                targetDisplayName: null,
+            }),
+        ];
+        const rows = joinEdges(deploys, []);
+        expect(rows[0].incidentDisplayName).toBeNull();
+    });
 });

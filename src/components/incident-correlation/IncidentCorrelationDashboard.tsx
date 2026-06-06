@@ -42,8 +42,12 @@ export type WorkGraphEdge = {
     edgeId: string;
     sourceType: string;
     sourceId: string;
+    /** Server-resolved human label for sourceId (A7). Null when backend could not resolve. */
+    sourceDisplayName?: string | null;
     targetType: string;
     targetId: string;
+    /** Server-resolved human label for targetId (A7). Null when backend could not resolve. */
+    targetDisplayName?: string | null;
     edgeType: string;
     provenance: string | null;
     confidence: number | null;
@@ -55,6 +59,8 @@ export type WorkGraphEdge = {
 /** Joined incident row: one incident with its linked deployments and work items. */
 export type IncidentRow = {
     incidentId: string;
+    /** Server-resolved display name for incidentId (A7/CHAOS-2089). */
+    incidentDisplayName?: string | null;
     deploymentIds: string[];
     workItemIds: string[];
 };
@@ -102,6 +108,7 @@ export function joinEdges(
     incidentEdges: WorkGraphEdge[],
 ): IncidentRow[] {
     const deploysByIncident = new Map<string, Set<string>>();
+    const incidentDisplayNames = new Map<string, string | null>();
     for (const edge of deploysEdges) {
         const incidentId = edge.targetId;
         const deploymentId = edge.sourceId;
@@ -109,6 +116,13 @@ export function joinEdges(
             deploysByIncident.set(incidentId, new Set());
         }
         deploysByIncident.get(incidentId)!.add(deploymentId);
+        // Capture first resolved display name we see for this incident (A7).
+        if (!incidentDisplayNames.has(incidentId)) {
+            incidentDisplayNames.set(
+                incidentId,
+                edge.targetDisplayName !== undefined ? edge.targetDisplayName : null,
+            );
+        }
     }
 
     const workItemsByIncident = new Map<string, Set<string>>();
@@ -125,6 +139,7 @@ export function joinEdges(
 
     return Array.from(allIncidentIds).map((incidentId) => ({
         incidentId,
+        incidentDisplayName: incidentDisplayNames.get(incidentId) ?? null,
         deploymentIds: Array.from(deploysByIncident.get(incidentId) ?? []),
         workItemIds: Array.from(workItemsByIncident.get(incidentId) ?? []),
     }));
@@ -422,6 +437,7 @@ export function IncidentCorrelationDashboard({
                                         <td className="px-5 py-3 text-xs">
                                             <EntityLabel
                                                 id={row.incidentId}
+                                                displayName={row.incidentDisplayName}
                                                 className="font-mono"
                                             />
                                         </td>
