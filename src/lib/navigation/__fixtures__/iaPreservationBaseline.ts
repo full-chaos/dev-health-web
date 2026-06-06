@@ -71,6 +71,12 @@ export const iaPreservationBaseline = {
         },
         {
             areaId: "improve",
+            childId: "improve-overview",
+            label: "Overview",
+            path: "/opportunities",
+        },
+        {
+            areaId: "improve",
             childId: "opportunities",
             label: "Opportunities",
             path: "/opportunities",

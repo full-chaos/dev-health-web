@@ -105,13 +105,11 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
     });
 
     it("never renders preview (navVisible:false) children — verified via Improve", () => {
-        // Improve's only navVisible child is Opportunities; Experiments and
-        // Automations are preview routes (J5) and must never render in the sidebar.
         navigationMock.pathname = "/opportunities";
         render(<PrimaryNav filters={makeFilter()} active="opportunities" />);
 
+        expect(screen.getByRole("link", { name: /^Overview$/i })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Opportunities$/i })).toBeInTheDocument();
-        // No phantom/preview rows ever rendered.
         expect(screen.queryByRole("link", { name: /^Experiments$/i })).toBeNull();
         expect(screen.queryByRole("link", { name: /^Automations$/i })).toBeNull();
     });

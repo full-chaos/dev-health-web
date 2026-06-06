@@ -351,12 +351,22 @@ export const navAreas: readonly NavArea[] = [
         placement: "main",
         ownedPathPrefixes: ["/opportunities"],
         legacyActiveIds: ["opportunities", "experiments", "automations", "improve"],
-        // CHAOS-2074: Improve is FLAT (no clusters). Opportunities is the area's own
-        // landing route (`href: "/opportunities"`), so it is NOT duplicated as a hub
-        // item — its volume signal bubbles at the area level via the resolver.
-        // Descriptors placed here; Phase 2 wires the resolver fetching.
-        hubItems: [],
+        hubItems: [
+            {
+                id: "opportunities",
+                label: "Opportunities",
+                href: "/opportunities",
+                description: "Evidence-linked improvement opportunities.",
+                metricLabel: "Opportunities data",
+            },
+        ],
         children: [
+            {
+                id: "improve-overview",
+                label: "Overview",
+                path: "/opportunities",
+                navVisible: true,
+            },
             {
                 id: "opportunities",
                 label: "Opportunities",
