@@ -144,10 +144,10 @@ export const navAreas: readonly NavArea[] = [
     {
         id: "diagnose",
         label: "Diagnose",
-        href: "/work",
+        href: "/diagnose",
         placement: "main",
         ownedPathPrefixes: [
-            "/work",
+            "/diagnose",
             "/metrics",
             "/team-flow",
             "/investment",
@@ -237,13 +237,7 @@ export const navAreas: readonly NavArea[] = [
             {
                 id: "diagnose-overview",
                 label: "Overview",
-                path: "/work",
-                navVisible: true,
-            },
-            {
-                id: "work",
-                label: "Work",
-                path: "/work?view=work",
+                path: "/diagnose",
                 navVisible: true,
             },
             {
@@ -265,8 +259,12 @@ export const navAreas: readonly NavArea[] = [
                 path: "/landscape",
                 navVisible: true,
             },
-            { id: "people", label: "People", path: "/people", navVisible: true },
-            { id: "code", label: "Code", path: "/code", navVisible: true },
+            {
+                id: "work-graph",
+                label: "Work Graph",
+                path: "/diagnose/work-graph",
+                navVisible: true,
+            },
             {
                 id: "complexity",
                 label: "Complexity",
@@ -285,6 +283,8 @@ export const navAreas: readonly NavArea[] = [
                 path: "/bottleneck",
                 navVisible: true,
             },
+            { id: "people", label: "People", path: "/people", navVisible: true },
+            { id: "code", label: "Code", path: "/code", navVisible: true },
         ],
     },
     {
@@ -321,13 +321,6 @@ export const navAreas: readonly NavArea[] = [
                 label: "Capacity Forecast",
                 path: "/plan/capacity",
                 navVisible: true,
-            },
-            {
-                id: "backlog-risk",
-                label: "Backlog Risk",
-                path: "/plan/backlog-risk",
-                navVisible: false,
-                preview: true,
             },
             {
                 id: "operating-review",
