@@ -14,7 +14,6 @@ const diagnoseChildren = [
     { label: "Flow", href: /\/metrics(?:[?#].*)?$/ },
     { label: "Investment", href: /\/investment(?:[?#].*)?$/ },
     { label: "Landscape", href: /\/landscape(?:[?#].*)?$/ },
-    { label: "Work Lens", href: /\/work\?view=work(?:[&#].*)?$/ },
     { label: "People", href: /\/people(?:[?#].*)?$/ },
     { label: "Code", href: /\/code(?:[?#].*)?$/ },
     { label: "Complexity", href: /\/complexity(?:[?#].*)?$/ },
@@ -35,11 +34,11 @@ test.describe("Diagnose navigation", () => {
         await expect(page.getByTestId("area-overview")).toBeVisible();
         await expect(page.getByRole("navigation", { name: "Diagnose views" })).toHaveCount(0);
         await expect(page.getByRole("navigation", { name: "Work views" })).toHaveCount(0);
-        // The overview must not expose an in-page "Work Lens" mode-tab. The sidebar
-        // "Work Lens" destination (a Diagnose child) is intentional and lives in <aside>,
+        // The overview must not expose an in-page "Work" mode-tab. The sidebar
+        // "Work" destination (a Diagnose child) is intentional and lives in <aside>,
         // outside <main>.
         await expect(
-            page.getByRole("main").getByRole("link", { name: "Work Lens", exact: true }),
+            page.getByRole("main").getByRole("link", { name: "Work", exact: true }),
         ).toHaveCount(0);
     });
 

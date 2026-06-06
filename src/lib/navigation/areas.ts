@@ -241,6 +241,12 @@ export const navAreas: readonly NavArea[] = [
                 navVisible: true,
             },
             {
+                id: "work",
+                label: "Work",
+                path: "/work?view=work",
+                navVisible: true,
+            },
+            {
                 id: "flow",
                 label: "Flow",
                 path: "/metrics?tab=flow",
@@ -257,12 +263,6 @@ export const navAreas: readonly NavArea[] = [
                 id: "landscape",
                 label: "Landscape",
                 path: "/landscape",
-                navVisible: true,
-            },
-            {
-                id: "work",
-                label: "Work Lens",
-                path: "/work?view=work",
                 navVisible: true,
             },
             { id: "people", label: "People", path: "/people", navVisible: true },
