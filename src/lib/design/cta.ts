@@ -37,6 +37,7 @@ export const CTA_LABELS = {
     openMetrics: "Open metrics",
     openWorkView: "Open Work view",
     openInExplore: "Open in Explore",
+    evidence: "Evidence",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
     aiRisk: "Risk",

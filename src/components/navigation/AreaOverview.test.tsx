@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@/test/utils";
 
 import { AreaOverview } from "./AreaOverview";
-import { AREA_UNAVAILABLE_EMPTY_STATE } from "@/lib/design/emptyState";
 import type { AreaSignal, AreaSignalState } from "@/lib/areaSignals/types";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
@@ -88,7 +87,7 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         expect(new Set(allIds).size).toBe(allIds.length);
     });
 
-    it("sinks empty/unconnected sub-areas to the muted tier, sorted last", () => {
+    it("sinks empty/unconnected sub-areas to a separate muted tier after real signals", () => {
         renderOverview([
             signal("ok", "high"),
             signal("gap", "unavailable"),
@@ -97,14 +96,15 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
 
         const grid = screen.getByTestId("area-overview-grid");
         const gridCards = within(grid).getAllByTestId("area-signal-card");
-        // hero = "ok" (highest). Grid order: med (real) then gap (unavailable) last.
-        expect(gridCards.map((c) => c.getAttribute("data-signal-id"))).toEqual(["med", "gap"]);
+        expect(gridCards.map((c) => c.getAttribute("data-signal-id"))).toEqual(["med"]);
 
-        const gap = gridCards.find((c) => c.getAttribute("data-signal-id") === "gap")!;
-        expect(gap.getAttribute("data-state")).toBe("unavailable");
-        // The empty card renders through the muted tier — visibly quieter.
-        expect(gap.getAttribute("data-tier")).toBe("muted");
-        expect(within(gap).getByText(AREA_UNAVAILABLE_EMPTY_STATE.title)).toBeInTheDocument();
+        const emptyTier = screen.getByTestId("area-overview-empty-tier");
+        expect(within(emptyTier).getByText("Not yet connected")).toBeInTheDocument();
+        expect(within(emptyTier).getByRole("link", { name: "gap" })).toHaveAttribute(
+            "data-signal-id",
+            "gap",
+        );
+        expect(within(emptyTier).queryByTestId("area-signal-card")).toBeNull();
     });
 
     it("never surfaces the 'No area metric unavailable' double-negative copy", () => {
@@ -120,9 +120,9 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         renderOverview([signal("a", "unavailable"), signal("b", "unavailable")]);
         // No hero (an unavailable metric is never the top signal).
         expect(screen.queryByTestId("area-overview-hero")).toBeNull();
-        const grid = screen.getByTestId("area-overview-grid");
-        const cards = within(grid).getAllByTestId("area-signal-card");
-        expect(cards).toHaveLength(2);
-        expect(cards.every((c) => c.getAttribute("data-tier") === "muted")).toBe(true);
+        expect(screen.queryByTestId("area-overview-grid")).toBeNull();
+        const emptyTier = screen.getByTestId("area-overview-empty-tier");
+        expect(within(emptyTier).getAllByRole("link")).toHaveLength(2);
+        expect(within(emptyTier).queryAllByTestId("area-signal-card")).toHaveLength(0);
     });
 });

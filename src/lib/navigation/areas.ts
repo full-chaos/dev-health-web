@@ -176,7 +176,7 @@ export const navAreas: readonly NavArea[] = [
             {
                 id: "flow",
                 label: "Flow",
-                href: "/metrics",
+                href: "/metrics?tab=flow",
                 description: "Flow trends and delivery movement.",
                 metricLabel: "Deploy frequency",
             },
@@ -246,7 +246,13 @@ export const navAreas: readonly NavArea[] = [
                 path: "/work?view=work",
                 navVisible: true,
             },
-            { id: "flow", label: "Flow", path: "/metrics", navVisible: true },
+            {
+                id: "flow",
+                label: "Flow",
+                path: "/metrics?tab=flow",
+                navVisible: true,
+                ownedPaths: ["/metrics"],
+            },
             {
                 id: "investment",
                 label: "Investment",
@@ -296,18 +302,11 @@ export const navAreas: readonly NavArea[] = [
         ],
         hubItems: [
             {
-                id: "delivery-forecast",
-                label: "Delivery Forecast",
-                href: "/plan/delivery-forecast",
+                id: "capacity",
+                label: "Capacity Forecast",
+                href: "/plan/capacity",
                 description: "Monte Carlo throughput forecasting.",
                 metricLabel: "Forecast window",
-            },
-            {
-                id: "operating-review",
-                label: "Operating Review",
-                href: "/operating-review",
-                description: "Weekly planning and review agenda.",
-                metricLabel: "Review cadence",
             },
         ],
         children: [
@@ -318,14 +317,8 @@ export const navAreas: readonly NavArea[] = [
                 navVisible: true,
             },
             {
-                id: "delivery-forecast",
-                label: "Delivery Forecast",
-                path: "/plan/delivery-forecast",
-                navVisible: true,
-            },
-            {
                 id: "capacity",
-                label: "Capacity",
+                label: "Capacity Forecast",
                 path: "/plan/capacity",
                 navVisible: true,
             },
@@ -340,7 +333,8 @@ export const navAreas: readonly NavArea[] = [
                 id: "operating-review",
                 label: "Operating Review",
                 path: "/operating-review",
-                navVisible: true,
+                navVisible: false,
+                preview: true,
             },
         ],
     },
@@ -351,11 +345,15 @@ export const navAreas: readonly NavArea[] = [
         placement: "main",
         ownedPathPrefixes: ["/opportunities"],
         legacyActiveIds: ["opportunities", "experiments", "automations", "improve"],
-        // CHAOS-2074: Improve is FLAT (no clusters). Opportunities is the area's own
-        // landing route (`href: "/opportunities"`), so it is NOT duplicated as a hub
-        // item — its volume signal bubbles at the area level via the resolver.
-        // Descriptors placed here; Phase 2 wires the resolver fetching.
-        hubItems: [],
+        hubItems: [
+            {
+                id: "opportunities",
+                label: "Opportunities",
+                href: "/opportunities",
+                description: "Evidence-linked improvement opportunities.",
+                metricLabel: "Opportunities data",
+            },
+        ],
         children: [
             {
                 id: "opportunities",
@@ -382,9 +380,10 @@ export const navAreas: readonly NavArea[] = [
     {
         id: "govern",
         label: "Govern",
-        href: "/testops",
+        href: "/govern",
         placement: "main",
         ownedPathPrefixes: [
+            "/govern",
             "/testops",
             "/quality",
             "/security",
@@ -410,28 +409,12 @@ export const navAreas: readonly NavArea[] = [
         hubItems: [
             // ── Cluster: Quality ──────────────────────────────────────────────────
             {
-                id: "coverage",
-                label: "Coverage",
-                href: "/testops/coverage",
-                description: "Coverage delta.",
+                id: "testops",
+                label: "TestOps",
+                href: "/testops",
+                description: "Pipeline, test, and coverage health.",
                 cluster: "Quality",
-                metricLabel: "Line coverage",
-            },
-            {
-                id: "tests",
-                label: "Tests",
-                href: "/testops/tests",
-                description: "Test reliability and flake.",
-                cluster: "Quality",
-                metricLabel: "Flake rate",
-            },
-            {
-                id: "pipelines",
-                label: "Pipelines",
-                href: "/testops/pipelines",
-                description: "Pipeline stability.",
-                cluster: "Quality",
-                metricLabel: "Success rate",
+                metricLabel: "Worst TestOps signal",
             },
             {
                 id: "quality",
@@ -486,24 +469,29 @@ export const navAreas: readonly NavArea[] = [
             },
         ],
         children: [
-            { id: "testops", label: "Overview", path: "/testops", navVisible: true },
             {
-                id: "pipelines",
-                label: "Pipelines",
-                path: "/testops/pipelines",
+                id: "govern-overview",
+                label: "Overview",
+                path: "/govern",
                 navVisible: true,
             },
-            { id: "tests", label: "Tests", path: "/testops/tests", navVisible: true },
+            {
+                id: "testops",
+                label: "TestOps",
+                path: "/testops",
+                navVisible: true,
+                ownedPaths: [
+                    "/testops",
+                    "/testops/pipelines",
+                    "/testops/tests",
+                    "/testops/coverage",
+                ],
+                isCluster: true,
+            },
             {
                 id: "quality",
                 label: "Quality",
                 path: "/quality",
-                navVisible: true,
-            },
-            {
-                id: "coverage",
-                label: "Coverage",
-                path: "/testops/coverage",
                 navVisible: true,
             },
             {

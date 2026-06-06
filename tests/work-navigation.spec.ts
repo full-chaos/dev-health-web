@@ -87,20 +87,41 @@ test.describe("Diagnose navigation", () => {
         await expect(page.getByRole("heading", { name: "Landscape" })).toBeVisible();
     });
 
-    test("legacy Work deep links render the analytical views in the Diagnose hub", async ({
+    test("legacy Work deep links: removed tabs redirect to first-class destinations", async ({
         page,
     }) => {
-        // CHAOS-2079 remediation: /work?tab=<view> must render the view inside the
-        // restored Diagnose work hub (resolveActiveView -> "work"), NOT redirect
-        // away or dead-end. Flame/Work-Graph previously looped back to the overview.
-        const cases = [
-            { tab: "investment", label: "Investment" },
-            { tab: "flow", label: "Flow" },
-            { tab: "landscape", label: "Landscape" },
-            { tab: "flame", label: "Flame" },
+        // REMOVED_WORK_TAB_REDIRECTS (workPageView.ts): these tabs no longer render
+        // in the hub — the server redirects to the first-class destination and
+        // forwards the f= filter param.
+        const redirectCases = [
+            { tab: "flow", targetPattern: /\/metrics(?:[?#].*)?$/ },
+            { tab: "investment", targetPattern: /\/investment(?:[?#].*)?$/ },
+            { tab: "landscape", targetPattern: /\/landscape(?:[?#].*)?$/ },
+            { tab: "capacity", targetPattern: /\/plan\/capacity(?:[?#].*)?$/ },
         ] as const;
 
-        for (const { tab, label } of cases) {
+        for (const { tab, targetPattern } of redirectCases) {
+            await page.goto(`/work?tab=${tab}&f=${filterWith30d}`);
+            await waitForHydration(page);
+
+            // Server redirect: final URL must match the first-class destination.
+            await expect(page).toHaveURL(targetPattern);
+
+            // Filter context is forwarded to the redirect target.
+            expect(decodeFilter(new URL(page.url()).searchParams.get("f")).time.range_days).toBe(
+                30,
+            );
+        }
+    });
+
+    test("legacy Work deep links: WORK_TABS (flame/heatmap/evidence/graph) stay in the hub", async ({
+        page,
+    }) => {
+        // WORK_TABS = [overview, heatmap, flame, evidence, graph] — these remain
+        // in /work hub and are NOT redirected.
+        const hubCases = [{ tab: "flame", label: "Flame" }] as const;
+
+        for (const { tab, label } of hubCases) {
             await page.goto(`/work?tab=${tab}&f=${filterWith30d}`);
             await waitForHydration(page);
 
@@ -108,9 +129,9 @@ test.describe("Diagnose navigation", () => {
             await expect(page).toHaveURL(new RegExp(`/work\\?tab=${tab}`));
 
             // The Work views tab strip is present and the deep-linked tab is active.
-            const workNav = page.getByRole("navigation", { name: "Work views" });
+            const workNav = page.getByRole("tablist", { name: "Work views" });
             await expect(workNav).toBeVisible();
-            await expect(workNav.getByRole("link", { name: label, exact: true })).toHaveAttribute(
+            await expect(workNav.getByRole("tab", { name: label, exact: true })).toHaveAttribute(
                 "aria-current",
                 "page",
             );

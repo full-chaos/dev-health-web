@@ -7,7 +7,7 @@ const primaryAreas = [
     { label: "Diagnose", path: "/work" },
     { label: "Plan", path: "/plan" },
     { label: "Improve", path: "/opportunities" },
-    { label: "Govern", path: "/testops" },
+    { label: "Govern", path: "/govern" },
     { label: "AI", path: "/ai" },
     { label: "Reports", path: "/reports" },
     { label: "Admin", path: "/admin" },
@@ -144,14 +144,9 @@ test.describe("primary navigation reachability", () => {
         for (const child of [
             { label: "Overview", url: /\/plan(?:[?#].*)?$/, path: "/plan" },
             {
-                label: "Delivery Forecast",
-                url: /\/plan\/delivery-forecast(?:[?#].*)?$/,
-                path: "/plan/delivery-forecast",
-            },
-            {
-                label: "Operating Review",
-                url: /\/operating-review(?:[?#].*)?$/,
-                path: "/operating-review",
+                label: "Capacity Forecast",
+                url: /\/plan\/capacity(?:[?#].*)?$/,
+                path: "/plan/capacity",
             },
         ]) {
             await clickUntilUrl(

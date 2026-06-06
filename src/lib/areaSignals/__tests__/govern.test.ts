@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // source → AreaSignal mapping (DERIVE vs RETURNED) without any network.
 
 vi.mock("@/lib/api/home", () => ({ getHomeData: vi.fn() }));
-vi.mock("@/lib/feature-flags/fetchers", () => ({ fetchFeatureFlagsData: vi.fn() }));
+vi.mock("@/lib/feature-flags/fetchers", () => ({
+    fetchFeatureFlagsData: vi.fn(),
+}));
 vi.mock("@/lib/testops/fetchers", () => ({
     fetchTestOpsData: vi.fn(),
     fetchCoverageMetrics: vi.fn(),
@@ -15,7 +17,9 @@ vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
     auth: vi.fn().mockResolvedValue({ user: { org_id: "org-test" } }),
 }));
-vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+vi.mock("@/lib/logger", () => ({
+    logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+}));
 
 import { getHomeData } from "@/lib/api/home";
 import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
@@ -50,11 +54,17 @@ beforeEach(() => {
     vi.clearAllMocks();
     // Sensible "all available" defaults; individual tests override.
     mockTestOps.mockResolvedValue({
-        pipelines: { timeseries: [ts("PIPELINE_SUCCESS_RATE", 92)], breakdowns: [] },
+        pipelines: {
+            timeseries: [ts("PIPELINE_SUCCESS_RATE", 92)],
+            breakdowns: [],
+        },
         tests: { timeseries: [ts("TEST_FLAKE_RATE", 4)], breakdowns: [] },
         coverage: { timeseries: [ts("COVERAGE_LINE_PCT", 83)], breakdowns: [] },
     });
-    mockCoverage.mockResolvedValue({ timeseries: [ts("COVERAGE_LINE_PCT", 83)], breakdowns: [] });
+    mockCoverage.mockResolvedValue({
+        timeseries: [ts("COVERAGE_LINE_PCT", 83)],
+        breakdowns: [],
+    });
     mockRisk.mockResolvedValue({ release_confidence: 0.62 } as never);
     mockGetHomeData.mockResolvedValue({
         deltas: [
@@ -125,24 +135,30 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
     it("derives Quality cluster states from analytics values", async () => {
         const signals = byId(await getGovernSignals(defaultMetricFilter));
 
-        // Coverage 83% (higher-is-better, >=80 target) → low; formatted percent.
-        expect(signals.coverage).toMatchObject({ state: "low", value: "83%", cluster: "Quality" });
-        // Flake 4% (lower-is-better, >=3 medium) → medium.
-        expect(signals.tests).toMatchObject({ state: "medium", value: "4%", cluster: "Quality" });
-        // Success 92 → shortfall 8 → low.
-        expect(signals.pipelines).toMatchObject({ state: "low", value: "92%", cluster: "Quality" });
+        expect(signals.testops).toMatchObject({
+            state: "medium",
+            value: "4% flake",
+            cluster: "Quality",
+        });
     });
 
     it("reuses the server-returned severity for home-REST signals (Quality + Incident)", async () => {
         const signals = byId(await getGovernSignals(defaultMetricFilter));
         expect(signals.quality).toMatchObject({ state: "high", value: "12%" });
         // Incident Correlation reuses the same change_failure_rate signal.
-        expect(signals["incident-correlation"]).toMatchObject({ state: "high", value: "12%" });
+        expect(signals["incident-correlation"]).toMatchObject({
+            state: "high",
+            value: "12%",
+        });
     });
 
     it("derives Security severity by count ladder (critical>=1 → critical)", async () => {
         const signals = byId(await getGovernSignals(defaultMetricFilter));
-        expect(signals.security).toMatchObject({ state: "critical", value: "2", cluster: "Risk" });
+        expect(signals.security).toMatchObject({
+            state: "critical",
+            value: "2",
+            cluster: "Risk",
+        });
     });
 
     it("falls back to openTotal for Security when there are no criticals", async () => {
@@ -186,16 +202,16 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         });
         mockCoverage.mockResolvedValue(emptyAnalytics);
         const signals = byId(await getGovernSignals(defaultMetricFilter));
-        expect(signals.coverage).toMatchObject({ state: "unavailable", value: "" });
-        expect(signals.tests).toMatchObject({ state: "unavailable", value: "" });
-        expect(signals.pipelines).toMatchObject({ state: "unavailable", value: "" });
+        expect(signals.testops).toMatchObject({ state: "unavailable", value: "" });
     });
 
     it("degrades a failed source to unavailable instead of throwing", async () => {
         mockGetHomeData.mockRejectedValue(new Error("home down"));
         const signals = byId(await getGovernSignals(defaultMetricFilter));
         expect(signals.quality).toMatchObject({ state: "unavailable" });
-        expect(signals["incident-correlation"]).toMatchObject({ state: "unavailable" });
+        expect(signals["incident-correlation"]).toMatchObject({
+            state: "unavailable",
+        });
         // other sources still resolve
         expect(signals.security.state).toBe("critical");
     });
@@ -206,9 +222,7 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         expect(new Set(ids).size).toBe(ids.length);
         expect(ids).toEqual(
             expect.arrayContaining([
-                "coverage",
-                "tests",
-                "pipelines",
+                "testops",
                 "quality",
                 "security",
                 "risk",
@@ -224,19 +238,24 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         // Simulate the page passing its already-fetched testOpsData — the resolver
         // must reuse it without issuing a second analytics POST.
         const prefetchedData = {
-            pipelines: { timeseries: [ts("PIPELINE_SUCCESS_RATE", 95)], breakdowns: [] },
+            pipelines: {
+                timeseries: [ts("PIPELINE_SUCCESS_RATE", 95)],
+                breakdowns: [],
+            },
             tests: { timeseries: [ts("TEST_FLAKE_RATE", 1)], breakdowns: [] },
             coverage: { timeseries: [ts("COVERAGE_LINE_PCT", 90)], breakdowns: [] },
         };
         const signals = byId(
-            await getGovernSignals(defaultMetricFilter, false, { testOpsData: prefetchedData }),
+            await getGovernSignals(defaultMetricFilter, false, {
+                testOpsData: prefetchedData,
+            }),
         );
         // fetchTestOpsData must NOT have been called — the prefetched data was reused.
         expect(mockTestOps).not.toHaveBeenCalled();
         // Signals derived from the prefetched data reflect the prefetched values.
-        // Success 95 → shortfall 5 → low.
-        expect(signals.pipelines).toMatchObject({ state: "low", value: "95%" });
-        // Flake 1% → low (< 3 medium threshold).
-        expect(signals.tests).toMatchObject({ state: "low", value: "1%" });
+        expect(signals.testops).toMatchObject({
+            state: "low",
+            value: "95% success",
+        });
     });
 });

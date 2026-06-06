@@ -4,7 +4,7 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
-import { encodeAIFilterParam, metricFilterToAIFilter } from "@/lib/filters/ai";
+import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
@@ -43,7 +43,6 @@ export default async function AIImpactPage({ searchParams }: AIImpactPageProps) 
             <GlobalContextBar filters={filters} />
             <FilterBar view="ai" />
             <AIImpactDashboard filter={aiFilter} />
-            <p className="sr-only">Encoded AI filter: {encodeAIFilterParam(aiFilter)}</p>
         </>
     );
 }

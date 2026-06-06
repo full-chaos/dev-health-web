@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
@@ -8,7 +6,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
 import { checkApiHealth } from "@/lib/api/system";
-import { CTA_LABELS } from "@/lib/design/cta";
+import { BackLink } from "@/components/shared/BackLink";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
@@ -20,6 +18,8 @@ import {
     BreakdownItem,
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
+
+import { TestOpsTabs } from "../TestOpsTabs";
 
 type TestsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -163,25 +163,22 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
     return (
         <div className="min-h-screen bg-background text-foreground">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="tests" role={activeRole} />
+                <PrimaryNav filters={filters} active="testops" role={activeRole} />
                 <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
+                    <header className="flex flex-col gap-4">
+                        <BackLink href={withFilterParam("/", filters, activeRole)} />
                         <div>
                             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Tests
+                                TestOps
                             </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Tests</h1>
+                            <h1 className="mt-2 font-(--font-display) text-3xl">TestOps</h1>
                             <p className="mt-2 text-sm text-(--ink-muted)">
                                 Test suite reliability and performance.
                             </p>
                         </div>
-                        <Link
-                            href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            {CTA_LABELS.backToCockpit}
-                        </Link>
                     </header>
+
+                    <TestOpsTabs activeId="tests" filters={filters} role={activeRole} />
 
                     <GlobalContextBar filters={filters} />
                     <FilterBar view="testops" />

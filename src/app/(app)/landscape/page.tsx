@@ -12,30 +12,20 @@ import { checkApiHealth } from "@/lib/api/system";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { getLensFromSearchParams, getLandscapePrimaryType } from "@/lib/lensContext";
 import { withFilterParam } from "@/lib/filters/url";
 import { navTrailForPathname } from "@/lib/navigation/areas";
-import { getRoleConfig } from "@/lib/roleContext";
 
 const QUADRANT_CARDS = [
-    {
-        type: "churn_throughput" as const,
-        title: "Churn × Throughput",
-        description: "Operating modes under change volume and delivery pace.",
-    },
     {
         type: "cycle_throughput" as const,
         title: "Cycle Time × Throughput",
         description: "Operating modes under time in flight and delivery pace.",
     },
     {
-        type: "wip_throughput" as const,
-        title: "WIP × Throughput",
-        description: "Operating modes under work in flight and delivery pace.",
-    },
-    {
-        type: "review_load_latency" as const,
-        title: "Review Load × Review Latency",
-        description: "Operating modes under review demand and turnaround.",
+        type: "churn_throughput" as const,
+        title: "Churn × Throughput",
+        description: "Operating modes under change volume and delivery pace.",
     },
 ];
 
@@ -56,11 +46,17 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
+    const lensParam = Array.isArray(params.lens) ? params.lens[0] : params.lens;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+    const activeLensId =
+        getLensFromSearchParams(
+            new URLSearchParams({
+                ...(lensParam ? { lens: lensParam } : {}),
+                ...(roleParam ? { role: roleParam } : {}),
+            }),
+        ) ?? "neutral";
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
-    const roleConfig = getRoleConfig(roleParam);
-    const primaryType = roleConfig.primaryQuadrant;
-    const secondaryType = roleConfig.secondaryQuadrant;
+    const landscapePrimaryType = getLandscapePrimaryType(activeLensId);
 
     const bucketParam = Array.isArray(params.bucket) ? params.bucket[0] : params.bucket;
     const bucket = bucketParam === "month" ? "month" : "week";
@@ -92,17 +88,11 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
         return <ServiceUnavailable />;
     }
 
-    const primaryCardIndex = QUADRANT_CARDS.findIndex((card) => card.type === primaryType);
+    const primaryCardIndex = QUADRANT_CARDS.findIndex((card) => card.type === landscapePrimaryType);
     const primaryCard =
         primaryCardIndex >= 0 ? QUADRANT_CARDS[primaryCardIndex] : QUADRANT_CARDS[0];
     const primaryData = quadrantData[primaryCardIndex >= 0 ? primaryCardIndex : 0];
-    const otherCards = QUADRANT_CARDS.filter((card) => card.type !== primaryCard.type).sort(
-        (a, b) => {
-            if (a.type === secondaryType) return -1;
-            if (b.type === secondaryType) return 1;
-            return 0;
-        },
-    );
+    const otherCards = QUADRANT_CARDS.filter((card) => card.type !== primaryCard.type);
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -164,11 +154,6 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
 
                     <section className="flex flex-col gap-10">
                         <div className="rounded-3xl border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
-                            <div className="mb-6 flex items-center justify-between">
-                                <span className="rounded-full bg-(--accent-2)/20 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.25em] text-(--accent-2)">
-                                    Lens: {roleConfig.label}
-                                </span>
-                            </div>
                             <QuadrantPanel
                                 key={primaryCard.type}
                                 title={primaryCard.title}
@@ -185,23 +170,8 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                                 const cardIndex = QUADRANT_CARDS.findIndex(
                                     (item) => item.type === card.type,
                                 );
-                                const isSecondary = card.type === secondaryType;
                                 return (
-                                    <div
-                                        key={card.type}
-                                        className={
-                                            isSecondary
-                                                ? "rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4"
-                                                : ""
-                                        }
-                                    >
-                                        {isSecondary && (
-                                            <div className="mb-4 px-2">
-                                                <span className="text-xs font-bold uppercase tracking-[0.2em] text-(--ink-muted)">
-                                                    Secondary lens
-                                                </span>
-                                            </div>
-                                        )}
+                                    <div key={card.type}>
                                         <QuadrantPanel
                                             title={card.title}
                                             description={card.description}

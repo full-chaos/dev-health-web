@@ -111,6 +111,27 @@ function buildSignal(
     };
 }
 
+function stateRank(state: AreaSignalState): number {
+    return {
+        unavailable: -1,
+        neutral: 0,
+        low: 1,
+        medium: 2,
+        high: 3,
+        critical: 4,
+    }[state];
+}
+
+function worstResolution(
+    resolutions: Array<{ state: AreaSignalState; value: string } | undefined>,
+): { state: AreaSignalState; value: string } {
+    const available = resolutions.filter(
+        (resolution): resolution is { state: AreaSignalState; value: string } =>
+            resolution != null && resolution.state !== "unavailable",
+    );
+    return available.sort((a, b) => stateRank(b.state) - stateRank(a.state))[0] ?? UNAVAILABLE;
+}
+
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
 
@@ -149,9 +170,24 @@ export async function getGovernSignals(
 
     const analyticsBatch: AnalyticsRequestInput = {
         timeseries: [
-            { dimension: "TEAM", measure: "PIPELINE_SUCCESS_RATE", interval: "DAY", dateRange },
-            { dimension: "TEAM", measure: "TEST_FLAKE_RATE", interval: "DAY", dateRange },
-            { dimension: "TEAM", measure: "COVERAGE_LINE_PCT", interval: "DAY", dateRange },
+            {
+                dimension: "TEAM",
+                measure: "PIPELINE_SUCCESS_RATE",
+                interval: "DAY",
+                dateRange,
+            },
+            {
+                dimension: "TEAM",
+                measure: "TEST_FLAKE_RATE",
+                interval: "DAY",
+                dateRange,
+            },
+            {
+                dimension: "TEAM",
+                measure: "COVERAGE_LINE_PCT",
+                interval: "DAY",
+                dateRange,
+            },
         ],
         breakdowns: [],
     };
@@ -206,52 +242,45 @@ export async function getGovernSignals(
 
     // ── Cluster: Quality ────────────────────────────────────────────────────────
 
-    // Coverage — analytics COVERAGE_LINE_PCT, DERIVE (higher-is-better).
     const coveragePct =
         latestMeasure(coverage?.timeseries ?? [], "COVERAGE_LINE_PCT") ??
         latestMeasure(testOps?.coverage.timeseries ?? [], "COVERAGE_LINE_PCT");
-    push(
-        "coverage",
+    const coverageResolution =
         coveragePct != null
             ? {
                   state: deriveState(coveragePct, {
                       thresholds: COVERAGE_THRESHOLDS,
                       direction: "higherIsBetter",
                   }),
-                  value: formatPercent(coveragePct),
+                  value: `${formatPercent(coveragePct)} coverage`,
               }
-            : UNAVAILABLE,
-    );
+            : undefined;
 
-    // Tests — analytics TEST_FLAKE_RATE, DERIVE (lower-is-better).
     const flakePct = latestMeasure(testOps?.tests.timeseries ?? [], "TEST_FLAKE_RATE");
-    push(
-        "tests",
+    const testsResolution =
         flakePct != null
             ? {
                   state: deriveState(flakePct, {
                       thresholds: FLAKE_THRESHOLDS,
                       direction: "lowerIsBetter",
                   }),
-                  value: formatPercent(flakePct),
+                  value: `${formatPercent(flakePct)} flake`,
               }
-            : UNAVAILABLE,
-    );
+            : undefined;
 
-    // Pipelines — analytics PIPELINE_SUCCESS_RATE, DERIVE on shortfall (100 − rate).
     const successPct = latestMeasure(testOps?.pipelines.timeseries ?? [], "PIPELINE_SUCCESS_RATE");
-    push(
-        "pipelines",
+    const pipelineResolution =
         successPct != null
             ? {
                   state: deriveState(Math.max(0, 100 - successPct), {
                       thresholds: PIPELINE_SHORTFALL_THRESHOLDS,
                       direction: "lowerIsBetter",
                   }),
-                  value: formatPercent(successPct),
+                  value: `${formatPercent(successPct)} success`,
               }
-            : UNAVAILABLE,
-    );
+            : undefined;
+
+    push("testops", worstResolution([pipelineResolution, testsResolution, coverageResolution]));
 
     // Quality — home REST signals[change_failure_rate].severity (RETURNED).
     const qualitySignal = homeSignalByMetric(homeData?.signals, "change_failure_rate");

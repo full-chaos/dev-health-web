@@ -12,7 +12,12 @@ export const iaPreservationBaseline = {
             label: "Work",
             path: "/work?view=work",
         },
-        { areaId: "diagnose", childId: "flow", label: "Flow", path: "/metrics" },
+        {
+            areaId: "diagnose",
+            childId: "flow",
+            label: "Flow",
+            path: "/metrics?tab=flow",
+        },
         {
             areaId: "diagnose",
             childId: "investment",
@@ -53,21 +58,9 @@ export const iaPreservationBaseline = {
         },
         {
             areaId: "plan",
-            childId: "delivery-forecast",
-            label: "Delivery Forecast",
-            path: "/plan/delivery-forecast",
-        },
-        {
-            areaId: "plan",
             childId: "capacity",
-            label: "Capacity",
+            label: "Capacity Forecast",
             path: "/plan/capacity",
-        },
-        {
-            areaId: "plan",
-            childId: "operating-review",
-            label: "Operating Review",
-            path: "/operating-review",
         },
         {
             areaId: "improve",
@@ -77,33 +70,21 @@ export const iaPreservationBaseline = {
         },
         {
             areaId: "govern",
-            childId: "testops",
+            childId: "govern-overview",
             label: "Overview",
+            path: "/govern",
+        },
+        {
+            areaId: "govern",
+            childId: "testops",
+            label: "TestOps",
             path: "/testops",
-        },
-        {
-            areaId: "govern",
-            childId: "pipelines",
-            label: "Pipelines",
-            path: "/testops/pipelines",
-        },
-        {
-            areaId: "govern",
-            childId: "tests",
-            label: "Tests",
-            path: "/testops/tests",
         },
         {
             areaId: "govern",
             childId: "quality",
             label: "Quality",
             path: "/quality",
-        },
-        {
-            areaId: "govern",
-            childId: "coverage",
-            label: "Coverage",
-            path: "/testops/coverage",
         },
         {
             areaId: "govern",
@@ -187,11 +168,8 @@ export const iaPreservationBaseline = {
         },
     ],
     workWorkbenchViews: [
-        { tab: "landscape", href: "/work?tab=landscape" },
+        { tab: "overview", href: "/work?tab=overview" },
         { tab: "heatmap", href: "/work?tab=heatmap" },
-        { tab: "flow", href: "/work?tab=flow" },
-        { tab: "investment", href: "/work?tab=investment" },
-        { tab: "capacity", href: "/work?tab=capacity" },
         { tab: "flame", href: "/work?tab=flame" },
         { tab: "evidence", href: "/work?tab=evidence" },
         { tab: "graph", href: "/work?tab=graph" },
@@ -251,8 +229,9 @@ export const iaPreservationBaseline = {
     // reachable alias (the #609/#610 failure mode) unnoticed. Invariant #7 cross-checks
     // this list against an INDEPENDENT filesystem scan of redirect-only route files.
     legacyAliasRoutes: [
-        { route: "/team-flow", redirectsTo: "/work" },
-        { route: "/capacity-planning", redirectsTo: "/plan/delivery-forecast" },
+        { route: "/team-flow", redirectsTo: "/metrics?tab=flow" },
+        { route: "/capacity-planning", redirectsTo: "/plan/capacity" },
+        { route: "/plan/delivery-forecast", redirectsTo: "/plan" },
         { route: "/explore/landscape", redirectsTo: "/landscape" },
     ],
 } as const;

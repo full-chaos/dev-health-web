@@ -11,7 +11,7 @@ import {
     type NavArea,
     type NavChildRoute,
 } from "../areas";
-import { resolveActiveView, WORK_TABS } from "../workPageView";
+import { resolveActiveView, resolveRemovedWorkTabRedirect, WORK_TABS } from "../workPageView";
 
 type VisibleChildDestination = {
     area: NavArea;
@@ -25,6 +25,45 @@ const workPagePath = join(appRoot, "work/page.tsx");
 const workPageSource = readFileSync(workPagePath, "utf8");
 const metricsPagePath = join(appRoot, "metrics/page.tsx");
 const metricsPageSource = readFileSync(metricsPagePath, "utf8");
+const testOpsTabsPath = join(appRoot, "testops/TestOpsTabs.tsx");
+const investmentPageSource = readFileSync(join(appRoot, "investment/page.tsx"), "utf8");
+const investmentViewSource = readFileSync(
+    join(process.cwd(), "src/components/work/InvestmentView.tsx"),
+    "utf8",
+);
+const investmentChartsSource = readFileSync(
+    join(process.cwd(), "src/components/work/investment/InvestmentCharts.tsx"),
+    "utf8",
+);
+const landscapePageSource = readFileSync(join(appRoot, "landscape/page.tsx"), "utf8");
+const bottleneckPageSource = readFileSync(join(appRoot, "bottleneck/page.tsx"), "utf8");
+
+const testOpsTabRoutes = [
+    {
+        id: "overview",
+        label: "Overview",
+        path: "/testops",
+        contentGuard: "TestOps summary",
+    },
+    {
+        id: "pipelines",
+        label: "Pipelines",
+        path: "/testops/pipelines",
+        contentGuard: "Success Rate Trend",
+    },
+    {
+        id: "tests",
+        label: "Tests",
+        path: "/testops/tests",
+        contentGuard: "Pass Rate Trend",
+    },
+    {
+        id: "coverage",
+        label: "Coverage",
+        path: "/testops/coverage",
+        contentGuard: "Line Coverage Trend",
+    },
+] as const;
 
 const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/ai/automations/page.tsx",
@@ -41,7 +80,6 @@ const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/opportunities/page.tsx",
     "src/app/(app)/people/page.tsx",
     "src/app/(app)/plan/capacity/page.tsx",
-    "src/app/(app)/plan/delivery-forecast/page.tsx",
     "src/app/(app)/plan/page.tsx",
     "src/app/(app)/quality/page.tsx",
     "src/app/(app)/risk/compounding/page.tsx",
@@ -183,6 +221,132 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         expect(workPageSource, `${href} should have a concrete page branch`).toContain(
             `activeTab === "${tab}"`,
         );
+    });
+
+    it.each(testOpsTabRoutes)(
+        "renders TestOps tab $label at $path with real page content",
+        (tab) => {
+            const pagePath = join(appRoot, ...tab.path.split("/").filter(Boolean), "page.tsx");
+            const source = readFileSync(pagePath, "utf8");
+            const tabsSource = readFileSync(testOpsTabsPath, "utf8");
+
+            expect(routePageExists(tab.path), tab.path).toBe(true);
+            expect(source, `${tab.path} should render the shared TestOps tab strip`).toContain(
+                "<TestOpsTabs",
+            );
+            expect(tabsSource, "TestOpsTabs should use the ViewSet primitive").toContain(
+                "<ViewSet",
+            );
+            expect(tabsSource, "TestOpsTabs should render the ViewSet as tabs").toContain(
+                'orientation="tabs"',
+            );
+            expect(tabsSource, `${tab.path} should include a ${tab.label} tab item`).toContain(
+                `id: "${tab.id}"`,
+            );
+            expect(source, `${tab.path} should render its real content`).toContain(
+                tab.contentGuard,
+            );
+            expect(source, `${tab.path} should not be a redirect-only tab`).not.toContain(
+                "redirect(",
+            );
+        },
+    );
+
+    it.each([
+        ["flow", "/metrics?tab=flow", "flow"],
+        ["investment", "/investment", "InvestmentView"],
+        ["landscape", "/landscape", "Cycle Time × Throughput"],
+        ["capacity", "/plan/capacity", "Capacity"],
+    ] as const)("redirects retired Work tab %s to the real %s home", (tab, path, contentNeedle) => {
+        expect(resolveRemovedWorkTabRedirect(tab), `/work?tab=${tab}`).toBe(path);
+        expect(routePageExists(path), path).toBe(true);
+
+        if (basePath(path) === "/metrics") {
+            expect(metricsPageSource).toContain(`id: "${contentNeedle}"`);
+        }
+        if (path === "/investment") {
+            expect(investmentPageSource).toContain(`<${contentNeedle}`);
+        }
+        if (path === "/landscape") {
+            expect(landscapePageSource).toContain(contentNeedle);
+        }
+        if (path === "/plan/capacity") {
+            expect(routePageExists(path), path).toBe(true);
+        }
+    });
+
+    it("mounts the full Investment chart workbench on /investment", () => {
+        expect(investmentPageSource).toContain("<InvestmentView");
+        expect(investmentViewSource).toContain("<InvestmentCharts");
+        for (const chart of [
+            "InvestmentMixSection",
+            "TeamCategorySankeySection",
+            "RepoTeamSankeySection",
+            "TeamExchangeChordSection",
+        ]) {
+            expect(investmentChartsSource).toContain(chart);
+        }
+        expect(investmentViewSource).toContain("InvestmentWorkUnitList");
+        expect(investmentViewSource).toContain("How this was calculated");
+    });
+
+    it("preserves role context on standalone /investment and investment drill-down links", () => {
+        expect(investmentPageSource).toContain("const roleParam");
+        expect(investmentPageSource).toContain("const activeRole");
+        expect(investmentPageSource).toContain("role={activeRole}");
+        expect(investmentPageSource).toContain("activeRole={activeRole}");
+        expect(investmentPageSource).toContain("role: activeRole");
+        expect(investmentPageSource).toContain("withFilterParam(");
+        expect(investmentPageSource).toContain('"/landscape",');
+        expect(investmentPageSource).toContain("activeOrigin,");
+    });
+
+    it("splits landscape and bottleneck quadrant ownership without duplicated scatters", () => {
+        expect(landscapePageSource).toContain("cycle_throughput");
+        expect(landscapePageSource).toContain("churn_throughput");
+        expect(landscapePageSource).not.toContain("wip_throughput");
+        expect(landscapePageSource).not.toContain("review_load_latency");
+
+        expect(bottleneckPageSource).toContain("wip_throughput");
+        expect(bottleneckPageSource).toContain("review_load_latency");
+        expect(bottleneckPageSource).not.toContain("churn_throughput");
+        expect(bottleneckPageSource).not.toContain("cycle_throughput");
+    });
+
+    it("clamps Landscape role primary quadrants to metrics still rendered on Landscape", () => {
+        expect(landscapePageSource).toContain("landscapePrimaryType");
+        // landscapePrimaryType is now lens-driven via getLandscapePrimaryType (lensContext.ts),
+        // which clamps any role primaryQuadrant to the Landscape-safe set.
+        expect(landscapePageSource).toContain("getLandscapePrimaryType");
+        expect(landscapePageSource).not.toContain("primaryQuadrant");
+        expect(landscapePageSource).not.toContain("getRoleConfig");
+    });
+});
+
+describe("IA preservation invariant #8 — Lens present in global context bar", () => {
+    const globalContextBarClientSource = readFileSync(
+        join(process.cwd(), "src/components/navigation/GlobalContextBarClient.tsx"),
+        "utf8",
+    );
+    const lensSelectorSource = readFileSync(
+        join(process.cwd(), "src/components/navigation/LensSelector.tsx"),
+        "utf8",
+    );
+
+    it("GlobalContextBarClient imports and renders LensSelector", () => {
+        expect(globalContextBarClientSource).toContain("LensSelector");
+    });
+
+    it("LensSelector has a data-testid for test discoverability", () => {
+        expect(lensSelectorSource).toContain('data-testid="lens-selector"');
+    });
+
+    it("LensSelector writes lens= to URL on selection", () => {
+        expect(lensSelectorSource).toContain('params.set("lens"');
+    });
+
+    it("LensSelector reads lens= first and falls back to role= (legacy alias)", () => {
+        expect(lensSelectorSource).toContain("getLensFromSearchParams");
     });
 });
 
@@ -346,7 +510,9 @@ describe("IA preservation invariant #7 — reachable redirect aliases stay guard
     // reachable alias cannot go unguarded, and a deleted alias/target is caught.
     const knownNonAliasRedirectPages = new Set<string>([
         // Pages that call redirect() as a guard rather than as a reachable alias.
-        // Empty today; add with justification if an in-page guard-redirect appears.
+        // /work redirects retired tabs (flow/investment/landscape/capacity) to their
+        // standalone homes while still rendering the Work branch for live tabs (CHAOS-2102).
+        "/work",
     ]);
 
     const routeForPageFile = (filePath: string): string => {
@@ -390,4 +556,11 @@ describe("IA preservation invariant #7 — reachable redirect aliases stay guard
             ).toBe(true);
         },
     );
+
+    it("keeps /team-flow alias on the Flow metrics tab instead of Diagnose overview", () => {
+        const source = readFileSync(join(appRoot, "team-flow/page.tsx"), "utf8");
+        expect(source).toContain(
+            'redirect(tail ? `/metrics?tab=flow&${tail}` : "/metrics?tab=flow")',
+        );
+    });
 });

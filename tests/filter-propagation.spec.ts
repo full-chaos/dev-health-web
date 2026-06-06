@@ -69,7 +69,7 @@ test.describe("filter propagation", () => {
             { label: /^Diagnose$/, path: "/work" },
             { label: /^Plan$/, path: "/plan" },
             { label: /^Improve$/, path: "/opportunities" },
-            { label: /^Govern$/, path: "/testops" },
+            { label: /^Govern$/, path: "/govern" },
             { label: /^AI$/, path: "/ai" },
             { label: /^Cockpit$/, path: "/dashboard" },
         ];
@@ -124,7 +124,7 @@ test.describe("filter propagation", () => {
         await clickUntilUrl(
             page,
             nav.getByRole("link", { name: /^Govern$/ }),
-            /\/testops(?:[?#].*)?$/,
+            /\/govern(?:[?#].*)?$/,
         );
         await expectFilterParam(page, updatedFilter);
         await expectDeveloperFilter(page, "metrics-owner");

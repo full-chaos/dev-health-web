@@ -11,16 +11,13 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { AreaHub } from "@/components/navigation/AreaHub";
-import { getAreaSignals } from "@/lib/areaSignals";
-import { RoleSelectorWithSuspense, RoleFraming } from "@/components/RoleSelectorWrapper";
+import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getHomeData } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { isValidRole, DEFAULT_ROLE } from "@/lib/roleContext";
 import { isAiDominant } from "@/lib/cockpit/aiGate";
 import type { HomeResponse } from "@/lib/types";
 
@@ -74,8 +71,18 @@ export default async function Home({ searchParams }: HomePageProps) {
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
+    const lensParam = Array.isArray(params.lens) ? params.lens[0] : params.lens;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-    const activeRole = isValidRole(roleParam) ? roleParam : DEFAULT_ROLE;
+    const activeLensId =
+        getLensFromSearchParams(
+            new URLSearchParams({
+                ...(lensParam ? { lens: lensParam } : {}),
+                ...(roleParam ? { role: roleParam } : {}),
+            }),
+        ) ?? "neutral";
+    const lensConfig = getLensConfig(activeLensId);
+    // Resolve a concrete role for child components that require RoleType.
+    const activeRole = activeLensId === "neutral" ? DEFAULT_ROLE : activeLensId;
 
     // Run health check in parallel with data fetches to eliminate the waterfall.
     const [health, home, meta] = await Promise.all([
@@ -88,15 +95,16 @@ export default async function Home({ searchParams }: HomePageProps) {
         return <ServiceUnavailable />;
     }
     const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
-    // Reorder Monitoring Views based on role
+    // Reorder Monitoring Views based on active lens (cockpit surface priority).
     const viewPriority: Record<string, string[]> = {
         ic: ["flow", "quality", "throughput", "dora"],
         em: ["flow", "throughput", "dora", "quality"],
         pm: ["quality", "flow", "throughput", "dora"],
         leadership: ["quality", "throughput", "dora", "flow"],
+        neutral: ["flow", "quality", "throughput", "dora"],
     };
     const prioritizedViews = [...MONITORING_VIEWS].sort((a, b) => {
-        const priority = viewPriority[activeRole] || viewPriority.ic;
+        const priority = viewPriority[activeLensId] ?? viewPriority.neutral;
         return priority.indexOf(a.id) - priority.indexOf(b.id);
     });
 
@@ -114,17 +122,18 @@ export default async function Home({ searchParams }: HomePageProps) {
                                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                         Status
                                     </p>
-                                    <div className="mt-4">
-                                        <RoleSelectorWithSuspense />
-                                    </div>
-                                    <h1 className="mt-6 font-(--font-display) text-3xl leading-tight sm:text-4xl">
+                                    <h1 className="mt-4 font-(--font-display) text-3xl leading-tight sm:text-4xl">
                                         Developer Health Ops Cockpit
                                     </h1>
-                                    <RoleFraming />
                                     <p className="mt-3 max-w-xl text-sm text-(--ink-muted)">
                                         System patterns over the last {filters.time.range_days}{" "}
                                         days.
                                     </p>
+                                    {lensConfig.framing ? (
+                                        <p className="mt-1 text-xs text-(--accent-2)/80">
+                                            {lensConfig.framing}
+                                        </p>
+                                    ) : null}
                                 </div>
                             </div>
 
@@ -197,15 +206,6 @@ export default async function Home({ searchParams }: HomePageProps) {
                             ))}
                         </div>
                     </section>
-
-                    <AreaHub
-                        areaId="cockpit"
-                        signals={await getAreaSignals("cockpit", filters)}
-                        filters={filters}
-                        role={activeRole}
-                        title="Related workflows"
-                        description="Periodic operating review of system health."
-                    />
 
                     <CockpitClient home={home} filters={filters} activeRole={activeRole} />
 

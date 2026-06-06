@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { AreaSignal } from "@/lib/areaSignals/types";
 import { isAvailable, sortBySeverity } from "@/lib/areaSignals/sort";
@@ -59,10 +62,9 @@ export function AreaOverview({
     // card appears in both hero and grid (CHAOS-2082 acceptance).
     const [hero, ...restAvailable] = available;
 
-    // Grid = remaining real-data cards first, then the muted empty tier, last.
-    const gridSignals = [...restAvailable, ...unavailable];
+    const gridSignals = restAvailable;
 
-    if (!hero && gridSignals.length === 0) return null;
+    if (!hero && gridSignals.length === 0 && unavailable.length === 0) return null;
 
     return (
         <section
@@ -98,6 +100,29 @@ export function AreaOverview({
                             role={role}
                         />
                     ))}
+                </div>
+            ) : null}
+
+            {unavailable.length > 0 ? (
+                <div
+                    data-testid="area-overview-empty-tier"
+                    className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-4 text-sm text-(--ink-muted)"
+                >
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="mr-1 text-xs uppercase tracking-[0.18em]">
+                            Not yet connected
+                        </span>
+                        {unavailable.map((signal) => (
+                            <Link
+                                key={signal.id}
+                                href={withFilterParam(signal.href, filters, role)}
+                                data-signal-id={signal.id}
+                                className="rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1 text-xs font-medium text-foreground transition hover:border-(--accent)"
+                            >
+                                {signal.label}
+                            </Link>
+                        ))}
+                    </div>
                 </div>
             ) : null}
         </section>

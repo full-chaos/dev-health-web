@@ -16,5 +16,5 @@ export default async function CapacityPlanningRedirect({
         }
     }
     const suffix = params.toString();
-    redirect(`/plan/delivery-forecast${suffix ? `?${suffix}` : ""}`);
+    redirect(`/plan/capacity${suffix ? `?${suffix}` : ""}`);
 }

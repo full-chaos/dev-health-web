@@ -190,7 +190,7 @@ export function InvestigationPanel({
                                     <div className="flex flex-col gap-0.5 text-left">
                                         {isSuggested && (
                                             <span className="text-[9px] uppercase tracking-wider text-(--accent-2) font-bold">
-                                                Role lens: {roleConfig.shortLabel}
+                                                Lens: {roleConfig.shortLabel}
                                             </span>
                                         )}
                                         <span className="text-[12px] font-medium text-foreground group-hover:text-(--accent-2)">
@@ -209,7 +209,7 @@ export function InvestigationPanel({
 
             <footer className="border-t border-(--card-stroke) p-4 bg-(--card-90)">
                 <p className="text-[10px] text-(--ink-muted) text-center font-medium">
-                    Role context: {roleConfig.label}
+                    Lens: {roleConfig.label}
                 </p>
             </footer>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
     useInvestmentFlow,
     useInvestmentMix,
@@ -21,6 +21,7 @@ type UseInvestmentDataArgs = {
 
 export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const [categorizationMode, setCategorizationMode] =
         useState<CategorizationMode>("text_metadata");
@@ -232,9 +233,9 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
         (workUnitId: string) => {
             const params = new URLSearchParams(searchParams.toString());
             params.set("work_unit_id", workUnitId);
-            router.replace(`/work?${params.toString()}`);
+            router.replace(`${pathname}?${params.toString()}`);
         },
-        [router, searchParams],
+        [pathname, router, searchParams],
     );
 
     return {

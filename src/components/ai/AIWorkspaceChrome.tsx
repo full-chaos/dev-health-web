@@ -36,8 +36,8 @@ export function AIWorkspaceChrome({ children }: { children: ReactNode }) {
                         </p>
                         <h1 className="font-(--font-display) text-3xl">AI</h1>
                         <p className="max-w-3xl text-sm text-(--ink-muted)">
-                            What AI is changing across delivery, review, quality, and governance.
-                            Open a real view to inspect the evidence-backed surface.
+                            What AI appears to change across delivery, review, quality, and
+                            governance. Open an evidence-backed view for the selected window.
                         </p>
                     </header>
                     <AITabNav filters={filters} role={role} />

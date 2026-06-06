@@ -13,16 +13,43 @@
 export type DiagnoseView = "overview" | "work";
 export const DIAGNOSE_VIEWS: DiagnoseView[] = ["overview", "work"];
 
-export const WORK_TABS = [
-    "landscape",
-    "heatmap",
-    "flow",
-    "investment",
-    "capacity",
-    "flame",
-    "evidence",
-    "graph",
-] as const;
+export const WORK_TABS = ["overview", "heatmap", "flame", "evidence", "graph"] as const;
+
+export const REMOVED_WORK_TAB_REDIRECTS = {
+    flow: "/metrics?tab=flow",
+    investment: "/investment",
+    landscape: "/landscape",
+    capacity: "/plan/capacity",
+} as const;
+
+export type SearchParamsRecord = {
+    [key: string]: string | string[] | undefined;
+};
+export type WorkTab = (typeof WORK_TABS)[number];
+export type RemovedWorkTab = keyof typeof REMOVED_WORK_TAB_REDIRECTS;
+
+export function buildRemovedWorkTabRedirectTarget(targetPath: string, params: SearchParamsRecord) {
+    const [pathname, existingQuery = ""] = targetPath.split("?", 2);
+    const nextParams = new URLSearchParams(existingQuery);
+    for (const [key, value] of Object.entries(params)) {
+        if (key !== "tab" && key !== "view") {
+            if (typeof value === "string") {
+                nextParams.set(key, value);
+            } else {
+                for (const entry of value ?? []) {
+                    nextParams.append(key, entry);
+                }
+            }
+        }
+    }
+    const query = nextParams.toString();
+    return query ? `${pathname}?${query}` : pathname;
+}
+
+export function resolveRemovedWorkTabRedirect(tabParam: string | undefined): string | null {
+    if (!tabParam) return null;
+    return REMOVED_WORK_TAB_REDIRECTS[tabParam as RemovedWorkTab] ?? null;
+}
 
 /**
  * Resolve the active DiagnoseView from raw URL search params.

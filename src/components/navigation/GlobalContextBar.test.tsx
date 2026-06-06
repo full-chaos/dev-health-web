@@ -107,4 +107,21 @@ describe("GlobalContextBar", () => {
 
         expect(lastFilter().what.repos).toEqual([]);
     });
+
+    it("renders the Lens selector in the global context bar", () => {
+        render(<GlobalContextBar filters={defaultMetricFilter} />);
+
+        expect(screen.getByTestId("lens-selector")).toBeInTheDocument();
+        // The bar has role=em in searchParams so the legacy alias is resolved.
+        expect(screen.getByText("Lens")).toBeInTheDocument();
+    });
+
+    it("preserves existing query params (role=em) when filter changes", () => {
+        render(<GlobalContextBar filters={defaultMetricFilter} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "30d" }));
+
+        const nextUrl = mockReplace.mock.calls.at(-1)?.[0] as string;
+        expect(nextUrl).toContain("role=em");
+    });
 });
