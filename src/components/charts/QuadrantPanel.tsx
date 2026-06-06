@@ -454,8 +454,8 @@ export function QuadrantPanel({
                             </p>
                             {selectablePoints.length > 0 && (
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    {selectablePoints.map((point) => {
-                                        const pointKey = `${point.entity_id}:${point.window_start}:${point.window_end}`;
+                                    {selectablePoints.map((point, index) => {
+                                        const pointKey = `${point.entity_id}:${point.window_start}:${point.window_end}:${index}`;
                                         return isPersonScope ? (
                                             <span
                                                 key={pointKey}
