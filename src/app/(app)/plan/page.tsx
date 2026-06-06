@@ -147,8 +147,8 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                             <section className="grid gap-4 md:grid-cols-3">
                                 {[
                                     ["P50", forecast.p50Weeks],
-                                    ["P85", forecast.p75Weeks],
-                                    ["P95", forecast.p90Weeks],
+                                    ["P75", forecast.p75Weeks],
+                                    ["P90", forecast.p90Weeks],
                                 ].map(([label, weeks]) => (
                                     <div
                                         key={label as string}

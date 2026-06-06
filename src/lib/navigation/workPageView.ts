@@ -13,29 +13,42 @@
 export type DiagnoseView = "overview" | "work";
 export const DIAGNOSE_VIEWS: DiagnoseView[] = ["overview", "work"];
 
-export const WORK_TABS = [
-	"overview",
-	"heatmap",
-	"flame",
-	"evidence",
-	"graph",
-] as const;
+export const WORK_TABS = ["overview", "heatmap", "flame", "evidence", "graph"] as const;
 
 export const REMOVED_WORK_TAB_REDIRECTS = {
-	flow: "/metrics",
-	investment: "/investment",
-	landscape: "/landscape",
-	capacity: "/plan/capacity",
+    flow: "/metrics?tab=flow",
+    investment: "/investment",
+    landscape: "/landscape",
+    capacity: "/plan/capacity",
 } as const;
 
+export type SearchParamsRecord = {
+    [key: string]: string | string[] | undefined;
+};
 export type WorkTab = (typeof WORK_TABS)[number];
 export type RemovedWorkTab = keyof typeof REMOVED_WORK_TAB_REDIRECTS;
 
-export function resolveRemovedWorkTabRedirect(
-	tabParam: string | undefined,
-): string | null {
-	if (!tabParam) return null;
-	return REMOVED_WORK_TAB_REDIRECTS[tabParam as RemovedWorkTab] ?? null;
+export function buildRemovedWorkTabRedirectTarget(targetPath: string, params: SearchParamsRecord) {
+    const [pathname, existingQuery = ""] = targetPath.split("?", 2);
+    const nextParams = new URLSearchParams(existingQuery);
+    for (const [key, value] of Object.entries(params)) {
+        if (key !== "tab" && key !== "view") {
+            if (typeof value === "string") {
+                nextParams.set(key, value);
+            } else {
+                for (const entry of value ?? []) {
+                    nextParams.append(key, entry);
+                }
+            }
+        }
+    }
+    const query = nextParams.toString();
+    return query ? `${pathname}?${query}` : pathname;
+}
+
+export function resolveRemovedWorkTabRedirect(tabParam: string | undefined): string | null {
+    if (!tabParam) return null;
+    return REMOVED_WORK_TAB_REDIRECTS[tabParam as RemovedWorkTab] ?? null;
 }
 
 /**
@@ -45,19 +58,19 @@ export function resolveRemovedWorkTabRedirect(
  * @param tabParam  - the raw `tab` query param value (string | undefined)
  */
 export function resolveActiveView(
-	viewParam: string | undefined,
-	tabParam: string | undefined,
+    viewParam: string | undefined,
+    tabParam: string | undefined,
 ): DiagnoseView {
-	if (DIAGNOSE_VIEWS.includes(viewParam as DiagnoseView)) {
-		return viewParam as DiagnoseView;
-	}
-	// Legacy ?tab= deep link: no explicit view but a valid work tab → show Work.
-	if (
-		!viewParam &&
-		typeof tabParam === "string" &&
-		(WORK_TABS as readonly string[]).includes(tabParam)
-	) {
-		return "work";
-	}
-	return "overview";
+    if (DIAGNOSE_VIEWS.includes(viewParam as DiagnoseView)) {
+        return viewParam as DiagnoseView;
+    }
+    // Legacy ?tab= deep link: no explicit view but a valid work tab → show Work.
+    if (
+        !viewParam &&
+        typeof tabParam === "string" &&
+        (WORK_TABS as readonly string[]).includes(tabParam)
+    ) {
+        return "work";
+    }
+    return "overview";
 }

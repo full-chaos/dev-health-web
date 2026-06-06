@@ -15,94 +15,95 @@ import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { InvestmentView } from "@/components/work/InvestmentView";
 
 type InvestmentPageProps = {
-	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function InvestmentPage({
-	searchParams,
-}: InvestmentPageProps) {
-	const params = (await searchParams) ?? {};
-	const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-	const originParam = Array.isArray(params.origin)
-		? params.origin[0]
-		: params.origin;
-	const activeOrigin =
-		typeof originParam === "string" ? originParam : undefined;
+export default async function InvestmentPage({ searchParams }: InvestmentPageProps) {
+    const params = (await searchParams) ?? {};
+    const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+    const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
+    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+    const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-	const filters = encodedFilter
-		? decodeFilter(encodedFilter)
-		: filterFromQueryParams(params);
+    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-	const [health, orgResult] = await Promise.all([
-		checkApiHealth(),
-		getCurrentOrg().catch(() => ({ data: undefined })),
-	]);
+    const [health, orgResult] = await Promise.all([
+        checkApiHealth(),
+        getCurrentOrg().catch(() => ({ data: undefined })),
+    ]);
 
-	if (!health.ok) {
-		return <ServiceUnavailable />;
-	}
+    if (!health.ok) {
+        return <ServiceUnavailable />;
+    }
 
-	const org = orgResult.data;
-	const entitlements = org?.id
-		? await fetchOrNull(getOrgEntitlements(org.id), "investment/entitlements")
-		: null;
-	const features = entitlements?.data?.features ?? {};
+    const org = orgResult.data;
+    const entitlements = org?.id
+        ? await fetchOrNull(getOrgEntitlements(org.id), "investment/entitlements")
+        : null;
+    const features = entitlements?.data?.features ?? {};
 
-	return (
-		<div className="min-h-screen bg-background text-foreground">
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-				<PrimaryNav filters={filters} active="work" />
-				<main className="flex min-w-0 flex-1 flex-col gap-8">
-					<UpgradeGate
-						feature="investment_view"
-						requiredTier="team"
-						features={features}
-					>
-						<header className="flex flex-wrap items-center justify-between gap-4">
-							<div>
-								<p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-									Investment
-								</p>
-								<h1 className="mt-2 font-(--font-display) text-3xl">
-									Elapsed Work Allocation
-								</h1>
-								<p className="mt-2 text-sm text-(--ink-muted)">
-									Effort and attention allocation over the selected window.
-								</p>
-								<p className="mt-2 text-sm text-(--ink-muted)">
-									Select a segment to investigate.
-								</p>
-							</div>
-							<div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
-								<Link
-									href={buildExploreUrl({ metric: "throughput", filters })}
-									className="rounded-full border border-(--card-stroke) px-4 py-2"
-								>
-									{CTA_LABELS.inspectAssociations}
-								</Link>
-								<BackLink
-									href={withFilterParam("/landscape", filters)}
-									area="Landscape"
-								/>
-							</div>
-						</header>
+    return (
+        <div className="min-h-screen bg-background text-foreground">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+                <PrimaryNav filters={filters} active="investment" role={activeRole} />
+                <main className="flex min-w-0 flex-1 flex-col gap-8">
+                    <UpgradeGate feature="investment_view" requiredTier="team" features={features}>
+                        <header className="flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                    Investment
+                                </p>
+                                <h1 className="mt-2 font-(--font-display) text-3xl">
+                                    Elapsed Work Allocation
+                                </h1>
+                                <p className="mt-2 text-sm text-(--ink-muted)">
+                                    Effort and attention allocation over the selected window.
+                                </p>
+                                <p className="mt-2 text-sm text-(--ink-muted)">
+                                    Select a segment to investigate.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
+                                <Link
+                                    href={buildExploreUrl({
+                                        metric: "throughput",
+                                        filters,
+                                        role: activeRole,
+                                        origin: activeOrigin,
+                                    })}
+                                    className="rounded-full border border-(--card-stroke) px-4 py-2"
+                                >
+                                    {CTA_LABELS.inspectAssociations}
+                                </Link>
+                                <BackLink
+                                    href={withFilterParam(
+                                        "/landscape",
+                                        filters,
+                                        activeRole,
+                                        activeOrigin,
+                                    )}
+                                    area="Landscape"
+                                />
+                            </div>
+                        </header>
 
-						<FilterBar view="investment" />
+                        <FilterBar view="investment" />
 
-						<div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
-							<span className="text-foreground font-semibold uppercase tracking-wider">
-								Perspective:
-							</span>{" "}
-							Investment reflects effort and attention (not spend). Flow moves
-							left-to-right (Allocation &rarr; Streams &rarr; Items).
-						</div>
+                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
+                            <span className="text-foreground font-semibold uppercase tracking-wider">
+                                Perspective:
+                            </span>{" "}
+                            Investment reflects effort and attention (not spend). Flow moves
+                            left-to-right (Allocation &rarr; Streams &rarr; Items).
+                        </div>
 
-						<GlobalContextBar filters={filters} origin={activeOrigin} />
+                        <GlobalContextBar filters={filters} origin={activeOrigin} />
 
-						<InvestmentView filters={filters} />
-					</UpgradeGate>
-				</main>
-			</div>
-		</div>
-	);
+                        <InvestmentView filters={filters} activeRole={activeRole} />
+                    </UpgradeGate>
+                </main>
+            </div>
+        </div>
+    );
 }

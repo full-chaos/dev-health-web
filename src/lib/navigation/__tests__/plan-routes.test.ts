@@ -17,6 +17,16 @@ describe("Plan route placement", () => {
         expect(source).not.toContain("AreaOverview");
     });
 
+    it("labels forecast bands with the GraphQL percentile fields actually rendered", () => {
+        const source = readRoute("plan");
+
+        expect(source).toContain('["P50", forecast.p50Weeks]');
+        expect(source).toContain('["P75", forecast.p75Weeks]');
+        expect(source).toContain('["P90", forecast.p90Weeks]');
+        expect(source).not.toContain('["P85", forecast.p75Weeks]');
+        expect(source).not.toContain('["P95", forecast.p90Weeks]');
+    });
+
     it("keeps /plan/delivery-forecast as a redirect alias to /plan", () => {
         const source = readRoute("plan/delivery-forecast");
 

@@ -176,7 +176,7 @@ export const navAreas: readonly NavArea[] = [
             {
                 id: "flow",
                 label: "Flow",
-                href: "/metrics",
+                href: "/metrics?tab=flow",
                 description: "Flow trends and delivery movement.",
                 metricLabel: "Deploy frequency",
             },
@@ -246,7 +246,13 @@ export const navAreas: readonly NavArea[] = [
                 path: "/work?view=work",
                 navVisible: true,
             },
-            { id: "flow", label: "Flow", path: "/metrics", navVisible: true },
+            {
+                id: "flow",
+                label: "Flow",
+                path: "/metrics?tab=flow",
+                navVisible: true,
+                ownedPaths: ["/metrics"],
+            },
             {
                 id: "investment",
                 label: "Investment",
@@ -349,12 +355,6 @@ export const navAreas: readonly NavArea[] = [
             },
         ],
         children: [
-            {
-                id: "improve-overview",
-                label: "Overview",
-                path: "/opportunities",
-                navVisible: true,
-            },
             {
                 id: "opportunities",
                 label: "Opportunities",
