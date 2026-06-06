@@ -189,6 +189,11 @@ test.describe("primary navigation reachability", () => {
                 url: /\/landscape(?:[?#].*)?$/,
                 path: "/landscape",
             },
+            {
+                label: "Work Lens",
+                url: /\/work\?view=work(?:[&#].*)?$/,
+                path: "/work?view=work",
+            },
             { label: "People", url: /\/people(?:[?#].*)?$/, path: "/people" },
             { label: "Code", url: /\/code(?:[?#].*)?$/, path: "/code" },
             {

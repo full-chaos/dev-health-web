@@ -124,7 +124,7 @@ export default async function WorkPage({ searchParams }: WorkPageProps) {
 
     const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
     const placeholderDeltas = !home?.deltas?.length;
-    const pageTitle = activeView === "work" ? "Work" : "Diagnose";
+    const pageTitle = activeView === "work" ? "Work Lens" : "Diagnose";
     const pageSubtitle =
         activeView === "work"
             ? "Inspect engineering work through evidence, topology, load, and graph-based views."
