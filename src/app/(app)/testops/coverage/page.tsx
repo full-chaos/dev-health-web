@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
@@ -8,7 +6,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { checkApiHealth } from "@/lib/api/system";
-import { CTA_LABELS } from "@/lib/design/cta";
+import { BackLink } from "@/components/shared/BackLink";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchCoverageMetrics } from "@/lib/testops/fetchers";
@@ -21,6 +19,8 @@ import {
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
+
+import { TestOpsTabs } from "../TestOpsTabs";
 
 type CoveragePageProps = {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -150,25 +150,26 @@ export default async function CoveragePage({
 	return (
 		<div className="min-h-screen bg-background text-foreground">
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-				<PrimaryNav filters={filters} active="coverage" role={activeRole} />
+				<PrimaryNav filters={filters} active="testops" role={activeRole} />
 				<main className="flex min-w-0 flex-1 flex-col gap-8">
-					<header className="flex flex-wrap items-center justify-between gap-4">
+					<header className="flex flex-col gap-4">
+						<BackLink href={withFilterParam("/", filters, activeRole)} />
 						<div>
 							<p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-								Coverage
+								TestOps
 							</p>
-							<h1 className="mt-2 font-(--font-display) text-3xl">Coverage</h1>
+							<h1 className="mt-2 font-(--font-display) text-3xl">TestOps</h1>
 							<p className="mt-2 text-sm text-(--ink-muted)">
 								Code coverage metrics and trends.
 							</p>
 						</div>
-						<Link
-							href={withFilterParam("/", filters, activeRole)}
-							className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-						>
-							{CTA_LABELS.backToCockpit}
-						</Link>
 					</header>
+
+					<TestOpsTabs
+						activeId="coverage"
+						filters={filters}
+						role={activeRole}
+					/>
 
 					<GlobalContextBar filters={filters} />
 					<FilterBar view="testops" />

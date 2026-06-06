@@ -25,6 +25,34 @@ const workPagePath = join(appRoot, "work/page.tsx");
 const workPageSource = readFileSync(workPagePath, "utf8");
 const metricsPagePath = join(appRoot, "metrics/page.tsx");
 const metricsPageSource = readFileSync(metricsPagePath, "utf8");
+const testOpsTabsPath = join(appRoot, "testops/TestOpsTabs.tsx");
+
+const testOpsTabRoutes = [
+    {
+        id: "overview",
+        label: "Overview",
+        path: "/testops",
+        contentGuard: "TestOps summary",
+    },
+    {
+        id: "pipelines",
+        label: "Pipelines",
+        path: "/testops/pipelines",
+        contentGuard: "Success Rate Trend",
+    },
+    {
+        id: "tests",
+        label: "Tests",
+        path: "/testops/tests",
+        contentGuard: "Pass Rate Trend",
+    },
+    {
+        id: "coverage",
+        label: "Coverage",
+        path: "/testops/coverage",
+        contentGuard: "Line Coverage Trend",
+    },
+] as const;
 
 const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/ai/automations/page.tsx",
@@ -184,6 +212,35 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
             `activeTab === "${tab}"`,
         );
     });
+
+    it.each(testOpsTabRoutes)(
+        "renders TestOps tab $label at $path with real page content",
+        (tab) => {
+            const pagePath = join(appRoot, ...tab.path.split("/").filter(Boolean), "page.tsx");
+            const source = readFileSync(pagePath, "utf8");
+            const tabsSource = readFileSync(testOpsTabsPath, "utf8");
+
+            expect(routePageExists(tab.path), tab.path).toBe(true);
+            expect(source, `${tab.path} should render the shared TestOps tab strip`).toContain(
+                "<TestOpsTabs",
+            );
+            expect(tabsSource, "TestOpsTabs should use the ViewSet primitive").toContain(
+                "<ViewSet",
+            );
+            expect(tabsSource, "TestOpsTabs should render the ViewSet as tabs").toContain(
+                'orientation="tabs"',
+            );
+            expect(tabsSource, `${tab.path} should include a ${tab.label} tab item`).toContain(
+                `id: "${tab.id}"`,
+            );
+            expect(source, `${tab.path} should render its real content`).toContain(
+                tab.contentGuard,
+            );
+            expect(source, `${tab.path} should not be a redirect-only tab`).not.toContain(
+                "redirect(",
+            );
+        },
+    );
 });
 
 describe("IA preservation invariant #3 — no dead investigation deep-links", () => {

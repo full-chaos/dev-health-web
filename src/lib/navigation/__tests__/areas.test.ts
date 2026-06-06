@@ -82,10 +82,8 @@ describe("navArea.children — locked child navigation", () => {
             Improve: ["Overview", "Opportunities", "Experiments", "Automations"],
             Govern: [
                 "Overview",
-                "Pipelines",
-                "Tests",
+                "TestOps",
                 "Quality",
-                "Coverage",
                 "Delivery Risk",
                 "Incident Correlation",
                 "Security",
@@ -145,6 +143,7 @@ describe("selectedAreaIdForPathname", () => {
         { pathname: "/opportunities", expected: "improve" },
         { pathname: "/ai/impact", expected: "ai" },
         { pathname: "/ai/review-load", expected: "ai" },
+        { pathname: "/govern", expected: "govern" },
         { pathname: "/testops", expected: "govern" },
         { pathname: "/testops/risk", expected: "govern" },
         { pathname: "/quality", expected: "govern" },
@@ -219,11 +218,12 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         { areaId: "ai", pathname: "/ai", childId: "ai-overview" },
         { areaId: "ai", pathname: "/ai/impact", childId: "ai-impact" },
         { areaId: "ai", pathname: "/ai/review-load", childId: "ai-review-load" },
+        { areaId: "govern", pathname: "/govern", childId: "govern-overview" },
         { areaId: "govern", pathname: "/testops", childId: "testops" },
-        { areaId: "govern", pathname: "/testops/pipelines", childId: "pipelines" },
-        { areaId: "govern", pathname: "/testops/coverage", childId: "coverage" },
+        { areaId: "govern", pathname: "/testops/pipelines", childId: "testops" },
+        { areaId: "govern", pathname: "/testops/coverage", childId: "testops" },
         { areaId: "govern", pathname: "/quality", childId: "quality" },
-        { areaId: "govern", pathname: "/testops/tests", childId: "tests" },
+        { areaId: "govern", pathname: "/testops/tests", childId: "testops" },
         { areaId: "govern", pathname: "/testops/risk", childId: "risk" },
         { areaId: "reports", pathname: "/reports", childId: "report-center" },
         { areaId: "admin", pathname: "/admin", childId: "organization" },
@@ -236,10 +236,24 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         expect(selectedChildForPathname(areaById(areaId), pathname)?.id).toBe(childId);
     });
 
-    it("prefers the more specific sibling over the area Overview", () => {
+    it("resolves TestOps tab subroutes to the single cluster sidebar row", () => {
         expect(selectedChildForPathname(areaById("govern"), "/testops/pipelines")?.id).toBe(
-            "pipelines",
+            "testops",
         );
+        expect(selectedChildForPathname(areaById("govern"), "/testops/tests")?.id).toBe("testops");
+        expect(selectedChildForPathname(areaById("govern"), "/testops/coverage")?.id).toBe(
+            "testops",
+        );
+
+        const testOps = areaById("govern").children.find((child) => child.id === "testops");
+        expect(testOps?.label).toBe("TestOps");
+        expect(testOps?.isCluster).toBe(true);
+        expect(testOps?.ownedPaths).toEqual([
+            "/testops",
+            "/testops/pipelines",
+            "/testops/tests",
+            "/testops/coverage",
+        ]);
     });
 
     it("never selects a preview (navVisible:false) child", () => {
@@ -268,6 +282,9 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/opportunities")).toBe("Overview");
         expect(navTitleForPathname("/ai/impact")).toBe("Impact");
         expect(navTitleForPathname("/ai/review-load")).toBe("Review Load");
+        expect(navTitleForPathname("/govern")).toBe("Overview");
+        expect(navTitleForPathname("/testops")).toBe("TestOps");
+        expect(navTitleForPathname("/testops/tests")).toBe("TestOps");
         expect(navTitleForPathname("/quality")).toBe("Quality");
         expect(navTitleForPathname("/settings")).toBe("Settings");
     });
