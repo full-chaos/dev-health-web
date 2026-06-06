@@ -11,9 +11,6 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { AreaHub } from "@/components/navigation/AreaHub";
-import { getAreaSignals } from "@/lib/areaSignals";
-import { RoleSelectorWithSuspense, RoleFraming } from "@/components/RoleSelectorWrapper";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getHomeData } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -114,13 +111,9 @@ export default async function Home({ searchParams }: HomePageProps) {
                                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                         Status
                                     </p>
-                                    <div className="mt-4">
-                                        <RoleSelectorWithSuspense />
-                                    </div>
-                                    <h1 className="mt-6 font-(--font-display) text-3xl leading-tight sm:text-4xl">
+                                    <h1 className="mt-4 font-(--font-display) text-3xl leading-tight sm:text-4xl">
                                         Developer Health Ops Cockpit
                                     </h1>
-                                    <RoleFraming />
                                     <p className="mt-3 max-w-xl text-sm text-(--ink-muted)">
                                         System patterns over the last {filters.time.range_days}{" "}
                                         days.
@@ -197,15 +190,6 @@ export default async function Home({ searchParams }: HomePageProps) {
                             ))}
                         </div>
                     </section>
-
-                    <AreaHub
-                        areaId="cockpit"
-                        signals={await getAreaSignals("cockpit", filters)}
-                        filters={filters}
-                        role={activeRole}
-                        title="Related workflows"
-                        description="Periodic operating review of system health."
-                    />
 
                     <CockpitClient home={home} filters={filters} activeRole={activeRole} />
 
