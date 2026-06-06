@@ -46,6 +46,16 @@ const eslintConfig = defineConfig([
                         "Empty .catch(() => {}) swallows errors. Use fetchOrNull() or log the error explicitly.",
                 },
             ],
+            // Honor the `_`-prefix convention for intentionally-unused args/vars
+            // (e.g. signature-required Sentry `_hint`, forward-designed `_surface`).
+            "@typescript-eslint/no-unused-vars": [
+                "warn",
+                {
+                    argsIgnorePattern: "^_",
+                    varsIgnorePattern: "^_",
+                    caughtErrorsIgnorePattern: "^_",
+                },
+            ],
         },
     },
     ...(enableDesignLint
