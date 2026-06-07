@@ -37,13 +37,6 @@ const MONITORING_VIEWS = [
         href: "/metrics?tab=flow",
     },
     {
-        id: "quality",
-        label: "Quality",
-        description: "Reliability and rework.",
-        focus: "Change failure, churn, blocked work.",
-        href: "/metrics?tab=quality",
-    },
-    {
         id: "throughput",
         label: "Throughput",
         description: "Delivery volume and pacing.",
@@ -97,11 +90,11 @@ export default async function Home({ searchParams }: HomePageProps) {
     const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
     // Reorder Monitoring Views based on active lens (cockpit surface priority).
     const viewPriority: Record<string, string[]> = {
-        ic: ["flow", "quality", "throughput", "dora"],
-        em: ["flow", "throughput", "dora", "quality"],
-        pm: ["quality", "flow", "throughput", "dora"],
-        leadership: ["quality", "throughput", "dora", "flow"],
-        neutral: ["flow", "quality", "throughput", "dora"],
+        ic: ["flow", "throughput", "dora"],
+        em: ["flow", "throughput", "dora"],
+        pm: ["flow", "throughput", "dora"],
+        leadership: ["throughput", "dora", "flow"],
+        neutral: ["flow", "throughput", "dora"],
     };
     const prioritizedViews = [...MONITORING_VIEWS].sort((a, b) => {
         const priority = viewPriority[activeLensId] ?? viewPriority.neutral;
