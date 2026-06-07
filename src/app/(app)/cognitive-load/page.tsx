@@ -2,6 +2,7 @@ import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { HeatmapView } from "@/components/work/HeatmapView";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { requireSession } from "@/lib/auth";
 import { withFilterParam } from "@/lib/filters/url";
@@ -78,6 +79,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     const activeTab = typeof tabParam === "string" ? tabParam : "overview";
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const scopeId = filters.scope.ids[0] ?? "";
     const tabs: ViewSetItem[] = [
         {
             id: "overview",
@@ -174,7 +176,9 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                         ariaLabel="Cognitive Load views"
                     />
 
-                    {!canShowSelectedScope ? (
+                    {activeTab === "heatmap" && canShowSelectedScope ? (
+                        <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={null} />
+                    ) : !canShowSelectedScope ? (
                         <section className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm">
                             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
                                 Individual guardrail

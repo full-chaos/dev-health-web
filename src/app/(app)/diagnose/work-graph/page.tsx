@@ -1,6 +1,7 @@
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { BackLink } from "@/components/shared/BackLink";
 import { GraphView } from "@/components/work/GraphView";
@@ -18,9 +19,49 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
+    const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    const evidenceParam = Array.isArray(params.evidence) ? params.evidence[0] : params.evidence;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const tabs: ViewSetItem[] = [
+        {
+            id: "overview",
+            label: "Overview",
+            path: withFilterParam("/diagnose/work-graph", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "dependencies",
+            label: "Dependencies",
+            path: withFilterParam("/diagnose/work-graph?tab=dependencies", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "inflow-outflow",
+            label: "Inflow-Outflow",
+            path: withFilterParam("/diagnose/work-graph?tab=inflow-outflow", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "review-network",
+            label: "Review Network",
+            path: withFilterParam("/diagnose/work-graph?tab=review-network", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "artifacts",
+            label: "Artifacts",
+            path: withFilterParam("/diagnose/work-graph?tab=artifacts", filters, activeRole),
+            navVisible: true,
+        },
+    ];
+    const activeTab =
+        evidenceParam === "open"
+            ? "artifacts"
+            : typeof tabParam === "string" && tabs.some((tab) => tab.id === tabParam)
+              ? tabParam
+              : "overview";
     const env = getServerEnv();
     const isTestMode =
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
@@ -54,6 +95,13 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
 
                     <GlobalContextBar filters={filters} origin={activeOrigin} />
                     <FilterBar view="work" />
+                    <ViewSet
+                        orientation="tabs"
+                        items={tabs}
+                        activeId={activeTab}
+                        overviewId="overview"
+                        ariaLabel="Work Graph views"
+                    />
                     <GraphView filters={filters} activeRole={activeRole} />
                 </main>
             </div>

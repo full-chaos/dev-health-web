@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAggregatedFlame } from "@/lib/api/visuals";
 import type { AggregatedFlameMode, MetricFilter, AggregatedFlameResponse } from "@/lib/types";
@@ -30,11 +30,10 @@ export function FlameView({ filters }: FlameViewProps) {
         if (nextMode === mode) return;
         setMode(nextMode);
         const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", "flame");
         params.set("mode", nextMode);
-        router.replace(`/work?${params.toString()}`);
+        router.replace(`/complexity?${params.toString()}`);
     };
-
-    const requestKey = useMemo(() => JSON.stringify({ mode, filters }), [mode, filters]);
 
     useEffect(() => {
         let active = true;
@@ -69,7 +68,7 @@ export function FlameView({ filters }: FlameViewProps) {
         return () => {
             active = false;
         };
-    }, [requestKey, mode, filters]);
+    }, [mode, filters]);
 
     const modeLabels: Record<AggregatedFlameMode, string> = {
         cycle_breakdown: "Elapsed Time Breakdown",
@@ -98,6 +97,7 @@ export function FlameView({ filters }: FlameViewProps) {
                             ] as AggregatedFlameMode[]
                         ).map((m) => (
                             <button
+                                type="button"
                                 key={m}
                                 onClick={() => handleModeChange(m)}
                                 className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${
@@ -112,10 +112,7 @@ export function FlameView({ filters }: FlameViewProps) {
                     </div>
                 </div>
 
-                <div
-                    className="relative h-[calc(100vh-380px)] min-h-[500px]"
-                    data-testid="chart-flame"
-                >
+                <div className="relative h-[calc(100vh-380px)] min-h-96" data-testid="chart-flame">
                     {loading && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
                             <p className="text-sm text-(--ink-muted) animate-pulse">
@@ -139,7 +136,7 @@ export function FlameView({ filters }: FlameViewProps) {
                 </div>
 
                 {contextNode && (
-                    <div className="mt-4 p-3 rounded-xl bg-(--accent-2)/10 border border-(--accent-2)/20 text-[11px] text-(--ink-muted)">
+                    <div className="mt-4 rounded-xl border border-(--accent-2)/20 bg-(--accent-2)/10 p-3 text-xs text-(--ink-muted)">
                         <span className="font-semibold text-(--accent-2) uppercase tracking-wider mr-2">
                             Context:
                         </span>{" "}

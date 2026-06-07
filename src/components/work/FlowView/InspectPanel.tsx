@@ -21,7 +21,7 @@ export const buildFlowWorkGraphUrl = (
               what: { ...filters.what, repos: [selection.hotspot.repoId] },
           }
         : filters;
-    const baseHref = withFilterParam("/work?view=work&tab=graph", drilldownFilters, activeRole);
+    const baseHref = withFilterParam("/diagnose/work-graph", drilldownFilters, activeRole);
     const connection = WORK_GRAPH_CONNECTION_BY_VIEW[selection.view];
     const [path, query = ""] = baseHref.split("?", 2);
     const params = new URLSearchParams(query);

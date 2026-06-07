@@ -57,7 +57,7 @@ describe("InspectPanel Work Graph drilldown", () => {
         );
 
         const link = screen.getByText("Open Work Graph").closest("a");
-        expect(link).toHaveAttribute("href", expect.stringContaining("/work?view=work&tab=graph&"));
+        expect(link).toHaveAttribute("href", expect.stringContaining("/diagnose/work-graph?"));
         expect(link).toHaveAttribute("href", expect.stringContaining("f="));
         expect(link).toHaveAttribute("href", expect.stringContaining("role=manager"));
         expect(link).toHaveAttribute(
@@ -69,7 +69,7 @@ describe("InspectPanel Work Graph drilldown", () => {
     it("omits graph_connection for investment selections", () => {
         const href = buildFlowWorkGraphUrl({ view: "investment_mix" }, filters);
 
-        expect(href).toContain("/work?view=work&tab=graph&f=");
+        expect(href).toContain("/diagnose/work-graph?f=");
         expect(href).not.toContain("graph_connection=");
     });
 
@@ -118,7 +118,7 @@ describe("InspectPanel Work Graph drilldown", () => {
         );
 
         const link = screen.getByText("Open Work Graph").closest("a");
-        expect(link).toHaveAttribute("href", expect.stringContaining("/work?view=work&tab=graph&"));
+        expect(link).toHaveAttribute("href", expect.stringContaining("/diagnose/work-graph?"));
         expect(link).toHaveAttribute(
             "href",
             expect.stringContaining("graph_connection=change-to-code"),

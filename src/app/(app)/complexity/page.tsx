@@ -16,6 +16,7 @@ import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { BackLink } from "@/components/shared/BackLink";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
 import type { ComplexityPoint, HotspotRow } from "@/components/complexity/ComplexityDashboard";
+import { FlameView } from "@/components/work/FlameView";
 import { requireSession } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
@@ -201,7 +202,15 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                         ariaLabel="Complexity views"
                     />
 
-                    <ComplexityDashboard orgId={orgId} points={points} hotspotRows={hotspotRows} />
+                    {activeTab === "flame" ? (
+                        <FlameView filters={filters} />
+                    ) : (
+                        <ComplexityDashboard
+                            orgId={orgId}
+                            points={points}
+                            hotspotRows={hotspotRows}
+                        />
+                    )}
                 </main>
             </div>
         </div>

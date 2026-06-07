@@ -26,6 +26,7 @@ export function buildLegacyWorkRedirectTarget(targetPath: string, params: Search
     const nextParams = new URLSearchParams(existingQuery);
     for (const [key, value] of Object.entries(params)) {
         if (key !== "tab" && key !== "view") {
+            if (nextParams.has(key)) continue;
             if (typeof value === "string") {
                 nextParams.set(key, value);
             } else {
@@ -40,7 +41,7 @@ export function buildLegacyWorkRedirectTarget(targetPath: string, params: Search
 }
 
 export function resolveLegacyWorkRedirect({ view, tab }: LegacyWorkRedirectInput): string | null {
+    if (view === "work" && (!tab || tab === "overview")) return LEGACY_WORK_TAB_REDIRECTS.graph;
     if (tab) return LEGACY_WORK_TAB_REDIRECTS[tab as LegacyWorkTab] ?? null;
-    if (view === "work") return LEGACY_WORK_TAB_REDIRECTS.graph;
     return LEGACY_WORK_TAB_REDIRECTS.overview;
 }

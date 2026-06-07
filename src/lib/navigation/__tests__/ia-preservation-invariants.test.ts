@@ -37,6 +37,7 @@ const landscapePageSource = readFileSync(join(appRoot, "landscape/page.tsx"), "u
 const bottleneckPageSource = readFileSync(join(appRoot, "bottleneck/page.tsx"), "utf8");
 const complexityPageSource = readFileSync(join(appRoot, "complexity/page.tsx"), "utf8");
 const cognitiveLoadPageSource = readFileSync(join(appRoot, "cognitive-load/page.tsx"), "utf8");
+const workGraphPageSource = readFileSync(join(appRoot, "diagnose/work-graph/page.tsx"), "utf8");
 
 const testOpsTabRoutes = [
     {
@@ -256,16 +257,28 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         }
         if (basePath(path) === "/diagnose/work-graph") {
             expect(routePageExists(path), path).toBe(true);
+            expect(workGraphPageSource).toContain("Work Graph views");
+            for (const label of [
+                "Overview",
+                "Dependencies",
+                "Inflow-Outflow",
+                "Review Network",
+                "Artifacts",
+            ]) {
+                expect(workGraphPageSource).toContain(label);
+            }
         }
         if (basePath(path) === "/cognitive-load") {
             expect(routePageExists(path), path).toBe(true);
             expect(cognitiveLoadPageSource).toContain("<ViewSet");
             expect(cognitiveLoadPageSource).toContain('id: "heatmap"');
+            expect(cognitiveLoadPageSource).toContain("<HeatmapView");
         }
         if (basePath(path) === "/complexity") {
             expect(routePageExists(path), path).toBe(true);
             expect(complexityPageSource).toContain("<ViewSet");
             expect(complexityPageSource).toContain('id: "flame"');
+            expect(complexityPageSource).toContain("<FlameView");
         }
         if (path === "/plan/capacity") {
             expect(routePageExists(path), path).toBe(true);

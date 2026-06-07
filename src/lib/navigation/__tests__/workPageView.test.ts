@@ -50,6 +50,22 @@ describe("legacy Work route redirects", () => {
         ).toBe("/metrics?tab=flow&f=scope-team&role=engineering-manager");
     });
 
+    it("does not let incoming params clobber target-owned query params", () => {
+        expect(
+            buildLegacyWorkRedirectTarget("/diagnose/work-graph?evidence=open", {
+                tab: "evidence",
+                evidence: "closed",
+                f: "scope-team",
+            }),
+        ).toBe("/diagnose/work-graph?evidence=open&f=scope-team");
+    });
+
+    it("treats the retired work view overview as the Work Graph destination", () => {
+        expect(resolveLegacyWorkRedirect({ view: "work", tab: "overview" })).toBe(
+            "/diagnose/work-graph",
+        );
+    });
+
     it("preserves repeated filter values while stripping retired tab and view params", () => {
         expect(
             buildLegacyWorkRedirectTarget("/cognitive-load?tab=heatmap", {

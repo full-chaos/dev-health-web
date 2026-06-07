@@ -158,8 +158,9 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         setSubTab(tab);
         setSelection(null);
         const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", "flow");
         params.set("flow_tab", tab);
-        router.replace(`/work?${params.toString()}`);
+        router.replace(`/metrics?${params.toString()}`);
     };
 
     const hotspotHierarchy = useMemo(() => {
@@ -202,7 +203,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         if (!selection) return null;
         const nodeName = selection.key ?? selection.path[selection.path.length - 1];
         return withFilterParam(
-            `/work?view=work&tab=flame&mode=${flameMode}&context_node=${nodeName}`,
+            `/complexity?tab=flame&mode=${flameMode}&context_node=${nodeName}`,
             filters,
             activeRole,
         );
@@ -213,7 +214,8 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         params.delete("context_entity_id");
         params.delete("context_entity_label");
         params.delete("context_zone");
-        router.replace(`/work?${params.toString()}`);
+        params.set("tab", "flow");
+        router.replace(`/metrics?${params.toString()}`);
     }, [searchParams, router]);
 
     const currentTabDef = FLOW_TABS.find((t) => t.id === subTab) ?? FLOW_TABS[0];

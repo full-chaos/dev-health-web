@@ -171,6 +171,12 @@ export const iaPreservationBaseline = {
         { href: "/work", expectedPath: "/diagnose" },
         { href: "/work?view=work", expectedPath: "/diagnose/work-graph" },
         { tab: "overview", href: "/work?tab=overview", expectedPath: "/diagnose" },
+        { tab: "flow", href: "/work?tab=flow", expectedPath: "/metrics" },
+        {
+            tab: "capacity",
+            href: "/work?tab=capacity",
+            expectedPath: "/plan/capacity",
+        },
         {
             tab: "heatmap",
             href: "/work?tab=heatmap",
