@@ -13,22 +13,24 @@ import {
     formatWorkUnitLabel,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
-import { CATEGORIZATION_OPTIONS, type CategorizationMode, type EvidenceUnit } from "./investment/types";
+import {
+    CATEGORIZATION_OPTIONS,
+    type CategorizationMode,
+    type EvidenceUnit,
+    type InvestmentTab,
+} from "./investment/types";
 import { useInvestmentData } from "./investment/useInvestmentData";
 import { InvestmentExplainer } from "./investment/InvestmentExplainer";
 import { InvestmentCharts } from "./investment/InvestmentCharts";
 import { InvestmentWorkUnitList } from "./investment/InvestmentWorkUnitList";
 import { EvidenceEntryCard } from "./investment/EvidenceEntryCard";
 
-// Re-export so callers/tests can import directly from this file.
-export { EvidenceEntryCard };
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type InvestmentViewProps = {
     filters: MetricFilter;
     activeRole?: string;
-    activeTab?: string;
+    activeTab?: InvestmentTab;
 };
 
 // ── Sub-sections (render helpers) ────────────────────────────────────────────
@@ -463,34 +465,8 @@ export function InvestmentView({ filters, activeRole, activeTab = "overview" }: 
     );
 
     // ── Tab branches ──────────────────────────────────────────────────────────
-
-    if (activeTab === "overview") {
-        return (
-            <section className="flex flex-col gap-6">
-                <ViewHeader
-                    categorizationMode={data.categorizationMode}
-                    setCategorizationMode={data.setCategorizationMode}
-                />
-                <ExplainerCards />
-                <InvestmentExplainer
-                    mixExplanation={data.mixExplanation}
-                    mixExplainKey={data.mixExplainKey}
-                    isExplainingMix={data.isExplainingMix}
-                    onRegenerate={data.regenerateMixExplanation}
-                />
-                <InvestmentCharts {...sharedChartProps} section="all" />
-                <InvestmentWorkUnitList
-                    focusSubcategory={data.focusSubcategory}
-                    focusSubcategoryLabel={focusSubcategoryLabel}
-                    evidenceUnits={evidenceUnits}
-                    effortUnit={effortUnit}
-                    onClearSubcategory={() => data.setFocusSubcategory(null)}
-                    onSelectWorkUnit={data.handleSelect}
-                />
-                {evidenceBlock}
-            </section>
-        );
-    }
+    // Non-overview tabs branch explicitly; "overview" is the final default
+    // return below. With `activeTab: InvestmentTab` this is exhaustive.
 
     if (activeTab === "mix") {
         return (
@@ -561,7 +537,7 @@ export function InvestmentView({ filters, activeRole, activeTab = "overview" }: 
         );
     }
 
-    // Fallback — unknown tab, render overview
+    // overview (default) — the confirmed "spot-on" full view.
     return (
         <section className="flex flex-col gap-6">
             <ViewHeader

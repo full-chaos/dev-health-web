@@ -14,15 +14,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { InvestmentView } from "@/components/work/InvestmentView";
-
-const INVESTMENT_TABS = [
-    "overview",
-    "mix",
-    "unit-investment",
-    "rework",
-    "strategic-allocation",
-] as const;
-type InvestmentTab = (typeof INVESTMENT_TABS)[number];
+import { INVESTMENT_TABS, type InvestmentTab } from "@/components/work/investment/types";
 
 const INVESTMENT_TAB_LABELS: Record<InvestmentTab, string> = {
     overview: "Overview",

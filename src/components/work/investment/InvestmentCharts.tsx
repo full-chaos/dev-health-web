@@ -178,11 +178,11 @@ export function InvestmentCharts({
     );
 
     if (section === "mix") {
-        return <>{mixSection}</>;
+        return mixSection;
     }
 
     if (section === "flows") {
-        return <>{flowsSection}</>;
+        return flowsSection;
     }
 
     // section === "all" — default, existing behaviour
