@@ -4,7 +4,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { BackLink } from "@/components/shared/BackLink";
-import { GraphView } from "@/components/work/GraphView";
+import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
 import { checkApiHealth } from "@/lib/api/system";
 import { getServerEnv } from "@/lib/config";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -102,7 +102,11 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                         overviewId="overview"
                         ariaLabel="Work Graph views"
                     />
-                    <GraphView filters={filters} activeRole={activeRole} />
+                    <GraphView
+                        filters={filters}
+                        activeRole={activeRole}
+                        activeTab={activeTab as WorkGraphTab}
+                    />
                 </main>
             </div>
         </div>

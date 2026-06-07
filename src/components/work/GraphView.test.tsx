@@ -109,7 +109,9 @@ describe("GraphView", () => {
 
         render(<GraphView filters={filters} />);
 
-        expect(screen.getByText(/Showing 750 work → prs edges/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Showing 750 edges for browser responsiveness/i),
+        ).toBeInTheDocument();
         expect(screen.getByText(/additional backend edges are available/i)).toBeInTheDocument();
     });
 
@@ -148,7 +150,9 @@ describe("GraphView", () => {
         render(<GraphView filters={filters} />);
 
         expect(screen.getByLabelText(/Connection type/i)).toHaveValue("work-to-change");
-        expect(screen.getByText(/1 fetched edges hidden by connection type/i)).toBeInTheDocument();
+        // The TOUCHES edge is sliced out by the default work-to-change connection,
+        // leaving a single FIXES edge counted in the active view.
+        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
     });
 
     it("shows theme and subcategory filter context without recomputing graph data", async () => {
@@ -234,5 +238,132 @@ describe("GraphView", () => {
         render(<GraphView filters={filters} />);
 
         expect(screen.queryByText("PROJ-101")).not.toBeInTheDocument();
+    });
+
+    // ── Per-tab branching (CHAOS-2149) ──────────────────────────────────────────
+
+    it("dependencies tab shows only dependency edges and hides the connection selector", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "ISSUE",
+                    targetId: "ISS-2",
+                    edgeType: "BLOCKS",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: null,
+                },
+                {
+                    edgeId: "e2",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-3",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: null,
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 2,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="dependencies" />);
+
+        expect(screen.getByText(/Dependency network/i)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/Connection type/i)).not.toBeInTheDocument();
+        // Only the BLOCKS edge is a dependency; FIXES is excluded.
+        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+        expect(screen.getByTestId("work-graph-explorer")).toBeInTheDocument();
+    });
+
+    it("inflow-outflow tab renders a per-entity-type table instead of the canvas", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: null,
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 1,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getByTestId("inflow-outflow-panel")).toBeInTheDocument();
+        // Issue (outflow) + PR (inflow) → 2 rows.
+        expect(screen.getAllByTestId("inflow-outflow-row").length).toBeGreaterThanOrEqual(2);
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("artifacts tab ranks entities by connection count", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: "Fixes ISS-1",
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 1,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        expect(screen.getByTestId("artifacts-panel")).toBeInTheDocument();
+        expect(screen.getAllByTestId("artifact-row").length).toBeGreaterThanOrEqual(2);
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("review-network tab shows an honest empty state when no review edges exist", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: null,
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 1,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="review-network" />);
+
+        expect(screen.getByText(/No review-network relationships/i)).toBeInTheDocument();
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 });
