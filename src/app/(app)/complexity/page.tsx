@@ -15,7 +15,11 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { BackLink } from "@/components/shared/BackLink";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
-import type { ComplexityPoint, HotspotRow } from "@/components/complexity/ComplexityDashboard";
+import type {
+    ComplexityPoint,
+    ComplexityTab,
+    HotspotRow,
+} from "@/components/complexity/ComplexityDashboard";
 import { FlameView } from "@/components/work/FlameView";
 import { requireSession } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -209,6 +213,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                             orgId={orgId}
                             points={points}
                             hotspotRows={hotspotRows}
+                            activeTab={activeTab as ComplexityTab}
                         />
                     )}
                 </main>
