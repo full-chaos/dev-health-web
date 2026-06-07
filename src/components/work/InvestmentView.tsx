@@ -2,6 +2,7 @@
 
 import { type Dispatch, type SetStateAction, useMemo } from "react";
 import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
+import { MetricCard } from "@/components/metrics/MetricCard";
 import { DataState } from "@/components/ui/DataState";
 import { formatNumber } from "@/lib/formatters";
 import {
@@ -11,8 +12,11 @@ import {
     formatQuality,
     formatSubcategoryLabel,
     formatWorkUnitLabel,
+    selectWorkUnitEntries,
 } from "@/lib/investment";
+import { buildExploreUrl } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
+import type { MetricDelta } from "@/lib/types";
 import {
     CATEGORIZATION_OPTIONS,
     type CategorizationMode,
@@ -31,6 +35,8 @@ type InvestmentViewProps = {
     filters: MetricFilter;
     activeRole?: string;
     activeTab?: InvestmentTab;
+    /** Real `rework_ratio` metric for the Rework tab; absent → honest empty. */
+    reworkMetric?: MetricDelta;
 };
 
 // ── Sub-sections (render helpers) ────────────────────────────────────────────
@@ -142,7 +148,12 @@ function ExplainerCards() {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export function InvestmentView({ filters, activeRole, activeTab = "overview" }: InvestmentViewProps) {
+export function InvestmentView({
+    filters,
+    activeRole,
+    activeTab = "overview",
+    reworkMetric,
+}: InvestmentViewProps) {
     const data = useInvestmentData({ filters });
 
     // All derived state is unconditional — data loads identically regardless of tab.
@@ -155,23 +166,27 @@ export function InvestmentView({ filters, activeRole, activeTab = "overview" }: 
         return "effort";
     }, [data.workUnits]);
 
-    const evidenceUnits = useMemo<EvidenceUnit[]>(() => {
-        if (!data.focusSubcategory) return [];
-        return data.workUnits
-            .map((unit) => {
-                const weight = unit.investment?.subcategories?.[data.focusSubcategory ?? ""] ?? 0;
-                if (weight <= 0) {
-                    return null;
-                }
-                return {
-                    unit,
-                    weight,
-                    weightedEffort: unit.effort.value * weight,
-                };
-            })
-            .filter((entry): entry is EvidenceUnit => Boolean(entry))
-            .sort((a, b) => b.weightedEffort - a.weightedEffort);
-    }, [data.focusSubcategory, data.workUnits]);
+    // Overview drill-down: focused subcategory only, empty otherwise (prompts user).
+    const evidenceUnits = useMemo<EvidenceUnit[]>(
+        () =>
+            selectWorkUnitEntries({
+                focusSubcategory: data.focusSubcategory,
+                workUnits: data.workUnits,
+                fallbackToAll: false,
+            }),
+        [data.focusSubcategory, data.workUnits],
+    );
+
+    // Unit Investment tab: self-contained — ALL units when no subcategory is set.
+    const unitInvestmentEntries = useMemo<EvidenceUnit[]>(
+        () =>
+            selectWorkUnitEntries({
+                focusSubcategory: data.focusSubcategory,
+                workUnits: data.workUnits,
+                fallbackToAll: true,
+            }),
+        [data.focusSubcategory, data.workUnits],
+    );
 
     const selectableUnits = useMemo(
         () => (data.focusSubcategory ? evidenceUnits.map((entry) => entry.unit) : data.workUnits),
@@ -515,10 +530,11 @@ export function InvestmentView({ filters, activeRole, activeTab = "overview" }: 
                 <InvestmentWorkUnitList
                     focusSubcategory={data.focusSubcategory}
                     focusSubcategoryLabel={focusSubcategoryLabel}
-                    evidenceUnits={evidenceUnits}
+                    evidenceUnits={unitInvestmentEntries}
                     effortUnit={effortUnit}
                     onClearSubcategory={() => data.setFocusSubcategory(null)}
                     onSelectWorkUnit={data.handleSelect}
+                    showAllWhenUnfocused
                 />
                 {evidenceBlock}
             </section>
@@ -528,11 +544,35 @@ export function InvestmentView({ filters, activeRole, activeTab = "overview" }: 
     if (activeTab === "rework") {
         return (
             <section className="flex flex-col gap-6">
-                <DataState
-                    variant="detector-unavailable"
-                    title="Rework view not available yet"
-                    description="A dedicated rework breakdown isn't wired for this scope yet."
-                />
+                <div>
+                    <h2 className="font-(--font-display) text-xl">Rework</h2>
+                    <p className="mt-2 text-sm text-(--ink-muted)">
+                        Share of churn in files changed by more than one commit in the window.
+                    </p>
+                </div>
+                {reworkMetric ? (
+                    <div className="grid gap-4 sm:max-w-md">
+                        <MetricCard
+                            label="Rework ratio"
+                            href={buildExploreUrl({
+                                metric: "rework_ratio",
+                                filters,
+                                role: activeRole,
+                            })}
+                            value={reworkMetric.value}
+                            unit={reworkMetric.unit}
+                            delta={reworkMetric.delta_pct}
+                            spark={reworkMetric.spark}
+                            caption="Churn from rework"
+                        />
+                    </div>
+                ) : (
+                    <DataState
+                        variant="detector-unavailable"
+                        title="Rework view not available yet"
+                        description="A dedicated rework breakdown isn't wired for this scope yet."
+                    />
+                )}
             </section>
         );
     }

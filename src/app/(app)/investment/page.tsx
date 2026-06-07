@@ -15,6 +15,13 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { InvestmentView } from "@/components/work/InvestmentView";
 import { INVESTMENT_TABS, type InvestmentTab } from "@/components/work/investment/types";
+import { getHomeData } from "@/lib/api/home";
+import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
+import type { MetricDelta } from "@/lib/types";
+
+const getMetric = (deltas: MetricDelta[], metric: string) =>
+    deltas.find((item) => item.metric === metric) ??
+    FALLBACK_DELTAS.find((item) => item.metric === metric);
 
 const INVESTMENT_TAB_LABELS: Record<InvestmentTab, string> = {
     overview: "Overview",
@@ -42,9 +49,10 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-    const [health, orgResult] = await Promise.all([
+    const [health, orgResult, home] = await Promise.all([
         checkApiHealth(),
         getCurrentOrg().catch(() => ({ data: undefined })),
+        fetchOrNull(getHomeData(filters), "investment/home-data"),
     ]);
 
     if (!health.ok) {
@@ -56,6 +64,8 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         ? await fetchOrNull(getOrgEntitlements(org.id), "investment/entitlements")
         : null;
     const features = entitlements?.data?.features ?? {};
+
+    const reworkMetric = getMetric(home?.deltas ?? [], "rework_ratio");
 
     const tabs: ViewSetItem[] = INVESTMENT_TABS.map((id) => ({
         id,
@@ -138,6 +148,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                             filters={filters}
                             activeRole={activeRole}
                             activeTab={activeTab}
+                            reworkMetric={reworkMetric}
                         />
                     </UpgradeGate>
                 </main>

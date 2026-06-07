@@ -15,6 +15,13 @@ type InvestmentWorkUnitListProps = {
     effortUnit: string;
     onClearSubcategory: () => void;
     onSelectWorkUnit: (workUnitId: string) => void;
+    /**
+     * When true, render the provided `evidenceUnits` even with no focused
+     * subcategory (used by the self-contained Unit Investment tab so all work
+     * units show on direct entry). Defaults to false (Overview drill-down,
+     * which prompts the user to pick a subcategory first).
+     */
+    showAllWhenUnfocused?: boolean;
 };
 
 export function InvestmentWorkUnitList({
@@ -24,7 +31,13 @@ export function InvestmentWorkUnitList({
     effortUnit,
     onClearSubcategory,
     onSelectWorkUnit,
+    showAllWhenUnfocused = false,
 }: InvestmentWorkUnitListProps) {
+    // Showing the un-focused "all units" listing rather than the drill prompt.
+    const showingAllUnits = showAllWhenUnfocused && !focusSubcategory;
+    // Drill-down is an evidence preview (top 6); the all-units listing is full.
+    const visibleUnits = showingAllUnits ? evidenceUnits : evidenceUnits.slice(0, 6);
+
     return (
         <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -33,7 +46,9 @@ export function InvestmentWorkUnitList({
                     <span className="text-xs text-(--ink-muted)">
                         {focusSubcategory
                             ? `Work units that contributed to: ${focusSubcategoryLabel}.`
-                            : "Select a subcategory to inspect supporting work units."}
+                            : showingAllUnits
+                              ? "All work units in the selected window. Pick a subcategory in Mix to narrow."
+                              : "Select a subcategory to inspect supporting work units."}
                     </span>
                 </div>
                 {focusSubcategory && (
@@ -47,18 +62,20 @@ export function InvestmentWorkUnitList({
                 )}
             </div>
             <div className="mt-4">
-                {!focusSubcategory ? (
+                {!focusSubcategory && !showingAllUnits ? (
                     <p className="text-sm text-(--ink-muted)">
                         Drill down into a theme and choose a subcategory to see the work units that
                         support it.
                     </p>
                 ) : evidenceUnits.length === 0 ? (
                     <p className="text-sm text-(--ink-muted)">
-                        No work units are currently linked to {focusSubcategoryLabel}.
+                        {focusSubcategory
+                            ? `No work units are currently linked to ${focusSubcategoryLabel}.`
+                            : "No work units available for the selected window."}
                     </p>
                 ) : (
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        {evidenceUnits.slice(0, 6).map((entry) => {
+                        {visibleUnits.map((entry) => {
                             const hasTextual = (entry.unit.evidence?.textual ?? []).length > 0;
                             const hasContextual =
                                 (entry.unit.evidence?.contextual ?? []).length > 0;
