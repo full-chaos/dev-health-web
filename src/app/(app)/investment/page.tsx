@@ -4,6 +4,7 @@ import { BackLink } from "@/components/shared/BackLink";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
@@ -14,6 +15,23 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { InvestmentView } from "@/components/work/InvestmentView";
 
+const INVESTMENT_TABS = [
+    "overview",
+    "mix",
+    "unit-investment",
+    "rework",
+    "strategic-allocation",
+] as const;
+type InvestmentTab = (typeof INVESTMENT_TABS)[number];
+
+const INVESTMENT_TAB_LABELS: Record<InvestmentTab, string> = {
+    overview: "Overview",
+    mix: "Mix",
+    "unit-investment": "Unit Investment",
+    rework: "Rework",
+    "strategic-allocation": "Strategic Allocation",
+};
+
 type InvestmentPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
@@ -23,8 +41,12 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
+    const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
+    const activeTab: InvestmentTab = INVESTMENT_TABS.includes(tabParam as InvestmentTab)
+        ? (tabParam as InvestmentTab)
+        : "overview";
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
@@ -43,6 +65,18 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         : null;
     const features = entitlements?.data?.features ?? {};
 
+    const tabs: ViewSetItem[] = INVESTMENT_TABS.map((id) => ({
+        id,
+        label: INVESTMENT_TAB_LABELS[id],
+        path: withFilterParam(
+            id === "overview" ? "/investment" : `/investment?tab=${id}`,
+            filters,
+            activeRole,
+            activeOrigin,
+        ),
+        navVisible: true,
+    }));
+
     return (
         <div className="min-h-screen bg-background text-foreground">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
@@ -52,10 +86,10 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                         <header className="flex flex-wrap items-center justify-between gap-4">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                    Investment
+                                    Diagnose
                                 </p>
                                 <h1 className="mt-2 font-(--font-display) text-3xl">
-                                    Elapsed Work Allocation
+                                    Investment
                                 </h1>
                                 <p className="mt-2 text-sm text-(--ink-muted)">
                                     Effort and attention allocation over the selected window.
@@ -78,12 +112,12 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                                 </Link>
                                 <BackLink
                                     href={withFilterParam(
-                                        "/landscape",
+                                        "/diagnose",
                                         filters,
                                         activeRole,
                                         activeOrigin,
                                     )}
-                                    area="Landscape"
+                                    area="Diagnose"
                                 />
                             </div>
                         </header>
@@ -100,7 +134,19 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
 
                         <GlobalContextBar filters={filters} origin={activeOrigin} />
 
-                        <InvestmentView filters={filters} activeRole={activeRole} />
+                        <ViewSet
+                            orientation="tabs"
+                            items={tabs}
+                            activeId={activeTab}
+                            overviewId="overview"
+                            ariaLabel="Investment views"
+                        />
+
+                        <InvestmentView
+                            filters={filters}
+                            activeRole={activeRole}
+                            activeTab={activeTab}
+                        />
                     </UpgradeGate>
                 </main>
             </div>

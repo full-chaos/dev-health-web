@@ -233,4 +233,51 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             ).toBeInTheDocument();
         });
     });
+
+    describe("section prop", () => {
+        it('default (section="all") renders both mix and flows sections', () => {
+            render(<InvestmentCharts {...baseProps()} />);
+            // mix heading
+            expect(
+                screen.getByRole("heading", { level: 3, name: /treemap|investment mix/i }),
+            ).toBeInTheDocument();
+            // flows headings
+            expect(
+                screen.getByRole("heading", { level: 3, name: /team burden flow/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
+            ).toBeInTheDocument();
+        });
+
+        it('section="mix" renders only the mix section (no flows sankeys)', () => {
+            render(<InvestmentCharts {...baseProps({ section: "mix" })} />);
+            // mix heading is present
+            expect(
+                screen.getByRole("heading", { level: 3, name: /treemap|investment mix/i }),
+            ).toBeInTheDocument();
+            // flow headings are NOT present
+            expect(
+                screen.queryByRole("heading", { level: 3, name: /team burden flow/i }),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole("heading", { level: 3, name: /where effort lands/i }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('section="flows" renders only the flows section (no mix heading)', () => {
+            render(<InvestmentCharts {...baseProps({ section: "flows" })} />);
+            // mix heading is NOT present
+            expect(
+                screen.queryByRole("heading", { level: 3, name: /treemap|investment mix/i }),
+            ).not.toBeInTheDocument();
+            // flows headings ARE present
+            expect(
+                screen.getByRole("heading", { level: 3, name: /team burden flow/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
+            ).toBeInTheDocument();
+        });
+    });
 });
