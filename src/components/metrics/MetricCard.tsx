@@ -2,19 +2,9 @@ import Link from "next/link";
 import { LineagePopover } from "@/app/(app)/data-health/_components/LineagePopover";
 
 import { SparklineChart } from "@/components/charts/SparklineChart";
-import { formatDelta, formatMetricValue } from "@/lib/formatters";
+import { MetricDelta } from "@/components/shared/MetricDelta";
+import { formatMetricValue } from "@/lib/formatters";
 import type { SparkPoint } from "@/lib/types";
-
-const deltaTone = (value?: number) => {
-    if (value === undefined || value === null) {
-        return "text-(--ink-muted)";
-    }
-    return value > 0
-        ? "text-(--accent-3)"
-        : value < 0
-          ? "text-(--accent-negative)"
-          : "text-(--ink-muted)";
-};
 
 type MetricCardProps = {
     label: string;
@@ -55,18 +45,7 @@ export function MetricCard({
                     <span>{label}</span>
                     {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
                 </div>
-                <span className={deltaTone(delta)}>
-                    {delta === undefined || delta === null ? (
-                        <span
-                            title="No prior period available to compute a change"
-                            className="text-[10px] normal-case tracking-normal"
-                        >
-                            {deltaUnavailableLabel}
-                        </span>
-                    ) : (
-                        formatDelta(delta)
-                    )}
-                </span>
+                <MetricDelta value={delta} unavailableLabel={deltaUnavailableLabel} />
             </div>
             <div className="mt-3 flex items-center justify-between gap-4">
                 <div>

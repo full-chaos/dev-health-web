@@ -37,8 +37,8 @@ describe("RoleSelector", () => {
     it("marks the default role as active (aria-checked=true)", () => {
         render(<RoleSelector />);
         // Default role is "ic"
-        const icButton = screen.getByText("IC").closest("button");
-        expect(icButton).toHaveAttribute("aria-checked", "true");
+        const icRadio = screen.getByRole("radio", { name: "IC" });
+        expect(icRadio).toHaveAttribute("aria-checked", "true");
     });
 
     it("calls router.push when a role button is clicked", () => {

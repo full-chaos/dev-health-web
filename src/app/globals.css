@@ -16,7 +16,7 @@
     --background: #fffbfe;
     --foreground: #1c1b1f;
     --ink-muted: #49454f;
-    --accent: #6750a4;
+    --accent: #f89d28;
     --accent-2: #625b71;
     --accent-3: #7d5260;
     --accent-negative: #b3261e;
@@ -57,7 +57,7 @@
         --background: #1c1b1f;
         --foreground: #e6e1e5;
         --ink-muted: #cac4d0;
-        --accent: #d0bcff;
+        --accent: #ffb347;
         --accent-2: #ccc2dc;
         --accent-3: #efb8c8;
         --accent-negative: #f2b8b5;
@@ -580,6 +580,45 @@
     );
 }
 
+:root,
+:root[data-theme="light"],
+:root[data-palette][data-theme="light"] {
+    --accent: #f89d28;
+    --positive: #16a34a;
+    --caution: #f59e0b;
+    --info: #2563eb;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+    --elevation-card: 0 18px 48px -34px rgb(15 23 42 / 0.25);
+    --elevation-drawer: 0 28px 80px -36px rgb(15 23 42 / 0.35);
+    --card-stroke-active: color-mix(in srgb, var(--accent) 42%, var(--card-stroke));
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --accent: #ffb347;
+        --positive: #34d399;
+        --caution: #fbbf24;
+        --info: #60a5fa;
+        --elevation-card: 0 22px 58px -40px rgb(0 0 0 / 0.65);
+        --elevation-drawer: 0 32px 90px -42px rgb(0 0 0 / 0.75);
+        --card-stroke-active: color-mix(in srgb, var(--accent) 45%, var(--card-stroke));
+    }
+}
+
+:root[data-theme="dark"],
+:root[data-palette][data-theme="dark"] {
+    --accent: #ffb347;
+    --positive: #34d399;
+    --caution: #fbbf24;
+    --info: #60a5fa;
+    --elevation-card: 0 22px 58px -40px rgb(0 0 0 / 0.65);
+    --elevation-drawer: 0 32px 90px -42px rgb(0 0 0 / 0.75);
+    --card-stroke-active: color-mix(in srgb, var(--accent) 45%, var(--card-stroke));
+}
+
 /* ============================================================
  * TAILWIND THEME BRIDGE
  * Map design tokens into Tailwind's color / font namespaces.
@@ -587,7 +626,17 @@
 @theme inline {
     --color-background: var(--background);
     --color-card: var(--card);
+    --color-card-stroke: var(--card-stroke);
+    --color-card-stroke-active: var(--card-stroke-active);
     --color-foreground: var(--foreground);
+    --color-ink-muted: var(--ink-muted);
+    --color-accent: var(--accent);
+    --color-accent-2: var(--accent-2);
+    --color-accent-3: var(--accent-3);
+    --color-accent-negative: var(--accent-negative);
+    --color-positive: var(--positive);
+    --color-caution: var(--caution);
+    --color-info: var(--info);
     --color-app-gradient: var(--app-gradient);
     --font-sans: var(--font-body);
     --font-display: var(--font-display);

@@ -41,6 +41,23 @@ describe("FilterPills", () => {
         );
     });
 
+    it("styles the active option with the primary accent token", () => {
+        render(
+            <FilterPills
+                options={options}
+                value="month"
+                onChange={vi.fn()}
+                ariaLabel="Time grain"
+            />,
+        );
+
+        const active = screen.getByRole("radio", { name: "Month" }).closest("label");
+        expect(active).toHaveClass("border-(--accent)");
+        expect(active).toHaveClass("bg-(--accent)/15");
+        expect(active).toHaveClass("text-(--accent)");
+        expect(active?.className).not.toContain("--accent-2");
+    });
+
     it("calls onChange with the option id", async () => {
         const onChange = vi.fn();
         const user = userEvent.setup();
@@ -69,5 +86,19 @@ describe("FilterPills", () => {
         );
         expect(screen.getByText("Grain")).toBeInTheDocument();
         expect(screen.getByTestId("grain-pills")).toBeInTheDocument();
+    });
+
+    it("wires keyboard focus styling to the focusable input", () => {
+        render(
+            <FilterPills
+                options={options}
+                value="week"
+                onChange={vi.fn()}
+                ariaLabel="Time grain"
+            />,
+        );
+        const pill = screen.getByRole("radio", { name: "Week" }).closest("label");
+        expect(pill?.className).toContain("has-[:focus-visible]:ring-2");
+        expect(pill?.className).toContain("has-[:focus-visible]:ring-(--accent)");
     });
 });
