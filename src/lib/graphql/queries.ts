@@ -357,8 +357,10 @@ query WorkGraphEdges($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
       edgeId
       sourceType
       sourceId
+      sourceDisplayName
       targetType
       targetId
+      targetDisplayName
       edgeType
       provenance
       confidence
