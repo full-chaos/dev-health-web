@@ -131,6 +131,37 @@ describe("joinEdges", () => {
         expect(rows[0].deploymentIds).toHaveLength(0);
     });
 
+    it("carries sourceDisplayName from LINKED_INCIDENT edges when there is no DEPLOYS edge", () => {
+        const incidents: WorkGraphEdge[] = [
+            makeEdge("l1", "4e00fff2-df66-5028-8ebd-e4535332300b", "wi-a", "LINKED_INCIDENT", {
+                sourceDisplayName: "INC-2025-404",
+            }),
+        ];
+
+        const rows = joinEdges([], incidents);
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].incidentId).toBe("4e00fff2-df66-5028-8ebd-e4535332300b");
+        expect(rows[0].incidentDisplayName).toBe("INC-2025-404");
+    });
+
+    it("keeps DEPLOYS targetDisplayName when LINKED_INCIDENT sourceDisplayName disagrees", () => {
+        const deploys: WorkGraphEdge[] = [
+            makeEdge("d1", "dep-a", "inc-1", "DEPLOYS", {
+                targetDisplayName: "INC-2025-404",
+            }),
+        ];
+        const incidents: WorkGraphEdge[] = [
+            makeEdge("l1", "inc-1", "wi-a", "LINKED_INCIDENT", {
+                sourceDisplayName: "Stale incident label",
+            }),
+        ];
+
+        const rows = joinEdges(deploys, incidents);
+
+        expect(rows[0].incidentDisplayName).toBe("INC-2025-404");
+    });
+
     it("joins deployment and work-item edges by shared incident ID", () => {
         const deploys: WorkGraphEdge[] = [makeEdge("d1", "dep-a", "inc-1", "DEPLOYS")];
         const incidents: WorkGraphEdge[] = [makeEdge("l1", "inc-1", "wi-a", "LINKED_INCIDENT")];
@@ -192,6 +223,27 @@ describe("buildSankeyData", () => {
         expect(result!.nodes).toHaveLength(3);
         // 2 links: deployment→incident + incident→work_item
         expect(result!.links).toHaveLength(2);
+    });
+
+    it("uses incidentDisplayName for incident Sankey node labels", () => {
+        const rows = [
+            {
+                incidentId: "4e00fff2-df66-5028-8ebd-e4535332300b",
+                incidentDisplayName: "INC-2025-404",
+                deploymentIds: ["deploy-xyz789"],
+                workItemIds: ["work-item-lmn"],
+            },
+        ];
+
+        const result = buildSankeyData(rows);
+
+        expect(result).not.toBeNull();
+        expect(result!.nodes).toEqual(
+            expect.arrayContaining([expect.objectContaining({ name: "INC-2025-404" })]),
+        );
+        expect(result!.nodes).not.toEqual(
+            expect.arrayContaining([expect.objectContaining({ name: "inc:4e00fff2" })]),
+        );
     });
 });
 
@@ -349,6 +401,7 @@ describe("IncidentCorrelationDashboard", () => {
         ];
         render(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
         expect(screen.getByTestId("horizontal-bar-chart")).toBeInTheDocument();
+        expect(screen.getByTestId("horizontal-bar-chart")).toHaveTextContent("Long PR,No tests");
     });
 
     it("renders the server-resolved display name for a contributor (no raw UUID)", () => {
@@ -383,5 +436,68 @@ describe("IncidentCorrelationDashboard", () => {
         render(<IncidentCorrelationDashboard {...baseProps} contributors={contributors} />);
         expect(screen.getByText("Unresolved")).toBeInTheDocument();
         expect(screen.queryByText(/4e00fff2-df66/)).not.toBeInTheDocument();
+    });
+
+    it("incident table renders server-resolved name for a UUID incident id (CHAOS-2089)", () => {
+        // DEPLOYS edge carries targetDisplayName = resolved incident name.
+        // joinEdges must propagate it to IncidentRow.incidentDisplayName.
+        // EntityLabel must render the resolved name, never the raw UUID.
+        const deploys = [
+            makeEdge("d1", "dep-a", "4e00fff2-df66-5028-8ebd-e4535332300b", "DEPLOYS", {
+                targetDisplayName: "INC-2025-001",
+            }),
+        ];
+        render(
+            <IncidentCorrelationDashboard
+                {...baseProps}
+                deploysEdges={deploys}
+                incidentEdges={[]}
+            />,
+        );
+        expect(screen.getByTestId("incident-linkage-table")).toBeInTheDocument();
+        expect(screen.getByText("INC-2025-001")).toBeInTheDocument();
+        expect(screen.queryByText(/4e00fff2-df66/)).not.toBeInTheDocument();
+    });
+
+    it("incident table shows Unresolved badge for a UUID incident id with no display name (CHAOS-2089)", () => {
+        // When targetDisplayName is null (backend could not resolve), EntityLabel
+        // degrades to a controlled short token + Unresolved badge — never raw UUID.
+        const deploys = [
+            makeEdge("d1", "dep-a", "698c0211-0000-0000-0000-0000fee29c84", "DEPLOYS", {
+                targetDisplayName: null,
+            }),
+        ];
+        render(
+            <IncidentCorrelationDashboard
+                {...baseProps}
+                deploysEdges={deploys}
+                incidentEdges={[]}
+            />,
+        );
+        expect(screen.getByTestId("incident-linkage-table")).toBeInTheDocument();
+        expect(screen.getByText("Unresolved")).toBeInTheDocument();
+        expect(screen.queryByText(/698c0211-0000/)).not.toBeInTheDocument();
+    });
+
+    it("joinEdges carries targetDisplayName from DEPLOYS edge as incidentDisplayName", () => {
+        const deploys = [
+            makeEdge("d1", "dep-a", "uuid-inc-1", "DEPLOYS", {
+                targetDisplayName: "INC-PROD-042",
+            }),
+        ];
+        const rows = joinEdges(deploys, []);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].incidentId).toBe("uuid-inc-1");
+        expect(rows[0].incidentDisplayName).toBe("INC-PROD-042");
+    });
+
+    it("joinEdges sets incidentDisplayName to null when edge has no targetDisplayName", () => {
+        const deploys = [
+            makeEdge("d1", "dep-a", "uuid-inc-1", "DEPLOYS", {
+                targetDisplayName: null,
+            }),
+        ];
+        const rows = joinEdges(deploys, []);
+        expect(rows[0].incidentDisplayName).toBeNull();
     });
 });

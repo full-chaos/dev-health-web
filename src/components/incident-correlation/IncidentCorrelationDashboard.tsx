@@ -42,8 +42,12 @@ export type WorkGraphEdge = {
     edgeId: string;
     sourceType: string;
     sourceId: string;
+    /** Server-resolved human label for sourceId (A7). Null when backend could not resolve. */
+    sourceDisplayName?: string | null;
     targetType: string;
     targetId: string;
+    /** Server-resolved human label for targetId (A7). Null when backend could not resolve. */
+    targetDisplayName?: string | null;
     edgeType: string;
     provenance: string | null;
     confidence: number | null;
@@ -55,6 +59,8 @@ export type WorkGraphEdge = {
 /** Joined incident row: one incident with its linked deployments and work items. */
 export type IncidentRow = {
     incidentId: string;
+    /** Server-resolved display name for incidentId (A7/CHAOS-2089). */
+    incidentDisplayName?: string | null;
     deploymentIds: string[];
     workItemIds: string[];
 };
@@ -80,6 +86,8 @@ const DORA_METRIC_KEYS = ["change_failure_rate", "deployment_frequency", "mttr"]
 
 const MAX_SANKEY_INCIDENTS = 10;
 const MAX_LINKS_PER_INCIDENT = 3;
+const OPAQUE_LABEL_RE =
+    /^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const hasMeaningfulAssociations = (items: Contributor[]) =>
     items.some((item) => isFiniteNumber(item.delta_pct) && Math.abs(item.delta_pct) > 0);
@@ -102,6 +110,7 @@ export function joinEdges(
     incidentEdges: WorkGraphEdge[],
 ): IncidentRow[] {
     const deploysByIncident = new Map<string, Set<string>>();
+    const incidentDisplayNames = new Map<string, string | null>();
     for (const edge of deploysEdges) {
         const incidentId = edge.targetId;
         const deploymentId = edge.sourceId;
@@ -109,6 +118,10 @@ export function joinEdges(
             deploysByIncident.set(incidentId, new Set());
         }
         deploysByIncident.get(incidentId)!.add(deploymentId);
+        const displayName = edge.targetDisplayName ?? null;
+        if (displayName || !incidentDisplayNames.has(incidentId)) {
+            incidentDisplayNames.set(incidentId, displayName);
+        }
     }
 
     const workItemsByIncident = new Map<string, Set<string>>();
@@ -119,12 +132,17 @@ export function joinEdges(
             workItemsByIncident.set(incidentId, new Set());
         }
         workItemsByIncident.get(incidentId)!.add(workItemId);
+        const displayName = edge.sourceDisplayName ?? null;
+        if (!incidentDisplayNames.has(incidentId)) {
+            incidentDisplayNames.set(incidentId, displayName);
+        }
     }
 
     const allIncidentIds = new Set([...deploysByIncident.keys(), ...workItemsByIncident.keys()]);
 
     return Array.from(allIncidentIds).map((incidentId) => ({
         incidentId,
+        incidentDisplayName: incidentDisplayNames.get(incidentId) ?? null,
         deploymentIds: Array.from(deploysByIncident.get(incidentId) ?? []),
         workItemIds: Array.from(workItemsByIncident.get(incidentId) ?? []),
     }));
@@ -150,7 +168,7 @@ export function buildSankeyData(
     };
 
     for (const row of limited) {
-        const incName = `inc:${row.incidentId.slice(0, 8)}`;
+        const incName = row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
         addNode(incName, "incident");
 
         for (const depId of row.deploymentIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
@@ -206,10 +224,15 @@ export function IncidentCorrelationDashboard({
     // name; degrade genuinely-unresolved ids to a stable short token + badge.
     const driverChartLabels = resolveEntityLabels(
         topDrivers.map((d) => d.id),
-        (_id, i) => ({
-            name: topDrivers[i]?.display_name ?? undefined,
-            unresolvedFallback: "Unresolved",
-        }),
+        (_id, i) => {
+            const fallbackLabel = topDrivers[i]?.label?.trim();
+            const labelName =
+                fallbackLabel && !OPAQUE_LABEL_RE.test(fallbackLabel) ? fallbackLabel : undefined;
+            return {
+                name: topDrivers[i]?.display_name ?? labelName,
+                unresolvedFallback: "Unresolved",
+            };
+        },
     );
     const topContributors = contributors.slice(0, 5);
     const hasExplainData = topDrivers.length > 0 || topContributors.length > 0;
@@ -422,6 +445,7 @@ export function IncidentCorrelationDashboard({
                                         <td className="px-5 py-3 text-xs">
                                             <EntityLabel
                                                 id={row.incidentId}
+                                                displayName={row.incidentDisplayName}
                                                 className="font-mono"
                                             />
                                         </td>
