@@ -3,6 +3,7 @@ import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { checkApiHealth } from "@/lib/api/system";
@@ -203,14 +204,22 @@ export default async function CoveragePage({
 					</section>
 
 					<section className="grid gap-6 lg:grid-cols-2">
-						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-							<h2 className="font-(--font-display) text-xl mb-4">
-								Line Coverage Trend
-							</h2>
+						<ChartFrame
+							title="Line Coverage Trend"
+							interpretation="Line coverage appears over time so drops are visible before they become release risk."
+							threshold={{
+								label: "Target baseline",
+								value: "80%",
+								tone: "info",
+							}}
+							isEmpty={timeseriesData.length === 0}
+							stateTitle="Coverage trend not populated"
+							stateDescription="Coverage history appears here once CI coverage data is connected for this scope."
+						>
 							<div className="h-64">
 								<TimeseriesChart data={timeseriesData} valueFormat="percent" />
 							</div>
-						</div>
+						</ChartFrame>
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
 							<h2 className="font-(--font-display) text-xl mb-4">
 								Coverage by Repository
