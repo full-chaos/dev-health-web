@@ -41,7 +41,7 @@ function entityHref(type: string, id: string): string {
         case "INCIDENT":
             return `/ai/risk?incident=${encodeURIComponent(id)}`;
         default:
-            return `/work?context_entity_id=${encodeURIComponent(id)}&context_entity_label=${encodeURIComponent(type)}`;
+            return `/diagnose/work-graph?context_entity_id=${encodeURIComponent(id)}&context_entity_label=${encodeURIComponent(type)}`;
     }
 }
 

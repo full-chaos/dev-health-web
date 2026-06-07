@@ -519,8 +519,10 @@ export interface WorkGraphEdge {
     edgeId: string;
     sourceType: WorkGraphNodeType;
     sourceId: string;
+    sourceDisplayName?: string | null;
     targetType: WorkGraphNodeType;
     targetId: string;
+    targetDisplayName?: string | null;
     edgeType: WorkGraphEdgeType;
     provenance: WorkGraphProvenance;
     confidence: number;

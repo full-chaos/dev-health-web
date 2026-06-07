@@ -145,7 +145,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
 
         const expectations: Array<[RegExp, string]> = [
             [/^Cockpit$/i, "/dashboard"],
-            [/^Diagnose$/i, "/work"],
+            [/^Diagnose$/i, "/diagnose"],
             [/^Plan$/i, "/plan"],
             [/^Improve$/i, "/opportunities"],
             [/^Govern$/i, "/govern"],

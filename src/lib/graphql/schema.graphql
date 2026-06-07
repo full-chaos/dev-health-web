@@ -1403,8 +1403,10 @@ type WorkGraphEdgeResult {
   edgeId: String!
   sourceType: WorkGraphNodeType!
   sourceId: String!
+  sourceDisplayName: String
   targetType: WorkGraphNodeType!
   targetId: String!
+  targetDisplayName: String
   edgeType: WorkGraphEdgeType!
   provenance: WorkGraphProvenance!
   confidence: Float!

@@ -1,8 +1,11 @@
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { HeatmapView } from "@/components/work/HeatmapView";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { requireSession } from "@/lib/auth";
+import { withFilterParam } from "@/lib/filters/url";
 import Link from "next/link";
 
 type CognitiveLoadPageProps = {
@@ -73,7 +76,42 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
+    const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    const activeTab = typeof tabParam === "string" ? tabParam : "overview";
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const scopeId = filters.scope.ids[0] ?? "";
+    const tabs: ViewSetItem[] = [
+        {
+            id: "overview",
+            label: "Overview",
+            path: withFilterParam("/cognitive-load", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "heatmap",
+            label: "Heatmap",
+            path: withFilterParam("/cognitive-load?tab=heatmap", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "context-switching",
+            label: "Context Switching",
+            path: withFilterParam("/cognitive-load?tab=context-switching", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "focus-pressure",
+            label: "Focus Pressure",
+            path: withFilterParam("/cognitive-load?tab=focus-pressure", filters, activeRole),
+            navVisible: true,
+        },
+        {
+            id: "load-drivers",
+            label: "Load Drivers",
+            path: withFilterParam("/cognitive-load?tab=load-drivers", filters, activeRole),
+            navVisible: true,
+        },
+    ];
     const isDeveloperScope = filters.scope.level === "developer";
     const selectedDeveloperId = isDeveloperScope ? filters.scope.ids[0] : undefined;
     const effectiveSelfId =
@@ -130,7 +168,17 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
 
                     <ContextStrip filters={filters} origin={activeOrigin} />
 
-                    {!canShowSelectedScope ? (
+                    <ViewSet
+                        orientation="tabs"
+                        items={tabs}
+                        activeId={activeTab}
+                        overviewId="overview"
+                        ariaLabel="Cognitive Load views"
+                    />
+
+                    {activeTab === "heatmap" && canShowSelectedScope ? (
+                        <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={null} />
+                    ) : !canShowSelectedScope ? (
                         <section className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm">
                             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
                                 Individual guardrail

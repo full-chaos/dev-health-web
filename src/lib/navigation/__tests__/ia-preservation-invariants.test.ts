@@ -11,18 +11,16 @@ import {
     type NavArea,
     type NavChildRoute,
 } from "../areas";
-import { resolveActiveView, resolveRemovedWorkTabRedirect, WORK_TABS } from "../workPageView";
+import { LEGACY_WORK_TAB_REDIRECTS, resolveLegacyWorkRedirect } from "../workPageView";
 
 type VisibleChildDestination = {
     area: NavArea;
     child: NavChildRoute;
 };
 
-type WorkTab = (typeof WORK_TABS)[number];
-
 const appRoot = join(process.cwd(), "src/app/(app)");
-const workPagePath = join(appRoot, "work/page.tsx");
-const workPageSource = readFileSync(workPagePath, "utf8");
+const legacyWorkPagePath = join(appRoot, "work/page.tsx");
+const legacyWorkPageSource = readFileSync(legacyWorkPagePath, "utf8");
 const metricsPagePath = join(appRoot, "metrics/page.tsx");
 const metricsPageSource = readFileSync(metricsPagePath, "utf8");
 const testOpsTabsPath = join(appRoot, "testops/TestOpsTabs.tsx");
@@ -37,6 +35,9 @@ const investmentChartsSource = readFileSync(
 );
 const landscapePageSource = readFileSync(join(appRoot, "landscape/page.tsx"), "utf8");
 const bottleneckPageSource = readFileSync(join(appRoot, "bottleneck/page.tsx"), "utf8");
+const complexityPageSource = readFileSync(join(appRoot, "complexity/page.tsx"), "utf8");
+const cognitiveLoadPageSource = readFileSync(join(appRoot, "cognitive-load/page.tsx"), "utf8");
+const workGraphPageSource = readFileSync(join(appRoot, "diagnose/work-graph/page.tsx"), "utf8");
 
 const testOpsTabRoutes = [
     {
@@ -73,6 +74,8 @@ const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/ai/risk/page.tsx",
     "src/app/(app)/code/page.tsx",
     "src/app/(app)/dashboard/page.tsx",
+    "src/app/(app)/diagnose/page.tsx",
+    "src/app/(app)/diagnose/work-graph/page.tsx",
     "src/app/(app)/explore/page.tsx",
     "src/app/(app)/investment/page.tsx",
     "src/app/(app)/landscape/page.tsx",
@@ -88,7 +91,6 @@ const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/testops/pipelines/page.tsx",
     "src/app/(app)/testops/risk/page.tsx",
     "src/app/(app)/testops/tests/page.tsx",
-    "src/app/(app)/work/page.tsx",
 ]);
 
 const routePageExists = (routePath: string) => {
@@ -108,48 +110,32 @@ const parseHref = (href: string) => new URL(href, "https://dev-health.local");
 
 const paramValue = (params: URLSearchParams, name: string) => params.get(name) ?? undefined;
 
-const isWorkTab = (value: string): value is WorkTab => {
-    const tabs: readonly string[] = WORK_TABS;
-    return tabs.includes(value);
-};
-
 const reachableKeyForHref = (href: string) => {
     const url = parseHref(href);
-    if (url.pathname === "/work") {
-        const tab = url.searchParams.get("tab");
-        if (tab && isWorkTab(tab)) return `/work?tab=${tab}`;
-
-        if (url.searchParams.get("view") === "work") return "/work?view=work";
-    }
     return url.pathname;
 };
 
 const routeLabel = (area: NavArea, child: NavChildRoute) =>
     `${area.id}:${child.id} (${child.label}) -> ${child.path}`;
 
-const resolveWorkHref = (href: string) => {
+const resolveLegacyWorkHref = (href: string) => {
     const url = parseHref(href);
-    const tab = url.searchParams.get("tab");
-    const activeView = resolveActiveView(
-        paramValue(url.searchParams, "view"),
-        paramValue(url.searchParams, "tab"),
-    );
-    return { activeView, tab, url };
+    const target = resolveLegacyWorkRedirect({
+        view: paramValue(url.searchParams, "view"),
+        tab: paramValue(url.searchParams, "tab"),
+    });
+    return { target, url };
 };
 
-const expectDeepLinkResolvesToWorkbenchTab = (href: string, expectedTab: string) => {
-    const { activeView, tab, url } = resolveWorkHref(href);
+const expectDistributedDeepLink = (
+    href: string,
+    expectedPath: string,
+    expectedTab: string | null,
+) => {
+    const url = parseHref(href);
 
-    expect(url.pathname, `${href} should remain a /work deep-link`).toBe("/work");
-    expect(tab, `${href} should name its intended Work workbench tab`).toBe(expectedTab);
-    if (!tab || !isWorkTab(tab)) {
-        throw new Error(`${href} does not target a registered Work tab`);
-    }
-    expect(activeView, `${href} should not fall through to Diagnose Overview`).toBe("work");
-    expect(
-        url.searchParams.get("view"),
-        `${href} should canonically pin view=work so a future resolver change can't reintroduce the loopback`,
-    ).toBe("work");
+    expect(url.pathname, `${href} should not be a /work workbench loopback`).toBe(expectedPath);
+    expect(url.searchParams.get("tab"), `${href} tab target`).toBe(expectedTab);
 };
 
 const listRouteFiles = (directory: string): string[] => {
@@ -170,17 +156,18 @@ describe("IA preservation invariant #1 — no orphaned views", () => {
     it("keeps every baseline nav/work/deep-link destination reachable", () => {
         const liveReachable = new Set([
             ...navVisibleDestinations().map(({ child }) => reachableKeyForHref(child.path)),
-            ...WORK_TABS.map((tab) => `/work?tab=${tab}`),
+            ...iaPreservationBaseline.investigationDeepLinks.map((entry) =>
+                reachableKeyForHref(entry.href),
+            ),
+            ...iaPreservationBaseline.directDestinationLinks.map((entry) =>
+                reachableKeyForHref(entry.href),
+            ),
         ]);
 
         const baselineEntries = [
             ...iaPreservationBaseline.navVisibleDestinations.map((entry) => ({
                 label: `nav:${entry.areaId}:${entry.childId}`,
                 key: reachableKeyForHref(entry.path),
-            })),
-            ...iaPreservationBaseline.workWorkbenchViews.map((entry) => ({
-                label: `work-tab:${entry.tab}`,
-                key: reachableKeyForHref(entry.href),
             })),
             ...iaPreservationBaseline.investigationDeepLinks.map((entry) => ({
                 label: `deep-link:${entry.source}:${entry.intent}`,
@@ -200,28 +187,22 @@ describe("IA preservation invariant #1 — no orphaned views", () => {
 });
 
 describe("IA preservation invariant #2 — no redirect-only tabs", () => {
-    it("backs every navVisible destination with a real route and expected Work resolver branch", () => {
+    it("backs every navVisible destination with a real route", () => {
         for (const { area, child } of navVisibleDestinations()) {
             expect(routePageExists(child.path), routeLabel(area, child)).toBe(true);
-
-            if (basePath(child.path) !== "/work") continue;
-
-            const { activeView } = resolveWorkHref(child.path);
-            const expectedView = child.id === "diagnose-overview" ? "overview" : "work";
-            expect(activeView, routeLabel(area, child)).toBe(expectedView);
         }
     });
 
-    it.each(WORK_TABS)("renders Work workbench tab %s instead of a fallback", (tab) => {
-        const href = `/work?tab=${tab}`;
-        const { activeView } = resolveWorkHref(href);
-
-        expect(routePageExists(href), href).toBe(true);
-        expect(activeView, `${href} should render the Work branch`).toBe("work");
-        expect(workPageSource, `${href} should have a concrete page branch`).toContain(
-            `activeTab === "${tab}"`,
-        );
-    });
+    it.each(iaPreservationBaseline.legacyWorkRedirects)(
+        "redirects legacy $href to distributed destination $expectedPath",
+        (entry) => {
+            const { target } = resolveLegacyWorkHref(entry.href);
+            expect(target, entry.href).toContain(entry.expectedPath);
+            expect(routePageExists(entry.expectedPath), entry.expectedPath).toBe(true);
+            expect(legacyWorkPageSource).toContain("resolveLegacyWorkRedirect");
+            expect(legacyWorkPageSource).toContain("redirect(");
+        },
+    );
 
     it.each(testOpsTabRoutes)(
         "renders TestOps tab $label at $path with real page content",
@@ -257,8 +238,12 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         ["investment", "/investment", "InvestmentView"],
         ["landscape", "/landscape", "Cycle Time × Throughput"],
         ["capacity", "/plan/capacity", "Capacity"],
+        ["heatmap", "/cognitive-load?tab=heatmap", "Focus fragmentation"],
+        ["flame", "/complexity?tab=flame", "ComplexityDashboard"],
+        ["graph", "/diagnose/work-graph", "Work Graph Explorer"],
+        ["evidence", "/diagnose/work-graph?evidence=open", "Work Graph Explorer"],
     ] as const)("redirects retired Work tab %s to the real %s home", (tab, path, contentNeedle) => {
-        expect(resolveRemovedWorkTabRedirect(tab), `/work?tab=${tab}`).toBe(path);
+        expect(LEGACY_WORK_TAB_REDIRECTS[tab], `/work?tab=${tab}`).toBe(path);
         expect(routePageExists(path), path).toBe(true);
 
         if (basePath(path) === "/metrics") {
@@ -269,6 +254,31 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         }
         if (path === "/landscape") {
             expect(landscapePageSource).toContain(contentNeedle);
+        }
+        if (basePath(path) === "/diagnose/work-graph") {
+            expect(routePageExists(path), path).toBe(true);
+            expect(workGraphPageSource).toContain("Work Graph views");
+            for (const label of [
+                "Overview",
+                "Dependencies",
+                "Inflow-Outflow",
+                "Review Network",
+                "Artifacts",
+            ]) {
+                expect(workGraphPageSource).toContain(label);
+            }
+        }
+        if (basePath(path) === "/cognitive-load") {
+            expect(routePageExists(path), path).toBe(true);
+            expect(cognitiveLoadPageSource).toContain("<ViewSet");
+            expect(cognitiveLoadPageSource).toContain('id: "heatmap"');
+            expect(cognitiveLoadPageSource).toContain("<HeatmapView");
+        }
+        if (basePath(path) === "/complexity") {
+            expect(routePageExists(path), path).toBe(true);
+            expect(complexityPageSource).toContain("<ViewSet");
+            expect(complexityPageSource).toContain('id: "flame"');
+            expect(complexityPageSource).toContain("<FlameView");
         }
         if (path === "/plan/capacity") {
             expect(routePageExists(path), path).toBe(true);
@@ -351,14 +361,11 @@ describe("IA preservation invariant #8 — Lens present in global context bar", 
 });
 
 describe("IA preservation invariant #3 — no dead investigation deep-links", () => {
-    // The CHAOS-2075 resolver fix routes every legacy `?tab=<workTab>` deep link to
-    // the Work branch (resolveActiveView -> "work"), so these investigation links land
-    // on their real workbench view, never Diagnose Overview. This invariant guards
-    // against a regression of that fix (the #609/#610-class failure mode).
     it.each(iaPreservationBaseline.investigationDeepLinks)(
-        "resolves $source $intent to its $expectedTab workbench view",
+        "points $source $intent to distributed destination $expectedPath",
         (entry) => {
-            expectDeepLinkResolvesToWorkbenchTab(entry.href, entry.expectedTab);
+            expectDistributedDeepLink(entry.href, entry.expectedPath, entry.expectedTab);
+            expect(routePageExists(entry.href), entry.href).toBe(true);
         },
     );
 
@@ -391,12 +398,11 @@ describe("IA preservation invariant #3 — no dead investigation deep-links", ()
         },
     );
 
-    it.each(WORK_TABS)(
-        "preserves the legacy bare /work?tab=%s deep link (resolver still routes it to Work)",
-        (tab) => {
-            // Splits canonical-emitted policy (links SHOULD carry view=work) from the
-            // preservation guarantee (legacy bare ?tab= links MUST keep resolving to Work).
-            expect(resolveActiveView(undefined, tab), `/work?tab=${tab}`).toBe("work");
+    it.each(iaPreservationBaseline.legacyWorkRedirects)(
+        "keeps legacy $href as a redirect, not a generic Overview loopback",
+        (entry) => {
+            const { target } = resolveLegacyWorkHref(entry.href);
+            expect(target, entry.href).toContain(entry.expectedPath);
         },
     );
 });

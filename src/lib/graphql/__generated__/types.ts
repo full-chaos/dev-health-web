@@ -1701,8 +1701,10 @@ export type WorkGraphEdgeResult = {
   provenance: WorkGraphProvenance;
   provider?: Maybe<Scalars['String']['output']>;
   repoId?: Maybe<Scalars['String']['output']>;
+  sourceDisplayName?: Maybe<Scalars['String']['output']>;
   sourceId: Scalars['String']['output'];
   sourceType: WorkGraphNodeType;
+  targetDisplayName?: Maybe<Scalars['String']['output']>;
   targetId: Scalars['String']['output'];
   targetType: WorkGraphNodeType;
 };

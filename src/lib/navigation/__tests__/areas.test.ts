@@ -68,17 +68,17 @@ describe("navArea.children — locked child navigation", () => {
             Cockpit: [],
             Diagnose: [
                 "Overview",
-                "Work",
                 "Flow",
                 "Investment",
                 "Landscape",
-                "People",
-                "Code",
+                "Work Graph",
                 "Complexity",
                 "Cognitive Load",
                 "Bottlenecks",
+                "People",
+                "Code",
             ],
-            Plan: ["Overview", "Capacity Forecast", "Backlog Risk", "Operating Review"],
+            Plan: ["Overview", "Capacity Forecast", "Operating Review"],
             Improve: ["Opportunities", "Experiments", "Automations"],
             Govern: [
                 "Overview",
@@ -131,7 +131,8 @@ describe("navArea.children — locked child navigation", () => {
 describe("selectedAreaIdForPathname", () => {
     const cases: Array<{ pathname: string; expected: NavAreaId }> = [
         { pathname: "/dashboard", expected: "cockpit" },
-        { pathname: "/work", expected: "diagnose" },
+        { pathname: "/diagnose", expected: "diagnose" },
+        { pathname: "/diagnose/work-graph", expected: "diagnose" },
         { pathname: "/metrics", expected: "diagnose" },
         { pathname: "/investment", expected: "diagnose" },
         { pathname: "/people/abc", expected: "diagnose" },
@@ -191,7 +192,12 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         childId: string | undefined;
     }> = [
         { areaId: "cockpit", pathname: "/dashboard", childId: undefined },
-        { areaId: "diagnose", pathname: "/work", childId: "diagnose-overview" },
+        { areaId: "diagnose", pathname: "/diagnose", childId: "diagnose-overview" },
+        {
+            areaId: "diagnose",
+            pathname: "/diagnose/work-graph",
+            childId: "work-graph",
+        },
         { areaId: "diagnose", pathname: "/metrics", childId: "flow" },
         { areaId: "diagnose", pathname: "/investment", childId: "investment" },
         { areaId: "diagnose", pathname: "/landscape", childId: "landscape" },
@@ -285,7 +291,8 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
 
 describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
     it("titles child pages with the child sidebar label", () => {
-        expect(navTitleForPathname("/work")).toBe("Overview");
+        expect(navTitleForPathname("/diagnose")).toBe("Overview");
+        expect(navTitleForPathname("/diagnose/work-graph")).toBe("Work Graph");
         expect(navTitleForPathname("/metrics")).toBe("Flow");
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
         expect(navTitleForPathname("/plan")).toBe("Overview");
