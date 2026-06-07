@@ -4,7 +4,7 @@ import { clickUntilUrl, waitForHydration } from "./helpers/nav";
 
 const primaryAreas = [
     { label: "Cockpit", path: "/dashboard" },
-    { label: "Diagnose", path: "/work" },
+    { label: "Diagnose", path: "/diagnose" },
     { label: "Plan", path: "/plan" },
     { label: "Improve", path: "/opportunities" },
     { label: "Govern", path: "/govern" },
@@ -43,7 +43,7 @@ const reachableRoutes = [
     "/plan/delivery-forecast",
     "/plan/capacity",
     "/operating-review",
-    "/work",
+    "/diagnose",
     "/metrics",
     "/people",
     "/code",
@@ -170,14 +170,14 @@ test.describe("primary navigation reachability", () => {
         await clickUntilUrl(
             page,
             sidebar.getByRole("link", { name: "Diagnose", exact: true }),
-            /\/work(?:[?#].*)?$/,
+            /\/diagnose(?:[?#].*)?$/,
         );
 
         const diagnoseChildren = page.getByTestId("nav-children-diagnose");
         await expect(diagnoseChildren).toBeVisible({ timeout: 15000 });
 
         for (const child of [
-            { label: "Overview", url: /\/work(?:[?#].*)?$/, path: "/work" },
+            { label: "Overview", url: /\/diagnose(?:[?#].*)?$/, path: "/diagnose" },
             { label: "Flow", url: /\/metrics(?:[?#].*)?$/, path: "/metrics" },
             {
                 label: "Investment",

@@ -66,7 +66,7 @@ test.describe("filter propagation", () => {
 
         const nav = page.locator("aside nav");
         const areas = [
-            { label: /^Diagnose$/, path: "/work" },
+            { label: /^Diagnose$/, path: "/diagnose" },
             { label: /^Plan$/, path: "/plan" },
             { label: /^Improve$/, path: "/opportunities" },
             { label: /^Govern$/, path: "/govern" },
@@ -94,7 +94,7 @@ test.describe("filter propagation", () => {
         await clickUntilUrl(
             page,
             nav.getByRole("link", { name: /^Diagnose$/ }),
-            /\/work(?:[?#].*)?$/,
+            /\/diagnose(?:[?#].*)?$/,
         );
 
         for (const child of [
@@ -110,7 +110,7 @@ test.describe("filter propagation", () => {
             );
             await expectFilterParam(page, updatedFilter);
             await expectDeveloperFilter(page, "diagnose-owner");
-            await page.goto(`/work?f=${updatedFilter}`);
+            await page.goto(`/diagnose?f=${updatedFilter}`);
         }
     });
 
