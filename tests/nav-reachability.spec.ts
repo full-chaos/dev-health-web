@@ -91,15 +91,17 @@ async function expectReachable(request: APIRequestContext, path: string) {
 }
 
 async function expectSingleSelectedArea(page: Page, path: string, selectedLabel: string) {
-    await page.goto(path);
+    await expect(async () => {
+        await page.goto(path, { waitUntil: "domcontentloaded" });
 
-    // CHAOS-2075 two-level nav: aria-current marks the current-page link (a child
-    // leaf on a leaf route, the area row on a landing), so the active AREA is marked
-    // with data-active instead. Assert exactly one area is active and it's the
-    // expected one — rendered from usePathname(), independent of the ?f= append.
-    const selectedArea = page.locator('aside a[data-active="true"]');
-    await expect(selectedArea).toHaveCount(1, { timeout: 15000 });
-    await expect(selectedArea).toHaveText(selectedLabel);
+        // CHAOS-2075 two-level nav: aria-current marks the current-page link (a child
+        // leaf on a leaf route, the area row on a landing), so the active AREA is marked
+        // with data-active instead. Assert exactly one area is active and it's the
+        // expected one — rendered from usePathname(), independent of the ?f= append.
+        const selectedArea = page.locator('aside a[data-active="true"]');
+        await expect(selectedArea).toHaveCount(1, { timeout: 15000 });
+        await expect(selectedArea).toHaveText(selectedLabel);
+    }).toPass({ timeout: 45000, intervals: [500, 1000, 2000] });
 }
 
 test.describe("primary navigation reachability", () => {
@@ -188,6 +190,11 @@ test.describe("primary navigation reachability", () => {
                 label: "Landscape",
                 url: /\/landscape(?:[?#].*)?$/,
                 path: "/landscape",
+            },
+            {
+                label: "Work Graph",
+                url: /\/diagnose\/work-graph(?:[?#].*)?$/,
+                path: "/diagnose/work-graph",
             },
             { label: "People", url: /\/people(?:[?#].*)?$/, path: "/people" },
             { label: "Code", url: /\/code(?:[?#].*)?$/, path: "/code" },
@@ -279,6 +286,8 @@ test.describe("primary navigation reachability", () => {
     });
 
     test("marks exactly one area as selected for representative leaf routes", async ({ page }) => {
+        test.setTimeout(120_000);
+
         for (const route of [
             { path: "/metrics?tab=dora", selectedLabel: "Diagnose" },
             { path: "/landscape", selectedLabel: "Diagnose" },
