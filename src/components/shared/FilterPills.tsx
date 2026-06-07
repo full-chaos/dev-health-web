@@ -1,32 +1,32 @@
 import { useId, type ReactNode } from "react";
 
 export type FilterPillOption<TId extends string = string> = {
-	id: TId;
-	label: string;
-	icon?: ReactNode;
-	/** Optional native title / tooltip. */
-	title?: string;
+    id: TId;
+    label: string;
+    icon?: ReactNode;
+    /** Optional native title / tooltip. */
+    title?: string;
 };
 
 type FilterPillsProps<TId extends string = string> = {
-	options: ReadonlyArray<FilterPillOption<TId>>;
-	value: TId;
-	onChange: (value: TId) => void;
-	/** Accessible name for the group. */
-	ariaLabel: string;
-	/** Optional quiet leading label rendered before the pills. */
-	leadingLabel?: string;
-	className?: string;
-	/** Optional test id applied to the root container. */
-	testId?: string;
+    options: ReadonlyArray<FilterPillOption<TId>>;
+    value: TId;
+    onChange: (value: TId) => void;
+    /** Accessible name for the group. */
+    ariaLabel: string;
+    /** Optional quiet leading label rendered before the pills. */
+    leadingLabel?: string;
+    className?: string;
+    /** Optional test id applied to the root container. */
+    testId?: string;
 };
 
 const ACTIVE = "border-(--accent) bg-(--accent)/15 text-(--accent)";
 const INACTIVE =
-	"border-(--card-stroke) bg-(--card-80) text-(--ink-muted) hover:border-(--accent)/40 hover:text-foreground";
+    "border-(--card-stroke) bg-(--card-80) text-(--ink-muted) hover:border-(--accent)/40 hover:text-foreground";
 
 const PILL =
-	"inline-flex items-center gap-1.5 rounded-(--radius-pill) border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] transition-colors has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-(--accent)";
+    "inline-flex items-center gap-1.5 rounded-(--radius-pill) border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] transition-colors has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-(--accent)";
 
 /**
  * Segmented selection primitive (framework A3).
@@ -39,53 +39,49 @@ const PILL =
  * (actions).
  */
 export function FilterPills<TId extends string = string>({
-	options,
-	value,
-	onChange,
-	ariaLabel,
-	leadingLabel,
-	className,
-	testId,
+    options,
+    value,
+    onChange,
+    ariaLabel,
+    leadingLabel,
+    className,
+    testId,
 }: FilterPillsProps<TId>) {
-	const name = useId();
+    const name = useId();
 
-	return (
-		<div
-			className={`flex flex-wrap items-center gap-2 ${className ?? ""}`.trim()}
-			data-testid={testId}
-		>
-			{leadingLabel ? (
-				<span className="text-xs uppercase tracking-[0.25em] text-(--ink-muted)">
-					{leadingLabel}
-				</span>
-			) : null}
-			<div
-				className="flex flex-wrap gap-1"
-				role="radiogroup"
-				aria-label={ariaLabel}
-			>
-				{options.map((option) => {
-					const isActive = option.id === value;
-					return (
-						<label
-							key={option.id}
-							title={option.title}
-							className={`${PILL} ${isActive ? ACTIVE : INACTIVE}`}
-						>
-							<input
-								type="radio"
-								name={name}
-								checked={isActive}
-								aria-checked={isActive}
-								onChange={() => onChange(option.id)}
-								className="sr-only"
-							/>
-							{option.icon}
-							<span>{option.label}</span>
-						</label>
-					);
-				})}
-			</div>
-		</div>
-	);
+    return (
+        <div
+            className={`flex flex-wrap items-center gap-2 ${className ?? ""}`.trim()}
+            data-testid={testId}
+        >
+            {leadingLabel ? (
+                <span className="text-xs uppercase tracking-[0.25em] text-(--ink-muted)">
+                    {leadingLabel}
+                </span>
+            ) : null}
+            <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={ariaLabel}>
+                {options.map((option) => {
+                    const isActive = option.id === value;
+                    return (
+                        <label
+                            key={option.id}
+                            title={option.title}
+                            className={`${PILL} ${isActive ? ACTIVE : INACTIVE}`}
+                        >
+                            <input
+                                type="radio"
+                                name={name}
+                                checked={isActive}
+                                aria-checked={isActive}
+                                onChange={() => onChange(option.id)}
+                                className="sr-only"
+                            />
+                            {option.icon}
+                            <span>{option.label}</span>
+                        </label>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
