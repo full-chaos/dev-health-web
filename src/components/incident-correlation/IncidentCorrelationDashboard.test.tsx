@@ -131,6 +131,37 @@ describe("joinEdges", () => {
         expect(rows[0].deploymentIds).toHaveLength(0);
     });
 
+    it("carries sourceDisplayName from LINKED_INCIDENT edges when there is no DEPLOYS edge", () => {
+        const incidents: WorkGraphEdge[] = [
+            makeEdge("l1", "4e00fff2-df66-5028-8ebd-e4535332300b", "wi-a", "LINKED_INCIDENT", {
+                sourceDisplayName: "INC-2025-404",
+            }),
+        ];
+
+        const rows = joinEdges([], incidents);
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].incidentId).toBe("4e00fff2-df66-5028-8ebd-e4535332300b");
+        expect(rows[0].incidentDisplayName).toBe("INC-2025-404");
+    });
+
+    it("keeps DEPLOYS targetDisplayName when LINKED_INCIDENT sourceDisplayName disagrees", () => {
+        const deploys: WorkGraphEdge[] = [
+            makeEdge("d1", "dep-a", "inc-1", "DEPLOYS", {
+                targetDisplayName: "INC-2025-404",
+            }),
+        ];
+        const incidents: WorkGraphEdge[] = [
+            makeEdge("l1", "inc-1", "wi-a", "LINKED_INCIDENT", {
+                sourceDisplayName: "Stale incident label",
+            }),
+        ];
+
+        const rows = joinEdges(deploys, incidents);
+
+        expect(rows[0].incidentDisplayName).toBe("INC-2025-404");
+    });
+
     it("joins deployment and work-item edges by shared incident ID", () => {
         const deploys: WorkGraphEdge[] = [makeEdge("d1", "dep-a", "inc-1", "DEPLOYS")];
         const incidents: WorkGraphEdge[] = [makeEdge("l1", "inc-1", "wi-a", "LINKED_INCIDENT")];
@@ -192,6 +223,27 @@ describe("buildSankeyData", () => {
         expect(result!.nodes).toHaveLength(3);
         // 2 links: deployment→incident + incident→work_item
         expect(result!.links).toHaveLength(2);
+    });
+
+    it("uses incidentDisplayName for incident Sankey node labels", () => {
+        const rows = [
+            {
+                incidentId: "4e00fff2-df66-5028-8ebd-e4535332300b",
+                incidentDisplayName: "INC-2025-404",
+                deploymentIds: ["deploy-xyz789"],
+                workItemIds: ["work-item-lmn"],
+            },
+        ];
+
+        const result = buildSankeyData(rows);
+
+        expect(result).not.toBeNull();
+        expect(result!.nodes).toEqual(
+            expect.arrayContaining([expect.objectContaining({ name: "INC-2025-404" })]),
+        );
+        expect(result!.nodes).not.toEqual(
+            expect.arrayContaining([expect.objectContaining({ name: "inc:4e00fff2" })]),
+        );
     });
 });
 
@@ -349,6 +401,7 @@ describe("IncidentCorrelationDashboard", () => {
         ];
         render(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
         expect(screen.getByTestId("horizontal-bar-chart")).toBeInTheDocument();
+        expect(screen.getByTestId("horizontal-bar-chart")).toHaveTextContent("Long PR,No tests");
     });
 
     it("renders the server-resolved display name for a contributor (no raw UUID)", () => {

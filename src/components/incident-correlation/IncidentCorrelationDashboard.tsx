@@ -86,6 +86,8 @@ const DORA_METRIC_KEYS = ["change_failure_rate", "deployment_frequency", "mttr"]
 
 const MAX_SANKEY_INCIDENTS = 10;
 const MAX_LINKS_PER_INCIDENT = 3;
+const OPAQUE_LABEL_RE =
+    /^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const hasMeaningfulAssociations = (items: Contributor[]) =>
     items.some((item) => isFiniteNumber(item.delta_pct) && Math.abs(item.delta_pct) > 0);
@@ -116,12 +118,9 @@ export function joinEdges(
             deploysByIncident.set(incidentId, new Set());
         }
         deploysByIncident.get(incidentId)!.add(deploymentId);
-        // Capture first resolved display name we see for this incident (A7).
-        if (!incidentDisplayNames.has(incidentId)) {
-            incidentDisplayNames.set(
-                incidentId,
-                edge.targetDisplayName !== undefined ? edge.targetDisplayName : null,
-            );
+        const displayName = edge.targetDisplayName ?? null;
+        if (displayName || !incidentDisplayNames.has(incidentId)) {
+            incidentDisplayNames.set(incidentId, displayName);
         }
     }
 
@@ -133,6 +132,10 @@ export function joinEdges(
             workItemsByIncident.set(incidentId, new Set());
         }
         workItemsByIncident.get(incidentId)!.add(workItemId);
+        const displayName = edge.sourceDisplayName ?? null;
+        if (!incidentDisplayNames.has(incidentId)) {
+            incidentDisplayNames.set(incidentId, displayName);
+        }
     }
 
     const allIncidentIds = new Set([...deploysByIncident.keys(), ...workItemsByIncident.keys()]);
@@ -165,7 +168,7 @@ export function buildSankeyData(
     };
 
     for (const row of limited) {
-        const incName = `inc:${row.incidentId.slice(0, 8)}`;
+        const incName = row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
         addNode(incName, "incident");
 
         for (const depId of row.deploymentIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
@@ -221,10 +224,15 @@ export function IncidentCorrelationDashboard({
     // name; degrade genuinely-unresolved ids to a stable short token + badge.
     const driverChartLabels = resolveEntityLabels(
         topDrivers.map((d) => d.id),
-        (_id, i) => ({
-            name: topDrivers[i]?.display_name ?? undefined,
-            unresolvedFallback: "Unresolved",
-        }),
+        (_id, i) => {
+            const fallbackLabel = topDrivers[i]?.label?.trim();
+            const labelName =
+                fallbackLabel && !OPAQUE_LABEL_RE.test(fallbackLabel) ? fallbackLabel : undefined;
+            return {
+                name: topDrivers[i]?.display_name ?? labelName,
+                unresolvedFallback: "Unresolved",
+            };
+        },
     );
     const topContributors = contributors.slice(0, 5);
     const hasExplainData = topDrivers.length > 0 || topContributors.length > 0;
