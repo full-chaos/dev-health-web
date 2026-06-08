@@ -24,7 +24,8 @@ import { graphqlFetch } from "@/lib/graphql/server";
 import { HOTSPOTS_QUERY } from "@/lib/graphql/queries";
 import type { BusFactor } from "@/lib/graphql/types";
 import type { QuadrantResponse } from "@/lib/types";
-import { withFilterParam } from "@/lib/filters/url";
+import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { LANDSCAPE_EVIDENCE_METRICS } from "@/lib/metrics/landscape";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
 const QUADRANT_CARDS = [
@@ -427,7 +428,9 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
 
     const [health, hotspots, busFactor, ...quadrantData] = await Promise.all([
         checkApiHealth(),
-        orgId ? fetchHotspots(orgId, since.toISOString(), until.toISOString()) : Promise.resolve([]),
+        orgId
+            ? fetchHotspots(orgId, since.toISOString(), until.toISOString())
+            : Promise.resolve([]),
         fetchOrNull(getBusFactorData(filters), "landscape/bus-factor"),
         ...quadrantPromises,
     ]);
@@ -539,6 +542,18 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                                         filters={filters}
                                         chartHeight={420}
                                         emptyState="Quadrant data unavailable for this scope."
+                                        relatedLinks={[
+                                            {
+                                                label: CTA_LABELS.openEvidence,
+                                                href: buildExploreUrl({
+                                                    metric: LANDSCAPE_EVIDENCE_METRICS[
+                                                        primaryCard.type
+                                                    ],
+                                                    filters,
+                                                    role: activeRole,
+                                                }),
+                                            },
+                                        ]}
                                     />
                                 </div>
                                 <div className="flex flex-col gap-8">
@@ -555,6 +570,18 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                                                 filters={filters}
                                                 chartHeight={320}
                                                 emptyState="Quadrant data unavailable for this scope."
+                                                relatedLinks={[
+                                                    {
+                                                        label: CTA_LABELS.openEvidence,
+                                                        href: buildExploreUrl({
+                                                            metric: LANDSCAPE_EVIDENCE_METRICS[
+                                                                card.type
+                                                            ],
+                                                            filters,
+                                                            role: activeRole,
+                                                        }),
+                                                    },
+                                                ]}
                                             />
                                         );
                                     })}
