@@ -14,7 +14,10 @@ import { ChartFrame } from "@/components/charts/ChartFrame";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { orderTimeseriesPoints } from "@/components/charts/timeseriesData";
-
+import Link from "next/link";
+import { CTA_LABELS } from "@/lib/design/cta";
+import { buildExploreUrl } from "@/lib/filters/url";
+import type { MetricFilter } from "@/lib/filters/types";
 export type TrendPoint = { day: string; value: number; label?: string };
 
 export type LoadDriver = { label: string; value: number };
@@ -42,9 +45,13 @@ function emptyDescription(window: WindowLabel, hint: string): string {
 export function OverviewView({
     signals,
     window,
+    filters,
+    activeRole,
 }: {
     signals: LoadKpi[] | null;
     window: WindowLabel;
+    filters: MetricFilter;
+    activeRole?: string;
 }) {
     return (
         <>
@@ -58,9 +65,21 @@ export function OverviewView({
                             What is pulling attention apart?
                         </h2>
                     </div>
-                    <span className="rounded-full border border-(--accent)/30 bg-(--accent)/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent)">
-                        Team signal
-                    </span>
+                    <div className="flex items-center gap-4">
+                        <Link
+                            href={buildExploreUrl({
+                                metric: "pr_interruption_load",
+                                filters,
+                                role: activeRole,
+                            })}
+                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                        >
+                            {CTA_LABELS.openEvidence}
+                        </Link>
+                        <span className="rounded-full border border-(--accent)/30 bg-(--accent)/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent)">
+                            Team signal
+                        </span>
+                    </div>
                 </div>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-(--ink-muted)">
                     Read these as pressure cues. The values point to review load, context spread,
@@ -76,8 +95,9 @@ export function OverviewView({
                         <p className="mt-2 text-sm leading-6">
                             No cognitive-load signals found for{" "}
                             <span className="font-medium text-foreground">{window.sinceDate}</span>{" "}
-                            to <span className="font-medium text-foreground">{window.untilDate}</span>
-                            . Try widening the date range or switching to a team scope.
+                            to{" "}
+                            <span className="font-medium text-foreground">{window.untilDate}</span>.
+                            Try widening the date range or switching to a team scope.
                         </p>
                     </div>
                 ) : (
@@ -169,7 +189,11 @@ export function ContextSwitchingView({
             interpretation="Distinct repos, PRs, reviews, and touched file areas the team moved across each day. Higher spread means attention is split over more surfaces."
             threshold={
                 latest != null
-                    ? { label: "Latest", value: String(latest), tone: latest > 6 ? "caution" : "default" }
+                    ? {
+                          label: "Latest",
+                          value: String(latest),
+                          tone: latest > 6 ? "caution" : "default",
+                      }
                     : undefined
             }
             band={peak != null ? { label: "Window peak", value: String(peak) } : undefined}
@@ -203,7 +227,10 @@ export function FocusPressureView({
                 interpretation="Reviews, first-review events, and review feedback interrupting focused delivery, per day."
                 isEmpty={interruption.length === 0}
                 stateTitle="No interruption data"
-                stateDescription={emptyDescription(window, "Widen the window or pick a team scope.")}
+                stateDescription={emptyDescription(
+                    window,
+                    "Widen the window or pick a team scope.",
+                )}
                 data-testid="cognitive-load-focus-pressure-interruption"
             >
                 <TimeseriesChart data={interruption} height={280} />
@@ -213,7 +240,10 @@ export function FocusPressureView({
                 interpretation="Aggregate review requests the team absorbed per day — never a person-level queue ranking."
                 isEmpty={reviewRequest.length === 0}
                 stateTitle="No review-request data"
-                stateDescription={emptyDescription(window, "Widen the window or pick a team scope.")}
+                stateDescription={emptyDescription(
+                    window,
+                    "Widen the window or pick a team scope.",
+                )}
                 data-testid="cognitive-load-focus-pressure-review"
             >
                 <TimeseriesChart data={reviewRequest} height={280} />
@@ -273,7 +303,11 @@ export function LoadDriversView({
             interpretation="Average daily contribution of each load signal across the window. The longest bar is the dominant driver of cognitive load."
             threshold={
                 top && topShare != null
-                    ? { label: "Top driver", value: `${top.label} · ${topShare}%`, tone: "caution" }
+                    ? {
+                          label: "Top driver",
+                          value: `${top.label} · ${topShare}%`,
+                          tone: "caution",
+                      }
                     : undefined
             }
             isEmpty={isEmpty}

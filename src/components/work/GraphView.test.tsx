@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
 import type { MetricFilter } from "@/lib/filters/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 const { mockUseSearchParams, mockUseWorkGraphEdges, mockUseOrgId } = vi.hoisted(() => ({
     mockUseSearchParams: vi.fn(() => new URLSearchParams()),
@@ -376,9 +377,27 @@ describe("GraphView", () => {
         });
 
         const reviewEdges = [
-            { reviewer: "alice@example.com", author: "bob@example.com", reviewsCount: 12, day: "2026-05-01", repoId: "repo-1" },
-            { reviewer: "alice@example.com", author: "bob@example.com", reviewsCount: 5, day: "2026-05-02", repoId: "repo-1" },
-            { reviewer: "carol@example.com", author: "bob@example.com", reviewsCount: 3, day: "2026-05-01", repoId: "repo-1" },
+            {
+                reviewer: "alice@example.com",
+                author: "bob@example.com",
+                reviewsCount: 12,
+                day: "2026-05-01",
+                repoId: "repo-1",
+            },
+            {
+                reviewer: "alice@example.com",
+                author: "bob@example.com",
+                reviewsCount: 5,
+                day: "2026-05-02",
+                repoId: "repo-1",
+            },
+            {
+                reviewer: "carol@example.com",
+                author: "bob@example.com",
+                reviewsCount: 3,
+                day: "2026-05-01",
+                repoId: "repo-1",
+            },
         ];
 
         render(
@@ -427,5 +446,24 @@ describe("GraphView", () => {
         // We match the description paragraph to avoid ambiguity with the heading.
         expect(screen.getByText("Failed to load review network data")).toBeInTheDocument();
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("renders a scope-preserving Open evidence linkback in the explorer header", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        const link = screen.getByRole("link", { name: CTA_LABELS.openEvidence });
+        const href = link.getAttribute("href") ?? "";
+        expect(href).toContain("/explore");
+        expect(href).toContain("metric=throughput");
+        // scope-preserving: the encoded filter param is carried through.
+        expect(href).toContain("f=");
     });
 });
