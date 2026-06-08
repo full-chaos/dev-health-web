@@ -229,7 +229,9 @@ export async function getDiagnoseSignals(
             () =>
                 isTestMode
                     ? Promise.resolve(undefined)
-                    : graphqlFetch<{ complexityTimeseries: ComplexityTimeseriesResult }>(
+                    : graphqlFetch<{
+                          complexityTimeseries: ComplexityTimeseriesResult;
+                      }>(
                           COMPLEXITY_TIMESERIES_QUERY,
                           {
                               input: {
@@ -281,10 +283,6 @@ export async function getDiagnoseSignals(
             : UNAVAILABLE,
     );
 
-    // ── People (/people) ─────────────────────────────────────────────────────
-    // No area-level aggregate metric exists → honest "unavailable" (CHAOS-2077).
-    push("people", UNAVAILABLE);
-
     // ── Code (/code) ──────────────────────────────────────────────────────────
     // Home REST deltas[metric=churn] value; RETURNED severity from
     // signals[metric=churn].severity.
@@ -305,8 +303,7 @@ export async function getDiagnoseSignals(
     // higherIsBetter polarity. DERIVE.
     // CHAOS-2074: provisional thresholds — see LANDSCAPE_BUSFACTOR_THRESHOLDS above.
     const busFactorValue = busFactor?.value;
-    const hasBusFactor =
-        typeof busFactorValue === "number" && (busFactor?.repos?.length ?? 0) > 0;
+    const hasBusFactor = typeof busFactorValue === "number" && (busFactor?.repos?.length ?? 0) > 0;
     push(
         "landscape",
         hasBusFactor
