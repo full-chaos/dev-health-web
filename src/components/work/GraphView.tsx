@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
 import { DataState } from "@/components/ui/DataState";
@@ -10,6 +11,7 @@ import type { WorkGraphEdge, WorkGraphEdgeType, WorkGraphNodeType } from "@/lib/
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { buildExploreUrl } from "@/lib/filters/url";
 import { useOrgId } from "@/lib/graphql/provider";
 import { formatNumber } from "@/lib/formatters";
 import {
@@ -269,8 +271,6 @@ export function GraphView({
         return { incomingEdges, outgoingEdges };
     }, [selectedNode, displayEdges]);
 
-    void activeRole;
-
     // ── Derived table tabs (no force-directed canvas) ───────────────────────────
     if (activeTab === "inflow-outflow") {
         return <InflowOutflowView edges={edges} loading={loading} error={error} />;
@@ -297,8 +297,7 @@ export function GraphView({
     };
     const tabDescription: Record<"overview" | "dependencies", string> = {
         overview: "Visualize relationships between issues, PRs, commits, and files.",
-        dependencies:
-            "Blocking, related, duplicate, and parent-child links between work items.",
+        dependencies: "Blocking, related, duplicate, and parent-child links between work items.",
     };
     const graphTab = activeTab as "overview" | "dependencies";
     const emptyCopy =
@@ -317,8 +316,20 @@ export function GraphView({
                             <h3 className="text-lg font-medium">{tabHeading[graphTab]}</h3>
                             <p className="text-sm text-(--ink-muted)">{tabDescription[graphTab]}</p>
                         </div>
-                        <div className="text-xs text-(--ink-muted)">
-                            {loading ? "Loading..." : `${formatNumber(tabEdges.length)} edges`}
+                        <div className="flex items-center gap-4">
+                            <Link
+                                href={buildExploreUrl({
+                                    metric: "throughput",
+                                    filters,
+                                    role: activeRole,
+                                })}
+                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                            >
+                                {CTA_LABELS.openEvidence}
+                            </Link>
+                            <div className="text-xs text-(--ink-muted)">
+                                {loading ? "Loading..." : `${formatNumber(tabEdges.length)} edges`}
+                            </div>
                         </div>
                     </div>
 
@@ -587,7 +598,12 @@ function ArtifactsView({ edges, loading, error }: DerivedViewProps) {
     const rows = useMemo(() => {
         const counts = new Map<
             string,
-            { type: WorkGraphNodeType; id: string; degree: number; evidence: string | null }
+            {
+                type: WorkGraphNodeType;
+                id: string;
+                degree: number;
+                evidence: string | null;
+            }
         >();
         const bump = (type: WorkGraphNodeType, id: string, evidence: string | null) => {
             const key = `${type}:${id}`;
@@ -668,7 +684,9 @@ function ArtifactsView({ edges, loading, error }: DerivedViewProps) {
                                         {row.evidence ? (
                                             <q className="line-clamp-2 text-xs">{row.evidence}</q>
                                         ) : (
-                                            <span className="text-xs italic">No linked evidence</span>
+                                            <span className="text-xs italic">
+                                                No linked evidence
+                                            </span>
                                         )}
                                     </td>
                                 </tr>
@@ -863,10 +881,7 @@ function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
     // Derive unique reviewers + authors for a quick summary line.
     const reviewerCount = useMemo(() => new Set(rows.map((r) => r.reviewer)).size, [rows]);
     const authorCount = useMemo(() => new Set(rows.map((r) => r.author)).size, [rows]);
-    const totalReviews = useMemo(
-        () => rows.reduce((sum, r) => sum + r.totalReviews, 0),
-        [rows],
-    );
+    const totalReviews = useMemo(() => rows.reduce((sum, r) => sum + r.totalReviews, 0), [rows]);
     const maxReviews = rows.reduce((m, r) => Math.max(m, r.totalReviews), 1);
 
     return (
@@ -878,8 +893,7 @@ function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
                 <h3 className="text-lg font-semibold tracking-tight">Review Network</h3>
                 <p className="mt-1 text-sm text-(--ink-muted)">
                     Reviewer→author collaboration pairs from code review activity, ranked by review
-                    count. Data sourced from{" "}
-                    <code className="text-xs">review_edges_daily</code>.
+                    count. Data sourced from <code className="text-xs">review_edges_daily</code>.
                 </p>
             </div>
 
@@ -920,10 +934,7 @@ function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
                         </span>
                     </div>
                     <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
-                        <table
-                            className="w-full text-sm"
-                            data-testid="review-network-table"
-                        >
+                        <table className="w-full text-sm" data-testid="review-network-table">
                             <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                                 <tr>
                                     <th className="px-5 py-3 text-left">Reviewer</th>
@@ -940,10 +951,7 @@ function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
                                         className="border-t border-(--card-stroke)/60"
                                     >
                                         <td className="px-5 py-3 align-middle">
-                                            <span
-                                                className="font-medium"
-                                                title={row.reviewer}
-                                            >
+                                            <span className="font-medium" title={row.reviewer}>
                                                 {emailDisplayName(row.reviewer)}
                                             </span>
                                             <span className="ml-1.5 text-xs text-(--ink-muted)">
@@ -951,10 +959,7 @@ function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
                                             </span>
                                         </td>
                                         <td className="px-5 py-3 align-middle">
-                                            <span
-                                                className="font-medium"
-                                                title={row.author}
-                                            >
+                                            <span className="font-medium" title={row.author}>
                                                 {emailDisplayName(row.author)}
                                             </span>
                                             <span className="ml-1.5 text-xs text-(--ink-muted)">
