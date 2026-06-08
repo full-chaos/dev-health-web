@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+    type KeyboardEvent as ReactKeyboardEvent,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type CSSProperties,
+} from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
@@ -119,6 +126,10 @@ export function QuadrantPanel({
     const [showZoneOverlay, setShowZoneOverlay] = useState(true);
     const [hoveredOverlayKey, setHoveredOverlayKey] = useState<string | null>(null);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const closeBtnRef = useRef<HTMLButtonElement>(null);
+    const hasOpenedRef = useRef(false);
     const zoneOverlay = useMemo(() => {
         if (!scopedData) {
             return null;
@@ -232,6 +243,16 @@ export function QuadrantPanel({
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [isGuideOpen]);
 
+    // Focus management: move focus into dialog on open; restore to trigger on close
+    useEffect(() => {
+        if (isGuideOpen) {
+            hasOpenedRef.current = true;
+            closeBtnRef.current?.focus();
+        } else if (hasOpenedRef.current) {
+            triggerRef.current?.focus();
+        }
+    }, [isGuideOpen]);
+
     if (!scopedData || !scopedData.points?.length) {
         return (
             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
@@ -270,6 +291,31 @@ export function QuadrantPanel({
         }
     };
 
+    const handleDialogKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== "Tab") return;
+        const container = dialogRef.current;
+        if (!container) return;
+        const focusable = Array.from(
+            container.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            ),
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey) {
+            if (document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            }
+        } else {
+            if (document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+    };
+
     return (
         <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -281,6 +327,7 @@ export function QuadrantPanel({
                     <span>Select a dot to investigate</span>
                     {showViewGuide ? (
                         <button
+                            ref={triggerRef}
                             type="button"
                             onClick={() => setIsGuideOpen(true)}
                             className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs uppercase tracking-[0.25em] text-(--ink-muted) btn-help"
@@ -299,12 +346,16 @@ export function QuadrantPanel({
                           <button
                               type="button"
                               aria-label={CTA_LABELS.closePanel}
+                              tabIndex={-1}
                               className="absolute inset-0 bg-black/50"
                               onClick={() => setIsGuideOpen(false)}
                           />
                           <div
+                              ref={dialogRef}
                               role="dialog"
                               aria-modal="true"
+                              aria-label={infoTitle}
+                              onKeyDown={handleDialogKeyDown}
                               className="w-full max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-5 text-xs text-(--ink-muted) shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
                           >
                               <div className="flex items-start justify-between gap-4">
@@ -315,6 +366,7 @@ export function QuadrantPanel({
                                       <p className="mt-2 text-sm text-foreground">Quadrant guide</p>
                                   </div>
                                   <button
+                                      ref={closeBtnRef}
                                       type="button"
                                       onClick={() => setIsGuideOpen(false)}
                                       className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"

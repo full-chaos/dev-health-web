@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@/test/utils";
+import { render, screen, fireEvent, waitFor, within } from "@/test/utils";
 import { QuadrantPanel } from "./QuadrantPanel";
 
 vi.mock("./QuadrantChart", () => ({
@@ -55,5 +55,38 @@ describe("QuadrantPanel", () => {
         // The dialog should be a direct child of document.body (or inside a portal container in body)
         // In testing-library, baseElement is document.body
         expect(dialog.closest("body")).toBe(document.body);
+    });
+
+    it("closes the guide when Escape is pressed", async () => {
+        render(<QuadrantPanel {...defaultProps} showViewGuide={true} />);
+        const guideButton = screen.getByRole("button", { name: /view guide/i });
+        fireEvent.click(guideButton);
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        fireEvent.keyDown(window, { key: "Escape" });
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+    });
+
+    it("moves focus into the dialog when opened", async () => {
+        render(<QuadrantPanel {...defaultProps} showViewGuide={true} />);
+        const guideButton = screen.getByRole("button", { name: /view guide/i });
+        fireEvent.click(guideButton);
+        const dialog = screen.getByRole("dialog");
+        await waitFor(() => {
+            expect(dialog.contains(document.activeElement)).toBe(true);
+        });
+    });
+
+    it("restores focus to the trigger button when the dialog is closed", async () => {
+        render(<QuadrantPanel {...defaultProps} showViewGuide={true} />);
+        const guideButton = screen.getByRole("button", { name: /view guide/i });
+        fireEvent.click(guideButton);
+        const dialog = screen.getByRole("dialog");
+        const closeButton = within(dialog).getByRole("button");
+        fireEvent.click(closeButton);
+        await waitFor(() => {
+            expect(document.activeElement).toBe(guideButton);
+        });
     });
 });
