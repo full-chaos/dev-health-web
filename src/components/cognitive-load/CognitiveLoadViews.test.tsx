@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { render, screen } from "@/test/utils";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { METRIC_CATALOG } from "@/lib/metrics/catalog";
 import type { MetricFilter } from "@/lib/filters/types";
 
 import { OverviewView, contextSpreadSummary, loadDriverSummary } from "./CognitiveLoadViews";
@@ -26,7 +27,9 @@ describe("OverviewView", () => {
         const link = screen.getByRole("link", { name: CTA_LABELS.openEvidence });
         const href = link.getAttribute("href") ?? "";
         expect(href).toContain("/explore");
-        expect(href).toContain("metric=pr_interruption_load");
+        expect(href).toContain("metric=review_latency");
+        // catalog membership: review_latency must be a real explainable metric.
+        expect(METRIC_CATALOG.map((m) => m.metric)).toContain("review_latency");
         // scope-preserving: filter + role carried through to Explore.
         expect(href).toContain("f=");
         expect(href).toContain("role=engineer");
