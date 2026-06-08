@@ -13,6 +13,7 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter } from "@/lib/filters/encode";
 import { formatNumber } from "@/lib/formatters";
 import { getMetricLabel } from "@/lib/metrics/catalog";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { getRangeParams, withRangeParams } from "@/lib/people/query";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
@@ -421,7 +422,9 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
 
                         <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                             <div className="flex items-center justify-between">
-                                <h2 className="font-(--font-display) text-xl">Evidence</h2>
+                                <h2 className="font-(--font-display) text-xl">
+                                    {CTA_LABELS.evidence}
+                                </h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Drilldown
                                 </span>

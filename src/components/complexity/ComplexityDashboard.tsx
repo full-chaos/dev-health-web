@@ -18,6 +18,8 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { ReactNode } from "react";
 import type { EChartsOption } from "echarts";
 import { LineChart } from "echarts/charts";
@@ -556,7 +558,7 @@ function HotspotsView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                         { label: "Risk score", align: "right" },
                         { label: "Cyclomatic avg", align: "right" },
                         { label: "Churn LOC 30d", align: "right" },
-                        { label: "Evidence" },
+                        { label: CTA_LABELS.evidence },
                     ]}
                 >
                     {top20.map((row) => {
@@ -638,7 +640,7 @@ function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                     { label: "Repo" },
                     { label: "Owner concentration", align: "right" },
                     { label: "Risk score", align: "right" },
-                    { label: "Evidence" },
+                    { label: CTA_LABELS.evidence },
                 ]}
             >
                 {ranked.map((row) => {

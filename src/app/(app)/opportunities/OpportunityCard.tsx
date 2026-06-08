@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { buildExploreUrl } from "@/lib/filters/url";
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { OpportunityCard as OpportunityCardData } from "@/lib/types";
 
@@ -19,7 +20,9 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
             <p className="mt-2 text-sm text-(--ink-muted)">{card.rationale}</p>
 
             <div className="mt-4" data-testid="opportunity-card-evidence">
-                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">Evidence</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                    {CTA_LABELS.evidence}
+                </p>
                 {hasArtifacts ? (
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                         {card.evidence_links.map((link) => (

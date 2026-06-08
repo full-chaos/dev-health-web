@@ -642,7 +642,7 @@ function ArtifactsView({ edges, loading, error }: DerivedViewProps) {
                                 <th className="px-5 py-3 text-left">Type</th>
                                 <th className="px-5 py-3 text-left">Entity</th>
                                 <th className="px-5 py-3 text-right">Connections</th>
-                                <th className="px-5 py-3 text-left">Evidence</th>
+                                <th className="px-5 py-3 text-left">{CTA_LABELS.evidence}</th>
                             </tr>
                         </thead>
                         <tbody>
