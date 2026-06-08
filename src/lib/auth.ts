@@ -160,6 +160,7 @@ const nextAuth = NextAuth({
                 token.refresh_token = user.refresh_token;
                 token.expires_at = Date.now() + (user.expires_in || 3600) * 1000;
                 token.last_validated = Date.now();
+                token.error = undefined;
             }
 
             // Social login: exchange OAuth token for backend JWT
@@ -281,6 +282,7 @@ const nextAuth = NextAuth({
                     if (res.ok) {
                         const data = await res.json();
                         token.access_token = data.access_token;
+                        token.refresh_token = data.refresh_token ?? token.refresh_token;
                         token.expires_at = now + (data.expires_in || 3600) * 1000;
                         token.last_validated = now;
                         if (data.user) {
@@ -290,7 +292,7 @@ const nextAuth = NextAuth({
                             token.role = data.user.role;
                             token.is_superuser = data.user.is_superuser ?? false;
                         }
-                    } else {
+                    } else if (res.status === 401) {
                         token.access_token = undefined;
                         token.refresh_token = undefined;
                         token.error = "refresh_failed";
