@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 
 import type { MetricFilter } from "@/lib/filters/types";
@@ -292,57 +293,60 @@ export function QuadrantPanel({
                     ) : null}
                 </div>
             </div>
-            {showViewGuide && isGuideOpen ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <button
-                        type="button"
-                        aria-label={CTA_LABELS.closePanel}
-                        className="absolute inset-0 bg-black/50"
-                        onClick={() => setIsGuideOpen(false)}
-                    />
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        className="w-full max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-5 text-xs text-(--ink-muted) shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
-                    >
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                    {infoTitle}
-                                </p>
-                                <p className="mt-2 text-sm text-foreground">Quadrant guide</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsGuideOpen(false)}
-                                className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
-                            >
-                                {CTA_LABELS.closePanel}
-                            </button>
-                        </div>
-                        <div className="mt-4 space-y-3">
-                            <p>
-                                <span className="font-semibold text-foreground uppercase tracking-wider text-xs">
-                                    1. Emphasis:
-                                </span>{" "}
-                                {influenceLens}. {influenceFraming}
-                            </p>
-                            <p>
-                                <span className="font-semibold text-foreground uppercase tracking-wider text-xs">
-                                    2. Dot:
-                                </span>{" "}
-                                {pointMeaning} {positionMeaning}
-                            </p>
-                            <p>
-                                <span className="font-semibold text-foreground uppercase tracking-wider text-xs">
-                                    3. Next:
-                                </span>{" "}
-                                {influenceNext}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
+            {showViewGuide && isGuideOpen && typeof document !== "undefined"
+                ? createPortal(
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                          <button
+                              type="button"
+                              aria-label={CTA_LABELS.closePanel}
+                              className="absolute inset-0 bg-black/50"
+                              onClick={() => setIsGuideOpen(false)}
+                          />
+                          <div
+                              role="dialog"
+                              aria-modal="true"
+                              className="w-full max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-5 text-xs text-(--ink-muted) shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
+                          >
+                              <div className="flex items-start justify-between gap-4">
+                                  <div>
+                                      <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                          {infoTitle}
+                                      </p>
+                                      <p className="mt-2 text-sm text-foreground">Quadrant guide</p>
+                                  </div>
+                                  <button
+                                      type="button"
+                                      onClick={() => setIsGuideOpen(false)}
+                                      className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                                  >
+                                      {CTA_LABELS.closePanel}
+                                  </button>
+                              </div>
+                              <div className="mt-4 space-y-3">
+                                  <p>
+                                      <span className="font-semibold text-foreground uppercase tracking-wider text-xs">
+                                          1. Emphasis:
+                                      </span>{" "}
+                                      {influenceLens}. {influenceFraming}
+                                  </p>
+                                  <p>
+                                      <span className="font-semibold text-foreground uppercase tracking-wider text-xs">
+                                          2. Dot:
+                                      </span>{" "}
+                                      {pointMeaning} {positionMeaning}
+                                  </p>
+                                  <p>
+                                      <span className="font-semibold text-foreground uppercase tracking-wider text-xs">
+                                          3. Next:
+                                      </span>{" "}
+                                      {influenceNext}
+                                  </p>
+                              </div>
+                          </div>
+                      </div>,
+                      document.body,
+                  )
+                : null}
             <div className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)">
                 {hasInterpretationOverlay ? (
                     <div className="space-y-1">
