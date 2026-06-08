@@ -831,3 +831,25 @@ query Hotspots($input: HotspotsInput!) {
   }
 }
 `;
+
+// ==== Cognitive Load Queries (CHAOS-2077) ====
+
+// Daily cognitive-load signals: PR interruption load, context spread, review request load,
+// after-hours and weekend commit ratios. Backed by user_metrics_daily and team_metrics_daily.
+export const COGNITIVE_LOAD_QUERY = `
+query CognitiveLoad($input: CognitiveLoadInput!) {
+  cognitiveLoad(input: $input) {
+    orgId
+    teamId
+    totalDays
+    signals {
+      day
+      prInterruptionLoad
+      contextSpreadCount
+      reviewRequestLoad
+      afterHoursCommitRatio
+      weekendCommitRatio
+    }
+  }
+}
+`;
