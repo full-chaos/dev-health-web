@@ -1,32 +1,24 @@
 "use client";
 
-import { type Dispatch, type SetStateAction, useMemo } from "react";
-import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
-import { MetricCard } from "@/components/metrics/MetricCard";
-import { DataState } from "@/components/ui/DataState";
+import { useMemo } from "react";
 import { formatNumber } from "@/lib/formatters";
+import { CTA_LABELS } from "@/lib/design/cta";
 import {
     buildTimeRangeLabel,
     formatBandLabel,
     formatEffortUnit,
     formatQuality,
-    formatSubcategoryLabel,
     formatWorkUnitLabel,
-    selectWorkUnitEntries,
 } from "@/lib/investment";
-import { buildExploreUrl } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
-import {
-    CATEGORIZATION_OPTIONS,
-    type CategorizationMode,
-    type EvidenceUnit,
-    type InvestmentTab,
-} from "./investment/types";
+import { type InvestmentTab } from "./investment/types";
 import { useInvestmentData } from "./investment/useInvestmentData";
 import { InvestmentExplainer } from "./investment/InvestmentExplainer";
 import { InvestmentCharts } from "./investment/InvestmentCharts";
-import { InvestmentWorkUnitList } from "./investment/InvestmentWorkUnitList";
+import { InvestmentEvidenceTable } from "./investment/InvestmentEvidenceTable";
+import { AllocationCoverage } from "./investment/AllocationCoverage";
+import { ConfidencePanel } from "./investment/ConfidencePanel";
 import { EvidenceEntryCard } from "./investment/EvidenceEntryCard";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -40,41 +32,6 @@ type InvestmentViewProps = {
 };
 
 // ── Sub-sections (render helpers) ────────────────────────────────────────────
-
-/** The header row: section title + toggles. Used in "overview" and "mix" tabs. */
-function ViewHeader({
-    categorizationMode,
-    setCategorizationMode,
-}: {
-    categorizationMode: CategorizationMode;
-    setCategorizationMode: Dispatch<SetStateAction<CategorizationMode>>;
-}) {
-    return (
-        <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h2 className="font-(--font-display) text-xl">Work Unit Investment</h2>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                    These views surface probabilistic investment themes and subcategories
-                    inferred from connected work units.
-                </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-                <ChartTypeToggle
-                    options={CATEGORIZATION_OPTIONS}
-                    value={categorizationMode}
-                    onChange={setCategorizationMode}
-                    className="flex-wrap"
-                />
-                <a
-                    href="#work-unit-calculation"
-                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                >
-                    How this was calculated
-                </a>
-            </div>
-        </div>
-    );
-}
 
 /** The two <details> explainer cards. */
 function ExplainerCards() {
@@ -90,25 +47,21 @@ function ExplainerCards() {
                         across issues, pull requests, commits, and files.
                     </p>
                     <p className="mt-2 text-sm text-(--ink-muted)">
-                        Investment reflects how work appears to be aimed, based on text-first
-                        intent plus structural and contextual corroboration. It is not a label,
-                        a verdict, or an assessment of people.
+                        Investment reflects how work appears to be aimed, based on text-first intent
+                        plus structural and contextual corroboration. It is not a label, a verdict,
+                        or an assessment of people.
                     </p>
                     <p className="mt-2 text-sm text-(--ink-muted)">
-                        Because real work is messy, investment views are shown with evidence
-                        quality and uncertainty rather than as fixed categories.
+                        Because real work is messy, investment views are shown with evidence quality
+                        and uncertainty rather than as fixed categories.
                     </p>
                     <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
-                        <li>
-                            Investment describes effort allocation, not individual performance.
-                        </li>
+                        <li>Investment describes effort allocation, not individual performance.</li>
                         <li>
                             Categories are probabilistic, not exclusive. Work can span multiple
                             categories at once.
                         </li>
-                        <li>
-                            Evidence quality reflects corroboration strength, not correctness.
-                        </li>
+                        <li>Evidence quality reflects corroboration strength, not correctness.</li>
                         <li>
                             Low evidence quality indicates mixed or incomplete evidence, not bad
                             data.
@@ -127,17 +80,14 @@ function ExplainerCards() {
                 <div className="mt-2">
                     <ul className="space-y-2 text-sm text-(--ink-muted)">
                         <li>Size represents effort associated with a theme or subcategory.</li>
-                        <li>
-                            Color indicates which theme or subcategory the work leans toward.
-                        </li>
+                        <li>Color indicates which theme or subcategory the work leans toward.</li>
                         <li>Opacity represents evidence quality for the interpretation.</li>
                         <li>
-                            Flows show how effort appears to move from teams into themes and
-                            repos.
+                            Flows show how effort appears to move from teams into themes and repos.
                         </li>
                         <li>
-                            Use the investment mix chart to drill from themes into subcategories
-                            and evidence.
+                            Use the investment mix chart to drill from themes into subcategories and
+                            evidence.
                         </li>
                     </ul>
                 </div>
@@ -166,36 +116,9 @@ export function InvestmentView({
         return "effort";
     }, [data.workUnits]);
 
-    // Overview drill-down: focused subcategory only, empty otherwise (prompts user).
-    const evidenceUnits = useMemo<EvidenceUnit[]>(
-        () =>
-            selectWorkUnitEntries({
-                focusSubcategory: data.focusSubcategory,
-                workUnits: data.workUnits,
-                fallbackToAll: false,
-            }),
-        [data.focusSubcategory, data.workUnits],
-    );
-
-    // Unit Investment tab: self-contained — ALL units when no subcategory is set.
-    const unitInvestmentEntries = useMemo<EvidenceUnit[]>(
-        () =>
-            selectWorkUnitEntries({
-                focusSubcategory: data.focusSubcategory,
-                workUnits: data.workUnits,
-                fallbackToAll: true,
-            }),
-        [data.focusSubcategory, data.workUnits],
-    );
-
-    const selectableUnits = useMemo(
-        () => (data.focusSubcategory ? evidenceUnits.map((entry) => entry.unit) : data.workUnits),
-        [data.focusSubcategory, data.workUnits, evidenceUnits],
-    );
-
-    const focusSubcategoryLabel = data.focusSubcategory
-        ? formatSubcategoryLabel(data.focusSubcategory, true)
-        : "";
+    // Evidence-block dropdown lists every work unit in the window; the table
+    // above it drives grouped navigation.
+    const selectableUnits = data.workUnits;
 
     const selectedUnitId = useMemo(() => {
         if (!data.selectedUnit) return "";
@@ -241,8 +164,8 @@ export function InvestmentView({
                     <h3 className="font-(--font-display) text-lg">How this was calculated</h3>
                     <p className="mt-1 text-sm text-(--ink-muted)">
                         This interpretation is text-first, with provider metadata and contextual
-                        structure used to corroborate the investment mix. Evidence quality
-                        reflects how strongly those inputs align.
+                        structure used to corroborate the investment mix. Evidence quality reflects
+                        how strongly those inputs align.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -362,9 +285,7 @@ export function InvestmentView({
                         </p>
                         <div className="mt-3 space-y-2 text-xs">
                             {(data.selectedUnit.evidence?.textual ?? []).length === 0 && (
-                                <p className="text-(--ink-muted)">
-                                    No textual evidence reported.
-                                </p>
+                                <p className="text-(--ink-muted)">No textual evidence reported.</p>
                             )}
                             {(data.selectedUnit.evidence?.textual ?? []).map((entry, idx) => (
                                 <EvidenceEntryCard
@@ -425,8 +346,8 @@ export function InvestmentView({
                                                             </p>
                                                         </div>
                                                     ))}
-                                                    {data.explanation.evidence_highlights
-                                                        .length > 0 && (
+                                                    {data.explanation.evidence_highlights.length >
+                                                        0 && (
                                                         <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-(--ink-muted)">
                                                             {data.explanation.evidence_highlights.map(
                                                                 (highlight) => (
@@ -472,8 +393,7 @@ export function InvestmentView({
                 </div>
             ) : (
                 <p className="mt-6 text-sm text-(--ink-muted)">
-                    Select a work unit from the dropdown to inspect evidence for the current
-                    focus.
+                    Select a work unit from the dropdown to inspect evidence for the current focus.
                 </p>
             )}
         </div>
@@ -483,107 +403,67 @@ export function InvestmentView({
     // Non-overview tabs branch explicitly; "overview" is the final default
     // return below. With `activeTab: InvestmentTab` this is exhaustive.
 
-    if (activeTab === "mix") {
+    if (activeTab === "allocation") {
         return (
             <section className="flex flex-col gap-6">
                 <div>
-                    <h2 className="font-(--font-display) text-xl">Investment Mix</h2>
+                    <h2 className="font-(--font-display) text-xl">Allocation</h2>
                     <p className="mt-2 text-sm text-(--ink-muted)">
-                        Effort allocation across investment themes and subcategories.
+                        How effort is distributed across teams, repositories, and themes. Each
+                        allocation path maps a team or theme onto the repositories where the work
+                        lands.
                     </p>
                 </div>
-                <ExplainerCards />
-                <InvestmentExplainer
-                    mixExplanation={data.mixExplanation}
-                    mixExplainKey={data.mixExplainKey}
-                    isExplainingMix={data.isExplainingMix}
-                    onRegenerate={data.regenerateMixExplanation}
+                <AllocationCoverage
+                    teamCategoryFlow={data.teamCategoryFlow}
+                    repoTeamFlow={data.repoTeamFlow}
+                    isLoading={data.isCategoryFlowLoading}
                 />
-                <InvestmentCharts {...sharedChartProps} section="mix" />
-            </section>
-        );
-    }
-
-    if (activeTab === "strategic-allocation") {
-        return (
-            <section className="flex flex-col gap-6">
-                <div>
-                    <h2 className="font-(--font-display) text-xl">Strategic Allocation</h2>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        How effort flows from teams into themes and repositories.
-                    </p>
-                </div>
                 <InvestmentCharts {...sharedChartProps} section="flows" />
             </section>
         );
     }
 
-    if (activeTab === "unit-investment") {
+    if (activeTab === "evidence") {
         return (
             <section className="flex flex-col gap-6">
                 <div>
-                    <h2 className="font-(--font-display) text-xl">Unit Investment</h2>
+                    <h2 className="font-(--font-display) text-xl">{CTA_LABELS.evidence}</h2>
                     <p className="mt-2 text-sm text-(--ink-muted)">
-                        Per-work-unit effort breakdown and evidence detail.
+                        The work units behind the investment mix. Group by theme, subcategory, or
+                        type, then expand a unit to read its classification rationale and the
+                        metadata that supports it.
                     </p>
                 </div>
-                <InvestmentWorkUnitList
-                    focusSubcategory={data.focusSubcategory}
-                    focusSubcategoryLabel={focusSubcategoryLabel}
-                    evidenceUnits={unitInvestmentEntries}
+                <InvestmentEvidenceTable
+                    workUnits={data.workUnits}
                     effortUnit={effortUnit}
-                    onClearSubcategory={() => data.setFocusSubcategory(null)}
                     onSelectWorkUnit={data.handleSelect}
-                    showAllWhenUnfocused
                 />
                 {evidenceBlock}
             </section>
         );
     }
 
-    if (activeTab === "rework") {
+    if (activeTab === "confidence") {
         return (
-            <section className="flex flex-col gap-6">
-                <div>
-                    <h2 className="font-(--font-display) text-xl">Rework</h2>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        Share of churn in files changed by more than one commit in the window.
-                    </p>
-                </div>
-                {reworkMetric ? (
-                    <div className="grid gap-4 sm:max-w-md">
-                        <MetricCard
-                            label="Rework ratio"
-                            href={buildExploreUrl({
-                                metric: "rework_ratio",
-                                filters,
-                                role: activeRole,
-                            })}
-                            value={reworkMetric.value}
-                            unit={reworkMetric.unit}
-                            delta={reworkMetric.delta_pct}
-                            spark={reworkMetric.spark}
-                            caption="Churn from rework"
-                        />
-                    </div>
-                ) : (
-                    <DataState
-                        variant="detector-unavailable"
-                        title="Rework view not available yet"
-                        description="A dedicated rework breakdown isn't wired for this scope yet."
-                    />
-                )}
-            </section>
+            <ConfidencePanel
+                filters={filters}
+                activeRole={activeRole}
+                workUnits={data.workUnits}
+                mixExplanation={data.mixExplanation}
+                teamCategoryFlow={data.teamCategoryFlow}
+                repoTeamFlow={data.repoTeamFlow}
+                isCategoryFlowLoading={data.isCategoryFlowLoading}
+                reworkMetric={reworkMetric}
+            />
         );
     }
 
-    // overview (default) — the confirmed "spot-on" full view.
+    // overview (default) — key findings, the investment treemap, and top themes.
+    // Sankey/Chord deliberately live on Allocation, not here.
     return (
         <section className="flex flex-col gap-6">
-            <ViewHeader
-                categorizationMode={data.categorizationMode}
-                setCategorizationMode={data.setCategorizationMode}
-            />
             <ExplainerCards />
             <InvestmentExplainer
                 mixExplanation={data.mixExplanation}
@@ -591,16 +471,7 @@ export function InvestmentView({
                 isExplainingMix={data.isExplainingMix}
                 onRegenerate={data.regenerateMixExplanation}
             />
-            <InvestmentCharts {...sharedChartProps} section="all" />
-            <InvestmentWorkUnitList
-                focusSubcategory={data.focusSubcategory}
-                focusSubcategoryLabel={focusSubcategoryLabel}
-                evidenceUnits={evidenceUnits}
-                effortUnit={effortUnit}
-                onClearSubcategory={() => data.setFocusSubcategory(null)}
-                onSelectWorkUnit={data.handleSelect}
-            />
-            {evidenceBlock}
+            <InvestmentCharts {...sharedChartProps} section="mix" />
         </section>
     );
 }
