@@ -7,6 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/api/home", () => ({ getHomeData: vi.fn() }));
 vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn() }));
 vi.mock("@/lib/api/code", () => ({ getBusFactorData: vi.fn() }));
+vi.mock("@/lib/graphql/cognitiveLoadFetchers", () => ({
+    getCognitiveLoadViaGraphQL: vi.fn(),
+}));
 vi.mock("@/lib/auth", () => ({
     auth: vi.fn().mockResolvedValue({ user: { org_id: "org-test" } }),
 }));
@@ -17,6 +20,7 @@ vi.mock("@/lib/logger", () => ({
 import { getHomeData } from "@/lib/api/home";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { getBusFactorData } from "@/lib/api/code";
+import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getDiagnoseSignals } from "../diagnose";
@@ -25,6 +29,7 @@ import type { AreaSignal } from "../types";
 const mockGetHomeData = vi.mocked(getHomeData);
 const mockGraphql = vi.mocked(graphqlFetch);
 const mockGetBusFactorData = vi.mocked(getBusFactorData);
+const mockGetCognitiveLoad = vi.mocked(getCognitiveLoadViaGraphQL);
 
 function byId(signals: AreaSignal[]): Record<string, AreaSignal> {
     return Object.fromEntries(signals.map((s) => [s.id, s]));
@@ -148,6 +153,31 @@ beforeEach(() => {
             },
         ],
         evidenceSampleCount: 1,
+    });
+
+    // Default cognitive load: avg prInterruptionLoad = 16 → high (lowerIsBetter).
+    mockGetCognitiveLoad.mockResolvedValue({
+        orgId: "org-test",
+        teamId: null,
+        totalDays: 2,
+        signals: [
+            {
+                day: "2026-06-06",
+                prInterruptionLoad: 16,
+                contextSpreadCount: 60,
+                reviewRequestLoad: 2,
+                afterHoursCommitRatio: 0.38,
+                weekendCommitRatio: 0.25,
+            },
+            {
+                day: "2026-06-07",
+                prInterruptionLoad: 16,
+                contextSpreadCount: 60,
+                reviewRequestLoad: 2,
+                afterHoursCommitRatio: 0.38,
+                weekendCommitRatio: 0.25,
+            },
+        ],
     });
 });
 
@@ -295,12 +325,55 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             expect(signals.landscape).toMatchObject({ state: "unavailable", value: "" });
         });
 
-        it("Cognitive Load is always unavailable (CHAOS-2077 backend gap)", async () => {
+        it("Cognitive Load derives high from avg interruption load 16 (lowerIsBetter, thresholds {medium:8, high:15, critical:25})", async () => {
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals["cognitive-load"]).toMatchObject({ state: "high", value: "16" });
+        });
+
+        it("Cognitive Load is unavailable when no cognitiveLoad signals are returned", async () => {
+            mockGetCognitiveLoad.mockResolvedValue({
+                orgId: "org-test",
+                teamId: null,
+                totalDays: 0,
+                signals: [],
+            });
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
             expect(signals["cognitive-load"]).toMatchObject({
                 state: "unavailable",
                 value: "",
             });
+        });
+
+        it("Cognitive Load degrades to unavailable when the fetch fails", async () => {
+            mockGetCognitiveLoad.mockRejectedValue(new Error("cognitive-load down"));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals["cognitive-load"]).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
+            // Other signals still resolve independently.
+            expect(signals.flow.state).toBe("low");
+            expect(signals.landscape.state).toBe("medium");
+        });
+
+        it("Cognitive Load is unavailable for unsupported scopes (developer) and skips the fetch", async () => {
+            const developerFilter = {
+                ...defaultMetricFilter,
+                scope: {
+                    ...defaultMetricFilter.scope,
+                    level: "developer" as const,
+                    ids: ["u1"],
+                },
+            };
+            const signals = byId(await getDiagnoseSignals(developerFilter));
+            expect(signals["cognitive-load"]).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
+            // The resolver only supports org/team scope; an unsupported scope must not even
+            // fetch — otherwise it would surface org-wide data presented as the filtered
+            // (here developer) scope, breaking the surface's self-only privacy framing.
+            expect(mockGetCognitiveLoad).not.toHaveBeenCalled();
         });
     });
 

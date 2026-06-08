@@ -221,8 +221,9 @@ export const navAreas: readonly NavArea[] = [
                 label: "Cognitive Load",
                 href: "/cognitive-load",
                 description: "Focus and context-switch pressure.",
-                // Gap: no resolver-backed metric yet → "unavailable" (DataState).
-                metricLabel: "No area metric",
+                // Wired via the cognitiveLoad GraphQL resolver (CHAOS-2077):
+                // headline = avg PR interruption load over the window.
+                metricLabel: "Interruption load",
             },
             {
                 id: "bottleneck",
