@@ -6,13 +6,34 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { BackLink } from "@/components/shared/BackLink";
 import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
 import { checkApiHealth } from "@/lib/api/system";
+import { requireSession } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
+import {
+    getReviewEdgesViaGraphQL,
+    type ReviewEdgesResult,
+} from "@/lib/graphql/reviewEdgesFetchers";
 
 type WorkGraphPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
+
+/** Derive ISO date strings from a MetricFilter's time block (mirrors cognitive-load page). */
+function dateRangeFromFilter(time: {
+    range_days: number;
+    start_date?: string;
+    end_date?: string;
+}): { sinceDate: string; untilDate: string } {
+    if (time.start_date && time.end_date) {
+        return { sinceDate: time.start_date, untilDate: time.end_date };
+    }
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(end.getDate() - (time.range_days - 1));
+    const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+    return { sinceDate: isoDate(start), untilDate: isoDate(end) };
+}
 
 export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps) {
     const params = (await searchParams) ?? {};
@@ -71,6 +92,32 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
         return <ServiceUnavailable />;
     }
 
+    // ── Server-side review edges fetch (CHAOS-2077) ──────────────────────────
+    // Only fetch when on the review-network tab to avoid unnecessary latency
+    // on other tabs. The GraphView client component receives the pre-fetched
+    // result as a prop and renders it without a client-side round-trip.
+    const session = await requireSession();
+    const orgId = session.user.org_id ?? "";
+    const { sinceDate, untilDate } = dateRangeFromFilter(filters.time);
+    const repoIds = filters.what?.repos?.length ? filters.what.repos : null;
+
+    let reviewEdgesData: ReviewEdgesResult | null = null;
+    let reviewEdgesError: string | null = null;
+
+    if (orgId && activeTab === "review-network") {
+        try {
+            reviewEdgesData = await getReviewEdgesViaGraphQL({
+                orgId,
+                sinceDate,
+                untilDate,
+                repoIds,
+            });
+        } catch (err) {
+            reviewEdgesError =
+                err instanceof Error ? err.message : "Failed to load review network data";
+        }
+    }
+
     return (
         <div className="min-h-screen bg-background text-foreground">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
@@ -106,6 +153,9 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                         filters={filters}
                         activeRole={activeRole}
                         activeTab={activeTab as WorkGraphTab}
+                        reviewEdges={reviewEdgesData?.edges ?? null}
+                        reviewEdgesLoading={false}
+                        reviewEdgesError={reviewEdgesError}
                     />
                 </main>
             </div>

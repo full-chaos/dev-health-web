@@ -7,6 +7,7 @@ import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGrap
 import { DataState } from "@/components/ui/DataState";
 import { useWorkGraphEdges } from "@/lib/graphql/hooks";
 import type { WorkGraphEdge, WorkGraphEdgeType, WorkGraphNodeType } from "@/lib/graphql/types";
+import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { useOrgId } from "@/lib/graphql/provider";
@@ -35,6 +36,16 @@ type GraphViewProps = {
     activeRole?: string;
     /** Active in-page tab. Defaults to "overview". */
     activeTab?: WorkGraphTab;
+    /**
+     * Pre-fetched reviewer→author edges for the Review Network tab (CHAOS-2077).
+     * Passed from the server component (work-graph page) so no client-side round-trip
+     * is needed. `null` means "not yet fetched / wrong tab"; `[]` means "no data".
+     */
+    reviewEdges?: ReviewEdgeRow[] | null;
+    /** Whether the review edges fetch is still in-flight (always false for SSR path). */
+    reviewEdgesLoading?: boolean;
+    /** Error message from the review edges fetch, or null. */
+    reviewEdgesError?: string | null;
 };
 
 const GRAPH_EDGE_QUERY_LIMIT = 1000;
@@ -178,7 +189,14 @@ function getGraphSearchState(searchParams: URLSearchParams) {
     };
 }
 
-export function GraphView({ filters, activeRole, activeTab = "overview" }: GraphViewProps) {
+export function GraphView({
+    filters,
+    activeRole,
+    activeTab = "overview",
+    reviewEdges = null,
+    reviewEdgesLoading = false,
+    reviewEdgesError = null,
+}: GraphViewProps) {
     const searchParams = useSearchParams();
     const searchState = useMemo(() => getGraphSearchState(searchParams), [searchParams]);
     const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(searchState.selectedNode);
@@ -213,12 +231,8 @@ export function GraphView({ filters, activeRole, activeTab = "overview" }: Graph
         if (activeTab === "dependencies") {
             return edges.filter((edge) => DEPENDENCY_EDGE_TYPES.includes(edge.edgeType));
         }
-        if (activeTab === "review-network") {
-            return edges.filter(
-                (edge) =>
-                    edge.sourceType === "REVIEW_OUTCOME" || edge.targetType === "REVIEW_OUTCOME",
-            );
-        }
+        // review-network is handled by the ReviewNetworkView early-return above;
+        // this path is only reached for overview and dependencies.
         // overview
         return activeConnectionSlice.edgeTypes.length
             ? edges.filter((edge) => activeConnectionSlice.edgeTypes.includes(edge.edgeType))
@@ -264,27 +278,33 @@ export function GraphView({ filters, activeRole, activeTab = "overview" }: Graph
     if (activeTab === "artifacts") {
         return <ArtifactsView edges={edges} loading={loading} error={error} />;
     }
+    if (activeTab === "review-network") {
+        return (
+            <ReviewNetworkView
+                edges={reviewEdges}
+                loading={reviewEdgesLoading}
+                error={reviewEdgesError}
+            />
+        );
+    }
 
-    // ── Graph (explorer) tabs: overview / dependencies / review-network ─────────
+    // ── Graph (explorer) tabs: overview / dependencies ───────────────────────────
+    // review-network early-returns as ReviewNetworkView above.
     const showConnectionSelector = activeTab === "overview";
-    const tabHeading: Record<"overview" | "dependencies" | "review-network", string> = {
+    const tabHeading: Record<"overview" | "dependencies", string> = {
         overview: "Work Graph Explorer",
         dependencies: "Dependency network",
-        "review-network": "Review network",
     };
-    const tabDescription: Record<"overview" | "dependencies" | "review-network", string> = {
+    const tabDescription: Record<"overview" | "dependencies", string> = {
         overview: "Visualize relationships between issues, PRs, commits, and files.",
         dependencies:
             "Blocking, related, duplicate, and parent-child links between work items.",
-        "review-network": "How reviews connect to the pull requests and people they touch.",
     };
-    const graphTab = activeTab as "overview" | "dependencies" | "review-network";
+    const graphTab = activeTab as "overview" | "dependencies";
     const emptyCopy =
-        activeTab === "review-network"
-            ? "No review-network relationships in this scope and window."
-            : activeTab === "dependencies"
-              ? "No dependency links between work items in this scope and window."
-              : "No work graph data available for this scope and window.";
+        activeTab === "dependencies"
+            ? "No dependency links between work items in this scope and window."
+            : "No work graph data available for this scope and window.";
 
     return (
         <div
@@ -789,5 +809,177 @@ function EdgeList({ title, subtitle, edges, getLabel, getRelation }: EdgeListPro
                 ))}
             </ul>
         </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Review Network tab — reviewer→author collaboration edges (CHAOS-2077)
+// ---------------------------------------------------------------------------
+//
+// Data comes from review_edges_daily (via the reviewEdges GraphQL resolver),
+// not from work_graph_edges.  Each row represents one reviewer→author pair
+// on a given day in a given repo.  We aggregate by (reviewer, author) to get
+// total reviews_count across the window, then rank descending.
+//
+// Identities are emails.  The reviewer and author fields are the raw email
+// strings returned by the resolver; we render them as-is since there is no
+// org-scoped display-name lookup available on the client path.
+
+type ReviewNetworkViewProps = {
+    edges: ReviewEdgeRow[] | null;
+    loading: boolean;
+    error: string | null;
+};
+
+/** Aggregate raw per-day review_edges_daily rows into (reviewer, author, totalReviews). */
+function aggregateReviewEdges(
+    rawEdges: ReviewEdgeRow[],
+): { reviewer: string; author: string; totalReviews: number }[] {
+    const map = new Map<string, number>();
+    for (const row of rawEdges) {
+        const key = `${row.reviewer}\t${row.author}`;
+        map.set(key, (map.get(key) ?? 0) + row.reviewsCount);
+    }
+    return Array.from(map.entries())
+        .map(([key, totalReviews]) => {
+            const [reviewer, author] = key.split("\t") as [string, string];
+            return { reviewer, author, totalReviews };
+        })
+        .sort((a, b) => b.totalReviews - a.totalReviews);
+}
+
+/** Extract the local-part of an email (before @) for compact display. */
+function emailDisplayName(email: string): string {
+    const atIndex = email.indexOf("@");
+    return atIndex > 0 ? email.slice(0, atIndex) : email;
+}
+
+function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
+    const rows = useMemo(() => {
+        if (!edges) return [];
+        return aggregateReviewEdges(edges);
+    }, [edges]);
+
+    // Derive unique reviewers + authors for a quick summary line.
+    const reviewerCount = useMemo(() => new Set(rows.map((r) => r.reviewer)).size, [rows]);
+    const authorCount = useMemo(() => new Set(rows.map((r) => r.author)).size, [rows]);
+    const totalReviews = useMemo(
+        () => rows.reduce((sum, r) => sum + r.totalReviews, 0),
+        [rows],
+    );
+    const maxReviews = rows.reduce((m, r) => Math.max(m, r.totalReviews), 1);
+
+    return (
+        <section
+            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+            data-testid="review-network-panel"
+        >
+            <div className="mb-4">
+                <h3 className="text-lg font-semibold tracking-tight">Review Network</h3>
+                <p className="mt-1 text-sm text-(--ink-muted)">
+                    Reviewer→author collaboration pairs from code review activity, ranked by review
+                    count. Data sourced from{" "}
+                    <code className="text-xs">review_edges_daily</code>.
+                </p>
+            </div>
+
+            {loading ? (
+                <p className="text-sm text-(--ink-muted)">Loading…</p>
+            ) : error ? (
+                <DataState
+                    variant="error"
+                    title="Failed to load review network"
+                    description={error}
+                />
+            ) : rows.length === 0 ? (
+                <DataState
+                    variant="detector-enabled-no-findings"
+                    title="No review relationships to show"
+                    description="No reviewer→author activity was recorded in this scope and window. Widen the date range or remove repo filters to see data."
+                />
+            ) : (
+                <>
+                    <div className="mb-4 flex flex-wrap gap-6 text-sm text-(--ink-muted)">
+                        <span>
+                            <span className="font-semibold text-foreground">
+                                {formatNumber(reviewerCount)}
+                            </span>{" "}
+                            reviewer{reviewerCount === 1 ? "" : "s"}
+                        </span>
+                        <span>
+                            <span className="font-semibold text-foreground">
+                                {formatNumber(authorCount)}
+                            </span>{" "}
+                            author{authorCount === 1 ? "" : "s"}
+                        </span>
+                        <span>
+                            <span className="font-semibold text-foreground">
+                                {formatNumber(totalReviews)}
+                            </span>{" "}
+                            total reviews
+                        </span>
+                    </div>
+                    <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
+                        <table
+                            className="w-full text-sm"
+                            data-testid="review-network-table"
+                        >
+                            <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                                <tr>
+                                    <th className="px-5 py-3 text-left">Reviewer</th>
+                                    <th className="px-5 py-3 text-left">Author</th>
+                                    <th className="px-5 py-3 text-right">Reviews</th>
+                                    <th className="px-5 py-3 text-left">Share</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row) => (
+                                    <tr
+                                        key={`${row.reviewer}|${row.author}`}
+                                        data-testid="review-network-row"
+                                        className="border-t border-(--card-stroke)/60"
+                                    >
+                                        <td className="px-5 py-3 align-middle">
+                                            <span
+                                                className="font-medium"
+                                                title={row.reviewer}
+                                            >
+                                                {emailDisplayName(row.reviewer)}
+                                            </span>
+                                            <span className="ml-1.5 text-xs text-(--ink-muted)">
+                                                @{row.reviewer.slice(row.reviewer.indexOf("@") + 1)}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-3 align-middle">
+                                            <span
+                                                className="font-medium"
+                                                title={row.author}
+                                            >
+                                                {emailDisplayName(row.author)}
+                                            </span>
+                                            <span className="ml-1.5 text-xs text-(--ink-muted)">
+                                                @{row.author.slice(row.author.indexOf("@") + 1)}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-3 text-right tabular-nums">
+                                            {formatNumber(row.totalReviews)}
+                                        </td>
+                                        <td className="px-5 py-3 align-middle">
+                                            <div
+                                                aria-hidden
+                                                className="h-2 max-w-[10rem] rounded-full bg-(--accent)/70"
+                                                style={{
+                                                    width: `${Math.round((row.totalReviews / maxReviews) * 100)}%`,
+                                                }}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            )}
+        </section>
     );
 }

@@ -853,3 +853,22 @@ query CognitiveLoad($input: CognitiveLoadInput!) {
   }
 }
 `;
+
+// ==== Review Edges Queries (CHAOS-2077) ====
+
+// Reviewer→author collaboration edges from review_edges_daily.
+// Used by the Work-Graph "Review Network" tab.
+export const REVIEW_EDGES_QUERY = `
+query ReviewEdges($input: ReviewEdgesInput!) {
+  reviewEdges(input: $input) {
+    edges {
+      reviewer
+      author
+      reviewsCount
+      day
+      repoId
+    }
+    totalCount
+  }
+}
+`;

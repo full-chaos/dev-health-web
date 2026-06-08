@@ -1,4 +1,4 @@
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
@@ -340,30 +340,92 @@ describe("GraphView", () => {
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
-    it("review-network tab shows an honest empty state when no review edges exist", () => {
+    it("review-network tab shows an honest empty state when reviewEdges prop is null", () => {
+        // reviewEdges=null means "not yet fetched / wrong tab" — renders the
+        // review-network panel with an empty state (no work-graph-edges fallback).
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
-                {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1,
-                    evidence: null,
-                },
-            ],
+            edges: [],
             loading: false,
             error: null,
-            totalCount: 1,
+            totalCount: 0,
             refetch: vi.fn(),
         });
 
-        render(<GraphView filters={filters} activeTab="review-network" />);
+        render(
+            <GraphView
+                filters={filters}
+                activeTab="review-network"
+                reviewEdges={null}
+                reviewEdgesLoading={false}
+                reviewEdgesError={null}
+            />,
+        );
 
-        expect(screen.getByText(/No review-network relationships/i)).toBeInTheDocument();
+        expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
+        expect(screen.getByText(/No reviewer→author activity/i)).toBeInTheDocument();
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("review-network tab renders real reviewer→author edges when provided", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        const reviewEdges = [
+            { reviewer: "alice@example.com", author: "bob@example.com", reviewsCount: 12, day: "2026-05-01", repoId: "repo-1" },
+            { reviewer: "alice@example.com", author: "bob@example.com", reviewsCount: 5, day: "2026-05-02", repoId: "repo-1" },
+            { reviewer: "carol@example.com", author: "bob@example.com", reviewsCount: 3, day: "2026-05-01", repoId: "repo-1" },
+        ];
+
+        render(
+            <GraphView
+                filters={filters}
+                activeTab="review-network"
+                reviewEdges={reviewEdges}
+                reviewEdgesLoading={false}
+                reviewEdgesError={null}
+            />,
+        );
+
+        expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
+        expect(screen.getByTestId("review-network-table")).toBeInTheDocument();
+        // alice→bob aggregated: 12 + 5 = 17 reviews
+        const rows = screen.getAllByTestId("review-network-row");
+        expect(rows.length).toBe(2);
+        // alice→bob should appear first (highest count)
+        expect(rows[0]).toHaveTextContent("alice");
+        expect(rows[0]).toHaveTextContent("bob");
+        expect(within(rows[0]).getByText("17")).toBeInTheDocument();
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("review-network tab shows error state when reviewEdgesError is set", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <GraphView
+                filters={filters}
+                activeTab="review-network"
+                reviewEdges={null}
+                reviewEdgesLoading={false}
+                reviewEdgesError="Failed to load review network data"
+            />,
+        );
+
+        expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
+        // The DataState renders a heading with the title and a paragraph with the description.
+        // We match the description paragraph to avoid ambiguity with the heading.
+        expect(screen.getByText("Failed to load review network data")).toBeInTheDocument();
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 });
