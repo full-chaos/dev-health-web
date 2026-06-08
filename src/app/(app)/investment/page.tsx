@@ -25,10 +25,9 @@ const getMetric = (deltas: MetricDelta[], metric: string) =>
 
 const INVESTMENT_TAB_LABELS: Record<InvestmentTab, string> = {
     overview: "Overview",
-    mix: "Mix",
-    "unit-investment": "Unit Investment",
-    rework: "Rework",
-    "strategic-allocation": "Strategic Allocation",
+    allocation: "Allocation",
+    evidence: "Evidence",
+    confidence: "Confidence",
 };
 
 type InvestmentPageProps = {
@@ -90,9 +89,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                     Diagnose
                                 </p>
-                                <h1 className="mt-2 font-(--font-display) text-3xl">
-                                    Investment
-                                </h1>
+                                <h1 className="mt-2 font-(--font-display) text-3xl">Investment</h1>
                                 <p className="mt-2 text-sm text-(--ink-muted)">
                                     Effort and attention allocation over the selected window.
                                 </p>
@@ -130,8 +127,8 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                             <span className="text-foreground font-semibold uppercase tracking-wider">
                                 Perspective:
                             </span>{" "}
-                            Investment reflects effort and attention (not spend). Flow moves
-                            left-to-right (Allocation &rarr; Streams &rarr; Items).
+                            Investment reflects effort and attention (not spend). Allocation paths
+                            move left-to-right (Allocation &rarr; Streams &rarr; Items).
                         </div>
 
                         <GlobalContextBar filters={filters} origin={activeOrigin} />

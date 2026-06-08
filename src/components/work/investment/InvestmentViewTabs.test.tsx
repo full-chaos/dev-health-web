@@ -1,17 +1,21 @@
 /**
- * InvestmentView direct-tab-entry tests (CHAOS-2079 remediation).
+ * InvestmentView direct-tab-entry tests (CHAOS-2154 IA redesign).
  *
- * Focused on the two behaviors Codex flagged for direct/deep-link entry:
- *   1. The `rework` tab renders the REAL `rework_ratio` MetricCard when a
- *      metric is provided, and an honest empty state when it is not.
- *   2. The `unit-investment` tab is self-contained: it lists ALL work units on
- *      direct entry (no `focusSubcategory` set), instead of the drill prompt.
+ * Covers the two redesigned tabs that carry the absorbed bugs:
+ *   1. Confidence renders the REAL rework_ratio MetricCard when a metric is
+ *      provided, an honest empty state when it is not, and the evidence-quality
+ *      band encoding (the bands now drive a real visual, not an orphaned
+ *      legend).
+ *   2. Evidence is a table-first drilldown: work units group by their persisted
+ *      theme, and expanding a unit surfaces its metadata inline (the retired
+ *      "Metadata only" toggle is subsumed here).
  *
  * `useInvestmentData` (which fetches + reads next/navigation + urql) is mocked
  * so these tests exercise the view's tab branching, not the data layer.
  * SparklineChart is mocked so ECharts never runs in jsdom.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent } from "@testing-library/react";
 import { render, screen, cleanup } from "@/test/utils";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
@@ -52,26 +56,36 @@ const baseFilters: MetricFilter = {
     how: { flow_stage: [] },
 };
 
-const makeUnit = (id: string, effortValue: number): WorkUnitInvestment => ({
+const makeUnit = (
+    id: string,
+    effortValue: number,
+    overrides: Partial<WorkUnitInvestment> = {},
+): WorkUnitInvestment => ({
     work_unit_id: id,
     work_unit_name: `Work unit ${id}`,
     work_unit_type: "pr",
     time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
     effort: { metric: "active_hours", value: effortValue },
-    investment: { themes: {}, subcategories: { "feature.build": 1 } },
+    investment: {
+        themes: { feature_delivery: 1 },
+        subcategories: { "feature.build": 1 },
+    },
     evidence_quality: { value: 0.7, band: "moderate" },
     evidence: { textual: [], structural: [], contextual: [] },
+    ...overrides,
 });
 
 function makeData(overrides: Partial<UseInvestmentDataResult> = {}): UseInvestmentDataResult {
     return {
-        categorizationMode: "text_metadata",
-        setCategorizationMode: vi.fn(),
         workUnits: [],
         isLoading: false,
         investmentMix: null,
         isMixLoading: false,
-        mixExplanation: { data: null, filtersKey: "", focus: { theme: null, subcategory: null } },
+        mixExplanation: {
+            data: null,
+            filtersKey: "",
+            focus: { theme: null, subcategory: null },
+        },
         focusTheme: null,
         setFocusTheme: vi.fn(),
         focusSubcategory: null,
@@ -115,7 +129,7 @@ const reworkMetric: MetricDelta = {
     ],
 };
 
-describe("InvestmentView — rework tab", () => {
+describe("InvestmentView — Confidence tab", () => {
     afterEach(() => {
         cleanup();
         useInvestmentDataMock.mockReset();
@@ -126,25 +140,24 @@ describe("InvestmentView — rework tab", () => {
         render(
             <InvestmentView
                 filters={baseFilters}
-                activeTab="rework"
+                activeTab="confidence"
                 reworkMetric={reworkMetric}
             />,
         );
 
-        // Real value + unit rendered (96%), trend present, honest-empty absent.
         expect(screen.getByText("Rework ratio")).toBeInTheDocument();
         expect(screen.getByText(/96%/)).toBeInTheDocument();
         expect(screen.getByText(/\+4%/)).toBeInTheDocument();
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();
-        expect(screen.queryByText(/Rework view not available yet/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Rework signal not available yet/i)).not.toBeInTheDocument();
     });
 
-    it("links the MetricCard into Explore for the rework_ratio metric", () => {
+    it("links the rework MetricCard into Explore for the rework_ratio metric", () => {
         useInvestmentDataMock.mockReturnValue(makeData());
         render(
             <InvestmentView
                 filters={baseFilters}
-                activeTab="rework"
+                activeTab="confidence"
                 reworkMetric={reworkMetric}
             />,
         );
@@ -155,56 +168,142 @@ describe("InvestmentView — rework tab", () => {
 
     it("renders the honest empty state when no rework metric is available", () => {
         useInvestmentDataMock.mockReturnValue(makeData());
-        render(<InvestmentView filters={baseFilters} activeTab="rework" />);
+        render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
 
-        expect(screen.getByText(/Rework view not available yet/i)).toBeInTheDocument();
-        expect(
-            screen.getByText(/A dedicated rework breakdown isn't wired for this scope yet/i),
-        ).toBeInTheDocument();
-        // No fabricated metric value.
+        expect(screen.getByText(/Rework signal not available yet/i)).toBeInTheDocument();
         expect(screen.queryByText("Rework ratio")).not.toBeInTheDocument();
+    });
+
+    it("renders the evidence-quality band encoding from the persisted distribution", () => {
+        useInvestmentDataMock.mockReturnValue(
+            makeData({
+                investmentMix: {
+                    theme_distribution: { feature_delivery: 1 },
+                    subcategory_distribution: { "feature.build": 1 },
+                    evidence_quality_distribution: {
+                        high: 0.5,
+                        moderate: 0.3,
+                        very_low: 0.1,
+                        unknown: 0.1,
+                    },
+                },
+            }),
+        );
+        render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
+
+        expect(
+            screen.getByRole("heading", { name: /evidence quality bands/i }),
+        ).toBeInTheDocument();
+        // The band swatches reflect the persisted distribution.
+        expect(screen.getByText(/High \(0\.80-1\.00\)/)).toBeInTheDocument();
+        expect(screen.getByText(/Very low/)).toBeInTheDocument();
+    });
+
+    it("band bar reflects aggregate distribution even when workUnits is partial/capped", () => {
+        // investmentMix carries the full distribution; workUnits is a capped subset.
+        useInvestmentDataMock.mockReturnValue(
+            makeData({
+                investmentMix: {
+                    theme_distribution: { feature_delivery: 1 },
+                    subcategory_distribution: { "feature.build": 1 },
+                    // Aggregate shows 80% high quality…
+                    evidence_quality_distribution: { high: 0.8, moderate: 0.2 },
+                },
+                // …even though workUnits only has one 'moderate' unit (simulating a capped fetch).
+                workUnits: [
+                    makeUnit("a", 10, {
+                        evidence_quality: { value: 0.7, band: "moderate" },
+                    }),
+                ],
+            }),
+        );
+        render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
+
+        // Distribution correctly shows 80% high, driven by the aggregate — not the single capped unit.
+        expect(screen.getByText(/High \(0\.80-1\.00\)/)).toBeInTheDocument();
+    });
+
+    it("shows the unavailable DataState for evidence quality bands when distribution is absent", () => {
+        useInvestmentDataMock.mockReturnValue(makeData({ investmentMix: null }));
+        render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
+
+        expect(
+            screen.getByRole("heading", { name: /evidence quality bands/i }),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/quality distribution unavailable/i)).toBeInTheDocument();
+    });
+
+    it("lists low-confidence work units pulled from low/unknown bands", () => {
+        useInvestmentDataMock.mockReturnValue(
+            makeData({
+                workUnits: [
+                    makeUnit("low", 5, {
+                        evidence_quality: { value: 0.3, band: "very_low" },
+                    }),
+                ],
+            }),
+        );
+        render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
+
+        expect(screen.getByRole("heading", { name: /low-confidence areas/i })).toBeInTheDocument();
+        expect(screen.getByText("Work unit low")).toBeInTheDocument();
     });
 });
 
-describe("InvestmentView — unit-investment tab (self-contained)", () => {
+describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
     afterEach(() => {
         cleanup();
         useInvestmentDataMock.mockReset();
     });
 
-    it("lists ALL work units on direct entry with no focused subcategory", () => {
+    it("groups work units by their persisted theme on direct entry", () => {
         useInvestmentDataMock.mockReturnValue(
             makeData({
-                focusSubcategory: null,
-                workUnits: [makeUnit("a", 10), makeUnit("b", 20), makeUnit("c", 5)],
+                workUnits: [makeUnit("a", 10), makeUnit("b", 20)],
             }),
         );
 
-        render(<InvestmentView filters={baseFilters} activeTab="unit-investment" />);
+        render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
 
-        // All three units render as selectable cards (role=button) — NOT the
-        // drill prompt. (The labels also appear in the evidence dropdown's
-        // <option>s, so scope to the clickable cards via role=button.)
-        expect(screen.getByRole("button", { name: /Work unit a/ })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Work unit b/ })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Work unit c/ })).toBeInTheDocument();
-        expect(
-            screen.queryByText(/Drill down into a theme and choose a subcategory/i),
-        ).not.toBeInTheDocument();
+        // Grouped by theme → the canonical theme label appears as a group row,
+        // not a per-unit card grid.
+        expect(screen.getByRole("button", { name: /Feature Delivery/ })).toBeInTheDocument();
     });
 
-    it("shows an honest empty (not the drill prompt) when there are no units at all", () => {
+    it("surfaces unit metadata inline when a row is expanded (no toggle gate)", () => {
         useInvestmentDataMock.mockReturnValue(
-            makeData({ focusSubcategory: null, workUnits: [] }),
+            makeData({
+                workUnits: [
+                    makeUnit("a", 10, {
+                        evidence: {
+                            textual: [{ quote: "fixes the login bug" }],
+                            structural: [{ repo: "org/app", file: "auth.ts" }],
+                            contextual: [],
+                        },
+                    }),
+                ],
+            }),
         );
 
-        render(<InvestmentView filters={baseFilters} activeTab="unit-investment" />);
+        render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
+
+        // Expand the theme group, then the work-unit row.
+        fireEvent.click(screen.getByRole("button", { name: /Feature Delivery/ }));
+        fireEvent.click(screen.getByRole("button", { name: /Work unit a/ }));
+
+        expect(screen.getByText("Classification rationale")).toBeInTheDocument();
+        expect(screen.getByText("Linked metadata")).toBeInTheDocument();
+        // Metadata field rendered (structural repo association).
+        expect(screen.getByText(/org\/app/)).toBeInTheDocument();
+    });
+
+    it("shows an honest empty state when there are no work units", () => {
+        useInvestmentDataMock.mockReturnValue(makeData({ workUnits: [] }));
+
+        render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
 
         expect(
             screen.getByText(/No work units available for the selected window/i),
         ).toBeInTheDocument();
-        expect(
-            screen.queryByText(/Drill down into a theme and choose a subcategory/i),
-        ).not.toBeInTheDocument();
     });
 });

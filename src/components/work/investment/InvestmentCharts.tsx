@@ -74,7 +74,6 @@ export function InvestmentCharts({
     const [chartType, setChartType] = useState<InvestmentFlowChartType>("sankey");
     const {
         themeColorMap,
-        categoryColorMap,
         prepareSankeyFlow,
         resolveSubcategoryIdFromLabel,
         buildSankeyTooltipFormatter,
@@ -161,13 +160,11 @@ export function InvestmentCharts({
 
                     <RepoTeamSankeySection
                         filters={filters}
-                        workUnits={workUnits}
                         setFocusSubcategory={setFocusSubcategory}
                         effortUnit={effortUnit}
                         repoTeamFlow={repoTeamFlow}
                         isRepoTeamLoading={isRepoTeamLoading}
                         repoTeamFlowFailed={repoTeamFlowFailed}
-                        categoryColorMap={categoryColorMap}
                         prepareSankeyFlow={prepareSankeyFlow}
                         buildSankeyTooltipFormatter={buildSankeyTooltipFormatter}
                         resolveSubcategoryIdFromLabel={resolveSubcategoryIdFromLabel}

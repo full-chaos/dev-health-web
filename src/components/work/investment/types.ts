@@ -1,19 +1,11 @@
 import type { InvestmentMixExplanation, WorkUnitInvestment } from "@/lib/types";
 
-export type CategorizationMode = "text_metadata" | "metadata_only";
-
 /**
  * Canonical Investment tab ids. The `?tab=` query param is validated against
  * this list by the page, and `InvestmentView` branches its body on the union.
  * Defined here (shared module) so the page and the view agree on one type.
  */
-export const INVESTMENT_TABS = [
-    "overview",
-    "mix",
-    "unit-investment",
-    "rework",
-    "strategic-allocation",
-] as const;
+export const INVESTMENT_TABS = ["overview", "allocation", "evidence", "confidence"] as const;
 export type InvestmentTab = (typeof INVESTMENT_TABS)[number];
 
 export type TreemapSelection = {
@@ -30,11 +22,6 @@ export type EvidenceUnit = {
     weightedEffort: number;
     weight: number;
 };
-
-export const CATEGORIZATION_OPTIONS: Array<{ id: CategorizationMode; label: string }> = [
-    { id: "text_metadata", label: "Text + metadata" },
-    { id: "metadata_only", label: "Metadata only" },
-];
 
 export const EVIDENCE_QUALITY_BANDS = [
     { id: "high", label: "High (0.80-1.00)", opacityClass: "opacity-100" },
