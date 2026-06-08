@@ -72,12 +72,8 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                 ? area.children.filter((child) => child.navVisible)
                 : [];
         const activeChild = isActive ? selectedChildForPathname(area, pathname) : undefined;
-        const areaRowIsSelected =
-            isActive &&
-            (area.placement === "utility" ||
-                !activeChild ||
-                basePath(activeChild.path) === basePath(area.href));
-        const activeChildId = areaRowIsSelected ? undefined : activeChild?.id;
+        const areaRowIsSelected = isActive && (area.placement === "utility" || !activeChild);
+        const activeChildId = activeChild?.id;
 
         return (
             <div key={area.id}>
