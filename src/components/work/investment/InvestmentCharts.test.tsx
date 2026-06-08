@@ -237,6 +237,19 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                 screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();
         });
+
+        it("renders the unavailable DataState (no Sankey) when repoTeamFlowFailed is true", () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({
+                        repoTeamFlowFailed: true,
+                        repoTeamFlow: null,
+                    })}
+                />,
+            );
+            // Honest-empty: DataState replaces the Sankey when flow endpoint fails.
+            expect(screen.getByText(/repo-to-team allocation unavailable/i)).toBeInTheDocument();
+        });
     });
 
     describe("section prop", () => {

@@ -174,17 +174,19 @@ describe("InvestmentView — Confidence tab", () => {
         expect(screen.queryByText("Rework ratio")).not.toBeInTheDocument();
     });
 
-    it("renders the evidence-quality band encoding from real work-unit bands", () => {
+    it("renders the evidence-quality band encoding from the persisted distribution", () => {
         useInvestmentDataMock.mockReturnValue(
             makeData({
-                workUnits: [
-                    makeUnit("a", 10, {
-                        evidence_quality: { value: 0.9, band: "high" },
-                    }),
-                    makeUnit("b", 20, {
-                        evidence_quality: { value: 0.3, band: "very_low" },
-                    }),
-                ],
+                investmentMix: {
+                    theme_distribution: { feature_delivery: 1 },
+                    subcategory_distribution: { "feature.build": 1 },
+                    evidence_quality_distribution: {
+                        high: 0.5,
+                        moderate: 0.3,
+                        very_low: 0.1,
+                        unknown: 0.1,
+                    },
+                },
             }),
         );
         render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
@@ -192,9 +194,43 @@ describe("InvestmentView — Confidence tab", () => {
         expect(
             screen.getByRole("heading", { name: /evidence quality bands/i }),
         ).toBeInTheDocument();
-        // The band swatches read the same counts the bar encodes.
+        // The band swatches reflect the persisted distribution.
         expect(screen.getByText(/High \(0\.80-1\.00\)/)).toBeInTheDocument();
         expect(screen.getByText(/Very low/)).toBeInTheDocument();
+    });
+
+    it("band bar reflects aggregate distribution even when workUnits is partial/capped", () => {
+        // investmentMix carries the full distribution; workUnits is a capped subset.
+        useInvestmentDataMock.mockReturnValue(
+            makeData({
+                investmentMix: {
+                    theme_distribution: { feature_delivery: 1 },
+                    subcategory_distribution: { "feature.build": 1 },
+                    // Aggregate shows 80% high quality…
+                    evidence_quality_distribution: { high: 0.8, moderate: 0.2 },
+                },
+                // …even though workUnits only has one 'moderate' unit (simulating a capped fetch).
+                workUnits: [
+                    makeUnit("a", 10, {
+                        evidence_quality: { value: 0.7, band: "moderate" },
+                    }),
+                ],
+            }),
+        );
+        render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
+
+        // Distribution correctly shows 80% high, driven by the aggregate — not the single capped unit.
+        expect(screen.getByText(/High \(0\.80-1\.00\)/)).toBeInTheDocument();
+    });
+
+    it("shows the unavailable DataState for evidence quality bands when distribution is absent", () => {
+        useInvestmentDataMock.mockReturnValue(makeData({ investmentMix: null }));
+        render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
+
+        expect(
+            screen.getByRole("heading", { name: /evidence quality bands/i }),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/quality distribution unavailable/i)).toBeInTheDocument();
     });
 
     it("lists low-confidence work units pulled from low/unknown bands", () => {

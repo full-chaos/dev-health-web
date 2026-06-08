@@ -451,6 +451,7 @@ export function InvestmentView({
                 filters={filters}
                 activeRole={activeRole}
                 workUnits={data.workUnits}
+                investmentMix={data.investmentMix}
                 mixExplanation={data.mixExplanation}
                 teamCategoryFlow={data.teamCategoryFlow}
                 repoTeamFlow={data.repoTeamFlow}

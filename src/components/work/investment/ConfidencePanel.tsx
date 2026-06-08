@@ -14,6 +14,7 @@ import {
     topInvestmentKey,
 } from "@/lib/investment";
 import type { MetricDelta, SankeyResponse, WorkUnitInvestment } from "@/lib/types";
+import type { InvestmentMixAggregate } from "@/lib/investmentMix";
 import { AllocationCoverage } from "./AllocationCoverage";
 import { EvidenceQualityBands } from "./EvidenceQualityBands";
 import type { MixExplanationState } from "./types";
@@ -22,6 +23,7 @@ type ConfidencePanelProps = {
     filters: MetricFilter;
     activeRole?: string;
     workUnits: WorkUnitInvestment[];
+    investmentMix: InvestmentMixAggregate | null;
     mixExplanation: MixExplanationState;
     teamCategoryFlow: SankeyResponse | null | undefined;
     repoTeamFlow: SankeyResponse | null | undefined;
@@ -59,6 +61,7 @@ export function ConfidencePanel({
     filters,
     activeRole,
     workUnits,
+    investmentMix,
     mixExplanation,
     teamCategoryFlow,
     repoTeamFlow,
@@ -147,7 +150,9 @@ export function ConfidencePanel({
                     opacity matches band strength.
                 </p>
                 <div className="mt-4">
-                    <EvidenceQualityBands workUnits={workUnits} />
+                    <EvidenceQualityBands
+                        evidenceQualityDistribution={investmentMix?.evidence_quality_distribution}
+                    />
                 </div>
             </div>
 

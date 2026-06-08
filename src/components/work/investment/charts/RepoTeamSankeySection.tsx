@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { SankeyChart } from "@/components/charts/SankeyChart";
-import { buildRepoTeamSankey, stripSankeyPrefix, TOP_N_REPOS } from "@/lib/investment";
+import { DataState } from "@/components/ui/DataState";
+import { stripSankeyPrefix, TOP_N_REPOS } from "@/lib/investment";
 import { computeSankeyMetrics } from "@/lib/sankey";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { SankeyNode, SankeyResponse, WorkUnitInvestment } from "@/lib/types";
+import type { SankeyNode, SankeyResponse } from "@/lib/types";
 
 type PrepareSankeyFlow = (flow: SankeyResponse | null, topN: number) => SankeyResponse | null;
 
@@ -18,13 +19,11 @@ type BuildSankeyTooltipFormatter = (context: {
 
 type RepoTeamSankeySectionProps = {
     filters: MetricFilter;
-    workUnits: WorkUnitInvestment[];
     setFocusSubcategory: (value: string | null) => void;
     effortUnit: string;
     repoTeamFlow: SankeyResponse | null | undefined;
     isRepoTeamLoading: boolean;
     repoTeamFlowFailed: boolean;
-    categoryColorMap: Map<string, string>;
     prepareSankeyFlow: PrepareSankeyFlow;
     buildSankeyTooltipFormatter: BuildSankeyTooltipFormatter;
     resolveSubcategoryIdFromLabel: (label: string) => string | null;
@@ -32,17 +31,16 @@ type RepoTeamSankeySectionProps = {
 
 export function RepoTeamSankeySection({
     filters,
-    workUnits,
     setFocusSubcategory,
     effortUnit,
     repoTeamFlow,
     isRepoTeamLoading,
     repoTeamFlowFailed,
-    categoryColorMap,
     prepareSankeyFlow,
     buildSankeyTooltipFormatter,
     resolveSubcategoryIdFromLabel,
 }: RepoTeamSankeySectionProps) {
+    // Only use the persisted server flow; never recompute from workUnits at UX-time.
     const rawRepoTeamSankey = useMemo<
         (SankeyResponse & { hasTeamAssociations: boolean }) | null
     >(() => {
@@ -50,14 +48,8 @@ export function RepoTeamSankeySection({
             const hasTeams = repoTeamFlow.nodes.some((node) => node.group === "team");
             return { ...repoTeamFlow, hasTeamAssociations: hasTeams };
         }
-        if (!repoTeamFlowFailed) {
-            return null;
-        }
-        if (!workUnits.length) {
-            return null;
-        }
-        return buildRepoTeamSankey(workUnits, {}, categoryColorMap);
-    }, [repoTeamFlow, repoTeamFlowFailed, workUnits, categoryColorMap]);
+        return null;
+    }, [repoTeamFlow]);
 
     const repoTeamSankey = useMemo(
         () => prepareSankeyFlow(rawRepoTeamSankey, TOP_N_REPOS),
@@ -111,6 +103,12 @@ export function RepoTeamSankeySection({
             <div className="mt-0">
                 {isRepoTeamLoading ? (
                     <p className="text-sm text-(--ink-muted)">Loading destination view...</p>
+                ) : repoTeamFlowFailed ? (
+                    <DataState
+                        variant="detector-unavailable"
+                        title="Repo-to-team allocation unavailable"
+                        description="The repo-to-team flow could not be loaded for this scope and window."
+                    />
                 ) : repoTeamHasTeams && repoTeamLinks.length ? (
                     <SankeyChart
                         nodes={repoTeamNodes}

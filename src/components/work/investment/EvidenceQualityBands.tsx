@@ -1,72 +1,81 @@
 "use client";
 
-import { computeEvidenceBandCounts } from "@/lib/investment";
+import { DataState } from "@/components/ui/DataState";
 import { formatNumber } from "@/lib/formatters";
-import type { WorkUnitInvestment } from "@/lib/types";
 import { EVIDENCE_QUALITY_BANDS } from "./types";
 
+const BAND_IDS = [...EVIDENCE_QUALITY_BANDS.map((b) => b.id), "unknown"] as const;
+
 type EvidenceQualityBandsProps = {
-    workUnits: WorkUnitInvestment[];
+    /**
+     * Persisted aggregate evidence-quality distribution from the investment mix.
+     * Keys are band IDs ("high" | "moderate" | "low" | "very_low" | "unknown");
+     * values are proportional weights that may be un-normalised counts or fractions.
+     * When absent or empty the component renders an honest-unavailable state rather
+     * than deriving a distribution from the (potentially capped) workUnits list.
+     */
+    evidenceQualityDistribution: Record<string, number> | null | undefined;
 };
 
 /**
- * Evidence-quality band distribution.
+ * Evidence-quality band distribution driven by the persisted aggregate
+ * `evidence_quality_distribution` from the investment mix.
  *
- * Fixes the "evidence quality bands indicate nothing" bug: previously the band
- * swatches were an orphaned legend next to a treemap that encoded theme colour,
- * so the bands described nothing on screen. Here the bands DRIVE the encoding —
- * each band is a segment whose width is its share of work units and whose
- * opacity matches the band's strength (`band.opacityClass`). The legend below
- * reads the same counts, so the swatch opacity now means exactly what the bar
- * shows. Units without a server band fall into "Unknown" rather than vanishing.
+ * The bar and legend both reflect the server-computed distribution, not a
+ * client-side count of workUnits (which is capped at 200 and may be partial).
+ * When the persisted distribution is absent, an honest-unavailable DataState
+ * is shown rather than synthesising a misleading encoding.
  */
-export function EvidenceQualityBands({ workUnits }: EvidenceQualityBandsProps) {
-    const counts = computeEvidenceBandCounts(workUnits);
-    const total = workUnits.length;
+export function EvidenceQualityBands({ evidenceQualityDistribution }: EvidenceQualityBandsProps) {
+    // Validate and normalise
+    const total = evidenceQualityDistribution
+        ? BAND_IDS.reduce((sum, id) => sum + (evidenceQualityDistribution[id] ?? 0), 0)
+        : 0;
+
+    if (!evidenceQualityDistribution || total <= 0) {
+        return (
+            <DataState
+                variant="detector-unavailable"
+                title="Quality distribution unavailable"
+                description="The aggregate evidence-quality distribution is not available for this scope and window."
+            />
+        );
+    }
 
     const segments = [
         ...EVIDENCE_QUALITY_BANDS.map((band) => ({
             id: band.id,
             label: band.label,
             opacityClass: band.opacityClass,
-            count: counts[band.id],
+            share: (evidenceQualityDistribution[band.id] ?? 0) / total,
         })),
         {
             id: "unknown" as const,
             label: "Unknown (no evidence)",
             opacityClass: "opacity-20",
-            count: counts.unknown,
+            share: (evidenceQualityDistribution["unknown"] ?? 0) / total,
         },
     ];
-
-    if (total === 0) {
-        return (
-            <p className="text-sm text-(--ink-muted)">
-                No work units in the selected window, so evidence quality bands cannot be summarized
-                yet.
-            </p>
-        );
-    }
 
     return (
         <div className="space-y-3">
             <div className="flex h-3 w-full overflow-hidden rounded-full border border-(--card-stroke) bg-(--card-70)">
                 {segments.map((segment) => {
-                    const share = total > 0 ? (segment.count / total) * 100 : 0;
-                    if (share <= 0) return null;
+                    const pct = segment.share * 100;
+                    if (pct <= 0) return null;
                     return (
                         <div
                             key={segment.id}
                             className={`h-full bg-(--accent-2) ${segment.opacityClass}`}
-                            style={{ width: `${share}%` }}
-                            title={`${segment.label}: ${segment.count} of ${total} (${formatNumber(share, { maximumFractionDigits: 0 })}%)`}
+                            style={{ width: `${pct}%` }}
+                            title={`${segment.label}: ${formatNumber(pct, { maximumFractionDigits: 0 })}%`}
                         />
                     );
                 })}
             </div>
             <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {segments.map((segment) => {
-                    const share = total > 0 ? (segment.count / total) * 100 : 0;
+                    const pct = segment.share * 100;
                     return (
                         <div
                             key={segment.id}
@@ -77,10 +86,7 @@ export function EvidenceQualityBands({ workUnits }: EvidenceQualityBandsProps) {
                             />
                             <dt className="min-w-0 truncate">{segment.label}</dt>
                             <dd className="ml-auto font-mono text-(--ink)">
-                                {segment.count}
-                                <span className="ml-1 text-(--ink-muted)">
-                                    ({formatNumber(share, { maximumFractionDigits: 0 })}%)
-                                </span>
+                                {formatNumber(pct, { maximumFractionDigits: 0 })}%
                             </dd>
                         </div>
                     );
