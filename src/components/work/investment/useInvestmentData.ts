@@ -13,7 +13,7 @@ import { normalizeInvestmentMix } from "@/lib/investmentMix";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { WorkUnitExplanation, WorkUnitInvestment } from "@/lib/types";
 import { TOP_N_REPOS, normalizeThemeKey } from "@/lib/investment";
-import type { CategorizationMode, MixExplanationState } from "./types";
+import type { MixExplanationState } from "./types";
 
 type UseInvestmentDataArgs = {
     filters: MetricFilter;
@@ -23,8 +23,6 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const [categorizationMode, setCategorizationMode] =
-        useState<CategorizationMode>("text_metadata");
     const [workUnits, setWorkUnits] = useState<WorkUnitInvestment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -80,7 +78,7 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
     const isRepoTeamLoading = repoFlowLoading;
     const repoTeamFlowFailed = Boolean(repoFlowError);
 
-    const includeTextual = categorizationMode === "text_metadata";
+    const includeTextual = true;
     const selectedId = searchParams.get("work_unit_id");
 
     useEffect(() => {
@@ -239,8 +237,6 @@ export function useInvestmentData({ filters }: UseInvestmentDataArgs) {
     );
 
     return {
-        categorizationMode,
-        setCategorizationMode,
         workUnits,
         isLoading,
         investmentMix,

@@ -97,16 +97,16 @@ export function RepoTeamSankeySection({
         <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                    <h3 className="font-(--font-display) text-lg">Where effort lands</h3>
-                    <p className="mt-1 text-xs text-(--ink-muted)">Subcategory to Repo to Team</p>
+                    <h3 className="font-(--font-display) text-lg">Theme &rarr; Repo &rarr; Team</h3>
+                    <p className="mt-1 text-xs text-(--ink-muted)">Theme to Repo to Team</p>
                 </div>
                 <span className="text-xs text-(--ink-muted)">
                     Two-hop allocation to highlight team ownership behind repos.
                 </span>
             </div>
             <div className="mb-4 mt-2 border-l-2 border-(--card-stroke) py-1 pl-3 text-xs leading-relaxed text-(--ink-muted)">
-                This view uses repo-to-team mapping when available. Missing repo associations flow
-                through an unassigned repo node.
+                This view uses repo-to-team mapping when available. Missing repo associations are
+                routed through an unassigned repo node.
             </div>
             <div className="mt-0">
                 {isRepoTeamLoading ? (
