@@ -188,14 +188,6 @@ export const navAreas: readonly NavArea[] = [
                 metricLabel: "Planned allocation",
             },
             {
-                id: "people",
-                label: "People",
-                href: "/people",
-                description: "Individual reflection surfaces.",
-                // No area-level metric → resolver surfaces "unavailable" (DataState).
-                metricLabel: "No area metric",
-            },
-            {
                 id: "code",
                 label: "Code",
                 href: "/code",

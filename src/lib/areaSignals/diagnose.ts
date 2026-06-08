@@ -18,10 +18,10 @@
 //   - "Returned": reuse the server-resolved severity (home REST `signals[]`,
 //     deltas severity).
 //
-// Backend gap (CHAOS-2077): People has no area-level aggregate metric yet and
-// surfaces as an honest "unavailable" card. Landscape (org-level bus factor via
-// getBusFactorData) and Cognitive Load (avg PR interruption load via the
-// cognitiveLoad resolver) are now wired.
+// Backend gap (CHAOS-2077): People has no area-level aggregate metric yet, so it
+// is not surfaced on the Diagnose Overview (CHAOS-2158) and remains a sidebar-only
+// destination. Landscape (org-level bus factor via getBusFactorData) and Cognitive
+// Load (avg PR interruption load via the cognitiveLoad resolver) are now wired.
 
 import { auth } from "@/lib/auth";
 import { getHomeData } from "@/lib/api/home";
@@ -176,7 +176,8 @@ async function safe<T>(fn: () => Promise<T>, source: string): Promise<T | undefi
  * single `getHomeData` call (fetched once, reused across all three). Complexity
  * uses the `complexityTimeseries` GraphQL query. Landscape (bus factor) and
  * Cognitive Load (interruption load) are resolver-backed; People has no
- * area-level metric yet (CHAOS-2077) and surfaces as an honest "unavailable" card.
+ * area-level metric yet (CHAOS-2077) and is sidebar-only (removed from the
+ * Diagnose Overview in CHAOS-2158).
  *
  * @param filters  Active metric filter (drives the REST date range).
  * @param isTestMode  Render deterministic sample data without hitting the API.
@@ -229,7 +230,9 @@ export async function getDiagnoseSignals(
             () =>
                 isTestMode
                     ? Promise.resolve(undefined)
-                    : graphqlFetch<{ complexityTimeseries: ComplexityTimeseriesResult }>(
+                    : graphqlFetch<{
+                          complexityTimeseries: ComplexityTimeseriesResult;
+                      }>(
                           COMPLEXITY_TIMESERIES_QUERY,
                           {
                               input: {
@@ -281,10 +284,6 @@ export async function getDiagnoseSignals(
             : UNAVAILABLE,
     );
 
-    // ── People (/people) ─────────────────────────────────────────────────────
-    // No area-level aggregate metric exists → honest "unavailable" (CHAOS-2077).
-    push("people", UNAVAILABLE);
-
     // ── Code (/code) ──────────────────────────────────────────────────────────
     // Home REST deltas[metric=churn] value; RETURNED severity from
     // signals[metric=churn].severity.
@@ -305,8 +304,7 @@ export async function getDiagnoseSignals(
     // higherIsBetter polarity. DERIVE.
     // CHAOS-2074: provisional thresholds — see LANDSCAPE_BUSFACTOR_THRESHOLDS above.
     const busFactorValue = busFactor?.value;
-    const hasBusFactor =
-        typeof busFactorValue === "number" && (busFactor?.repos?.length ?? 0) > 0;
+    const hasBusFactor = typeof busFactorValue === "number" && (busFactor?.repos?.length ?? 0) > 0;
     push(
         "landscape",
         hasBusFactor

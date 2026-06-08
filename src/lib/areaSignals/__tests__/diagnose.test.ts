@@ -189,7 +189,7 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
         expect(ids).toEqual(
             expect.arrayContaining([
                 "flow",
-                "people",
+                "code",
                 "code",
                 "landscape",
                 "complexity",
@@ -295,11 +295,6 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
     });
 
     describe("unavailable signals (backend gaps)", () => {
-        it("People is always unavailable (no area-level aggregate metric)", async () => {
-            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals.people).toMatchObject({ state: "unavailable", value: "" });
-        });
-
         it("Landscape derives medium from bus factor 2.4 (higherIsBetter, thresholds {critical:1.5, high:2, medium:3})", async () => {
             // value=2.4: >= high(2) but < medium(3) → medium in higherIsBetter polarity.
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
@@ -436,9 +431,9 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             mockGetHomeData.mockRejectedValue(new Error("home down"));
             mockGraphql.mockRejectedValue(new Error("graphql down"));
             const signals = await getDiagnoseSignals(defaultMetricFilter);
-            expect(signals).toHaveLength(7);
+            expect(signals).toHaveLength(6);
             for (const s of signals) {
-                if (!["people", "landscape", "cognitive-load"].includes(s.id)) {
+                if (!["landscape", "cognitive-load"].includes(s.id)) {
                     expect(s.state).toBe("unavailable");
                 }
             }
