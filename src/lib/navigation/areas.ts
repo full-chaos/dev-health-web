@@ -207,8 +207,7 @@ export const navAreas: readonly NavArea[] = [
                 label: "Landscape",
                 href: "/landscape",
                 description: "System landscape overview.",
-                // Gap: no resolver-backed metric yet → "unavailable" (DataState).
-                metricLabel: "No area metric",
+                metricLabel: "Bus factor",
             },
             {
                 id: "complexity",

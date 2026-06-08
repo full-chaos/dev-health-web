@@ -18,12 +18,15 @@
 //   - "Returned": reuse the server-resolved severity (home REST `signals[]`,
 //     deltas severity).
 //
-// Backend gaps (CHAOS-2077): People / Landscape / Cognitive Load have no
-// area-level aggregate metric yet. They surface as honest "unavailable" cards
-// until CHAOS-2077 lands the resolver-backed metrics.
+// Backend gaps (CHAOS-2077): People / Cognitive Load have no area-level
+// aggregate metric yet. They surface as honest "unavailable" cards until
+// CHAOS-2077 lands the resolver-backed metrics.
+// Landscape is now wired via org-level bus factor (getBusFactorData). People
+// and Cognitive Load remain gapped.
 
 import { auth } from "@/lib/auth";
 import { getHomeData } from "@/lib/api/home";
+import { getBusFactorData } from "@/lib/api/code";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPLEXITY_TIMESERIES_QUERY } from "@/lib/graphql/queries";
 import type { ComplexityTimeseriesResult } from "@/lib/graphql/__generated__/types";
@@ -47,6 +50,21 @@ const COMPLEXITY_THRESHOLDS: SeverityThresholds = {
     high: 25, // cyclomaticPerKloc >= 25 → high
     medium: 15, // cyclomaticPerKloc >= 15 → medium
     // else → low
+};
+
+// ── Provisional Landscape bus-factor thresholds (CHAOS-2074) ─────────────────
+//
+// CHAOS-2074: provisional Landscape bus-factor thresholds — pending calibration.
+// Applied to the org-level bus factor (higher = safer; lower = single-owner risk).
+// Bus factor represents the minimum number of maintainers covering the majority
+// of commits. Thresholds here are conservative starting points: a bus factor
+// below 1.5 (effectively a single maintainer) is critical; below 2 is high risk;
+// below 3 is medium risk. Flag for owner: calibrate against real org distribution.
+const LANDSCAPE_BUSFACTOR_THRESHOLDS: SeverityThresholds = {
+    critical: 1.5, // bus factor < 1.5 → critical (single-owner risk)
+    high: 2, // bus factor < 2 → high
+    medium: 3, // bus factor < 3 → medium
+    // else → low (bus factor >= 3)
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -162,7 +180,7 @@ export async function getDiagnoseSignals(
 
     // ── Fetch every source in parallel (no serial N+1) ───────────────────────
     // Metrics + Code + Bottlenecks all come from a single getHomeData call.
-    const [homeData, complexityData] = await Promise.all([
+    const [homeData, complexityData, busFactor] = await Promise.all([
         safe(() => getHomeData(filters), "home"),
         safe(
             () =>
@@ -184,6 +202,7 @@ export async function getDiagnoseSignals(
                       ).then((r) => r.complexityTimeseries),
             "complexity",
         ),
+        safe(() => getBusFactorData(filters), "bus-factor"),
     ]);
 
     const signals: AreaSignal[] = [];
@@ -227,8 +246,24 @@ export async function getDiagnoseSignals(
     );
 
     // ── Landscape (/landscape) ────────────────────────────────────────────────
-    // Backend gap (CHAOS-2077) → honest "unavailable".
-    push("landscape", UNAVAILABLE);
+    // GraphQL busFactor; headline = org bus-factor value. Higher = safer →
+    // higherIsBetter polarity. DERIVE.
+    // CHAOS-2074: provisional thresholds — see LANDSCAPE_BUSFACTOR_THRESHOLDS above.
+    const busFactorValue = busFactor?.value;
+    const hasBusFactor =
+        typeof busFactorValue === "number" && (busFactor?.repos?.length ?? 0) > 0;
+    push(
+        "landscape",
+        hasBusFactor
+            ? {
+                  state: deriveState(busFactorValue, {
+                      thresholds: LANDSCAPE_BUSFACTOR_THRESHOLDS,
+                      direction: "higherIsBetter",
+                  }),
+                  value: formatNumber(busFactorValue, { maximumFractionDigits: 1 }),
+              }
+            : UNAVAILABLE,
+    );
 
     // ── Complexity (/complexity) ──────────────────────────────────────────────
     // GraphQL complexityTimeseries; headline = mean cyclomaticPerKloc across all

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/home", () => ({ getHomeData: vi.fn() }));
 vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn() }));
+vi.mock("@/lib/api/code", () => ({ getBusFactorData: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
     auth: vi.fn().mockResolvedValue({ user: { org_id: "org-test" } }),
 }));
@@ -15,6 +16,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { getHomeData } from "@/lib/api/home";
 import { graphqlFetch } from "@/lib/graphql/server";
+import { getBusFactorData } from "@/lib/api/code";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getDiagnoseSignals } from "../diagnose";
@@ -22,6 +24,7 @@ import type { AreaSignal } from "../types";
 
 const mockGetHomeData = vi.mocked(getHomeData);
 const mockGraphql = vi.mocked(graphqlFetch);
+const mockGetBusFactorData = vi.mocked(getBusFactorData);
 
 function byId(signals: AreaSignal[]): Record<string, AreaSignal> {
     return Object.fromEntries(signals.map((s) => [s.id, s]));
@@ -128,6 +131,24 @@ beforeEach(() => {
 
     // Default complexity: avg cyclomaticPerKloc = 18 → medium (>=15).
     mockGraphql.mockResolvedValue(complexityResponse(18) as never);
+
+    // Default bus factor: value=2.4 → medium (>=2, <3 with higherIsBetter thresholds).
+    mockGetBusFactorData.mockResolvedValue({
+        orgId: "org-test",
+        scope: {},
+        value: 2.4,
+        topMaintainers: [],
+        repos: [
+            {
+                repoId: "r1",
+                repoName: "repo-1",
+                value: 2.4,
+                topMaintainers: [],
+                evidenceSampleCount: 1,
+            },
+        ],
+        evidenceSampleCount: 1,
+    });
 });
 
 describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
@@ -249,12 +270,29 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             expect(signals.people).toMatchObject({ state: "unavailable", value: "" });
         });
 
-        it("Landscape is always unavailable (CHAOS-2077 backend gap)", async () => {
+        it("Landscape derives medium from bus factor 2.4 (higherIsBetter, thresholds {critical:1.5, high:2, medium:3})", async () => {
+            // value=2.4: >= high(2) but < medium(3) → medium in higherIsBetter polarity.
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals.landscape).toMatchObject({
-                state: "unavailable",
-                value: "",
+            expect(signals.landscape).toMatchObject({ state: "medium", value: "2.4" });
+        });
+
+        it("Landscape is unavailable when getBusFactorData returns null", async () => {
+            mockGetBusFactorData.mockResolvedValue(null);
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals.landscape).toMatchObject({ state: "unavailable", value: "" });
+        });
+
+        it("Landscape is unavailable when bus factor has no repos", async () => {
+            mockGetBusFactorData.mockResolvedValue({
+                orgId: "org-test",
+                scope: {},
+                value: 2.4,
+                topMaintainers: [],
+                repos: [],
+                evidenceSampleCount: 0,
             });
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals.landscape).toMatchObject({ state: "unavailable", value: "" });
         });
 
         it("Cognitive Load is always unavailable (CHAOS-2077 backend gap)", async () => {
@@ -307,6 +345,18 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             expect(signals.flow.state).toBe("low");
             expect(signals.code.state).toBe("high");
             expect(signals.bottleneck.state).toBe("critical");
+        });
+
+        it("degrades Landscape to unavailable when bus factor fetch fails", async () => {
+            mockGetBusFactorData.mockRejectedValue(new Error("bus-factor down"));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals.landscape).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
+            // Other signals still resolve.
+            expect(signals.flow.state).toBe("low");
+            expect(signals.complexity.state).toBe("medium");
         });
 
         it("does not throw when both sources fail simultaneously", async () => {
