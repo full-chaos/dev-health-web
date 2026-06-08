@@ -29,6 +29,7 @@ import { getBusFactorData } from "@/lib/api/code";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPLEXITY_TIMESERIES_QUERY } from "@/lib/graphql/queries";
 import type { ComplexityTimeseriesResult } from "@/lib/graphql/__generated__/types";
+import { complexityScopeInputFromFilter } from "@/lib/complexity/filters";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
 import type { CognitiveLoadResult } from "@/lib/graphql/cognitiveLoadFetchers";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
@@ -126,11 +127,17 @@ function homeSignalByMetric(
     return match ? (match as { metric: string; severity: AreaSignalState }) : undefined;
 }
 
-/** Compute mean cyclomaticPerKloc across all points in a complexity result. */
 function meanCyclomaticPerKloc(result: ComplexityTimeseriesResult | undefined): number | undefined {
     const points = result?.points ?? [];
     if (points.length === 0) return undefined;
-    const values = points
+    const latestByScope = new Map<string, (typeof points)[number]>();
+    for (const point of points) {
+        const current = latestByScope.get(point.scopeId);
+        if (!current || point.date > current.date) {
+            latestByScope.set(point.scopeId, point);
+        }
+    }
+    const values = [...latestByScope.values()]
         .map((p) => p.cyclomaticPerKloc)
         .filter((v): v is number => typeof v === "number" && !isNaN(v));
     if (values.length === 0) return undefined;
@@ -203,6 +210,7 @@ export async function getDiagnoseSignals(
     // Resolve the org scope server-side (the complexity GraphQL call needs it
     // threaded in as a variable AND as the `X-Org-Id` header).
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
+    const complexityScopeInput = complexityScopeInputFromFilter(filters);
 
     // cognitiveLoad only supports org-wide or team aggregation (the resolver takes orgId
     // plus an optional teamId). Repo/service/developer filters cannot be honored, so the
@@ -229,15 +237,18 @@ export async function getDiagnoseSignals(
             () =>
                 isTestMode
                     ? Promise.resolve(undefined)
-                    : graphqlFetch<{ complexityTimeseries: ComplexityTimeseriesResult }>(
+                    : graphqlFetch<{
+                          complexityTimeseries: ComplexityTimeseriesResult;
+                      }>(
                           COMPLEXITY_TIMESERIES_QUERY,
                           {
                               input: {
                                   orgId,
                                   sinceUtc: startDate + "T00:00:00Z",
                                   untilUtc: endDate + "T23:59:59Z",
-                                  granularity: "WEEK",
+                                  granularity: "DAY",
                                   scope: "REPO",
+                                  ...complexityScopeInput,
                                   limit: 50,
                               },
                           },
@@ -305,8 +316,7 @@ export async function getDiagnoseSignals(
     // higherIsBetter polarity. DERIVE.
     // CHAOS-2074: provisional thresholds — see LANDSCAPE_BUSFACTOR_THRESHOLDS above.
     const busFactorValue = busFactor?.value;
-    const hasBusFactor =
-        typeof busFactorValue === "number" && (busFactor?.repos?.length ?? 0) > 0;
+    const hasBusFactor = typeof busFactorValue === "number" && (busFactor?.repos?.length ?? 0) > 0;
     push(
         "landscape",
         hasBusFactor
