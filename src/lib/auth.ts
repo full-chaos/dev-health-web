@@ -282,9 +282,17 @@ const nextAuth = NextAuth({
                     if (res.ok) {
                         const data = await res.json();
                         token.access_token = data.access_token;
+                        // NOTE: Single-use token rotation — if multiple concurrent JWT callbacks
+                        // race (e.g., parallel SSR requests), a later callback may attempt to use
+                        // an already-rotated refresh_token and receive a 401. The ?? fallback below
+                        // preserves the most recently issued token if data.refresh_token is absent,
+                        // but a brief window exists between concurrent rotations.
+                        // A backend refresh-idempotency or grace-period mechanism is needed for a
+                        // full fix; this is tracked in a follow-up issue.
                         token.refresh_token = data.refresh_token ?? token.refresh_token;
                         token.expires_at = now + (data.expires_in || 3600) * 1000;
                         token.last_validated = now;
+                        token.error = undefined;
                         if (data.user) {
                             token.id = data.user.id;
                             token.email = data.user.email;
@@ -297,9 +305,21 @@ const nextAuth = NextAuth({
                         token.refresh_token = undefined;
                         token.error = "refresh_failed";
                         return token;
+                    } else {
+                        // Transient/5xx error — revoke access_token to prevent exposing an expired
+                        // bearer token, but keep refresh_token so the next JWT callback can retry
+                        // (self-healing). expires_at is left unchanged so tokenExpired stays true.
+                        token.access_token = undefined;
+                        token.error = "refresh_unavailable";
+                        return token;
                     }
                 } catch {
-                    // Network error — keep existing token, retry on next request
+                    // Network error — revoke access_token to prevent exposing an expired bearer
+                    // token, but keep refresh_token so the next JWT callback can retry (self-healing).
+                    // expires_at is left unchanged so tokenExpired stays true on the next call.
+                    token.access_token = undefined;
+                    token.error = "refresh_unavailable";
+                    return token;
                 }
             }
 
@@ -390,7 +410,12 @@ export async function auth(): Promise<Session | null> {
 
 export async function requireSession(callbackUrl?: string): Promise<Session> {
     const session = await getServerSession();
-    // Surface social login errors (e.g. 409 account conflict) before dropping the session
+    // Transient backend outage: access_token revoked but refresh_token preserved for retry.
+    // Redirect to /auth/error (not /auth/signin) — user is not hard-logged-out on a blip.
+    if (session?.error === "refresh_unavailable") {
+        redirect("/auth/error?error=refresh_unavailable");
+    }
+    // Terminal errors (social login failure, user invalidated, refresh_failed, etc.)
     if (session?.error) {
         redirect(`/auth/signin?error=${encodeURIComponent(session.error)}`);
     }

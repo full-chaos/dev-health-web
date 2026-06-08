@@ -156,6 +156,31 @@ describe("requireSession", () => {
         expect(result.user.org_id).toBe("org-123");
         expect(result.user.needs_onboarding).toBe(false);
     });
+
+    it("redirects to /auth/error?error=refresh_unavailable on transient refresh outage", async () => {
+        mockNextAuthAuth.mockResolvedValueOnce({
+            user: {
+                id: "user-1",
+                email: "test@example.com",
+                org_id: "org-123",
+                role: "owner",
+                is_superuser: false,
+                permissions: [],
+                needs_onboarding: false,
+            },
+            access_token: undefined,
+            error: "refresh_unavailable",
+        });
+
+        try {
+            await requireSession();
+            expect.fail("Should have thrown redirect");
+        } catch (error: unknown) {
+            const redirectErr = error as RedirectError;
+            expect(redirectErr.digest).toBe("NEXT_REDIRECT");
+            expect(redirectErr.url).toBe("/auth/error?error=refresh_unavailable");
+        }
+    });
 });
 
 describe("auth secret configuration", () => {
@@ -249,7 +274,7 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.access_token).toBe("new-access-token");
     });
 
-    it("(b) keeps tokens on transient 5xx refresh failure", async () => {
+    it("(b) clears access_token but preserves refresh_token on transient 5xx failure", async () => {
         vi.stubGlobal(
             "fetch",
             vi.fn().mockResolvedValueOnce({
@@ -272,9 +297,9 @@ describe("jwt callback — token lifecycle", () => {
             account: null,
         });
 
-        expect(result.access_token).toBe("valid-access");
+        expect(result.access_token).toBeUndefined();
         expect(result.refresh_token).toBe("valid-refresh");
-        expect(result.error).toBeUndefined();
+        expect(result.error).toBe("refresh_unavailable");
     });
 
     it("(c) clears tokens on terminal 401 refresh failure", async () => {
@@ -303,5 +328,65 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.access_token).toBeUndefined();
         expect(result.refresh_token).toBeUndefined();
         expect(result.error).toBe("refresh_failed");
+    });
+
+    it("(d) clears access_token but preserves refresh_token on network error (fetch throws)", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockRejectedValueOnce(new Error("fetch failed: ECONNREFUSED")),
+        );
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: {
+                id: "user-1",
+                access_token: "valid-access",
+                refresh_token: "valid-refresh",
+                expires_at: Date.now() - 1000,
+                last_validated: Date.now(),
+            },
+            user: null,
+            account: null,
+        });
+
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.error).toBe("refresh_unavailable");
+    });
+
+    it("(e) clears error on refresh success after prior transient failure", async () => {
+        const newAccessToken = "recovered-access-token";
+        const newRefreshToken = "recovered-refresh-token";
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    access_token: newAccessToken,
+                    refresh_token: newRefreshToken,
+                    expires_in: 3600,
+                }),
+            } as unknown as Response),
+        );
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: {
+                id: "user-1",
+                access_token: undefined,
+                refresh_token: "stale-refresh-token",
+                expires_at: Date.now() - 1000, // expired, triggers refresh retry
+                last_validated: Date.now() - 3600 * 1000,
+                error: "refresh_unavailable",
+            },
+            user: null,
+            account: null,
+        });
+
+        expect(result.access_token).toBe(newAccessToken);
+        expect(result.refresh_token).toBe(newRefreshToken);
+        expect(result.expires_at as number).toBeGreaterThan(Date.now());
+        expect(result.error).toBeUndefined();
     });
 });
