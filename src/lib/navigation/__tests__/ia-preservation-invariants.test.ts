@@ -296,8 +296,34 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         ]) {
             expect(investmentChartsSource).toContain(chart);
         }
-        expect(investmentViewSource).toContain("InvestmentWorkUnitList");
+        expect(investmentViewSource).toContain("InvestmentEvidenceTable");
         expect(investmentViewSource).toContain("How this was calculated");
+    });
+
+    it("locks the Investment tab set to Overview / Allocation / Evidence / Confidence", () => {
+        // CHAOS-2154 IA redesign: Investment owns allocation paths, not delivery
+        // flow. The canonical tabs are fixed and the retired tab ids must not
+        // reappear in the page's tab definitions.
+        const investmentTypesSource = readFileSync(
+            join(process.cwd(), "src/components/work/investment/types.ts"),
+            "utf8",
+        );
+        for (const tab of ["overview", "allocation", "evidence", "confidence"]) {
+            expect(investmentTypesSource).toContain(`"${tab}"`);
+        }
+        for (const label of ["Allocation", "Evidence", "Confidence"]) {
+            expect(investmentPageSource).toContain(`"${label}"`);
+        }
+        for (const retired of [
+            '"mix"',
+            '"unit-investment"',
+            '"strategic-allocation"',
+            '"rework"',
+        ]) {
+            expect(investmentTypesSource).not.toContain(retired);
+        }
+        // Investment reserves "flow" for delivery flow under Metrics/Monitoring.
+        expect(investmentViewSource.toLowerCase()).not.toContain('section="all"');
     });
 
     it("preserves role context on standalone /investment and investment drill-down links", () => {

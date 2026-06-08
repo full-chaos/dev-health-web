@@ -138,13 +138,16 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
         it("renders the three h3 section headings that a split refactor must preserve", () => {
             render(<InvestmentCharts {...baseProps()} />);
             expect(
-                screen.getByRole("heading", { level: 3, name: /treemap|investment mix/i }),
+                screen.getByRole("heading", {
+                    level: 3,
+                    name: /treemap|investment mix/i,
+                }),
             ).toBeInTheDocument();
             expect(
-                screen.getByRole("heading", { level: 3, name: /team burden flow/i }),
+                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
             ).toBeInTheDocument();
             expect(
-                screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
+                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();
         });
     });
@@ -155,7 +158,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             expect(screen.getByText(/loading work units/i)).toBeInTheDocument();
         });
 
-        it('shows "Loading flow data..." when isCategoryFlowLoading is true', () => {
+        it('shows "Loading allocation data..." when isCategoryFlowLoading is true', () => {
             render(
                 <InvestmentCharts
                     {...baseProps({
@@ -165,7 +168,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                     })}
                 />,
             );
-            expect(screen.getByText(/loading flow data/i)).toBeInTheDocument();
+            expect(screen.getByText(/loading allocation data/i)).toBeInTheDocument();
         });
 
         it('shows "Loading destination view..." when isRepoTeamLoading is true', () => {
@@ -209,7 +212,9 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
         it("renders the investment and mix chart toggles so users can switch views", () => {
             render(<InvestmentCharts {...baseProps()} />);
 
-            const radiogroups = screen.getAllByRole("radiogroup", { name: /chart type/i });
+            const radiogroups = screen.getAllByRole("radiogroup", {
+                name: /chart type/i,
+            });
             expect(radiogroups.length).toBeGreaterThanOrEqual(2);
             expect(screen.getByRole("radio", { name: /treemap/i })).toBeInTheDocument();
             expect(screen.getByRole("radio", { name: /sunburst/i })).toBeInTheDocument();
@@ -229,8 +234,21 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                 />,
             );
             expect(
-                screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
+                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();
+        });
+
+        it("renders the unavailable DataState (no Sankey) when repoTeamFlowFailed is true", () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({
+                        repoTeamFlowFailed: true,
+                        repoTeamFlow: null,
+                    })}
+                />,
+            );
+            // Honest-empty: DataState replaces the Sankey when flow endpoint fails.
+            expect(screen.getByText(/repo-to-team allocation unavailable/i)).toBeInTheDocument();
         });
     });
 
@@ -239,14 +257,17 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             render(<InvestmentCharts {...baseProps()} />);
             // mix heading
             expect(
-                screen.getByRole("heading", { level: 3, name: /treemap|investment mix/i }),
+                screen.getByRole("heading", {
+                    level: 3,
+                    name: /treemap|investment mix/i,
+                }),
             ).toBeInTheDocument();
             // flows headings
             expect(
-                screen.getByRole("heading", { level: 3, name: /team burden flow/i }),
+                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
             ).toBeInTheDocument();
             expect(
-                screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
+                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();
         });
 
@@ -254,14 +275,17 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             render(<InvestmentCharts {...baseProps({ section: "mix" })} />);
             // mix heading is present
             expect(
-                screen.getByRole("heading", { level: 3, name: /treemap|investment mix/i }),
+                screen.getByRole("heading", {
+                    level: 3,
+                    name: /treemap|investment mix/i,
+                }),
             ).toBeInTheDocument();
             // flow headings are NOT present
             expect(
-                screen.queryByRole("heading", { level: 3, name: /team burden flow/i }),
+                screen.queryByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
             ).not.toBeInTheDocument();
             expect(
-                screen.queryByRole("heading", { level: 3, name: /where effort lands/i }),
+                screen.queryByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).not.toBeInTheDocument();
         });
 
@@ -269,14 +293,17 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             render(<InvestmentCharts {...baseProps({ section: "flows" })} />);
             // mix heading is NOT present
             expect(
-                screen.queryByRole("heading", { level: 3, name: /treemap|investment mix/i }),
+                screen.queryByRole("heading", {
+                    level: 3,
+                    name: /treemap|investment mix/i,
+                }),
             ).not.toBeInTheDocument();
             // flows headings ARE present
             expect(
-                screen.getByRole("heading", { level: 3, name: /team burden flow/i }),
+                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
             ).toBeInTheDocument();
             expect(
-                screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
+                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();
         });
     });
