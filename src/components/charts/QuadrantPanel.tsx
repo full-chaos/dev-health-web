@@ -356,7 +356,7 @@ export function QuadrantPanel({
                               aria-modal="true"
                               aria-label={infoTitle}
                               onKeyDown={handleDialogKeyDown}
-                              className="w-full max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-5 text-xs text-(--ink-muted) shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
+                              className="relative z-10 w-full max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-5 text-xs text-(--ink-muted) shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
                           >
                               <div className="flex items-start justify-between gap-4">
                                   <div>
