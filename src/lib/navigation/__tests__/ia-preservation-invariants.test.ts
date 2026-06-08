@@ -307,7 +307,10 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         expect(investmentPageSource).toContain("activeRole={activeRole}");
         expect(investmentPageSource).toContain("role: activeRole");
         expect(investmentPageSource).toContain("withFilterParam(");
-        expect(investmentPageSource).toContain('"/landscape",');
+        // Investment's BackLink now points at its IA parent /diagnose (CHAOS-2079),
+        // still wrapped in withFilterParam so the user's filter/role/origin scope is
+        // preserved on the way back. Guarding the literal keeps that scope intact.
+        expect(investmentPageSource).toContain('"/diagnose",');
         expect(investmentPageSource).toContain("activeOrigin,");
     });
 
