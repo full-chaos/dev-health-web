@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mock every Diagnose source at the module boundary ─────────────────────────
@@ -321,6 +322,28 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
                 },
                 { orgId: "org-test" },
             );
+        });
+
+        it("preset-only range_days=14 uses range_days-1 span (14 inclusive dates, matching /complexity)", async () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date("2026-06-08T12:00:00Z"));
+            const presetFilter = {
+                ...defaultMetricFilter,
+                time: { range_days: 14, compare_days: 14 },
+            };
+            await getDiagnoseSignals(presetFilter);
+            // range_days - 1 = 13 days back → 14 inclusive calendar dates.
+            expect(mockGraphql).toHaveBeenCalledWith(
+                expect.any(String),
+                {
+                    input: expect.objectContaining({
+                        sinceUtc: "2026-05-26T00:00:00Z",
+                        untilUtc: "2026-06-08T23:59:59Z",
+                    }),
+                },
+                expect.any(Object),
+            );
+            vi.useRealTimers();
         });
     });
 
