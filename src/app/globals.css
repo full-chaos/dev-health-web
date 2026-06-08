@@ -583,7 +583,6 @@
 :root,
 :root[data-theme="light"],
 :root[data-palette][data-theme="light"] {
-    --accent: #f89d28;
     --positive: #16a34a;
     --caution: #f59e0b;
     --info: #2563eb;
@@ -598,7 +597,6 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --accent: #ffb347;
         --positive: #34d399;
         --caution: #fbbf24;
         --info: #60a5fa;
@@ -610,7 +608,6 @@
 
 :root[data-theme="dark"],
 :root[data-palette][data-theme="dark"] {
-    --accent: #ffb347;
     --positive: #34d399;
     --caution: #fbbf24;
     --info: #60a5fa;
