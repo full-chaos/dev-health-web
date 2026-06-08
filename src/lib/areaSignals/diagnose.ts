@@ -29,6 +29,10 @@ import { getBusFactorData } from "@/lib/api/code";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPLEXITY_TIMESERIES_QUERY } from "@/lib/graphql/queries";
 import type { ComplexityTimeseriesResult } from "@/lib/graphql/__generated__/types";
+import {
+    complexityScopeInputFromFilter,
+    complexityWindowFromFilter,
+} from "@/lib/complexity/filters";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
 import type { CognitiveLoadResult } from "@/lib/graphql/cognitiveLoadFetchers";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
@@ -126,11 +130,17 @@ function homeSignalByMetric(
     return match ? (match as { metric: string; severity: AreaSignalState }) : undefined;
 }
 
-/** Compute mean cyclomaticPerKloc across all points in a complexity result. */
 function meanCyclomaticPerKloc(result: ComplexityTimeseriesResult | undefined): number | undefined {
     const points = result?.points ?? [];
     if (points.length === 0) return undefined;
-    const values = points
+    const latestByScope = new Map<string, (typeof points)[number]>();
+    for (const point of points) {
+        const current = latestByScope.get(point.scopeId);
+        if (!current || point.date > current.date) {
+            latestByScope.set(point.scopeId, point);
+        }
+    }
+    const values = [...latestByScope.values()]
         .map((p) => p.cyclomaticPerKloc)
         .filter((v): v is number => typeof v === "number" && !isNaN(v));
     if (values.length === 0) return undefined;
@@ -193,17 +203,17 @@ export async function getDiagnoseSignals(
     const byId = new Map(diagnose.hubItems.map((item) => [item.id, item]));
     const descriptor = (id: string): NavAreaHubItem | undefined => byId.get(id);
 
-    // Shared date range for the complexity GraphQL call.
-    const rangeDays = filters.time?.range_days ?? 14;
-    const today = new Date();
-    const endDate = filters.time?.end_date ?? today.toISOString().slice(0, 10);
-    const startDate =
-        filters.time?.start_date ??
-        new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
+    // Shared date window for the complexity and cognitive-load GraphQL calls.
+    // complexityWindowFromFilter uses `range_days - 1` so a 14-day preset covers
+    // exactly 14 inclusive calendar days, matching the /complexity page.
+    const { sinceUtc, untilUtc } = complexityWindowFromFilter(filters.time);
+    const sinceDate = sinceUtc.slice(0, 10);
+    const untilDate = untilUtc.slice(0, 10);
 
     // Resolve the org scope server-side (the complexity GraphQL call needs it
     // threaded in as a variable AND as the `X-Org-Id` header).
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
+    const complexityScopeInput = complexityScopeInputFromFilter(filters);
 
     // cognitiveLoad only supports org-wide or team aggregation (the resolver takes orgId
     // plus an optional teamId). Repo/service/developer filters cannot be honored, so the
@@ -237,10 +247,11 @@ export async function getDiagnoseSignals(
                           {
                               input: {
                                   orgId,
-                                  sinceUtc: startDate + "T00:00:00Z",
-                                  untilUtc: endDate + "T23:59:59Z",
-                                  granularity: "WEEK",
+                                  sinceUtc,
+                                  untilUtc,
+                                  granularity: "DAY",
                                   scope: "REPO",
+                                  ...complexityScopeInput,
                                   limit: 50,
                               },
                           },
@@ -255,8 +266,8 @@ export async function getDiagnoseSignals(
                     ? Promise.resolve(undefined)
                     : getCognitiveLoadViaGraphQL({
                           orgId,
-                          sinceDate: startDate,
-                          untilDate: endDate,
+                          sinceDate,
+                          untilDate,
                           teamId: cognitiveLoadTeamId,
                       }),
             "cognitive-load",
