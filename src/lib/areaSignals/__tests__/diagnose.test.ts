@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mock every Diagnose source at the module boundary ─────────────────────────
@@ -258,8 +259,7 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             });
         });
 
-        it("computes mean across multiple complexity points", async () => {
-            // Two points: 20 + 40 → mean 30 → high (>=25, <40).
+        it("computes mean from the latest complexity point per repo", async () => {
             mockGraphql.mockResolvedValue({
                 complexityTimeseries: {
                     points: [
@@ -290,7 +290,60 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
                 },
             } as never);
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals.complexity).toMatchObject({ state: "high" });
+            expect(signals.complexity).toMatchObject({
+                state: "critical",
+                value: "40",
+            });
+        });
+
+        it("passes active date and scope filters to the complexity query", async () => {
+            const filtered = {
+                ...defaultMetricFilter,
+                time: {
+                    ...defaultMetricFilter.time,
+                    start_date: "2026-03-05",
+                    end_date: "2026-06-07",
+                },
+                scope: { level: "repo" as const, ids: ["repo-active"] },
+            };
+            await getDiagnoseSignals(filtered);
+            expect(mockGraphql).toHaveBeenCalledWith(
+                expect.any(String),
+                {
+                    input: expect.objectContaining({
+                        orgId: "org-test",
+                        sinceUtc: "2026-03-05T00:00:00Z",
+                        untilUtc: "2026-06-07T23:59:59Z",
+                        granularity: "DAY",
+                        scope: "REPO",
+                        repoIds: ["repo-active"],
+                        teamIds: null,
+                    }),
+                },
+                { orgId: "org-test" },
+            );
+        });
+
+        it("preset-only range_days=14 uses range_days-1 span (14 inclusive dates, matching /complexity)", async () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date("2026-06-08T12:00:00Z"));
+            const presetFilter = {
+                ...defaultMetricFilter,
+                time: { range_days: 14, compare_days: 14 },
+            };
+            await getDiagnoseSignals(presetFilter);
+            // range_days - 1 = 13 days back → 14 inclusive calendar dates.
+            expect(mockGraphql).toHaveBeenCalledWith(
+                expect.any(String),
+                {
+                    input: expect.objectContaining({
+                        sinceUtc: "2026-05-26T00:00:00Z",
+                        untilUtc: "2026-06-08T23:59:59Z",
+                    }),
+                },
+                expect.any(Object),
+            );
+            vi.useRealTimers();
         });
     });
 
@@ -298,13 +351,19 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
         it("Landscape derives medium from bus factor 2.4 (higherIsBetter, thresholds {critical:1.5, high:2, medium:3})", async () => {
             // value=2.4: >= high(2) but < medium(3) → medium in higherIsBetter polarity.
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals.landscape).toMatchObject({ state: "medium", value: "2.4" });
+            expect(signals.landscape).toMatchObject({
+                state: "medium",
+                value: "2.4",
+            });
         });
 
         it("Landscape is unavailable when getBusFactorData returns null", async () => {
             mockGetBusFactorData.mockResolvedValue(null);
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals.landscape).toMatchObject({ state: "unavailable", value: "" });
+            expect(signals.landscape).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
         });
 
         it("Landscape is unavailable when bus factor has no repos", async () => {
@@ -317,12 +376,18 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
                 evidenceSampleCount: 0,
             });
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals.landscape).toMatchObject({ state: "unavailable", value: "" });
+            expect(signals.landscape).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
         });
 
         it("Cognitive Load derives high from avg interruption load 16 (lowerIsBetter, thresholds {medium:8, high:15, critical:25})", async () => {
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals["cognitive-load"]).toMatchObject({ state: "high", value: "16" });
+            expect(signals["cognitive-load"]).toMatchObject({
+                state: "high",
+                value: "16",
+            });
         });
 
         it("Cognitive Load is unavailable when no cognitiveLoad signals are returned", async () => {
