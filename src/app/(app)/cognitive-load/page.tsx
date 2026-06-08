@@ -7,6 +7,17 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { requireSession } from "@/lib/auth";
 import { withFilterParam } from "@/lib/filters/url";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
+import { getHeatmap } from "@/lib/api/visuals";
+import {
+    ContextSwitchingView,
+    FocusPressureView,
+    LoadDriversView,
+    OverviewView,
+    type LoadDriver,
+    type LoadKpi,
+    type TrendPoint,
+} from "@/components/cognitive-load/CognitiveLoadViews";
+import type { HeatmapResponse } from "@/lib/types";
 import Link from "next/link";
 
 type CognitiveLoadPageProps = {
@@ -125,6 +136,28 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
         }
     }
 
+    // The Heatmap tab fetches its own review-wait-density grid server-side. HeatmapPanel
+    // renders initialData as-is and does NOT self-fetch the grid (it only re-fetches
+    // per-cell evidence on click), so a null here would render an empty heatmap. Fetch
+    // only when that tab is active and the scope is viewable to avoid wasted backend calls.
+    let reviewHeatmap: HeatmapResponse | null = null;
+    if (activeTab === "heatmap" && canShowSelectedScope) {
+        try {
+            reviewHeatmap = await getHeatmap({
+                type: "temporal_load",
+                metric: "review_wait_density",
+                scope_type: filters.scope.level,
+                scope_id: scopeId,
+                range_days: filters.time.range_days,
+                start_date: filters.time.start_date,
+                end_date: filters.time.end_date,
+            });
+        } catch {
+            // Leave null — HeatmapView renders its own "unavailable" empty state.
+            reviewHeatmap = null;
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Derive aggregated KPI values from per-day signals
     // -------------------------------------------------------------------------
@@ -152,7 +185,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
 
     // Build the 5 KPI card descriptors from real data.
     // When there is genuinely no data (hasData === false) every value shows "—".
-    const signals = hasData
+    const signals: LoadKpi[] | null = hasData
         ? [
               {
                   label: "PR interruption load",
@@ -200,16 +233,27 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
           ]
         : null; // null signals no data — rendered as empty state below
 
-    // Build the bar-chart trend from per-day pr_interruption_load (primary composite signal).
-    // Use the last 7 days of data points; if fewer, use what we have.
-    const trendWindow = rawSignals.slice(-7);
-    const trend =
-        trendWindow.length > 0
-            ? trendWindow.map((s) => ({
-                  day: s.day.slice(5), // "MM-DD" for compact label
-                  value: Math.round(s.prInterruptionLoad),
-              }))
-            : null;
+    // Per-day trend datasets for the distinct tabs. Keep the FULL ISO `day` so the chart
+    // sorts chronologically across month/year boundaries (a Dec→Jan window must not plot
+    // January before December); `label` carries the compact "MM-DD" form for the axis.
+    // A real zero is plotted (zero is data); only a genuinely empty window is empty.
+    const toTrend = (pick: (s: (typeof rawSignals)[number]) => number): TrendPoint[] =>
+        rawSignals
+            .map((s) => ({ day: s.day, label: s.day.slice(5), value: Math.round(pick(s)) }))
+            .sort((a, b) => a.day.localeCompare(b.day));
+    const contextSpreadTrend = toTrend((s) => s.contextSpreadCount);
+    const interruptionTrend = toTrend((s) => s.prInterruptionLoad);
+    const reviewRequestTrend = toTrend((s) => s.reviewRequestLoad);
+
+    // Load Drivers composition: average daily contribution of each count-based signal
+    // (same unit — events/day — so the bars are directly comparable on one axis).
+    const loadDrivers: LoadDriver[] = [
+        { label: "PR interruption", value: avgPrInterruptionLoad },
+        { label: "Context spread", value: avgContextSpread },
+        { label: "Review request", value: avgReviewRequestLoad },
+    ];
+
+    const windowLabel = { sinceDate, untilDate };
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -265,7 +309,11 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                     />
 
                     {activeTab === "heatmap" && canShowSelectedScope ? (
-                        <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={null} />
+                        <HeatmapView
+                            filters={filters}
+                            scopeId={scopeId}
+                            reviewHeatmap={reviewHeatmap}
+                        />
                     ) : !canShowSelectedScope ? (
                         <section className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm">
                             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
@@ -301,152 +349,34 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                                 </section>
                             )}
 
-                            <section className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
-                                <div className="flex flex-wrap items-start justify-between gap-4">
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                                            Interpretive load view
-                                        </p>
-                                        <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                                            What is pulling attention apart?
-                                        </h2>
-                                    </div>
-                                    <span className="rounded-full border border-(--accent)/30 bg-(--accent)/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent)">
-                                        Team signal
-                                    </span>
-                                </div>
-                                <p className="mt-3 max-w-3xl text-sm leading-6 text-(--ink-muted)">
-                                    Read these as pressure cues. The values point to review load,
-                                    context spread, and time-boundary strain so teams can decide
-                                    where to reduce interruption before it becomes burnout risk.
-                                </p>
-
-                                {fetchError ? (
-                                    <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-800">
-                                        <p className="text-xs font-semibold uppercase tracking-[0.2em]">
-                                            Data unavailable
-                                        </p>
-                                        <p className="mt-2 text-sm leading-6">{fetchError}</p>
-                                    </div>
-                                ) : !signals ? (
-                                    <div className="mt-6 rounded-2xl border border-(--card-stroke) bg-(--card-60) p-5 text-(--ink-muted)">
-                                        <p className="text-xs font-semibold uppercase tracking-[0.2em]">
-                                            No data for this window
-                                        </p>
-                                        <p className="mt-2 text-sm leading-6">
-                                            No cognitive-load signals found for{" "}
-                                            <span className="font-medium text-foreground">
-                                                {sinceDate}
-                                            </span>{" "}
-                                            to{" "}
-                                            <span className="font-medium text-foreground">
-                                                {untilDate}
-                                            </span>
-                                            . Try widening the date range or switching to a team
-                                            scope.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                                        {signals.map((signal) => (
-                                            <article
-                                                key={signal.label}
-                                                className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
-                                            >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
-                                                        {signal.label}
-                                                    </p>
-                                                    <span className="rounded-full bg-(--accent-2)/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--accent-2)">
-                                                        {signal.interpretation}
-                                                    </span>
-                                                </div>
-                                                <div className="mt-5 flex items-baseline gap-2">
-                                                    <p className="text-4xl font-semibold tabular-nums">
-                                                        {signal.value}
-                                                    </p>
-                                                    <p
-                                                        className={`text-xs font-medium ${signal.deltaTone}`}
-                                                    >
-                                                        {signal.delta}
-                                                    </p>
-                                                </div>
-                                                <p className="mt-4 text-sm leading-6 text-(--ink-muted)">
-                                                    {signal.description}
-                                                </p>
-                                            </article>
-                                        ))}
-                                    </div>
-                                )}
-                            </section>
-                        </>
-                    )}
-
-                    {canShowSelectedScope && (
-                        <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                            <div className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
-                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                                    Aggregation contract
-                                </p>
-                                <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                                    Team/repo-first by default
-                                </h2>
-                                <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
-                                    Cognitive-load signals are presented as system pressure: review
-                                    queues, context spread, after-hours trend, and weekend trend.
-                                    They are coaching prompts, not performance judgments.
-                                </p>
-                            </div>
-
-                            <div className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
-                                <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                                            Fragmentation trend
-                                        </p>
-                                        <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                                            {trendWindow.length > 0
-                                                ? `${trendWindow.length}-day load index`
-                                                : "No trend data"}
-                                        </h2>
-                                    </div>
-                                    <span className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs text-(--ink-muted)">
-                                        Pressure index
-                                    </span>
-                                </div>
-                                {trend ? (
-                                    <div
-                                        role="img"
-                                        className="mt-8 flex h-32 items-end gap-3"
-                                        aria-label="PR interruption load trend"
-                                    >
-                                        {trend.map((point) => {
-                                            // Scale bars so the max value fills 128 px (h-32).
-                                            const maxVal = Math.max(...trend.map((p) => p.value), 1);
-                                            const heightPx = Math.round((point.value / maxVal) * 128);
-                                            return (
-                                                <div
-                                                    key={point.day}
-                                                    className="flex flex-1 flex-col items-center gap-2"
-                                                >
-                                                    <div
-                                                        className="w-full rounded-t-2xl bg-(--accent)"
-                                                        style={{ height: `${heightPx}px` }}
-                                                    />
-                                                    <span className="text-[0.65rem] text-(--ink-muted)">
-                                                        {point.day}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <p className="mt-8 text-sm text-(--ink-muted)">
-                                        No trend data available for the selected window.
+                            {fetchError ? (
+                                <section className="rounded-[1.75rem] border border-rose-200 bg-rose-50 p-6 text-rose-800 shadow-sm">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.2em]">
+                                        Data unavailable
                                     </p>
-                                )}
-                            </div>
-                        </section>
+                                    <p className="mt-2 text-sm leading-6">{fetchError}</p>
+                                </section>
+                            ) : activeTab === "context-switching" ? (
+                                <ContextSwitchingView
+                                    trend={contextSpreadTrend}
+                                    window={windowLabel}
+                                />
+                            ) : activeTab === "focus-pressure" ? (
+                                <FocusPressureView
+                                    interruption={interruptionTrend}
+                                    reviewRequest={reviewRequestTrend}
+                                    window={windowLabel}
+                                />
+                            ) : activeTab === "load-drivers" ? (
+                                <LoadDriversView
+                                    drivers={loadDrivers}
+                                    hasData={hasData}
+                                    window={windowLabel}
+                                />
+                            ) : (
+                                <OverviewView signals={signals} window={windowLabel} />
+                            )}
+                        </>
                     )}
                 </main>
             </div>

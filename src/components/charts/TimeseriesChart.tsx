@@ -7,12 +7,13 @@ import { LineChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { formatChartValue, type ChartValueFormat } from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
+import { orderTimeseriesPoints, type TimeseriesPoint } from "./timeseriesData";
 import { echarts } from "@/lib/echartsInit";
 
 echarts.use([LineChart]);
 
 type TimeseriesChartProps = {
-    data: Array<{ day: string; value: number }>;
+    data: TimeseriesPoint[];
     height?: number | string;
     width?: number | string;
     className?: string;
@@ -35,9 +36,7 @@ export function TimeseriesChart({
     valueFormat = "number",
 }: TimeseriesChartProps) {
     const chartTheme = useChartTheme();
-    const ordered = [...data].sort((a, b) => a.day.localeCompare(b.day));
-    const categories = ordered.map((point) => point.day);
-    const values = ordered.map((point) => point.value);
+    const { categories, values } = orderTimeseriesPoints(data);
 
     const mergedStyle: CSSProperties = {
         height,
