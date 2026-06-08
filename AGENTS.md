@@ -85,8 +85,19 @@ The Definition of Done requires:
 - **Visual evidence (MANDATORY):** Any change that affects rendered UI **must** include screenshots attached to both the PR body and the linked Linear issue/task.
   - **Canonical procedure:** [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md), deterministic runbook for agents (account check → fixture seed → dev-server verify → Playwright login → screenshot → PR/Linear attach). Follow this end-to-end; the rules below are summary only.
   - Use the **Playwright MCP** (`playwright` skill) to capture screenshots of affected pages/components after the dev server is running
-  - Attach screenshots to the GitHub PR body (upload via `gh` CLI or drag-and-drop)
-  - Attach screenshots to the linked Linear issue (linear-cli cannot upload a local file — there is **no** `--attach` flag): upload the image to the GitHub PR first, then either `linear-cli attachments create --title "Screenshot" --url "<image-url>" <ID>` or reference the URL in a comment: `linear-cli issues comment <ID> -b "Screenshot: <image-url>"`
+  - Attach screenshots to the GitHub PR body using a GitHub-hosted release asset URL, then attach the same URL to Linear:
+    ```bash
+    # 1) Host local PNG(s) in the web repo with a stable GitHub URL.
+    gh release create gh-attach-assets --repo full-chaos/dev-health-web --title "PR screenshot assets" --notes "Long-lived release for agent-uploaded PR and Linear screenshot evidence." 2>/dev/null || true
+    gh release upload gh-attach-assets "/path/to/screenshot.png" --repo full-chaos/dev-health-web --clobber
+
+    # 2) Embed the hosted image URL in the PR body/comment.
+    IMAGE_URL="https://github.com/full-chaos/dev-health-web/releases/download/gh-attach-assets/screenshot.png"
+    gh pr edit <PR> --repo full-chaos/dev-health-web --body-file <updated-body.md>
+
+    # 3) Attach the same hosted URL to Linear (linear-cli does not upload local files).
+    linear-cli attachments create --title "Screenshot: <description>" --url "$IMAGE_URL" <ISSUE>
+    ```
   - **Canonical test account:** `admin@devhealth.example` / `devhealth123` (seeded by `dev-hops fixtures generate`). Do not create ad-hoc accounts.
   - **What to capture:** Every page or component visually altered by the change, before/after if modifying existing UI, just after if net-new
   - **When to skip:** Changes that are purely backend, purely type-level, or have no rendered output (add `SCREENSHOT-WAIVER: <reason>` to PR body)
