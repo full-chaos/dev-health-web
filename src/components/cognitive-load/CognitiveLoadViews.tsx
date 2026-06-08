@@ -68,7 +68,7 @@ export function OverviewView({
                     <div className="flex items-center gap-4">
                         <Link
                             href={buildExploreUrl({
-                                metric: "pr_interruption_load",
+                                metric: "review_latency",
                                 filters,
                                 role: activeRole,
                             })}

@@ -25,6 +25,7 @@ import { HOTSPOTS_QUERY } from "@/lib/graphql/queries";
 import type { BusFactor } from "@/lib/graphql/types";
 import type { QuadrantResponse } from "@/lib/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { LANDSCAPE_EVIDENCE_METRICS } from "@/lib/metrics/landscape";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
 const QUADRANT_CARDS = [
@@ -545,7 +546,9 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                                             {
                                                 label: CTA_LABELS.openEvidence,
                                                 href: buildExploreUrl({
-                                                    metric: primaryCard.type,
+                                                    metric: LANDSCAPE_EVIDENCE_METRICS[
+                                                        primaryCard.type
+                                                    ],
                                                     filters,
                                                     role: activeRole,
                                                 }),
@@ -571,7 +574,9 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                                                     {
                                                         label: CTA_LABELS.openEvidence,
                                                         href: buildExploreUrl({
-                                                            metric: card.type,
+                                                            metric: LANDSCAPE_EVIDENCE_METRICS[
+                                                                card.type
+                                                            ],
                                                             filters,
                                                             role: activeRole,
                                                         }),
