@@ -55,6 +55,11 @@ describe("QuadrantPanel", () => {
         // The dialog should be a direct child of document.body (or inside a portal container in body)
         // In testing-library, baseElement is document.body
         expect(dialog.closest("body")).toBe(document.body);
+
+        // Regression (CHAOS-2161): the dialog must stack ABOVE the bg-black/50
+        // backdrop (an absolute-positioned sibling), not behind it.
+        expect(dialog).toHaveClass("relative");
+        expect(dialog.className).toMatch(/\bz-10\b/);
     });
 
     it("closes the guide when Escape is pressed", async () => {
