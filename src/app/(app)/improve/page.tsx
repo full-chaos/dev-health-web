@@ -46,8 +46,8 @@ export default async function ImprovePage({ searchParams }: ImprovePageProps) {
                             </p>
                             <h1 className="mt-2 font-(--font-display) text-3xl">Improve</h1>
                             <p className="mt-2 text-sm text-(--ink-muted)">
-                                Opportunities, experiments, and automations — each producing actions,
-                                not dashboards.
+                                Opportunities, experiments, and automations — each producing
+                                actions, not dashboards.
                             </p>
                         </div>
                     </header>
