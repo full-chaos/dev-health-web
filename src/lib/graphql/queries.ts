@@ -17,6 +17,13 @@ query InvestmentBreakdown($orgId: String!, $batch: AnalyticsRequestInput!) {
         value
       }
     }
+    evidenceQualityDistribution
+    evidenceQualityStats {
+      mean
+      stddev
+      total
+      bandCounts
+    }
   }
 }
 `;

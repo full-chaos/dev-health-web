@@ -3,6 +3,11 @@ export type InvestmentMixAggregate = {
     subcategory_distribution: Record<string, number>;
     unit?: string;
     evidence_quality_distribution?: Record<string, number>;
+    evidence_quality_stats?: {
+        mean?: number | null;
+        stddev?: number | null;
+        band_counts?: Record<string, number>;
+    };
 };
 
 /**
@@ -71,9 +76,36 @@ export const normalizeInvestmentMix = (input: InvestmentMixResponse): Investment
                 ? Object.fromEntries(
                       Object.entries(typed.evidence_quality_distribution).map(([key, value]) => [
                           key,
-                          typeof value === "number" ? value : 0,
+                          typeof value === "number" && Number.isFinite(value) && value >= 0
+                              ? value
+                              : 0,
                       ]),
                   )
+                : undefined,
+            evidence_quality_stats: isRecord(typed.evidence_quality_stats)
+                ? (() => {
+                      const s = typed.evidence_quality_stats as Record<string, unknown>;
+                      const mean =
+                          typeof s.mean === "number" &&
+                          Number.isFinite(s.mean) &&
+                          s.mean >= 0 &&
+                          s.mean <= 1
+                              ? s.mean
+                              : null;
+                      const stddev =
+                          typeof s.stddev === "number" && Number.isFinite(s.stddev) && s.stddev >= 0
+                              ? s.stddev
+                              : null;
+                      const band_counts = isRecord(s.band_counts)
+                          ? Object.fromEntries(
+                                Object.entries(s.band_counts).map(([k, v]) => [
+                                    k,
+                                    typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0,
+                                ]),
+                            )
+                          : undefined;
+                      return { mean, stddev, band_counts };
+                  })()
                 : undefined,
         };
     }
@@ -118,11 +150,18 @@ export const normalizeInvestmentMix = (input: InvestmentMixResponse): Investment
 };
 
 export type InvestmentMixTheme = { key: string; value: number };
-export type InvestmentMixSubcategory = { key: string; themeKey: string; value: number };
+export type InvestmentMixSubcategory = {
+    key: string;
+    themeKey: string;
+    value: number;
+};
 
 export const getSortedThemes = (mix: InvestmentMixAggregate): InvestmentMixTheme[] =>
     Object.entries(mix.theme_distribution ?? {})
-        .map(([key, value]) => ({ key, value: typeof value === "number" ? value : 0 }))
+        .map(([key, value]) => ({
+            key,
+            value: typeof value === "number" ? value : 0,
+        }))
         .filter((entry) => entry.value > 0)
         .sort((a, b) => b.value - a.value);
 
@@ -130,7 +169,11 @@ export const getSortedSubcategories = (mix: InvestmentMixAggregate): InvestmentM
     Object.entries(mix.subcategory_distribution ?? {})
         .map(([key, value]) => {
             const [themeKey] = key.split(".", 1);
-            return { key, themeKey: themeKey ?? "", value: typeof value === "number" ? value : 0 };
+            return {
+                key,
+                themeKey: themeKey ?? "",
+                value: typeof value === "number" ? value : 0,
+            };
         })
         .filter((entry) => entry.value > 0 && entry.key.includes(".") && entry.themeKey)
         .sort((a, b) => b.value - a.value);

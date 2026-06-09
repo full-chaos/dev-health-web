@@ -25,7 +25,10 @@ function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
     throw new Error(AuthErrors.OrgIdRequiredFromGraphQLContext);
 }
 
-function buildDateRange(filters: MetricFilter): { startDate: string; endDate: string } {
+function buildDateRange(filters: MetricFilter): {
+    startDate: string;
+    endDate: string;
+} {
     const { start_date, end_date, range_days } = filters.time;
     if (start_date && end_date) {
         return { startDate: start_date, endDate: end_date };
@@ -128,7 +131,27 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
             }
         }
 
-        return { theme_distribution, subcategory_distribution, unit: "delivery_units" };
+        return {
+            theme_distribution,
+            subcategory_distribution,
+            unit: "delivery_units",
+            evidence_quality_distribution:
+                (result.data.analytics.evidenceQualityDistribution as
+                    | Record<string, number>
+                    | undefined) ?? undefined,
+            evidence_quality_stats: result.data.analytics.evidenceQualityStats
+                ? {
+                      mean: result.data.analytics.evidenceQualityStats.mean ?? null,
+                      stddev: result.data.analytics.evidenceQualityStats.stddev ?? null,
+                      band_counts:
+                          (result.data.analytics.evidenceQualityStats.bandCounts as Record<
+                              string,
+                              number
+                          >) ?? {},
+                      quality_drivers: [],
+                  }
+                : undefined,
+        };
     }, [result.data]);
 
     return {
@@ -166,7 +189,10 @@ export function useInvestmentFlow(options: UseInvestmentFlowOptions): UseInvestm
         const graphqlFilters = translateFilters(filters);
 
         if (theme) {
-            graphqlFilters.why = { ...(graphqlFilters.why ?? {}), workCategory: [theme] };
+            graphqlFilters.why = {
+                ...(graphqlFilters.why ?? {}),
+                workCategory: [theme],
+            };
         }
 
         let path: DimensionInput[] = ["TEAM", "THEME", "REPO"];
@@ -227,7 +253,10 @@ export function useInvestmentRepoTeamFlow(
         const graphqlFilters = translateFilters(filters);
 
         if (theme) {
-            graphqlFilters.why = { ...(graphqlFilters.why ?? {}), workCategory: [theme] };
+            graphqlFilters.why = {
+                ...(graphqlFilters.why ?? {}),
+                workCategory: [theme],
+            };
         }
 
         const batch: AnalyticsRequestInput = {

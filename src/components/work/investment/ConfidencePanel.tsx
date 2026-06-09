@@ -13,7 +13,12 @@ import {
     titleCase,
     topInvestmentKey,
 } from "@/lib/investment";
-import type { MetricDelta, SankeyResponse, WorkUnitInvestment } from "@/lib/types";
+import type {
+    InvestmentConfidence,
+    MetricDelta,
+    SankeyResponse,
+    WorkUnitInvestment,
+} from "@/lib/types";
 import type { InvestmentMixAggregate } from "@/lib/investmentMix";
 import { AllocationCoverage } from "./AllocationCoverage";
 import { EvidenceQualityBands } from "./EvidenceQualityBands";
@@ -46,6 +51,88 @@ const DRIVER_COPY: Record<string, string> = {
 
 const LOW_BANDS = new Set(["low", "very_low", "unknown"]);
 
+/** Maps a persisted evidence-quality band name to a confidence level. */
+const BAND_TO_LEVEL: Record<string, InvestmentConfidence["level"]> = {
+    high: "high",
+    moderate: "moderate",
+    medium: "moderate",
+    low: "low",
+    very_low: "low",
+    unknown: "unknown",
+};
+
+/** Finite number within [min, max], else null. Rejects NaN/Infinity/out-of-range. */
+function finiteInRange(value: number | null | undefined, min: number, max: number): number | null {
+    return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max
+        ? value
+        : null;
+}
+
+/**
+ * Pick the dominant PERSISTED evidence-quality band as the confidence level.
+ * This renders the persisted band distribution (its mode) — it does NOT apply a
+ * synthetic client-side threshold to recompute a category. Returns "unknown"
+ * when no recognized band is present.
+ */
+function dominantBandLevel(bandCounts: Record<string, number>): InvestmentConfidence["level"] {
+    let best: InvestmentConfidence["level"] | null = null;
+    let bestCount = -1;
+    for (const [band, count] of Object.entries(bandCounts)) {
+        const level = BAND_TO_LEVEL[band.toLowerCase()];
+        if (level && count > bestCount) {
+            best = level;
+            bestCount = count;
+        }
+    }
+    return best ?? "unknown";
+}
+
+/**
+ * Derives a confidence object from PERSISTED evidence-quality stats, used as a
+ * fallback when no investment explanation has been generated. The classification
+ * level is the dominant PERSISTED band (rendering the persisted distribution),
+ * NOT a client-side threshold on the mean. Returns null when there are no
+ * classified work units (total <= 0) so the UI degrades to honest-empty instead
+ * of fabricating a band. Persisted stats are not labelled AI-generated.
+ *
+ * @returns InvestmentConfidence when classified work units exist, null otherwise.
+ */
+export function deriveConfidenceFromStats(
+    stats:
+        | {
+              mean?: number | null;
+              stddev?: number | null;
+              band_counts?: Record<string, number>;
+          }
+        | null
+        | undefined,
+): InvestmentConfidence | null {
+    if (!stats) return null;
+
+    // Keep only finite, non-negative band counts; their sum is the number of
+    // classified work units and gates whether any confidence is shown at all.
+    const bandMix: Record<string, number> = {};
+    let total = 0;
+    for (const [band, count] of Object.entries(stats.band_counts ?? {})) {
+        if (typeof count === "number" && Number.isFinite(count) && count >= 0) {
+            bandMix[band] = count;
+            total += count;
+        }
+    }
+    if (total <= 0) return null;
+
+    return {
+        level: dominantBandLevel(bandMix),
+        quality_mean: finiteInRange(stats.mean, 0, 1),
+        quality_stddev:
+            typeof stats.stddev === "number" && Number.isFinite(stats.stddev) && stats.stddev >= 0
+                ? stats.stddev
+                : null,
+        band_mix: bandMix,
+        drivers: [],
+    };
+}
+
 /**
  * Confidence tab — trust, attribution quality, and classification quality.
  *
@@ -68,8 +155,10 @@ export function ConfidencePanel({
     isCategoryFlowLoading,
     reworkMetric,
 }: ConfidencePanelProps) {
-    const confidence = mixExplanation.data?.confidence ?? null;
-
+    const confidence =
+        mixExplanation.data?.confidence ??
+        deriveConfidenceFromStats(investmentMix?.evidence_quality_stats) ??
+        null;
     const lowConfidenceUnits = useMemo(
         () =>
             workUnits

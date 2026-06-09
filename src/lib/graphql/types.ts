@@ -169,11 +169,20 @@ export interface FlowMatrixResult {
     edges: SankeyEdge[];
 }
 
+export interface EvidenceQualityStatsResult {
+    mean?: number | null;
+    stddev?: number | null;
+    total: number;
+    bandCounts: Record<string, number>;
+}
+
 export interface AnalyticsResult {
     timeseries: TimeseriesResult[];
     breakdowns: BreakdownResult[];
     sankey?: SankeyResult;
     flowMatrix?: FlowMatrixResult;
+    evidenceQualityDistribution?: Record<string, number> | null;
+    evidenceQualityStats?: EvidenceQualityStatsResult | null;
 }
 
 export interface CatalogValueItem {
