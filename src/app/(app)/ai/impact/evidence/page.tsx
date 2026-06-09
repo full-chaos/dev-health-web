@@ -1,19 +1,19 @@
-import { AIImpactDashboard } from "@/components/ai/AIImpactDashboard";
+import { AIImpactEvidenceList } from "@/components/ai/AIImpactEvidenceList";
 import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { BackLink } from "@/components/shared/BackLink";
 import { checkApiHealth } from "@/lib/api/system";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
-type AIImpactPageProps = {
+type AIImpactEvidencePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function AIImpactPage({ searchParams }: AIImpactPageProps) {
+export default async function AIImpactEvidencePage({ searchParams }: AIImpactEvidencePageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
@@ -27,27 +27,28 @@ export default async function AIImpactPage({ searchParams }: AIImpactPageProps) 
 
     return (
         <>
+            <BackLink href={withFilterParam("/ai/impact", filters, role)} area="Impact" />
             <AIPageHeader
                 eyebrow="AI"
-                title="Impact"
+                title="PR Evidence"
                 breadcrumbs={[
                     ...navTrailForPathname("/ai/impact").map((c) => ({
                         ...c,
                         href: c.href ?? "/ai",
                     })),
-                    { label: "Impact" },
+                    { label: "Impact", href: withFilterParam("/ai/impact", filters, role) },
+                    { label: "PR Evidence" },
                 ]}
             >
-                Org-wide view of how AI-assisted workflows appear to influence delivery, review
-                load, quality gaps, and operational drag.
+                Every AI-attributed pull request behind the Impact rollups, with provenance badges
+                and Work Graph evidence per PR.
             </AIPageHeader>
 
-            <GlobalContextBar filters={filters} />
+            {/* Single context bar per the IA dual-bar invariant: the drilldown
+                keeps FilterBar (it drives the PR list); area context comes from
+                the AI chrome. */}
             <FilterBar view="ai" />
-            <AIImpactDashboard
-                filter={aiFilter}
-                evidenceHref={withFilterParam("/ai/impact/evidence", filters, role)}
-            />
+            <AIImpactEvidenceList filter={aiFilter} />
         </>
     );
 }

@@ -9,6 +9,9 @@
 //                        BACKEND_LADDER; display value = aiAssistedPrRatio %.
 //   - ai-review-load   : AI_ASSISTED bucket reviewAmplification multiplier
 //                        (lowerIsBetter); display value = formatted multiplier.
+//                        Falls back to reviewCommentsPerLoc (neutral,
+//                        informational) when amplification has not populated
+//                        but comment-density coverage exists (CHAOS-2194).
 //   - ai-governance-risk: recentViolations severity ladder (RETURNED — critical/
 //                        high/medium from the violation rows); display = count.
 //   - ai-automations   : aiOpportunities detectorReady + recommendations count
@@ -213,6 +216,7 @@ export async function getAISignals(
     if (reviewLoad?.dataAvailable) {
         const aiBucket = reviewLoad.byBucket.find((b) => b.bucket === "AI_ASSISTED");
         const amplification = aiBucket?.reviewAmplification;
+        const commentsPerLoc = aiBucket?.reviewCommentsPerLoc;
         if (amplification != null) {
             push("ai-review-load", {
                 state: deriveState(amplification, {
@@ -220,6 +224,14 @@ export async function getAISignals(
                     direction: "lowerIsBetter",
                 }),
                 value: `${amplification.toFixed(1)}× amplification`,
+            });
+        } else if (commentsPerLoc != null) {
+            // Amplification hasn't populated but comment-density coverage
+            // exists (CHAOS-2194): surface it informationally rather than
+            // hiding the card — no severity ladder is defined for it yet.
+            push("ai-review-load", {
+                state: "neutral",
+                value: `${commentsPerLoc.toFixed(3)} comments/LOC`,
             });
         } else {
             push("ai-review-load", UNAVAILABLE);

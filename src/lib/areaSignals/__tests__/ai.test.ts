@@ -98,6 +98,7 @@ function makeImpact(overrides?: {
 function makeReviewLoad(overrides?: {
     dataAvailable?: boolean;
     reviewAmplification?: number | null;
+    reviewCommentsPerLoc?: number | null;
 }) {
     return {
         aiReviewLoad: {
@@ -112,7 +113,14 @@ function makeReviewLoad(overrides?: {
                     reviewsTotal: 72,
                     reviewsPerPr: 1.8,
                     changesRequestedPerPr: 0.5,
-                    reviewAmplification: overrides?.reviewAmplification ?? 1.8,
+                    reviewAmplification:
+                        overrides?.reviewAmplification === undefined
+                            ? 1.8
+                            : overrides.reviewAmplification,
+                    reviewCommentsPerLoc:
+                        overrides?.reviewCommentsPerLoc === undefined
+                            ? null
+                            : overrides.reviewCommentsPerLoc,
                     postFirstReviewPushesCount: 12,
                     postFirstReviewPushesPerPr: 0.3,
                 },
@@ -283,6 +291,33 @@ describe("getAISignals — source → AreaSignal mapping", () => {
         });
         const signals = byId(await getAISignals(defaultMetricFilter));
         expect(signals["ai-review-load"].state).toBe("critical");
+    });
+
+    it("falls back to comments/LOC (neutral) when amplification is absent (CHAOS-2194)", async () => {
+        mockGraphql.mockImplementation((query) => {
+            if (String(query).includes("AIReviewLoad")) {
+                return Promise.resolve(
+                    makeReviewLoad({ reviewAmplification: null, reviewCommentsPerLoc: 0.045 }),
+                ) as never;
+            }
+            return routeQuery(query) as never;
+        });
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-review-load"]).toMatchObject({ state: "neutral" });
+        expect(signals["ai-review-load"].value).toContain("comments/LOC");
+    });
+
+    it("stays unavailable when neither amplification nor comments/LOC populated", async () => {
+        mockGraphql.mockImplementation((query) => {
+            if (String(query).includes("AIReviewLoad")) {
+                return Promise.resolve(
+                    makeReviewLoad({ reviewAmplification: null, reviewCommentsPerLoc: null }),
+                ) as never;
+            }
+            return routeQuery(query) as never;
+        });
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-review-load"]).toMatchObject({ state: "unavailable", value: "" });
     });
 
     it("returns governance severity from violation severity ladder (high violations → high)", async () => {

@@ -475,6 +475,20 @@ query AIImpactSummary($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
       testGapPrs
       testGapRate
     }
+    repoBreakdown {
+      scopeId
+      scopeLabel
+      aiPrsTotal
+      aiAssistedPrRatio
+      reworkRateDelta
+    }
+    teamBreakdown {
+      scopeId
+      scopeLabel
+      aiPrsTotal
+      aiAssistedPrRatio
+      reworkRateDelta
+    }
   }
 }
 `;
@@ -627,6 +641,8 @@ query AIReviewLoad($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AISco
       reviewAmplification
       postFirstReviewPushesCount
       postFirstReviewPushesPerPr
+      pickupLatencyHours
+      reviewCommentsPerLoc
     }
     daily {
       bucket
@@ -637,6 +653,8 @@ query AIReviewLoad($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AISco
       reviewAmplification
       postFirstReviewPushesCount
       postFirstReviewPushesPerPr
+      pickupLatencyHours
+      reviewCommentsPerLoc
     }
     reviewerConcentration {
       dataAvailable

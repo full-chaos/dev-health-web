@@ -51,6 +51,10 @@ export const CTA_LABELS = {
     month: "Month",
     newReport: "New Report",
     createReport: "Create Report",
+    /** Paginate to the previous page of a list. */
+    previousPage: "Previous",
+    /** Paginate to the next page of a list. */
+    nextPage: "Next",
     /** Dismiss the evidence panel. */
     closeEvidencePanel: "Close evidence panel",
     /** Dismiss a generic panel. */

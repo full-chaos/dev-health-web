@@ -296,5 +296,58 @@ describe("AIImpactDashboard", () => {
         expect(screen.getByTestId("donut-chart")).toHaveTextContent("Ai Assisted");
         expect(screen.getByTestId("vertical-bar-chart")).toHaveTextContent("PR volume");
         expect(screen.getByText("Best-fit automation opportunities")).toBeInTheDocument();
+        // No breakdown rows supplied → honest empty rollup panel.
+        expect(screen.getByText("No scoped rollups in this scope yet")).toBeInTheDocument();
+    });
+
+    it("renders repo/team rollups and the evidence link when breakdowns exist (CHAOS-2186/2196)", () => {
+        mockUseAIImpactSummary.mockReturnValue({
+            data: {
+                aiImpactSummary: {
+                    orgId: "org",
+                    startDate: filter.startDate,
+                    endDate: filter.endDate,
+                    totalPrs: 20,
+                    aiAssistedPrs: 8,
+                    agentCreatedPrs: 3,
+                    humanPrs: 10,
+                    unknownPrs: 2,
+                    aiAssistedPrRatio: 0.4,
+                    dataAvailable: true,
+                    computedAt: "2026-05-19T00:00:00Z",
+                    byBucket: [],
+                    daily: [],
+                    repoBreakdown: [
+                        {
+                            scopeId: "repo-1",
+                            scopeLabel: "web-app",
+                            aiPrsTotal: 6,
+                            aiAssistedPrRatio: 0.3,
+                            reworkRateDelta: 0.05,
+                        },
+                    ],
+                    teamBreakdown: [
+                        {
+                            scopeId: "team-1",
+                            scopeLabel: "Platform",
+                            aiPrsTotal: 8,
+                            aiAssistedPrRatio: null,
+                            reworkRateDelta: null,
+                        },
+                    ],
+                },
+            },
+            fetching: false,
+            error: undefined,
+        });
+
+        render(<AIImpactDashboard filter={filter} evidenceHref="/ai/impact/evidence?f=abc" />);
+
+        const breakdown = screen.getByTestId("ai-impact-breakdown");
+        expect(breakdown).toHaveTextContent("web-app");
+        expect(breakdown).toHaveTextContent("Platform");
+        expect(breakdown).toHaveTextContent("6 PRs");
+        const link = screen.getByRole("link", { name: /Open evidence/ });
+        expect(link).toHaveAttribute("href", "/ai/impact/evidence?f=abc");
     });
 });
