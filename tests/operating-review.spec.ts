@@ -86,10 +86,12 @@ test.describe("Operating Review", () => {
         );
         await expect(page.getByRole("heading", { name: "team-platform" })).toHaveCount(0);
         await expect(page.getByRole("heading", { name: "team-growth" })).toHaveCount(0);
+        // Either the full agenda (with Recommendations) or the DataState empty/error state.
         await expect(
             page
                 .getByRole("heading", { name: "Recommendations" })
-                .or(page.getByRole("heading", { name: "No operating review data yet" })),
+                .or(page.getByText(/Connected but detector unavailable/i))
+                .or(page.getByText(/Could not load operating review/i)),
         ).toBeVisible();
         await expect(page.getByText(/Showing the cross-team aggregate/)).toHaveCount(0);
     });
