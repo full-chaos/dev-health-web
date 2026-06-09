@@ -1,13 +1,11 @@
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { BackLink } from "@/components/shared/BackLink";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { OpportunityCard } from "./OpportunityCard";
 import { checkApiHealth } from "@/lib/api/system";
 import { getOpportunities } from "@/lib/api/home";
-import { getAreaSignals } from "@/lib/areaSignals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { withFilterParam } from "@/lib/filters/url";
@@ -29,10 +27,9 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
     const isTestMode =
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
-    const [health, data, improveSignals] = await Promise.all([
+    const [health, data] = await Promise.all([
         checkApiHealth(),
         fetchOrNull(getOpportunities(filters), "opportunities/data"),
-        getAreaSignals("improve", filters, isTestMode),
     ]);
 
     if (!health.ok && !isTestMode) {
@@ -45,7 +42,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                 <PrimaryNav filters={filters} active="opportunities" role={activeRole} />
                 <main className="flex min-w-0 flex-1 flex-col gap-8">
                     <header className="flex flex-col gap-4">
-                        <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        <BackLink href={withFilterParam("/improve", filters, activeRole)} />
                         <div>
                             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                 Improve
@@ -70,23 +67,18 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                                 activeRole={activeRole}
                             />
                         ))}
-                        {!data?.items?.length && (
+                        {data && data.items.length === 0 && (
+                            <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                                No open opportunities in this window — nothing is trending worse for
+                                the current scope.
+                            </div>
+                        )}
+                        {!data && (
                             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
                                 Opportunity data unavailable.
                             </div>
                         )}
                     </section>
-
-                    {improveSignals.length > 0 ? (
-                        <AreaOverview
-                            areaId="improve"
-                            signals={improveSignals}
-                            filters={filters}
-                            role={activeRole}
-                            title="Improve area"
-                            description="Improvement workflows, ordered by severity."
-                        />
-                    ) : null}
                 </main>
             </div>
         </div>

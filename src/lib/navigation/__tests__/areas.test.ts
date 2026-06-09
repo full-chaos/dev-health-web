@@ -79,7 +79,7 @@ describe("navArea.children — locked child navigation", () => {
                 "Code",
             ],
             Plan: ["Overview", "Capacity Forecast", "Operating Review"],
-            Improve: ["Opportunities", "Experiments", "Automations"],
+            Improve: ["Overview", "Opportunities", "Experiments", "Automations"],
             Govern: [
                 "Overview",
                 "TestOps",
@@ -299,6 +299,7 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
         expect(navTitleForPathname("/plan/capacity")).toBe("Capacity Forecast");
         expect(navTitleForPathname("/operating-review")).toBe("Operating Review");
+        expect(navTitleForPathname("/improve")).toBe("Overview");
         expect(navTitleForPathname("/opportunities")).toBe("Opportunities");
         expect(navTitleForPathname("/ai/impact")).toBe("Impact");
         expect(navTitleForPathname("/ai/review-load")).toBe("Review Load");

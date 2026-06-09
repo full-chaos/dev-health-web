@@ -94,6 +94,13 @@ type DataStateProps = {
     action?: ReactNode;
     /** Optional wrapper className for layout (e.g. padding inside a card). */
     className?: string;
+    /**
+     * Optional supplemental detail rendered below the description — intended
+     * for "Data source needed:" context on `detector-unavailable` panels. Pass
+     * the value only (e.g. "Review activity rollups for AI-attributed PRs");
+     * DataState adds the "Data source needed:" label automatically.
+     */
+    detail?: string;
     /** Test hook; defaults to a stable per-variant id. */
     "data-testid"?: string;
 };
@@ -106,6 +113,7 @@ export function DataState({
     icon,
     action,
     className,
+    detail,
     "data-testid": testId,
 }: DataStateProps) {
     if (variant === "loading") {
@@ -159,6 +167,11 @@ export function DataState({
                 description={description ?? copy.description}
                 action={action}
             />
+            {detail && (
+                <p className="mt-3 rounded-2xl bg-background/60 px-3 py-2 text-center text-xs text-(--ink-muted)">
+                    Data source needed: {detail}
+                </p>
+            )}
         </div>
     );
 }

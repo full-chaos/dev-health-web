@@ -1,7 +1,15 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Invariant #9 calls the real getImproveSignals (no longer test-mode-gated on its
+// REST fetches). Stub the home/opportunities sources so the live call resolves to
+// honest-empty data instead of attempting a real network request in the unit env.
+vi.mock("@/lib/api/home", () => ({
+    getOpportunities: vi.fn().mockResolvedValue({ items: [] }),
+    getHomeData: vi.fn().mockResolvedValue({ deltas: [] }),
+}));
 
 import { iaPreservationBaseline } from "../__fixtures__/iaPreservationBaseline";
 import {
@@ -597,5 +605,100 @@ describe("IA preservation invariant #7 — reachable redirect aliases stay guard
         expect(source).toContain(
             'redirect(tail ? `/metrics?tab=flow&${tail}` : "/metrics?tab=flow")',
         );
+    });
+});
+
+describe("IA preservation invariant #9 — no dead hubItems links (signal cards)", () => {
+    // CHAOS-2217: invariants #2/#6 only back navVisible *children*; the landing
+    // signal grid renders `hubItems[].href` as clickable cards too. A hubItem whose
+    // route has no backing page would 404 on click. Guarantee every rendered
+    // hubItem href is either (a) backed by a real page.tsx/redirect, OR (b) a known
+    // preview route (its sibling child is `preview: true`) AND rendered non-clickable
+    // by the signal-card components so it can never be linked until the page exists.
+
+    const areaSignalCardSource = readFileSync(
+        join(process.cwd(), "src/components/navigation/AreaSignalCard.tsx"),
+        "utf8",
+    );
+    const areaOverviewSource = readFileSync(
+        join(process.cwd(), "src/components/navigation/AreaOverview.tsx"),
+        "utf8",
+    );
+
+    /** A sibling child of `area` whose base path matches `href` and is preview-only. */
+    const previewChildFor = (area: NavArea, href: string): NavChildRoute | undefined =>
+        area.children.find(
+            (child) => basePath(child.path) === basePath(href) && child.preview === true,
+        );
+
+    const hubItemEntries = navAreas.flatMap((area) =>
+        area.hubItems.map((item) => ({ area, item })),
+    );
+
+    it("backs (or preview-guards) every rendered hubItem href", () => {
+        const dead = hubItemEntries.filter(({ area, item }) => {
+            if (routePageExists(item.href)) return false; // real page or redirect
+            return previewChildFor(area, item.href) === undefined; // else must be a preview route
+        });
+
+        expect(
+            dead,
+            `hubItems hrefs with no backing page and no preview child (would 404 on click): ${dead
+                .map(({ area, item }) => `${area.id}:${item.id} -> ${item.href}`)
+                .join(", ")}`,
+        ).toEqual([]);
+    });
+
+    it("renders every preview-route hubItem as a non-clickable card (cannot 404)", () => {
+        const previewHubItems = hubItemEntries.filter(
+            ({ area, item }) =>
+                !routePageExists(item.href) && previewChildFor(area, item.href) !== undefined,
+        );
+
+        // There must be at least one preview hubItem to make this guard meaningful
+        // (Improve's Experiments/Automations). If that ever changes the assertions
+        // below still hold trivially, but the count guards the regression target.
+        expect(previewHubItems.length).toBeGreaterThan(0);
+
+        // The signal-card components must gate clickability on the explicit `preview`
+        // flag (NOT on `state === "unavailable"`, which real-but-unconnected routes
+        // share and must keep clickable). Static guard: both render paths branch on it.
+        expect(
+            areaSignalCardSource,
+            "AreaSignalCard must branch on signal.preview to drop the <Link>",
+        ).toContain("signal.preview === true");
+        expect(
+            areaSignalCardSource,
+            "AreaSignalCard preview card must be a non-interactive element",
+        ).toContain('aria-disabled="true"');
+
+        expect(
+            areaOverviewSource,
+            "AreaOverview empty tier must branch on signal.preview to drop the <Link>",
+        ).toContain("signal.preview === true");
+        expect(
+            areaOverviewSource,
+            "AreaOverview preview chip must be a non-interactive element",
+        ).toContain('aria-disabled="true"');
+    });
+
+    it("emits the preview flag from the Improve resolver for its preview hubItems", async () => {
+        // The structural guard above pairs hubItem ⇄ preview child; this closes the
+        // loop end-to-end: the resolver actually stamps `preview: true` on those
+        // signals so the components' guard fires. (Improve is the concrete case.)
+        const { getImproveSignals } = await import("@/lib/areaSignals/improve");
+        const { defaultMetricFilter } = await import("@/lib/filters/defaults");
+
+        const signals = await getImproveSignals(defaultMetricFilter, true);
+        const previewIds = new Set(signals.filter((s) => s.preview === true).map((s) => s.id));
+
+        const improve = navAreas.find((a) => a.id === "improve")!;
+        const expectedPreviewIds = improve.hubItems
+            .filter((item) => previewChildFor(improve, item.href) !== undefined)
+            .map((item) => item.id);
+
+        for (const id of expectedPreviewIds) {
+            expect(previewIds.has(id), `Improve hubItem ${id} must emit preview:true`).toBe(true);
+        }
     });
 });

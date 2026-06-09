@@ -333,9 +333,9 @@ export const navAreas: readonly NavArea[] = [
     {
         id: "improve",
         label: "Improve",
-        href: "/opportunities",
+        href: "/improve",
         placement: "main",
-        ownedPathPrefixes: ["/opportunities"],
+        ownedPathPrefixes: ["/opportunities", "/improve"],
         legacyActiveIds: ["opportunities", "experiments", "automations", "improve"],
         hubItems: [
             {
@@ -345,8 +345,28 @@ export const navAreas: readonly NavArea[] = [
                 description: "Evidence-linked improvement opportunities.",
                 metricLabel: "Opportunities data",
             },
+            {
+                id: "experiments",
+                label: "Experiments",
+                href: "/improve/experiments",
+                description: "Run and track improvement experiments.",
+                metricLabel: "Experiments data",
+            },
+            {
+                id: "improve-automations",
+                label: "Automations",
+                href: "/improve/automations",
+                description: "Automated improvement workflows.",
+                metricLabel: "Automations data",
+            },
         ],
         children: [
+            {
+                id: "improve-overview",
+                label: "Overview",
+                path: "/improve",
+                navVisible: true,
+            },
             {
                 id: "opportunities",
                 label: "Opportunities",
@@ -397,7 +417,7 @@ export const navAreas: readonly NavArea[] = [
             "govern",
         ],
         // CHAOS-2074: Govern is sub-grouped into "Quality" and "Risk" clusters,
-        // each internally severity-sorted by the resolver (`getGovernSignals`).
+        // each internally severity-sorted by the resolver (getGovernSignals).
         hubItems: [
             // ── Cluster: Quality ──────────────────────────────────────────────────
             {
@@ -527,12 +547,17 @@ export const navAreas: readonly NavArea[] = [
         placement: "main",
         ownedPathPrefixes: ["/ai"],
         legacyActiveIds: ["ai", "ai-workflows"],
+        // CHAOS-2198: AI is sub-grouped into "Signal" (monitoring metrics) and
+        // "Action" (opportunity / recommendation surfaces), severity-sorted by
+        // the resolver (getAISignals). Mirrors the Govern cluster pattern.
         hubItems: [
+            // ── Cluster: Signal ──────────────────────────────────────────────────
             {
                 id: "ai-impact",
                 label: "Impact",
                 href: "/ai/impact",
                 description: "AI-assisted delivery and review impact.",
+                cluster: "Signal",
                 metricLabel: "AI impact",
             },
             {
@@ -540,6 +565,7 @@ export const navAreas: readonly NavArea[] = [
                 label: "Review Load",
                 href: "/ai/review-load",
                 description: "AI-associated review pressure.",
+                cluster: "Signal",
                 metricLabel: "Review pressure",
             },
             {
@@ -547,13 +573,16 @@ export const navAreas: readonly NavArea[] = [
                 label: "Governance Risk",
                 href: "/ai/risk",
                 description: "Quality and governance signals for AI-associated work.",
+                cluster: "Signal",
                 metricLabel: "Governance risk",
             },
+            // ── Cluster: Action ──────────────────────────────────────────────────
             {
                 id: "ai-automations",
                 label: "Automations",
                 href: "/ai/automations",
                 description: "Responsible automation opportunities.",
+                cluster: "Action",
                 metricLabel: "Automation candidates",
             },
         ],

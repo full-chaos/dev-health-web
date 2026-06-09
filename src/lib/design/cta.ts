@@ -42,6 +42,8 @@ export const CTA_LABELS = {
     aiReviewLoad: "Review Load",
     aiRisk: "Risk",
     aiAutomations: "Automations",
+    /** Navigate to the AI Automations workflow from a cross-panel CTA. */
+    seeAIAutomations: "See AI Automations",
     checkDataConnections: "Check data connections",
     flameDiagram: "Flame Diagram",
     landscape: "Landscape",

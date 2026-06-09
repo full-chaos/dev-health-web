@@ -122,6 +122,32 @@ describe("AreaHub — severity-sorted signal cards", () => {
         expect(order[order.length - 1]).toBe("gap");
     });
 
+    it("renders a PREVIEW unavailable signal as a non-clickable card (no <a>, cannot 404)", () => {
+        // CHAOS-2217: a preview sub-area (route not built yet) must NOT be a link.
+        // A normal unavailable card (route exists) stays clickable.
+        renderHub([
+            signal("routed", "unavailable", "Quality"),
+            signal("preview", "unavailable", "Quality", { preview: true }),
+        ]);
+
+        const routed = screen
+            .getAllByTestId("area-signal-card")
+            .find((c) => c.getAttribute("data-signal-id") === "routed")!;
+        const preview = screen
+            .getAllByTestId("area-signal-card")
+            .find((c) => c.getAttribute("data-signal-id") === "preview")!;
+
+        // Preview card: non-interactive div, flagged, still shows the honest empty state.
+        expect(preview.tagName).not.toBe("A");
+        expect(preview.getAttribute("data-preview")).toBe("true");
+        expect(preview.getAttribute("aria-disabled")).toBe("true");
+        expect(within(preview).getByTestId("area-signal-unavailable")).toBeInTheDocument();
+
+        // Routed unavailable card: still a link (mocked next/link → <a>), no preview flag.
+        expect(routed.tagName).toBe("A");
+        expect(routed.getAttribute("data-preview")).toBeNull();
+    });
+
     it("emphasizes the single most-severe severity-bearing signal exactly once", () => {
         renderHub([
             signal("low", "low", "Quality"),

@@ -34,19 +34,20 @@ type AreaSignalCardProps = {
 export function AreaSignalCard({ signal, filters, role, emphasized = false }: AreaSignalCardProps) {
     const href = withFilterParam(signal.href, filters, role);
     const demoted = signal.demoted === true;
+    // Preview sub-area: its route does not exist yet (nav child `preview: true`).
+    // Render the card NON-CLICKABLE so it stays visible + honest but can't 404.
+    // Keyed on the explicit `preview` flag, NOT on `state === "unavailable"`,
+    // which is shared by areas whose routes DO exist and must stay clickable.
+    const isPreview = signal.preview === true;
 
-    // Unavailable → inline DataState (never a fabricated value). Still a link so
-    // the sub-area stays reachable from the card.
+    // Unavailable → inline DataState (never a fabricated value). A real (routed)
+    // sub-area stays a link so it remains reachable; a preview sub-area renders as
+    // a plain <div> (same visual) so the dead route is never linked.
     if (signal.state === "unavailable") {
-        return (
-            <Link
-                href={href}
-                data-testid="area-signal-card"
-                data-signal-id={signal.id}
-                data-state="unavailable"
-                data-tier="muted"
-                className="group block rounded-2xl border border-dashed border-(--card-stroke)/70 bg-(--card-80)/60 p-4 opacity-70 transition hover:border-(--accent) hover:opacity-100"
-            >
+        const unavailableClassName =
+            "group block rounded-2xl border border-dashed border-(--card-stroke)/70 bg-(--card-80)/60 p-4 opacity-70 transition hover:border-(--accent) hover:opacity-100";
+        const body = (
+            <>
                 <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                     {signal.label}
                 </p>
@@ -57,6 +58,35 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                     className="mt-3"
                     data-testid="area-signal-unavailable"
                 />
+            </>
+        );
+
+        if (isPreview) {
+            return (
+                <div
+                    data-testid="area-signal-card"
+                    data-signal-id={signal.id}
+                    data-state="unavailable"
+                    data-tier="muted"
+                    data-preview="true"
+                    aria-disabled="true"
+                    className={unavailableClassName}
+                >
+                    {body}
+                </div>
+            );
+        }
+
+        return (
+            <Link
+                href={href}
+                data-testid="area-signal-card"
+                data-signal-id={signal.id}
+                data-state="unavailable"
+                data-tier="muted"
+                className={unavailableClassName}
+            >
+                {body}
             </Link>
         );
     }
