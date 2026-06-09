@@ -51,12 +51,51 @@ const DRIVER_COPY: Record<string, string> = {
 
 const LOW_BANDS = new Set(["low", "very_low", "unknown"]);
 
+/** Maps a persisted evidence-quality band name to a confidence level. */
+const BAND_TO_LEVEL: Record<string, InvestmentConfidence["level"]> = {
+    high: "high",
+    moderate: "moderate",
+    medium: "moderate",
+    low: "low",
+    very_low: "low",
+    unknown: "unknown",
+};
+
+/** Finite number within [min, max], else null. Rejects NaN/Infinity/out-of-range. */
+function finiteInRange(value: number | null | undefined, min: number, max: number): number | null {
+    return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max
+        ? value
+        : null;
+}
+
 /**
- * Derives a synthetic confidence object from persisted evidence-quality stats.
- * Used as a fallback when no investment explanation has been generated yet.
- * Does NOT label output as AI-generated and does NOT recompute categories.
+ * Pick the dominant PERSISTED evidence-quality band as the confidence level.
+ * This renders the persisted band distribution (its mode) — it does NOT apply a
+ * synthetic client-side threshold to recompute a category. Returns "unknown"
+ * when no recognized band is present.
+ */
+function dominantBandLevel(bandCounts: Record<string, number>): InvestmentConfidence["level"] {
+    let best: InvestmentConfidence["level"] | null = null;
+    let bestCount = -1;
+    for (const [band, count] of Object.entries(bandCounts)) {
+        const level = BAND_TO_LEVEL[band.toLowerCase()];
+        if (level && count > bestCount) {
+            best = level;
+            bestCount = count;
+        }
+    }
+    return best ?? "unknown";
+}
+
+/**
+ * Derives a confidence object from PERSISTED evidence-quality stats, used as a
+ * fallback when no investment explanation has been generated. The classification
+ * level is the dominant PERSISTED band (rendering the persisted distribution),
+ * NOT a client-side threshold on the mean. Returns null when there are no
+ * classified work units (total <= 0) so the UI degrades to honest-empty instead
+ * of fabricating a band. Persisted stats are not labelled AI-generated.
  *
- * @returns InvestmentConfidence when mean is available, null otherwise.
+ * @returns InvestmentConfidence when classified work units exist, null otherwise.
  */
 export function deriveConfidenceFromStats(
     stats:
@@ -68,15 +107,28 @@ export function deriveConfidenceFromStats(
         | null
         | undefined,
 ): InvestmentConfidence | null {
-    if (!stats || stats.mean == null) return null;
-    const mean = stats.mean;
-    const level: InvestmentConfidence["level"] =
-        mean >= 0.75 ? "high" : mean >= 0.6 ? "moderate" : "low";
+    if (!stats) return null;
+
+    // Keep only finite, non-negative band counts; their sum is the number of
+    // classified work units and gates whether any confidence is shown at all.
+    const bandMix: Record<string, number> = {};
+    let total = 0;
+    for (const [band, count] of Object.entries(stats.band_counts ?? {})) {
+        if (typeof count === "number" && Number.isFinite(count) && count >= 0) {
+            bandMix[band] = count;
+            total += count;
+        }
+    }
+    if (total <= 0) return null;
+
     return {
-        level,
-        quality_mean: mean,
-        quality_stddev: stats.stddev ?? null,
-        band_mix: stats.band_counts ?? {},
+        level: dominantBandLevel(bandMix),
+        quality_mean: finiteInRange(stats.mean, 0, 1),
+        quality_stddev:
+            typeof stats.stddev === "number" && Number.isFinite(stats.stddev) && stats.stddev >= 0
+                ? stats.stddev
+                : null,
+        band_mix: bandMix,
         drivers: [],
     };
 }

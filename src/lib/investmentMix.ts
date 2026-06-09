@@ -76,35 +76,36 @@ export const normalizeInvestmentMix = (input: InvestmentMixResponse): Investment
                 ? Object.fromEntries(
                       Object.entries(typed.evidence_quality_distribution).map(([key, value]) => [
                           key,
-                          typeof value === "number" ? value : 0,
+                          typeof value === "number" && Number.isFinite(value) && value >= 0
+                              ? value
+                              : 0,
                       ]),
                   )
                 : undefined,
             evidence_quality_stats: isRecord(typed.evidence_quality_stats)
-                ? {
-                      mean:
-                          typeof (typed.evidence_quality_stats as Record<string, unknown>).mean ===
-                          "number"
-                              ? ((typed.evidence_quality_stats as Record<string, unknown>)
-                                    .mean as number)
-                              : null,
-                      stddev:
-                          typeof (typed.evidence_quality_stats as Record<string, unknown>)
-                              .stddev === "number"
-                              ? ((typed.evidence_quality_stats as Record<string, unknown>)
-                                    .stddev as number)
-                              : null,
-                      band_counts: isRecord(
-                          (typed.evidence_quality_stats as Record<string, unknown>).band_counts,
-                      )
+                ? (() => {
+                      const s = typed.evidence_quality_stats as Record<string, unknown>;
+                      const mean =
+                          typeof s.mean === "number" &&
+                          Number.isFinite(s.mean) &&
+                          s.mean >= 0 &&
+                          s.mean <= 1
+                              ? s.mean
+                              : null;
+                      const stddev =
+                          typeof s.stddev === "number" && Number.isFinite(s.stddev) && s.stddev >= 0
+                              ? s.stddev
+                              : null;
+                      const band_counts = isRecord(s.band_counts)
                           ? Object.fromEntries(
-                                Object.entries(
-                                    (typed.evidence_quality_stats as Record<string, unknown>)
-                                        .band_counts as Record<string, unknown>,
-                                ).map(([k, v]) => [k, typeof v === "number" ? v : 0]),
+                                Object.entries(s.band_counts).map(([k, v]) => [
+                                    k,
+                                    typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0,
+                                ]),
                             )
-                          : undefined,
-                  }
+                          : undefined;
+                      return { mean, stddev, band_counts };
+                  })()
                 : undefined,
         };
     }
