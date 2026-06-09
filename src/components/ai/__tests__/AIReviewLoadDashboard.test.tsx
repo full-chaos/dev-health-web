@@ -66,6 +66,8 @@ describe("AIReviewLoadDashboard", () => {
                             reviewAmplification: 1.8,
                             postFirstReviewPushesCount: 4,
                             postFirstReviewPushesPerPr: 0.4,
+                            pickupLatencyHours: 9,
+                            reviewCommentsPerLoc: 0.05,
                         },
                         {
                             bucket: "human",
@@ -76,6 +78,8 @@ describe("AIReviewLoadDashboard", () => {
                             reviewAmplification: 1.1,
                             postFirstReviewPushesCount: 2,
                             postFirstReviewPushesPerPr: 0.2,
+                            pickupLatencyHours: 7,
+                            reviewCommentsPerLoc: 0.02,
                         },
                     ],
                     daily: [],
@@ -113,8 +117,8 @@ describe("AIReviewLoadDashboard", () => {
         render(<AIReviewLoadDashboard filter={filter} />);
         expect(screen.getByText("Pickup latency")).toBeInTheDocument();
         expect(screen.getByText("9.00 h")).toBeInTheDocument();
-        expect(screen.getByText("Review comments per PR")).toBeInTheDocument();
-        expect(screen.getByText("3.00")).toBeInTheDocument();
+        expect(screen.getByText("Review comments per LOC")).toBeInTheDocument();
+        expect(screen.getByText("0.050")).toBeInTheDocument();
         expect(screen.getByText("Change request rate")).toBeInTheDocument();
         expect(screen.getByText("1.50")).toBeInTheDocument();
         expect(screen.getByText("Approval friction")).toBeInTheDocument();

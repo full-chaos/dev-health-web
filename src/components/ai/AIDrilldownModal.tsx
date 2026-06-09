@@ -17,7 +17,7 @@ type AIDrilldownModalProps = {
     onClose: () => void;
 };
 
-function prRowKey(pr: AiAttributedPr): string {
+export function prRowKey(pr: AiAttributedPr): string {
     return `${pr.repoId}:${pr.number}`;
 }
 
@@ -127,7 +127,7 @@ function PrTable({
     );
 }
 
-function EvidencePanel({ selected }: { selected: AiAttributedPr | null }) {
+export function EvidencePanel({ selected }: { selected: AiAttributedPr | null }) {
     const rootId = selected ? prRowKey(selected) : null;
     const { data: drilldown, fetching, error } = useAIWorkflowDrilldownForPr(rootId);
 
