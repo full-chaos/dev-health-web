@@ -13,12 +13,14 @@
 // a fabricated number — and sinks to the bottom of the sort.
 //
 // Signal policy:
-//   - Opportunities: REAL — fetches `getOpportunities(filters)`. Value is the
-//     open count + evidence-linked count ("2 OPEN · 2 EVIDENCE-LINKED"). State
-//     is "neutral" when items exist (count is informational, not a severity),
-//     "unavailable" when fetch fails or returns no payload.
-//   - Experiments: UNAVAILABLE — no backend yet.
-//   - Automations: UNAVAILABLE — no backend yet.
+//   - Opportunities: REAL — fetches `getOpportunities(filters)`. State is
+//     "neutral" whenever the fetch SUCCEEDS (a count is informational, not a
+//     severity): value "N OPEN · M EVIDENCE-LINKED" for hits, "0 OPEN" for a
+//     real healthy zero. Only a FAILED fetch (safe() → undefined) degrades to
+//     "unavailable" — a genuine "not connected", distinct from an empty result.
+//   - Experiments: UNAVAILABLE + preview (route /improve/experiments has no page
+//     yet → card is rendered non-clickable so it can't 404).
+//   - Automations: UNAVAILABLE + preview (route /improve/automations, same).
 
 import { getOpportunities } from "@/lib/api/home";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
@@ -32,15 +34,15 @@ import { sortBySeverity } from "./sort";
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
 
+type Resolution = { state: AreaSignalState; value: string; preview?: boolean };
+
 /**
  * Build an `AreaSignal` from its nav descriptor + resolved state/value. Pulls
  * label / href / cluster / demoted from the descriptor so the card metadata
- * stays anchored to the single nav source of truth.
+ * stays anchored to the single nav source of truth. `preview` marks a card whose
+ * route does not yet exist so the renderer keeps it non-clickable.
  */
-function buildSignal(
-    descriptor: NavAreaHubItem,
-    resolved: { state: AreaSignalState; value: string },
-): AreaSignal {
+function buildSignal(descriptor: NavAreaHubItem, resolved: Resolution): AreaSignal {
     return {
         id: descriptor.id,
         label: descriptor.label,
@@ -50,6 +52,7 @@ function buildSignal(
         value: resolved.value,
         state: resolved.state,
         demoted: descriptor.demoted,
+        preview: resolved.preview,
     };
 }
 
@@ -94,19 +97,17 @@ export async function getImproveSignals(
     ]);
 
     const signals: AreaSignal[] = [];
-    const push = (
-        id: string,
-        resolved: { state: AreaSignalState; value: string },
-    ) => {
+    const push = (id: string, resolved: Resolution) => {
         const d = descriptor(id);
         if (d) signals.push(buildSignal(d, resolved));
     };
 
     // ── Opportunities — REAL ────────────────────────────────────────────────────
-    // "neutral" when count > 0 (a count, not a severity); UNAVAILABLE if fetch
-    // fails, returns undefined, or returns empty items.
-    if (opportunitiesData && opportunitiesData.items.length > 0) {
-        const items = opportunitiesData.items;
+    // A SUCCESSFUL fetch is always "neutral" (a count, not a severity) — including
+    // a healthy zero ("0 OPEN"). Only a FAILED fetch (safe() → undefined) is the
+    // honest "unavailable" (not connected). Empty items != disconnect.
+    if (opportunitiesData) {
+        const items = opportunitiesData.items ?? [];
         const total = items.length;
         const evidenceLinked = items.filter(
             (item) => item.evidence_links.length > 0,
@@ -120,11 +121,11 @@ export async function getImproveSignals(
         push("opportunities", UNAVAILABLE);
     }
 
-    // ── Experiments — UNAVAILABLE (no backend yet) ───────────────────────────────
-    push("experiments", UNAVAILABLE);
+    // ── Experiments — UNAVAILABLE + preview (no backend / no route yet) ──────────
+    push("experiments", { ...UNAVAILABLE, preview: true });
 
-    // ── Automations — UNAVAILABLE (no backend yet) ───────────────────────────────
-    push("improve-automations", UNAVAILABLE);
+    // ── Automations — UNAVAILABLE + preview (no backend / no route yet) ──────────
+    push("improve-automations", { ...UNAVAILABLE, preview: true });
 
     return sortBySeverity(signals);
 }

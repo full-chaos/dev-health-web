@@ -26,9 +26,16 @@ export async function getExplainData(params: { metric: string; filters: MetricFi
     );
 }
 
-export async function getOpportunities(filters: MetricFilter) {
+/**
+ * Per-request memoized opportunities fetch. React.cache() deduplicates calls
+ * within a single RSC render tree so the /opportunities page and the Improve
+ * area-signal resolver (getImproveSignals) share ONE POST instead of issuing two
+ * identical requests per render — and read from the same list/count snapshot.
+ * Safe to memoize: getOpportunities is only ever called server-side (RSC).
+ */
+export const getOpportunities = cache(async function getOpportunities(filters: MetricFilter) {
     const normalized = normalizeFilters(filters);
     return postJson<OpportunitiesResponse>("/api/v1/opportunities", { filters: normalized }, 120, {
         f: encodeFilterParam(normalized),
     });
-}
+});

@@ -328,7 +328,7 @@ export const navAreas: readonly NavArea[] = [
         label: "Improve",
         href: "/opportunities",
         placement: "main",
-        ownedPathPrefixes: ["/opportunities"],
+        ownedPathPrefixes: ["/opportunities", "/improve"],
         legacyActiveIds: ["opportunities", "experiments", "automations", "improve"],
         hubItems: [
             {

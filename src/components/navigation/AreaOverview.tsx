@@ -112,16 +112,32 @@ export function AreaOverview({
                         <span className="mr-1 text-xs uppercase tracking-[0.18em]">
                             Not yet connected
                         </span>
-                        {unavailable.map((signal) => (
-                            <Link
-                                key={signal.id}
-                                href={withFilterParam(signal.href, filters, role)}
-                                data-signal-id={signal.id}
-                                className="rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1 text-xs font-medium text-foreground transition hover:border-(--accent)"
-                            >
-                                {signal.label}
-                            </Link>
-                        ))}
+                        {unavailable.map((signal) => {
+                            const chipClassName =
+                                "rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1 text-xs font-medium text-foreground";
+                            // Preview sub-area (route not built yet) → non-clickable chip so
+                            // it can't 404; a real-but-unconnected sub-area stays a link.
+                            return signal.preview === true ? (
+                                <span
+                                    key={signal.id}
+                                    data-signal-id={signal.id}
+                                    data-preview="true"
+                                    aria-disabled="true"
+                                    className={chipClassName}
+                                >
+                                    {signal.label}
+                                </span>
+                            ) : (
+                                <Link
+                                    key={signal.id}
+                                    href={withFilterParam(signal.href, filters, role)}
+                                    data-signal-id={signal.id}
+                                    className={`${chipClassName} transition hover:border-(--accent)`}
+                                >
+                                    {signal.label}
+                                </Link>
+                            );
+                        })}
                     </div>
                 </div>
             ) : null}
