@@ -11,7 +11,7 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
         useAIReviewLoad: mockUseAIReviewLoad,
         findBucketRow: <T extends { bucket: string }>(
             rows: T[] | undefined,
-            bucket = "AI_ASSISTED",
+            bucket = "ai_assisted",
         ) => {
             const targetBucket = normalizeBucket(bucket);
             return rows?.find((row) => normalizeBucket(row.bucket) === targetBucket);

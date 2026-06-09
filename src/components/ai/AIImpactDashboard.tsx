@@ -7,6 +7,7 @@ import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { DataState } from "@/components/ui/DataState";
 import { useAIComparison, useAIImpactSummary } from "@/lib/graphql/hooks/useAIImpact";
 import type { AIFilter } from "@/lib/filters/ai";
+import { bucketEquals } from "@/lib/ai/buckets";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { AIComparisonCard } from "./AIComparisonCard";
 import { AILeverageBars } from "./AILeverageBars";
@@ -60,9 +61,10 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
     }
 
     const bucketRows = summary?.byBucket ?? [];
-    const agentBucket = bucketRows.find((row) => row.bucket === "AGENT_CREATED");
+    const agentBucket = bucketRows.find((row) => bucketEquals(row.bucket, "AGENT_CREATED"));
     const leverage =
-        bucketRows.find((row) => row.bucket === "AI_ASSISTED")?.leverage ?? bucketRows[0]?.leverage;
+        bucketRows.find((row) => bucketEquals(row.bucket, "AI_ASSISTED"))?.leverage ??
+        bucketRows[0]?.leverage;
     const donutRows = assistedWorkShareRows(bucketRows);
     const trend = agentCreatedTrend(summary?.daily ?? []);
 

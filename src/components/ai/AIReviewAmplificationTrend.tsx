@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Chart } from "@/components/charts/Chart";
 import { useChartTheme } from "@/components/charts/chartTheme";
 import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
+import { bucketLabel } from "./utils";
 
 type DailyRow = AiReviewLoadRow & { day?: string };
 
@@ -50,7 +51,11 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
                 borderColor: chartTheme.stroke,
                 textStyle: { color: chartTheme.text },
             },
-            legend: { data: buckets, bottom: 0, textStyle: { color: chartTheme.muted } },
+            legend: {
+                data: buckets.map(bucketLabel),
+                bottom: 0,
+                textStyle: { color: chartTheme.muted },
+            },
             grid: { left: 44, right: 20, top: 20, bottom: 48, containLabel: true },
             xAxis: {
                 type: "category" as const,
@@ -64,7 +69,7 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
                 splitLine: { lineStyle: { color: chartTheme.grid, type: "dashed" as const } },
             },
             series: buckets.map((bucket) => ({
-                name: bucket,
+                name: bucketLabel(bucket),
                 type: "line" as const,
                 smooth: true,
                 symbol: "circle",

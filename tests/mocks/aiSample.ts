@@ -57,8 +57,8 @@ function emptyComparison(orgId: string, startDate: string, endDate: string) {
         startDate,
         endDate,
         dataAvailable: false,
-        aiSide: side("AI_ASSISTED"),
-        baselineSide: side("HUMAN"),
+        aiSide: side("ai_assisted"),
+        baselineSide: side("human"),
         delta: {
             cycleTimeDeltaHours: null,
             reviewsPerPrDelta: null,
@@ -76,7 +76,7 @@ function populatedComparison(orgId: string, startDate: string, endDate: string) 
         startDate,
         endDate,
         dataAvailable: true,
-        aiSide: side("AI_ASSISTED", {
+        aiSide: side("ai_assisted", {
             prsTotal: 42,
             prsMerged: 38,
             cycleTimeAvgHours: 18.4,
@@ -86,7 +86,7 @@ function populatedComparison(orgId: string, startDate: string, endDate: string) 
             testGapRate: 0.18,
             incidentRate: 0.03,
         }),
-        baselineSide: side("HUMAN", {
+        baselineSide: side("human", {
             prsTotal: 120,
             prsMerged: 110,
             cycleTimeAvgHours: 22.1,
@@ -269,7 +269,7 @@ export function aiImpactSummaryResponse(
             },
         ],
         byBucket: [
-            impactBucket("AI_ASSISTED", {
+            impactBucket("ai_assisted", {
                 prsTotal: 42,
                 prsMerged: 38,
                 aiAssistedPrRatio: 0.26,
@@ -289,20 +289,20 @@ export function aiImpactSummaryResponse(
                     incidentComponent: -0.01,
                 }),
             }),
-            impactBucket("AGENT_CREATED", {
+            impactBucket("agent_created", {
                 prsTotal: 12,
                 prsMerged: 11,
                 agentCreatedPrCount: 12,
                 cycleTimeAvgHours: 14.0,
             }),
-            impactBucket("HUMAN", {
+            impactBucket("human", {
                 prsTotal: 96,
                 prsMerged: 88,
                 cycleTimeAvgHours: 22.1,
             }),
-            impactBucket("UNKNOWN", { prsTotal: 12, prsMerged: 10 }),
+            impactBucket("unknown", { prsTotal: 12, prsMerged: 10 }),
         ],
-        daily: Array.from({ length: 7 }, (_, i) => dailyRow("AGENT_CREATED", { prsTotal: i + 1 })),
+        daily: Array.from({ length: 7 }, (_, i) => dailyRow("agent_created", { prsTotal: i + 1 })),
     };
 }
 
@@ -357,7 +357,7 @@ export function aiReviewLoadResponse(
         dataAvailable: true,
         byBucket: [
             {
-                bucket: "AI_ASSISTED",
+                bucket: "ai_assisted",
                 prsTotal: 42,
                 reviewsTotal: 110,
                 reviewsPerPr: 2.6,
@@ -369,7 +369,7 @@ export function aiReviewLoadResponse(
                 reviewCommentsPerLoc: 0.032,
             },
             {
-                bucket: "HUMAN",
+                bucket: "human",
                 prsTotal: 96,
                 reviewsTotal: 183,
                 reviewsPerPr: 1.9,
@@ -382,7 +382,7 @@ export function aiReviewLoadResponse(
             },
         ],
         daily: Array.from({ length: 7 }, (_, i) => ({
-            bucket: "AI_ASSISTED",
+            bucket: "ai_assisted",
             prsTotal: 6 - i,
             reviewsTotal: 18 - i,
             reviewsPerPr: 2.4 + i * 0.05,
@@ -463,7 +463,7 @@ export function aiRiskBreakdownResponse(
         missingStates: [],
         hotspotOverlap: [
             {
-                bucket: "AI_ASSISTED",
+                bucket: "ai_assisted",
                 prsTotal: 44,
                 prsTouchingHotspots: 26,
                 hotspotOverlapRate: 0.59,
@@ -472,7 +472,7 @@ export function aiRiskBreakdownResponse(
         ],
         complexityOverlap: [
             {
-                bucket: "AI_ASSISTED",
+                bucket: "ai_assisted",
                 prsTotal: 44,
                 prsTouchingHighComplexity: 0,
                 complexityOverlapRate: 0,
@@ -480,7 +480,7 @@ export function aiRiskBreakdownResponse(
         ],
         byBucket: [
             {
-                bucket: "AI_ASSISTED",
+                bucket: "ai_assisted",
                 prsTotal: 42,
                 reworkPrs: 9,
                 reworkRate: 0.22,
@@ -492,7 +492,7 @@ export function aiRiskBreakdownResponse(
                 incidentRate: 0.03,
             },
             {
-                bucket: "HUMAN",
+                bucket: "human",
                 prsTotal: 96,
                 reworkPrs: 13,
                 reworkRate: 0.14,

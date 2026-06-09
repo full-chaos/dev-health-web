@@ -14,7 +14,7 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
         useAIGovernanceSummary: mockUseAIGovernanceSummary,
         findBucketRow: <T extends { bucket: string }>(
             rows: T[] | undefined,
-            bucket = "AI_ASSISTED",
+            bucket = "ai_assisted",
         ) => rows?.find((row) => row.bucket === bucket),
         prViolationRows: (summary?: { recentViolations?: Array<{ subjectType: string }> }) =>
             (summary?.recentViolations ?? []).filter(
@@ -70,7 +70,7 @@ describe("AIRiskDashboard", () => {
                     ],
                     byBucket: [
                         {
-                            bucket: "AI_ASSISTED",
+                            bucket: "ai_assisted",
                             prsTotal: 10,
                             reworkPrs: 2,
                             reworkRate: 0.2,
@@ -89,7 +89,7 @@ describe("AIRiskDashboard", () => {
                     endDate: "2026-05-01",
                     dataAvailable: true,
                     aiSide: {
-                        bucket: "AI_ASSISTED",
+                        bucket: "ai_assisted",
                         prsTotal: 10,
                         prsMerged: 8,
                         reworkRate: 0.2,
@@ -98,7 +98,7 @@ describe("AIRiskDashboard", () => {
                         incidentRate: 0.1,
                     },
                     baselineSide: {
-                        bucket: "HUMAN",
+                        bucket: "human",
                         prsTotal: 10,
                         prsMerged: 8,
                         reworkRate: 0.1,
@@ -160,7 +160,7 @@ describe("AIRiskDashboard", () => {
                     byBucket: [],
                     hotspotOverlap: [
                         {
-                            bucket: "AI_ASSISTED",
+                            bucket: "ai_assisted",
                             prsTotal: 44,
                             prsTouchingHotspots: 26,
                             hotspotOverlapRate: 0.59,
@@ -169,7 +169,7 @@ describe("AIRiskDashboard", () => {
                     ],
                     complexityOverlap: [
                         {
-                            bucket: "AI_ASSISTED",
+                            bucket: "ai_assisted",
                             prsTotal: 44,
                             prsTouchingHighComplexity: 0,
                             complexityOverlapRate: 0,

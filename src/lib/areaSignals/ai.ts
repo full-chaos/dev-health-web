@@ -21,6 +21,7 @@
 // Honest-state contract: a sub-area whose value cannot be resolved is emitted
 // with `state: "unavailable"` and an empty `value` — never a fabricated number.
 
+import { bucketEquals } from "@/lib/ai/buckets";
 import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/server";
 import {
@@ -201,7 +202,7 @@ export async function getAISignals(
     //   BACKEND_LADDER). Falls back to "neutral" when reworkDragRate is absent
     //   but adoption data is present (informational only — no rework signal yet).
     if (impact?.dataAvailable) {
-        const aiBucket = impact.byBucket.find((b) => b.bucket === "AI_ASSISTED");
+        const aiBucket = impact.byBucket.find((b) => bucketEquals(b.bucket, "AI_ASSISTED"));
         const reworkDrag = aiBucket?.reworkDragRate;
         const adoptionRatio = impact.aiAssistedPrRatio;
         const state: AreaSignalState =
@@ -224,7 +225,7 @@ export async function getAISignals(
     // AI_ASSISTED bucket reviewAmplification multiplier (lowerIsBetter).
     // dataAvailable guards against a non-null but empty result.
     if (reviewLoad?.dataAvailable) {
-        const aiBucket = reviewLoad.byBucket.find((b) => b.bucket === "AI_ASSISTED");
+        const aiBucket = reviewLoad.byBucket.find((b) => bucketEquals(b.bucket, "AI_ASSISTED"));
         const amplification = aiBucket?.reviewAmplification;
         const commentsPerLoc = aiBucket?.reviewCommentsPerLoc;
         if (amplification != null) {
