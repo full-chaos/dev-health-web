@@ -243,11 +243,18 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                         className={`rounded-full border px-4 py-2 text-sm font-medium transition hover:border-(--accent) ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 bg-sky-500/5 text-sky-700 dark:text-sky-300" : "border-(--card-stroke) bg-(--card-80) text-foreground"}`}
                     >
                         {section.title}
-                        <span className="ml-2 text-xs font-normal opacity-70">
-                            {section.improved.length +
-                                section.worsened.length +
-                                section.changed.length}{" "}
-                            signals
+                        <span className="ml-2 flex items-center gap-1.5 text-xs font-normal">
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                                {section.improved.length} improved
+                            </span>
+                            <span className="text-(--ink-muted)">·</span>
+                            <span className="text-rose-600 dark:text-rose-400">
+                                {section.worsened.length} worsened
+                            </span>
+                            <span className="text-(--ink-muted)">·</span>
+                            <span className="text-(--ink-muted)">
+                                {section.changed.length} changed
+                            </span>
                         </span>
                     </a>
                 ))}
@@ -282,8 +289,8 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                         ) : null}
 
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                            {section.metrics.map((metric, index) => (
-                                <MetricCard key={metric.key} metric={metric} isHero={index === 0} />
+                            {section.metrics.map((metric) => (
+                                <MetricCard key={metric.key} metric={metric} />
                             ))}
                         </div>
 
@@ -378,26 +385,9 @@ function AIWorkflowIntelligenceCallout() {
     );
 }
 
-function MetricCard({
-    metric,
-    isHero = false,
-}: {
-    metric: OperatingReviewMetric;
-    isHero?: boolean;
-}) {
+function MetricCard({ metric }: { metric: OperatingReviewMetric }) {
     return (
-        <div
-            className={
-                isHero
-                    ? "group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-(--accent)/30 bg-gradient-to-br from-(--card) to-(--card-80) p-6 shadow-lg ring-1 ring-(--accent)/10 md:col-span-2 xl:col-span-2"
-                    : "group flex flex-col justify-between overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card) p-4"
-            }
-        >
-            {isHero ? (
-                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-(--accent)">
-                    Lead Metric
-                </p>
-            ) : null}
+        <div className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card) p-4">
             <div className="flex items-start justify-between gap-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                     {metric.label}
@@ -405,13 +395,7 @@ function MetricCard({
                 <span className={statusClass(metric.delta.status)}>{metric.delta.status}</span>
             </div>
             <div className="mt-4">
-                <div
-                    className={
-                        isHero
-                            ? "metric-hero text-4xl font-semibold text-foreground"
-                            : "metric-hero text-2xl font-semibold text-foreground"
-                    }
-                >
+                <div className="metric-hero text-2xl font-semibold text-foreground">
                     {fmtMetric(metric.value, metric.unit)}
                 </div>
                 <p className="mt-2 text-xs text-(--ink-muted)">
