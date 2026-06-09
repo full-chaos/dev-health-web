@@ -12,7 +12,7 @@ export default async function DataHealthLayout({ children }: { children: React.R
 
     return (
         <div className="min-h-screen">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-20 pt-10">
+            <div className="flex w-full flex-col gap-6 px-6 pb-20 pt-10">
                 <AdminTierProvider tier={tier} features={features}>
                     <main className="flex min-w-0 flex-1 flex-col gap-10">{children}</main>
                 </AdminTierProvider>
