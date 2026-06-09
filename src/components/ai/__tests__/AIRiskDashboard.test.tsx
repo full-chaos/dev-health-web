@@ -8,18 +8,22 @@ const { mockUseAIRiskBreakdown, mockUseAIGovernanceSummary } = vi.hoisted(() => 
     mockUseAIGovernanceSummary: vi.fn(),
 }));
 
-vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
+// Stub the transitive urql/provider imports so importOriginal can load the
+// real useAIReviewRisk module under vitest (same pattern as the adapters test).
+vi.mock("urql", () => ({
+    useQuery: () => [{ data: undefined, fetching: false, error: undefined }],
+}));
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org" }));
+
+// Mock ONLY the data hooks; everything else (findBucketRow, prViolationRows)
+// must be the real implementation so this suite exercises the production
+// bucket-normalization path (uppercase request vs lowercase rows, CHAOS-2225).
+vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/graphql/hooks/useAIReviewRisk")>();
     return {
+        ...actual,
         useAIRiskBreakdown: mockUseAIRiskBreakdown,
         useAIGovernanceSummary: mockUseAIGovernanceSummary,
-        findBucketRow: <T extends { bucket: string }>(
-            rows: T[] | undefined,
-            bucket = "ai_assisted",
-        ) => rows?.find((row) => row.bucket === bucket),
-        prViolationRows: (summary?: { recentViolations?: Array<{ subjectType: string }> }) =>
-            (summary?.recentViolations ?? []).filter(
-                (violation) => violation.subjectType.toLowerCase() === "pr",
-            ),
     };
 });
 

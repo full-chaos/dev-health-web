@@ -5,26 +5,21 @@ import type { AIFilter } from "@/lib/filters/ai";
 
 const { mockUseAIReviewLoad } = vi.hoisted(() => ({ mockUseAIReviewLoad: vi.fn() }));
 
-vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
-    const normalizeBucket = (bucket: string) => bucket.trim().toLowerCase();
+// Stub the transitive urql/provider imports so importOriginal can load the
+// real useAIReviewRisk module under vitest (same pattern as the adapters test).
+vi.mock("urql", () => ({
+    useQuery: () => [{ data: undefined, fetching: false, error: undefined }],
+}));
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org" }));
+
+// Mock ONLY the data hook; findBucketRow/valueDelta/approvalFriction must be
+// the real implementations so this suite exercises the production
+// bucket-normalization path (uppercase request vs lowercase rows, CHAOS-2225).
+vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/graphql/hooks/useAIReviewRisk")>();
     return {
+        ...actual,
         useAIReviewLoad: mockUseAIReviewLoad,
-        findBucketRow: <T extends { bucket: string }>(
-            rows: T[] | undefined,
-            bucket = "ai_assisted",
-        ) => {
-            const targetBucket = normalizeBucket(bucket);
-            return rows?.find((row) => normalizeBucket(row.bucket) === targetBucket);
-        },
-        valueDelta: (value?: number | null, baseline?: number | null) =>
-            value == null || baseline == null ? undefined : value - baseline,
-        approvalFriction: (row?: {
-            changesRequestedPerPr?: number | null;
-            reviewsPerPr?: number | null;
-        }) =>
-            !row?.reviewsPerPr || row.changesRequestedPerPr == null
-                ? undefined
-                : row.changesRequestedPerPr / row.reviewsPerPr,
     };
 });
 
