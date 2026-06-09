@@ -678,6 +678,7 @@ type Freshness {
 type HomeResult {
   freshness: Freshness!
   deltas: [MetricDelta!]!
+  reworkThemeAllocation: [ReworkThemeAllocation!]!
 }
 
 type HotspotRow {
@@ -734,6 +735,7 @@ type MappingCoverage {
 enum MeasureInput {
   COUNT
   CHURN_LOC
+  PR_REWORK_RATIO
   CYCLE_TIME_HOURS
   THROUGHPUT
   PIPELINE_SUCCESS_RATE
@@ -1123,6 +1125,15 @@ input ReviewEdgesInput {
 type ReviewEdgesResult {
   edges: [ReviewEdgeRow!]!
   totalCount: Int!
+}
+
+type ReworkThemeAllocation {
+  theme: String!
+  label: String!
+  allocation: Float!
+  allocationPct: Float!
+  prsMerged: Int!
+  churnLoc: Int!
 }
 
 type SankeyCoverage {

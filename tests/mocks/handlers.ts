@@ -1257,6 +1257,33 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         return HttpResponse.json({ data: { catalog: catalogValuesResponse(dim) } });
     }
 
+    if (query.includes("CognitiveLoad") || query.includes("cognitiveLoad")) {
+        const input = (variables.input ?? {}) as { orgId?: string; teamId?: string | null };
+        const days = Array.from({ length: 14 }, (_, i) => {
+            const d = new Date(Date.UTC(2026, 4, 26 + i));
+
+            return {
+                day: d.toISOString().slice(0, 10),
+                prInterruptionLoad: 12 + (i % 3),
+                contextSpreadCount: 7 + (i % 4),
+                reviewRequestLoad: 9 + (i % 2),
+                afterHoursCommitRatio: 0.18,
+                weekendCommitRatio: 0.12,
+            };
+        });
+
+        return HttpResponse.json({
+            data: {
+                cognitiveLoad: {
+                    orgId: input.orgId ?? "e2e-org",
+                    teamId: input.teamId ?? null,
+                    totalDays: days.length,
+                    signals: days,
+                },
+            },
+        });
+    }
+
     // Default: empty data.
     return HttpResponse.json({ data: {} });
 }
