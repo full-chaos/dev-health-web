@@ -56,6 +56,14 @@ export type AiComparisonSide = {
   testGapRate?: Maybe<Scalars['Float']['output']>;
 };
 
+export type AiComplexityOverlapRow = {
+  __typename?: 'AIComplexityOverlapRow';
+  bucket: Scalars['String']['output'];
+  complexityOverlapRate?: Maybe<Scalars['Float']['output']>;
+  prsTotal: Scalars['Int']['output'];
+  prsTouchingHighComplexity: Scalars['Int']['output'];
+};
+
 export type AiDateRangeInput = {
   endDate: Scalars['Date']['input'];
   startDate: Scalars['Date']['input'];
@@ -99,6 +107,15 @@ export type AiGovernanceViolationRow = {
   teamId?: Maybe<Scalars['String']['output']>;
 };
 
+export type AiHotspotOverlapRow = {
+  __typename?: 'AIHotspotOverlapRow';
+  avgHotspotRiskScore?: Maybe<Scalars['Float']['output']>;
+  bucket: Scalars['String']['output'];
+  hotspotOverlapRate?: Maybe<Scalars['Float']['output']>;
+  prsTotal: Scalars['Int']['output'];
+  prsTouchingHotspots: Scalars['Int']['output'];
+};
+
 export type AiImpactBucketRow = {
   __typename?: 'AIImpactBucketRow';
   bucket: Scalars['String']['output'];
@@ -134,6 +151,15 @@ export type AiImpactBucketTotals = {
   testGapRate?: Maybe<Scalars['Float']['output']>;
 };
 
+export type AiImpactScopeRollupRow = {
+  __typename?: 'AIImpactScopeRollupRow';
+  aiAssistedPrRatio?: Maybe<Scalars['Float']['output']>;
+  aiPrsTotal: Scalars['Int']['output'];
+  reworkRateDelta?: Maybe<Scalars['Float']['output']>;
+  scopeId: Scalars['String']['output'];
+  scopeLabel: Scalars['String']['output'];
+};
+
 export type AiImpactSummary = {
   __typename?: 'AIImpactSummary';
   agentCreatedPrs: Scalars['Int']['output'];
@@ -147,7 +173,9 @@ export type AiImpactSummary = {
   humanPrs: Scalars['Int']['output'];
   missingStates: Array<AiMissingState>;
   orgId: Scalars['String']['output'];
+  repoBreakdown: Array<AiImpactScopeRollupRow>;
   startDate: Scalars['Date']['output'];
+  teamBreakdown: Array<AiImpactScopeRollupRow>;
   totalPrs: Scalars['Int']['output'];
   unknownPrs: Scalars['Int']['output'];
 };
@@ -190,10 +218,15 @@ export type AiOpportunity = {
 };
 
 export type AiOpportunityKind =
+  | 'DEPENDENCY_UPDATES'
+  | 'DOCUMENTATION_DRIFT'
+  | 'FLAKY_TEST_TRIAGE'
   | 'HIGH_REVIEW_LOAD'
   | 'HIGH_REWORK'
+  | 'MECHANICAL_MIGRATIONS'
   | 'REPETITIVE_CHANGE'
   | 'SLOW_CYCLE'
+  | 'TEST_GENERATION'
   | 'UNCOVERED_TEST_AREA';
 
 export type AiReviewLoadResult = {
@@ -212,10 +245,12 @@ export type AiReviewLoadRow = {
   __typename?: 'AIReviewLoadRow';
   bucket: Scalars['String']['output'];
   changesRequestedPerPr?: Maybe<Scalars['Float']['output']>;
+  pickupLatencyHours?: Maybe<Scalars['Float']['output']>;
   postFirstReviewPushesCount: Scalars['Int']['output'];
   postFirstReviewPushesPerPr?: Maybe<Scalars['Float']['output']>;
   prsTotal: Scalars['Int']['output'];
   reviewAmplification?: Maybe<Scalars['Float']['output']>;
+  reviewCommentsPerLoc?: Maybe<Scalars['Float']['output']>;
   reviewsPerPr?: Maybe<Scalars['Float']['output']>;
   reviewsTotal: Scalars['Int']['output'];
 };
@@ -230,8 +265,10 @@ export type AiReviewerConcentrationSummary = {
 export type AiRiskBreakdownResult = {
   __typename?: 'AIRiskBreakdownResult';
   byBucket: Array<AiRiskBreakdownRow>;
+  complexityOverlap: Array<AiComplexityOverlapRow>;
   dataAvailable: Scalars['Boolean']['output'];
   endDate: Scalars['Date']['output'];
+  hotspotOverlap: Array<AiHotspotOverlapRow>;
   missingStates: Array<AiMissingState>;
   orgId: Scalars['String']['output'];
   startDate: Scalars['Date']['output'];

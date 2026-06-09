@@ -9,6 +9,9 @@
 //                        BACKEND_LADDER; display value = aiAssistedPrRatio %.
 //   - ai-review-load   : AI_ASSISTED bucket reviewAmplification multiplier
 //                        (lowerIsBetter); display value = formatted multiplier.
+//                        Falls back to reviewCommentsPerLoc (neutral,
+//                        informational) when amplification has not populated
+//                        but comment-density coverage exists (CHAOS-2194).
 //   - ai-governance-risk: recentViolations severity ladder (RETURNED — critical/
 //                        high/medium from the violation rows); display = count.
 //   - ai-automations   : aiOpportunities detectorReady + recommendations count
@@ -32,6 +35,12 @@ import type {
     AiOpportunitiesResult,
     AiReviewLoadResult,
 } from "@/lib/graphql/__generated__/types";
+import {
+    SAMPLE_AI_GOVERNANCE_SUMMARY,
+    SAMPLE_AI_IMPACT_SUMMARY,
+    SAMPLE_AI_OPPORTUNITIES,
+    SAMPLE_AI_REVIEW_LOAD,
+} from "@/lib/ai/sample-data";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import type { MetricFilter } from "@/lib/filters/types";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
@@ -128,11 +137,15 @@ export async function getAISignals(
     };
 
     // ── Fetch all 4 sources in parallel (no serial N+1) ─────────────────────────
+    // Test mode returns the deterministic sample constants (the TestOps
+    // fetcher convention, src/lib/testops/fetchers.ts) so the hub renders a
+    // realistic severity mix without hitting the API — the samples still flow
+    // through the real derivation below, never bypassing it.
     const [impact, reviewLoad, governance, opportunities] = await Promise.all([
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_AI_IMPACT_SUMMARY)
                     : graphqlFetch<{ aiImpactSummary: AiImpactSummary }>(
                           AI_IMPACT_SUMMARY_QUERY,
                           { orgId, dateRange, scope },
@@ -143,7 +156,7 @@ export async function getAISignals(
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_AI_REVIEW_LOAD)
                     : graphqlFetch<{ aiReviewLoad: AiReviewLoadResult }>(
                           AI_REVIEW_LOAD_QUERY,
                           { orgId, dateRange, scope },
@@ -154,7 +167,7 @@ export async function getAISignals(
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_AI_GOVERNANCE_SUMMARY)
                     : graphqlFetch<{ aiGovernanceSummary: AiGovernanceSummary }>(
                           AI_GOVERNANCE_SUMMARY_QUERY,
                           { orgId, dateRange, scope, violationLimit: 50 },
@@ -165,7 +178,7 @@ export async function getAISignals(
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_AI_OPPORTUNITIES)
                     : graphqlFetch<{ aiOpportunities: AiOpportunitiesResult }>(
                           AI_OPPORTUNITIES_QUERY,
                           { orgId, scope, limit: 5 },
@@ -213,6 +226,7 @@ export async function getAISignals(
     if (reviewLoad?.dataAvailable) {
         const aiBucket = reviewLoad.byBucket.find((b) => b.bucket === "AI_ASSISTED");
         const amplification = aiBucket?.reviewAmplification;
+        const commentsPerLoc = aiBucket?.reviewCommentsPerLoc;
         if (amplification != null) {
             push("ai-review-load", {
                 state: deriveState(amplification, {
@@ -220,6 +234,14 @@ export async function getAISignals(
                     direction: "lowerIsBetter",
                 }),
                 value: `${amplification.toFixed(1)}× amplification`,
+            });
+        } else if (commentsPerLoc != null) {
+            // Amplification hasn't populated but comment-density coverage
+            // exists (CHAOS-2194): surface it informationally rather than
+            // hiding the card — no severity ladder is defined for it yet.
+            push("ai-review-load", {
+                state: "neutral",
+                value: `${commentsPerLoc.toFixed(3)} comments/LOC`,
             });
         } else {
             push("ai-review-load", UNAVAILABLE);

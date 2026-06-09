@@ -75,6 +75,9 @@ test.describe("AI Impact dashboard", () => {
                 exact: true,
             }),
         ).toBeVisible();
+        // CHAOS-2186: populated breakdowns render ranked rollups + evidence link.
+        await expect(dashboard.getByTestId("ai-impact-breakdown")).toBeVisible();
+        await expect(dashboard.getByRole("link", { name: /Open evidence/ })).toBeVisible();
         await expect(
             dashboard.getByRole("heading", {
                 name: "Best-fit automation opportunities",

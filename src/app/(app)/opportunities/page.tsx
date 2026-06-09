@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -9,6 +11,7 @@ import { getOpportunities } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { withFilterParam } from "@/lib/filters/url";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { getServerEnv } from "@/lib/config";
 
 type OpportunitiesPageProps = {
@@ -78,6 +81,28 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                                 Opportunity data unavailable.
                             </div>
                         )}
+                    </section>
+
+                    <section
+                        className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        aria-label="AI automation opportunities"
+                        data-testid="improve-ai-automations-crosslink"
+                    >
+                        <div>
+                            <h2 className="font-(--font-display) text-lg">
+                                Automation opportunities for AI-assisted work
+                            </h2>
+                            <p className="mt-1 max-w-2xl text-sm text-(--ink-muted)">
+                                Responsible automation candidates detected on AI-attributed work
+                                live in the AI area, scoped to your current filters.
+                            </p>
+                        </div>
+                        <Link
+                            href={withFilterParam("/ai/automations", filters, activeRole)}
+                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2) underline-offset-4 hover:underline"
+                        >
+                            {CTA_LABELS.seeAIAutomations} →
+                        </Link>
                     </section>
                 </main>
             </div>

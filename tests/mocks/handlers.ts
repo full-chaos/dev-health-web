@@ -1149,9 +1149,19 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         });
     }
     if (query.includes("AIAttributedPrs")) {
+        const limit = typeof variables.limit === "number" ? variables.limit : 50;
+        const offset = typeof variables.offset === "number" ? variables.offset : 0;
         return HttpResponse.json({
             data: {
-                aiAttributedPrs: aiAttributedPrsResponse(orgId, startDate, endDate, aiMode),
+                aiAttributedPrs: aiAttributedPrsResponse(
+                    orgId,
+                    startDate,
+                    endDate,
+                    aiMode,
+                    limit,
+                    offset,
+                    vars.scope ?? null,
+                ),
             },
         });
     }

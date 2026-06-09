@@ -81,6 +81,20 @@ describe("AITabNav", () => {
         expect(screen.getByText("Impact").closest("a")).not.toHaveAttribute("aria-current");
     });
 
+    it("claims no active tab on preview routes outside the strip (CHAOS-2200)", () => {
+        pathnameMock.mockReturnValue("/ai/attribution");
+        render(<AITabNav filters={filters} />);
+        for (const label of [
+            "Overview",
+            "Impact",
+            "Review Load",
+            "Governance Risk",
+            "Automations",
+        ]) {
+            expect(screen.getByText(label).closest("a")).not.toHaveAttribute("aria-current");
+        }
+    });
+
     it("does not render preview badges for hidden placeholder routes", () => {
         pathnameMock.mockReturnValue("/ai");
         render(<AITabNav filters={filters} />);

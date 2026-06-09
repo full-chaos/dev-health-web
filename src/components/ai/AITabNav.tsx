@@ -22,13 +22,18 @@ const AI_TABS: AITab[] = [
     { id: "automations", label: "Automations", href: "/ai/automations" },
 ];
 
-function activeTabFromPath(pathname: string): AITabId {
+/**
+ * Resolves the active strip tab from the pathname. Preview routes that are not
+ * in the strip (e.g. /ai/attribution) return "none" so no tab claims a false
+ * active state (CHAOS-2200) — ModeTabs simply renders no underline.
+ */
+function activeTabFromPath(pathname: string): AITabId | "none" {
     if (pathname === "/ai") return "overview";
     const match = AI_TABS.find(
         (tab) =>
             tab.href !== "/ai" && (pathname === tab.href || pathname.startsWith(tab.href + "/")),
     );
-    return match?.id ?? "overview";
+    return match?.id ?? "none";
 }
 
 type AITabNavProps = {
@@ -40,7 +45,7 @@ export function AITabNav({ filters, role }: AITabNavProps) {
     const pathname = usePathname();
     const activeTab = activeTabFromPath(pathname);
 
-    const items: ModeTabItem<AITabId>[] = AI_TABS.map((tab) => ({
+    const items: ModeTabItem<AITabId | "none">[] = AI_TABS.map((tab) => ({
         id: tab.id,
         label: tab.label,
         href: withFilterParam(tab.href, filters, role),

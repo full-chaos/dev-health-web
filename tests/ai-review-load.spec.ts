@@ -29,7 +29,7 @@ test.describe("AI Review Load dashboard", () => {
         await expect(dashboard).toBeVisible();
 
         await expect(dashboard.getByText("Pickup latency")).toBeVisible();
-        await expect(dashboard.getByText("Review comments per PR")).toBeVisible();
+        await expect(dashboard.getByText("Review comments per LOC")).toBeVisible();
         await expect(dashboard.getByText("Change request rate")).toBeVisible();
         await expect(dashboard.getByText("Approval friction")).toBeVisible();
         // Disambiguate from "Review amplification trend" heading + daily-trend paragraph.

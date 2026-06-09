@@ -36,8 +36,34 @@ test.describe("AI Risk dashboard", () => {
         await expect(dashboard.getByText("Incident rate")).toBeVisible();
     });
 
-    test("file-overlap views are honestly stubbed", async ({ page }) => {
+    test("file-overlap panels render real data when overlap rows exist (CHAOS-2185)", async ({
+        page,
+    }) => {
         await page.goto(`/ai/risk?f=${populatedFilter}`);
+
+        // Post ops-#823 the backend emits real overlap rows (and no
+        // hotspot/complexity missing-states) for populated scopes.
+        const hotspot = page.getByTestId("ai-hotspot-overlap");
+        await expect(hotspot).toBeVisible();
+        await expect(hotspot).toContainText("59%");
+        await expect(hotspot).toContainText("26 of 44 AI-attributed PRs");
+        await expect(hotspot).toContainText("top-decile-risk files");
+
+        // Complexity overlap is a computed REAL ZERO in the fixture — it must
+        // render as 0%, never as a missing/unavailable panel.
+        const complexity = page.getByTestId("ai-complexity-overlap");
+        await expect(complexity).toBeVisible();
+        await expect(complexity).toContainText("0%");
+        await expect(complexity).toContainText("0 of 44 AI-attributed PRs");
+    });
+
+    test("file-overlap views stay honestly stubbed when rows are absent", async ({ page }) => {
+        const emptyFilter = encodeFilter({
+            ...defaultMetricFilter,
+            scope: { level: "team", ids: ["team-empty"] },
+            time: { range_days: 30, compare_days: 30 },
+        });
+        await page.goto(`/ai/risk?f=${emptyFilter}`);
 
         const hotspot = page.getByTestId("ai-missing-data-panel").filter({
             hasText: "Hotspot file overlap",

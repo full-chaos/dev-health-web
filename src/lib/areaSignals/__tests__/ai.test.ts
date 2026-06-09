@@ -98,6 +98,7 @@ function makeImpact(overrides?: {
 function makeReviewLoad(overrides?: {
     dataAvailable?: boolean;
     reviewAmplification?: number | null;
+    reviewCommentsPerLoc?: number | null;
 }) {
     return {
         aiReviewLoad: {
@@ -112,7 +113,14 @@ function makeReviewLoad(overrides?: {
                     reviewsTotal: 72,
                     reviewsPerPr: 1.8,
                     changesRequestedPerPr: 0.5,
-                    reviewAmplification: overrides?.reviewAmplification ?? 1.8,
+                    reviewAmplification:
+                        overrides?.reviewAmplification === undefined
+                            ? 1.8
+                            : overrides.reviewAmplification,
+                    reviewCommentsPerLoc:
+                        overrides?.reviewCommentsPerLoc === undefined
+                            ? null
+                            : overrides.reviewCommentsPerLoc,
                     postFirstReviewPushesCount: 12,
                     postFirstReviewPushesPerPr: 0.3,
                 },
@@ -285,6 +293,33 @@ describe("getAISignals — source → AreaSignal mapping", () => {
         expect(signals["ai-review-load"].state).toBe("critical");
     });
 
+    it("falls back to comments/LOC (neutral) when amplification is absent (CHAOS-2194)", async () => {
+        mockGraphql.mockImplementation((query) => {
+            if (String(query).includes("AIReviewLoad")) {
+                return Promise.resolve(
+                    makeReviewLoad({ reviewAmplification: null, reviewCommentsPerLoc: 0.045 }),
+                ) as never;
+            }
+            return routeQuery(query) as never;
+        });
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-review-load"]).toMatchObject({ state: "neutral" });
+        expect(signals["ai-review-load"].value).toContain("comments/LOC");
+    });
+
+    it("stays unavailable when neither amplification nor comments/LOC populated", async () => {
+        mockGraphql.mockImplementation((query) => {
+            if (String(query).includes("AIReviewLoad")) {
+                return Promise.resolve(
+                    makeReviewLoad({ reviewAmplification: null, reviewCommentsPerLoc: null }),
+                ) as never;
+            }
+            return routeQuery(query) as never;
+        });
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-review-load"]).toMatchObject({ state: "unavailable", value: "" });
+    });
+
     it("returns governance severity from violation severity ladder (high violations → high)", async () => {
         const signals = byId(await getAISignals(defaultMetricFilter));
         expect(signals["ai-governance-risk"]).toMatchObject({
@@ -439,12 +474,27 @@ describe("getAISignals — source → AreaSignal mapping", () => {
         expect(signals["ai-governance-risk"]).toMatchObject({ state: "unavailable", value: "" });
     });
 
-    it("returns unavailable for all cards in isTestMode (no API calls)", async () => {
-        const signals = await getAISignals(defaultMetricFilter, true);
-        // In test mode all sources resolve to undefined → all unavailable.
-        for (const s of signals) {
-            expect(s.state).toBe("unavailable");
-        }
+    it("renders deterministic sample data in isTestMode (no API calls)", async () => {
+        const signals = byId(await getAISignals(defaultMetricFilter, true));
+        // Test mode returns the SAMPLE_AI_* constants (testops fetcher
+        // convention) through the REAL derivation: a deliberate severity mix,
+        // not all-green and never unavailable.
+        expect(signals["ai-impact"]).toMatchObject({
+            state: "low",
+            value: "34% AI-assisted",
+        });
+        expect(signals["ai-review-load"]).toMatchObject({
+            state: "medium",
+            value: "1.7× amplification",
+        });
+        expect(signals["ai-governance-risk"]).toMatchObject({
+            state: "high",
+            value: "3 violations",
+        });
+        expect(signals["ai-automations"]).toMatchObject({
+            state: "neutral",
+            value: "2 opportunities",
+        });
         expect(mockGraphql).not.toHaveBeenCalled();
     });
 });

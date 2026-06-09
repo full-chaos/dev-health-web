@@ -1,5 +1,6 @@
 import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { AITabPreview } from "@/components/ai/AITabPreview";
+import { navTrailForPathname } from "@/lib/navigation/areas";
 
 /**
  * Attribution tab — preview. The attribution mix currently lives as panels
@@ -8,7 +9,18 @@ import { AITabPreview } from "@/components/ai/AITabPreview";
 export default function AIAttributionPage() {
     return (
         <>
-            <AIPageHeader eyebrow="AI" title="Attribution">
+            <AIPageHeader
+                eyebrow="AI"
+                title="Attribution"
+                preview
+                breadcrumbs={[
+                    ...navTrailForPathname("/ai/attribution").map((c) => ({
+                        ...c,
+                        href: c.href ?? "/ai",
+                    })),
+                    { label: "Attribution" },
+                ]}
+            >
                 A dedicated home for PR attribution — how work splits across human, AI-assisted,
                 AI-reviewed, agent-created, and unknown buckets — is coming. Today these panels live
                 within Impact.

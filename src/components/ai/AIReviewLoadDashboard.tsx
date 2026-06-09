@@ -32,7 +32,6 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
     const [drilldownMetric, setDrilldownMetric] = useState<string | null>(null);
 
     const reviewLoad = data?.aiReviewLoad;
-    const comparison = data?.aiComparison;
     const aiBucket = findBucketRow<AiReviewLoadRow>(reviewLoad?.byBucket);
     const humanBucket = findBucketRow<AiReviewLoadRow>(reviewLoad?.byBucket, "HUMAN");
     const aiFriction = approvalFriction(aiBucket);
@@ -58,20 +57,27 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
                 <AIComparisonMetricCard
                     title="Pickup latency"
-                    value={comparison?.aiSide.cycleTimeAvgHours}
+                    value={aiBucket?.pickupLatencyHours}
                     unit="h"
-                    delta={comparison?.delta.cycleTimeDeltaHours ?? undefined}
-                    description="Uses AI-side average cycle time as the current pickup-latency proxy."
+                    delta={valueDelta(
+                        aiBucket?.pickupLatencyHours,
+                        humanBucket?.pickupLatencyHours,
+                    )}
+                    description="Average time from PR open to first review for AI-attributed work."
                     loading={fetching}
                     onDrilldown={() => setDrilldownMetric("Pickup latency")}
                 />
                 <AIComparisonMetricCard
-                    title="Review comments per PR"
-                    value={aiBucket?.reviewsPerPr}
-                    delta={comparison?.delta.reviewsPerPrDelta ?? undefined}
-                    description="Closest available proxy for review comments per LOC until comment/LOC exposure ships."
+                    title="Review comments per LOC"
+                    value={aiBucket?.reviewCommentsPerLoc}
+                    precision={3}
+                    delta={valueDelta(
+                        aiBucket?.reviewCommentsPerLoc,
+                        humanBucket?.reviewCommentsPerLoc,
+                    )}
+                    description="Review comment density relative to lines changed in AI-attributed PRs."
                     loading={fetching}
-                    onDrilldown={() => setDrilldownMetric("Review comments per PR")}
+                    onDrilldown={() => setDrilldownMetric("Review comments per LOC")}
                 />
                 <AIComparisonMetricCard
                     title="Change request rate"

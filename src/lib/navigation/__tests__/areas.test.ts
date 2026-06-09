@@ -90,14 +90,14 @@ describe("navArea.children — locked child navigation", () => {
                 "Feature Flags",
                 "Compounding Risk",
             ],
+            // CHAOS-2197: Test Gaps + Evidence are tabs inside Governance Risk
+            // (decision recorded on the ticket); their child rows are retired.
             AI: [
                 "Overview",
                 "Impact",
                 "Attribution",
                 "Review Load",
-                "Test Gaps",
                 "Governance Risk",
-                "Evidence",
                 "Automations",
             ],
             Reports: ["Report Center", "Weekly Review", "Executive Summary", "Export History"],

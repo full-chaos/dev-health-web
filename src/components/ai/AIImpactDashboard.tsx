@@ -21,17 +21,16 @@ import {
 
 type AIImpactDashboardProps = {
     filter: AIFilter;
+    /** Filter-preserving href for the PR-evidence drilldown (CHAOS-2196). */
+    evidenceHref?: string;
 };
 
-export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
+export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardProps) {
     const summaryResult = useAIImpactSummary(filter);
     const comparisonResult = useAIComparison(filter);
     const fetching = summaryResult.fetching || comparisonResult.fetching;
     const summary = summaryResult.data?.aiImpactSummary;
     const comparison = comparisonResult.data?.aiComparison;
-    // Drill-into-evidence is intentionally not wired yet: the PR-row picker
-    // and `/ai/impact/PR/summary` route haven't shipped. Panels render
-    // without an evidence link rather than pointing at a 404. (CHAOS-1715)
 
     if (summaryResult.error || comparisonResult.error) {
         return (
@@ -210,13 +209,29 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
 
                 <AIPanelCard
                     title="Top affected repos and teams"
-                    description="Scoped repo and team rollups appear here once enough AI summary coverage exists for the selected scope."
+                    description="Repos and teams ranked by AI-attributed PR volume in the selected window."
                 >
-                    <DataState
-                        variant="preview-not-populated"
-                        title="No scoped rollups in this scope yet"
-                        description="Org-wide AI impact is shown above. Repo- and team-level rankings stay empty until there is enough scoped coverage to show them without estimating values."
-                    />
+                    {(summary?.repoBreakdown?.length ?? 0) > 0 ||
+                    (summary?.teamBreakdown?.length ?? 0) > 0 ? (
+                        <div className="flex flex-col gap-4" data-testid="ai-impact-breakdown">
+                            <ScopeRollupList label="Repos" rows={summary?.repoBreakdown ?? []} />
+                            <ScopeRollupList label="Teams" rows={summary?.teamBreakdown ?? []} />
+                            {evidenceHref && (
+                                <Link
+                                    className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+                                    href={evidenceHref}
+                                >
+                                    {CTA_LABELS.openEvidence} →
+                                </Link>
+                            )}
+                        </div>
+                    ) : (
+                        <DataState
+                            variant="preview-not-populated"
+                            title="No scoped rollups in this scope yet"
+                            description="Org-wide AI impact is shown above. Repo- and team-level rankings stay empty until there is enough scoped coverage to show them without estimating values."
+                        />
+                    )}
                 </AIPanelCard>
 
                 <AIPanelCard
@@ -242,6 +257,48 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
                 Last computed {summary?.computedAt ?? "not yet available"}. Copy uses system-health
                 language: values suggest patterns and should be interpreted with local context.
             </p>
+        </div>
+    );
+}
+
+type ScopeRollupRow = {
+    scopeId: string;
+    scopeLabel: string;
+    aiPrsTotal: number;
+    aiAssistedPrRatio?: number | null;
+    reworkRateDelta?: number | null;
+};
+
+const ROLLUP_LIMIT = 5;
+
+function ScopeRollupList({ label, rows }: { label: string; rows: ScopeRollupRow[] }) {
+    if (rows.length === 0) {
+        return (
+            <p className="text-sm text-(--ink-muted)">
+                {label}: no scoped coverage in this window.
+            </p>
+        );
+    }
+    return (
+        <div>
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">{label}</p>
+            <ul className="mt-2 space-y-1.5">
+                {rows.slice(0, ROLLUP_LIMIT).map((row) => (
+                    <li
+                        key={row.scopeId}
+                        className="flex items-baseline justify-between gap-3 text-sm"
+                        data-testid="ai-impact-rollup-row"
+                    >
+                        <span className="truncate">{row.scopeLabel}</span>
+                        <span className="shrink-0 tabular-nums text-(--ink-muted)">
+                            {row.aiPrsTotal} PRs
+                            {row.aiAssistedPrRatio != null
+                                ? ` · ${formatPercent(row.aiAssistedPrRatio)}`
+                                : ""}
+                        </span>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 }
