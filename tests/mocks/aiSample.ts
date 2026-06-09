@@ -5,9 +5,12 @@
  * resolvers (CHAOS-1582) advertise via `dataAvailable`. Tests drive the mode
  * with the AI scope filter:
  *
- *   scope.teamId === "team-empty"   → empty contract (no buckets, no daily)
- *   scope.teamId === "team-missing" → dataAvailable=false (missing-data UX)
- *   anything else                   → populated state with deltas
+ *   scope.teamId === "team-empty"     → empty contract (no buckets, no daily)
+ *   scope.teamId === "team-missing"   → dataAvailable=false (missing-data UX)
+ *   scope.teamId === "team-paginated" → attributed PRs only: 30-row multi-page
+ *                                       set unfiltered, standard 3-row set
+ *                                       once a workType filter is applied
+ *   anything else                     → populated state with deltas
  *
  * Shapes mirror `src/lib/graphql/schema.graphql` AI types. Bucket coverage is
  * org-level only: no repo or team rollups, no per-author breakouts. Reviewer
@@ -539,6 +542,7 @@ export function aiAttributedPrsResponse(
     mode: AIMode,
     limit = 50,
     offset = 0,
+    scope: AIScopeVars | null = null,
 ) {
     if (mode === "missing") {
         return {
@@ -560,6 +564,32 @@ export function aiAttributedPrsResponse(
             hasMore: false,
             dataAvailable: true,
             rows: [],
+        };
+    }
+    // Pagination harness scope: `team-paginated` returns a multi-page result
+    // set when UNFILTERED and the standard 3-row set once a workType filter is
+    // applied, so a spec can paginate to page 2 and then narrow the filter — a
+    // stale offset against the shrunken set is exactly the sparse-page bug
+    // (the list must reset to page 1 on any filter change instead).
+    if (scope?.teamId === "team-paginated" && !scope?.workType) {
+        const kinds = ["ai_assisted", "agent_created", "ai_review"];
+        const generated = Array.from({ length: 30 }, (_, i) => ({
+            repoId: "repo-paginated",
+            number: 300 + i,
+            title: `Paginated sample PR ${300 + i}`,
+            kind: kinds[i % kinds.length],
+            workType: "feature",
+            teamId: "team-paginated",
+            mergedAt: `${endDate}T12:00:00Z`,
+        }));
+        return {
+            orgId,
+            startDate,
+            endDate,
+            total: generated.length,
+            hasMore: offset + limit < generated.length,
+            dataAvailable: true,
+            rows: generated.slice(offset, offset + limit),
         };
     }
     const rows = [

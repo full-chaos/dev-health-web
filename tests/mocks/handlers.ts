@@ -1160,6 +1160,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                     aiMode,
                     limit,
                     offset,
+                    vars.scope ?? null,
                 ),
             },
         });

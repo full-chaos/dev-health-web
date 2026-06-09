@@ -27,6 +27,14 @@ const emptyFilter = encodeFilter({
     time: { range_days: 30, compare_days: 30 },
 });
 
+// team-paginated: 30 mock rows unfiltered (2 pages at PAGE_SIZE 25), standard
+// 3-row set once a workType filter is applied — see tests/mocks/aiSample.ts.
+const paginatedFilter = encodeFilter({
+    ...defaultMetricFilter,
+    scope: { level: "team", ids: ["team-paginated"] },
+    time: { range_days: 30, compare_days: 30 },
+});
+
 test.describe("AI Impact PR evidence", () => {
     test("populated state lists attributed PRs with provenance badges", async ({ page }) => {
         await page.goto(`/ai/impact/evidence?f=${populatedFilter}`);
@@ -71,5 +79,30 @@ test.describe("AI Impact PR evidence", () => {
         await page.goto(`/ai/impact/evidence?f=${emptyFilter}`);
 
         await expect(page.getByText("No AI-attributed PRs in this range")).toBeVisible();
+    });
+
+    test("filter change resets pagination to page 1 instead of a stale sparse page", async ({
+        page,
+    }) => {
+        await page.goto(`/ai/impact/evidence?f=${paginatedFilter}`);
+
+        const list = page.getByTestId("ai-impact-evidence-list");
+        await expect(list.getByTestId("ai-impact-evidence-row")).toHaveCount(25);
+
+        // Paginate to page 2 (rows 26–30 of the wide-window result set).
+        await list.getByRole("button", { name: "Next" }).click();
+        await expect(list.getByTestId("ai-impact-evidence-row")).toHaveCount(5);
+
+        // Narrow the scope through the FilterBar's Work menu — a CLIENT-side
+        // navigation (router.replace), so the list component instance survives
+        // with its local pagination state. The filtered set has only 3 rows; a
+        // stale offset of 25 would render the sparse-page failure state. The
+        // list must reset to page 1 and show the rows instead.
+        const filterBar = page.getByTestId("filter-bar");
+        await filterBar.getByRole("button", { name: /^Work/ }).click();
+        await filterBar.getByRole("checkbox", { name: "feature" }).check();
+
+        await expect(list.getByTestId("ai-impact-evidence-row")).toHaveCount(3);
+        await expect(list.getByTestId("ai-impact-evidence-sparse-page")).toHaveCount(0);
     });
 });

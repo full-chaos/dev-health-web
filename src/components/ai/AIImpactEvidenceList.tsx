@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ErrorCard } from "@/components/ui/ErrorCard";
-import type { AIFilter } from "@/lib/filters/ai";
+import { encodeAIFilter, type AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
 import { useAIAttributedPrs } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIAttributionBadge, attributionBucketForKind } from "./AIAttributionBadge";
@@ -38,6 +38,22 @@ function formatMergedAt(value: string | null | undefined): string {
 export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
     const [offset, setOffset] = useState(0);
     const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+    // React-recommended pattern for resetting local state when a prop changes,
+    // in lieu of useEffect (which would violate `react-hooks/set-state-in-effect`;
+    // same idiom as EditCredentialModal). A scope change must restart pagination
+    // at page 1 — a stale offset against a smaller scope would render the
+    // sparse-page failure state even though page 1 has valid evidence — and a
+    // selection from the old scope must not survive into the new one.
+    // See https://react.dev/reference/react/useState#storing-information-from-previous-renders
+    const filterKey = encodeAIFilter(filter);
+    const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+    if (filterKey !== prevFilterKey) {
+        setPrevFilterKey(filterKey);
+        setOffset(0);
+        setSelectedKey(null);
+    }
+
     const { data, fetching, error } = useAIAttributedPrs(filter, PAGE_SIZE, offset);
 
     const rows = useMemo(() => data?.rows ?? [], [data?.rows]);

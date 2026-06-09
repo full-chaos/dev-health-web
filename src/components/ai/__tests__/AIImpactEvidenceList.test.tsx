@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { fireEvent, render, screen } from "@/test/utils";
 
 import type { AIFilter } from "@/lib/filters/ai";
 
@@ -95,5 +95,42 @@ describe("AIImpactEvidenceList", () => {
 
         expect(screen.getByText("No AI-attributed PRs in this range")).toBeInTheDocument();
         expect(screen.queryByTestId("ai-impact-evidence-sparse-page")).not.toBeInTheDocument();
+    });
+
+    it("resets pagination and selection when the filter changes", () => {
+        // Page 1 is populated with more pages; any later offset is a sparse
+        // page (models a scope whose result set shrank under the old offset).
+        mockUseAIAttributedPrs.mockImplementation(
+            (_filter: AIFilter, _limit: number, offset = 0) =>
+                offset === 0
+                    ? {
+                          data: attributedPrs({ total: 30, hasMore: true }),
+                          fetching: false,
+                          error: undefined,
+                      }
+                    : {
+                          data: attributedPrs({ rows: [], total: 30, hasMore: false }),
+                          fetching: false,
+                          error: undefined,
+                      },
+        );
+
+        const { rerender } = render(<AIImpactEvidenceList filter={filter} />);
+
+        // Select a row, then paginate forward into the sparse page.
+        fireEvent.click(screen.getByTestId("ai-impact-evidence-row"));
+        fireEvent.click(screen.getByRole("button", { name: "Next" }));
+        expect(screen.getByTestId("ai-impact-evidence-sparse-page")).toBeInTheDocument();
+        expect(mockUseAIAttributedPrs).toHaveBeenLastCalledWith(filter, 25, 25);
+
+        // Scope change: offset must restart at page 1 (no stale-offset sparse
+        // state) and the old scope's selection must not survive.
+        const narrower: AIFilter = { ...filter, teamId: "team-2" };
+        rerender(<AIImpactEvidenceList filter={narrower} />);
+
+        expect(mockUseAIAttributedPrs).toHaveBeenLastCalledWith(narrower, 25, 0);
+        expect(screen.getByTestId("ai-impact-evidence-row")).toBeInTheDocument();
+        expect(screen.queryByTestId("ai-impact-evidence-sparse-page")).not.toBeInTheDocument();
+        expect(mockUseAIWorkflowDrilldown).toHaveBeenLastCalledWith(null);
     });
 });
