@@ -22,6 +22,7 @@ import type {
     AiWorkflowDrilldownResult,
     AiWorkflowRootTypeInput,
 } from "../__generated__/types";
+import { bucketKey } from "@/lib/ai/buckets";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiAttributionBucketInput } from "@/lib/graphql/__generated__/types";
 
@@ -80,12 +81,8 @@ export function findBucketRow<T extends { bucket: string }>(
     rows: T[] | undefined,
     bucket: AIBucket | string = "AI_ASSISTED",
 ): T | undefined {
-    const targetBucket = normalizeBucketKey(bucket);
-    return rows?.find((row) => normalizeBucketKey(row.bucket) === targetBucket);
-}
-
-function normalizeBucketKey(bucket: string): string {
-    return bucket.trim().toLowerCase();
+    const targetBucket = bucketKey(bucket);
+    return rows?.find((row) => bucketKey(row.bucket) === targetBucket);
 }
 
 export function valueDelta(

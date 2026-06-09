@@ -45,6 +45,22 @@ describe("useAIReviewRisk adapters", () => {
         expect(findBucketRow(rows, "AGENT_CREATED")?.value).toBe(2);
     });
 
+    it("matches lowercase backend rows against enum-style requests (CHAOS-2225)", () => {
+        // Production shape: rows carry the backend's lowercase vocabulary while
+        // callers request with the uppercase input-enum spelling (including the
+        // implicit AI_ASSISTED default). A regression of findBucketRow back to
+        // raw comparison fails here.
+        const rows = [
+            { bucket: "ai_assisted", value: 10 },
+            { bucket: "human", value: 11 },
+            { bucket: "agent_created", value: 12 },
+        ];
+        expect(findBucketRow(rows)?.value).toBe(10); // default request = "AI_ASSISTED"
+        expect(findBucketRow(rows, "HUMAN")?.value).toBe(11);
+        expect(findBucketRow(rows, "AGENT_CREATED")?.value).toBe(12);
+        expect(findBucketRow([{ bucket: "AI_ASSISTED", value: 1 }], "ai_assisted")?.value).toBe(1);
+    });
+
     it("derives deltas and approval friction only when inputs exist", () => {
         expect(valueDelta(5, 3)).toBe(2);
         expect(valueDelta(undefined, 3)).toBeUndefined();

@@ -56,7 +56,7 @@ function mockDefaults() {
                 endDate: "2026-05-19",
                 dataAvailable: true,
                 aiSide: {
-                    bucket: "AI_ASSISTED",
+                    bucket: "ai_assisted",
                     prsTotal: 8,
                     prsMerged: 7,
                     reviewsPerPr: 2.4,
@@ -67,7 +67,7 @@ function mockDefaults() {
                     cycleTimeAvgHours: 20,
                 },
                 baselineSide: {
-                    bucket: "HUMAN",
+                    bucket: "human",
                     prsTotal: 10,
                     prsMerged: 9,
                     reviewsPerPr: 1.8,
@@ -161,7 +161,7 @@ describe("AIImpactDashboard", () => {
                     computedAt: "2026-05-19T00:00:00Z",
                     byBucket: [
                         {
-                            bucket: "AI_ASSISTED",
+                            bucket: "ai_assisted",
                             prsTotal: 5,
                             prsMerged: 4,
                             aiAssistedPrRatio: 0.25,
@@ -183,7 +183,7 @@ describe("AIImpactDashboard", () => {
                             },
                         },
                         {
-                            bucket: "AGENT_CREATED",
+                            bucket: "agent_created",
                             prsTotal: 3,
                             prsMerged: 3,
                             aiAssistedPrRatio: 0.15,
@@ -205,7 +205,7 @@ describe("AIImpactDashboard", () => {
                             },
                         },
                         {
-                            bucket: "HUMAN",
+                            bucket: "human",
                             prsTotal: 10,
                             prsMerged: 9,
                             aiAssistedPrRatio: 0,
@@ -227,7 +227,7 @@ describe("AIImpactDashboard", () => {
                             },
                         },
                         {
-                            bucket: "UNKNOWN",
+                            bucket: "unknown",
                             prsTotal: 2,
                             prsMerged: 2,
                             aiAssistedPrRatio: null,
@@ -251,7 +251,7 @@ describe("AIImpactDashboard", () => {
                     ],
                     daily: [
                         {
-                            bucket: "AGENT_CREATED",
+                            bucket: "agent_created",
                             prsTotal: 1,
                             prsMerged: 1,
                             cycleTimeAvgHours: 10,
@@ -267,7 +267,7 @@ describe("AIImpactDashboard", () => {
                             testGapRate: 0,
                         },
                         {
-                            bucket: "AGENT_CREATED",
+                            bucket: "agent_created",
                             prsTotal: 2,
                             prsMerged: 2,
                             cycleTimeAvgHours: 12,

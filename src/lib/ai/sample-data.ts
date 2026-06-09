@@ -37,7 +37,7 @@ export const SAMPLE_AI_IMPACT_SUMMARY: AiImpactSummary = {
     computedAt: `${SAMPLE_END_DATE}T06:00:00Z`,
     byBucket: [
         {
-            bucket: "AI_ASSISTED",
+            bucket: "ai_assisted",
             prsTotal: 41,
             prsMerged: 38,
             agentCreatedPrCount: 0,
@@ -88,7 +88,7 @@ export const SAMPLE_AI_REVIEW_LOAD: AiReviewLoadResult = {
     dataAvailable: true,
     byBucket: [
         {
-            bucket: "AI_ASSISTED",
+            bucket: "ai_assisted",
             prsTotal: 41,
             reviewsTotal: 96,
             reviewsPerPr: 2.3,

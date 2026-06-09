@@ -8,18 +8,22 @@ const { mockUseAIRiskBreakdown, mockUseAIGovernanceSummary } = vi.hoisted(() => 
     mockUseAIGovernanceSummary: vi.fn(),
 }));
 
-vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async () => {
+// Stub the transitive urql/provider imports so importOriginal can load the
+// real useAIReviewRisk module under vitest (same pattern as the adapters test).
+vi.mock("urql", () => ({
+    useQuery: () => [{ data: undefined, fetching: false, error: undefined }],
+}));
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org" }));
+
+// Mock ONLY the data hooks; everything else (findBucketRow, prViolationRows)
+// must be the real implementation so this suite exercises the production
+// bucket-normalization path (uppercase request vs lowercase rows, CHAOS-2225).
+vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/graphql/hooks/useAIReviewRisk")>();
     return {
+        ...actual,
         useAIRiskBreakdown: mockUseAIRiskBreakdown,
         useAIGovernanceSummary: mockUseAIGovernanceSummary,
-        findBucketRow: <T extends { bucket: string }>(
-            rows: T[] | undefined,
-            bucket = "AI_ASSISTED",
-        ) => rows?.find((row) => row.bucket === bucket),
-        prViolationRows: (summary?: { recentViolations?: Array<{ subjectType: string }> }) =>
-            (summary?.recentViolations ?? []).filter(
-                (violation) => violation.subjectType.toLowerCase() === "pr",
-            ),
     };
 });
 
@@ -70,7 +74,7 @@ describe("AIRiskDashboard", () => {
                     ],
                     byBucket: [
                         {
-                            bucket: "AI_ASSISTED",
+                            bucket: "ai_assisted",
                             prsTotal: 10,
                             reworkPrs: 2,
                             reworkRate: 0.2,
@@ -89,7 +93,7 @@ describe("AIRiskDashboard", () => {
                     endDate: "2026-05-01",
                     dataAvailable: true,
                     aiSide: {
-                        bucket: "AI_ASSISTED",
+                        bucket: "ai_assisted",
                         prsTotal: 10,
                         prsMerged: 8,
                         reworkRate: 0.2,
@@ -98,7 +102,7 @@ describe("AIRiskDashboard", () => {
                         incidentRate: 0.1,
                     },
                     baselineSide: {
-                        bucket: "HUMAN",
+                        bucket: "human",
                         prsTotal: 10,
                         prsMerged: 8,
                         reworkRate: 0.1,
@@ -160,7 +164,7 @@ describe("AIRiskDashboard", () => {
                     byBucket: [],
                     hotspotOverlap: [
                         {
-                            bucket: "AI_ASSISTED",
+                            bucket: "ai_assisted",
                             prsTotal: 44,
                             prsTouchingHotspots: 26,
                             hotspotOverlapRate: 0.59,
@@ -169,7 +173,7 @@ describe("AIRiskDashboard", () => {
                     ],
                     complexityOverlap: [
                         {
-                            bucket: "AI_ASSISTED",
+                            bucket: "ai_assisted",
                             prsTotal: 44,
                             prsTouchingHighComplexity: 0,
                             complexityOverlapRate: 0,

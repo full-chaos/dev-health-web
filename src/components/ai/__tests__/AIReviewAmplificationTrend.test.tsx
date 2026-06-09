@@ -12,7 +12,7 @@ describe("AIReviewAmplificationTrend helpers", () => {
         const trend = reviewAmplificationTrendRows([
             {
                 day: "2026-05-22",
-                bucket: "AI_ASSISTED",
+                bucket: "ai_assisted",
                 prsTotal: 4,
                 reviewsTotal: 8,
                 reviewAmplification: 2.2,
@@ -20,7 +20,7 @@ describe("AIReviewAmplificationTrend helpers", () => {
             },
             {
                 day: "2026-05-01",
-                bucket: "AI_ASSISTED",
+                bucket: "ai_assisted",
                 prsTotal: 4,
                 reviewsTotal: 4,
                 reviewAmplification: 1.1,
@@ -28,7 +28,7 @@ describe("AIReviewAmplificationTrend helpers", () => {
             },
             {
                 day: "2026-05-09",
-                bucket: "AGENT_CREATED",
+                bucket: "agent_created",
                 prsTotal: 4,
                 reviewsTotal: 7,
                 reviewAmplification: 1.9,
@@ -36,14 +36,14 @@ describe("AIReviewAmplificationTrend helpers", () => {
             },
             {
                 day: "2026-05-09",
-                bucket: "AI_ASSISTED",
+                bucket: "ai_assisted",
                 prsTotal: 4,
                 reviewsTotal: 5,
                 reviewAmplification: 1.4,
                 postFirstReviewPushesCount: 2,
             },
             {
-                bucket: "UNKNOWN",
+                bucket: "unknown",
                 prsTotal: 1,
                 reviewsTotal: 9,
                 reviewAmplification: 9.9,

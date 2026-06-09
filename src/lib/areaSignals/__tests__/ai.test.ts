@@ -43,7 +43,7 @@ function makeImpact(overrides?: {
             missingStates: [],
             byBucket: [
                 {
-                    bucket: "AI_ASSISTED",
+                    bucket: "ai_assisted",
                     prsTotal: 40,
                     prsMerged: 38,
                     aiAssistedPrRatio: 0.4,
@@ -68,7 +68,7 @@ function makeImpact(overrides?: {
                     },
                 },
                 {
-                    bucket: "HUMAN",
+                    bucket: "human",
                     prsTotal: 55,
                     prsMerged: 53,
                     aiAssistedPrRatio: 0,
@@ -108,7 +108,7 @@ function makeReviewLoad(overrides?: {
             dataAvailable: overrides?.dataAvailable ?? true,
             byBucket: [
                 {
-                    bucket: "AI_ASSISTED",
+                    bucket: "ai_assisted",
                     prsTotal: 40,
                     reviewsTotal: 72,
                     reviewsPerPr: 1.8,
@@ -125,7 +125,7 @@ function makeReviewLoad(overrides?: {
                     postFirstReviewPushesPerPr: 0.3,
                 },
                 {
-                    bucket: "HUMAN",
+                    bucket: "human",
                     prsTotal: 55,
                     reviewsTotal: 88,
                     reviewsPerPr: 1.6,
