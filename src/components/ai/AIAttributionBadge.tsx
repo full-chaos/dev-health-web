@@ -1,12 +1,13 @@
 /**
  * Provenance chip for AI-attributed work (CHAOS-2195).
  *
- * Renders the canonical attribution bucket (ai_assisted / agent_created /
- * human / unknown) as a small pill, optionally annotated with the detected
- * tool and attribution confidence via a tooltip. Mirrors the
+ * Renders the canonical attribution bucket (ai_assisted / ai_review /
+ * agent_created / human / unknown — mirrors `AI_BUCKETS` in
+ * `components/ai/utils.ts`) as a small pill, optionally annotated with the
+ * detected tool and attribution confidence via a tooltip. Mirrors the
  * {@link PreviewBadge} pattern: decorative by default, no interactive state.
  *
- * Honest-provenance contract: an unrecognized bucket renders as the
+ * Honest-provenance contract: an unrecognized bucket or kind renders as the
  * "unknown" treatment — the badge never upgrades uncertain attribution to a
  * confident-looking AI label.
  */
@@ -15,6 +16,10 @@ const BUCKET_TREATMENTS = {
     ai_assisted: {
         label: "AI-assisted",
         className: "border-sky-500/30 bg-sky-500/10 text-sky-400",
+    },
+    ai_review: {
+        label: "AI-reviewed",
+        className: "border-teal-500/30 bg-teal-500/10 text-teal-500",
     },
     agent_created: {
         label: "Agent-created",
@@ -43,18 +48,31 @@ export function normalizeAttributionBucket(value: string | null | undefined): AI
 }
 
 /**
- * Map an attribution row `kind` to a badge bucket. `aiAttributedPrs` rows
- * carry the resolved attribution kind, which is either a canonical bucket
- * name or a concrete tool kind (e.g. "copilot", "claude"); a concrete tool
- * kind is itself AI-assisted attribution evidence. Absent kinds stay
- * "unknown" — never upgraded.
+ * Explicit allowlist from resolved attribution `kind` values to badge
+ * buckets. The backend's `ai_attribution_resolved.kind` vocabulary is
+ * exactly `ai_assisted` / `agent_created` / `ai_review` (see ops
+ * `metrics/loaders/ai_impact.py`, the `attr.kind IN (...)` filters); the
+ * canonical bucket names pass through for callers that already hold a
+ * bucket.
+ */
+const KIND_TO_BUCKET: Record<string, AIAttributionBucket> = {
+    ai_assisted: "ai_assisted",
+    ai_review: "ai_review",
+    agent_created: "agent_created",
+    human: "human",
+    unknown: "unknown",
+};
+
+/**
+ * Map an attribution row `kind` to a badge bucket via the explicit
+ * allowlist. Anything outside the known vocabulary — absent kinds, future
+ * sentinels ("unclassified", "manual"), tool names — falls back to the
+ * "unknown" treatment. Provenance is never upgraded to a confident AI
+ * label on an unrecognized value.
  */
 export function attributionBucketForKind(kind: string | null | undefined): AIAttributionBucket {
     const key = kind?.trim().toLowerCase() ?? "";
-    if (!key) return "unknown";
-    if (key in BUCKET_TREATMENTS) return key as AIAttributionBucket;
-    if (key === "agent") return "agent_created";
-    return "ai_assisted";
+    return KIND_TO_BUCKET[key] ?? "unknown";
 }
 
 type AIAttributionBadgeProps = {

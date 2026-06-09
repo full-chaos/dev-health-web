@@ -34,6 +34,7 @@ describe("AIAttributionBadge", () => {
 describe("normalizeAttributionBucket", () => {
     it.each([
         ["AI_ASSISTED", "ai_assisted"],
+        ["AI_REVIEW", "ai_review"],
         ["human", "human"],
         ["", "unknown"],
         [null, "unknown"],
@@ -45,14 +46,25 @@ describe("normalizeAttributionBucket", () => {
 
 describe("attributionBucketForKind", () => {
     it.each([
-        ["copilot", "ai_assisted"],
-        ["claude", "ai_assisted"],
-        ["agent", "agent_created"],
+        // The backend kind vocabulary maps through explicitly.
+        ["ai_assisted", "ai_assisted"],
+        ["AI_ASSISTED", "ai_assisted"],
+        ["ai_review", "ai_review"],
         ["agent_created", "agent_created"],
         ["human", "human"],
+        ["unknown", "unknown"],
+        // Absent kinds stay unknown.
         [null, "unknown"],
         ["", "unknown"],
+        ["   ", "unknown"],
     ])("maps kind %s to bucket %s", (input, expected) => {
         expect(attributionBucketForKind(input)).toBe(expected);
     });
+
+    it.each([["copilot"], ["claude"], ["cursor"], ["unclassified"], ["manual"], ["agent"]])(
+        "never upgrades unrecognized non-empty kind %s past unknown",
+        (input) => {
+            expect(attributionBucketForKind(input)).toBe("unknown");
+        },
+    );
 });

@@ -70,69 +70,82 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
         );
     }
 
+    const sparsePage =
+        !fetching && data?.dataAvailable === true && data.total > 0 && rows.length === 0;
+
     return (
         <div className="flex flex-col gap-5" data-testid="ai-impact-evidence-list">
-            <div className="overflow-hidden rounded-3xl border border-(--card-stroke)">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-card text-xs uppercase tracking-[0.14em] text-(--ink-muted)">
-                        <tr>
-                            <th className="px-4 py-3 font-semibold">PR</th>
-                            <th className="px-4 py-3 font-semibold">Title</th>
-                            <th className="px-4 py-3 font-semibold">Attribution</th>
-                            <th className="px-4 py-3 font-semibold">Type</th>
-                            <th className="px-4 py-3 font-semibold">Repo</th>
-                            <th className="px-4 py-3 font-semibold">Merged</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-(--card-stroke)">
-                        {fetching && rows.length === 0 ? (
+            {sparsePage ? (
+                <DataState
+                    variant="detector-unavailable"
+                    title="This page of results could not be loaded"
+                    description={`The selected window reports ${data?.total ?? 0} AI-attributed PRs, but this page returned none. Use Previous to return to a populated page, or narrow the scope.`}
+                    data-testid="ai-impact-evidence-sparse-page"
+                />
+            ) : (
+                <div className="overflow-hidden rounded-3xl border border-(--card-stroke)">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-card text-xs uppercase tracking-[0.14em] text-(--ink-muted)">
                             <tr>
-                                <td
-                                    colSpan={6}
-                                    className="px-4 py-8 text-center text-(--ink-muted)"
-                                    data-testid="ai-impact-evidence-loading"
-                                >
-                                    Loading AI-attributed pull requests…
-                                </td>
+                                <th className="px-4 py-3 font-semibold">PR</th>
+                                <th className="px-4 py-3 font-semibold">Title</th>
+                                <th className="px-4 py-3 font-semibold">Attribution</th>
+                                <th className="px-4 py-3 font-semibold">Type</th>
+                                <th className="px-4 py-3 font-semibold">Repo</th>
+                                <th className="px-4 py-3 font-semibold">Merged</th>
                             </tr>
-                        ) : (
-                            rows.map((pr: AiAttributedPr) => {
-                                const key = prRowKey(pr);
-                                const isSelected = key === selectedKey;
-                                return (
-                                    <tr
-                                        key={key}
-                                        onClick={() => setSelectedKey(key)}
-                                        className={`cursor-pointer transition-colors ${isSelected ? "bg-(--accent-positive)/10" : "hover:bg-background/50"}`}
-                                        data-testid="ai-impact-evidence-row"
-                                        data-pr-key={key}
+                        </thead>
+                        <tbody className="divide-y divide-(--card-stroke)">
+                            {fetching && rows.length === 0 ? (
+                                <tr>
+                                    <td
+                                        colSpan={6}
+                                        className="px-4 py-8 text-center text-(--ink-muted)"
+                                        data-testid="ai-impact-evidence-loading"
                                     >
-                                        <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
-                                            #{pr.number}
-                                        </td>
-                                        <td className="px-4 py-3">{pr.title ?? "(untitled)"}</td>
-                                        <td className="px-4 py-3">
-                                            <AIAttributionBadge
-                                                bucket={attributionBucketForKind(pr.kind)}
-                                                tool={pr.kind}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 text-(--ink-muted)">
-                                            {pr.workType ?? "—"}
-                                        </td>
-                                        <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
-                                            {pr.repoId}
-                                        </td>
-                                        <td className="px-4 py-3 text-(--ink-muted)">
-                                            {formatMergedAt(pr.mergedAt)}
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                                        Loading AI-attributed pull requests…
+                                    </td>
+                                </tr>
+                            ) : (
+                                rows.map((pr: AiAttributedPr) => {
+                                    const key = prRowKey(pr);
+                                    const isSelected = key === selectedKey;
+                                    return (
+                                        <tr
+                                            key={key}
+                                            onClick={() => setSelectedKey(key)}
+                                            className={`cursor-pointer transition-colors ${isSelected ? "bg-(--accent-positive)/10" : "hover:bg-background/50"}`}
+                                            data-testid="ai-impact-evidence-row"
+                                            data-pr-key={key}
+                                        >
+                                            <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
+                                                #{pr.number}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {pr.title ?? "(untitled)"}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <AIAttributionBadge
+                                                    bucket={attributionBucketForKind(pr.kind)}
+                                                />
+                                            </td>
+                                            <td className="px-4 py-3 text-(--ink-muted)">
+                                                {pr.workType ?? "—"}
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
+                                                {pr.repoId}
+                                            </td>
+                                            <td className="px-4 py-3 text-(--ink-muted)">
+                                                {formatMergedAt(pr.mergedAt)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             <div className="flex items-center justify-between text-sm text-(--ink-muted)">
                 <span data-testid="ai-impact-evidence-count">

@@ -513,8 +513,8 @@ export function aiOpportunitiesResponse(orgId: string, mode: AIMode) {
                     "git_pull_requests:repo-1:1014",
                 ],
                 workGraphDrilldowns: [
-                    { rootType: "pr", rootId: "repo-1#1001", label: "PR 1001" },
-                    { rootType: "pr", rootId: "repo-1#1009", label: "PR 1009" },
+                    { rootType: "pr", rootId: "repo-1:1001", label: "PR 1001" },
+                    { rootType: "pr", rootId: "repo-1:1009", label: "PR 1009" },
                 ],
             },
             {
@@ -526,7 +526,7 @@ export function aiOpportunitiesResponse(orgId: string, mode: AIMode) {
                 rationale: "Low test-delta on AI-attributed PRs flagged this module for follow-up.",
                 score: 0.62,
                 evidenceRefs: ["git_pull_requests:repo-2:1020", "git_pull_requests:repo-2:1024"],
-                workGraphDrilldowns: [{ rootType: "pr", rootId: "repo-2#1020", label: "PR 1020" }],
+                workGraphDrilldowns: [{ rootType: "pr", rootId: "repo-2:1020", label: "PR 1020" }],
             },
         ],
     };
@@ -537,6 +537,8 @@ export function aiAttributedPrsResponse(
     startDate: string,
     endDate: string,
     mode: AIMode,
+    limit = 50,
+    offset = 0,
 ) {
     if (mode === "missing") {
         return {
@@ -565,7 +567,7 @@ export function aiAttributedPrsResponse(
             repoId: "repo-web-app",
             number: 201,
             title: "Add feature flag for new pricing page",
-            kind: "copilot",
+            kind: "ai_assisted",
             workType: "feature",
             teamId: "team-platform",
             mergedAt: `${endDate}T15:00:00Z`,
@@ -574,7 +576,7 @@ export function aiAttributedPrsResponse(
             repoId: "repo-web-app",
             number: 198,
             title: "Refactor auth middleware",
-            kind: "cursor",
+            kind: "agent_created",
             workType: "tech-debt",
             teamId: "team-platform",
             mergedAt: `${endDate}T09:30:00Z`,
@@ -583,20 +585,21 @@ export function aiAttributedPrsResponse(
             repoId: "repo-api",
             number: 154,
             title: "Generate snapshot tests for legacy module",
-            kind: "claude",
+            kind: "ai_review",
             workType: "feature",
             teamId: "team-platform",
             mergedAt: null,
         },
     ];
+    const page = rows.slice(offset, offset + limit);
     return {
         orgId,
         startDate,
         endDate,
         total: rows.length,
-        hasMore: false,
+        hasMore: offset + limit < rows.length,
         dataAvailable: true,
-        rows,
+        rows: page,
     };
 }
 

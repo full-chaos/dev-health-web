@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
+import { prWorkflowRootId } from "@/lib/ai/workflowRootId";
 import {
     useAIAttributedPrs,
     useAIWorkflowDrilldownForPr,
@@ -17,8 +18,12 @@ type AIDrilldownModalProps = {
     onClose: () => void;
 };
 
+/**
+ * Row key doubles as the Work Graph root id — always built via the shared
+ * encoder so it matches the backend edge-id format exactly.
+ */
 export function prRowKey(pr: AiAttributedPr): string {
-    return `${pr.repoId}:${pr.number}`;
+    return prWorkflowRootId(pr.repoId, pr.number);
 }
 
 function formatMergedAt(value: string | null | undefined): string {
