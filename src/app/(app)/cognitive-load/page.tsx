@@ -263,7 +263,11 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     // A real zero is plotted (zero is data); only a genuinely empty window is empty.
     const toTrend = (pick: (s: (typeof rawSignals)[number]) => number): TrendPoint[] =>
         rawSignals
-            .map((s) => ({ day: s.day, label: s.day.slice(5), value: Math.round(pick(s)) }))
+            .map((s) => ({
+                day: s.day,
+                label: s.day.slice(5),
+                value: Math.round(pick(s)),
+            }))
             .sort((a, b) => a.day.localeCompare(b.day));
     const contextSpreadTrend = toTrend((s) => s.contextSpreadCount);
     const interruptionTrend = toTrend((s) => s.prInterruptionLoad);
@@ -398,7 +402,12 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                                     window={windowLabel}
                                 />
                             ) : (
-                                <OverviewView signals={signals} window={windowLabel} />
+                                <OverviewView
+                                    signals={signals}
+                                    window={windowLabel}
+                                    filters={filters}
+                                    activeRole={activeRole}
+                                />
                             )}
                         </>
                     )}

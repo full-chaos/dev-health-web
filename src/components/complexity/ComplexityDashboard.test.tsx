@@ -284,18 +284,14 @@ describe("ComplexityDashboard", () => {
     // --- Hotspots tab ---
     it("renders the treemap panel on the hotspots tab", () => {
         const hotspots = [makeHotspot("a.py", 0.8)];
-        render(
-            <ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />,
-        );
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
         expect(screen.getByTestId("hotspot-panel")).toBeInTheDocument();
         expect(screen.getByTestId("treemap-chart")).toBeInTheDocument();
     });
 
     it("renders the drilldown table with correct row count on the hotspots tab", () => {
         const hotspots = [makeHotspot("src/main.py", 0.9), makeHotspot("src/utils.py", 0.7)];
-        render(
-            <ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />,
-        );
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
         expect(screen.getByTestId("drilldown-table")).toBeInTheDocument();
         expect(screen.getAllByTestId("hotspot-row")).toHaveLength(2);
     });
@@ -304,9 +300,7 @@ describe("ComplexityDashboard", () => {
         const hotspots = Array.from({ length: 25 }, (_, i) =>
             makeHotspot(`src/file${i}.py`, 0.9 - i * 0.01),
         );
-        render(
-            <ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />,
-        );
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
         expect(screen.getAllByTestId("hotspot-row")).toHaveLength(20);
     });
 
@@ -314,9 +308,7 @@ describe("ComplexityDashboard", () => {
         const hotspots = [
             makeHotspot("a.py", 0.9, { evidenceUrl: "https://example.com/evidence" }),
         ];
-        render(
-            <ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />,
-        );
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
         expect(screen.getAllByTestId("evidence-link")[0]).toHaveAttribute(
             "href",
             "https://example.com/evidence",

@@ -207,9 +207,7 @@ describe("selectWorkUnitEntries", () => {
 
     describe("no focused subcategory", () => {
         it("returns [] when fallbackToAll is false (Overview drill-down default)", () => {
-            expect(
-                selectWorkUnitEntries({ focusSubcategory: null, workUnits: units }),
-            ).toEqual([]);
+            expect(selectWorkUnitEntries({ focusSubcategory: null, workUnits: units })).toEqual([]);
         });
 
         it("returns ALL units when fallbackToAll is true (self-contained tab)", () => {

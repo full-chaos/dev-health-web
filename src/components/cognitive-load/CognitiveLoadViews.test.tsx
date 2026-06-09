@@ -1,6 +1,40 @@
 import { describe, expect, it } from "vitest";
 
-import { contextSpreadSummary, loadDriverSummary } from "./CognitiveLoadViews";
+import { render, screen } from "@/test/utils";
+import { CTA_LABELS } from "@/lib/design/cta";
+import { METRIC_CATALOG } from "@/lib/metrics/catalog";
+import type { MetricFilter } from "@/lib/filters/types";
+
+import { OverviewView, contextSpreadSummary, loadDriverSummary } from "./CognitiveLoadViews";
+
+const filters = {
+    scope: { level: "team" as const, ids: ["team-1"] },
+    time: { range_days: 30 },
+    what: { repos: [] },
+} as unknown as MetricFilter;
+
+describe("OverviewView", () => {
+    it("renders a scope-preserving Open evidence linkback", () => {
+        render(
+            <OverviewView
+                signals={null}
+                window={{ sinceDate: "2026-05-01", untilDate: "2026-05-31" }}
+                filters={filters}
+                activeRole="engineer"
+            />,
+        );
+
+        const link = screen.getByRole("link", { name: CTA_LABELS.openEvidence });
+        const href = link.getAttribute("href") ?? "";
+        expect(href).toContain("/explore");
+        expect(href).toContain("metric=review_latency");
+        // catalog membership: review_latency must be a real explainable metric.
+        expect(METRIC_CATALOG.map((m) => m.metric)).toContain("review_latency");
+        // scope-preserving: filter + role carried through to Explore.
+        expect(href).toContain("f=");
+        expect(href).toContain("role=engineer");
+    });
+});
 
 describe("contextSpreadSummary", () => {
     it("reports the chronological last day as Latest even for unsorted Dec→Jan input", () => {
@@ -18,7 +52,11 @@ describe("contextSpreadSummary", () => {
     });
 
     it("is empty for an empty trend", () => {
-        expect(contextSpreadSummary([])).toEqual({ hasData: false, latest: null, peak: null });
+        expect(contextSpreadSummary([])).toEqual({
+            hasData: false,
+            latest: null,
+            peak: null,
+        });
     });
 });
 
