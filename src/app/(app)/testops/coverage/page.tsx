@@ -187,7 +187,6 @@ export default async function CoveragePage({
 								<MetricCard
 									key={id}
 									label={def.label}
-									href="#"
 									value={value}
 									unit={
 										def.unit === "percentage"

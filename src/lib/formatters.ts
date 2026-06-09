@@ -78,6 +78,12 @@ export const formatMetricValue = (value: number, unit: string) => {
     if (unit === "loc") {
         return formatNumber(value, { notation: "compact" });
     }
+    // Duration values are expressed in minutes by the time they reach the
+    // formatter (the fetcher normalises seconds→minutes for real data; sample
+    // data is already in minutes). The formatter only labels the unit.
+    if (unit === "m") {
+        return `${formatNumber(value, { maximumFractionDigits: 1 })}m`;
+    }
     return `${formatNumber(value)} ${unit}`.trim();
 };
 

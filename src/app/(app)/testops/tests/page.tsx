@@ -12,6 +12,12 @@ import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
 import {
+    mergeSeriesByMeasure,
+    getLatestValue,
+    getSparkline,
+    getDelta,
+} from "@/lib/testops/aggregateSeries";
+import {
     TimeseriesResult,
     TimeseriesBucket,
     BreakdownResult,
@@ -24,32 +30,6 @@ import { TestOpsTabs } from "../TestOpsTabs";
 type TestsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
-    if (!series || !series.buckets || series.buckets.length === 0) return undefined;
-    return series.buckets[series.buckets.length - 1].value;
-}
-
-function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
-    if (!series || !series.buckets) return undefined;
-    return series.buckets.map((b: TimeseriesBucket) => ({
-        ts: b.date,
-        value: b.value,
-    }));
-}
-
-/** Period-over-period change (%) from first to last bucket; undefined when history is insufficient. */
-function getDelta(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
-    const buckets = series?.buckets;
-    if (!buckets || buckets.length < 2) return undefined;
-    const prev = buckets[0].value;
-    const curr = buckets[buckets.length - 1].value;
-    if (prev === 0) return undefined;
-    return ((curr - prev) / Math.abs(prev)) * 100;
-}
 
 export default async function TestsPage({ searchParams }: TestsPageProps) {
     const params = (await searchParams) ?? {};
@@ -128,9 +108,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
         { id: "TEST_SUITE_DURATION_P95", ts: testTimeseries },
     ];
 
-    const passRateSeries = testTimeseries.find(
-        (s: TimeseriesResult) => s.measure === "TEST_PASS_RATE",
-    );
+    const passRateSeries = mergeSeriesByMeasure(testTimeseries, "TEST_PASS_RATE");
     const flakeBreakdown = testBreakdowns.find(
         (b: BreakdownResult) => b.measure === "TEST_FLAKE_RATE",
     );
@@ -196,7 +174,6 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                                 <MetricCard
                                     key={id}
                                     label={def.label}
-                                    href="#"
                                     value={value}
                                     unit={
                                         def.unit === "percentage"
@@ -207,6 +184,7 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                                     }
                                     delta={delta}
                                     deltaUnavailableLabel="Insufficient history"
+                                    inverseGood={def.goodDirection === "down"}
                                     spark={spark}
                                     caption={def.description}
                                 />

@@ -29,7 +29,12 @@ export interface FeatureFlagData {
 
 export type FeatureFlagSummary = {
     activeFlags: number;
-    activeFlagsDelta: number;
+    /**
+     * Undefined when no backend measure for active-flag count delta is exposed
+     * (FLAG_ACTIVE_COUNT_DELTA is not yet in the analytics schema). The card
+     * renders its deltaUnavailableLabel ("No prior period") in this case.
+     */
+    activeFlagsDelta?: number;
     activeFlagsSpark: SparkPoint[];
 
     releaseFrictionDelta: number;
@@ -40,7 +45,12 @@ export type FeatureFlagSummary = {
     releaseErrorRateSpark: SparkPoint[];
 
     coverageRatio: number;
-    coverageRatioDelta: number;
+    /**
+     * Undefined when no backend measure for coverage-ratio delta is exposed
+     * (FLAG_COVERAGE_RATIO_DELTA is not yet in the analytics schema). The card
+     * renders its deltaUnavailableLabel ("No prior period") in this case.
+     */
+    coverageRatioDelta?: number;
     coverageRatioSpark: SparkPoint[];
 };
 

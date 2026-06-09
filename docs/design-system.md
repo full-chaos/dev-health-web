@@ -49,9 +49,9 @@ Use tokens only. **No hardcoded hex or px in components**, if a value is missing
 
 ## Part D: CTA vocabulary registry (typed constants)
 
-Approved (add new ones here before use): `Open evidence`, `Inspect associations`, `Open artifact`, `Export report`, `Apply filters`, `Reset filters`, `Copy`; navigation `Back to Cockpit`, `Back to {area}`.
+Approved (add new ones here before use): `Open evidence`, `Inspect associations`, `Open artifact`, `Present in view`, `Export report`, `Apply filters`, `Reset filters`, `Copy`; navigation `Back to Cockpit`, `Back to {area}`.
 
-Migrate: `Re-orient in Cockpit` → `Back to Cockpit`; `Back to Metrics View` → `Back to {area}`; `Open Landscapes` / `Explore Work` → use a tab or `Back to {area}`; `Open Flame` → `Open artifact` (or register Open flame graph); standalone `EVIDENCE` label → `Open evidence`.
+Migrate: `Re-orient in Cockpit` → `Back to Cockpit`; `Back to Metrics View` → `Back to {area}`; `Open Landscapes` / `Explore Work` → use a tab or `Back to {area}`; `Open Flame` → `Open artifact` (or register Open flame graph); standalone `EVIDENCE` label → `Open evidence`; `Open in Explore` → `Open evidence` (or `Present in view` when the card expands inline rather than navigating).
 
 ## Part E: Shared primitives (build once, use everywhere)
 

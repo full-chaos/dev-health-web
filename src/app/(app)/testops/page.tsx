@@ -9,7 +9,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
-import { TimeseriesResult, TimeseriesBucket } from "@/lib/graphql/schemas/analytics";
+import { getLatestValue, getSparkline, getDelta } from "@/lib/testops/aggregateSeries";
 import { getServerEnv } from "@/lib/config";
 
 import { TestOpsTabs } from "./TestOpsTabs";
@@ -17,21 +17,6 @@ import { TestOpsTabs } from "./TestOpsTabs";
 type TestOpsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
-    if (!series || !series.buckets || series.buckets.length === 0) return undefined;
-    return series.buckets[series.buckets.length - 1].value;
-}
-
-function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
-    if (!series || !series.buckets) return undefined;
-    return series.buckets.map((b: TimeseriesBucket) => ({
-        ts: b.date,
-        value: b.value,
-    }));
-}
 
 export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     const params = (await searchParams) ?? {};
@@ -164,12 +149,12 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
 
                             const value = getLatestValue(ts, id);
                             const spark = getSparkline(ts, id);
+                            const delta = getDelta(ts, id);
 
                             return (
                                 <MetricCard
                                     key={id}
                                     label={def.label}
-                                    href="#"
                                     value={value}
                                     unit={
                                         def.unit === "percentage"
@@ -178,6 +163,9 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                                               ? "m"
                                               : ""
                                     }
+                                    delta={delta}
+                                    deltaUnavailableLabel="Insufficient history"
+                                    inverseGood={def.goodDirection === "down"}
                                     spark={spark}
                                     caption={def.description}
                                 />
