@@ -15,10 +15,11 @@
 //
 // Signal policy:
 //   - Top signal (synthesized): the SINGLE worst worsened metric (home
-//     `deltas[]` with `delta_pct > 0`, max) — the same ranking the backend uses
+//     `deltas[]` with `delta_pct > 0` for lower-is-better, or `< 0` for
+//     higher-is-better, max absolute shift) — the same ranking the backend uses
 //     to build opportunity cards (`build_opportunities_response` sorts the
-//     positive deltas desc; `items[0]` is this metric). Emitted as a severity
-//     card ("Reduce <metric>" · +N%) linking to `/opportunities`, so
+//     worsened deltas desc; `items[0]` is this metric). Emitted as a severity
+//     card ("Reduce <metric>" or "Recover <metric>" · ±N%) linking to `/opportunities`, so
 //     `AreaOverview` promotes it to the hero and Opportunities drops to a
 //     workflow card. GATED on opportunities actually being present so the hero
 //     always links to a real opportunity. Zero worsened metrics → no top signal
@@ -42,6 +43,7 @@ import { logger } from "@/lib/logger";
 
 import type { AreaSignal, AreaSignalState } from "./types";
 import { sortBySeverity } from "./sort";
+import { getMetricPolarity } from "@/lib/metrics/catalog";
 
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
@@ -64,11 +66,18 @@ function severityForDelta(deltaPct: number): Exclude<AreaSignalState, "neutral" 
     return "low";
 }
 
-/** The single worst worsened metric (largest positive delta), or undefined when none worsened. */
+/** The single worst worsened metric (largest absolute delta in the wrong direction), or undefined when none worsened. */
 function worstWorsenedDelta(deltas: MetricDelta[] | undefined): MetricDelta | undefined {
-    const worsened = (deltas ?? []).filter((d) => d.delta_pct > 0);
+    const worsened = (deltas ?? []).filter((d) => {
+        const polarity = getMetricPolarity(d.metric);
+        if (!polarity) {
+            logger.warn({ metric: d.metric }, "Unknown metric polarity, excluding from top signal");
+            return false;
+        }
+        return polarity === "higherIsBetter" ? d.delta_pct < 0 : d.delta_pct > 0;
+    });
     if (worsened.length === 0) return undefined;
-    return [...worsened].sort((a, b) => b.delta_pct - a.delta_pct)[0];
+    return [...worsened].sort((a, b) => Math.abs(b.delta_pct) - Math.abs(a.delta_pct))[0];
 }
 
 /**
@@ -160,14 +169,18 @@ export async function getImproveSignals(
     // count leads as a neutral, no fabricated severity).
     const worst = worstWorsenedDelta(homeData?.deltas);
     if (worst && openCount && openCount > 0) {
+        const polarity = getMetricPolarity(worst.metric);
+        const isHigherBetter = polarity === "higherIsBetter";
+        const action = isHigherBetter ? "Recover" : "Reduce";
+        const sign = worst.delta_pct > 0 ? "+" : "";
         signals.push({
             id: TOP_SIGNAL_ID,
-            label: `Reduce ${worst.label}`,
+            label: `${action} ${worst.label}`,
             href: "/opportunities",
             metricLabel: `${worst.label} shift`,
-            value: `+${formatNumber(worst.delta_pct, { maximumFractionDigits: 0 })}%`,
-            state: severityForDelta(worst.delta_pct),
-            direction: "up",
+            value: `${sign}${formatNumber(worst.delta_pct, { maximumFractionDigits: 0 })}%`,
+            state: severityForDelta(Math.abs(worst.delta_pct)),
+            direction: isHigherBetter ? "down" : "up",
         });
     }
 
@@ -195,10 +208,18 @@ export async function getImproveSignals(
     }
 
     // ── Experiments — UNAVAILABLE + preview (no backend / no route yet) ──────────
-    push("experiments", { ...UNAVAILABLE, preview: true, metricLabel: "Experiments" });
+    push("experiments", {
+        ...UNAVAILABLE,
+        preview: true,
+        metricLabel: "Experiments",
+    });
 
     // ── Automations — UNAVAILABLE + preview (no backend / no route yet) ──────────
-    push("improve-automations", { ...UNAVAILABLE, preview: true, metricLabel: "Automations" });
+    push("improve-automations", {
+        ...UNAVAILABLE,
+        preview: true,
+        metricLabel: "Automations",
+    });
 
     return sortBySeverity(signals);
 }

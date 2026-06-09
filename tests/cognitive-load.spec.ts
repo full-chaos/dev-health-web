@@ -20,12 +20,12 @@ test.describe("IA rejection regressions", () => {
         await page.goto("/work");
         await waitForHydration(page);
 
-        const emptyTier = page.getByTestId("area-overview-empty-tier");
-        await expect(emptyTier).toBeVisible();
-        await expect(emptyTier.getByTestId("area-signal-unavailable")).toHaveCount(0);
-        await expect(emptyTier.getByRole("link", { name: "People" })).not.toBeVisible();
-        await expect(emptyTier.getByRole("link", { name: "Landscape" })).toBeVisible();
-        await expect(emptyTier.getByRole("link", { name: "Cognitive Load" })).toBeVisible();
+        const grid = page.getByTestId("area-overview-grid");
+        await expect(grid).toBeVisible();
+        await expect(grid.getByTestId("area-signal-unavailable")).not.toHaveCount(0);
+        await expect(grid.getByRole("link", { name: "People" })).not.toBeVisible();
+        await expect(grid.getByRole("link", { name: "Landscape" })).toBeVisible();
+        await expect(grid.getByRole("link", { name: "Cognitive Load" })).toBeVisible();
 
         // People remains reachable via the active Diagnose sidebar navigation
         const diagnoseNav = page.getByTestId("nav-children-diagnose");

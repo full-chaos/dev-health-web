@@ -96,15 +96,11 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
 
         const grid = screen.getByTestId("area-overview-grid");
         const gridCards = within(grid).getAllByTestId("area-signal-card");
-        expect(gridCards.map((c) => c.getAttribute("data-signal-id"))).toEqual(["med"]);
+        expect(gridCards.map((c) => c.getAttribute("data-signal-id"))).toEqual(["med", "gap"]);
 
-        const emptyTier = screen.getByTestId("area-overview-empty-tier");
-        expect(within(emptyTier).getByText("Not yet connected")).toBeInTheDocument();
-        expect(within(emptyTier).getByRole("link", { name: "gap" })).toHaveAttribute(
-            "data-signal-id",
-            "gap",
-        );
-        expect(within(emptyTier).queryByTestId("area-signal-card")).toBeNull();
+        const gapCard = gridCards.find((c) => c.getAttribute("data-signal-id") === "gap")!;
+        expect(gapCard).toHaveAttribute("data-state", "unavailable");
+        expect(within(gapCard).getByTestId("area-signal-unavailable")).toBeInTheDocument();
     });
 
     it("never surfaces the 'No area metric unavailable' double-negative copy", () => {
@@ -120,10 +116,11 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         renderOverview([signal("a", "unavailable"), signal("b", "unavailable")]);
         // No hero (an unavailable metric is never the top signal).
         expect(screen.queryByTestId("area-overview-hero")).toBeNull();
-        expect(screen.queryByTestId("area-overview-grid")).toBeNull();
-        const emptyTier = screen.getByTestId("area-overview-empty-tier");
-        expect(within(emptyTier).getAllByRole("link")).toHaveLength(2);
-        expect(within(emptyTier).queryAllByTestId("area-signal-card")).toHaveLength(0);
+        const grid = screen.getByTestId("area-overview-grid");
+        const gridCards = within(grid).getAllByTestId("area-signal-card");
+        expect(gridCards).toHaveLength(2);
+        expect(gridCards[0]).toHaveAttribute("data-signal-id", "a");
+        expect(gridCards[1]).toHaveAttribute("data-signal-id", "b");
     });
 
     it("renders a PREVIEW empty-tier chip as non-clickable, a routed one as a link (CHAOS-2217)", () => {
@@ -131,19 +128,21 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
             signal("routed", "unavailable"),
             signal("preview", "unavailable", { preview: true }),
         ]);
-        const emptyTier = screen.getByTestId("area-overview-empty-tier");
+        const grid = screen.getByTestId("area-overview-grid");
 
         // The preview chip is NOT a link (dead route can't 404) but stays visible.
-        const previewChip = within(emptyTier)
-            .getAllByText((_, el) => el?.getAttribute("data-signal-id") === "preview")
-            .find((el) => el.getAttribute("data-signal-id") === "preview")!;
+        const previewCards = within(grid).getAllByTestId("area-signal-card");
+        const previewChip = previewCards.find(
+            (el) => el.getAttribute("data-signal-id") === "preview",
+        )!;
         expect(previewChip.tagName).not.toBe("A");
         expect(previewChip.getAttribute("aria-disabled")).toBe("true");
 
         // The routed unavailable chip remains a link.
-        const routedLink = within(emptyTier).getByRole("link", { name: "routed" });
+        const routedLink = previewCards.find(
+            (el) => el.getAttribute("data-signal-id") === "routed",
+        )!;
+        expect(routedLink.tagName).toBe("A");
         expect(routedLink).toHaveAttribute("data-signal-id", "routed");
-        // Exactly one link in the tier (only the routed one).
-        expect(within(emptyTier).getAllByRole("link")).toHaveLength(1);
     });
 });

@@ -660,9 +660,9 @@ describe("IA preservation invariant #9 — no dead hubItems links (signal cards)
         // below still hold trivially, but the count guards the regression target.
         expect(previewHubItems.length).toBeGreaterThan(0);
 
-        // The signal-card components must gate clickability on the explicit `preview`
+        // The signal-card component must gate clickability on the explicit `preview`
         // flag (NOT on `state === "unavailable"`, which real-but-unconnected routes
-        // share and must keep clickable). Static guard: both render paths branch on it.
+        // share and must keep clickable). Static guard: the render path branches on it.
         expect(
             areaSignalCardSource,
             "AreaSignalCard must branch on signal.preview to drop the <Link>",
@@ -672,14 +672,18 @@ describe("IA preservation invariant #9 — no dead hubItems links (signal cards)
             "AreaSignalCard preview card must be a non-interactive element",
         ).toContain('aria-disabled="true"');
 
+        // AreaOverview no longer owns an empty-tier chip strip (CHAOS-2217):
+        // unavailable signals render as dashed AreaSignalCards in the main grid,
+        // so the preview guard lives in AreaSignalCard alone. Assert the
+        // delegation so a reintroduced bespoke tier would trip this invariant.
         expect(
             areaOverviewSource,
-            "AreaOverview empty tier must branch on signal.preview to drop the <Link>",
-        ).toContain("signal.preview === true");
+            "AreaOverview must render unavailable signals through AreaSignalCard (no bespoke empty tier)",
+        ).toContain("AreaSignalCard");
         expect(
             areaOverviewSource,
-            "AreaOverview preview chip must be a non-interactive element",
-        ).toContain('aria-disabled="true"');
+            "AreaOverview must not reintroduce the chip-strip empty tier",
+        ).not.toContain("Not yet connected");
     });
 
     it("emits the preview flag from the Improve resolver for its preview hubItems", async () => {
