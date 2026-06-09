@@ -53,7 +53,8 @@ test.describe("AI views", () => {
     }) => {
         await page.goto("/ai/attribution");
 
-        await expect(page.getByText("This feature is in preview.")).toBeVisible();
+        // The preview marker carries its copy as a tooltip (title attr), not text.
+        await expect(page.getByTitle("This feature is in preview.")).toBeVisible();
         const tabStrip = page.getByRole("navigation", { name: "AI views" });
         await expect(tabStrip.locator('a[aria-current="page"]')).toHaveCount(0);
     });
