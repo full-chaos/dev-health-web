@@ -326,7 +326,7 @@ export const navAreas: readonly NavArea[] = [
     {
         id: "improve",
         label: "Improve",
-        href: "/opportunities",
+        href: "/improve",
         placement: "main",
         ownedPathPrefixes: ["/opportunities", "/improve"],
         legacyActiveIds: ["opportunities", "experiments", "automations", "improve"],
@@ -354,6 +354,12 @@ export const navAreas: readonly NavArea[] = [
             },
         ],
         children: [
+            {
+                id: "improve-overview",
+                label: "Overview",
+                path: "/improve",
+                navVisible: true,
+            },
             {
                 id: "opportunities",
                 label: "Opportunities",

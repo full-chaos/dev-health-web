@@ -79,7 +79,7 @@ describe("navArea.children — locked child navigation", () => {
                 "Code",
             ],
             Plan: ["Overview", "Capacity Forecast", "Operating Review"],
-            Improve: ["Opportunities", "Experiments", "Automations"],
+            Improve: ["Overview", "Opportunities", "Experiments", "Automations"],
             Govern: [
                 "Overview",
                 "TestOps",
