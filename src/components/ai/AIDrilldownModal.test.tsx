@@ -41,9 +41,10 @@ describe("AIDrilldownModal", () => {
 
     afterEach(() => cleanup());
 
-    it("renders empty state when no AI-attributed PRs returned", () => {
+    it("renders empty state when zero AI-attributed PRs exist (data available)", () => {
         mockUseAIAttributedPrs.mockReturnValue({
-            data: { rows: [], total: 0, hasMore: false, dataAvailable: false },
+            // dataAvailable: true — an honest zero, not a missing population.
+            data: { rows: [], total: 0, hasMore: false, dataAvailable: true },
             fetching: false,
             error: undefined,
         });
@@ -59,6 +60,26 @@ describe("AIDrilldownModal", () => {
         expect(screen.getByText(/Change request rate/i)).toBeInTheDocument();
         expect(screen.getByTestId("ai-drilldown-empty")).toBeInTheDocument();
         expect(screen.getByTestId("ai-drilldown-evidence-prompt")).toBeInTheDocument();
+    });
+
+    it("renders the missing-data panel, not the empty state, when dataAvailable=false", () => {
+        mockUseAIAttributedPrs.mockReturnValue({
+            data: { rows: [], total: 0, hasMore: false, dataAvailable: false },
+            fetching: false,
+            error: undefined,
+        });
+
+        render(
+            <AIDrilldownModal
+                metric="Change request rate"
+                filter={filter}
+                onClose={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId("ai-evidence-unavailable")).toBeInTheDocument();
+        expect(screen.queryByTestId("ai-drilldown-empty")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("ai-drilldown-search")).not.toBeInTheDocument();
     });
 
     it("renders loading state while fetching", () => {
@@ -203,7 +224,7 @@ describe("AIDrilldownModal", () => {
     it("invokes onClose when the close button is clicked", () => {
         const onClose = vi.fn();
         mockUseAIAttributedPrs.mockReturnValue({
-            data: { rows: [], total: 0, hasMore: false, dataAvailable: false },
+            data: { rows: [], total: 0, hasMore: false, dataAvailable: true },
             fetching: false,
             error: undefined,
         });
@@ -260,7 +281,7 @@ describe("AIDrilldownModal", () => {
 
     it("does not leak resolver names in user-facing copy", () => {
         mockUseAIAttributedPrs.mockReturnValue({
-            data: { rows: [], total: 0, hasMore: false, dataAvailable: false },
+            data: { rows: [], total: 0, hasMore: false, dataAvailable: true },
             fetching: false,
             error: undefined,
         });

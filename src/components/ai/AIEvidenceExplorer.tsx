@@ -8,6 +8,7 @@ import {
     useAIAttributedPrs,
     useAIWorkflowDrilldownForPr,
 } from "@/lib/graphql/hooks/useAIReviewRisk";
+import { AIMissingDataPanel } from "./AIMissingDataPanel";
 
 const PAGE_SIZE = 25;
 
@@ -229,6 +230,21 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
         () => (selectedKey ? (rows.find((row) => prRowKey(row) === selectedKey) ?? null) : null),
         [rows, selectedKey],
     );
+
+    // Unavailable ≠ empty: data_available=false means the PR population could
+    // not be computed for this scope, which must not render as the honest-zero
+    // "no AI-attributed PRs" state (nor offer a search over nothing).
+    if (!fetching && !error && data && !data.dataAvailable) {
+        return (
+            <div className="mt-4" data-testid="ai-evidence-unavailable">
+                <AIMissingDataPanel
+                    title="AI-attributed PR evidence is not available"
+                    reason="The backend returned data_available=false for the selected scope. Missing evidence is shown explicitly rather than as an empty list."
+                    needed="AI attribution joined to pull requests for this scope."
+                />
+            </div>
+        );
+    }
 
     return (
         <>

@@ -14,6 +14,12 @@ const populatedFilter = encodeFilter({
     time: { range_days: 30, compare_days: 30 },
 });
 
+const missingDataFilter = encodeFilter({
+    ...defaultMetricFilter,
+    scope: { level: "team", ids: ["team-missing"] },
+    time: { range_days: 30, compare_days: 30 },
+});
+
 const riskTabStrip = (page: Page) =>
     page.getByRole("navigation", { name: "Governance Risk views" });
 
@@ -80,6 +86,20 @@ test.describe("Governance Risk tabs", () => {
         await page.goto(`/ai/evidence?f=${populatedFilter}`);
         await expect(page).toHaveURL(/\/ai\/risk\?.*view=evidence/);
         await expect(page.getByTestId("ai-evidence-panel")).toBeVisible();
+    });
+
+    test("Evidence tab shows the explicit missing-data panel when the scope has no attribution data", async ({
+        page,
+    }) => {
+        await page.goto(`/ai/risk?view=evidence&f=${missingDataFilter}`);
+
+        const panel = page.getByTestId("ai-evidence-panel");
+        await expect(panel).toBeVisible();
+        await expect(panel.getByTestId("ai-evidence-unavailable")).toBeVisible();
+        await expect(panel.getByTestId("ai-missing-data-panel")).toBeVisible();
+        // Unavailable ≠ empty: neither the honest-zero copy nor the search render.
+        await expect(panel.getByTestId("ai-drilldown-empty")).toHaveCount(0);
+        await expect(panel.getByTestId("ai-drilldown-search")).toHaveCount(0);
     });
 
     test("an unknown view param falls back to Overview", async ({ page }) => {
