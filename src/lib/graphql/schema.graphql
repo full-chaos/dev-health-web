@@ -37,6 +37,13 @@ type AIComparisonSide {
   incidentRate: Float
 }
 
+type AIComplexityOverlapRow {
+  bucket: String!
+  prsTotal: Int!
+  prsTouchingHighComplexity: Int!
+  complexityOverlapRate: Float
+}
+
 input AIDateRangeInput {
   startDate: Date!
   endDate: Date!
@@ -77,6 +84,14 @@ type AIGovernanceViolationRow {
   evidence: String!
 }
 
+type AIHotspotOverlapRow {
+  bucket: String!
+  prsTotal: Int!
+  prsTouchingHotspots: Int!
+  hotspotOverlapRate: Float
+  avgHotspotRiskScore: Float
+}
+
 type AIImpactBucketRow {
   bucket: String!
   prsTotal: Int!
@@ -110,6 +125,14 @@ type AIImpactBucketTotals {
   leverage: AILeverageComponents!
 }
 
+type AIImpactScopeRollupRow {
+  scopeId: String!
+  scopeLabel: String!
+  aiPrsTotal: Int!
+  aiAssistedPrRatio: Float
+  reworkRateDelta: Float
+}
+
 type AIImpactSummary {
   orgId: String!
   startDate: Date!
@@ -127,14 +150,6 @@ type AIImpactSummary {
   missingStates: [AIMissingState!]!
   dataAvailable: Boolean!
   computedAt: DateTime
-}
-
-type AIImpactScopeRollupRow {
-  scopeId: String!
-  scopeLabel: String!
-  aiPrsTotal: Int!
-  aiAssistedPrRatio: Float
-  reworkRateDelta: Float
 }
 
 type AILeverageComponents {
@@ -222,21 +237,6 @@ type AIRiskBreakdownResult {
   complexityOverlap: [AIComplexityOverlapRow!]!
   missingStates: [AIMissingState!]!
   dataAvailable: Boolean!
-}
-
-type AIHotspotOverlapRow {
-  bucket: String!
-  prsTotal: Int!
-  prsTouchingHotspots: Int!
-  hotspotOverlapRate: Float
-  avgHotspotRiskScore: Float
-}
-
-type AIComplexityOverlapRow {
-  bucket: String!
-  prsTotal: Int!
-  prsTouchingHighComplexity: Int!
-  complexityOverlapRate: Float
 }
 
 type AIRiskBreakdownRow {

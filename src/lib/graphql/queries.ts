@@ -725,6 +725,19 @@ query AIRiskBreakdown($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
       incidentsCount
       incidentRate
     }
+    hotspotOverlap {
+      bucket
+      prsTotal
+      prsTouchingHotspots
+      hotspotOverlapRate
+      avgHotspotRiskScore
+    }
+    complexityOverlap {
+      bucket
+      prsTotal
+      prsTouchingHighComplexity
+      complexityOverlapRate
+    }
     missingStates {
       key
       title

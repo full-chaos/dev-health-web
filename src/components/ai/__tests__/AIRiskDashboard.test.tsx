@@ -146,6 +146,82 @@ describe("AIRiskDashboard", () => {
         expect(screen.getByTestId("ai-linked-incidents")).toHaveTextContent("1");
     });
 
+    it("renders real overlap panels when rows exist — computed zero is a real 0%", () => {
+        mockUseAIRiskBreakdown.mockReturnValue({
+            fetching: false,
+            error: undefined,
+            data: {
+                aiRiskBreakdown: {
+                    orgId: "org",
+                    startDate: "2026-04-01",
+                    endDate: "2026-05-01",
+                    dataAvailable: true,
+                    missingStates: [],
+                    byBucket: [],
+                    hotspotOverlap: [
+                        {
+                            bucket: "AI_ASSISTED",
+                            prsTotal: 44,
+                            prsTouchingHotspots: 26,
+                            hotspotOverlapRate: 0.59,
+                            avgHotspotRiskScore: 1.48,
+                        },
+                    ],
+                    complexityOverlap: [
+                        {
+                            bucket: "AI_ASSISTED",
+                            prsTotal: 44,
+                            prsTouchingHighComplexity: 0,
+                            complexityOverlapRate: 0,
+                        },
+                    ],
+                },
+            },
+        });
+
+        render(<AIRiskDashboard filter={filter} />);
+
+        const hotspot = screen.getByTestId("ai-hotspot-overlap");
+        expect(hotspot).toHaveTextContent("59%");
+        expect(hotspot).toHaveTextContent("26 of 44 AI-attributed PRs");
+        expect(hotspot).toHaveTextContent("avg risk score 1.48");
+        expect(hotspot).toHaveTextContent("top-decile-risk files");
+
+        // 0 of 44 is a computed REAL ZERO — renders as 0%, never as missing.
+        const complexity = screen.getByTestId("ai-complexity-overlap");
+        expect(complexity).toHaveTextContent("0%");
+        expect(complexity).toHaveTextContent("0 of 44 AI-attributed PRs");
+
+        expect(screen.queryByTestId("ai-hotspot-overlap-unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("ai-complexity-overlap-unavailable")).not.toBeInTheDocument();
+    });
+
+    it("falls back to the canonical DataState when overlap rows and missing-states are both absent", () => {
+        mockUseAIRiskBreakdown.mockReturnValue({
+            fetching: false,
+            error: undefined,
+            data: {
+                aiRiskBreakdown: {
+                    orgId: "org",
+                    startDate: "2026-04-01",
+                    endDate: "2026-05-01",
+                    dataAvailable: true,
+                    missingStates: [],
+                    byBucket: [],
+                    hotspotOverlap: [],
+                    complexityOverlap: [],
+                },
+            },
+        });
+
+        render(<AIRiskDashboard filter={filter} />);
+
+        expect(screen.getByTestId("ai-hotspot-overlap-unavailable")).toBeInTheDocument();
+        expect(screen.getByTestId("ai-complexity-overlap-unavailable")).toBeInTheDocument();
+        expect(screen.queryByTestId("ai-hotspot-overlap")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("ai-complexity-overlap")).not.toBeInTheDocument();
+    });
+
     it("renders data_available false empty state", () => {
         mockUseAIRiskBreakdown.mockReturnValue({
             fetching: false,

@@ -411,6 +411,8 @@ export function aiRiskBreakdownResponse(
             endDate,
             dataAvailable: false,
             byBucket: [],
+            hotspotOverlap: [],
+            complexityOverlap: [],
             missingStates: [
                 {
                     key: "hotspot_overlap",
@@ -433,6 +435,8 @@ export function aiRiskBreakdownResponse(
             endDate,
             dataAvailable: true,
             byBucket: [],
+            hotspotOverlap: [],
+            complexityOverlap: [],
             missingStates: [
                 {
                     key: "hotspot_overlap",
@@ -448,21 +452,30 @@ export function aiRiskBreakdownResponse(
         };
     }
 
+    // Populated mode mirrors the post-ops-#823 contract: real overlap rows and
+    // NO hotspot/complexity missing-states. The complexity rate is a computed
+    // REAL ZERO (0 of 44), distinct from unavailable.
     return {
         orgId,
         startDate,
         endDate,
         dataAvailable: true,
-        missingStates: [
+        missingStates: [],
+        hotspotOverlap: [
             {
-                key: "hotspot_overlap",
-                title: "Hotspot file overlap",
-                guidance: "Hotspot overlap needs changed-file coverage for this scope.",
+                bucket: "AI_ASSISTED",
+                prsTotal: 44,
+                prsTouchingHotspots: 26,
+                hotspotOverlapRate: 0.59,
+                avgHotspotRiskScore: 1.48,
             },
+        ],
+        complexityOverlap: [
             {
-                key: "complexity_overlap",
-                title: "High-complexity file overlap",
-                guidance: "Complexity overlap needs file complexity coverage for this scope.",
+                bucket: "AI_ASSISTED",
+                prsTotal: 44,
+                prsTouchingHighComplexity: 0,
+                complexityOverlapRate: 0,
             },
         ],
         byBucket: [
