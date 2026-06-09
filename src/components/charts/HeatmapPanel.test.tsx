@@ -1,7 +1,7 @@
 import { render, screen } from "@/test/utils";
 import { describe, expect, it, vi } from "vitest";
 
-import { HeatmapPanel } from "./HeatmapPanel";
+import { describeArtifact, HeatmapPanel } from "./HeatmapPanel";
 import type { HeatmapResponse } from "@/lib/types";
 
 // Stub the echarts-backed chart so the panel renders in jsdom without echarts.
@@ -97,5 +97,30 @@ describe("HeatmapPanel — hotspot evidence contract (CHAOS-2035)", () => {
 
         // No raw JSON dump of the evidence object.
         expect(screen.queryByText(/work_item_id/)).not.toBeInTheDocument();
+    });
+});
+
+describe("describeArtifact — unresolved-id crash guard (heatmap cell click)", () => {
+    const UUID = "550e8400-e29b-41d4-a716-446655440000";
+
+    it("does not throw on a UUID id without a name in development mode", () => {
+        // The dev-only unresolved-id assertion previously threw here. Because
+        // describeArtifact runs inside a render-time useMemo, that throw escaped
+        // the fetch try/catch and tripped the route error boundary on cell click.
+        vi.stubEnv("NODE_ENV", "development");
+        try {
+            const item = { work_item_id: UUID, value: 3 };
+            expect(() => describeArtifact(item, 0)).not.toThrow();
+            const out = describeArtifact(item, 0);
+            expect(out.label).toBe("#550e8400");
+            expect(out.title).toBe(UUID);
+        } finally {
+            vi.unstubAllEnvs();
+        }
+    });
+
+    it("prefers an explicit name when present", () => {
+        const out = describeArtifact({ work_item_id: UUID, name: "Login flow" }, 0);
+        expect(out.label).toBe("Login flow");
     });
 });
