@@ -300,6 +300,14 @@ export const navAreas: readonly NavArea[] = [
                 description: "Monte Carlo throughput forecasting.",
                 metricLabel: "Forecast window",
             },
+            {
+                id: "operating-review",
+                label: "Operating Review",
+                href: "/operating-review",
+                description:
+                    "Monday-ready weekly agenda: delivery, bottlenecks, risk, reliability, and investment.",
+                metricLabel: "Weekly signals",
+            },
         ],
         children: [
             {
@@ -318,15 +326,14 @@ export const navAreas: readonly NavArea[] = [
                 id: "operating-review",
                 label: "Operating Review",
                 path: "/operating-review",
-                navVisible: false,
-                preview: true,
+                navVisible: true,
             },
         ],
     },
     {
         id: "improve",
         label: "Improve",
-        href: "/opportunities",
+        href: "/improve",
         placement: "main",
         ownedPathPrefixes: ["/opportunities", "/improve"],
         legacyActiveIds: ["opportunities", "experiments", "automations", "improve"],
@@ -354,6 +361,12 @@ export const navAreas: readonly NavArea[] = [
             },
         ],
         children: [
+            {
+                id: "improve-overview",
+                label: "Overview",
+                path: "/improve",
+                navVisible: true,
+            },
             {
                 id: "opportunities",
                 label: "Opportunities",

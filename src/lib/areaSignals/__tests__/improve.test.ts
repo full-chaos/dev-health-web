@@ -1,23 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Mock the Improve source at the module boundary ────────────────────────────
-// The resolver calls getOpportunities; we drive it independently to assert the
-// source → AreaSignal mapping without any network.
+// ── Mock the Improve sources at the module boundary ───────────────────────────
+// The resolver calls getOpportunities (count) + getHomeData (deltas → top
+// signal); we drive both independently to assert the source → AreaSignal mapping
+// without any network.
 
 vi.mock("@/lib/api/home", () => ({
     getOpportunities: vi.fn(),
+    getHomeData: vi.fn(),
 }));
 vi.mock("@/lib/logger", () => ({
     logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
-import { getOpportunities } from "@/lib/api/home";
+import { getHomeData, getOpportunities } from "@/lib/api/home";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getImproveSignals } from "../improve";
 import type { AreaSignal } from "../types";
 
 const mockGetOpportunities = vi.mocked(getOpportunities);
+const mockGetHomeData = vi.mocked(getHomeData);
 
 function byId(signals: AreaSignal[]): Record<string, AreaSignal> {
     return Object.fromEntries(signals.map((s) => [s.id, s]));
@@ -31,19 +34,118 @@ const opportunityItem = (evidenceLinks: string[] = []) => ({
     suggested_experiments: [],
 });
 
+const delta = (label: string, deltaPct: number, metric = label.toLowerCase()) => ({
+    metric,
+    label,
+    value: 0,
+    unit: "%",
+    delta_pct: deltaPct,
+    spark: [],
+});
+
+// Home payload with only the fields the resolver reads (deltas). Other required
+// HomeResponse fields are irrelevant to the top-signal derivation.
+const homeWithDeltas = (deltas: ReturnType<typeof delta>[]) => ({ deltas }) as never;
+
 beforeEach(() => {
     vi.clearAllMocks();
-    // Default: some opportunities with evidence links
+    // Default: some opportunities with evidence links + a worsened metric so the
+    // synthesized top signal is present.
     mockGetOpportunities.mockResolvedValue({
-        items: [
-            opportunityItem(["https://example.com/evidence"]),
-            opportunityItem([]),
-        ],
+        items: [opportunityItem(["https://example.com/evidence"]), opportunityItem([])],
     } as never);
+    mockGetHomeData.mockResolvedValue(
+        homeWithDeltas([delta("Throughput", 19), delta("Cycle Time", 8), delta("Coverage", -4)]),
+    );
 });
 
 describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
-    it("returns real Opportunities signal with count and evidence-linked count", async () => {
+    // ── Top signal (synthesized worst opportunity) ────────────────────────────────
+
+    it("synthesizes a TOP SIGNAL from the worst worsened metric (label + signed delta + severity)", async () => {
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+
+        expect(signals["improve-top-signal"]).toMatchObject({
+            id: "improve-top-signal",
+            label: "Reduce Throughput",
+            href: "/opportunities",
+            value: "+19%",
+            // +19% maps to "high" (Penpot's ELEVATED lead), NOT neutral.
+            state: "high",
+            direction: "up",
+        });
+        // The secondary line frames the metric, it does NOT just repeat the label.
+        expect(signals["improve-top-signal"].metricLabel).toBe("Throughput shift");
+    });
+
+    it("makes the TOP SIGNAL the most-severe available signal (sorts above Opportunities)", async () => {
+        const signals = await getImproveSignals(defaultMetricFilter);
+        const topIdx = signals.findIndex((s) => s.id === "improve-top-signal");
+        const oppIdx = signals.findIndex((s) => s.id === "opportunities");
+        expect(topIdx).toBeGreaterThanOrEqual(0);
+        // Worst-opportunity hero outranks the neutral Opportunities count card.
+        expect(topIdx).toBeLessThan(oppIdx);
+    });
+
+    it("picks the LARGEST positive delta as the top signal (not the first)", async () => {
+        mockGetHomeData.mockResolvedValue(
+            homeWithDeltas([delta("Cycle Time", 8), delta("Throughput", 27), delta("Churn", 12)]),
+        );
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-top-signal"]).toMatchObject({
+            label: "Reduce Throughput",
+            value: "+27%",
+            // ≥25 → critical.
+            state: "critical",
+        });
+    });
+
+    it("maps delta magnitude onto the severity ladder", async () => {
+        const cases: Array<[number, string]> = [
+            [30, "critical"],
+            [20, "high"],
+            [9, "medium"],
+            [2, "low"],
+        ];
+        for (const [deltaPct, expected] of cases) {
+            mockGetHomeData.mockResolvedValue(homeWithDeltas([delta("Throughput", deltaPct)]));
+            const signals = byId(await getImproveSignals(defaultMetricFilter));
+            expect(signals["improve-top-signal"].state, `${deltaPct}% → ${expected}`).toBe(
+                expected,
+            );
+        }
+    });
+
+    it("omits the TOP SIGNAL when NO metric worsened (Opportunities leads as neutral, no fabricated severity)", async () => {
+        mockGetHomeData.mockResolvedValue(
+            homeWithDeltas([delta("Throughput", -5), delta("Cycle Time", -2)]),
+        );
+        const signals = await getImproveSignals(defaultMetricFilter);
+        expect(signals.find((s) => s.id === "improve-top-signal")).toBeUndefined();
+        // The lead available signal is now Opportunities (neutral), never a fake severity.
+        const available = signals.filter((s) => s.state !== "unavailable");
+        expect(available[0].id).toBe("opportunities");
+        expect(available.every((s) => s.state === "neutral")).toBe(true);
+    });
+
+    it("omits the TOP SIGNAL when there are zero open opportunities (hero must link to a real opportunity)", async () => {
+        mockGetOpportunities.mockResolvedValue({ items: [] } as never);
+        // Even with a worsened metric, no opportunities → no synthesized hero.
+        const signals = await getImproveSignals(defaultMetricFilter);
+        expect(signals.find((s) => s.id === "improve-top-signal")).toBeUndefined();
+    });
+
+    it("omits the TOP SIGNAL when home data is unavailable (no deltas to rank)", async () => {
+        mockGetHomeData.mockRejectedValue(new Error("home down"));
+        const signals = await getImproveSignals(defaultMetricFilter);
+        expect(signals.find((s) => s.id === "improve-top-signal")).toBeUndefined();
+        // Opportunities still resolves from its own (successful) fetch.
+        expect(byId(signals).opportunities).toMatchObject({ state: "neutral" });
+    });
+
+    // ── Opportunities workflow card (short value, no rainbow) ──────────────────────
+
+    it("emits a SHORT Opportunities value with the evidence count on the secondary line", async () => {
         const signals = byId(await getImproveSignals(defaultMetricFilter));
 
         expect(signals.opportunities).toMatchObject({
@@ -51,11 +153,17 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             label: "Opportunities",
             href: "/opportunities",
             state: "neutral",
-            value: "2 OPEN · 1 EVIDENCE-LINKED",
+            // SHORT numeric so the gradient metric-hero reads clean (no rainbow phrase).
+            value: "2 open",
+            // Evidence count moves to the secondary metricLabel line.
+            metricLabel: "1 evidence-linked",
         });
+        // The long "N OPEN · M EVIDENCE-LINKED" phrase must NOT be the gradient value.
+        expect(signals.opportunities.value).not.toContain("·");
+        expect(signals.opportunities.value).not.toContain("EVIDENCE");
     });
 
-    it("shows only OPEN count when no evidence-linked opportunities", async () => {
+    it("labels the secondary line 'open opportunities' when none are evidence-linked", async () => {
         mockGetOpportunities.mockResolvedValue({
             items: [opportunityItem([]), opportunityItem([])],
         } as never);
@@ -63,27 +171,29 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         const signals = byId(await getImproveSignals(defaultMetricFilter));
         expect(signals.opportunities).toMatchObject({
             state: "neutral",
-            value: "2 OPEN",
+            value: "2 open",
+            metricLabel: "open opportunities",
         });
     });
 
-    it("treats a SUCCESSFUL empty result as a healthy '0 OPEN' neutral (not unavailable)", async () => {
-        // A connected backend that returns zero opportunities is a real, healthy
-        // zero — NOT a disconnect. Must read "0 OPEN" / neutral, distinct from the
-        // failure case below.
+    it("does NOT repeat the card label as its own metricLabel (no 'Opportunities · Opportunities data')", async () => {
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals.opportunities.metricLabel).not.toBe("Opportunities");
+        expect(signals.opportunities.metricLabel.toLowerCase()).not.toContain("opportunities data");
+    });
+
+    it("treats a SUCCESSFUL empty result as a healthy '0 open' neutral (not unavailable)", async () => {
         mockGetOpportunities.mockResolvedValue({ items: [] } as never);
 
         const signals = byId(await getImproveSignals(defaultMetricFilter));
         expect(signals.opportunities).toMatchObject({
             state: "neutral",
-            value: "0 OPEN",
+            value: "0 open",
         });
         expect(signals.opportunities.state).not.toBe("unavailable");
     });
 
     it("degrades Opportunities to UNAVAILABLE ONLY when the fetch fails", async () => {
-        // The failure path (safe() → undefined) is the honest "not connected" —
-        // distinct from the empty-but-connected "0 OPEN" case above.
         mockGetOpportunities.mockRejectedValue(new Error("backend down"));
 
         const signals = byId(await getImproveSignals(defaultMetricFilter));
@@ -91,14 +201,16 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             state: "unavailable",
             value: "",
         });
-        // A failed fetch must NOT masquerade as a "0 OPEN" healthy zero.
-        expect(signals.opportunities.value).not.toContain("OPEN");
+        // A failed fetch must NOT masquerade as a "0 open" healthy zero.
+        expect(signals.opportunities.value).not.toContain("open");
+        // No synthesized hero either (no opportunities to link to).
+        expect(signals["improve-top-signal"]).toBeUndefined();
         // Other signals still resolve
         expect(signals.experiments).toMatchObject({ state: "unavailable" });
-        expect(signals["improve-automations"]).toMatchObject({
-            state: "unavailable",
-        });
+        expect(signals["improve-automations"]).toMatchObject({ state: "unavailable" });
     });
+
+    // ── Preview sub-areas (Experiments / Automations) ─────────────────────────────
 
     it("emits honest UNAVAILABLE + preview for Experiments (no backend / no route)", async () => {
         const signals = byId(await getImproveSignals(defaultMetricFilter));
@@ -109,7 +221,6 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             href: "/improve/experiments",
             state: "unavailable",
             value: "",
-            // preview marks the dead route so cards render non-clickable (no 404).
             preview: true,
         });
     });
@@ -132,55 +243,66 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         expect(signals.opportunities.preview).not.toBe(true);
     });
 
-    it("returns all 3 Improve sub-areas exactly once", async () => {
+    // ── Shape / ordering / wiring ─────────────────────────────────────────────────
+
+    it("returns the 3 sub-areas plus the synthesized top signal, each once", async () => {
         const signals = await getImproveSignals(defaultMetricFilter);
         const ids = signals.map((s) => s.id);
         expect(new Set(ids).size).toBe(ids.length);
         expect(ids).toEqual(
             expect.arrayContaining([
+                "improve-top-signal",
                 "opportunities",
                 "experiments",
                 "improve-automations",
             ]),
         );
-        expect(ids).toHaveLength(3);
+        expect(ids).toHaveLength(4);
     });
 
     it("sorts real signals first, unavailable last", async () => {
         const signals = await getImproveSignals(defaultMetricFilter);
-        // Opportunities (neutral) should come before Experiments/Automations (unavailable)
-        const opportunitiesIdx = signals.findIndex(
-            (s) => s.id === "opportunities",
-        );
+        const opportunitiesIdx = signals.findIndex((s) => s.id === "opportunities");
         const experimentsIdx = signals.findIndex((s) => s.id === "experiments");
-        const automationsIdx = signals.findIndex(
-            (s) => s.id === "improve-automations",
-        );
+        const automationsIdx = signals.findIndex((s) => s.id === "improve-automations");
         expect(opportunitiesIdx).toBeLessThan(experimentsIdx);
         expect(opportunitiesIdx).toBeLessThan(automationsIdx);
     });
 
-    it("uses filters (passes them to getOpportunities, not voided)", async () => {
+    it("uses filters (passes them to both sources, not voided)", async () => {
         const customFilter = {
             ...defaultMetricFilter,
             time: { range_days: 30, compare_days: 30 },
         };
         await getImproveSignals(customFilter);
         expect(mockGetOpportunities).toHaveBeenCalledWith(customFilter);
+        expect(mockGetHomeData).toHaveBeenCalledWith(customFilter);
     });
 
-    it("in test mode: skips network fetch and returns all signals as UNAVAILABLE", async () => {
+    it("fetches both REST sources UNCONDITIONALLY (isTestMode is not a fetch gate)", async () => {
+        // Mirrors getDiagnoseSignals/getGovernSignals: home + opportunities are
+        // MSW-mockable REST, so they are always fetched (under Playwright the dev
+        // server points BACKEND_URL at the mock). isTestMode must NOT short-circuit
+        // them, or the Overview would render an all-empty hero in e2e.
+        await getImproveSignals(defaultMetricFilter, true);
+        expect(mockGetOpportunities).toHaveBeenCalledWith(defaultMetricFilter);
+        expect(mockGetHomeData).toHaveBeenCalledWith(defaultMetricFilter);
+    });
+
+    it("degrades the 3 sub-areas to UNAVAILABLE (no top signal) when BOTH sources fail", async () => {
+        // The genuine "not connected" path: both REST fetches throw → safe()
+        // swallows to undefined → opportunities unavailable, no deltas to rank, and
+        // Experiments/Automations stay preview. This is the honest-empty Overview.
+        mockGetOpportunities.mockRejectedValue(new Error("opps down"));
+        mockGetHomeData.mockRejectedValue(new Error("home down"));
+
         const signals = await getImproveSignals(defaultMetricFilter, true);
-        // getOpportunities must NOT be called in test mode
-        expect(mockGetOpportunities).not.toHaveBeenCalled();
-        // All 3 signals must be present
         expect(signals).toHaveLength(3);
+        expect(signals.find((s) => s.id === "improve-top-signal")).toBeUndefined();
         for (const signal of signals) {
             expect(signal.state).toBe("unavailable");
             expect(signal.value).toBe("");
         }
-        // Only the preview (route-less) sub-areas carry the preview flag; the real
-        // Opportunities route stays clickable even when its value is unavailable.
         const byIdMap = byId(signals);
         expect(byIdMap.experiments.preview).toBe(true);
         expect(byIdMap["improve-automations"].preview).toBe(true);

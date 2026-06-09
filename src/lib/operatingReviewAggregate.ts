@@ -11,7 +11,16 @@ type AggregateOperatingReviewsInput = {
     teamIds: string[];
 };
 
-const ADDITIVE_METRIC_KEYS = new Set(["throughput", "wip"]);
+const ADDITIVE_METRIC_KEYS = new Set([
+    "throughput",
+    "wip_count",
+    // Investment metrics count discrete delivery units — summing across teams is
+    // correct; averaging would understate the combined load (see ops docs/api/operating-review.md).
+    "ktlo_units",
+    "new_value_units",
+    "security_units",
+    "infra_units",
+]);
 
 export function aggregateOperatingReviews({
     ceilingReview,

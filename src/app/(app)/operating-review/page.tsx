@@ -6,17 +6,25 @@ import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { BackLink } from "@/components/shared/BackLink";
+import { DataState } from "@/components/ui/DataState";
 import { checkApiHealth } from "@/lib/api/system";
 import { auth } from "@/lib/auth";
-import { fetchOrNull } from "@/lib/fetchOrNull";
+import { logger } from "@/lib/logger";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { formatMetricValue as fmtMetric } from "@/lib/formatters";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
 import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
 import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
 import { navTrailForPathname } from "@/lib/navigation/areas";
+
+/** Discriminated fetch result: distinguishes a real error from a genuine empty payload. */
+type ReviewResult =
+    | { status: "ok"; review: OperatingReview }
+    | { status: "empty" }
+    | { status: "error" };
 
 type OperatingReviewPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -25,8 +33,9 @@ type OperatingReviewPageProps = {
 const sectionDescriptions: Record<string, string> = {
     delivery_movement: "Cycle time, throughput, and WIP movement for the week.",
     bottleneck: "State duration, review latency, and WIP age signals that shape flow.",
-    risk: "Hotspots, ownership concentration, complexity, and bus-factor exposure.",
-    reliability: "DORA-adjacent delivery and incident reliability signals.",
+    risk: "Hotspots, ownership concentration, complexity, and bus-factor exposure. These signals are repo-scoped and reflect org-wide patterns — they are not filtered by the selected team(s).",
+    reliability:
+        "DORA-adjacent delivery and incident reliability signals. These are repo-scoped and org-wide — the team filter does not narrow them.",
     investment: "KTLO, new-value, security, and infrastructure allocation.",
     ai_workflow_intelligence:
         "AI-assisted work patterns, review pressure, and quality guardrails with no person-level ranking.",
@@ -65,7 +74,9 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
     // team requests and a cross-team ceiling. The selected-team aggregate is
     // bounded by the cross-team aggregate so overlapping team ownership cannot
     // render counts above the All Teams total.
-    const review = orgId ? await resolveOperatingReview(orgId, selectedTeamIds, weekStart) : null;
+    const result = orgId
+        ? await resolveOperatingReview(orgId, selectedTeamIds, weekStart)
+        : ({ status: "empty" } as ReviewResult);
 
     const isAllTeams = selectedTeamIds.length === 0;
     const isMultiTeam = selectedTeamIds.length > 1;
@@ -100,64 +111,98 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
                         />
                     </header>
 
-                    <FilterBar view="work" />
-
                     <ContextStrip filters={filters} origin={activeOrigin} />
+
+                    <FilterBar view="capacity-planning" />
 
                     {isAllTeams ? <AllTeamsBadge /> : null}
                     {isMultiTeam ? <SelectedTeamsBadge teamIds={selectedTeamIds} /> : null}
-                    {!review ? (
+                    {result.status === "error" ? (
+                        <DataState
+                            variant="error"
+                            title="Could not load operating review"
+                            message="The request failed. Check your data connections and retry."
+                            action={
+                                <Link className="text-sm font-medium text-primary" href="/settings">
+                                    {CTA_LABELS.checkDataConnections}
+                                </Link>
+                            }
+                        />
+                    ) : null}
+                    {result.status === "empty" ? (
                         <EmptyReviewState
-                            teamId={selectedTeamIds.join(", ") || undefined}
+                            teamId={
+                                selectedTeamIds.length > 0
+                                    ? `${selectedTeamIds.length} selected teams`
+                                    : undefined
+                            }
                             weekStart={weekStart}
                         />
                     ) : null}
-                    {review ? <OperatingReviewAgenda review={review} /> : null}
+                    {result.status === "ok" ? (
+                        <OperatingReviewAgenda review={result.review} />
+                    ) : null}
                 </main>
             </div>
         </div>
     );
 }
 
+async function fetchReview(
+    orgId: string,
+    teamId: string | null,
+    weekStart: string,
+    label: string,
+): Promise<{ ok: true; review: OperatingReview } | { ok: false; threw: boolean }> {
+    try {
+        const review = await getOperatingReviewViaGraphQL(orgId, { teamId, weekStart });
+        return { ok: true, review };
+    } catch (err: unknown) {
+        logger.warn({ err, label }, `operating-review: fetch failed for ${label}`);
+        return { ok: false, threw: true };
+    }
+}
+
 async function resolveOperatingReview(
     orgId: string,
     selectedTeamIds: string[],
     weekStart: string,
-): Promise<OperatingReview | null> {
+): Promise<ReviewResult> {
     if (selectedTeamIds.length <= 1) {
-        return fetchOrNull(
-            getOperatingReviewViaGraphQL(orgId, {
-                teamId: selectedTeamIds[0] ?? null,
-                weekStart,
-            }),
-            `operating-review/data/${selectedTeamIds[0] ?? "all-teams"}`,
+        const res = await fetchReview(
+            orgId,
+            selectedTeamIds[0] ?? null,
+            weekStart,
+            selectedTeamIds[0] ?? "all-teams",
         );
+        if (!res.ok) return { status: "error" };
+        return { status: "ok", review: res.review };
     }
 
-    const [ceilingReview, teamReviews] = await Promise.all([
-        fetchOrNull(
-            getOperatingReviewViaGraphQL(orgId, { teamId: null, weekStart }),
-            "operating-review/data/all-teams-ceiling",
-        ),
-        Promise.all(
-            selectedTeamIds.map((teamId) =>
-                fetchOrNull(
-                    getOperatingReviewViaGraphQL(orgId, { teamId, weekStart }),
-                    `operating-review/data/${teamId}`,
-                ),
-            ),
-        ),
+    const [ceilingRes, teamResults] = await Promise.all([
+        fetchReview(orgId, null, weekStart, "all-teams-ceiling"),
+        Promise.all(selectedTeamIds.map((teamId) => fetchReview(orgId, teamId, weekStart, teamId))),
     ]);
 
-    if (!ceilingReview) {
-        return teamReviews.find((review): review is OperatingReview => Boolean(review)) ?? null;
+    const anyError = !ceilingRes.ok || teamResults.some((r) => !r.ok);
+    const successTeamReviews = teamResults
+        .filter((r): r is { ok: true; review: OperatingReview } => r.ok)
+        .map((r) => r.review);
+
+    if (!ceilingRes.ok) {
+        const fallback = successTeamReviews[0];
+        if (!fallback) return anyError ? { status: "error" } : { status: "empty" };
+        return { status: "ok", review: fallback };
     }
 
-    return aggregateOperatingReviews({
-        ceilingReview,
-        reviews: teamReviews.filter((review): review is OperatingReview => Boolean(review)),
-        teamIds: selectedTeamIds,
-    });
+    return {
+        status: "ok",
+        review: aggregateOperatingReviews({
+            ceilingReview: ceilingRes.review,
+            reviews: successTeamReviews,
+            teamIds: selectedTeamIds,
+        }),
+    };
 }
 
 function AllTeamsBadge() {
@@ -175,8 +220,11 @@ function SelectedTeamsBadge({ teamIds }: { teamIds: string[] }) {
     return (
         <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
             Showing operating review data for{" "}
-            <span className="font-medium text-foreground">{teamIds.length} selected teams</span>:{" "}
-            {teamIds.join(", ")}
+            <span className="font-medium text-foreground">
+                {teamIds.length} selected {teamIds.length === 1 ? "team" : "teams"}
+            </span>
+            . The Risk and Reliability sections reflect org-wide signals (repo-scoped,
+            team-agnostic) even in filtered mode.
         </section>
     );
 }
@@ -312,17 +360,14 @@ function MetricCard({ metric }: { metric: OperatingReviewMetric }) {
                 <span className={statusClass(metric.delta.status)}>{metric.delta.status}</span>
             </div>
             <div className="mt-3 text-2xl font-semibold tracking-tight">
-                {formatMetricValue(metric.value)}
-                <span className="ml-1 text-sm font-normal text-muted-foreground">
-                    {metric.unit}
-                </span>
+                {fmtMetric(metric.value, metric.unit)}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-                Prior: {formatMetricValue(metric.delta.priorValue)} · Δ{" "}
-                {formatSigned(metric.delta.absolute)}
+                Prior: {fmtMetric(metric.delta.priorValue, metric.unit)} · Δ{" "}
+                {formatSigned(metric.delta.absolute, metric.unit)}
                 {metric.delta.percent === null || metric.delta.percent === undefined
                     ? ""
-                    : ` (${formatSigned(metric.delta.percent)}%)`}
+                    : ` (${formatSigned(metric.delta.percent, "%")})`}
             </p>
         </div>
     );
@@ -384,27 +429,19 @@ function EmptyReviewState({
     teamId: string | undefined;
     weekStart: string;
 }) {
-    const scopeLabel = teamId ? (
-        <>
-            team <span className="font-medium text-foreground">{teamId}</span>
-        </>
-    ) : (
-        <>
-            the cross-team aggregate{" "}
-            <span className="font-medium text-foreground">(All Teams)</span>
-        </>
-    );
+    const scopeDesc = teamId
+        ? `the selected teams for week ${weekStart}`
+        : `the cross-team aggregate (All Teams) for week ${weekStart}`;
     return (
-        <section className="rounded-[1.75rem] border border-dashed border-border bg-card/70 p-8">
-            <h2 className="text-lg font-semibold">No operating review data yet</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-                The surface is ready for {scopeLabel} for week {weekStart}, but no backend payload
-                was returned.
-            </p>
-            <Link className="mt-4 inline-flex text-sm font-medium text-primary" href="/settings">
-                {CTA_LABELS.checkDataConnections}
-            </Link>
-        </section>
+        <DataState
+            variant="detector-unavailable"
+            description={`No operating review payload was returned for ${scopeDesc}. Sources are connected, but this view could not be computed for the selected window.`}
+            action={
+                <Link className="text-sm font-medium text-primary" href="/settings">
+                    {CTA_LABELS.checkDataConnections}
+                </Link>
+            }
+        />
     );
 }
 
@@ -425,12 +462,10 @@ function normalizeWeekStart(value: string | undefined): string {
     return monday.toISOString().slice(0, 10);
 }
 
-function formatMetricValue(value: number): string {
-    return Number.isInteger(value) ? value.toString() : value.toFixed(1);
-}
-
-function formatSigned(value: number): string {
-    return `${value >= 0 ? "+" : ""}${formatMetricValue(value)}`;
+function formatSigned(value: number, unit: string): string {
+    // Object.is distinguishes -0 from +0 so we never emit "+0"
+    const sign = Object.is(value, 0) || Object.is(value, -0) ? "" : value > 0 ? "+" : "";
+    return `${sign}${fmtMetric(value, unit)}`;
 }
 
 function statusClass(status: string): string {
