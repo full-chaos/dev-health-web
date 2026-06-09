@@ -52,4 +52,12 @@ export type AreaSignal = {
      * secondary within its cluster rather than at equal billing.
      */
     demoted?: boolean;
+    /**
+     * Preview sub-area whose destination route does NOT yet exist (its nav child
+     * is `preview: true` with no backing page). Such a card is rendered NON-CLICKABLE
+     * — visible and honest ("No data for this window") but never a live `<Link>`,
+     * so it can't 404. Distinct from `state === "unavailable"`, which is shared by
+     * areas whose routes DO exist (Govern/Diagnose) and must stay clickable.
+     */
+    preview?: boolean;
 };

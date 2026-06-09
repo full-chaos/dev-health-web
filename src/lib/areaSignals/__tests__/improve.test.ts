@@ -67,17 +67,23 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         });
     });
 
-    it("emits UNAVAILABLE for Opportunities when fetch returns empty items", async () => {
+    it("treats a SUCCESSFUL empty result as a healthy '0 OPEN' neutral (not unavailable)", async () => {
+        // A connected backend that returns zero opportunities is a real, healthy
+        // zero — NOT a disconnect. Must read "0 OPEN" / neutral, distinct from the
+        // failure case below.
         mockGetOpportunities.mockResolvedValue({ items: [] } as never);
 
         const signals = byId(await getImproveSignals(defaultMetricFilter));
         expect(signals.opportunities).toMatchObject({
-            state: "unavailable",
-            value: "",
+            state: "neutral",
+            value: "0 OPEN",
         });
+        expect(signals.opportunities.state).not.toBe("unavailable");
     });
 
-    it("degrades Opportunities to UNAVAILABLE when fetch fails", async () => {
+    it("degrades Opportunities to UNAVAILABLE ONLY when the fetch fails", async () => {
+        // The failure path (safe() → undefined) is the honest "not connected" —
+        // distinct from the empty-but-connected "0 OPEN" case above.
         mockGetOpportunities.mockRejectedValue(new Error("backend down"));
 
         const signals = byId(await getImproveSignals(defaultMetricFilter));
@@ -85,6 +91,8 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             state: "unavailable",
             value: "",
         });
+        // A failed fetch must NOT masquerade as a "0 OPEN" healthy zero.
+        expect(signals.opportunities.value).not.toContain("OPEN");
         // Other signals still resolve
         expect(signals.experiments).toMatchObject({ state: "unavailable" });
         expect(signals["improve-automations"]).toMatchObject({
@@ -92,7 +100,7 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         });
     });
 
-    it("emits honest UNAVAILABLE for Experiments (no backend)", async () => {
+    it("emits honest UNAVAILABLE + preview for Experiments (no backend / no route)", async () => {
         const signals = byId(await getImproveSignals(defaultMetricFilter));
 
         expect(signals.experiments).toMatchObject({
@@ -101,10 +109,12 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             href: "/improve/experiments",
             state: "unavailable",
             value: "",
+            // preview marks the dead route so cards render non-clickable (no 404).
+            preview: true,
         });
     });
 
-    it("emits honest UNAVAILABLE for Automations (no backend)", async () => {
+    it("emits honest UNAVAILABLE + preview for Automations (no backend / no route)", async () => {
         const signals = byId(await getImproveSignals(defaultMetricFilter));
 
         expect(signals["improve-automations"]).toMatchObject({
@@ -113,7 +123,13 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             href: "/improve/automations",
             state: "unavailable",
             value: "",
+            preview: true,
         });
+    });
+
+    it("does NOT mark the real Opportunities card as preview (stays clickable)", async () => {
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals.opportunities.preview).not.toBe(true);
     });
 
     it("returns all 3 Improve sub-areas exactly once", async () => {
@@ -163,5 +179,11 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             expect(signal.state).toBe("unavailable");
             expect(signal.value).toBe("");
         }
+        // Only the preview (route-less) sub-areas carry the preview flag; the real
+        // Opportunities route stays clickable even when its value is unavailable.
+        const byIdMap = byId(signals);
+        expect(byIdMap.experiments.preview).toBe(true);
+        expect(byIdMap["improve-automations"].preview).toBe(true);
+        expect(byIdMap.opportunities.preview).not.toBe(true);
     });
 });
