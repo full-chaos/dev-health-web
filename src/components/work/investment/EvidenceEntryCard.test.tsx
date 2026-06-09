@@ -36,9 +36,7 @@ describe("EvidenceEntryCard", () => {
     });
 
     it("renders nested objects as compact JSON strings", () => {
-        render(
-            <EvidenceEntryCard entry={{ meta: { author: "alice", count: 3 } }} />,
-        );
+        render(<EvidenceEntryCard entry={{ meta: { author: "alice", count: 3 } }} />);
         expect(screen.getByText(/meta:/i)).toBeInTheDocument();
         // The value is compact JSON of the nested object
         expect(screen.getByText('{"author":"alice","count":3}')).toBeInTheDocument();

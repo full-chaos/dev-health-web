@@ -26,10 +26,7 @@ type MetricsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-type QuadrantType =
-    | "churn_throughput"
-    | "cycle_throughput"
-    | "wip_throughput";
+type QuadrantType = "churn_throughput" | "cycle_throughput" | "wip_throughput";
 
 type MetricTab = {
     id: string;
