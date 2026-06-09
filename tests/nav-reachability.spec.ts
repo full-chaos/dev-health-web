@@ -14,6 +14,8 @@ const primaryAreas = [
 ] as const;
 
 // Leaf labels that must NOT appear as flat sidebar rows anymore.
+// NOTE: "Operating Review" was here when it was a hidden preview. It has been
+// promoted to a visible Plan child (CHAOS-2181) and therefore removed from this list.
 const collapsedLeafLabels = [
     "Flow",
     "Investment",
@@ -23,7 +25,6 @@ const collapsedLeafLabels = [
     "Complexity",
     "Cognitive Load",
     "Bottlenecks",
-    "Operating Review",
     "Delivery Forecast",
     "Pipelines",
     "Tests",
@@ -150,6 +151,11 @@ test.describe("primary navigation reachability", () => {
                 label: "Capacity Forecast",
                 url: /\/plan\/capacity(?:[?#].*)?$/,
                 path: "/plan/capacity",
+            },
+            {
+                label: "Operating Review",
+                url: /\/operating-review(?:[?#].*)?$/,
+                path: "/operating-review",
             },
         ]) {
             await clickUntilUrl(

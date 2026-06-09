@@ -219,7 +219,7 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         {
             areaId: "plan",
             pathname: "/operating-review",
-            childId: undefined,
+            childId: "operating-review",
         },
         {
             areaId: "improve",
@@ -298,6 +298,7 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
         expect(navTitleForPathname("/plan/capacity")).toBe("Capacity Forecast");
+        expect(navTitleForPathname("/operating-review")).toBe("Operating Review");
         expect(navTitleForPathname("/improve")).toBe("Overview");
         expect(navTitleForPathname("/opportunities")).toBe("Opportunities");
         expect(navTitleForPathname("/ai/impact")).toBe("Impact");
