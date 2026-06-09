@@ -155,7 +155,10 @@ async function fetchReview(
     label: string,
 ): Promise<{ ok: true; review: OperatingReview } | { ok: false; threw: boolean }> {
     try {
-        const review = await getOperatingReviewViaGraphQL(orgId, { teamId, weekStart });
+        const review = await getOperatingReviewViaGraphQL(orgId, {
+            teamId,
+            weekStart,
+        });
         return { ok: true, review };
     } catch (err: unknown) {
         logger.warn({ err, label }, `operating-review: fetch failed for ${label}`);
@@ -231,82 +234,105 @@ function SelectedTeamsBadge({ teamIds }: { teamIds: string[] }) {
 
 function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
     return (
-        <div className="space-y-6">
-            <section className="grid gap-4 lg:grid-cols-5">
+        <div className="space-y-12">
+            <section className="flex flex-wrap gap-3">
                 {review.sections.map((section) => (
                     <a
                         key={section.key}
                         href={`#${section.key}`}
-                        className={`rounded-2xl border bg-card p-4 transition hover:border-primary/50 ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sm shadow-sky-500/10" : "border-border"}`}
+                        className={`rounded-full border px-4 py-2 text-sm font-medium transition hover:border-(--accent) ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 bg-sky-500/5 text-sky-700 dark:text-sky-300" : "border-(--card-stroke) bg-(--card-80) text-foreground"}`}
                     >
-                        <h2 className="text-base font-semibold">{section.title}</h2>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                            {section.improved.length} improved · {section.worsened.length} worsened
-                            · {section.changed.length} changed
-                        </p>
+                        {section.title}
+                        <span className="ml-2 text-xs font-normal opacity-70">
+                            {section.improved.length +
+                                section.worsened.length +
+                                section.changed.length}{" "}
+                            signals
+                        </span>
                     </a>
                 ))}
             </section>
 
-            {review.sections.map((section) => (
-                <section
-                    id={section.key}
-                    key={section.key}
-                    className={`rounded-[1.75rem] border bg-card/90 p-6 shadow-sm ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sky-500/10" : "border-border"}`}
-                >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                                {section.title}
-                            </h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                {sectionDescriptions[section.key] ?? "Weekly operating signal."}
-                            </p>
+            <div className="flex flex-col gap-16">
+                {review.sections.map((section) => (
+                    <section id={section.key} key={section.key} className="flex flex-col gap-6">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                                    {section.key === AI_WORKFLOW_SECTION_KEY
+                                        ? "AI Intelligence"
+                                        : "Operating Area"}
+                                </p>
+                                <h2 className="mt-2 font-(--font-display) text-3xl leading-tight text-foreground">
+                                    {section.title}
+                                </h2>
+                                <p className="mt-2 text-sm text-(--ink-muted)">
+                                    {sectionDescriptions[section.key] ?? "Weekly operating signal."}
+                                </p>
+                            </div>
+                            <DeltaPill
+                                improved={section.improved.length}
+                                worsened={section.worsened.length}
+                                changed={section.changed.length}
+                            />
                         </div>
-                        <DeltaPill
-                            improved={section.improved.length}
-                            worsened={section.worsened.length}
-                            changed={section.changed.length}
-                        />
-                    </div>
 
-                    {section.key === AI_WORKFLOW_SECTION_KEY ? (
-                        <AIWorkflowIntelligenceCallout />
-                    ) : null}
+                        {section.key === AI_WORKFLOW_SECTION_KEY ? (
+                            <AIWorkflowIntelligenceCallout />
+                        ) : null}
 
-                    <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        {section.metrics.map((metric) => (
-                            <MetricCard key={metric.key} metric={metric} />
-                        ))}
-                    </div>
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                            {section.metrics.map((metric, index) => (
+                                <MetricCard key={metric.key} metric={metric} isHero={index === 0} />
+                            ))}
+                        </div>
 
-                    <div className="mt-6 grid gap-4 md:grid-cols-3">
-                        <CalloutColumn title="Improved" tone="improved" items={section.improved} />
-                        <CalloutColumn title="Worsened" tone="worsened" items={section.worsened} />
-                        <CalloutColumn title="Changed" tone="changed" items={section.changed} />
+                        <div className="mt-2 grid gap-4 md:grid-cols-3">
+                            <CalloutColumn
+                                title="Improved"
+                                tone="improved"
+                                items={section.improved}
+                            />
+                            <CalloutColumn
+                                title="Worsened"
+                                tone="worsened"
+                                items={section.worsened}
+                            />
+                            <CalloutColumn title="Changed" tone="changed" items={section.changed} />
+                        </div>
+                    </section>
+                ))}
+
+                <section className="flex flex-col gap-6 border-t border-(--card-stroke) pt-10">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                            Action Items
+                        </p>
+                        <h2 className="mt-2 font-(--font-display) text-3xl leading-tight text-foreground">
+                            Recommendations
+                        </h2>
                     </div>
+                    {review.recommendations.length ? (
+                        <div className="overflow-hidden rounded-3xl border border-(--card-stroke) bg-(--card)">
+                            <ul className="divide-y divide-(--card-stroke)">
+                                {review.recommendations.map((recommendation) => (
+                                    <li
+                                        key={recommendation}
+                                        className="group relative p-5 text-sm text-foreground transition hover:bg-(--card-80)"
+                                    >
+                                        <div className="absolute bottom-0 left-0 top-0 w-1 bg-(--accent)/50 opacity-0 transition group-hover:opacity-100" />
+                                        <div className="pl-2">{recommendation}</div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : (
+                        <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                            {review.recommendationsEmptyState}
+                        </div>
+                    )}
                 </section>
-            ))}
-
-            <section className="rounded-[1.75rem] border border-border bg-card/90 p-6 shadow-sm">
-                <h2 className="text-2xl font-semibold tracking-tight">Recommendations</h2>
-                {review.recommendations.length ? (
-                    <ul className="mt-4 space-y-3">
-                        {review.recommendations.map((recommendation) => (
-                            <li
-                                key={recommendation}
-                                className="rounded-2xl border border-border bg-background/70 p-4 text-sm"
-                            >
-                                {recommendation}
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <div className="mt-4 rounded-2xl border border-dashed border-border bg-background/60 p-6 text-sm text-muted-foreground">
-                        {review.recommendationsEmptyState}
-                    </div>
-                )}
-            </section>
+            </div>
         </div>
     );
 }
@@ -314,35 +340,35 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
 function AIWorkflowIntelligenceCallout() {
     return (
         <div
-            className="mt-5 rounded-2xl border border-sky-400/30 bg-sky-500/5 p-4"
+            className="rounded-2xl border border-sky-400/30 bg-sky-500/5 p-4"
             data-testid="operating-review-ai-workflow-callout"
         >
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-(--ink-muted)">
                 Review these signals as operating patterns, not individual performance. Drill into
                 the dedicated AI surfaces when review pressure, quality drag, or automation
                 candidates need evidence-level follow-up.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium">
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-sky-400/30 bg-(--card-80) px-3 py-1.5 text-foreground transition hover:border-sky-400/60 hover:bg-sky-500/10"
                     href="/ai"
                 >
                     {CTA_LABELS.aiImpact}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-sky-400/30 bg-(--card-80) px-3 py-1.5 text-foreground transition hover:border-sky-400/60 hover:bg-sky-500/10"
                     href="/ai/review-load"
                 >
                     {CTA_LABELS.aiReviewLoad}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-sky-400/30 bg-(--card-80) px-3 py-1.5 text-foreground transition hover:border-sky-400/60 hover:bg-sky-500/10"
                     href="/ai/risk"
                 >
                     {CTA_LABELS.aiRisk}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-sky-400/30 bg-(--card-80) px-3 py-1.5 text-foreground transition hover:border-sky-400/60 hover:bg-sky-500/10"
                     href="/ai/automations"
                 >
                     {CTA_LABELS.aiAutomations}
@@ -352,23 +378,50 @@ function AIWorkflowIntelligenceCallout() {
     );
 }
 
-function MetricCard({ metric }: { metric: OperatingReviewMetric }) {
+function MetricCard({
+    metric,
+    isHero = false,
+}: {
+    metric: OperatingReviewMetric;
+    isHero?: boolean;
+}) {
     return (
-        <div className="rounded-2xl border border-border bg-background/70 p-4">
+        <div
+            className={
+                isHero
+                    ? "group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-(--accent)/30 bg-gradient-to-br from-(--card) to-(--card-80) p-6 shadow-lg ring-1 ring-(--accent)/10 md:col-span-2 xl:col-span-2"
+                    : "group flex flex-col justify-between overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card) p-4"
+            }
+        >
+            {isHero ? (
+                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-(--accent)">
+                    Lead Metric
+                </p>
+            ) : null}
             <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                    {metric.label}
+                </p>
                 <span className={statusClass(metric.delta.status)}>{metric.delta.status}</span>
             </div>
-            <div className="mt-3 text-2xl font-semibold tracking-tight">
-                {fmtMetric(metric.value, metric.unit)}
+            <div className="mt-4">
+                <div
+                    className={
+                        isHero
+                            ? "metric-hero text-4xl font-semibold text-foreground"
+                            : "metric-hero text-2xl font-semibold text-foreground"
+                    }
+                >
+                    {fmtMetric(metric.value, metric.unit)}
+                </div>
+                <p className="mt-2 text-xs text-(--ink-muted)">
+                    Prior: {fmtMetric(metric.delta.priorValue, metric.unit)} · Δ{" "}
+                    {formatSigned(metric.delta.absolute, metric.unit)}
+                    {metric.delta.percent === null || metric.delta.percent === undefined
+                        ? ""
+                        : ` (${formatSigned(metric.delta.percent, "%")})`}
+                </p>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-                Prior: {fmtMetric(metric.delta.priorValue, metric.unit)} · Δ{" "}
-                {formatSigned(metric.delta.absolute, metric.unit)}
-                {metric.delta.percent === null || metric.delta.percent === undefined
-                    ? ""
-                    : ` (${formatSigned(metric.delta.percent, "%")})`}
-            </p>
         </div>
     );
 }
@@ -383,14 +436,14 @@ function DeltaPill({
     changed: number;
 }) {
     return (
-        <div className="flex flex-wrap gap-2 text-xs font-medium">
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-emerald-700 dark:text-emerald-300">
+        <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.1em]">
+            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-emerald-700 dark:text-emerald-300">
                 {improved} improved
             </span>
-            <span className="rounded-full bg-rose-500/10 px-3 py-1 text-rose-700 dark:text-rose-300">
+            <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-rose-700 dark:text-rose-300">
                 {worsened} worsened
             </span>
-            <span className="rounded-full bg-sky-500/10 px-3 py-1 text-sky-700 dark:text-sky-300">
+            <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-sky-700 dark:text-sky-300">
                 {changed} changed
             </span>
         </div>
@@ -407,16 +460,25 @@ function CalloutColumn({
     items: string[];
 }) {
     return (
-        <div className="rounded-2xl border border-border bg-background/60 p-4">
-            <h3 className="text-sm font-semibold">{title}</h3>
+        <div
+            className={`rounded-2xl p-4 ${items.length ? "bg-(--card-70) border border-(--card-stroke)" : "bg-transparent border border-dashed border-(--card-stroke)/50"}`}
+        >
+            <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-(--ink-muted)">
+                {title}
+            </h3>
             {items.length ? (
-                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
                     {items.map((item) => (
-                        <li key={item}>• {item}</li>
+                        <li key={item} className="flex items-start gap-2">
+                            <span className="text-(--card-stroke)">•</span>
+                            <span>{item}</span>
+                        </li>
                     ))}
                 </ul>
             ) : (
-                <p className="mt-3 text-sm text-muted-foreground">No {tone} signals this week.</p>
+                <p className="mt-3 text-xs italic text-(--ink-muted)/70">
+                    No {tone} signals this week.
+                </p>
             )}
         </div>
     );
@@ -469,10 +531,13 @@ function formatSigned(value: number, unit: string): string {
 }
 
 function statusClass(status: string): string {
-    const base = "rounded-full px-2 py-1 text-xs font-medium capitalize";
+    const base =
+        "rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em]";
     if (status === "improved")
-        return `${base} bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
-    if (status === "worsened") return `${base} bg-rose-500/10 text-rose-700 dark:text-rose-300`;
-    if (status === "changed") return `${base} bg-sky-500/10 text-sky-700 dark:text-sky-300`;
-    return `${base} bg-muted text-muted-foreground`;
+        return `${base} border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
+    if (status === "worsened")
+        return `${base} border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300`;
+    if (status === "changed")
+        return `${base} border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300`;
+    return `${base} border-(--card-stroke) bg-(--card-80) text-(--ink-muted)`;
 }
