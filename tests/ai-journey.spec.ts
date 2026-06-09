@@ -35,16 +35,38 @@ const expectFilterParam = async (page: Page) => {
 };
 
 test.describe("AI area journey (CHAOS-2213)", () => {
-    // KNOWN GAP (found by this journey, reported to CHAOS-2180): getAISignals
-    // short-circuits every source to `undefined` when isTestMode is set
-    // (src/lib/areaSignals/ai.ts:136 and siblings), so the e2e harness can only
-    // ever see the "Not yet connected" tier — populated hub cards are untestable
-    // until test mode returns the deterministic sample data its docstring
-    // promises. Un-fixme once that lands.
-    test.fixme("overview hub renders populated signal values in test mode", async ({ page }) => {
+    // In test mode getAISignals returns the deterministic SAMPLE_AI_* constants
+    // (src/lib/ai/sample-data.ts, testops fetcher convention) through the real
+    // severity derivation, so the hub renders a stable mix of states.
+    test("overview hub renders populated signal values in test mode", async ({ page }) => {
         await page.goto(`/ai?f=${populatedFilter}`);
         await expect(page.getByTestId("area-overview")).toBeVisible();
-        await expect(page.getByTestId("area-signal-value").first()).toBeVisible();
+
+        const card = (id: string) => page.locator(`[data-signal-id="${id}"]`);
+
+        await expect(card("ai-impact")).toHaveAttribute("data-state", "low");
+        await expect(card("ai-impact").getByTestId("area-signal-value")).toHaveText(
+            "34% AI-assisted",
+        );
+
+        await expect(card("ai-review-load")).toHaveAttribute("data-state", "medium");
+        await expect(card("ai-review-load").getByTestId("area-signal-value")).toHaveText(
+            "1.7× amplification",
+        );
+
+        await expect(card("ai-governance-risk")).toHaveAttribute("data-state", "high");
+        await expect(card("ai-governance-risk").getByTestId("area-signal-value")).toHaveText(
+            "3 violations",
+        );
+
+        await expect(card("ai-automations")).toHaveAttribute("data-state", "neutral");
+        await expect(card("ai-automations").getByTestId("area-signal-value")).toHaveText(
+            "2 opportunities",
+        );
+
+        // Sample data is a severity mix by design — nothing collapses into the
+        // unavailable tier.
+        await expect(page.getByTestId("area-overview-empty-tier")).toHaveCount(0);
     });
 
     test("overview hub → impact → PR evidence drilldown → back to impact, filters intact", async ({
@@ -75,9 +97,9 @@ test.describe("AI area journey (CHAOS-2213)", () => {
             await expect(sidebar.getByRole("link", { name: retired })).toHaveCount(0);
         }
 
-        // Hub → Impact. In test mode the hub cards sit in the "Not yet
-        // connected" tier (see fixme above) but remain links; the canonical
-        // entry point that always works is the AI tab strip.
+        // Hub → Impact. The hub cards render sample-populated links in test
+        // mode (asserted in the populated-hub test above); navigate via the
+        // AI tab strip, the canonical entry point this journey exercises.
         await clickUntilUrl(
             page,
             aiTabStrip(page).getByRole("link", { name: /^Impact$/ }),
@@ -218,15 +240,15 @@ test.describe("AI area journey (CHAOS-2213)", () => {
     test("degraded journey: missing scope renders honest unavailable states, never empties", async ({
         page,
     }) => {
-        // Overview hub: unavailable signals collapse into the explicit "Not
-        // yet connected" tier. (In test mode this currently holds for every
-        // scope — see the fixme at the top of this suite — so this asserts the
-        // honest-unavailable rendering rather than missing-vs-populated
-        // contrast.)
+        // Overview hub: server-side test-mode sample data is deliberately
+        // scope-independent (the testops fetcher convention — samples never
+        // simulate per-scope outages), so the hub renders its sample cards for
+        // this scope too. The missing-vs-populated contrast is asserted on the
+        // CLIENT-side surfaces below, where the MSW harness honors the
+        // `team-missing` scope with dataAvailable=false.
         await page.goto(`/ai?f=${missingDataFilter}`);
         await expect(page.getByTestId("area-overview")).toBeVisible();
-        await expect(page.getByTestId("area-overview-empty-tier")).toBeVisible();
-        await expect(page.getByTestId("area-signal-value")).toHaveCount(0);
+        await expect(page.getByTestId("area-signal-value").first()).toBeVisible();
 
         // Evidence tab: explicit missing-data panel, not the honest-zero empty
         // state (unavailable ≠ empty — CHAOS-2197 review verdict).

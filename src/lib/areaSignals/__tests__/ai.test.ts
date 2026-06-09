@@ -474,12 +474,27 @@ describe("getAISignals — source → AreaSignal mapping", () => {
         expect(signals["ai-governance-risk"]).toMatchObject({ state: "unavailable", value: "" });
     });
 
-    it("returns unavailable for all cards in isTestMode (no API calls)", async () => {
-        const signals = await getAISignals(defaultMetricFilter, true);
-        // In test mode all sources resolve to undefined → all unavailable.
-        for (const s of signals) {
-            expect(s.state).toBe("unavailable");
-        }
+    it("renders deterministic sample data in isTestMode (no API calls)", async () => {
+        const signals = byId(await getAISignals(defaultMetricFilter, true));
+        // Test mode returns the SAMPLE_AI_* constants (testops fetcher
+        // convention) through the REAL derivation: a deliberate severity mix,
+        // not all-green and never unavailable.
+        expect(signals["ai-impact"]).toMatchObject({
+            state: "low",
+            value: "34% AI-assisted",
+        });
+        expect(signals["ai-review-load"]).toMatchObject({
+            state: "medium",
+            value: "1.7× amplification",
+        });
+        expect(signals["ai-governance-risk"]).toMatchObject({
+            state: "high",
+            value: "3 violations",
+        });
+        expect(signals["ai-automations"]).toMatchObject({
+            state: "neutral",
+            value: "2 opportunities",
+        });
         expect(mockGraphql).not.toHaveBeenCalled();
     });
 });

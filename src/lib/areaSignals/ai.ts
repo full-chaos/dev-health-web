@@ -35,6 +35,12 @@ import type {
     AiOpportunitiesResult,
     AiReviewLoadResult,
 } from "@/lib/graphql/__generated__/types";
+import {
+    SAMPLE_AI_GOVERNANCE_SUMMARY,
+    SAMPLE_AI_IMPACT_SUMMARY,
+    SAMPLE_AI_OPPORTUNITIES,
+    SAMPLE_AI_REVIEW_LOAD,
+} from "@/lib/ai/sample-data";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import type { MetricFilter } from "@/lib/filters/types";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
@@ -131,11 +137,15 @@ export async function getAISignals(
     };
 
     // ── Fetch all 4 sources in parallel (no serial N+1) ─────────────────────────
+    // Test mode returns the deterministic sample constants (the TestOps
+    // fetcher convention, src/lib/testops/fetchers.ts) so the hub renders a
+    // realistic severity mix without hitting the API — the samples still flow
+    // through the real derivation below, never bypassing it.
     const [impact, reviewLoad, governance, opportunities] = await Promise.all([
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_AI_IMPACT_SUMMARY)
                     : graphqlFetch<{ aiImpactSummary: AiImpactSummary }>(
                           AI_IMPACT_SUMMARY_QUERY,
                           { orgId, dateRange, scope },
@@ -146,7 +156,7 @@ export async function getAISignals(
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_AI_REVIEW_LOAD)
                     : graphqlFetch<{ aiReviewLoad: AiReviewLoadResult }>(
                           AI_REVIEW_LOAD_QUERY,
                           { orgId, dateRange, scope },
@@ -157,7 +167,7 @@ export async function getAISignals(
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_AI_GOVERNANCE_SUMMARY)
                     : graphqlFetch<{ aiGovernanceSummary: AiGovernanceSummary }>(
                           AI_GOVERNANCE_SUMMARY_QUERY,
                           { orgId, dateRange, scope, violationLimit: 50 },
@@ -168,7 +178,7 @@ export async function getAISignals(
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_AI_OPPORTUNITIES)
                     : graphqlFetch<{ aiOpportunities: AiOpportunitiesResult }>(
                           AI_OPPORTUNITIES_QUERY,
                           { orgId, scope, limit: 5 },
