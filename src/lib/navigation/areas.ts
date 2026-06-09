@@ -390,7 +390,7 @@ export const navAreas: readonly NavArea[] = [
             "govern",
         ],
         // CHAOS-2074: Govern is sub-grouped into "Quality" and "Risk" clusters,
-        // each internally severity-sorted by the resolver (`getGovernSignals`).
+        // each internally severity-sorted by the resolver (getGovernSignals).
         hubItems: [
             // ── Cluster: Quality ──────────────────────────────────────────────────
             {
@@ -520,12 +520,17 @@ export const navAreas: readonly NavArea[] = [
         placement: "main",
         ownedPathPrefixes: ["/ai"],
         legacyActiveIds: ["ai", "ai-workflows"],
+        // CHAOS-2198: AI is sub-grouped into "Signal" (monitoring metrics) and
+        // "Action" (opportunity / recommendation surfaces), severity-sorted by
+        // the resolver (getAISignals). Mirrors the Govern cluster pattern.
         hubItems: [
+            // ── Cluster: Signal ──────────────────────────────────────────────────
             {
                 id: "ai-impact",
                 label: "Impact",
                 href: "/ai/impact",
                 description: "AI-assisted delivery and review impact.",
+                cluster: "Signal",
                 metricLabel: "AI impact",
             },
             {
@@ -533,6 +538,7 @@ export const navAreas: readonly NavArea[] = [
                 label: "Review Load",
                 href: "/ai/review-load",
                 description: "AI-associated review pressure.",
+                cluster: "Signal",
                 metricLabel: "Review pressure",
             },
             {
@@ -540,13 +546,16 @@ export const navAreas: readonly NavArea[] = [
                 label: "Governance Risk",
                 href: "/ai/risk",
                 description: "Quality and governance signals for AI-associated work.",
+                cluster: "Signal",
                 metricLabel: "Governance risk",
             },
+            // ── Cluster: Action ──────────────────────────────────────────────────
             {
                 id: "ai-automations",
                 label: "Automations",
                 href: "/ai/automations",
                 description: "Responsible automation opportunities.",
+                cluster: "Action",
                 metricLabel: "Automation candidates",
             },
         ],

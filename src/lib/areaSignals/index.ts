@@ -10,12 +10,14 @@
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { MetricFilter } from "@/lib/filters/types";
 
+import { getAISignals } from "./ai";
 import { getDiagnoseSignals } from "./diagnose";
 import { getGovernSignals } from "./govern";
 import { getImproveSignals } from "./improve";
 import type { AreaSignal } from "./types";
 
 export type { AreaSignal, AreaSignalState } from "./types";
+export { getAISignals } from "./ai";
 export { getDiagnoseSignals } from "./diagnose";
 export { getGovernSignals } from "./govern";
 export { getImproveSignals } from "./improve";
@@ -42,9 +44,7 @@ export async function getAreaSignals(
             void isTestMode;
             return descriptorStubs(areaId, "unavailable");
         case "ai":
-            void filters;
-            void isTestMode;
-            return descriptorStubs(areaId, "unavailable");
+            return getAISignals(filters, isTestMode);
         case "cockpit":
             // Cockpit's single sub-area (Operating Review) has no severity metric; it
             // is a navigational surface. Render it as a calm "neutral" card rather

@@ -10,12 +10,12 @@ const AI_WORKFLOW_STEPS = [
         href: "/ai",
     },
     {
-        label: "Review Load / Risk",
+        label: "Review Load",
         description: "Is AI-attributed work shifting cost into review or quality?",
         href: "/ai/review-load",
     },
     {
-        label: "Governance gaps",
+        label: "Governance Risk",
         description: "Unknown attribution and policy violations as trust signals.",
         href: "/ai/risk",
     },
@@ -89,7 +89,7 @@ export function AiWorkflowCallout({ filters, activeRole, prominent }: AiWorkflow
                         </Link>
                         <Link
                             href={withFilterParam(
-                                "/operating-review#ai-workflow-intelligence",
+                                "/operating-review#ai_workflow_intelligence",
                                 filters,
                                 activeRole,
                             )}

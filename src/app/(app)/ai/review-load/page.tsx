@@ -2,6 +2,8 @@ import { AIReviewLoadDashboard } from "@/components/ai/AIReviewLoadDashboard";
 import { AIPageHeader } from "@/components/ai/AIPageHeader";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { checkApiHealth } from "@/lib/api/system";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { navTrailForPathname } from "@/lib/navigation/areas";
@@ -15,6 +17,11 @@ export default async function AIReviewLoadPage({ searchParams }: AIReviewLoadPag
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
     const aiFilter = metricFilterToAIFilter(filters);
+    const health = await checkApiHealth();
+
+    if (!health.ok) {
+        return <ServiceUnavailable />;
+    }
 
     return (
         <>

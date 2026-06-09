@@ -48,7 +48,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
             <AIMissingDataPanel
                 title="AI review load data is not available"
                 reason="The backend returned data_available=false for the selected scope. This view keeps the gap explicit instead of fabricating values."
-                needed="AI attribution plus review event rollups in ClickHouse."
+                needed="Review activity rollups for AI-attributed PRs."
             />
         );
     }

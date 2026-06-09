@@ -7,6 +7,7 @@ import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { DataState } from "@/components/ui/DataState";
 import { useAIComparison, useAIImpactSummary } from "@/lib/graphql/hooks/useAIImpact";
 import type { AIFilter } from "@/lib/filters/ai";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { AIComparisonCard } from "./AIComparisonCard";
 import { AILeverageBars } from "./AILeverageBars";
 import { AIPanelCard } from "./AIPanelCard";
@@ -231,7 +232,7 @@ export function AIImpactDashboard({ filter }: AIImpactDashboardProps) {
                             className="font-medium text-accent underline-offset-4 hover:underline"
                             href="/ai/automations"
                         >
-                            See AI Automations →
+                            {CTA_LABELS.seeAIAutomations} →
                         </Link>
                     </div>
                 </AIPanelCard>

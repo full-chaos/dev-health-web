@@ -114,7 +114,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                 <AIMissingDataPanel
                     title={hotspotMissing.title}
                     reason={hotspotMissing.guidance}
-                    needed="Hotspot file detector output joined to AI-attributed PR changed files."
+                    needed="File hotspot signals for AI-attributed changes."
                 />
                 <AIMissingDataPanel
                     title={complexityMissing.title}
