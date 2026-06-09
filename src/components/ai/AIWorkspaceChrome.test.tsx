@@ -1,3 +1,4 @@
+import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 import { AIWorkspaceChrome } from "./AIWorkspaceChrome";
@@ -6,6 +7,22 @@ import { AIPageHeader } from "./AIPageHeader";
 vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(),
     usePathname: () => "/ai",
+}));
+
+vi.mock("next/link", () => ({
+    default: ({
+        href,
+        children,
+        ...props
+    }: {
+        href: string;
+        children: React.ReactNode;
+        [key: string]: unknown;
+    }) => (
+        <a href={href} {...props}>
+            {children}
+        </a>
+    ),
 }));
 
 // Keep the sidebar and tab strip lightweight so the test focuses on the
@@ -21,6 +38,7 @@ vi.mock("./AITabNav", () => ({
 vi.mock("@/lib/filters/encode", () => ({
     decodeFilter: () => ({}),
     filterFromQueryParams: () => ({}),
+    encodeFilterParam: () => "",
 }));
 
 describe("AIWorkspaceChrome", () => {
@@ -49,6 +67,13 @@ describe("AIWorkspaceChrome", () => {
     it("renders the area title matching the sidebar label (A6 agreement)", () => {
         render(<AIWorkspaceChrome>content</AIWorkspaceChrome>);
         expect(screen.getByRole("heading", { level: 1, name: "AI" })).toBeInTheDocument();
+    });
+
+    it("renders a BackLink returning to the cockpit (A5)", () => {
+        render(<AIWorkspaceChrome>content</AIWorkspaceChrome>);
+        const backLink = screen.getByRole("link", { name: /back to cockpit/i });
+        expect(backLink).toBeInTheDocument();
+        expect(backLink.getAttribute("href")).toContain("/");
     });
 
     it("uses tentative AI copy instead of definitive implementation language", () => {

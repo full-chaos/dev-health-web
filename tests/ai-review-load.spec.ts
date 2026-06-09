@@ -89,6 +89,8 @@ test.describe("AI Review Load dashboard", () => {
         await page.goto(`/ai/review-load?f=${missingDataFilter}`);
 
         await expect(page.getByText("AI review load data is not available")).toBeVisible();
-        await expect(page.getByText(/AI attribution plus review event rollups/i)).toBeVisible();
+        await expect(
+            page.getByText(/Review activity rollups for AI-attributed PRs/i),
+        ).toBeVisible();
     });
 });

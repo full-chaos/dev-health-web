@@ -90,6 +90,7 @@ The Definition of Done requires:
     - **Canonical test account:** `admin@devhealth.example` / `devhealth123` (seeded by `dev-hops fixtures generate`). Do not create ad-hoc accounts.
     - **What to capture:** Every page or component visually altered by the change, before/after if modifying existing UI, just after if net-new
     - **When to skip:** Changes that are purely backend, purely type-level, or have no rendered output (add `SCREENSHOT-WAIVER: <reason>` to PR body)
+
 - **Governance gate (`enforce-src-test-policy`)**: Any PR that changes files under `src/` must either include at least one test file change (`tests/`, `__tests__/`, or `*.test.*`/`*.spec.*`) **or** include a `TEST-WAIVER:` line in the PR body explaining why tests were not touched. Example:
     ```
     TEST-WAIVER: CSS-only changes, no component logic affected

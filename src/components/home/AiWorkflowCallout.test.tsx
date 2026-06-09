@@ -20,7 +20,7 @@ describe("AiWorkflowCallout", () => {
         expect(screen.getByText("AI Workflow Intelligence")).toBeInTheDocument();
         // All four workflow steps render as links.
         expect(screen.getByText("AI Impact")).toBeInTheDocument();
-        expect(screen.getByText("Governance gaps")).toBeInTheDocument();
+        expect(screen.getByText("Governance Risk")).toBeInTheDocument();
         expect(screen.queryByTestId("ai-workflow-secondary-link")).not.toBeInTheDocument();
     });
 

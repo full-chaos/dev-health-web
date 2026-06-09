@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { DataState } from "@/components/ui/DataState";
 
 /**
  * Whole-view "no data exists for this scope yet" marker.
@@ -9,15 +9,19 @@ import type { ReactNode } from "react";
  *
  * For "the metric exists in spec but the schema doesn't expose it yet",
  * use {@link AIMissingDataPanel} instead.
+ *
+ * Internally delegates to {@link DataState} (`no-data-connected`) so the
+ * canonical empty-state vocabulary is the single source of truth.
  */
-export function AIEmptyState({ title, children }: { title: string; children?: ReactNode }) {
+export function AIEmptyState({ title, children }: { title: string; children?: string }) {
     return (
-        <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
-            <p className="font-medium text-foreground">{title}</p>
-            <p className="mt-2">
-                {children ??
-                    "Connect a GitHub provider to populate AI-assisted PR attribution and workflow evidence."}
-            </p>
-        </div>
+        <DataState
+            variant="no-data-connected"
+            title={title}
+            description={
+                children ??
+                "Connect a GitHub provider to populate AI-assisted PR attribution and workflow evidence."
+            }
+        />
     );
 }
