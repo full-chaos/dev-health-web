@@ -147,7 +147,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
             [/^Cockpit$/i, "/dashboard"],
             [/^Diagnose$/i, "/diagnose"],
             [/^Plan$/i, "/plan"],
-            [/^Improve$/i, "/opportunities"],
+            [/^Improve$/i, "/improve"],
             [/^Govern$/i, "/govern"],
             [/^AI$/i, "/ai"],
             [/^Reports$/i, "/reports"],
