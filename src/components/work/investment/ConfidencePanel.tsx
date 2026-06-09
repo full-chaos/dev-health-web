@@ -13,7 +13,12 @@ import {
     titleCase,
     topInvestmentKey,
 } from "@/lib/investment";
-import type { MetricDelta, SankeyResponse, WorkUnitInvestment } from "@/lib/types";
+import type {
+    InvestmentConfidence,
+    MetricDelta,
+    SankeyResponse,
+    WorkUnitInvestment,
+} from "@/lib/types";
 import type { InvestmentMixAggregate } from "@/lib/investmentMix";
 import { AllocationCoverage } from "./AllocationCoverage";
 import { EvidenceQualityBands } from "./EvidenceQualityBands";
@@ -47,6 +52,36 @@ const DRIVER_COPY: Record<string, string> = {
 const LOW_BANDS = new Set(["low", "very_low", "unknown"]);
 
 /**
+ * Derives a synthetic confidence object from persisted evidence-quality stats.
+ * Used as a fallback when no investment explanation has been generated yet.
+ * Does NOT label output as AI-generated and does NOT recompute categories.
+ *
+ * @returns InvestmentConfidence when mean is available, null otherwise.
+ */
+export function deriveConfidenceFromStats(
+    stats:
+        | {
+              mean?: number | null;
+              stddev?: number | null;
+              band_counts?: Record<string, number>;
+          }
+        | null
+        | undefined,
+): InvestmentConfidence | null {
+    if (!stats || stats.mean == null) return null;
+    const mean = stats.mean;
+    const level: InvestmentConfidence["level"] =
+        mean >= 0.75 ? "high" : mean >= 0.6 ? "moderate" : "low";
+    return {
+        level,
+        quality_mean: mean,
+        quality_stddev: stats.stddev ?? null,
+        band_mix: stats.band_counts ?? {},
+        drivers: [],
+    };
+}
+
+/**
  * Confidence tab — trust, attribution quality, and classification quality.
  *
  * Consolidates the formerly scattered confidence signals: the LLM's
@@ -68,8 +103,10 @@ export function ConfidencePanel({
     isCategoryFlowLoading,
     reworkMetric,
 }: ConfidencePanelProps) {
-    const confidence = mixExplanation.data?.confidence ?? null;
-
+    const confidence =
+        mixExplanation.data?.confidence ??
+        deriveConfidenceFromStats(investmentMix?.evidence_quality_stats) ??
+        null;
     const lowConfidenceUnits = useMemo(
         () =>
             workUnits

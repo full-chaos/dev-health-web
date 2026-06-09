@@ -306,6 +306,8 @@ type AnalyticsResult {
   breakdowns: [BreakdownResult!]!
   sankey: SankeyResult
   flowMatrix: FlowMatrixResult
+  evidenceQualityDistribution: JSON
+  evidenceQualityStats: EvidenceQualityStats
 }
 
 type BreakdownItem {
@@ -637,6 +639,13 @@ enum DimensionInput {
   WORK_TYPE
   THEME
   SUBCATEGORY
+}
+
+type EvidenceQualityStats {
+  mean: Float
+  stddev: Float
+  total: Int!
+  bandCounts: JSON!
 }
 
 type EvidenceRef {

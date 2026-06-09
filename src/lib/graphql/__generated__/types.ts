@@ -343,6 +343,8 @@ export type AnalyticsRequestInput = {
 export type AnalyticsResult = {
   __typename?: 'AnalyticsResult';
   breakdowns: Array<BreakdownResult>;
+  evidenceQualityDistribution?: Maybe<Scalars['JSON']['output']>;
+  evidenceQualityStats?: Maybe<EvidenceQualityStats>;
   flowMatrix?: Maybe<FlowMatrixResult>;
   sankey?: Maybe<SankeyResult>;
   timeseries: Array<TimeseriesResult>;
@@ -700,6 +702,14 @@ export type DimensionInput =
   | 'TEAM'
   | 'THEME'
   | 'WORK_TYPE';
+
+export type EvidenceQualityStats = {
+  __typename?: 'EvidenceQualityStats';
+  bandCounts: Scalars['JSON']['output'];
+  mean?: Maybe<Scalars['Float']['output']>;
+  stddev?: Maybe<Scalars['Float']['output']>;
+  total: Scalars['Int']['output'];
+};
 
 export type EvidenceRef = {
   __typename?: 'EvidenceRef';
