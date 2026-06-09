@@ -54,6 +54,28 @@ const LOG_FORMAT: LogFormat = (() => {
 })();
 
 /**
+ * Replace Error values (top-level or one level deep) with plain
+ * { name, message, stack } objects so they serialize legibly instead of
+ * collapsing to "[object Error]" in the browser console / forwarded logs.
+ */
+export function serializeErrors(obj: unknown): unknown {
+    if (obj instanceof Error) {
+        return { name: obj.name, message: obj.message, stack: obj.stack };
+    }
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj)) {
+            result[key] =
+                value instanceof Error
+                    ? { name: value.name, message: value.message, stack: value.stack }
+                    : value;
+        }
+        return result;
+    }
+    return obj;
+}
+
+/**
  * Browser-side shim — pino cannot run in the browser.
  * Maps to console methods so existing DevTools workflows still work.
  */
@@ -67,8 +89,10 @@ function createBrowserLogger(bindings: Record<string, unknown> = {}): Logger {
             if (levels.indexOf(level) < minIdx) return;
             if (typeof objOrMsg === "string") {
                 consoleFn(`[${level}]`, objOrMsg, bindings);
+            } else if (objOrMsg instanceof Error) {
+                consoleFn(`[${level}]`, msg ?? "", serializeErrors({ ...bindings, err: objOrMsg }));
             } else {
-                consoleFn(`[${level}]`, msg ?? "", { ...bindings, ...objOrMsg });
+                consoleFn(`[${level}]`, msg ?? "", serializeErrors({ ...bindings, ...objOrMsg }));
             }
         };
 

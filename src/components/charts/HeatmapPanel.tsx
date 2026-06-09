@@ -78,6 +78,24 @@ type ResolvedArtifact = {
  * UUID/path), a tooltip carrying the full identifier, and a timestamp.
  * Replaces the previous raw `JSON.stringify(item)` dump.
  */
+/**
+ * Resolve an entity id to a render-safe { label, title }. A degraded UUID/hash
+ * id falls back to a stable short token (e.g. "#a1b2c3d4") — opting into the
+ * `unresolvedFallback` contract so the dev-only unresolved-id assertion does not
+ * throw during render (which crashed the heatmap evidence list on cell click).
+ */
+function entityArtifactLabel(
+    id: string | null | undefined,
+    options: { name?: string | null; fallback?: string } = {},
+): { label: string; title: string } {
+    const { label, title, short } = resolveEntityLabel(id, {
+        name: options.name ?? undefined,
+        fallback: options.fallback,
+        unresolvedFallback: "Unresolved",
+    });
+    return { label: short ?? label, title };
+}
+
 export function describeArtifact(item: Record<string, unknown>, index: number): ResolvedArtifact {
     const explicitName =
         asText(item.title) ?? asText(item.name) ?? asText(item.repo_name) ?? asText(item.author);
@@ -92,9 +110,7 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
     const deployment = asText(item.deployment_id);
 
     if (path) {
-        const { label, title } = resolveEntityLabel(path, {
-            name: explicitName ?? undefined,
-        });
+        const { label, title } = entityArtifactLabel(path, { name: explicitName });
         return { type: "File", label, title, timestamp, value, link };
     }
     if (commit) {
@@ -110,7 +126,7 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
     if (number !== null) {
         const repo = asText(item.repo_id);
         const repoLabel = repo
-            ? resolveEntityLabel(repo, { name: asText(item.repo_name) ?? undefined }).label
+            ? entityArtifactLabel(repo, { name: asText(item.repo_name) }).label
             : null;
         return {
             type: "PR",
@@ -122,19 +138,19 @@ export function describeArtifact(item: Record<string, unknown>, index: number): 
         };
     }
     if (workItem) {
-        const { label, title } = resolveEntityLabel(workItem, {
-            name: explicitName ?? undefined,
+        const { label, title } = entityArtifactLabel(workItem, {
+            name: explicitName,
         });
         return { type: "Work item", label, title, timestamp, value, link };
     }
     if (deployment) {
-        const { label, title } = resolveEntityLabel(deployment, {
-            name: explicitName ?? undefined,
+        const { label, title } = entityArtifactLabel(deployment, {
+            name: explicitName,
         });
         return { type: "Deployment", label, title, timestamp, value, link };
     }
 
-    const { label, title } = resolveEntityLabel(explicitName, {
+    const { label, title } = entityArtifactLabel(explicitName, {
         fallback: `Item ${index + 1}`,
     });
     return { type: "Item", label, title, timestamp, value, link };

@@ -42,7 +42,10 @@ export function getOrgId(filters: MetricFilter, contextOrgId?: string): string {
 /**
  * Build a date range from MetricFilter.
  */
-function buildDateRange(filters: MetricFilter): { startDate: string; endDate: string } {
+function buildDateRange(filters: MetricFilter): {
+    startDate: string;
+    endDate: string;
+} {
     const { start_date, end_date, range_days } = filters.time;
 
     if (start_date && end_date) {
@@ -204,10 +207,18 @@ export function adaptSankeyResult(
         value: e.value,
     }));
 
+    const coverage = graphqlSankey.coverage
+        ? {
+              team: Number(graphqlSankey.coverage.teamCoverage || 0),
+              repo: Number(graphqlSankey.coverage.repoCoverage || 0),
+          }
+        : undefined;
+
     return {
         mode: mode as SankeyResponse["mode"],
         nodes,
         links,
+        ...(coverage !== undefined && { coverage }),
     };
 }
 
@@ -261,30 +272,7 @@ export async function getInvestmentFlowViaGraphQL(params: {
         { orgId },
     );
 
-    const result = adaptSankeyResult(response.analytics.sankey, "investment");
-
-    // Map coverage if available in GraphQL response
-    // (Note: The types need to be updated to include coverage, using "any" cast temporarily if needed)
-    const sankeyData = response.analytics.sankey as unknown as {
-        coverage?: {
-            teamCoverage?: number;
-            team_coverage?: number;
-            repoCoverage?: number;
-            repo_coverage?: number;
-        };
-    };
-    if (sankeyData?.coverage) {
-        result.coverage = {
-            team: Number(
-                sankeyData.coverage.teamCoverage || sankeyData.coverage.team_coverage || 0,
-            ),
-            repo: Number(
-                sankeyData.coverage.repoCoverage || sankeyData.coverage.repo_coverage || 0,
-            ),
-        };
-    }
-
-    return result;
+    return adaptSankeyResult(response.analytics.sankey, "investment");
 }
 
 /**

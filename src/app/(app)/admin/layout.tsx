@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
     return (
         <div className="min-h-screen">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-20 pt-10 md:flex-row">
+            <div className="flex w-full flex-col gap-6 px-6 pb-20 pt-10 md:flex-row">
                 <AdminSidebar isSuperuser={isSuperuser} features={features} />
                 <AdminTierProvider tier={tier} features={features}>
                     <main className="flex min-w-0 flex-1 flex-col gap-10">{children}</main>

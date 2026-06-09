@@ -183,6 +183,10 @@ query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
         target
         value
       }
+      coverage {
+        teamCoverage
+        repoCoverage
+      }
     }
   }
 }

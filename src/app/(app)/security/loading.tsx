@@ -3,7 +3,7 @@ import { SkeletonLine } from "@/components/ui/Skeleton";
 export default function SecurityLoading() {
     return (
         <div className="min-h-screen bg-background text-foreground">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                 {/* Nav skeleton */}
                 <div className="w-full md:max-w-[220px] md:shrink-0">
                     <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
