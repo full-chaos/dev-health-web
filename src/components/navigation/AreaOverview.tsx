@@ -1,7 +1,4 @@
-import Link from "next/link";
-
 import type { MetricFilter } from "@/lib/filters/types";
-import { withFilterParam } from "@/lib/filters/url";
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { AreaSignal } from "@/lib/areaSignals/types";
 import { isAvailable, sortBySeverity } from "@/lib/areaSignals/sort";
@@ -87,7 +84,7 @@ export function AreaOverview({
                 </div>
             ) : null}
 
-            {gridSignals.length > 0 ? (
+            {gridSignals.length > 0 || unavailable.length > 0 ? (
                 <div
                     data-testid="area-overview-grid"
                     className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
@@ -100,45 +97,14 @@ export function AreaOverview({
                             role={role}
                         />
                     ))}
-                </div>
-            ) : null}
-
-            {unavailable.length > 0 ? (
-                <div
-                    data-testid="area-overview-empty-tier"
-                    className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-4 text-sm text-(--ink-muted)"
-                >
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="mr-1 text-xs uppercase tracking-[0.18em]">
-                            Not yet connected
-                        </span>
-                        {unavailable.map((signal) => {
-                            const chipClassName =
-                                "rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1 text-xs font-medium text-foreground";
-                            // Preview sub-area (route not built yet) → non-clickable chip so
-                            // it can't 404; a real-but-unconnected sub-area stays a link.
-                            return signal.preview === true ? (
-                                <span
-                                    key={signal.id}
-                                    data-signal-id={signal.id}
-                                    data-preview="true"
-                                    aria-disabled="true"
-                                    className={chipClassName}
-                                >
-                                    {signal.label}
-                                </span>
-                            ) : (
-                                <Link
-                                    key={signal.id}
-                                    href={withFilterParam(signal.href, filters, role)}
-                                    data-signal-id={signal.id}
-                                    className={`${chipClassName} transition hover:border-(--accent)`}
-                                >
-                                    {signal.label}
-                                </Link>
-                            );
-                        })}
-                    </div>
+                    {unavailable.map((signal) => (
+                        <AreaSignalCard
+                            key={signal.id}
+                            signal={signal}
+                            filters={filters}
+                            role={role}
+                        />
+                    ))}
                 </div>
             ) : null}
         </section>

@@ -55,19 +55,38 @@ beforeEach(() => {
         items: [opportunityItem(["https://example.com/evidence"]), opportunityItem([])],
     } as never);
     mockGetHomeData.mockResolvedValue(
-        homeWithDeltas([delta("Throughput", 19), delta("Cycle Time", 8), delta("Coverage", -4)]),
+        homeWithDeltas([delta("Churn", 19), delta("Cycle Time", 8), delta("Coverage", -4)]),
     );
 });
 
 describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
     // ── Top signal (synthesized worst opportunity) ────────────────────────────────
 
+    it("gates the TOP SIGNAL by polarity (throughput up = NOT hero, churn up = hero, throughput down = 'Recover' hero)", async () => {
+        // Throughput up (+10) is GOOD (higher-is-better). Churn up (+5) is BAD (lower-is-better).
+        // Throughput down (-15) is BAD (higher-is-better).
+        mockGetHomeData.mockResolvedValue(
+            homeWithDeltas([
+                delta("Throughput", 10), // Good
+                delta("Churn", 5), // Bad
+                delta("Deploy Freq", -15, "deploy_freq"), // Bad
+            ]),
+        );
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-top-signal"]).toMatchObject({
+            label: "Recover Deploy Freq",
+            value: "-15%",
+            state: "high",
+            direction: "down",
+        });
+    });
+
     it("synthesizes a TOP SIGNAL from the worst worsened metric (label + signed delta + severity)", async () => {
         const signals = byId(await getImproveSignals(defaultMetricFilter));
 
         expect(signals["improve-top-signal"]).toMatchObject({
             id: "improve-top-signal",
-            label: "Reduce Throughput",
+            label: "Reduce Churn",
             href: "/opportunities",
             value: "+19%",
             // +19% maps to "high" (Penpot's ELEVATED lead), NOT neutral.
@@ -75,7 +94,7 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             direction: "up",
         });
         // The secondary line frames the metric, it does NOT just repeat the label.
-        expect(signals["improve-top-signal"].metricLabel).toBe("Throughput shift");
+        expect(signals["improve-top-signal"].metricLabel).toBe("Churn shift");
     });
 
     it("makes the TOP SIGNAL the most-severe available signal (sorts above Opportunities)", async () => {
@@ -87,14 +106,18 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         expect(topIdx).toBeLessThan(oppIdx);
     });
 
-    it("picks the LARGEST positive delta as the top signal (not the first)", async () => {
+    it("picks the LARGEST absolute delta in the wrong direction as the top signal (not the first)", async () => {
         mockGetHomeData.mockResolvedValue(
-            homeWithDeltas([delta("Cycle Time", 8), delta("Throughput", 27), delta("Churn", 12)]),
+            homeWithDeltas([
+                delta("Cycle Time", 8),
+                delta("Throughput", -27), // Bad
+                delta("Churn", 12), // Bad
+            ]),
         );
         const signals = byId(await getImproveSignals(defaultMetricFilter));
         expect(signals["improve-top-signal"]).toMatchObject({
-            label: "Reduce Throughput",
-            value: "+27%",
+            label: "Recover Throughput",
+            value: "-27%",
             // ≥25 → critical.
             state: "critical",
         });
@@ -108,7 +131,7 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             [2, "low"],
         ];
         for (const [deltaPct, expected] of cases) {
-            mockGetHomeData.mockResolvedValue(homeWithDeltas([delta("Throughput", deltaPct)]));
+            mockGetHomeData.mockResolvedValue(homeWithDeltas([delta("Churn", deltaPct)]));
             const signals = byId(await getImproveSignals(defaultMetricFilter));
             expect(signals["improve-top-signal"].state, `${deltaPct}% → ${expected}`).toBe(
                 expected,
@@ -118,7 +141,7 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
 
     it("omits the TOP SIGNAL when NO metric worsened (Opportunities leads as neutral, no fabricated severity)", async () => {
         mockGetHomeData.mockResolvedValue(
-            homeWithDeltas([delta("Throughput", -5), delta("Cycle Time", -2)]),
+            homeWithDeltas([delta("Throughput", 5), delta("Cycle Time", -2)]),
         );
         const signals = await getImproveSignals(defaultMetricFilter);
         expect(signals.find((s) => s.id === "improve-top-signal")).toBeUndefined();
@@ -207,7 +230,9 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         expect(signals["improve-top-signal"]).toBeUndefined();
         // Other signals still resolve
         expect(signals.experiments).toMatchObject({ state: "unavailable" });
-        expect(signals["improve-automations"]).toMatchObject({ state: "unavailable" });
+        expect(signals["improve-automations"]).toMatchObject({
+            state: "unavailable",
+        });
     });
 
     // ── Preview sub-areas (Experiments / Automations) ─────────────────────────────

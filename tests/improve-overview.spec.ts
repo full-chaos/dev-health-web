@@ -73,17 +73,17 @@ test.describe("Improve Overview landing", () => {
     test("keeps Experiments + Automations as non-clickable preview chips", async ({ page }) => {
         await page.goto("/improve", { waitUntil: "domcontentloaded" });
 
-        const emptyTier = page.getByTestId("area-overview-empty-tier");
-        await expect(emptyTier).toBeVisible();
+        const grid = page.getByTestId("area-overview-grid");
+        await expect(grid).toBeVisible();
 
         for (const label of ["Experiments", "Automations"]) {
-            const chip = emptyTier.locator("[data-signal-id]", { hasText: label });
-            await expect(chip).toHaveAttribute("data-preview", "true");
-            await expect(chip).toHaveAttribute("aria-disabled", "true");
+            const card = grid.locator("[data-signal-id]", { hasText: label });
+            await expect(card).toHaveAttribute("data-preview", "true");
+            await expect(card).toHaveAttribute("aria-disabled", "true");
         }
         // Preview chips are never links (dead route can't 404).
-        await expect(emptyTier.getByRole("link", { name: "Experiments" })).toHaveCount(0);
-        await expect(emptyTier.getByRole("link", { name: "Automations" })).toHaveCount(0);
+        await expect(grid.getByRole("link", { name: "Experiments" })).toHaveCount(0);
+        await expect(grid.getByRole("link", { name: "Automations" })).toHaveCount(0);
     });
 
     test("marks Improve as the single selected area on /improve", async ({ page }) => {
