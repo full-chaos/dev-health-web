@@ -744,6 +744,7 @@ export type HomeResult = {
   __typename?: 'HomeResult';
   deltas: Array<MetricDelta>;
   freshness: Freshness;
+  reworkThemeAllocation: Array<ReworkThemeAllocation>;
 };
 
 export type HotspotRow = {
@@ -813,6 +814,7 @@ export type MeasureInput =
   | 'PIPELINE_QUEUE_TIME'
   | 'PIPELINE_RERUN_RATE'
   | 'PIPELINE_SUCCESS_RATE'
+  | 'PR_REWORK_RATIO'
   | 'TEST_FAILURE_RATE'
   | 'TEST_FLAKE_RATE'
   | 'TEST_PASS_RATE'
@@ -1394,6 +1396,16 @@ export type ReviewEdgesResult = {
   __typename?: 'ReviewEdgesResult';
   edges: Array<ReviewEdgeRow>;
   totalCount: Scalars['Int']['output'];
+};
+
+export type ReworkThemeAllocation = {
+  __typename?: 'ReworkThemeAllocation';
+  allocation: Scalars['Float']['output'];
+  allocationPct: Scalars['Float']['output'];
+  churnLoc: Scalars['Int']['output'];
+  label: Scalars['String']['output'];
+  prsMerged: Scalars['Int']['output'];
+  theme: Scalars['String']['output'];
 };
 
 export type SankeyCoverage = {
