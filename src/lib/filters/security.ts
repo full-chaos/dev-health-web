@@ -1,18 +1,50 @@
+/**
+ * Encodes a UTF-8 string as base64url.
+ *
+ * Uses "base64" (not "base64url") when a Buffer is present because the
+ * browser Buffer polyfill (injected by Next.js/webpack) does NOT support
+ * the "base64url" encoding name and throws `TypeError: Unknown encoding`.
+ * The URL-safe substitution is applied manually instead.
+ *
+ * Falls back to TextEncoder + btoa for environments where Buffer is absent.
+ */
 const toBase64Url = (value: string): string => {
+    let base64: string;
     if (typeof Buffer !== "undefined") {
-        return Buffer.from(value, "utf-8").toString("base64url");
+        // "base64" is supported by the browser polyfill; "base64url" is not.
+        base64 = Buffer.from(value, "utf-8").toString("base64");
+    } else {
+        // TextEncoder guarantees correct UTF-8 byte handling (unlike raw btoa).
+        const bytes = new TextEncoder().encode(value);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        base64 = btoa(binary);
     }
-    const encoded = btoa(unescape(encodeURIComponent(value)));
-    return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 };
 
+/**
+ * Decodes a base64url string to a UTF-8 string.
+ * Symmetric counterpart to toBase64Url — restores standard base64 padding
+ * and characters before decoding so the round-trip is lossless.
+ */
 const fromBase64Url = (value: string): string => {
-    if (typeof Buffer !== "undefined") {
-        return Buffer.from(value, "base64url").toString("utf-8");
-    }
+    // Restore standard base64: swap url-safe chars back and re-pad to 4-char boundary.
     const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
     const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-    return decodeURIComponent(escape(atob(padded)));
+    if (typeof Buffer !== "undefined") {
+        // "base64" is supported by the browser polyfill; "base64url" is not.
+        return Buffer.from(padded, "base64").toString("utf-8");
+    }
+    // TextDecoder guarantees correct UTF-8 decoding (unlike escape/decodeURIComponent).
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return new TextDecoder().decode(bytes);
 };
 
 const stableStringify = (input: unknown): string => {
