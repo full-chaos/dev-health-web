@@ -198,7 +198,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
 
     return (
         <div className="min-h-screen bg-background text-foreground">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                 <PrimaryNav filters={filters} active="people" />
                 <main className="flex min-w-0 flex-1 flex-col gap-8">
                     <header className="flex flex-wrap items-start justify-between gap-4">

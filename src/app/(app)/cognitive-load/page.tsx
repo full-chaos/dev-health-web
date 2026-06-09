@@ -192,7 +192,12 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                   value: formatLoad(avgPrInterruptionLoad),
                   delta: `${sinceDate} – ${untilDate}`,
                   deltaTone: "text-(--ink-muted)",
-                  interpretation: avgPrInterruptionLoad > 15 ? "Rising" : avgPrInterruptionLoad > 8 ? "Watch" : "Easing",
+                  interpretation:
+                      avgPrInterruptionLoad > 15
+                          ? "Rising"
+                          : avgPrInterruptionLoad > 8
+                            ? "Watch"
+                            : "Easing",
                   description:
                       "Reviews, first-review events, and review feedback interrupting focused delivery.",
               },
@@ -210,25 +215,44 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                   value: formatLoad(avgReviewRequestLoad),
                   delta: `avg over ${cognitiveLoadData?.totalDays ?? rawSignals.length} days`,
                   deltaTone: avgReviewRequestLoad > 10 ? "text-rose-600" : "text-(--ink-muted)",
-                  interpretation: avgReviewRequestLoad > 10 ? "Rising" : avgReviewRequestLoad > 5 ? "Watch" : "Low",
+                  interpretation:
+                      avgReviewRequestLoad > 10
+                          ? "Rising"
+                          : avgReviewRequestLoad > 5
+                            ? "Watch"
+                            : "Low",
                   description:
                       "Aggregate review requests handled by the team, never a person-level queue ranking.",
               },
               {
                   label: "After-hours trend",
                   value: avgAfterHours != null ? formatPct(avgAfterHours) : "—",
-                  delta: avgAfterHours != null ? (teamId ? "team-scoped" : "org-wide") : "no team scope",
-                  deltaTone: avgAfterHours != null && avgAfterHours > 0.3 ? "text-amber-600" : "text-(--ink-muted)",
-                  interpretation: avgAfterHours == null ? "N/A" : avgAfterHours > 0.3 ? "Watch" : "Stable",
+                  delta:
+                      avgAfterHours != null
+                          ? teamId
+                              ? "team-scoped"
+                              : "org-wide"
+                          : "no team scope",
+                  deltaTone:
+                      avgAfterHours != null && avgAfterHours > 0.3
+                          ? "text-amber-600"
+                          : "text-(--ink-muted)",
+                  interpretation:
+                      avgAfterHours == null ? "N/A" : avgAfterHours > 0.3 ? "Watch" : "Stable",
                   description: "Existing commit-time rollups outside weekday business hours.",
               },
               {
                   label: "Weekend trend",
                   value: avgWeekend != null ? formatPct(avgWeekend) : "—",
-                  delta: avgWeekend != null ? (teamId ? "team-scoped" : "org-wide") : "no team scope",
-                  deltaTone: avgWeekend != null && avgWeekend > 0.2 ? "text-amber-600" : "text-emerald-600",
+                  delta:
+                      avgWeekend != null ? (teamId ? "team-scoped" : "org-wide") : "no team scope",
+                  deltaTone:
+                      avgWeekend != null && avgWeekend > 0.2
+                          ? "text-amber-600"
+                          : "text-emerald-600",
                   interpretation: avgWeekend == null ? "N/A" : avgWeekend > 0.2 ? "Watch" : "Lower",
-                  description: "Existing weekend activity ratio, aggregated before it reaches this surface.",
+                  description:
+                      "Existing weekend activity ratio, aggregated before it reaches this surface.",
               },
           ]
         : null; // null signals no data — rendered as empty state below
@@ -257,7 +281,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
 
     return (
         <div className="min-h-screen bg-background text-foreground">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                 <PrimaryNav filters={filters} active="cognitive-load" role={activeRole} />
                 <main
                     className="flex min-w-0 flex-1 flex-col gap-6"

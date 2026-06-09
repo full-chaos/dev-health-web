@@ -231,7 +231,7 @@ export default function SingleReportPage() {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-background text-foreground">
-                <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+                <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                     <PrimaryNav filters={defaultMetricFilter} active="reports" />
                     <main className="flex min-w-0 flex-1 flex-col gap-8">
                         <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
@@ -246,7 +246,7 @@ export default function SingleReportPage() {
     if (!report) {
         return (
             <div className="min-h-screen bg-background text-foreground">
-                <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+                <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                     <PrimaryNav filters={defaultMetricFilter} active="reports" />
                     <main className="flex min-w-0 flex-1 flex-col gap-8">
                         <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
@@ -373,7 +373,7 @@ export default function SingleReportPage() {
 
     return (
         <div className="min-h-screen bg-background text-foreground">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                 <PrimaryNav filters={defaultMetricFilter} active="reports" />
                 <main className="flex min-w-0 flex-1 flex-col gap-8">
                     {error && (
