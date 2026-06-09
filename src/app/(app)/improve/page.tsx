@@ -59,8 +59,8 @@ export default async function ImprovePage({ searchParams }: ImprovePageProps) {
                         signals={improveSignals}
                         filters={filters}
                         role={activeRole}
-                        title="Improve"
-                        description="Opportunities, experiments, and automations — each producing actions, not dashboards."
+                        title="Related workflows"
+                        description="Improvement workflows, ordered by severity."
                     />
                 </main>
             </div>
