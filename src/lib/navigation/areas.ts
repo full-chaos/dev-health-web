@@ -304,7 +304,8 @@ export const navAreas: readonly NavArea[] = [
                 id: "operating-review",
                 label: "Operating Review",
                 href: "/operating-review",
-                description: "Monday-ready weekly agenda: delivery, bottlenecks, risk, reliability, and investment.",
+                description:
+                    "Monday-ready weekly agenda: delivery, bottlenecks, risk, reliability, and investment.",
                 metricLabel: "Weekly signals",
             },
         ],

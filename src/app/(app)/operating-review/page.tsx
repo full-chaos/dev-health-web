@@ -123,10 +123,7 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
                             title="Could not load operating review"
                             message="The request failed. Check your data connections and retry."
                             action={
-                                <Link
-                                    className="text-sm font-medium text-primary"
-                                    href="/settings"
-                                >
+                                <Link className="text-sm font-medium text-primary" href="/settings">
                                     {CTA_LABELS.checkDataConnections}
                                 </Link>
                             }
@@ -184,11 +181,7 @@ async function resolveOperatingReview(
 
     const [ceilingRes, teamResults] = await Promise.all([
         fetchReview(orgId, null, weekStart, "all-teams-ceiling"),
-        Promise.all(
-            selectedTeamIds.map((teamId) =>
-                fetchReview(orgId, teamId, weekStart, teamId),
-            ),
-        ),
+        Promise.all(selectedTeamIds.map((teamId) => fetchReview(orgId, teamId, weekStart, teamId))),
     ]);
 
     const anyError = !ceilingRes.ok || teamResults.some((r) => !r.ok);
@@ -230,8 +223,8 @@ function SelectedTeamsBadge({ teamIds }: { teamIds: string[] }) {
             <span className="font-medium text-foreground">
                 {teamIds.length} selected {teamIds.length === 1 ? "team" : "teams"}
             </span>
-            . The Risk and Reliability sections reflect org-wide signals (repo-scoped, team-agnostic)
-            even in filtered mode.
+            . The Risk and Reliability sections reflect org-wide signals (repo-scoped,
+            team-agnostic) even in filtered mode.
         </section>
     );
 }
