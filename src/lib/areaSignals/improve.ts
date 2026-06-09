@@ -43,6 +43,7 @@ import { logger } from "@/lib/logger";
 
 import type { AreaSignal, AreaSignalState } from "./types";
 import { sortBySeverity } from "./sort";
+import { getMetricPolarity } from "@/lib/metrics/catalog";
 
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
@@ -67,10 +68,13 @@ function severityForDelta(deltaPct: number): Exclude<AreaSignalState, "neutral" 
 
 /** The single worst worsened metric (largest absolute delta in the wrong direction), or undefined when none worsened. */
 function worstWorsenedDelta(deltas: MetricDelta[] | undefined): MetricDelta | undefined {
-    const HIGHER_IS_BETTER = new Set(["throughput", "ci_success", "deploy_freq"]);
     const worsened = (deltas ?? []).filter((d) => {
-        const isHigherBetter = HIGHER_IS_BETTER.has(d.metric);
-        return isHigherBetter ? d.delta_pct < 0 : d.delta_pct > 0;
+        const polarity = getMetricPolarity(d.metric);
+        if (!polarity) {
+            logger.warn({ metric: d.metric }, "Unknown metric polarity, excluding from top signal");
+            return false;
+        }
+        return polarity === "higherIsBetter" ? d.delta_pct < 0 : d.delta_pct > 0;
     });
     if (worsened.length === 0) return undefined;
     return [...worsened].sort((a, b) => Math.abs(b.delta_pct) - Math.abs(a.delta_pct))[0];
@@ -165,7 +169,8 @@ export async function getImproveSignals(
     // count leads as a neutral, no fabricated severity).
     const worst = worstWorsenedDelta(homeData?.deltas);
     if (worst && openCount && openCount > 0) {
-        const isHigherBetter = ["throughput", "ci_success", "deploy_freq"].includes(worst.metric);
+        const polarity = getMetricPolarity(worst.metric);
+        const isHigherBetter = polarity === "higherIsBetter";
         const action = isHigherBetter ? "Recover" : "Reduce";
         const sign = worst.delta_pct > 0 ? "+" : "";
         signals.push({
