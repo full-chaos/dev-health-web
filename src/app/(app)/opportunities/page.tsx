@@ -70,7 +70,13 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                                 activeRole={activeRole}
                             />
                         ))}
-                        {!data?.items?.length && (
+                        {data && data.items.length === 0 && (
+                            <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                                No open opportunities in this window — nothing is trending worse for
+                                the current scope.
+                            </div>
+                        )}
+                        {!data && (
                             <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
                                 Opportunity data unavailable.
                             </div>

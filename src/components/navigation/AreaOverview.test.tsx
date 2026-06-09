@@ -125,4 +125,25 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         expect(within(emptyTier).getAllByRole("link")).toHaveLength(2);
         expect(within(emptyTier).queryAllByTestId("area-signal-card")).toHaveLength(0);
     });
+
+    it("renders a PREVIEW empty-tier chip as non-clickable, a routed one as a link (CHAOS-2217)", () => {
+        renderOverview([
+            signal("routed", "unavailable"),
+            signal("preview", "unavailable", { preview: true }),
+        ]);
+        const emptyTier = screen.getByTestId("area-overview-empty-tier");
+
+        // The preview chip is NOT a link (dead route can't 404) but stays visible.
+        const previewChip = within(emptyTier)
+            .getAllByText((_, el) => el?.getAttribute("data-signal-id") === "preview")
+            .find((el) => el.getAttribute("data-signal-id") === "preview")!;
+        expect(previewChip.tagName).not.toBe("A");
+        expect(previewChip.getAttribute("aria-disabled")).toBe("true");
+
+        // The routed unavailable chip remains a link.
+        const routedLink = within(emptyTier).getByRole("link", { name: "routed" });
+        expect(routedLink).toHaveAttribute("data-signal-id", "routed");
+        // Exactly one link in the tier (only the routed one).
+        expect(within(emptyTier).getAllByRole("link")).toHaveLength(1);
+    });
 });
