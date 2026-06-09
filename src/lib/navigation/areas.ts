@@ -338,6 +338,20 @@ export const navAreas: readonly NavArea[] = [
                 description: "Evidence-linked improvement opportunities.",
                 metricLabel: "Opportunities data",
             },
+            {
+                id: "experiments",
+                label: "Experiments",
+                href: "/improve/experiments",
+                description: "Run and track improvement experiments.",
+                metricLabel: "Experiments data",
+            },
+            {
+                id: "improve-automations",
+                label: "Automations",
+                href: "/improve/automations",
+                description: "Automated improvement workflows.",
+                metricLabel: "Automations data",
+            },
         ],
         children: [
             {
