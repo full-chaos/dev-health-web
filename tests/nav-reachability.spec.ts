@@ -14,9 +14,11 @@ const primaryAreas = [
 ] as const;
 
 // Leaf labels that must NOT appear as flat sidebar rows anymore.
-// NOTE: "Operating Review" was here when it was a hidden preview. It has been
-// promoted to a visible Plan child (CHAOS-2181) and therefore removed from this list.
+// NOTE: "Operating Review" was promoted to a visible Plan child (CHAOS-2181),
+// then hidden again pending a hard rethink (CHAOS-2181 follow-up). The route
+// stays reachable by URL; the nav row must not render.
 const collapsedLeafLabels = [
+    "Operating Review",
     "Flow",
     "Investment",
     "Landscape",
@@ -152,11 +154,9 @@ test.describe("primary navigation reachability", () => {
                 url: /\/plan\/capacity(?:[?#].*)?$/,
                 path: "/plan/capacity",
             },
-            {
-                label: "Operating Review",
-                url: /\/operating-review(?:[?#].*)?$/,
-                path: "/operating-review",
-            },
+            // "Operating Review" is hidden from nav (navVisible: false) pending
+            // a rethink — see collapsedLeafLabels above. Route stays reachable
+            // by URL (asserted via reachableRoutes).
         ]) {
             await clickUntilUrl(
                 page,

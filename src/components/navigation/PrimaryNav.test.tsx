@@ -225,11 +225,12 @@ describe("PrimaryNav — active-area resolution (A10: one selected at a time)", 
             landing: true,
         },
         {
+            // operating-review is hidden from nav (CHAOS-2181 follow-up): the Plan
+            // area row carries the selection; no child row renders.
             pathname: "/operating-review",
             active: "operating-review",
             area: /^Plan$/i,
-            landing: false,
-            child: /^Operating Review$/i,
+            landing: true,
         },
         { pathname: "/work", active: "work", area: /^Diagnose$/i, landing: true },
         {

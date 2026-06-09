@@ -326,7 +326,11 @@ export const navAreas: readonly NavArea[] = [
                 id: "operating-review",
                 label: "Operating Review",
                 path: "/operating-review",
-                navVisible: true,
+                // Hidden from nav pending a hard rethink of the Operating Review
+                // surface (CHAOS-2181 follow-up). The route stays reachable by URL;
+                // `preview: true` per the IA invariant for navVisible:false children.
+                navVisible: false,
+                preview: true,
             },
         ],
     },

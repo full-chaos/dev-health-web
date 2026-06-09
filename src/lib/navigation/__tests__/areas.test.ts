@@ -216,11 +216,8 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
             pathname: "/plan/capacity",
             childId: "capacity",
         },
-        {
-            areaId: "plan",
-            pathname: "/operating-review",
-            childId: "operating-review",
-        },
+        // NOTE: operating-review is hidden (navVisible: false, CHAOS-2181
+        // follow-up) and therefore intentionally absent from selection cases.
         {
             areaId: "improve",
             pathname: "/opportunities",
@@ -298,7 +295,8 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
         expect(navTitleForPathname("/plan/capacity")).toBe("Capacity Forecast");
-        expect(navTitleForPathname("/operating-review")).toBe("Operating Review");
+        // operating-review is hidden (navVisible: false) — title falls back to the area label.
+        expect(navTitleForPathname("/operating-review")).toBe("Plan");
         expect(navTitleForPathname("/improve")).toBe("Overview");
         expect(navTitleForPathname("/opportunities")).toBe("Opportunities");
         expect(navTitleForPathname("/ai/impact")).toBe("Impact");
