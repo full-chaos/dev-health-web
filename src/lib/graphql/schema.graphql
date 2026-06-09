@@ -122,9 +122,19 @@ type AIImpactSummary {
   aiAssistedPrRatio: Float
   byBucket: [AIImpactBucketTotals!]!
   daily: [AIImpactBucketRow!]!
+  repoBreakdown: [AIImpactScopeRollupRow!]!
+  teamBreakdown: [AIImpactScopeRollupRow!]!
   missingStates: [AIMissingState!]!
   dataAvailable: Boolean!
   computedAt: DateTime
+}
+
+type AIImpactScopeRollupRow {
+  scopeId: String!
+  scopeLabel: String!
+  aiPrsTotal: Int!
+  aiAssistedPrRatio: Float
+  reworkRateDelta: Float
 }
 
 type AILeverageComponents {
@@ -166,6 +176,11 @@ enum AIOpportunityKind {
   HIGH_REWORK
   SLOW_CYCLE
   UNCOVERED_TEST_AREA
+  TEST_GENERATION
+  DEPENDENCY_UPDATES
+  MECHANICAL_MIGRATIONS
+  DOCUMENTATION_DRIFT
+  FLAKY_TEST_TRIAGE
 }
 
 type AIReviewLoadResult {
@@ -188,6 +203,8 @@ type AIReviewLoadRow {
   reviewAmplification: Float
   postFirstReviewPushesCount: Int!
   postFirstReviewPushesPerPr: Float
+  pickupLatencyHours: Float
+  reviewCommentsPerLoc: Float
 }
 
 type AIReviewerConcentrationSummary {
@@ -201,8 +218,25 @@ type AIRiskBreakdownResult {
   startDate: Date!
   endDate: Date!
   byBucket: [AIRiskBreakdownRow!]!
+  hotspotOverlap: [AIHotspotOverlapRow!]!
+  complexityOverlap: [AIComplexityOverlapRow!]!
   missingStates: [AIMissingState!]!
   dataAvailable: Boolean!
+}
+
+type AIHotspotOverlapRow {
+  bucket: String!
+  prsTotal: Int!
+  prsTouchingHotspots: Int!
+  hotspotOverlapRate: Float
+  avgHotspotRiskScore: Float
+}
+
+type AIComplexityOverlapRow {
+  bucket: String!
+  prsTotal: Int!
+  prsTouchingHighComplexity: Int!
+  complexityOverlapRate: Float
 }
 
 type AIRiskBreakdownRow {
