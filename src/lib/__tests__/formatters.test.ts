@@ -31,6 +31,36 @@ describe("formatters", () => {
         expect(formatMetricValue(11, "%")).toBe("11%");
         expect(formatMetricValue(8, "hours")).toBe("8h");
     });
+
+    describe("formatMetricValue duration (unit='m')", () => {
+        // Values arrive in minutes (fetcher normalises real seconds→minutes;
+        // sample data is already in minutes). The formatter only labels the unit.
+
+        it("formats an already-minutes value with 1 decimal and 'm' suffix", () => {
+            // Sample: PIPELINE_DURATION_P95 ends at 12 → "12m"
+            expect(formatMetricValue(12, "m")).toBe("12m");
+        });
+
+        it("formats a fractional-minutes value to 1 decimal", () => {
+            // e.g. 9.345 minutes → "9.3m"
+            expect(formatMetricValue(9.345, "m")).toBe("9.3m");
+        });
+
+        it("formats a sub-minute value (0.5 min = 30 s after normalisation)", () => {
+            expect(formatMetricValue(0.5, "m")).toBe("0.5m");
+        });
+
+        it("does NOT divide by 60 — 12 stays 12, not 0.2", () => {
+            // Regression guard: the old bug divided sample values by 60,
+            // turning 12m into 0.2m. The formatter must not convert units.
+            expect(formatMetricValue(12, "m")).not.toBe("0.2m");
+        });
+
+        it("does not affect non-duration units", () => {
+            expect(formatMetricValue(42, "%")).toBe("42%");
+            expect(formatMetricValue(3, "days")).toBe("3d");
+        });
+    });
 });
 
 describe("formatter caching", () => {

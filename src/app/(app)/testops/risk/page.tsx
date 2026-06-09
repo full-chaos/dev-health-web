@@ -178,7 +178,6 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                     <section className="grid gap-4 lg:grid-cols-3">
                         <MetricCard
                             label="Release Confidence"
-                            href="#"
                             value={
                                 riskData.release_confidence
                                     ? riskData.release_confidence * 100
@@ -191,7 +190,6 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                         />
                         <MetricCard
                             label="Quality Drag"
-                            href="#"
                             value={riskData.quality_drag_hours}
                             unit="h"
                             delta={riskData.drag_delta}
@@ -200,7 +198,6 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                         />
                         <MetricCard
                             label="Pipeline Stability"
-                            href="#"
                             value={
                                 riskData.pipeline_stability
                                     ? riskData.pipeline_stability * 100

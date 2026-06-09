@@ -43,3 +43,30 @@ describe("MetricCard delta slot (metric coherence: never a bare '--')", () => {
         expect(screen.queryByText("No prior period")).not.toBeInTheDocument();
     });
 });
+
+describe("MetricCard link affordance (no placeholder href='#')", () => {
+    it("renders as a non-link with no 'Open evidence' cue when href is omitted", () => {
+        render(<MetricCard label="Line Coverage" value={85} unit="%" />);
+        // No anchor → the card no longer looks clickable when it goes nowhere.
+        expect(screen.queryByRole("link")).not.toBeInTheDocument();
+        expect(screen.queryByText("Open evidence")).not.toBeInTheDocument();
+    });
+
+    it("renders a real link with the 'Open evidence' cue when href is provided", () => {
+        render(<MetricCard label="Line Coverage" href="/explore" value={85} unit="%" />);
+        expect(screen.getByRole("link")).toHaveAttribute("href", "/explore");
+        expect(screen.getByText("Open evidence")).toBeInTheDocument();
+    });
+});
+
+describe("MetricCard inverse-good delta coloring (lower-is-better metrics)", () => {
+    it("colors a positive delta as caution without inverting the displayed number", () => {
+        render(<MetricCard label="Failure Rate" value={36} unit="%" delta={5} inverseGood />);
+        // Truthful number: an increase reads as +5%, never a negated -5%.
+        const deltaEl = screen.getByText(/\+5%/);
+        expect(screen.queryByText(/-5%/)).not.toBeInTheDocument();
+        // ...but the tone is a regression (caution/negative), not positive/green.
+        expect(deltaEl.className).toContain("--accent-negative");
+        expect(deltaEl.className).not.toContain("--positive");
+    });
+});

@@ -9,7 +9,12 @@ vi.mock("@/lib/graphql/urqlClient", () => ({
     graphqlFetch: vi.fn(),
 }));
 
-import { fetchRiskMetrics, fetchTestOpsData, fetchCoverageMetrics } from "../fetchers";
+import {
+    fetchRiskMetrics,
+    fetchTestOpsData,
+    fetchCoverageMetrics,
+    normalizeAnalyticsDurations,
+} from "../fetchers";
 import { SAMPLE_RISK_DATA } from "../sample-data";
 import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
@@ -142,5 +147,96 @@ describe("fetchCoverageMetrics schema hardening (CHAOS-2078)", () => {
         const result = await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
 
         expect(result).toEqual(good);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeAnalyticsDurations (C1 regression guard)
+// ---------------------------------------------------------------------------
+
+describe("normalizeAnalyticsDurations", () => {
+    it("converts PIPELINE_DURATION_P95 bucket values from seconds to minutes", () => {
+        const input = {
+            timeseries: [
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "all",
+                    measure: "PIPELINE_DURATION_P95",
+                    buckets: [
+                        { date: "2024-01-01", value: 720 }, // 720s = 12 min
+                        { date: "2024-01-02", value: 600 }, // 600s = 10 min
+                    ],
+                },
+            ],
+            breakdowns: [],
+        };
+        const result = normalizeAnalyticsDurations(input);
+        const ts = result.timeseries[0];
+        expect(ts.buckets[0].value).toBeCloseTo(12);
+        expect(ts.buckets[1].value).toBeCloseTo(10);
+    });
+
+    it("converts PIPELINE_QUEUE_TIME and TEST_SUITE_DURATION_P95 values", () => {
+        const input = {
+            timeseries: [
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "all",
+                    measure: "PIPELINE_QUEUE_TIME",
+                    buckets: [{ date: "2024-01-01", value: 60 }], // 60s = 1 min
+                },
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "all",
+                    measure: "TEST_SUITE_DURATION_P95",
+                    buckets: [{ date: "2024-01-01", value: 258 }], // 258s = 4.3 min
+                },
+            ],
+            breakdowns: [],
+        };
+        const result = normalizeAnalyticsDurations(input);
+        expect(result.timeseries[0].buckets[0].value).toBeCloseTo(1);
+        expect(result.timeseries[1].buckets[0].value).toBeCloseTo(4.3);
+    });
+
+    it("does NOT convert non-duration measures (e.g. PIPELINE_SUCCESS_RATE)", () => {
+        const input = {
+            timeseries: [
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "all",
+                    measure: "PIPELINE_SUCCESS_RATE",
+                    buckets: [{ date: "2024-01-01", value: 92 }],
+                },
+            ],
+            breakdowns: [],
+        };
+        const result = normalizeAnalyticsDurations(input);
+        // Value must remain 92 — dividing by 60 would corrupt the percentage
+        expect(result.timeseries[0].buckets[0].value).toBe(92);
+    });
+
+    it("sample data passthrough — 12 stays 12 (not converted a second time)", () => {
+        // Sample PIPELINE_DURATION_P95 last value is 12 (already in minutes).
+        // normalizeAnalyticsDurations is NOT called on sample data paths;
+        // this test guards against accidental double-conversion if it were.
+        const sampleLike = {
+            timeseries: [
+                {
+                    dimension: "TEAM",
+                    dimensionValue: "all",
+                    measure: "PIPELINE_SUCCESS_RATE", // non-duration, must pass through
+                    buckets: [{ date: "2024-01-07", value: 91 }],
+                },
+            ],
+            breakdowns: [],
+        };
+        const result = normalizeAnalyticsDurations(sampleLike);
+        expect(result.timeseries[0].buckets[0].value).toBe(91);
+    });
+
+    it("returns empty timeseries unchanged", () => {
+        const input = { timeseries: [], breakdowns: [] };
+        expect(normalizeAnalyticsDurations(input)).toEqual(input);
     });
 });

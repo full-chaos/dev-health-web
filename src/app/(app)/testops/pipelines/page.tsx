@@ -14,6 +14,12 @@ import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
 import { buildFailurePatternsModel, UNATTRIBUTED_LABEL } from "@/lib/testops/failure-patterns";
 import {
+    mergeSeriesByMeasure,
+    getLatestValue,
+    getSparkline,
+    getDelta,
+} from "@/lib/testops/aggregateSeries";
+import {
     TimeseriesResult,
     TimeseriesBucket,
     BreakdownResult,
@@ -25,32 +31,6 @@ import { TestOpsTabs } from "../TestOpsTabs";
 type PipelinesPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
-    if (!series || !series.buckets || series.buckets.length === 0) return undefined;
-    return series.buckets[series.buckets.length - 1].value;
-}
-
-function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
-    if (!series || !series.buckets) return undefined;
-    return series.buckets.map((b: TimeseriesBucket) => ({
-        ts: b.date,
-        value: b.value,
-    }));
-}
-
-/** Period-over-period change (%) from first to last bucket; undefined when history is insufficient. */
-function getDelta(timeseries: TimeseriesResult[], measureId: string) {
-    const series = timeseries.find((s) => s.measure === measureId);
-    const buckets = series?.buckets;
-    if (!buckets || buckets.length < 2) return undefined;
-    const prev = buckets[0].value;
-    const curr = buckets[buckets.length - 1].value;
-    if (prev === 0) return undefined;
-    return ((curr - prev) / Math.abs(prev)) * 100;
-}
 
 export default async function PipelinesPage({ searchParams }: PipelinesPageProps) {
     const params = (await searchParams) ?? {};
@@ -136,9 +116,7 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
         { id: "PIPELINE_RERUN_RATE", ts: pipelineTimeseries },
     ];
 
-    const successRateSeries = pipelineTimeseries.find(
-        (s: TimeseriesResult) => s.measure === "PIPELINE_SUCCESS_RATE",
-    );
+    const successRateSeries = mergeSeriesByMeasure(pipelineTimeseries, "PIPELINE_SUCCESS_RATE");
     const failureBreakdown = pipelineBreakdowns.find(
         (b: BreakdownResult) => b.measure === "PIPELINE_FAILURE_RATE",
     );
@@ -188,7 +166,6 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
                                 <MetricCard
                                     key={id}
                                     label={def.label}
-                                    href="#"
                                     value={value}
                                     unit={
                                         def.unit === "percentage"
@@ -199,6 +176,7 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
                                     }
                                     delta={delta}
                                     deltaUnavailableLabel="Insufficient history"
+                                    inverseGood={def.goodDirection === "down"}
                                     spark={spark}
                                     caption={def.description}
                                 />

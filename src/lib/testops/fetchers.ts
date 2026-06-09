@@ -23,6 +23,33 @@ import {
 
 const EMPTY_ANALYTICS: AnalyticsResult = { timeseries: [], breakdowns: [] };
 
+// Duration measures whose backend buckets are stored in seconds. Sample data is
+// already in minutes, so this normalisation is applied only in real (non-test) mode.
+const DURATION_MEASURES_SECONDS = new Set([
+    "PIPELINE_DURATION_P95",
+    "PIPELINE_QUEUE_TIME",
+    "TEST_SUITE_DURATION_P95",
+]);
+
+/**
+ * Converts duration-measure bucket values from seconds to minutes.
+ * All other measures are passed through unchanged.
+ * Safe to call with empty / partial results.
+ */
+export function normalizeAnalyticsDurations(result: AnalyticsResult): AnalyticsResult {
+    return {
+        ...result,
+        timeseries: result.timeseries.map((series) =>
+            DURATION_MEASURES_SECONDS.has(series.measure)
+                ? {
+                      ...series,
+                      buckets: series.buckets.map((b) => ({ ...b, value: b.value / 60 })),
+                  }
+                : series,
+        ),
+    };
+}
+
 /** Resolve orgId from the auth session, falling back to "default-org". */
 async function resolveOrgId(orgId?: string): Promise<string> {
     if (orgId) return orgId;
@@ -60,9 +87,12 @@ export async function fetchTestOpsData(
             }),
         ]);
 
+        // Normalise duration measures from seconds (backend) to minutes so that
+        // the display layer (formatMetricValue with unit "m") can label without
+        // converting. Sample data is already in minutes and is NOT passed here.
         return {
-            pipelines: pipelinesRes.analytics,
-            tests: testsRes.analytics,
+            pipelines: normalizeAnalyticsDurations(pipelinesRes.analytics),
+            tests: normalizeAnalyticsDurations(testsRes.analytics),
             coverage: coverageRes.analytics,
         };
     } catch (error) {

@@ -4,6 +4,7 @@ import { FeatureFlagTable } from "@/components/feature-flags/FeatureFlagTable";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { DataState } from "@/components/ui/DataState";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
@@ -42,14 +43,35 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
         filters?.time?.start_date ??
         new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
 
+    // fetchFeatureFlagsData re-throws on total failure (honest over silent-zero).
+    // Catch it here so a flags-fetch error degrades to a page-local error rather
+    // than rejecting the whole Promise.all and hitting the (app)/error.tsx boundary
+    // (which replaces the entire app shell including the sidebar).
     const [health, ffData, flagList] = await Promise.all([
         checkApiHealth(),
-        fetchFeatureFlagsData({ startDate, endDate }, isTestMode),
+        fetchFeatureFlagsData({ startDate, endDate }, isTestMode).catch(() => null),
         fetchFeatureFlagList(0, 20),
     ]);
 
     if (!health.ok && !isTestMode) {
         return <ServiceUnavailable />;
+    }
+
+    if (!ffData) {
+        return (
+            <div className="min-h-screen bg-background text-foreground">
+                <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+                    <PrimaryNav filters={filters} active="feature-flags" role={activeRole} />
+                    <main className="flex min-w-0 flex-1 flex-col gap-8">
+                        <DataState
+                            variant="error"
+                            title="Feature flags unavailable"
+                            message="Unable to load feature flag metrics. Try refreshing the page."
+                        />
+                    </main>
+                </div>
+            </div>
+        );
     }
 
     const { summary } = ffData;

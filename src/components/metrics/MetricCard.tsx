@@ -8,12 +8,19 @@ import type { SparkPoint } from "@/lib/types";
 
 type MetricCardProps = {
     label: string;
-    href: string;
+    /**
+     * Drill-down destination. When omitted the card renders as a non-link
+     * (no fake hover affordance, no "Open evidence" caption) instead of a
+     * placeholder `href="#"` that goes nowhere.
+     */
+    href?: string;
     value?: number;
     unit?: string;
     delta?: number;
     /** Label shown in the delta slot when no delta is available (never a bare "--"). */
     deltaUnavailableLabel?: string;
+    /** Lower-is-better metric: an increase is colored as negative (forwarded to MetricDelta). */
+    inverseGood?: boolean;
     spark?: SparkPoint[];
     caption?: string;
     className?: string;
@@ -27,6 +34,7 @@ export function MetricCard({
     unit,
     delta,
     deltaUnavailableLabel = "No prior period",
+    inverseGood,
     spark,
     caption,
     className,
@@ -34,18 +42,24 @@ export function MetricCard({
 }: MetricCardProps) {
     const sparkValues = spark?.map((point) => point.value) ?? [];
     const sparkLabels = spark?.map((point) => point.ts) ?? [];
+    // Only a real destination earns the clickable affordance + "Open evidence" cue.
+    const captionText = caption ?? (href ? "Open evidence" : null);
+    const cardClassName = `group rounded-3xl border border-(--card-stroke) bg-card p-4 ${
+        href ? "transition hover:-translate-y-1 hover:shadow-lg" : ""
+    } ${className ?? ""}`;
 
-    return (
-        <Link
-            href={href}
-            className={`group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg ${className ?? ""}`}
-        >
+    const body = (
+        <>
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                 <div className="flex items-center">
                     <span>{label}</span>
                     {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
                 </div>
-                <MetricDelta value={delta} unavailableLabel={deltaUnavailableLabel} />
+                <MetricDelta
+                    value={delta}
+                    unavailableLabel={deltaUnavailableLabel}
+                    inverseGood={inverseGood}
+                />
             </div>
             <div className="mt-3 flex items-center justify-between gap-4">
                 <div>
@@ -54,9 +68,9 @@ export function MetricCard({
                             ? "--"
                             : formatMetricValue(value, unit ?? "")}
                     </p>
-                    <p className="mt-2 text-xs text-(--ink-muted)">
-                        {caption ?? "Open in Explore"}
-                    </p>
+                    {captionText && (
+                        <p className="mt-2 text-xs text-(--ink-muted)">{captionText}</p>
+                    )}
                 </div>
                 <div className="h-16 w-full">
                     {sparkValues.length > 1 ? (
@@ -71,6 +85,16 @@ export function MetricCard({
                     )}
                 </div>
             </div>
+        </>
+    );
+
+    if (!href) {
+        return <div className={cardClassName}>{body}</div>;
+    }
+
+    return (
+        <Link href={href} className={cardClassName}>
+            {body}
         </Link>
     );
 }

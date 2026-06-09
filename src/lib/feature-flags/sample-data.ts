@@ -22,7 +22,7 @@ function generateSparkline(
 export const SAMPLE_FEATURE_FLAGS_DATA: FeatureFlagsData = {
     summary: {
         activeFlags: 23,
-        activeFlagsDelta: 8.3,
+        // activeFlagsDelta omitted — FLAG_ACTIVE_COUNT_DELTA not yet exposed
         activeFlagsSpark: generateSparkline(14, 20, 2, 0.2),
 
         releaseFrictionDelta: 12.4,
@@ -33,7 +33,7 @@ export const SAMPLE_FEATURE_FLAGS_DATA: FeatureFlagsData = {
         releaseErrorRateSpark: generateSparkline(14, 5, 1.5, -0.1),
 
         coverageRatio: 72,
-        coverageRatioDelta: 5.2,
+        // coverageRatioDelta omitted — FLAG_COVERAGE_RATIO_DELTA not yet exposed
         coverageRatioSpark: generateSparkline(14, 65, 4, 0.5),
     },
 };
