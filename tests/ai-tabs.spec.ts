@@ -41,8 +41,20 @@ test.describe("AI views", () => {
         await page.goto("/ai");
         const tabStrip = page.getByRole("navigation", { name: "AI views" });
 
+        // CHAOS-2197: Test Gaps + Evidence are tabs inside Governance Risk now,
+        // so Attribution is the only remaining preview route kept off the strip.
         for (const hiddenTab of ["Attribution", "Test Gaps", "Evidence"]) {
             await expect(tabStrip.getByRole("link", { name: hiddenTab })).toHaveCount(0);
         }
+    });
+
+    test("the preview Attribution route claims no false active tab (CHAOS-2200)", async ({
+        page,
+    }) => {
+        await page.goto("/ai/attribution");
+
+        await expect(page.getByText("This feature is in preview.")).toBeVisible();
+        const tabStrip = page.getByRole("navigation", { name: "AI views" });
+        await expect(tabStrip.locator('a[aria-current="page"]')).toHaveCount(0);
     });
 });

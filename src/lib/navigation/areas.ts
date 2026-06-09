@@ -595,24 +595,13 @@ export const navAreas: readonly NavArea[] = [
                 navVisible: true,
             },
             {
-                id: "ai-test-gaps",
-                label: "Test Gaps",
-                path: "/ai/test-gaps",
-                navVisible: false,
-                preview: true,
-            },
-            {
                 id: "ai-governance-risk",
                 label: "Governance Risk",
                 path: "/ai/risk",
+                // CHAOS-2197: Test Gaps + Evidence are in-page tabs here; their
+                // retired standalone routes redirect and resolve to this child.
+                ownedPaths: ["/ai/risk", "/ai/test-gaps", "/ai/evidence"],
                 navVisible: true,
-            },
-            {
-                id: "ai-evidence",
-                label: "Evidence",
-                path: "/ai/evidence",
-                navVisible: false,
-                preview: true,
             },
             {
                 id: "ai-automations",
