@@ -68,7 +68,7 @@ test.describe("filter propagation", () => {
         const areas = [
             { label: /^Diagnose$/, path: "/diagnose" },
             { label: /^Plan$/, path: "/plan" },
-            { label: /^Improve$/, path: "/opportunities" },
+            { label: /^Improve$/, path: "/improve" },
             { label: /^Govern$/, path: "/govern" },
             { label: /^AI$/, path: "/ai" },
             { label: /^Cockpit$/, path: "/dashboard" },

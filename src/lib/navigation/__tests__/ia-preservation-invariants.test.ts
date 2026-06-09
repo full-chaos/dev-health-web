@@ -1,7 +1,15 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Invariant #9 calls the real getImproveSignals (no longer test-mode-gated on its
+// REST fetches). Stub the home/opportunities sources so the live call resolves to
+// honest-empty data instead of attempting a real network request in the unit env.
+vi.mock("@/lib/api/home", () => ({
+    getOpportunities: vi.fn().mockResolvedValue({ items: [] }),
+    getHomeData: vi.fn().mockResolvedValue({ deltas: [] }),
+}));
 
 import { iaPreservationBaseline } from "../__fixtures__/iaPreservationBaseline";
 import {
@@ -682,9 +690,7 @@ describe("IA preservation invariant #9 — no dead hubItems links (signal cards)
         const { defaultMetricFilter } = await import("@/lib/filters/defaults");
 
         const signals = await getImproveSignals(defaultMetricFilter, true);
-        const previewIds = new Set(
-            signals.filter((s) => s.preview === true).map((s) => s.id),
-        );
+        const previewIds = new Set(signals.filter((s) => s.preview === true).map((s) => s.id));
 
         const improve = navAreas.find((a) => a.id === "improve")!;
         const expectedPreviewIds = improve.hubItems
