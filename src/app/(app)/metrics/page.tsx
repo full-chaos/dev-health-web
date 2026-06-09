@@ -26,11 +26,7 @@ type MetricsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-type QuadrantType =
-    | "churn_throughput"
-    | "cycle_throughput"
-    | "wip_throughput"
-    | "review_load_latency";
+type QuadrantType = "churn_throughput" | "cycle_throughput" | "wip_throughput";
 
 type MetricTab = {
     id: string;
@@ -68,18 +64,6 @@ const METRIC_TABS: MetricTab[] = [
             type: "cycle_throughput",
             title: "Cycle Time × Throughput landscape",
             description: "Coordination debt and delivery efficiency.",
-        },
-    },
-    {
-        id: "quality",
-        label: "Quality",
-        description: "Reliability and rework.",
-        metrics: ["change_failure_rate", "churn", "blocked_work", "review_latency"],
-        highlight: "change_failure_rate",
-        quadrant: {
-            type: "review_load_latency",
-            title: "Review Load × Review Latency landscape",
-            description: "Review bottlenecks and quality gate pressure.",
         },
     },
     {

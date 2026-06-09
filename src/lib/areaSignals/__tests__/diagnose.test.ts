@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mock every Diagnose source at the module boundary ─────────────────────────
@@ -6,6 +7,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/home", () => ({ getHomeData: vi.fn() }));
 vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn() }));
+vi.mock("@/lib/api/code", () => ({ getBusFactorData: vi.fn() }));
+vi.mock("@/lib/graphql/cognitiveLoadFetchers", () => ({
+    getCognitiveLoadViaGraphQL: vi.fn(),
+}));
 vi.mock("@/lib/auth", () => ({
     auth: vi.fn().mockResolvedValue({ user: { org_id: "org-test" } }),
 }));
@@ -15,6 +20,8 @@ vi.mock("@/lib/logger", () => ({
 
 import { getHomeData } from "@/lib/api/home";
 import { graphqlFetch } from "@/lib/graphql/server";
+import { getBusFactorData } from "@/lib/api/code";
+import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getDiagnoseSignals } from "../diagnose";
@@ -22,6 +29,8 @@ import type { AreaSignal } from "../types";
 
 const mockGetHomeData = vi.mocked(getHomeData);
 const mockGraphql = vi.mocked(graphqlFetch);
+const mockGetBusFactorData = vi.mocked(getBusFactorData);
+const mockGetCognitiveLoad = vi.mocked(getCognitiveLoadViaGraphQL);
 
 function byId(signals: AreaSignal[]): Record<string, AreaSignal> {
     return Object.fromEntries(signals.map((s) => [s.id, s]));
@@ -128,6 +137,49 @@ beforeEach(() => {
 
     // Default complexity: avg cyclomaticPerKloc = 18 → medium (>=15).
     mockGraphql.mockResolvedValue(complexityResponse(18) as never);
+
+    // Default bus factor: value=2.4 → medium (>=2, <3 with higherIsBetter thresholds).
+    mockGetBusFactorData.mockResolvedValue({
+        orgId: "org-test",
+        scope: {},
+        value: 2.4,
+        topMaintainers: [],
+        repos: [
+            {
+                repoId: "r1",
+                repoName: "repo-1",
+                value: 2.4,
+                topMaintainers: [],
+                evidenceSampleCount: 1,
+            },
+        ],
+        evidenceSampleCount: 1,
+    });
+
+    // Default cognitive load: avg prInterruptionLoad = 16 → high (lowerIsBetter).
+    mockGetCognitiveLoad.mockResolvedValue({
+        orgId: "org-test",
+        teamId: null,
+        totalDays: 2,
+        signals: [
+            {
+                day: "2026-06-06",
+                prInterruptionLoad: 16,
+                contextSpreadCount: 60,
+                reviewRequestLoad: 2,
+                afterHoursCommitRatio: 0.38,
+                weekendCommitRatio: 0.25,
+            },
+            {
+                day: "2026-06-07",
+                prInterruptionLoad: 16,
+                contextSpreadCount: 60,
+                reviewRequestLoad: 2,
+                afterHoursCommitRatio: 0.38,
+                weekendCommitRatio: 0.25,
+            },
+        ],
+    });
 });
 
 describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
@@ -138,7 +190,7 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
         expect(ids).toEqual(
             expect.arrayContaining([
                 "flow",
-                "people",
+                "code",
                 "code",
                 "landscape",
                 "complexity",
@@ -207,8 +259,7 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             });
         });
 
-        it("computes mean across multiple complexity points", async () => {
-            // Two points: 20 + 40 → mean 30 → high (>=25, <40).
+        it("computes mean from the latest complexity point per repo", async () => {
             mockGraphql.mockResolvedValue({
                 complexityTimeseries: {
                     points: [
@@ -239,17 +290,75 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
                 },
             } as never);
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals.complexity).toMatchObject({ state: "high" });
+            expect(signals.complexity).toMatchObject({
+                state: "critical",
+                value: "40",
+            });
+        });
+
+        it("passes active date and scope filters to the complexity query", async () => {
+            const filtered = {
+                ...defaultMetricFilter,
+                time: {
+                    ...defaultMetricFilter.time,
+                    start_date: "2026-03-05",
+                    end_date: "2026-06-07",
+                },
+                scope: { level: "repo" as const, ids: ["repo-active"] },
+            };
+            await getDiagnoseSignals(filtered);
+            expect(mockGraphql).toHaveBeenCalledWith(
+                expect.any(String),
+                {
+                    input: expect.objectContaining({
+                        orgId: "org-test",
+                        sinceUtc: "2026-03-05T00:00:00Z",
+                        untilUtc: "2026-06-07T23:59:59Z",
+                        granularity: "DAY",
+                        scope: "REPO",
+                        repoIds: ["repo-active"],
+                        teamIds: null,
+                    }),
+                },
+                { orgId: "org-test" },
+            );
+        });
+
+        it("preset-only range_days=14 uses range_days-1 span (14 inclusive dates, matching /complexity)", async () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date("2026-06-08T12:00:00Z"));
+            const presetFilter = {
+                ...defaultMetricFilter,
+                time: { range_days: 14, compare_days: 14 },
+            };
+            await getDiagnoseSignals(presetFilter);
+            // range_days - 1 = 13 days back → 14 inclusive calendar dates.
+            expect(mockGraphql).toHaveBeenCalledWith(
+                expect.any(String),
+                {
+                    input: expect.objectContaining({
+                        sinceUtc: "2026-05-26T00:00:00Z",
+                        untilUtc: "2026-06-08T23:59:59Z",
+                    }),
+                },
+                expect.any(Object),
+            );
+            vi.useRealTimers();
         });
     });
 
     describe("unavailable signals (backend gaps)", () => {
-        it("People is always unavailable (no area-level aggregate metric)", async () => {
+        it("Landscape derives medium from bus factor 2.4 (higherIsBetter, thresholds {critical:1.5, high:2, medium:3})", async () => {
+            // value=2.4: >= high(2) but < medium(3) → medium in higherIsBetter polarity.
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
-            expect(signals.people).toMatchObject({ state: "unavailable", value: "" });
+            expect(signals.landscape).toMatchObject({
+                state: "medium",
+                value: "2.4",
+            });
         });
 
-        it("Landscape is always unavailable (CHAOS-2077 backend gap)", async () => {
+        it("Landscape is unavailable when getBusFactorData returns null", async () => {
+            mockGetBusFactorData.mockResolvedValue(null);
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
             expect(signals.landscape).toMatchObject({
                 state: "unavailable",
@@ -257,12 +366,74 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             });
         });
 
-        it("Cognitive Load is always unavailable (CHAOS-2077 backend gap)", async () => {
+        it("Landscape is unavailable when bus factor has no repos", async () => {
+            mockGetBusFactorData.mockResolvedValue({
+                orgId: "org-test",
+                scope: {},
+                value: 2.4,
+                topMaintainers: [],
+                repos: [],
+                evidenceSampleCount: 0,
+            });
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals.landscape).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
+        });
+
+        it("Cognitive Load derives high from avg interruption load 16 (lowerIsBetter, thresholds {medium:8, high:15, critical:25})", async () => {
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals["cognitive-load"]).toMatchObject({
+                state: "high",
+                value: "16",
+            });
+        });
+
+        it("Cognitive Load is unavailable when no cognitiveLoad signals are returned", async () => {
+            mockGetCognitiveLoad.mockResolvedValue({
+                orgId: "org-test",
+                teamId: null,
+                totalDays: 0,
+                signals: [],
+            });
             const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
             expect(signals["cognitive-load"]).toMatchObject({
                 state: "unavailable",
                 value: "",
             });
+        });
+
+        it("Cognitive Load degrades to unavailable when the fetch fails", async () => {
+            mockGetCognitiveLoad.mockRejectedValue(new Error("cognitive-load down"));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals["cognitive-load"]).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
+            // Other signals still resolve independently.
+            expect(signals.flow.state).toBe("low");
+            expect(signals.landscape.state).toBe("medium");
+        });
+
+        it("Cognitive Load is unavailable for unsupported scopes (developer) and skips the fetch", async () => {
+            const developerFilter = {
+                ...defaultMetricFilter,
+                scope: {
+                    ...defaultMetricFilter.scope,
+                    level: "developer" as const,
+                    ids: ["u1"],
+                },
+            };
+            const signals = byId(await getDiagnoseSignals(developerFilter));
+            expect(signals["cognitive-load"]).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
+            // The resolver only supports org/team scope; an unsupported scope must not even
+            // fetch — otherwise it would surface org-wide data presented as the filtered
+            // (here developer) scope, breaking the surface's self-only privacy framing.
+            expect(mockGetCognitiveLoad).not.toHaveBeenCalled();
         });
     });
 
@@ -309,13 +480,25 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             expect(signals.bottleneck.state).toBe("critical");
         });
 
+        it("degrades Landscape to unavailable when bus factor fetch fails", async () => {
+            mockGetBusFactorData.mockRejectedValue(new Error("bus-factor down"));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals.landscape).toMatchObject({
+                state: "unavailable",
+                value: "",
+            });
+            // Other signals still resolve.
+            expect(signals.flow.state).toBe("low");
+            expect(signals.complexity.state).toBe("medium");
+        });
+
         it("does not throw when both sources fail simultaneously", async () => {
             mockGetHomeData.mockRejectedValue(new Error("home down"));
             mockGraphql.mockRejectedValue(new Error("graphql down"));
             const signals = await getDiagnoseSignals(defaultMetricFilter);
-            expect(signals).toHaveLength(7);
+            expect(signals).toHaveLength(6);
             for (const s of signals) {
-                if (!["people", "landscape", "cognitive-load"].includes(s.id)) {
+                if (!["landscape", "cognitive-load"].includes(s.id)) {
                     expect(s.state).toBe("unavailable");
                 }
             }

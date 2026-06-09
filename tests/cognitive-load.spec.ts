@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { clickUntilUrl, waitForHydration } from "./helpers/nav";
+
 test.describe("IA rejection regressions", () => {
     test("Cockpit exposes the Lens control", async ({ page }) => {
         await page.goto("/dashboard");
@@ -16,13 +18,19 @@ test.describe("IA rejection regressions", () => {
 
     test("Diagnose overview keeps unavailable workflows compact", async ({ page }) => {
         await page.goto("/work");
+        await waitForHydration(page);
 
         const emptyTier = page.getByTestId("area-overview-empty-tier");
         await expect(emptyTier).toBeVisible();
         await expect(emptyTier.getByTestId("area-signal-unavailable")).toHaveCount(0);
-        await expect(emptyTier.getByRole("link", { name: "People" })).toBeVisible();
+        await expect(emptyTier.getByRole("link", { name: "People" })).not.toBeVisible();
         await expect(emptyTier.getByRole("link", { name: "Landscape" })).toBeVisible();
         await expect(emptyTier.getByRole("link", { name: "Cognitive Load" })).toBeVisible();
+
+        // People remains reachable via the active Diagnose sidebar navigation
+        const diagnoseNav = page.getByTestId("nav-children-diagnose");
+        await expect(diagnoseNav.getByRole("link", { name: "People" })).toBeVisible();
+        await clickUntilUrl(page, diagnoseNav.getByRole("link", { name: "People" }), /\/people/);
     });
 });
 

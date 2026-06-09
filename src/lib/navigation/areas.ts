@@ -188,14 +188,6 @@ export const navAreas: readonly NavArea[] = [
                 metricLabel: "Planned allocation",
             },
             {
-                id: "people",
-                label: "People",
-                href: "/people",
-                description: "Individual reflection surfaces.",
-                // No area-level metric → resolver surfaces "unavailable" (DataState).
-                metricLabel: "No area metric",
-            },
-            {
                 id: "code",
                 label: "Code",
                 href: "/code",
@@ -207,8 +199,7 @@ export const navAreas: readonly NavArea[] = [
                 label: "Landscape",
                 href: "/landscape",
                 description: "System landscape overview.",
-                // Gap: no resolver-backed metric yet → "unavailable" (DataState).
-                metricLabel: "No area metric",
+                metricLabel: "Bus factor",
             },
             {
                 id: "complexity",
@@ -222,8 +213,9 @@ export const navAreas: readonly NavArea[] = [
                 label: "Cognitive Load",
                 href: "/cognitive-load",
                 description: "Focus and context-switch pressure.",
-                // Gap: no resolver-backed metric yet → "unavailable" (DataState).
-                metricLabel: "No area metric",
+                // Wired via the cognitiveLoad GraphQL resolver (CHAOS-2077):
+                // headline = avg PR interruption load over the window.
+                metricLabel: "Interruption load",
             },
             {
                 id: "bottleneck",

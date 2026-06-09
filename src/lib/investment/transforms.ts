@@ -11,6 +11,130 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { titleCase as sharedTitleCase } from "@/lib/stringUtils";
 
 // ============================================================================
+// Work unit list selection
+// ============================================================================
+
+/**
+ * A work unit paired with the effort weight used to rank it in list views.
+ * Mirrors the `EvidenceUnit` shape consumed by the Evidence-tab drilldown.
+ */
+export type WorkUnitListEntry = {
+    unit: WorkUnitInvestment;
+    weight: number;
+    weightedEffort: number;
+};
+
+/**
+ * Select the work units to show in a work-unit list, given an optional focused
+ * subcategory.
+ *
+ * - When `focusSubcategory` is set: only the units that contribute to that
+ *   subcategory, weighted by their subcategory share and sorted by weighted
+ *   effort (descending). This is the "drill into a subcategory" behavior.
+ * - When `focusSubcategory` is null:
+ *   - `fallbackToAll: true` → ALL units (weight 1, weightedEffort = raw effort),
+ *     sorted by effort descending. Used by the Evidence tab so it is
+ *     self-contained on direct entry / refresh / share (no selector required).
+ *   - `fallbackToAll: false` (default) → an empty list. Used by the Overview
+ *     drill-down, which prompts the user to pick a subcategory first.
+ *
+ * Pure + deterministic so it can be unit-tested without rendering the view.
+ */
+export const selectWorkUnitEntries = ({
+    focusSubcategory,
+    workUnits,
+    fallbackToAll = false,
+}: {
+    focusSubcategory: string | null;
+    workUnits: WorkUnitInvestment[];
+    fallbackToAll?: boolean;
+}): WorkUnitListEntry[] => {
+    if (!focusSubcategory) {
+        if (!fallbackToAll) {
+            return [];
+        }
+        return workUnits
+            .map((unit) => ({
+                unit,
+                weight: 1,
+                weightedEffort: unit.effort.value,
+            }))
+            .sort((a, b) => b.weightedEffort - a.weightedEffort);
+    }
+
+    return workUnits
+        .map((unit) => {
+            const weight = unit.investment?.subcategories?.[focusSubcategory] ?? 0;
+            if (weight <= 0) {
+                return null;
+            }
+            return {
+                unit,
+                weight,
+                weightedEffort: unit.effort.value * weight,
+            };
+        })
+        .filter((entry): entry is WorkUnitListEntry => Boolean(entry))
+        .sort((a, b) => b.weightedEffort - a.weightedEffort);
+};
+
+// ============================================================================
+// Investment vector + evidence-band aggregation (Evidence / Confidence tabs)
+// ============================================================================
+
+/**
+ * Return the highest-weighted key in an investment vector (theme or
+ * subcategory map), or null when the vector is empty. Deterministic: ties
+ * resolve to the first key encountered. Pure so the Evidence grouping and
+ * Confidence aggregates can be unit-tested without rendering.
+ */
+export const topInvestmentKey = (
+    vector: Record<string, number> | undefined | null,
+): string | null => {
+    if (!vector) return null;
+    let bestKey: string | null = null;
+    let bestValue = Number.NEGATIVE_INFINITY;
+    for (const [key, value] of Object.entries(vector)) {
+        if (value > bestValue) {
+            bestValue = value;
+            bestKey = key;
+        }
+    }
+    return bestKey;
+};
+
+/** Canonical evidence-quality bands, strongest → weakest, plus unknown. */
+export const EVIDENCE_BAND_ORDER = ["high", "moderate", "low", "very_low", "unknown"] as const;
+
+export type EvidenceBandId = (typeof EVIDENCE_BAND_ORDER)[number];
+
+/**
+ * Tally work units into evidence-quality bands. Units with a null/absent band
+ * fall into `unknown`, so the counts always sum to `workUnits.length` and the
+ * Confidence encoding never silently drops a unit. Pure + deterministic.
+ */
+export const computeEvidenceBandCounts = (
+    workUnits: WorkUnitInvestment[],
+): Record<EvidenceBandId, number> => {
+    const counts: Record<EvidenceBandId, number> = {
+        high: 0,
+        moderate: 0,
+        low: 0,
+        very_low: 0,
+        unknown: 0,
+    };
+    for (const unit of workUnits) {
+        const band = unit.evidence_quality?.band;
+        if (band && band in counts) {
+            counts[band as EvidenceBandId] += 1;
+        } else {
+            counts.unknown += 1;
+        }
+    }
+    return counts;
+};
+
+// ============================================================================
 // Theme / Subcategory label utilities
 // ============================================================================
 

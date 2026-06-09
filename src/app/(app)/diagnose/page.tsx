@@ -49,7 +49,7 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                             <h1 className="mt-2 font-(--font-display) text-3xl">Diagnose</h1>
                             <p className="mt-2 text-sm text-(--ink-muted)">
                                 Investigate flow, investment, landscape, work graph, complexity,
-                                cognitive load, bottlenecks, people, and code from one durable area.
+                                cognitive load, bottlenecks, and code from one durable area.
                             </p>
                         </div>
                     </header>

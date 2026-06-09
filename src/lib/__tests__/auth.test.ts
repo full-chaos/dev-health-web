@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 interface RedirectError extends Error {
     digest: string;
@@ -6,9 +6,13 @@ interface RedirectError extends Error {
 }
 
 // Mock nextAuth.auth() — controls what the internal auth() wrapper returns
-const { mockNextAuthAuth } = vi.hoisted(() => ({
-    mockNextAuthAuth: vi.fn(),
-}));
+const { mockNextAuthAuth, nextAuthConfig } = vi.hoisted(() => {
+    const config: { value: unknown } = { value: null };
+    return {
+        mockNextAuthAuth: vi.fn(),
+        nextAuthConfig: config,
+    };
+});
 
 function createRedirectError(url: string): RedirectError {
     const error = new Error("NEXT_REDIRECT") as RedirectError;
@@ -24,12 +28,15 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next-auth", () => ({
-    default: vi.fn(() => ({
-        auth: mockNextAuthAuth,
-        handlers: { GET: vi.fn(), POST: vi.fn() },
-        signIn: vi.fn(),
-        signOut: vi.fn(),
-    })),
+    default: vi.fn((config: unknown) => {
+        nextAuthConfig.value = config;
+        return {
+            auth: mockNextAuthAuth,
+            handlers: { GET: vi.fn(), POST: vi.fn() },
+            signIn: vi.fn(),
+            signOut: vi.fn(),
+        };
+    }),
     CredentialsSignin: class CredentialsSignin extends Error {
         code = "credentials";
     },
@@ -49,6 +56,10 @@ vi.mock("next-auth/providers/google", () => ({
 
 vi.mock("next-auth/providers/gitlab", () => ({
     default: vi.fn(),
+}));
+
+vi.mock("@/lib/origin", () => ({
+    getBackendUrl: () => "http://localhost:8000",
 }));
 
 import { requireSession } from "@/lib/auth";
@@ -145,6 +156,31 @@ describe("requireSession", () => {
         expect(result.user.org_id).toBe("org-123");
         expect(result.user.needs_onboarding).toBe(false);
     });
+
+    it("redirects to /auth/error?error=refresh_unavailable on transient refresh outage", async () => {
+        mockNextAuthAuth.mockResolvedValueOnce({
+            user: {
+                id: "user-1",
+                email: "test@example.com",
+                org_id: "org-123",
+                role: "owner",
+                is_superuser: false,
+                permissions: [],
+                needs_onboarding: false,
+            },
+            access_token: undefined,
+            error: "refresh_unavailable",
+        });
+
+        try {
+            await requireSession();
+            expect.fail("Should have thrown redirect");
+        } catch (error: unknown) {
+            const redirectErr = error as RedirectError;
+            expect(redirectErr.digest).toBe("NEXT_REDIRECT");
+            expect(redirectErr.url).toBe("/auth/error?error=refresh_unavailable");
+        }
+    });
 });
 
 describe("auth secret configuration", () => {
@@ -175,5 +211,182 @@ describe("auth secret configuration", () => {
 
         vi.unstubAllEnvs();
         vi.resetModules();
+    });
+});
+
+describe("jwt callback — token lifecycle", () => {
+    interface JwtCallbackParams {
+        token: Record<string, unknown>;
+        user?: Record<string, unknown> | null;
+        account?: Record<string, unknown> | null;
+        trigger?: string;
+        session?: Record<string, unknown> | null;
+    }
+
+    type JwtCallback = (params: JwtCallbackParams) => Promise<Record<string, unknown>>;
+
+    interface NextAuthCallbacks {
+        jwt?: JwtCallback;
+    }
+
+    interface CapturedNextAuthConfig {
+        callbacks?: NextAuthCallbacks;
+    }
+
+    function getJwtCallback(): JwtCallback {
+        const config = nextAuthConfig.value as CapturedNextAuthConfig | null;
+        const jwt = config?.callbacks?.jwt;
+        if (!jwt) throw new Error("JWT callback not captured from NextAuth config");
+        return jwt;
+    }
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("(a) clears token.error on fresh credentials login", async () => {
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: {
+                id: "old-user",
+                access_token: "stale-access",
+                refresh_token: "stale-refresh",
+                expires_at: Date.now() + 3600 * 1000,
+                last_validated: Date.now(),
+                error: "refresh_failed",
+            },
+            user: {
+                id: "user-2",
+                email: "fresh@example.com",
+                org_id: "org-1",
+                role: "member",
+                is_superuser: false,
+                permissions: [],
+                needs_onboarding: false,
+                access_token: "new-access-token",
+                refresh_token: "new-refresh-token",
+                expires_in: 3600,
+            },
+            account: null,
+        });
+
+        expect(result.error).toBeUndefined();
+        expect(result.access_token).toBe("new-access-token");
+    });
+
+    it("(b) clears access_token but preserves refresh_token on transient 5xx failure", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce({
+                ok: false,
+                status: 500,
+                json: async () => ({ detail: "Internal server error" }),
+            } as unknown as Response),
+        );
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: {
+                id: "user-1",
+                access_token: "valid-access",
+                refresh_token: "valid-refresh",
+                expires_at: Date.now() - 1000,
+                last_validated: Date.now(),
+            },
+            user: null,
+            account: null,
+        });
+
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.error).toBe("refresh_unavailable");
+    });
+
+    it("(c) clears tokens on terminal 401 refresh failure", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce({
+                ok: false,
+                status: 401,
+                json: async () => ({ detail: "Invalid or expired refresh token" }),
+            } as unknown as Response),
+        );
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: {
+                id: "user-1",
+                access_token: "valid-access",
+                refresh_token: "valid-refresh",
+                expires_at: Date.now() - 1000,
+                last_validated: Date.now(),
+            },
+            user: null,
+            account: null,
+        });
+
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBeUndefined();
+        expect(result.error).toBe("refresh_failed");
+    });
+
+    it("(d) clears access_token but preserves refresh_token on network error (fetch throws)", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockRejectedValueOnce(new Error("fetch failed: ECONNREFUSED")),
+        );
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: {
+                id: "user-1",
+                access_token: "valid-access",
+                refresh_token: "valid-refresh",
+                expires_at: Date.now() - 1000,
+                last_validated: Date.now(),
+            },
+            user: null,
+            account: null,
+        });
+
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.error).toBe("refresh_unavailable");
+    });
+
+    it("(e) clears error on refresh success after prior transient failure", async () => {
+        const newAccessToken = "recovered-access-token";
+        const newRefreshToken = "recovered-refresh-token";
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    access_token: newAccessToken,
+                    refresh_token: newRefreshToken,
+                    expires_in: 3600,
+                }),
+            } as unknown as Response),
+        );
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: {
+                id: "user-1",
+                access_token: undefined,
+                refresh_token: "stale-refresh-token",
+                expires_at: Date.now() - 1000, // expired, triggers refresh retry
+                last_validated: Date.now() - 3600 * 1000,
+                error: "refresh_unavailable",
+            },
+            user: null,
+            account: null,
+        });
+
+        expect(result.access_token).toBe(newAccessToken);
+        expect(result.refresh_token).toBe(newRefreshToken);
+        expect(result.expires_at as number).toBeGreaterThan(Date.now());
+        expect(result.error).toBeUndefined();
     });
 });

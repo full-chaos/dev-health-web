@@ -7,12 +7,29 @@ import {
     stripSankeyPrefix,
     isUnassignedLabel,
     buildOptionalTimeRangeLabel,
+    selectWorkUnitEntries,
     TOP_N_REPOS,
     UNASSIGNED_TEAM_LABEL,
     UNASSIGNED_REPO_LABEL,
     UNASSIGNED_THEME_LABEL,
     UNASSIGNED_SUBCATEGORY_LABEL,
 } from "../investment/transforms";
+import type { WorkUnitInvestment } from "@/lib/types";
+
+const makeUnit = (
+    id: string,
+    effortValue: number,
+    subcategories: Record<string, number> = {},
+): WorkUnitInvestment => ({
+    work_unit_id: id,
+    work_unit_name: `Unit ${id}`,
+    work_unit_type: "pr",
+    time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
+    effort: { metric: "active_hours", value: effortValue },
+    investment: { themes: {}, subcategories },
+    evidence_quality: { value: 0.7, band: "moderate" },
+    evidence: { textual: [], structural: [], contextual: [] },
+});
 
 // ============================================================================
 // titleCase
@@ -175,6 +192,87 @@ describe("buildOptionalTimeRangeLabel", () => {
         const label = buildOptionalTimeRangeLabel("2024-01-01T00:00:00Z", "2024-01-31T00:00:00Z");
         // May return null if formatTimestamp returns 'Unavailable' — just check type
         expect(label === null || typeof label === "string").toBe(true);
+    });
+});
+
+// ============================================================================
+// selectWorkUnitEntries
+// ============================================================================
+describe("selectWorkUnitEntries", () => {
+    const units = [
+        makeUnit("a", 10, { "feature.build": 0.5, "quality.tests": 0.5 }),
+        makeUnit("b", 20, { "feature.build": 1.0 }),
+        makeUnit("c", 5, { "quality.tests": 1.0 }),
+    ];
+
+    describe("no focused subcategory", () => {
+        it("returns [] when fallbackToAll is false (Overview drill-down default)", () => {
+            expect(selectWorkUnitEntries({ focusSubcategory: null, workUnits: units })).toEqual([]);
+        });
+
+        it("returns ALL units when fallbackToAll is true (self-contained tab)", () => {
+            const entries = selectWorkUnitEntries({
+                focusSubcategory: null,
+                workUnits: units,
+                fallbackToAll: true,
+            });
+            expect(entries).toHaveLength(3);
+            // weight defaults to 1, weightedEffort == raw effort
+            expect(entries.every((e) => e.weight === 1)).toBe(true);
+            expect(entries.map((e) => e.unit.work_unit_id).sort()).toEqual(["a", "b", "c"]);
+        });
+
+        it("sorts the all-units listing by effort descending", () => {
+            const entries = selectWorkUnitEntries({
+                focusSubcategory: null,
+                workUnits: units,
+                fallbackToAll: true,
+            });
+            expect(entries.map((e) => e.unit.work_unit_id)).toEqual(["b", "a", "c"]);
+            expect(entries.map((e) => e.weightedEffort)).toEqual([20, 10, 5]);
+        });
+
+        it("returns [] for an empty work-unit list even with fallbackToAll", () => {
+            expect(
+                selectWorkUnitEntries({
+                    focusSubcategory: null,
+                    workUnits: [],
+                    fallbackToAll: true,
+                }),
+            ).toEqual([]);
+        });
+    });
+
+    describe("focused subcategory", () => {
+        it("returns only units contributing to the subcategory, weighted + sorted", () => {
+            const entries = selectWorkUnitEntries({
+                focusSubcategory: "feature.build",
+                workUnits: units,
+            });
+            // c has no feature.build weight → excluded
+            expect(entries.map((e) => e.unit.work_unit_id)).toEqual(["b", "a"]);
+            // weightedEffort = effort * subcategory weight; b=20*1=20, a=10*0.5=5
+            expect(entries.map((e) => e.weightedEffort)).toEqual([20, 5]);
+            expect(entries.map((e) => e.weight)).toEqual([1.0, 0.5]);
+        });
+
+        it("ignores fallbackToAll when a subcategory is set", () => {
+            const focused = selectWorkUnitEntries({
+                focusSubcategory: "quality.tests",
+                workUnits: units,
+                fallbackToAll: true,
+            });
+            // a (effort 10 × 0.5 = 5) and c (effort 5 × 1.0 = 5) contribute; b does not.
+            // (fallbackToAll is ignored — only contributors are returned, not all 3 units.)
+            expect(focused).toHaveLength(2);
+            expect(focused.map((e) => e.unit.work_unit_id).sort()).toEqual(["a", "c"]);
+        });
+
+        it("returns [] when no unit contributes to the focused subcategory", () => {
+            expect(
+                selectWorkUnitEntries({ focusSubcategory: "risk.audit", workUnits: units }),
+            ).toEqual([]);
+        });
     });
 });
 

@@ -13,6 +13,7 @@ import { render } from "@/test/utils";
 import {
     ComplexityDashboard,
     computeKpis,
+    computeRisingAreas,
     buildTreemapData,
     type ComplexityPoint,
     type HotspotRow,
@@ -198,6 +199,35 @@ describe("buildTreemapData", () => {
 // ComplexityDashboard — rendering tests
 // ---------------------------------------------------------------------------
 
+describe("computeRisingAreas", () => {
+    it("returns 0 when there are no points", () => {
+        expect(computeRisingAreas([])).toBe(0);
+    });
+
+    it("counts scopes whose latest value exceeds their earliest", () => {
+        const points = [
+            makePoint("r1", "2026-01-01", { cyclomaticPerKloc: 4.0 }),
+            makePoint("r1", "2026-01-08", { cyclomaticPerKloc: 6.0 }), // rising
+            makePoint("r2", "2026-01-01", { cyclomaticPerKloc: 8.0 }),
+            makePoint("r2", "2026-01-08", { cyclomaticPerKloc: 5.0 }), // falling
+        ];
+        expect(computeRisingAreas(points)).toBe(1);
+    });
+
+    it("ignores scopes with a single point or null values", () => {
+        const points = [
+            makePoint("r1", "2026-01-08", { cyclomaticPerKloc: 6.0 }), // single point
+            makePoint("r2", "2026-01-01", { cyclomaticPerKloc: null }),
+            makePoint("r2", "2026-01-08", { cyclomaticPerKloc: 9.0 }),
+        ];
+        expect(computeRisingAreas(points)).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// ComplexityDashboard — per-tab rendering tests (CHAOS-2149)
+// ---------------------------------------------------------------------------
+
 describe("ComplexityDashboard", () => {
     const baseProps = {
         orgId: "org-test",
@@ -222,63 +252,122 @@ describe("ComplexityDashboard", () => {
         expect(screen.getByTestId("complexity-dashboard")).toBeInTheDocument();
     });
 
-    it("renders exactly 3 KPI tiles", () => {
+    // --- Overview tab ---
+    it("renders 4 KPI tiles on the overview tab", () => {
         const points = [makePoint("r1", "2026-01-08", { cyclomaticPerKloc: 6.0 })];
         const hotspots = [makeHotspot("a.py", 0.8)];
         render(<ComplexityDashboard {...baseProps} points={points} hotspotRows={hotspots} />);
-        const kpiCards = screen.getAllByTestId("kpi-card");
-        expect(kpiCards).toHaveLength(3);
+        expect(screen.getAllByTestId("kpi-card")).toHaveLength(4);
     });
 
-    it("renders the trend panel and Chart when points are present", () => {
+    it("renders the trend panel and Chart on overview when points are present", () => {
         const points = [makePoint("r1", "2026-01-08")];
         render(<ComplexityDashboard {...baseProps} points={points} />);
         expect(screen.getByTestId("trend-panel")).toBeInTheDocument();
         expect(screen.getByTestId("chart")).toBeInTheDocument();
     });
 
-    it("renders the treemap panel when hotspot rows are present", () => {
+    it("shows an empty trend DataState on overview when points are absent", () => {
         const hotspots = [makeHotspot("a.py", 0.8)];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} />);
+        expect(screen.queryByTestId("trend-panel")).not.toBeInTheDocument();
+        expect(screen.getByTestId("trend-panel-empty")).toBeInTheDocument();
+    });
+
+    it("does NOT render the hotspot treemap on the overview tab", () => {
+        const points = [makePoint("r1", "2026-01-08")];
+        const hotspots = [makeHotspot("a.py", 0.8)];
+        render(<ComplexityDashboard {...baseProps} points={points} hotspotRows={hotspots} />);
+        expect(screen.queryByTestId("hotspot-panel")).not.toBeInTheDocument();
+    });
+
+    // --- Hotspots tab ---
+    it("renders the treemap panel on the hotspots tab", () => {
+        const hotspots = [makeHotspot("a.py", 0.8)];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
         expect(screen.getByTestId("hotspot-panel")).toBeInTheDocument();
         expect(screen.getByTestId("treemap-chart")).toBeInTheDocument();
     });
 
-    it("renders the drilldown table with correct row count", () => {
+    it("renders the drilldown table with correct row count on the hotspots tab", () => {
         const hotspots = [makeHotspot("src/main.py", 0.9), makeHotspot("src/utils.py", 0.7)];
-        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} />);
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
         expect(screen.getByTestId("drilldown-table")).toBeInTheDocument();
-        const rows = screen.getAllByTestId("hotspot-row");
-        expect(rows).toHaveLength(2);
+        expect(screen.getAllByTestId("hotspot-row")).toHaveLength(2);
     });
 
-    it("caps drilldown table at 20 rows", () => {
+    it("caps the hotspots drilldown table at 20 rows", () => {
         const hotspots = Array.from({ length: 25 }, (_, i) =>
             makeHotspot(`src/file${i}.py`, 0.9 - i * 0.01),
         );
-        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} />);
-        const rows = screen.getAllByTestId("hotspot-row");
-        expect(rows).toHaveLength(20);
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        expect(screen.getAllByTestId("hotspot-row")).toHaveLength(20);
     });
 
-    it("renders evidence link when evidenceUrl is provided", () => {
+    it("renders evidence link when evidenceUrl is provided (hotspots tab)", () => {
         const hotspots = [
             makeHotspot("a.py", 0.9, { evidenceUrl: "https://example.com/evidence" }),
         ];
-        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} />);
-        const evidenceLinks = screen.getAllByTestId("evidence-link");
-        expect(evidenceLinks[0]).toHaveAttribute("href", "https://example.com/evidence");
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        expect(screen.getAllByTestId("evidence-link")[0]).toHaveAttribute(
+            "href",
+            "https://example.com/evidence",
+        );
     });
 
-    it("omits trend panel when points is empty but hotspots exist", () => {
-        const hotspots = [makeHotspot("a.py", 0.8)];
-        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} />);
-        expect(screen.queryByTestId("trend-panel")).not.toBeInTheDocument();
-    });
-
-    it("omits treemap panel when hotspotRows is empty but points exist", () => {
+    it("shows a DataState (not the treemap) on the hotspots tab when only points exist", () => {
         const points = [makePoint("r1", "2026-01-08")];
-        render(<ComplexityDashboard {...baseProps} points={points} />);
+        render(<ComplexityDashboard {...baseProps} points={points} activeTab="hotspots" />);
         expect(screen.queryByTestId("hotspot-panel")).not.toBeInTheDocument();
+        expect(screen.getByTestId("hotspot-panel-empty")).toBeInTheDocument();
+    });
+
+    // --- Ownership Risk tab ---
+    it("ranks files by blame concentration on the ownership-risk tab", () => {
+        const hotspots = [
+            makeHotspot("a.py", 0.8, { blameConcentration: 0.9 }),
+            makeHotspot("b.py", 0.6, { blameConcentration: 0.4 }),
+            makeHotspot("c.py", 0.5, { blameConcentration: null }), // excluded
+        ];
+        render(
+            <ComplexityDashboard
+                {...baseProps}
+                hotspotRows={hotspots}
+                activeTab="ownership-risk"
+            />,
+        );
+        expect(screen.getByTestId("ownership-panel")).toBeInTheDocument();
+        expect(screen.getAllByTestId("ownership-row")).toHaveLength(2);
+    });
+
+    it("shows a DataState on the ownership-risk tab when no blame data exists", () => {
+        const hotspots = [makeHotspot("a.py", 0.8, { blameConcentration: null })];
+        render(
+            <ComplexityDashboard
+                {...baseProps}
+                hotspotRows={hotspots}
+                activeTab="ownership-risk"
+            />,
+        );
+        expect(screen.queryByTestId("ownership-panel")).not.toBeInTheDocument();
+        expect(screen.getByTestId("ownership-panel-empty")).toBeInTheDocument();
+    });
+
+    // --- Churn tab ---
+    it("ranks files by churn on the churn tab", () => {
+        const hotspots = [
+            makeHotspot("a.py", 0.8, { churnLoc30d: 500 }),
+            makeHotspot("b.py", 0.6, { churnLoc30d: 120 }),
+        ];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="churn" />);
+        expect(screen.getByTestId("churn-panel")).toBeInTheDocument();
+        expect(screen.getAllByTestId("churn-row")).toHaveLength(2);
+    });
+
+    it("shows a DataState on the churn tab when there is no churn", () => {
+        const hotspots = [makeHotspot("a.py", 0.8, { churnLoc30d: 0 })];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="churn" />);
+        expect(screen.queryByTestId("churn-panel")).not.toBeInTheDocument();
+        expect(screen.getByTestId("churn-panel-empty")).toBeInTheDocument();
     });
 });

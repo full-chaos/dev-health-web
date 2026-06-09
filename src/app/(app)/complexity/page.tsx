@@ -15,13 +15,22 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { BackLink } from "@/components/shared/BackLink";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
-import type { ComplexityPoint, HotspotRow } from "@/components/complexity/ComplexityDashboard";
+import type {
+    ComplexityPoint,
+    ComplexityTab,
+    HotspotRow,
+} from "@/components/complexity/ComplexityDashboard";
 import { FlameView } from "@/components/work/FlameView";
 import { requireSession } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPLEXITY_TIMESERIES_QUERY, HOTSPOTS_QUERY } from "@/lib/graphql/queries";
+import {
+    complexityScopeInputFromFilter,
+    complexityWindowFromFilter,
+    type ComplexityScopeInput,
+} from "@/lib/complexity/filters";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +61,7 @@ async function fetchComplexityTimeseries(
     orgId: string,
     sinceUtc: string,
     untilUtc: string,
+    scopeInput: ComplexityScopeInput,
 ): Promise<ComplexityPoint[]> {
     try {
         const data = await graphqlFetch<ComplexityTimeseriesResponse>(
@@ -61,8 +71,9 @@ async function fetchComplexityTimeseries(
                     orgId,
                     sinceUtc,
                     untilUtc,
-                    granularity: "WEEK",
+                    granularity: "DAY",
                     scope: "REPO",
+                    ...scopeInput,
                     limit: 10,
                 },
             },
@@ -80,6 +91,7 @@ async function fetchHotspots(
     orgId: string,
     sinceUtc: string,
     untilUtc: string,
+    scopeInput: ComplexityScopeInput,
 ): Promise<HotspotRow[]> {
     try {
         const data = await graphqlFetch<HotspotsResponse>(
@@ -89,6 +101,7 @@ async function fetchHotspots(
                     orgId,
                     sinceUtc,
                     untilUtc,
+                    ...scopeInput,
                     limit: 50,
                 },
             },
@@ -154,17 +167,13 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
 
     const orgId = session.user?.org_id ?? "demo-org";
 
-    // Default 90-day window
-    const until = new Date();
-    const since = new Date(until);
-    since.setDate(since.getDate() - 90);
-    const untilUtc = until.toISOString();
-    const sinceUtc = since.toISOString();
+    const { sinceUtc, untilUtc } = complexityWindowFromFilter(filters.time);
+    const scopeInput = complexityScopeInputFromFilter(filters);
 
     // Parallel pre-fetch — both queries are independent
     const [points, hotspotRows] = await Promise.all([
-        fetchComplexityTimeseries(orgId, sinceUtc, untilUtc),
-        fetchHotspots(orgId, sinceUtc, untilUtc),
+        fetchComplexityTimeseries(orgId, sinceUtc, untilUtc, scopeInput),
+        fetchHotspots(orgId, sinceUtc, untilUtc, scopeInput),
     ]);
 
     return (
@@ -209,6 +218,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                             orgId={orgId}
                             points={points}
                             hotspotRows={hotspotRows}
+                            activeTab={activeTab as ComplexityTab}
                         />
                     )}
                 </main>

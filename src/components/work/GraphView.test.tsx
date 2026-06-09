@@ -1,8 +1,9 @@
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
 import type { MetricFilter } from "@/lib/filters/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 const { mockUseSearchParams, mockUseWorkGraphEdges, mockUseOrgId } = vi.hoisted(() => ({
     mockUseSearchParams: vi.fn(() => new URLSearchParams()),
@@ -109,7 +110,9 @@ describe("GraphView", () => {
 
         render(<GraphView filters={filters} />);
 
-        expect(screen.getByText(/Showing 750 work → prs edges/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Showing 750 edges for browser responsiveness/i),
+        ).toBeInTheDocument();
         expect(screen.getByText(/additional backend edges are available/i)).toBeInTheDocument();
     });
 
@@ -148,7 +151,9 @@ describe("GraphView", () => {
         render(<GraphView filters={filters} />);
 
         expect(screen.getByLabelText(/Connection type/i)).toHaveValue("work-to-change");
-        expect(screen.getByText(/1 fetched edges hidden by connection type/i)).toBeInTheDocument();
+        // The TOUCHES edge is sliced out by the default work-to-change connection,
+        // leaving a single FIXES edge counted in the active view.
+        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
     });
 
     it("shows theme and subcategory filter context without recomputing graph data", async () => {
@@ -234,5 +239,231 @@ describe("GraphView", () => {
         render(<GraphView filters={filters} />);
 
         expect(screen.queryByText("PROJ-101")).not.toBeInTheDocument();
+    });
+
+    // ── Per-tab branching (CHAOS-2149) ──────────────────────────────────────────
+
+    it("dependencies tab shows only dependency edges and hides the connection selector", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "ISSUE",
+                    targetId: "ISS-2",
+                    edgeType: "BLOCKS",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: null,
+                },
+                {
+                    edgeId: "e2",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-3",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: null,
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 2,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="dependencies" />);
+
+        expect(screen.getByText(/Dependency network/i)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/Connection type/i)).not.toBeInTheDocument();
+        // Only the BLOCKS edge is a dependency; FIXES is excluded.
+        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+        expect(screen.getByTestId("work-graph-explorer")).toBeInTheDocument();
+    });
+
+    it("inflow-outflow tab renders a per-entity-type table instead of the canvas", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: null,
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 1,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getByTestId("inflow-outflow-panel")).toBeInTheDocument();
+        // Issue (outflow) + PR (inflow) → 2 rows.
+        expect(screen.getAllByTestId("inflow-outflow-row").length).toBeGreaterThanOrEqual(2);
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("artifacts tab ranks entities by connection count", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: "Fixes ISS-1",
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 1,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        expect(screen.getByTestId("artifacts-panel")).toBeInTheDocument();
+        expect(screen.getAllByTestId("artifact-row").length).toBeGreaterThanOrEqual(2);
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("review-network tab shows an honest empty state when reviewEdges prop is null", () => {
+        // reviewEdges=null means "not yet fetched / wrong tab" — renders the
+        // review-network panel with an empty state (no work-graph-edges fallback).
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <GraphView
+                filters={filters}
+                activeTab="review-network"
+                reviewEdges={null}
+                reviewEdgesLoading={false}
+                reviewEdgesError={null}
+            />,
+        );
+
+        expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
+        expect(screen.getByText(/No reviewer→author activity/i)).toBeInTheDocument();
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("review-network tab renders real reviewer→author edges when provided", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        const reviewEdges = [
+            {
+                reviewer: "alice@example.com",
+                author: "bob@example.com",
+                reviewsCount: 12,
+                day: "2026-05-01",
+                repoId: "repo-1",
+            },
+            {
+                reviewer: "alice@example.com",
+                author: "bob@example.com",
+                reviewsCount: 5,
+                day: "2026-05-02",
+                repoId: "repo-1",
+            },
+            {
+                reviewer: "carol@example.com",
+                author: "bob@example.com",
+                reviewsCount: 3,
+                day: "2026-05-01",
+                repoId: "repo-1",
+            },
+        ];
+
+        render(
+            <GraphView
+                filters={filters}
+                activeTab="review-network"
+                reviewEdges={reviewEdges}
+                reviewEdgesLoading={false}
+                reviewEdgesError={null}
+            />,
+        );
+
+        expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
+        expect(screen.getByTestId("review-network-table")).toBeInTheDocument();
+        // alice→bob aggregated: 12 + 5 = 17 reviews
+        const rows = screen.getAllByTestId("review-network-row");
+        expect(rows.length).toBe(2);
+        // alice→bob should appear first (highest count)
+        expect(rows[0]).toHaveTextContent("alice");
+        expect(rows[0]).toHaveTextContent("bob");
+        expect(within(rows[0]).getByText("17")).toBeInTheDocument();
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("review-network tab shows error state when reviewEdgesError is set", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <GraphView
+                filters={filters}
+                activeTab="review-network"
+                reviewEdges={null}
+                reviewEdgesLoading={false}
+                reviewEdgesError="Failed to load review network data"
+            />,
+        );
+
+        expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
+        // The DataState renders a heading with the title and a paragraph with the description.
+        // We match the description paragraph to avoid ambiguity with the heading.
+        expect(screen.getByText("Failed to load review network data")).toBeInTheDocument();
+        expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("renders a scope-preserving Open evidence linkback in the explorer header", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        const link = screen.getByRole("link", { name: CTA_LABELS.openEvidence });
+        const href = link.getAttribute("href") ?? "";
+        expect(href).toContain("/explore");
+        expect(href).toContain("metric=throughput");
+        // scope-preserving: the encoded filter param is carried through.
+        expect(href).toContain("f=");
     });
 });

@@ -1,20 +1,25 @@
 /**
- * ComplexityDashboard — client surface for /complexity (CHAOS-1745).
+ * ComplexityDashboard — client surface for /complexity (CHAOS-1745, CHAOS-2149).
  *
- * Renders:
- *   1. KPI tiles: avg cyclomaticPerKloc, total high-complexity functions, hotspot count.
- *   2. Trend panel: multi-series line chart (cyclomaticPerKloc per top-N repos).
- *   3. Hotspot panel: TreemapChart — files sized by riskScore, grouped by repo.
- *   4. Drilldown table: top 20 hotspot files with evidenceUrl links.
- *   5. Empty state mirroring CompoundingRiskDashboard voice.
+ * Renders DISTINCT content per in-page tab (the page owns the Flame tab):
+ *   - overview        → KPI tiles (avg complexity, rising areas, high-complexity
+ *                       functions, hotspot files) + multi-series trend chart.
+ *   - hotspots        → risk treemap + top hotspot files drilldown table.
+ *   - ownership-risk  → files ranked by blame concentration (single-owner risk).
+ *   - churn           → files ranked by 30-day churn.
  *
- * Pure helper functions (computeKpis, buildTreemapData) are exported for unit
- * testing without DOM rendering.
+ * Every view reads the already-fetched complexityTimeseries (points) and hotspots
+ * (hotspotRows) — nothing is fabricated, and each empty branch uses DataState.
+ *
+ * Pure helpers (computeKpis, computeRisingAreas, buildTreemapData) are exported
+ * for unit testing without DOM rendering.
  */
 "use client";
 
 import Link from "next/link";
 import { useMemo } from "react";
+
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { ReactNode } from "react";
 import type { EChartsOption } from "echarts";
 import { LineChart } from "echarts/charts";
@@ -60,15 +65,35 @@ export type HotspotRow = {
     evidenceUrl: string | null;
 };
 
+/** The tabs ComplexityDashboard renders. `flame` is handled by the page (FlameView). */
+export type ComplexityTab = "overview" | "hotspots" | "ownership-risk" | "churn";
+
 export type ComplexityDashboardProps = {
     orgId: string;
     points: ComplexityPoint[];
     hotspotRows: HotspotRow[];
+    /** Active in-page tab. Defaults to "overview". */
+    activeTab?: ComplexityTab;
 };
 
 // ---------------------------------------------------------------------------
 // Pure helpers (exported for unit testing)
 // ---------------------------------------------------------------------------
+
+/** Group points by scope, returning the latest point per scope (by date). */
+function latestPointsPerScope(points: ComplexityPoint[]): ComplexityPoint[] {
+    const byScope = new Map<string, ComplexityPoint[]>();
+    for (const p of points) {
+        if (!byScope.has(p.scopeId)) byScope.set(p.scopeId, []);
+        byScope.get(p.scopeId)!.push(p);
+    }
+    const latest: ComplexityPoint[] = [];
+    for (const [, pts] of byScope) {
+        const sorted = [...pts].sort((a, b) => b.date.localeCompare(a.date));
+        latest.push(sorted[0]);
+    }
+    return latest;
+}
 
 /**
  * Compute KPI values from GraphQL data.
@@ -86,18 +111,7 @@ export function computeKpis(
     totalHighComplexity: number;
     hotspotCount: number;
 } {
-    // Group points by scopeId, keep latest date per scope.
-    const byScope = new Map<string, ComplexityPoint[]>();
-    for (const p of points) {
-        if (!byScope.has(p.scopeId)) byScope.set(p.scopeId, []);
-        byScope.get(p.scopeId)!.push(p);
-    }
-
-    const latestPerScope: ComplexityPoint[] = [];
-    for (const [, pts] of byScope) {
-        const sorted = [...pts].sort((a, b) => b.date.localeCompare(a.date));
-        latestPerScope.push(sorted[0]);
-    }
+    const latestPerScope = latestPointsPerScope(points);
 
     const perKlocValues = latestPerScope
         .map((p) => p.cyclomaticPerKloc)
@@ -116,6 +130,28 @@ export function computeKpis(
     const hotspotCount = hotspotRows.filter((r) => r.riskScore > threshold).length;
 
     return { avgComplexity, totalHighComplexity, hotspotCount };
+}
+
+/**
+ * Count repo scopes whose complexity is rising — latest cyclomaticPerKloc strictly
+ * greater than the earliest in-window value for that scope. Real "Rising Areas" KPI.
+ */
+export function computeRisingAreas(points: ComplexityPoint[]): number {
+    const byScope = new Map<string, ComplexityPoint[]>();
+    for (const p of points) {
+        if (p.cyclomaticPerKloc === null) continue;
+        if (!byScope.has(p.scopeId)) byScope.set(p.scopeId, []);
+        byScope.get(p.scopeId)!.push(p);
+    }
+    let rising = 0;
+    for (const [, pts] of byScope) {
+        if (pts.length < 2) continue;
+        const sorted = [...pts].sort((a, b) => a.date.localeCompare(b.date));
+        const first = sorted[0].cyclomaticPerKloc;
+        const last = sorted[sorted.length - 1].cyclomaticPerKloc;
+        if (first !== null && last !== null && last > first) rising += 1;
+    }
+    return rising;
 }
 
 /**
@@ -258,55 +294,108 @@ function KpiCard({ label, value, caption }: { label: string; value: ReactNode; c
     );
 }
 
+function Panel({
+    title,
+    description,
+    children,
+    testId,
+}: {
+    title: string;
+    description: string;
+    children: ReactNode;
+    testId: string;
+}) {
+    return (
+        <section
+            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+            data-testid={testId}
+        >
+            <div className="mb-4">
+                <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+                <p className="mt-1 text-sm text-(--ink-muted)">{description}</p>
+            </div>
+            {children}
+        </section>
+    );
+}
+
+/** Shared file-table shell so the hotspot / ownership / churn tables stay consistent. */
+function FileTable({
+    columns,
+    children,
+    testId,
+}: {
+    columns: { label: string; align?: "left" | "right" }[];
+    children: ReactNode;
+    testId: string;
+}) {
+    return (
+        <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
+            <table className="w-full text-sm" data-testid={testId}>
+                <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                    <tr>
+                        {columns.map((col) => (
+                            <th
+                                key={col.label}
+                                className={`px-5 py-3 ${col.align === "right" ? "text-right" : "text-left"}`}
+                            >
+                                {col.label}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>{children}</tbody>
+            </table>
+        </div>
+    );
+}
+
+function EvidenceCell({ url }: { url: string | null }) {
+    if (url) {
+        return (
+            <Link
+                href={url}
+                className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
+                data-testid="evidence-link"
+            >
+                Open evidence →
+            </Link>
+        );
+    }
+    return (
+        <DataState
+            variant="source-unsupported"
+            title="No artifact link"
+            description="The source did not provide a link for this evidence row."
+        />
+    );
+}
+
 // ---------------------------------------------------------------------------
-// Main component
+// Tab views
 // ---------------------------------------------------------------------------
 
-export function ComplexityDashboard({ orgId, points, hotspotRows }: ComplexityDashboardProps) {
-    const chartTheme = useChartTheme();
-    const chartColors = useChartColors();
-
+function OverviewView({
+    points,
+    hotspotRows,
+    chartTheme,
+    chartColors,
+}: {
+    points: ComplexityPoint[];
+    hotspotRows: HotspotRow[];
+    chartTheme: ChartTheme;
+    chartColors: string[];
+}) {
     const { avgComplexity, totalHighComplexity, hotspotCount } = computeKpis(points, hotspotRows);
-
-    const treemapData = useMemo(() => buildTreemapData(hotspotRows), [hotspotRows]);
-
+    const risingAreas = useMemo(() => computeRisingAreas(points), [points]);
     const trendOption = useMemo(
         () => buildTrendOption(points, chartTheme, chartColors),
         [points, chartTheme, chartColors],
     );
 
-    const isEmpty = points.length === 0 && hotspotRows.length === 0;
-    const top20Hotspots = useMemo(
-        () => [...hotspotRows].sort((a, b) => b.riskScore - a.riskScore).slice(0, 20),
-        [hotspotRows],
-    );
-
-    if (isEmpty) {
-        return (
-            <section
-                className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
-                data-testid="empty-state"
-            >
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    No complexity history in this window.
-                </h2>
-                <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
-                    Complexity data appears once{" "}
-                    <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> has
-                    processed at least one complexity analysis run for this org. The page populates
-                    automatically on the next metrics run.
-                </p>
-                <p className="mt-2 text-xs text-(--ink-muted)">
-                    Org <span className="font-mono">{orgId}</span>
-                </p>
-            </section>
-        );
-    }
-
     return (
-        <div className="flex flex-col gap-6" data-testid="complexity-dashboard">
-            {/* KPI tiles */}
-            <section className="grid gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-6">
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <KpiCard
                     label="Avg Complexity"
                     value={
@@ -315,12 +404,17 @@ export function ComplexityDashboard({ orgId, points, hotspotRows }: ComplexityDa
                         ) : (
                             <DataState
                                 variant="insufficient-confidence"
-                                title="No complexity average"
-                                description="There is not enough complexity history to calculate an average for this window."
+                                title="No average"
+                                description="Not enough complexity history for an average in this window."
                             />
                         )
                     }
                     caption="cyclomatic / kloc · latest window"
+                />
+                <KpiCard
+                    label="Rising Areas"
+                    value={formatNumber(risingAreas)}
+                    caption="repos trending up this window"
                 />
                 <KpiCard
                     label="High-Complexity Functions"
@@ -330,8 +424,8 @@ export function ComplexityDashboard({ orgId, points, hotspotRows }: ComplexityDa
                         ) : (
                             <DataState
                                 variant="detector-enabled-no-findings"
-                                title="No high-complexity functions"
-                                description="This view did not surface functions above the threshold for the selected window."
+                                title="None above threshold"
+                                description="No functions crossed the complexity threshold."
                             />
                         )
                     }
@@ -345,8 +439,8 @@ export function ComplexityDashboard({ orgId, points, hotspotRows }: ComplexityDa
                         ) : (
                             <DataState
                                 variant="detector-enabled-no-findings"
-                                title="No hotspot files"
-                                description="No files crossed the hotspot risk threshold in this window."
+                                title="No hotspots"
+                                description="No files crossed the hotspot risk threshold."
                             />
                         )
                     }
@@ -354,40 +448,67 @@ export function ComplexityDashboard({ orgId, points, hotspotRows }: ComplexityDa
                 />
             </section>
 
-            {/* Trend panel — multi-series cyclomaticPerKloc over time */}
-            {trendOption && (
-                <section
-                    className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
-                    data-testid="trend-panel"
+            {trendOption ? (
+                <Panel
+                    title="Complexity trend"
+                    description="Cyclomatic complexity per kloc over time — top repos by latest score."
+                    testId="trend-panel"
                 >
-                    <div className="mb-4">
-                        <h2 className="text-lg font-semibold tracking-tight">Complexity trend</h2>
-                        <p className="mt-1 text-sm text-(--ink-muted)">
-                            Cyclomatic complexity per kloc over time — top repos by latest score.
-                        </p>
-                    </div>
                     <Chart
                         option={trendOption}
                         style={{ height: 320 }}
                         chartTheme={chartTheme}
                         chartColors={chartColors}
                     />
-                </section>
-            )}
-
-            {/* Hotspot treemap — files sized by riskScore, grouped by repo */}
-            {treemapData && (
-                <section
-                    className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
-                    data-testid="hotspot-panel"
+                </Panel>
+            ) : (
+                <Panel
+                    title="Complexity trend"
+                    description="Cyclomatic complexity per kloc over time."
+                    testId="trend-panel-empty"
                 >
-                    <div className="mb-4">
-                        <h2 className="text-lg font-semibold tracking-tight">File hotspots</h2>
-                        <p className="mt-1 text-sm text-(--ink-muted)">
-                            Files sized by risk score (churn × complexity × ownership
-                            concentration). Grouped by repo.
-                        </p>
-                    </div>
+                    <DataState
+                        variant="insufficient-confidence"
+                        title="No complexity history"
+                        description="Trend appears once complexity analysis has run for repos in this window."
+                    />
+                </Panel>
+            )}
+        </div>
+    );
+}
+
+function HotspotsView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
+    const treemapData = useMemo(() => buildTreemapData(hotspotRows), [hotspotRows]);
+    const top20 = useMemo(
+        () => [...hotspotRows].sort((a, b) => b.riskScore - a.riskScore).slice(0, 20),
+        [hotspotRows],
+    );
+
+    if (hotspotRows.length === 0) {
+        return (
+            <Panel
+                title="File hotspots"
+                description="Files sized by risk score (churn × complexity × ownership)."
+                testId="hotspot-panel-empty"
+            >
+                <DataState
+                    variant="detector-enabled-no-findings"
+                    title="No hotspot files"
+                    description="No files crossed the hotspot risk threshold for this scope and window."
+                />
+            </Panel>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-6">
+            {treemapData && (
+                <Panel
+                    title="File hotspots"
+                    description="Files sized by risk score (churn × complexity × ownership concentration). Grouped by repo."
+                    testId="hotspot-panel"
+                >
                     <TreemapChart
                         data={treemapData}
                         unit="risk"
@@ -419,83 +540,278 @@ export function ComplexityDashboard({ orgId, points, hotspotRows }: ComplexityDa
                             return lines.join("<br/>");
                         }}
                     />
-                </section>
+                </Panel>
             )}
 
-            {/* Drilldown table — top 20 hotspot files */}
-            {top20Hotspots.length > 0 && (
-                <section data-testid="drilldown-table">
-                    <div className="mb-3 flex items-baseline justify-between">
-                        <h2 className="text-lg font-semibold tracking-tight">Top hotspot files</h2>
-                        <p className="text-xs text-(--ink-muted)">
-                            sorted by risk score · top {top20Hotspots.length}
-                        </p>
-                    </div>
-                    <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
-                        <table className="w-full text-sm" data-testid="hotspot-table">
-                            <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
-                                <tr>
-                                    <th className="px-5 py-3 text-left">File</th>
-                                    <th className="px-5 py-3 text-left">Repo</th>
-                                    <th className="px-5 py-3 text-right">Risk score</th>
-                                    <th className="px-5 py-3 text-right">Cyclomatic avg</th>
-                                    <th className="px-5 py-3 text-right">Churn LOC 30d</th>
-                                    <th className="px-5 py-3 text-left">Evidence</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {top20Hotspots.map((row) => {
-                                    const fileName = row.filePath.split("/").pop() ?? row.filePath;
-                                    return (
-                                        <tr
-                                            key={`${row.repoId}-${row.filePath}`}
-                                            data-testid="hotspot-row"
-                                            className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
-                                        >
-                                            <td
-                                                className="px-5 py-3 align-middle font-medium font-mono text-[0.82em]"
-                                                title={row.filePath}
-                                            >
-                                                {fileName}
-                                            </td>
-                                            <td className="px-5 py-3 align-middle text-(--ink-muted)">
-                                                {row.repoName}
-                                            </td>
-                                            <td className="px-5 py-3 text-right tabular-nums">
-                                                {formatNumber(row.riskScore, {
-                                                    maximumFractionDigits: 3,
-                                                })}
-                                            </td>
-                                            <td className="px-5 py-3 text-right tabular-nums">
-                                                {formatNumber(row.cyclomaticAvg)}
-                                            </td>
-                                            <td className="px-5 py-3 text-right tabular-nums">
-                                                {formatNumber(row.churnLoc30d)}
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                {row.evidenceUrl ? (
-                                                    <Link
-                                                        href={row.evidenceUrl}
-                                                        className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
-                                                        data-testid="evidence-link"
-                                                    >
-                                                        Open →
-                                                    </Link>
-                                                ) : (
-                                                    <DataState
-                                                        variant="source-unsupported"
-                                                        title="No artifact link"
-                                                        description="The source did not provide a link for this evidence row."
-                                                    />
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+            <section data-testid="drilldown-table">
+                <div className="mb-3 flex items-baseline justify-between">
+                    <h2 className="text-lg font-semibold tracking-tight">Top hotspot files</h2>
+                    <p className="text-xs text-(--ink-muted)">
+                        sorted by risk score · top {top20.length}
+                    </p>
+                </div>
+                <FileTable
+                    testId="hotspot-table"
+                    columns={[
+                        { label: "File" },
+                        { label: "Repo" },
+                        { label: "Risk score", align: "right" },
+                        { label: "Cyclomatic avg", align: "right" },
+                        { label: "Churn LOC 30d", align: "right" },
+                        { label: CTA_LABELS.evidence },
+                    ]}
+                >
+                    {top20.map((row) => {
+                        const fileName = row.filePath.split("/").pop() ?? row.filePath;
+                        return (
+                            <tr
+                                key={`${row.repoId}-${row.filePath}`}
+                                data-testid="hotspot-row"
+                                className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                            >
+                                <td
+                                    className="px-5 py-3 align-middle font-medium font-mono text-[0.82em]"
+                                    title={row.filePath}
+                                >
+                                    {fileName}
+                                </td>
+                                <td className="px-5 py-3 align-middle text-(--ink-muted)">
+                                    {row.repoName}
+                                </td>
+                                <td className="px-5 py-3 text-right tabular-nums">
+                                    {formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
+                                </td>
+                                <td className="px-5 py-3 text-right tabular-nums">
+                                    {formatNumber(row.cyclomaticAvg)}
+                                </td>
+                                <td className="px-5 py-3 text-right tabular-nums">
+                                    {formatNumber(row.churnLoc30d)}
+                                </td>
+                                <td className="px-5 py-3">
+                                    <EvidenceCell url={row.evidenceUrl} />
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </FileTable>
+            </section>
+        </div>
+    );
+}
+
+function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
+    const ranked = useMemo(
+        () =>
+            hotspotRows
+                .filter((r): r is HotspotRow & { blameConcentration: number } =>
+                    Number.isFinite(r.blameConcentration as number),
+                )
+                .sort((a, b) => b.blameConcentration - a.blameConcentration)
+                .slice(0, 20),
+        [hotspotRows],
+    );
+
+    if (ranked.length === 0) {
+        return (
+            <Panel
+                title="Ownership risk"
+                description="Files where changes concentrate in a single owner (bus-factor risk)."
+                testId="ownership-panel-empty"
+            >
+                <DataState
+                    variant="source-unsupported"
+                    title="No ownership data"
+                    description="Blame/ownership concentration is not available for files in this window. Connect a Git provider with full commit history to populate it."
+                />
+            </Panel>
+        );
+    }
+
+    return (
+        <Panel
+            title="Ownership risk"
+            description="Files ranked by blame concentration — higher means changes funnel through fewer owners (single-owner / bus-factor risk)."
+            testId="ownership-panel"
+        >
+            <FileTable
+                testId="ownership-table"
+                columns={[
+                    { label: "File" },
+                    { label: "Repo" },
+                    { label: "Owner concentration", align: "right" },
+                    { label: "Risk score", align: "right" },
+                    { label: CTA_LABELS.evidence },
+                ]}
+            >
+                {ranked.map((row) => {
+                    const fileName = row.filePath.split("/").pop() ?? row.filePath;
+                    const pct = Math.round(row.blameConcentration * 100);
+                    return (
+                        <tr
+                            key={`${row.repoId}-${row.filePath}`}
+                            data-testid="ownership-row"
+                            className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                        >
+                            <td
+                                className="px-5 py-3 align-middle font-medium font-mono text-[0.82em]"
+                                title={row.filePath}
+                            >
+                                {fileName}
+                            </td>
+                            <td className="px-5 py-3 align-middle text-(--ink-muted)">
+                                {row.repoName}
+                            </td>
+                            <td className="px-5 py-3 text-right tabular-nums">{pct}%</td>
+                            <td className="px-5 py-3 text-right tabular-nums">
+                                {formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
+                            </td>
+                            <td className="px-5 py-3">
+                                <EvidenceCell url={row.evidenceUrl} />
+                            </td>
+                        </tr>
+                    );
+                })}
+            </FileTable>
+        </Panel>
+    );
+}
+
+function ChurnView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
+    const ranked = useMemo(
+        () => [...hotspotRows].sort((a, b) => b.churnLoc30d - a.churnLoc30d).slice(0, 20),
+        [hotspotRows],
+    );
+    const maxChurn = ranked.length > 0 ? Math.max(...ranked.map((r) => r.churnLoc30d), 1) : 1;
+    const hasChurn = ranked.some((r) => r.churnLoc30d > 0);
+
+    if (!hasChurn) {
+        return (
+            <Panel
+                title="Churn"
+                description="Files by lines changed over the last 30 days."
+                testId="churn-panel-empty"
+            >
+                <DataState
+                    variant="detector-enabled-no-findings"
+                    title="No churn in this window"
+                    description="No file change volume was recorded for this scope and window."
+                />
+            </Panel>
+        );
+    }
+
+    return (
+        <Panel
+            title="Churn"
+            description="Files ranked by lines changed over the last 30 days — high churn on complex files is where risk compounds."
+            testId="churn-panel"
+        >
+            <FileTable
+                testId="churn-table"
+                columns={[
+                    { label: "File" },
+                    { label: "Repo" },
+                    { label: "Churn LOC 30d", align: "right" },
+                    { label: "Commits 30d", align: "right" },
+                    { label: "Risk score", align: "right" },
+                ]}
+            >
+                {ranked.map((row) => {
+                    const fileName = row.filePath.split("/").pop() ?? row.filePath;
+                    const width = `${Math.max(2, Math.round((row.churnLoc30d / maxChurn) * 100))}%`;
+                    return (
+                        <tr
+                            key={`${row.repoId}-${row.filePath}`}
+                            data-testid="churn-row"
+                            className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                        >
+                            <td
+                                className="px-5 py-3 align-middle font-medium font-mono text-[0.82em]"
+                                title={row.filePath}
+                            >
+                                {fileName}
+                            </td>
+                            <td className="px-5 py-3 align-middle text-(--ink-muted)">
+                                {row.repoName}
+                            </td>
+                            <td className="px-5 py-3 align-middle">
+                                <div className="flex items-center justify-end gap-3">
+                                    <span
+                                        aria-hidden
+                                        className="h-2 rounded-full bg-(--accent)/70"
+                                        style={{ width }}
+                                    />
+                                    <span className="tabular-nums">
+                                        {formatNumber(row.churnLoc30d)}
+                                    </span>
+                                </div>
+                            </td>
+                            <td className="px-5 py-3 text-right tabular-nums">
+                                {formatNumber(row.churnCommits30d)}
+                            </td>
+                            <td className="px-5 py-3 text-right tabular-nums">
+                                {formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
+                            </td>
+                        </tr>
+                    );
+                })}
+            </FileTable>
+        </Panel>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+export function ComplexityDashboard({
+    orgId,
+    points,
+    hotspotRows,
+    activeTab = "overview",
+}: ComplexityDashboardProps) {
+    const chartTheme = useChartTheme();
+    const chartColors = useChartColors();
+
+    const isEmpty = points.length === 0 && hotspotRows.length === 0;
+
+    if (isEmpty) {
+        return (
+            <section
+                className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
+                data-testid="empty-state"
+            >
+                <h2 className="text-2xl font-semibold tracking-tight">
+                    No complexity history in this window.
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
+                    Complexity data appears once{" "}
+                    <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> has
+                    processed at least one complexity analysis run for this org. The page populates
+                    automatically on the next metrics run.
+                </p>
+                <p className="mt-2 text-xs text-(--ink-muted)">
+                    Org <span className="font-mono">{orgId}</span>
+                </p>
+            </section>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-6" data-testid="complexity-dashboard">
+            {activeTab === "hotspots" ? (
+                <HotspotsView hotspotRows={hotspotRows} />
+            ) : activeTab === "ownership-risk" ? (
+                <OwnershipRiskView hotspotRows={hotspotRows} />
+            ) : activeTab === "churn" ? (
+                <ChurnView hotspotRows={hotspotRows} />
+            ) : (
+                <OverviewView
+                    points={points}
+                    hotspotRows={hotspotRows}
+                    chartTheme={chartTheme}
+                    chartColors={chartColors}
+                />
             )}
         </div>
     );

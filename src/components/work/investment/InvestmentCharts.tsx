@@ -38,6 +38,12 @@ type InvestmentChartsProps = {
     repoTeamFlowFailed: boolean;
     selectedThemeKey: string | null;
     showSubcategories: boolean;
+    /** Controls which chart sections are rendered.
+     * - "all" (default): mix section then flows (current behaviour, unchanged).
+     * - "mix": only the InvestmentMixSection treemap/donut.
+     * - "flows": only the ChartTypeToggle + chord/sankey flows.
+     */
+    section?: "all" | "mix" | "flows";
 };
 
 export function InvestmentCharts({
@@ -63,11 +69,11 @@ export function InvestmentCharts({
     repoTeamFlowFailed,
     selectedThemeKey,
     showSubcategories,
+    section = "all",
 }: InvestmentChartsProps) {
     const [chartType, setChartType] = useState<InvestmentFlowChartType>("sankey");
     const {
         themeColorMap,
-        categoryColorMap,
         prepareSankeyFlow,
         resolveSubcategoryIdFromLabel,
         buildSankeyTooltipFormatter,
@@ -100,23 +106,25 @@ export function InvestmentCharts({
         };
     }, [filters.time]);
 
-    return (
-        <>
-            <InvestmentMixSection
-                filters={filters}
-                activeRole={activeRole}
-                investmentMix={investmentMix}
-                isLoading={isLoading}
-                isMixLoading={isMixLoading}
-                workUnits={workUnits}
-                effortUnit={effortUnit}
-                focusTheme={focusTheme}
-                focusSubcategory={focusSubcategory ?? null}
-                setFocusTheme={setFocusTheme}
-                setFocusSubcategory={setFocusSubcategory}
-                themeColorMap={themeColorMap}
-            />
+    const mixSection = (
+        <InvestmentMixSection
+            filters={filters}
+            activeRole={activeRole}
+            investmentMix={investmentMix}
+            isLoading={isLoading}
+            isMixLoading={isMixLoading}
+            workUnits={workUnits}
+            effortUnit={effortUnit}
+            focusTheme={focusTheme}
+            focusSubcategory={focusSubcategory ?? null}
+            setFocusTheme={setFocusTheme}
+            setFocusSubcategory={setFocusSubcategory}
+            themeColorMap={themeColorMap}
+        />
+    );
 
+    const flowsSection = (
+        <>
             <div className="flex justify-end">
                 <ChartTypeToggle
                     options={INVESTMENT_SANKEY_CHORD_OPTIONS}
@@ -152,19 +160,33 @@ export function InvestmentCharts({
 
                     <RepoTeamSankeySection
                         filters={filters}
-                        workUnits={workUnits}
                         setFocusSubcategory={setFocusSubcategory}
                         effortUnit={effortUnit}
                         repoTeamFlow={repoTeamFlow}
                         isRepoTeamLoading={isRepoTeamLoading}
                         repoTeamFlowFailed={repoTeamFlowFailed}
-                        categoryColorMap={categoryColorMap}
                         prepareSankeyFlow={prepareSankeyFlow}
                         buildSankeyTooltipFormatter={buildSankeyTooltipFormatter}
                         resolveSubcategoryIdFromLabel={resolveSubcategoryIdFromLabel}
                     />
                 </>
             )}
+        </>
+    );
+
+    if (section === "mix") {
+        return mixSection;
+    }
+
+    if (section === "flows") {
+        return flowsSection;
+    }
+
+    // section === "all" — default, existing behaviour
+    return (
+        <>
+            {mixSection}
+            {flowsSection}
         </>
     );
 }

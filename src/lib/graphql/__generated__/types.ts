@@ -492,6 +492,31 @@ export type CloneSavedReportInput = {
   sourceReportId: Scalars['String']['input'];
 };
 
+export type CognitiveLoadInput = {
+  orgId: Scalars['String']['input'];
+  sinceDate: Scalars['Date']['input'];
+  teamId?: InputMaybe<Scalars['String']['input']>;
+  untilDate: Scalars['Date']['input'];
+};
+
+export type CognitiveLoadResult = {
+  __typename?: 'CognitiveLoadResult';
+  orgId: Scalars['String']['output'];
+  signals: Array<CognitiveLoadSignal>;
+  teamId?: Maybe<Scalars['String']['output']>;
+  totalDays: Scalars['Int']['output'];
+};
+
+export type CognitiveLoadSignal = {
+  __typename?: 'CognitiveLoadSignal';
+  afterHoursCommitRatio?: Maybe<Scalars['Float']['output']>;
+  contextSpreadCount: Scalars['Float']['output'];
+  day: Scalars['Date']['output'];
+  prInterruptionLoad: Scalars['Float']['output'];
+  reviewRequestLoad: Scalars['Float']['output'];
+  weekendCommitRatio?: Maybe<Scalars['Float']['output']>;
+};
+
 export type ComplexityPoint = {
   __typename?: 'ComplexityPoint';
   cyclomaticAvg?: Maybe<Scalars['Float']['output']>;
@@ -719,6 +744,7 @@ export type HomeResult = {
   __typename?: 'HomeResult';
   deltas: Array<MetricDelta>;
   freshness: Freshness;
+  reworkThemeAllocation: Array<ReworkThemeAllocation>;
 };
 
 export type HotspotRow = {
@@ -788,6 +814,7 @@ export type MeasureInput =
   | 'PIPELINE_QUEUE_TIME'
   | 'PIPELINE_RERUN_RATE'
   | 'PIPELINE_SUCCESS_RATE'
+  | 'PR_REWORK_RATIO'
   | 'TEST_FAILURE_RATE'
   | 'TEST_FLAKE_RATE'
   | 'TEST_PASS_RATE'
@@ -1058,6 +1085,8 @@ export type Query = {
   capacityForecasts: CapacityForecastConnection;
   /** Get catalog of available dimensions, measures, and limits */
   catalog: CatalogResult;
+  /** Daily cognitive-load signals (PR interruption, context spread, review request load, after-hours and weekend commit ratios). Reads from ``user_metrics_daily`` and ``team_metrics_daily`` — no recomputation, pure surface of persisted metrics. */
+  cognitiveLoad: CognitiveLoadResult;
   /** Cyclomatic complexity trend by repo or file. Reads from append-only ``repo_complexity_daily`` / ``file_complexity_snapshots`` tables — no recomputation, pure surface of persisted data. */
   complexityTimeseries: ComplexityTimeseriesResult;
   /** Compounding Risk composite: churn × complexity × ownership × review-latency. Inspectable score with persisted weights, thresholds, raw inputs, and normalized components. */
@@ -1078,6 +1107,8 @@ export type Query = {
   recommendations: Array<Recommendation>;
   /** List report runs for a saved report */
   reportRuns: ReportRunConnection;
+  /** Reviewer-to-author collaboration edges from ``review_edges_daily``. Ordered by review count descending.  Use ``repoIds`` to narrow to specific repositories.  Org-scoped; no recomputation. */
+  reviewEdges: ReviewEdgesResult;
   /** Get a saved report by ID */
   savedReport?: Maybe<SavedReportType>;
   /** List saved reports for an organization */
@@ -1185,6 +1216,11 @@ export type QueryCatalogArgs = {
 };
 
 
+export type QueryCognitiveLoadArgs = {
+  input: CognitiveLoadInput;
+};
+
+
 export type QueryComplexityTimeseriesArgs = {
   input: ComplexityTimeseriesInput;
 };
@@ -1240,6 +1276,11 @@ export type QueryReportRunsArgs = {
   limit?: Scalars['Int']['input'];
   orgId: Scalars['String']['input'];
   reportId: Scalars['String']['input'];
+};
+
+
+export type QueryReviewEdgesArgs = {
+  input: ReviewEdgesInput;
 };
 
 
@@ -1332,6 +1373,39 @@ export type ReportRunType = {
   startedAt?: Maybe<Scalars['DateTime']['output']>;
   status: Scalars['String']['output'];
   triggeredBy: Scalars['String']['output'];
+};
+
+export type ReviewEdgeRow = {
+  __typename?: 'ReviewEdgeRow';
+  author: Scalars['String']['output'];
+  day: Scalars['Date']['output'];
+  repoId?: Maybe<Scalars['String']['output']>;
+  reviewer: Scalars['String']['output'];
+  reviewsCount: Scalars['Int']['output'];
+};
+
+export type ReviewEdgesInput = {
+  limit?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  sinceDate: Scalars['Date']['input'];
+  untilDate: Scalars['Date']['input'];
+};
+
+export type ReviewEdgesResult = {
+  __typename?: 'ReviewEdgesResult';
+  edges: Array<ReviewEdgeRow>;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ReworkThemeAllocation = {
+  __typename?: 'ReworkThemeAllocation';
+  allocation: Scalars['Float']['output'];
+  allocationPct: Scalars['Float']['output'];
+  churnLoc: Scalars['Int']['output'];
+  label: Scalars['String']['output'];
+  prsMerged: Scalars['Int']['output'];
+  theme: Scalars['String']['output'];
 };
 
 export type SankeyCoverage = {

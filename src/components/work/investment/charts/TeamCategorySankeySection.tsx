@@ -209,7 +209,9 @@ export function TeamCategorySankeySection({
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="font-(--font-display) text-lg">Team burden flow</h3>
+                        <h3 className="font-(--font-display) text-lg">
+                            Team &rarr; Theme &rarr; Repo
+                        </h3>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-(--ink-muted)">
                             <span>
                                 Team coverage:{" "}
@@ -287,10 +289,10 @@ export function TeamCategorySankeySection({
             </div>
             <div className="mt-0">
                 {isSankeyLoading ? (
-                    <p className="text-sm text-(--ink-muted)">Loading flow data...</p>
+                    <p className="text-sm text-(--ink-muted)">Loading allocation data...</p>
                 ) : !sankeyFlow || !sankeyFlow.links.length ? (
                     <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
-                        No team burden flow available for this scope and window.
+                        No allocation path available for this scope and window.
                     </div>
                 ) : (
                     <SankeyChart

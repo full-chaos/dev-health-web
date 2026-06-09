@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { EvidencePanel } from "@/components/evidence";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import type { HomeResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -100,7 +101,9 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                       <p className="mt-2 text-base font-semibold text-foreground">
                                           {tile.subtitle}
                                       </p>
-                                      <p className="mt-3 text-xs text-(--ink-muted)">Evidence</p>
+                                      <p className="mt-3 text-xs text-(--ink-muted)">
+                                          {CTA_LABELS.evidence}
+                                      </p>
                                   </button>
                               ))
                             : null}
