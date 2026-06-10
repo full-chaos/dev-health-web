@@ -1,3 +1,4 @@
+import { applyLensPriority, type LensId } from "@/lib/lensContext";
 import type { MetricDelta } from "@/lib/types";
 
 export type MetricPolarity = "lowerIsBetter" | "higherIsBetter";
@@ -117,8 +118,12 @@ export const FALLBACK_DELTAS: MetricDelta[] = METRIC_CATALOG.map((item) => ({
 
 /**
  * Maps each metric key to its investigation-flow category.
- * Categories align with the `investigationOrder` entries in roleContext.ts
- * ("review", "cycle", "churn", "wip", "investment").
+ *
+ * Category strings must exactly match the `investigationOrder` entries defined
+ * in `src/lib/roleContext.ts` (e.g. "review", "cycle", "churn", "wip",
+ * "investment") — these are the canonical vocabulary.  `applyLensPriority`
+ * from lensContext is the single ordering implementation; this map is its
+ * metric-level input.
  */
 export const METRIC_CATEGORY_MAP: Record<string, string> = {
     review_latency: "review",
@@ -141,29 +146,26 @@ export const METRIC_CATEGORY_MAP: Record<string, string> = {
 };
 
 /**
- * Sort `deltas` according to a role's `investigationOrder`.
+ * Sort `deltas` by the given lens's `investigationOrder`.
  *
- * - Metrics whose category appears first in `investigationOrder` sort first.
- * - Within a category, the biggest absolute delta_pct surfaces first.
- * - Metrics with no matching category sort to the end in original order.
- * - Never mutates the input; always returns a new array.
+ * Delegates category ordering to `applyLensPriority` (the single ordering
+ * implementation).  Within each category, larger |delta_pct| surfaces first:
+ * pre-sort by magnitude so `applyLensPriority`'s stable sort preserves it.
+ * Metrics with no matching category are appended in their original order.
+ * Never mutates the input array.
  */
-export function sortDeltasByRole(
-    deltas: MetricDelta[],
-    investigationOrder: readonly string[],
-): MetricDelta[] {
-    return [...deltas].sort((a, b) => {
-        const catA = METRIC_CATEGORY_MAP[a.metric] ?? "";
-        const catB = METRIC_CATEGORY_MAP[b.metric] ?? "";
-        const ia = catA ? investigationOrder.indexOf(catA) : -1;
-        const ib = catB ? investigationOrder.indexOf(catB) : -1;
-        // Unknown categories sink to the end
-        const normA = ia === -1 ? investigationOrder.length : ia;
-        const normB = ib === -1 ? investigationOrder.length : ib;
-        if (normA !== normB) return normA - normB;
-        // Within the same category: larger absolute delta first
-        return Math.abs(b.delta_pct) - Math.abs(a.delta_pct);
-    });
+export function sortDeltasByRole(deltas: MetricDelta[], lensId: string): MetricDelta[] {
+    // 1. Pre-sort by magnitude so stable sort preserves within-category ordering.
+    const byMagnitude = [...deltas].sort(
+        (a, b) => Math.abs(b.delta_pct) - Math.abs(a.delta_pct),
+    );
+    // 2. Wrap as category-proxy items: applyLensPriority orders by item.id.
+    const proxied = byMagnitude.map((delta) => ({
+        id: METRIC_CATEGORY_MAP[delta.metric] ?? delta.metric,
+        delta,
+    }));
+    // 3. Apply role-aware ordering then unwrap.
+    return applyLensPriority(proxied, lensId as LensId, "cockpit").map((p) => p.delta);
 }
 
 export const getMetricLabel = (metric: string) => {

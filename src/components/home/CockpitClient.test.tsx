@@ -59,13 +59,27 @@ describe("CockpitClient — Key Shifts row", () => {
         expect(screen.getByText("Code Churn")).toBeInTheDocument();
     });
 
-    it("shows the no-data-connected empty state when deltas are empty", () => {
+    it("shows no-data-connected when deltas are empty and no sources are connected", () => {
+        // makeHome() has freshness.sources: {} → no sources → no-data-connected
         render(<CockpitClient home={makeHome({ deltas: [] })} filters={filters} activeRole="ic" />);
-        // DataState renders the variant title
         expect(screen.getByTestId("data-state-no-data-connected")).toBeInTheDocument();
     });
 
-    it("shows the no-data-connected empty state when home is null", () => {
+    it("shows detector-enabled-no-findings when sources are present but deltas are empty", () => {
+        const homeWithSources = makeHome({
+            deltas: [],
+            freshness: {
+                last_ingested_at: null,
+                sources: { github: "ok" },
+                coverage: { repos_covered_pct: 80, prs_linked_to_issues_pct: 0, issues_with_cycle_states_pct: 0 },
+            },
+        });
+        render(<CockpitClient home={homeWithSources} filters={filters} activeRole="ic" />);
+        expect(screen.getByTestId("data-state-detector-enabled-no-findings")).toBeInTheDocument();
+        expect(screen.queryByTestId("data-state-no-data-connected")).not.toBeInTheDocument();
+    });
+
+    it("shows no-data-connected when home is null", () => {
         render(<CockpitClient home={null} filters={filters} activeRole="ic" />);
         expect(screen.getByTestId("data-state-no-data-connected")).toBeInTheDocument();
     });
@@ -86,13 +100,16 @@ describe("CockpitClient — Key Shifts row", () => {
         expect(cards[0]).toHaveTextContent("Review Latency");
     });
 
-    it("each delta card link includes the metric and filter params", () => {
+    it("each delta card link includes metric=, role=, and f= params (scope-loss regression guard)", () => {
         render(<CockpitClient home={makeHome()} filters={filters} activeRole="em" />);
         const firstCard = screen
             .getByTestId("key-shifts-grid")
             .querySelector("a[href*='metric=wip']");
         expect(firstCard).not.toBeNull();
         expect(firstCard).toHaveAttribute("href", expect.stringContaining("/explore"));
+        expect(firstCard).toHaveAttribute("href", expect.stringContaining("metric=wip"));
         expect(firstCard).toHaveAttribute("href", expect.stringContaining("role=em"));
+        // f= must be present — dropping it loses the user's scope/time filter context.
+        expect(firstCard).toHaveAttribute("href", expect.stringContaining("f="));
     });
 });

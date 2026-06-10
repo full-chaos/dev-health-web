@@ -8,9 +8,8 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { MetricDelta } from "@/components/shared/MetricDelta";
 import { DataState } from "@/components/ui/DataState";
-import { getRoleConfig } from "@/lib/roleContext";
 import { sortDeltasByRole, getMetricPolarity } from "@/lib/metrics/catalog";
-import { formatNumber } from "@/lib/formatters";
+import { formatMetricValue } from "@/lib/formatters";
 import type { HomeResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -43,9 +42,12 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
         setPanelState((prev) => ({ ...prev, isOpen: false }));
     };
 
-    const roleConfig = getRoleConfig(activeRole);
     const rawDeltas = home?.deltas ?? [];
-    const sortedDeltas = sortDeltasByRole(rawDeltas, roleConfig.investigationOrder);
+    const sortedDeltas = sortDeltasByRole(rawDeltas, activeRole);
+
+    // Distinguish "no sources connected" from "sources present but no deltas computed".
+    const hasSources = Object.keys(home?.freshness?.sources ?? {}).length > 0;
+    const emptyVariant = hasSources ? "detector-enabled-no-findings" : "no-data-connected";
 
     return (
         <>
@@ -82,6 +84,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
 
                 {sortedDeltas.length > 0 ? (
                     <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="key-shifts-grid">
+                        {/* Role-priority ordering intentionally trumps magnitude; show top 8 per window. */}
                         {sortedDeltas.slice(0, 8).map((delta) => (
                             <Link
                                 key={delta.metric}
@@ -96,10 +99,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                     {delta.label}
                                 </p>
                                 <p className="mt-2 text-base font-semibold text-foreground">
-                                    {formatNumber(delta.value)}&thinsp;
-                                    <span className="text-xs font-normal text-(--ink-muted)">
-                                        {delta.unit}
-                                    </span>
+                                    {formatMetricValue(delta.value, delta.unit)}
                                 </p>
                                 <MetricDelta
                                     value={delta.delta_pct}
@@ -113,7 +113,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                     </div>
                 ) : (
                     <div className="mt-4">
-                        <DataState variant="no-data-connected" />
+                        <DataState variant={emptyVariant} />
                     </div>
                 )}
             </section>
