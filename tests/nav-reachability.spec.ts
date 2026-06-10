@@ -154,6 +154,11 @@ test.describe("primary navigation reachability", () => {
                 url: /\/plan\/capacity(?:[?#].*)?$/,
                 path: "/plan/capacity",
             },
+            {
+                label: "Backlog Risk",
+                url: /\/plan\/backlog-risk(?:[?#].*)?$/,
+                path: "/plan/backlog-risk",
+            },
             // "Operating Review" is hidden from nav (navVisible: false) pending
             // a rethink — see collapsedLeafLabels above. Route stays reachable
             // by URL (asserted via reachableRoutes).
