@@ -50,9 +50,9 @@ import { formatNumber } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 
 /** Resolve the org scope from the auth session (mirrors ai.ts). */
-async function resolveOrgId(): Promise<string> {
+async function resolveOrgId(): Promise<string | undefined> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return session?.user?.org_id as string | undefined;
 }
 
 import type { AreaSignal, AreaSignalState } from "./types";
@@ -162,15 +162,17 @@ export async function getImproveSignals(
     const [opportunitiesData, homeData, automationsData] = await Promise.all([
         safe(() => getOpportunities(filters), "opportunities"),
         safe(() => getHomeData(filters), "home"),
-        safe(
-            () =>
-                graphqlFetch<{ improveOpportunities: ImproveOpportunitiesResult }>(
-                    IMPROVE_OPPORTUNITIES_QUERY,
-                    { orgId, scope: null, limit: 10, windowDays: 30 },
-                    { orgId },
-                ).then((r) => r.improveOpportunities),
-            "improve-automations",
-        ),
+        safe(() => {
+            // Guard: without an org in session, require_org_id will reject the
+            // request server-side. Short-circuit here so safe() → UNAVAILABLE
+            // rather than a false "0 detected / all green" (Warning 4, CHAOS-2220).
+            if (!orgId) throw new Error("session missing org_id");
+            return graphqlFetch<{ improveOpportunities: ImproveOpportunitiesResult }>(
+                IMPROVE_OPPORTUNITIES_QUERY,
+                { scope: null, limit: 10, windowDays: 30 },
+                { orgId },
+            ).then((r) => r.improveOpportunities);
+        }, "improve-automations"),
     ]);
 
     const signals: AreaSignal[] = [];

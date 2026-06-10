@@ -1086,6 +1086,13 @@ type Query {
   """
   aiOpportunities(orgId: String!, scope: AIScopeInput = null, limit: Int! = 25): AIOpportunitiesResult!
 
+  """
+  Non-AI, threshold-based flow opportunity recommendations for the Improve surface (CHAOS-2220).
+  Org scoping is enforced from the authenticated request context — no orgId arg required.
+  An empty list means all metrics are within thresholds, not an error.
+  """
+  improveOpportunities(scope: AIScopeInput = null, limit: Int! = 10, windowDays: Int! = 30): ImproveOpportunitiesResult!
+
   """AI governance coverage and recent policy violations."""
   aiGovernanceSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, violationLimit: Int! = 100): AIGovernanceSummary!
 
@@ -1611,4 +1618,36 @@ enum WorkGraphProvenance {
   NATIVE
   EXPLICIT_TEXT
   HEURISTIC
+}
+
+# ── Improve / Flow opportunity types (CHAOS-2220) ────────────────────────────
+
+enum ImproveOpportunityKind {
+  HIGH_REVIEW_LATENCY
+  SLOW_CYCLE_TIME
+  HIGH_REWORK
+  HIGH_WIP
+  LOW_THROUGHPUT
+  HIGH_CHURN
+  HIGH_CHANGE_FAILURE
+}
+
+type ImproveOpportunity {
+  opportunityId: String!
+  kind: ImproveOpportunityKind!
+  entityType: String!
+  entityId: String!
+  title: String!
+  rationale: String!
+  score: Float!
+  severity: String!
+  evidenceRefs: [String!]!
+  recommendedAction: String!
+}
+
+type ImproveOpportunitiesResult {
+  orgId: String!
+  opportunities: [ImproveOpportunity!]!
+  detectorReady: Boolean!
+  totalCount: Int!
 }

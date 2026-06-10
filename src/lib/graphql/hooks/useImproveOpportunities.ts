@@ -1,7 +1,6 @@
 import { useQuery } from "urql";
 
 import { IMPROVE_OPPORTUNITIES_QUERY } from "../queries";
-import { useOrgId } from "../provider";
 import type { ImproveOpportunitiesResult } from "../__generated__/types";
 
 type HookResult = {
@@ -11,11 +10,9 @@ type HookResult = {
 };
 
 export function useImproveOpportunities(limit = 10, windowDays = 30): HookResult {
-    const orgId = useOrgId();
     const [result] = useQuery<{ improveOpportunities: ImproveOpportunitiesResult }>({
         query: IMPROVE_OPPORTUNITIES_QUERY,
-        variables: { orgId: orgId ?? "", scope: null, limit, windowDays },
-        pause: !orgId,
+        variables: { scope: null, limit, windowDays },
         requestPolicy: "cache-and-network",
     });
 

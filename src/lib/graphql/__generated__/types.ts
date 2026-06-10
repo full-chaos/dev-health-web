@@ -833,6 +833,37 @@ export type IdentityMappingHealth = {
   unmappedIdentities: Array<UnmappedIdentity>;
 };
 
+export type ImproveOpportunitiesResult = {
+  __typename?: 'ImproveOpportunitiesResult';
+  detectorReady: Scalars['Boolean']['output'];
+  opportunities: Array<ImproveOpportunity>;
+  orgId: Scalars['String']['output'];
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ImproveOpportunity = {
+  __typename?: 'ImproveOpportunity';
+  entityId: Scalars['String']['output'];
+  entityType: Scalars['String']['output'];
+  evidenceRefs: Array<Scalars['String']['output']>;
+  kind: ImproveOpportunityKind;
+  opportunityId: Scalars['String']['output'];
+  rationale: Scalars['String']['output'];
+  recommendedAction: Scalars['String']['output'];
+  score: Scalars['Float']['output'];
+  severity: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+};
+
+export type ImproveOpportunityKind =
+  | 'HIGH_CHANGE_FAILURE'
+  | 'HIGH_CHURN'
+  | 'HIGH_REVIEW_LATENCY'
+  | 'HIGH_REWORK'
+  | 'HIGH_WIP'
+  | 'LOW_THROUGHPUT'
+  | 'SLOW_CYCLE_TIME';
+
 export type MaintainerShare = {
   __typename?: 'MaintainerShare';
   author: Scalars['String']['output'];
@@ -1144,6 +1175,12 @@ export type Query = {
   home: HomeResult;
   /** Top file hotspots ranked by risk_score (churn x complexity x ownership concentration). Reads from the append-only ``file_hotspot_daily`` table. */
   hotspots: HotspotsResult;
+  /**
+   * Non-AI, threshold-based flow opportunity recommendations for the Improve surface (CHAOS-2220).
+   * Org scoping is enforced from the authenticated request context — no orgId arg required.
+   * An empty list means all metrics are within thresholds, not an error.
+   */
+  improveOpportunities: ImproveOpportunitiesResult;
   /** Weekly Engineering Operating Review */
   operatingReview: OperatingReview;
   /** Get first-party product telemetry dashboard metrics */
@@ -1292,6 +1329,13 @@ export type QueryHomeArgs = {
 
 export type QueryHotspotsArgs = {
   input: HotspotsInput;
+};
+
+
+export type QueryImproveOpportunitiesArgs = {
+  limit?: Scalars['Int']['input'];
+  scope?: InputMaybe<AiScopeInput>;
+  windowDays?: Scalars['Int']['input'];
 };
 
 
@@ -1915,36 +1959,3 @@ export type WorkGraphProvenance =
   | 'EXPLICIT_TEXT'
   | 'HEURISTIC'
   | 'NATIVE';
-
-// ── Improve / Flow opportunity types (CHAOS-2220) ─────────────────────────────
-
-export type ImproveOpportunityKind =
-  | 'HIGH_CHANGE_FAILURE'
-  | 'HIGH_CHURN'
-  | 'HIGH_REWORK'
-  | 'HIGH_REVIEW_LATENCY'
-  | 'HIGH_WIP'
-  | 'LOW_THROUGHPUT'
-  | 'SLOW_CYCLE_TIME';
-
-export type ImproveOpportunity = {
-  __typename?: 'ImproveOpportunity';
-  opportunityId: string;
-  kind: ImproveOpportunityKind;
-  entityType: string;
-  entityId: string;
-  title: string;
-  rationale: string;
-  score: number;
-  severity: string;
-  evidenceRefs: Array<string>;
-  recommendedAction: string;
-};
-
-export type ImproveOpportunitiesResult = {
-  __typename?: 'ImproveOpportunitiesResult';
-  orgId: string;
-  opportunities: Array<ImproveOpportunity>;
-  detectorReady: boolean;
-  totalCount: number;
-};

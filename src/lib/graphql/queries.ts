@@ -559,8 +559,8 @@ query AIOpportunities($orgId: String!, $scope: AIScopeInput, $limit: Int! = 5) {
 `;
 
 export const IMPROVE_OPPORTUNITIES_QUERY = `
-query ImproveOpportunities($orgId: String!, $scope: AIScopeInput, $limit: Int! = 10, $windowDays: Int! = 30) {
-  improveOpportunities(orgId: $orgId, scope: $scope, limit: $limit, windowDays: $windowDays) {
+query ImproveOpportunities($scope: AIScopeInput, $limit: Int! = 10, $windowDays: Int! = 30) {
+  improveOpportunities(scope: $scope, limit: $limit, windowDays: $windowDays) {
     orgId
     detectorReady
     totalCount

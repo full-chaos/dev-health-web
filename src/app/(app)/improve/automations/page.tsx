@@ -17,6 +17,7 @@ export default async function ImproveAutomationsPage({
 }: ImproveAutomationsPageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
     const health = await checkApiHealth();
 
@@ -24,7 +25,7 @@ export default async function ImproveAutomationsPage({
         return <ServiceUnavailable />;
     }
 
-    const aiAutomationsHref = withFilterParam("/ai/automations", filters);
+    const aiAutomationsHref = withFilterParam("/ai/automations", filters, roleParam);
 
     return (
         <>
