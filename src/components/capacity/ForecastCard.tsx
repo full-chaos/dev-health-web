@@ -74,7 +74,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
         <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
             <div className="mb-4">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-foreground">Capacity Forecast</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Completion Forecast</h3>
                 </div>
                 <p className="mt-1 text-sm text-(--ink-muted)">
                     Scope: <span className="font-medium text-foreground">{scopeLabel}</span>

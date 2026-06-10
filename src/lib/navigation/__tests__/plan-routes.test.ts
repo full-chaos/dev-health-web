@@ -35,10 +35,10 @@ describe("Plan route placement", () => {
         expect(source).not.toContain("getThroughputForecastViaGraphQL");
     });
 
-    it("renders Capacity Forecast as one Monte Carlo method view with no tab strip", () => {
+    it("renders Completion Forecast as one Monte Carlo method view with no tab strip", () => {
         const source = readRoute("plan/capacity");
 
-        expect(source).toContain("Capacity Forecast");
+        expect(source).toContain("Completion Forecast");
         expect(source).toContain("CapacityView");
         expect(source).toContain("completion projection");
         expect(source).toContain("throughput distribution");

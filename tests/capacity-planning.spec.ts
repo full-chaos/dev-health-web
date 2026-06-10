@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 // Structure A (CHAOS-2084 / Penpot "03 Plan Correction"):
 //   - /plan/delivery-forecast is a Next.js server redirect → /plan (NOT a real page).
 //   - /plan renders the Delivery Forecast dashboard directly; h1 is "Overview".
-//   - /plan/capacity is the Capacity Forecast surface (Monte Carlo method label only).
+//   - /plan/capacity is the Completion Forecast surface (Monte Carlo method label only).
 //   - There is NO "Plan forecast views" tab strip on either page.
 
 test.describe("Plan area forecast pages", () => {
@@ -51,18 +51,18 @@ test.describe("Plan area forecast pages", () => {
     }) => {
         await page.goto("/plan");
 
-        // Structure A: Delivery Forecast and Capacity Forecast are distinct first-class
+        // Structure A: Delivery Forecast and Completion Forecast are distinct first-class
         // pages — no shared tab strip labeled "Plan forecast views" exists.
         await expect(page.getByRole("navigation", { name: "Plan forecast views" })).toHaveCount(0);
     });
 
-    test("/plan/capacity renders Capacity Forecast with Monte Carlo method label and no tab nav", async ({
+    test("/plan/capacity renders Completion Forecast with Monte Carlo method label and no tab nav", async ({
         page,
     }) => {
         await page.goto("/plan/capacity");
 
         await expect(
-            page.getByRole("heading", { name: "Capacity Forecast", level: 1 }),
+            page.getByRole("heading", { name: "Completion Forecast", level: 1 }),
         ).toBeVisible();
         // Method label — not a tab or heading.
         await expect(

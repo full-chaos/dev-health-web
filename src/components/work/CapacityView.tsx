@@ -53,7 +53,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-xl font-semibold text-foreground">Capacity Forecast</h2>
+                    <h2 className="text-xl font-semibold text-foreground">Completion Forecast</h2>
                     <p className="mt-1 text-sm text-(--ink-muted)">
                         Monte Carlo forecast for work completion
                     </p>

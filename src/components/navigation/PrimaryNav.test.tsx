@@ -170,7 +170,7 @@ describe("PrimaryNav — active child highlight (A10: one selected, distinct hov
         {
             pathname: "/plan/capacity",
             active: "capacity",
-            child: /^Capacity Forecast$/i,
+            child: /^Completion Forecast$/i,
         },
         { pathname: "/testops/coverage", active: "coverage", child: /^TestOps$/i },
         { pathname: "/quality", active: "quality", child: /^Quality$/i },

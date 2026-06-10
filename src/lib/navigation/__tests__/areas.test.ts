@@ -78,7 +78,7 @@ describe("navArea.children — locked child navigation", () => {
                 "People",
                 "Code",
             ],
-            Plan: ["Overview", "Capacity Forecast", "Backlog Risk", "Operating Review"],
+            Plan: ["Overview", "Completion Forecast", "Backlog Risk", "Operating Review"],
             Improve: ["Overview", "Opportunities", "Experiments", "Automations"],
             Govern: [
                 "Overview",
@@ -300,8 +300,14 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
+<<<<<<< HEAD
         expect(navTitleForPathname("/plan/capacity")).toBe("Capacity Forecast");
         expect(navTitleForPathname("/plan/backlog-risk")).toBe("Backlog Risk");
+||||||| parent of 5d56cd51 (fix(plan): rename Capacity Forecast → Completion Forecast (CHAOS-2182 phase 1))
+        expect(navTitleForPathname("/plan/capacity")).toBe("Capacity Forecast");
+=======
+        expect(navTitleForPathname("/plan/capacity")).toBe("Completion Forecast");
+>>>>>>> 5d56cd51 (fix(plan): rename Capacity Forecast → Completion Forecast (CHAOS-2182 phase 1))
         // operating-review is hidden (navVisible: false) — title falls back to the area label.
         expect(navTitleForPathname("/operating-review")).toBe("Plan");
         expect(navTitleForPathname("/improve")).toBe("Overview");

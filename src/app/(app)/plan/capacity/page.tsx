@@ -74,10 +74,10 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
                     <header className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Capacity Forecast
+                                Completion Forecast
                             </p>
                             <h1 className="mt-2 font-(--font-display) text-3xl">
-                                Capacity Forecast
+                                Completion Forecast
                             </h1>
                             <p className="mt-2 text-sm text-(--ink-muted)">
                                 Monte Carlo is the method behind this completion projection,

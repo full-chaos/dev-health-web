@@ -296,7 +296,7 @@ export const navAreas: readonly NavArea[] = [
         hubItems: [
             {
                 id: "capacity",
-                label: "Capacity Forecast",
+                label: "Completion Forecast",
                 href: "/plan/capacity",
                 description: "Monte Carlo throughput forecasting.",
                 metricLabel: "Forecast window",
@@ -319,7 +319,7 @@ export const navAreas: readonly NavArea[] = [
             },
             {
                 id: "capacity",
-                label: "Capacity Forecast",
+                label: "Completion Forecast",
                 path: "/plan/capacity",
                 navVisible: true,
             },
