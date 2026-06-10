@@ -4,18 +4,19 @@ export type ButtonVariant = "primary" | "secondary" | "ghost";
 export type ButtonSize = "sm" | "md";
 
 const BASE =
-    "inline-flex items-center justify-center gap-1.5 rounded-full font-medium uppercase tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center gap-1.5 rounded-(--radius-pill) text-label-caps font-medium uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-50";
 
 const SIZES: Record<ButtonSize, string> = {
-    sm: "px-3 py-1.5 text-[10px]",
-    md: "px-4 py-2 text-xs",
+    sm: "px-3 py-1.5",
+    md: "px-4 py-2",
 };
 
 const VARIANTS: Record<ButtonVariant, string> = {
+    /* No on-accent role token exists yet; text-white is the interim contrast color. */
     primary: "border border-(--accent-2) bg-(--accent-2) text-white hover:bg-(--accent-2)/90",
     secondary:
-        "border border-(--card-stroke) bg-(--card-70) text-foreground hover:border-(--ink-muted)",
-    ghost: "border border-transparent text-(--ink-muted) hover:text-foreground hover:bg-(--card-80)",
+        "border border-(--border) bg-(--card-70) text-(--text-primary) hover:border-(--card-stroke-active)",
+    ghost: "border border-transparent text-(--text-muted) hover:text-(--text-primary) hover:bg-(--card-80)",
 };
 
 /**

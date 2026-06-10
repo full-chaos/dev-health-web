@@ -37,7 +37,7 @@ export function BackLink({ href, label, area, className }: BackLinkProps) {
     return (
         <Link
             href={href}
-            className={`group inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition-colors hover:text-foreground ${className ?? ""}`.trim()}
+            className={`group inline-flex items-center gap-1.5 text-label-caps uppercase text-(--text-muted) transition-colors hover:text-(--text-primary) ${className ?? ""}`.trim()}
         >
             <span aria-hidden="true" className="transition-transform group-hover:-translate-x-0.5">
                 &larr;

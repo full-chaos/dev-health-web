@@ -3,6 +3,7 @@ import { LineagePopover } from "@/app/(app)/data-health/_components/LineagePopov
 
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { MetricDelta } from "@/components/shared/MetricDelta";
+import { CARD_SURFACE } from "@/lib/design/card";
 import { formatMetricValue } from "@/lib/formatters";
 import type { SparkPoint } from "@/lib/types";
 
@@ -44,8 +45,8 @@ export function MetricCard({
     const sparkLabels = spark?.map((point) => point.ts) ?? [];
     // Only a real destination earns the clickable affordance + "Open evidence" cue.
     const captionText = caption ?? (href ? "Open evidence" : null);
-    const cardClassName = `group rounded-3xl border border-(--card-stroke) bg-card p-4 ${
-        href ? "transition hover:-translate-y-1 hover:shadow-lg" : ""
+    const cardClassName = `group ${CARD_SURFACE} p-4 ${
+        href ? "transition hover:-translate-y-1 hover:border-(--card-stroke-active)" : ""
     } ${className ?? ""}`;
 
     const body = (
@@ -78,7 +79,7 @@ export function MetricCard({
                     ) : (
                         <div
                             title="Not enough data points to plot a trend yet"
-                            className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-2 text-center text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                            className="flex h-full items-center justify-center rounded-(--radius-md) border border-dashed border-(--border) bg-(--card-70) px-2 text-center text-label-caps uppercase text-(--text-muted)"
                         >
                             No trend yet
                         </div>

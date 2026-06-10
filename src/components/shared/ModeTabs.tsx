@@ -18,14 +18,14 @@ type ModeTabsProps<TId extends string = string> = {
 };
 
 const CONTAINER =
-    "flex items-center gap-1 overflow-x-auto whitespace-nowrap border-b border-(--card-stroke) px-1 scrollbar-hide";
+    "flex items-center gap-1 overflow-x-auto whitespace-nowrap border-b border-(--border) px-1 scrollbar-hide";
 
 const TAB_BASE =
-    "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-3 text-[10px] uppercase tracking-[0.18em] transition-all";
+    "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-3 text-label-caps uppercase transition-all";
 
-const TAB_ACTIVE = "border-(--accent) text-foreground font-semibold";
+const TAB_ACTIVE = "border-(--accent) text-(--text-primary) font-semibold";
 const TAB_INACTIVE =
-    "border-transparent text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground";
+    "border-transparent text-(--text-muted) hover:border-(--border) hover:text-(--text-primary)";
 
 /**
  * Shared route-tab strip primitive (framework A2).

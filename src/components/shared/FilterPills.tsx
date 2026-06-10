@@ -23,10 +23,10 @@ type FilterPillsProps<TId extends string = string> = {
 
 const ACTIVE = "border-(--accent) bg-(--accent)/15 text-(--accent)";
 const INACTIVE =
-    "border-(--card-stroke) bg-(--card-80) text-(--ink-muted) hover:border-(--accent)/40 hover:text-foreground";
+    "border-(--border) bg-(--card-80) text-(--text-muted) hover:border-(--accent)/40 hover:text-(--text-primary)";
 
 const PILL =
-    "inline-flex items-center gap-1.5 rounded-(--radius-pill) border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] transition-colors has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-(--accent)";
+    "inline-flex items-center gap-1.5 rounded-(--radius-pill) border px-3 py-1.5 text-label-caps font-medium uppercase transition-colors has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-(--accent)";
 
 /**
  * Segmented selection primitive (framework A3).
@@ -55,7 +55,7 @@ export function FilterPills<TId extends string = string>({
             data-testid={testId}
         >
             {leadingLabel ? (
-                <span className="text-xs uppercase tracking-[0.25em] text-(--ink-muted)">
+                <span className="text-label-caps uppercase text-(--text-muted)">
                     {leadingLabel}
                 </span>
             ) : null}
