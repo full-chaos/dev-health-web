@@ -328,3 +328,22 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/prs/123")).toBe("");
     });
 });
+
+describe("navTitleForPathname / navTrailForPathname — /explore (CHAOS-2096)", () => {
+    it("titles /explore as 'Diagnose'", () => {
+        expect(navTitleForPathname("/explore")).toBe("Diagnose");
+    });
+
+    it("builds /explore trail with Diagnose area only", () => {
+        const trail = navTrailForPathname("/explore");
+        expect(trail.map((c) => c.label)).toEqual(["Diagnose"]);
+    });
+
+    it("only Diagnose area claims /explore prefix (no conflicts)", () => {
+        const exploreOwners = navAreas.filter((area) =>
+            area.ownedPathPrefixes.some((prefix) => prefix === "/explore"),
+        );
+        expect(exploreOwners).toHaveLength(1);
+        expect(exploreOwners[0]?.id).toBe("diagnose");
+    });
+});
