@@ -192,8 +192,11 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
                     <section className="grid gap-6 lg:grid-cols-2">
                         <ChartFrame
                             title="Success Rate Trend"
+                            headingLevel="h2"
                             interpretation="Share of completed pipeline runs that succeed, day by day — a sustained dip flags CI instability before it blocks delivery."
                             direction={TESTOPS_MEASURES.PIPELINE_SUCCESS_RATE.goodDirection}
+                            isError={Boolean(testOpsData.fetchFailed)}
+                            stateMessage="Pipeline analytics could not be loaded. The trend will reappear once the data service recovers."
                             isEmpty={timeseriesData.length === 0}
                             stateTitle="Pipeline trend not populated"
                             stateDescription="Success-rate history appears here once pipeline runs are ingested for this scope."

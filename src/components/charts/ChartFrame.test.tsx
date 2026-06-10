@@ -93,6 +93,30 @@ describe("ChartFrame", () => {
         expect(screen.queryByTestId("chart-child")).not.toBeInTheDocument();
     });
 
+    it("renders the title as an h2 when headingLevel is set (default stays h3)", () => {
+        const { rerender } = render(
+            <ChartFrame title="Success Rate Trend" interpretation="Outline check.">
+                <div>chart body</div>
+            </ChartFrame>,
+        );
+        expect(
+            screen.getByRole("heading", { name: "Success Rate Trend", level: 3 }),
+        ).toBeInTheDocument();
+
+        rerender(
+            <ChartFrame
+                title="Success Rate Trend"
+                interpretation="Outline check."
+                headingLevel="h2"
+            >
+                <div>chart body</div>
+            </ChartFrame>,
+        );
+        expect(
+            screen.getByRole("heading", { name: "Success Rate Trend", level: 2 }),
+        ).toBeInTheDocument();
+    });
+
     it("renders a directionality pill from the direction prop", () => {
         render(
             <ChartFrame

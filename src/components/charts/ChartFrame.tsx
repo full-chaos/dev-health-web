@@ -23,6 +23,12 @@ type ChartFrameProps = {
     title: ReactNode;
     interpretation: ReactNode;
     children: ReactNode;
+    /**
+     * Heading element for the title. Defaults to h3; pass "h2" when the frame
+     * sits directly under a page h1 or beside sibling h2 cards so the document
+     * outline doesn't skip a level.
+     */
+    headingLevel?: "h2" | "h3";
     direction?: ChartDirection;
     threshold?: ChartFrameAnnotation;
     band?: ChartFrameAnnotation;
@@ -103,6 +109,7 @@ export function ChartFrame({
     title,
     interpretation,
     children,
+    headingLevel,
     direction,
     threshold,
     band,
@@ -121,6 +128,7 @@ export function ChartFrame({
     const dataState = resolveDataState({ state, isLoading, isError, isEmpty });
     const hasAnnotations =
         direction != null || annotationPresent(threshold) || annotationPresent(band);
+    const Heading = headingLevel ?? "h3";
 
     return (
         <section
@@ -129,9 +137,9 @@ export function ChartFrame({
         >
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 space-y-1">
-                    <h3 className="font-(--font-display) text-base font-semibold text-foreground">
+                    <Heading className="font-(--font-display) text-base font-semibold text-foreground">
                         {title}
-                    </h3>
+                    </Heading>
                     <div className="text-sm text-(--ink-muted)">{interpretation}</div>
                 </div>
                 {hasAnnotations && (

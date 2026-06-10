@@ -205,6 +205,7 @@ export default async function CoveragePage({
 					<section className="grid gap-6 lg:grid-cols-2">
 						<ChartFrame
 							title="Line Coverage Trend"
+							headingLevel="h2"
 							interpretation="Line coverage appears over time so drops are visible before they become release risk."
 							direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
 							threshold={{
