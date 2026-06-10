@@ -146,8 +146,8 @@ export function joinEdges(
     const deploymentDisplayNames = new Map<string, string | null>();
 
     for (const edge of incidentEdges) {
-        const incidentId = edge.targetId;       // LINKED_INCIDENT target = incident
-        const deploymentId = edge.sourceId;     // LINKED_INCIDENT source = deployment
+        const incidentId = edge.targetId; // LINKED_INCIDENT target = incident
+        const deploymentId = edge.sourceId; // LINKED_INCIDENT source = deployment
         if (!deploymentsByIncident.has(incidentId)) {
             deploymentsByIncident.set(incidentId, new Set());
         }
@@ -164,7 +164,10 @@ export function joinEdges(
         // Deployment display name from sourceDisplayName. First non-null wins.
         if (!deploymentDisplayNames.has(deploymentId)) {
             deploymentDisplayNames.set(deploymentId, edge.sourceDisplayName ?? null);
-        } else if (deploymentDisplayNames.get(deploymentId) == null && edge.sourceDisplayName != null) {
+        } else if (
+            deploymentDisplayNames.get(deploymentId) == null &&
+            edge.sourceDisplayName != null
+        ) {
             deploymentDisplayNames.set(deploymentId, edge.sourceDisplayName);
         }
     }
@@ -175,8 +178,8 @@ export function joinEdges(
     const prDisplayNames = new Map<string, string | null>();
 
     for (const edge of deploysEdges) {
-        const prId = edge.sourceId;             // DEPLOYS source = PR
-        const deploymentId = edge.targetId;     // DEPLOYS target = deployment
+        const prId = edge.sourceId; // DEPLOYS source = PR
+        const deploymentId = edge.targetId; // DEPLOYS target = deployment
         if (!prsByDeployment.has(deploymentId)) {
             prsByDeployment.set(deploymentId, new Set());
         }
@@ -255,8 +258,7 @@ export function buildSankeyData(
 
     for (const row of limited) {
         // Incident label: prefer server-resolved display name; fall back to short ID prefix
-        const incLabel =
-            row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
+        const incLabel = row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
         addNode(row.incidentId, incLabel, "incident");
         const incKey = makeNodeKey("incident", row.incidentId);
 
@@ -559,7 +561,10 @@ export function IncidentCorrelationDashboard({
                                             {row.deploymentIds.length}
                                         </td>
                                         <td className="px-5 py-3 text-right tabular-nums">
-                                            {new Set(Object.values(row.prIdsByDeployment).flat()).size}
+                                            {
+                                                new Set(Object.values(row.prIdsByDeployment).flat())
+                                                    .size
+                                            }
                                         </td>
                                     </tr>
                                 ))}

@@ -228,9 +228,7 @@ describe("joinEdges", () => {
 
     // CHAOS-2119: PR display name from DEPLOYS sourceDisplayName
     it("populates prDisplayNames from DEPLOYS sourceDisplayName (CHAOS-2119)", () => {
-        const incidents: WorkGraphEdge[] = [
-            makeEdge("l1", "dep-a", "inc-1", "LINKED_INCIDENT"),
-        ];
+        const incidents: WorkGraphEdge[] = [makeEdge("l1", "dep-a", "inc-1", "LINKED_INCIDENT")];
         const deploys: WorkGraphEdge[] = [
             makeEdge("d1", "pr-uuid-abc", "dep-a", "DEPLOYS", {
                 sourceDisplayName: "Fix: null pointer in checkout #847",
@@ -363,9 +361,7 @@ describe("buildSankeyData", () => {
         // Links target the composite key, not the collapsed display name
         expect(result!.links).toHaveLength(2);
         const linkTargets = result!.links.map((l) => l.target).sort();
-        expect(linkTargets).toEqual(
-            ["incident:uuid-inc-aaa", "incident:uuid-inc-bbb"].sort(),
-        );
+        expect(linkTargets).toEqual(["incident:uuid-inc-aaa", "incident:uuid-inc-bbb"].sort());
     });
 
     // CHAOS-2118: uniqueness for deployments with the same display name
@@ -401,7 +397,7 @@ describe("buildSankeyData", () => {
         const sharedUuid = "aaaa1111-0000-0000-0000-000000000000";
         const rows = [
             {
-                incidentId: sharedUuid,   // incident with this UUID
+                incidentId: sharedUuid, // incident with this UUID
                 deploymentIds: [sharedUuid], // deployment with the SAME UUID
                 prIdsByDeployment: {},
             },
@@ -502,7 +498,9 @@ describe("buildSankeyData", () => {
                 incidentDisplayName: "INC-2025-001",
                 deploymentIds: ["abcdef12-0000-0000-0000-000000000000"],
                 prIdsByDeployment: {
-                    "abcdef12-0000-0000-0000-000000000000": ["12345678-0000-0000-0000-000000000000"],
+                    "abcdef12-0000-0000-0000-000000000000": [
+                        "12345678-0000-0000-0000-000000000000",
+                    ],
                 },
                 deploymentDisplayNames: { "abcdef12-0000-0000-0000-000000000000": null },
                 prDisplayNames: { "12345678-0000-0000-0000-000000000000": null },
