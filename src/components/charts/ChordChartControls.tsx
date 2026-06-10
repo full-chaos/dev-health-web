@@ -155,16 +155,13 @@ export function ChordChartControls({
         <div className={`flex flex-wrap gap-4 items-end ${className}`}>
             {/* Direction Segmented Control */}
             <div className="flex flex-col gap-1.5">
-                <label
-                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
-                    id="chord-dir-label"
-                >
+                <label className="text-sm font-medium text-(--ink-muted)" id="chord-dir-label">
                     Flow
                 </label>
                 <div
                     role="radiogroup"
                     aria-labelledby="chord-dir-label"
-                    className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg"
+                    className="flex p-1 bg-(--card-stroke)/30 rounded-lg"
                 >
                     {DIRECTIONS.map((dir, i) => {
                         const isActive = value.direction === dir.value;
@@ -178,8 +175,8 @@ export function ChordChartControls({
                                 onKeyDown={(e) => handleDirectionKeyDown(e, i)}
                                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                                     isActive
-                                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        ? "bg-(--card) text-(--foreground) shadow-sm"
+                                        : "text-(--ink-muted) hover:text-(--foreground)"
                                 }`}
                             >
                                 {dir.label}
@@ -191,19 +188,19 @@ export function ChordChartControls({
 
             {/* Grouping Select */}
             <div className="flex flex-col gap-1.5">
-                <label
-                    htmlFor="chord-grouping"
-                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
-                >
+                <label htmlFor="chord-grouping" className="text-sm font-medium text-(--ink-muted)">
                     Group by
                 </label>
                 <select
                     id="chord-grouping"
                     value={value.grouping}
                     onChange={(e) =>
-                        onChange({ ...value, grouping: e.target.value as ChordGroupingDimension })
+                        onChange({
+                            ...value,
+                            grouping: e.target.value as ChordGroupingDimension,
+                        })
                     }
-                    className="h-9 px-3 py-1.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="h-9 px-3 py-1.5 text-sm text-(--foreground) bg-(--card) border border-(--card-stroke) rounded-lg focus:outline-none focus:ring-2 focus:ring-(--accent)"
                 >
                     <option value="team">Team</option>
                     <option value="repo">Repository</option>
@@ -213,13 +210,10 @@ export function ChordChartControls({
 
             {/* Top-N Stepper */}
             <div className="flex flex-col gap-1.5">
-                <label
-                    htmlFor="chord-topn"
-                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
-                >
+                <label htmlFor="chord-topn" className="text-sm font-medium text-(--ink-muted)">
                     Entities
                 </label>
-                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 overflow-hidden h-9">
+                <div className="flex items-center border border-(--card-stroke) rounded-lg bg-(--card) overflow-hidden h-9">
                     <button
                         type="button"
                         aria-label="Decrease entities"
@@ -229,7 +223,7 @@ export function ChordChartControls({
                             onChange({ ...value, topN: next });
                         }}
                         disabled={value.topN <= 3}
-                        className="px-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 h-full"
+                        className="px-2.5 text-(--ink-muted) hover:bg-(--card-stroke)/30 disabled:opacity-50 h-full"
                     >
                         -
                     </button>
@@ -247,7 +241,7 @@ export function ChordChartControls({
                                 handleTopNBlur();
                             }
                         }}
-                        className="w-12 text-center text-sm bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-12 text-center text-sm text-(--foreground) bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <button
                         type="button"
@@ -258,7 +252,7 @@ export function ChordChartControls({
                             onChange({ ...value, topN: next });
                         }}
                         disabled={value.topN >= 16}
-                        className="px-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 h-full"
+                        className="px-2.5 text-(--ink-muted) hover:bg-(--card-stroke)/30 disabled:opacity-50 h-full"
                     >
                         +
                     </button>
@@ -267,18 +261,18 @@ export function ChordChartControls({
 
             {/* Checkboxes */}
             <div className="flex items-center gap-4 h-9">
-                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-(--ink-muted) cursor-pointer">
                     <input
                         type="checkbox"
                         checked={value.showSelfLinks}
                         onChange={(e) => onChange({ ...value, showSelfLinks: e.target.checked })}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-(--card-stroke) accent-(--accent) focus:ring-(--accent)"
                     />
                     Include self-links
                 </label>
 
                 <label
-                    className={`flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 ${
+                    className={`flex items-center gap-2 text-sm text-(--ink-muted) ${
                         !otherAvailable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                     }`}
                     aria-disabled={!otherAvailable}
@@ -288,7 +282,7 @@ export function ChordChartControls({
                         checked={value.showOther}
                         onChange={(e) => onChange({ ...value, showOther: e.target.checked })}
                         disabled={!otherAvailable}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                        className="rounded border-(--card-stroke) accent-(--accent) focus:ring-(--accent) disabled:opacity-50"
                     />
                     Show &apos;Other&apos; bucket
                 </label>
