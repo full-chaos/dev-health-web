@@ -38,7 +38,6 @@
 //     "neutral" when detectorReady (even zero is a valid "all green" state).
 //     "unavailable" when the fetch fails or the detector is not ready.
 
-import { auth } from "@/lib/auth";
 import { getHomeData, getOpportunities } from "@/lib/api/home";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { IMPROVE_OPPORTUNITIES_QUERY } from "@/lib/graphql/queries";
@@ -49,10 +48,15 @@ import type { MetricDelta } from "@/lib/types";
 import { formatNumber } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 
-/** Resolve the org scope from the auth session (mirrors ai.ts). */
+/** Resolve the org scope from the auth session (mirrors ai.ts / server.ts lazy-auth pattern). */
 async function resolveOrgId(): Promise<string | undefined> {
-    const session = await auth();
-    return session?.user?.org_id as string | undefined;
+    try {
+        const { auth } = await import("@/lib/auth");
+        const session = await auth();
+        return session?.user?.org_id as string | undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 import type { AreaSignal, AreaSignalState } from "./types";
