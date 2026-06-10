@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { toggleValue } from "@/components/filters/filterBarUtils";
-import { LensSelector } from "@/components/navigation/LensSelector";
 import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
 import { useFilterOptions } from "@/components/filters/useFilterOptions";
 import { encodeFilterParam } from "@/lib/filters/encode";
@@ -250,12 +249,8 @@ export function GlobalContextBarClient({ filters, origin, orgName }: GlobalConte
                     value={repoLabel}
                 />
 
-                {/* Lens separator — visually separates perspective from data filters */}
-                <span aria-hidden="true" className="mx-1 text-(--ink-muted)/40">
-                    |
-                </span>
-
-                <LensSelector />
+                {/* Lens control hidden until lens-driven prioritization works across
+                    surfaces (CHAOS-2253); lens=/role= URL params remain honored. */}
 
                 {origin ? (
                     <div className="ml-auto flex items-center gap-2 text-xs text-(--ink-muted)">
