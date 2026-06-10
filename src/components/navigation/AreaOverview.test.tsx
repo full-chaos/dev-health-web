@@ -123,6 +123,45 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         expect(gridCards[1]).toHaveAttribute("data-signal-id", "b");
     });
 
+    it("derives the count badge from resolved signals — attention states win (CHAOS-2109)", () => {
+        renderOverview([signal("crit", "critical"), signal("high", "high"), signal("low", "low")]);
+        const count = screen.getByTestId("area-overview-count");
+        expect(count.textContent).toBe("2 need attention");
+    });
+
+    it("falls back to a neutral signal count when nothing needs attention (CHAOS-2109)", () => {
+        renderOverview([signal("a", "low"), signal("b", "medium")]);
+        expect(screen.getByTestId("area-overview-count").textContent).toBe("2 signals");
+    });
+
+    it("omits the count badge when no real-data signal exists (CHAOS-2109)", () => {
+        renderOverview([signal("gap", "unavailable")]);
+        expect(screen.queryByTestId("area-overview-count")).toBeNull();
+    });
+
+    it("renders severity accent tabs on real cards, none on unavailable cards (CHAOS-2109)", () => {
+        renderOverview([signal("crit", "critical"), signal("gap", "unavailable")]);
+        const cards = screen.getAllByTestId("area-signal-card");
+        const critCard = cards.find((c) => c.getAttribute("data-signal-id") === "crit")!;
+        const gapCard = cards.find((c) => c.getAttribute("data-signal-id") === "gap")!;
+        expect(within(critCard).getByTestId("area-signal-accent-tab")).toBeInTheDocument();
+        expect(within(gapCard).queryByTestId("area-signal-accent-tab")).toBeNull();
+    });
+
+    it("keeps demoted R4 cards tab-free so they stay visually secondary (CHAOS-2109)", () => {
+        renderOverview([
+            signal("hero", "critical"),
+            signal("lead", "high"),
+            signal("flag", "low", { demoted: true }),
+        ]);
+        const cards = screen.getAllByTestId("area-signal-card");
+        const demotedCard = cards.find((c) => c.getAttribute("data-signal-id") === "flag")!;
+        expect(within(demotedCard).queryByTestId("area-signal-accent-tab")).toBeNull();
+        // Hero + remaining grid card both carry tabs.
+        const tabs = screen.getAllByTestId("area-signal-accent-tab");
+        expect(tabs).toHaveLength(2);
+    });
+
     it("renders a PREVIEW empty-tier chip as non-clickable, a routed one as a link (CHAOS-2217)", () => {
         renderOverview([
             signal("routed", "unavailable"),

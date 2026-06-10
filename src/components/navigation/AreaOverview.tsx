@@ -22,6 +22,9 @@ import { AreaSignalCard } from "./AreaSignalCard";
 //     quieter than real-data cards — and always sort LAST.
 //   - It summarizes and ROUTES: every card is a link into its sub-area. The
 //     Overview never embeds a full child workflow inline.
+//   - Penpot Area Card chrome (CHAOS-2109): the header carries a count badge
+//     DERIVED from the resolved signals (critical+high → "N need attention",
+//     else "N signals"); cards carry severity accent tabs (see AreaSignalCard).
 //
 // Presentational RSC: the area landing resolves the `AreaSignal[]` (via
 // `getAreaSignals`) and passes it in. No data-fetching here.
@@ -63,6 +66,21 @@ export function AreaOverview({
 
     if (!hero && gridSignals.length === 0 && unavailable.length === 0) return null;
 
+    // Penpot Area Card chrome: the count badge summarizes the severity-sorted
+    // signal set — DERIVED from the resolved signals, never a fetched/fabricated
+    // number. Attention = critical + high (the states that demand triage).
+    const attention = available.filter(
+        (signal) => signal.state === "critical" || signal.state === "high",
+    ).length;
+    const countBadgeClassName =
+        attention > 0
+            ? "border-amber-500/30 bg-amber-500/15 text-amber-300"
+            : "border-(--border) bg-(--surface) text-(--text-muted)";
+    const countBadgeLabel =
+        attention > 0
+            ? `${attention} need${attention === 1 ? "s" : ""} attention`
+            : `${available.length} signal${available.length === 1 ? "" : "s"}`;
+
     return (
         <section
             aria-label={`${area.label} overview`}
@@ -70,11 +88,21 @@ export function AreaOverview({
             className="flex flex-col gap-6"
         >
             <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                    {title ?? `${area.label} area`}
-                </p>
+                <div className="flex items-center gap-3">
+                    <p className="text-label-caps uppercase text-(--text-muted)">
+                        {title ?? `${area.label} area`}
+                    </p>
+                    {available.length > 0 ? (
+                        <span
+                            data-testid="area-overview-count"
+                            className={`text-label-caps rounded-(--radius-pill) border px-2.5 py-0.5 uppercase ${countBadgeClassName}`}
+                        >
+                            {countBadgeLabel}
+                        </span>
+                    ) : null}
+                </div>
                 {description ? (
-                    <p className="mt-1 text-sm text-(--ink-muted)">{description}</p>
+                    <p className="mt-1 text-sm text-(--text-secondary)">{description}</p>
                 ) : null}
             </div>
 

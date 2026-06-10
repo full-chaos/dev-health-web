@@ -69,3 +69,17 @@ export const AREA_STATE_LABEL: Record<Exclude<AreaSignalState, "unavailable">, s
     ...SEVERITY_LABEL,
     neutral: NEUTRAL_LABEL,
 };
+
+// ── Penpot Area Card accent tab (CHAOS-2109) ──────────────────────────────────
+// The thin severity-tinted bar across the top of an Area Card. Background-only
+// utilities (the bar is a filled strip, not a bordered chip). "unavailable"
+// excluded — the honest-empty card renders dashed chrome with no tab.
+
+/** Accent-tab fill per badge-bearing area-signal state. */
+export const AREA_STATE_TAB: Record<Exclude<AreaSignalState, "unavailable">, string> = {
+    critical: "bg-red-500/80",
+    high: "bg-amber-500/80",
+    medium: "bg-(--accent-2)/70",
+    low: "bg-(--border)",
+    neutral: "bg-(--border)",
+};
