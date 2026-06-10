@@ -69,9 +69,17 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         credential_id: initialData?.credential_id || "",
         sync_targets: initialData?.sync_targets || [],
         is_active: initialData?.is_active ?? true,
-        schedule_cron: initialData?.schedule_cron ?? null,
-        timezone: initialData?.timezone ?? null,
-        initial_sync_depth: (initialData?.initial_sync_depth ?? 30) as number | null,
+        schedule_cron:
+            initialData?.schedule_cron ??
+            (initialData?.sync_options?.schedule_cron as string | null | undefined) ??
+            null,
+        timezone:
+            initialData?.timezone ??
+            (initialData?.sync_options?.timezone as string | null | undefined) ??
+            null,
+        initial_sync_depth: (initialData?.initial_sync_depth ??
+            (initialData?.sync_options?.initial_sync_depth as number | null | undefined) ??
+            30) as number | null,
         owner: (initialData?.sync_options?.owner as string) || "",
         repos: [] as string[],
         gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
