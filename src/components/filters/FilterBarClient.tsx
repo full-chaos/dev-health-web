@@ -66,7 +66,10 @@ export function FilterBarClient({
             ref={barRef}
             data-testid="filter-bar"
             data-view={view ?? "default"}
-            className={`w-full rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 backdrop-blur-sm transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
+            // relative z-20 keeps this bar's stacking context (created by
+            // backdrop-blur) above page content but below the global context
+            // bar (z-30), so each bar's open menus paint over what follows it.
+            className={`relative z-20 w-full rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 backdrop-blur-sm transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
         >
             <div className="flex w-full flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
