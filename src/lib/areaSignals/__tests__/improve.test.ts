@@ -1,19 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mock the Improve sources at the module boundary ───────────────────────────
-// The resolver calls getOpportunities (count) + getHomeData (deltas → top
-// signal); we drive both independently to assert the source → AreaSignal mapping
-// without any network.
+// The resolver calls:
+//   - getOpportunities (count) + getHomeData (deltas → top signal) via REST
+//   - graphqlFetch (Automations FlowOpportunityDetector count) via GraphQL
+// We drive all three independently to assert source → AreaSignal mapping without
+// any network. auth() is mocked to return a stable test-org session.
 
 vi.mock("@/lib/api/home", () => ({
     getOpportunities: vi.fn(),
     getHomeData: vi.fn(),
+}));
+vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn() }));
+vi.mock("@/lib/auth", () => ({
+    auth: vi.fn().mockResolvedValue({ user: { org_id: "test-org" } }),
 }));
 vi.mock("@/lib/logger", () => ({
     logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
 import { getHomeData, getOpportunities } from "@/lib/api/home";
+import { graphqlFetch } from "@/lib/graphql/server";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getImproveSignals } from "../improve";
@@ -21,6 +28,7 @@ import type { AreaSignal } from "../types";
 
 const mockGetOpportunities = vi.mocked(getOpportunities);
 const mockGetHomeData = vi.mocked(getHomeData);
+const mockGraphqlFetch = vi.mocked(graphqlFetch);
 
 function byId(signals: AreaSignal[]): Record<string, AreaSignal> {
     return Object.fromEntries(signals.map((s) => [s.id, s]));
@@ -47,6 +55,16 @@ const delta = (label: string, deltaPct: number, metric = label.toLowerCase()) =>
 // HomeResponse fields are irrelevant to the top-signal derivation.
 const homeWithDeltas = (deltas: ReturnType<typeof delta>[]) => ({ deltas }) as never;
 
+// Default improve-automations GraphQL response: detector ready + 2 candidates.
+const defaultImproveOpportunities = {
+    improveOpportunities: {
+        orgId: "test-org",
+        detectorReady: true,
+        totalCount: 2,
+        opportunities: [],
+    },
+};
+
 beforeEach(() => {
     vi.clearAllMocks();
     // Default: some opportunities with evidence links + a worsened metric so the
@@ -57,6 +75,8 @@ beforeEach(() => {
     mockGetHomeData.mockResolvedValue(
         homeWithDeltas([delta("Churn", 19), delta("Cycle Time", 8), delta("Coverage", -4)]),
     );
+    // Default automations: detector ready, 2 opportunities detected.
+    mockGraphqlFetch.mockResolvedValue(defaultImproveOpportunities as never);
 });
 
 describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
@@ -256,10 +276,12 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         expect(signals.opportunities.value).not.toContain("open");
         // No synthesized hero either (no opportunities to link to).
         expect(signals["improve-top-signal"]).toBeUndefined();
-        // Other signals still resolve
+        // Experiments always unavailable (no backend yet).
         expect(signals.experiments).toMatchObject({ state: "unavailable" });
+        // Automations resolves independently via its own GraphQL source — when
+        // graphqlFetch succeeds, the card is "neutral" even if REST sources failed.
         expect(signals["improve-automations"]).toMatchObject({
-            state: "unavailable",
+            state: "neutral",
         });
     });
 
@@ -303,7 +325,22 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         });
     });
 
-    it("emits honest UNAVAILABLE + preview for Automations (no backend / no route)", async () => {
+    it("emits a real NEUTRAL signal for Automations when the detector is ready (CHAOS-2220)", async () => {
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+
+        expect(signals["improve-automations"]).toMatchObject({
+            id: "improve-automations",
+            label: "Automations",
+            href: "/improve/automations",
+            state: "neutral",
+            value: "2 detected",
+        });
+        // No longer a preview card — the route now exists.
+        expect(signals["improve-automations"].preview).not.toBe(true);
+    });
+
+    it("emits UNAVAILABLE for Automations when graphqlFetch fails (CHAOS-2220)", async () => {
+        mockGraphqlFetch.mockRejectedValue(new Error("graphql error"));
         const signals = byId(await getImproveSignals(defaultMetricFilter));
 
         expect(signals["improve-automations"]).toMatchObject({
@@ -312,7 +349,24 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             href: "/improve/automations",
             state: "unavailable",
             value: "",
-            preview: true,
+        });
+        expect(signals["improve-automations"].preview).not.toBe(true);
+    });
+
+    it("emits '0 detected' neutral when detector is ready but no opportunities (CHAOS-2220)", async () => {
+        mockGraphqlFetch.mockResolvedValue({
+            improveOpportunities: {
+                orgId: "test-org",
+                detectorReady: true,
+                totalCount: 0,
+                opportunities: [],
+            },
+        } as never);
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+
+        expect(signals["improve-automations"]).toMatchObject({
+            state: "neutral",
+            value: "0 detected",
         });
     });
 
@@ -372,13 +426,14 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         expect(mockGetHomeData).toHaveBeenCalledWith(defaultMetricFilter);
     });
 
-    it("degrades the 3 sub-areas to UNAVAILABLE (no top signal) when BOTH sources fail", async () => {
-        // The genuine "not connected" path: both REST fetches throw → safe()
-        // swallows to undefined → opportunities unavailable, no deltas to rank.
-        // Experiments also degrades to UNAVAILABLE (no preview — route exists).
-        // Automations stays preview (route does not yet exist).
+    it("degrades the 3 sub-areas to UNAVAILABLE (no top signal) when ALL sources fail (CHAOS-2219 + CHAOS-2220)", async () => {
+        // The genuine "not connected" path: all three fetches throw → safe()
+        // swallows to undefined → all sub-areas unavailable, no top signal.
+        // Both Experiments (CHAOS-2219) and Automations (CHAOS-2220) have real
+        // routes, so neither degrades to "preview" even when unavailable.
         mockGetOpportunities.mockRejectedValue(new Error("opps down"));
         mockGetHomeData.mockRejectedValue(new Error("home down"));
+        mockGraphqlFetch.mockRejectedValue(new Error("graphql down"));
 
         const signals = await getImproveSignals(defaultMetricFilter, true);
         expect(signals).toHaveLength(3);
@@ -388,10 +443,9 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
             expect(signal.value).toBe("");
         }
         const byIdMap = byId(signals);
-        // Experiments has a real route now — UNAVAILABLE but NOT preview.
+        // Both Experiments and Automations have real routes — neither is preview.
         expect(byIdMap.experiments.preview).not.toBe(true);
-        // Automations still has no route — stays preview.
-        expect(byIdMap["improve-automations"].preview).toBe(true);
+        expect(byIdMap["improve-automations"].preview).not.toBe(true);
         expect(byIdMap.opportunities.preview).not.toBe(true);
     });
 });

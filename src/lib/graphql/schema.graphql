@@ -691,6 +691,31 @@ type EvidenceRef {
   value: Float!
 }
 
+type Experiment {
+  id: String!
+  opportunityId: String!
+  hypothesis: String!
+  metric: String!
+  owner: String!
+  stopCondition: String!
+  status: ExperimentStatus!
+  startDate: Date
+  stopDate: Date
+  outcome: String
+}
+
+enum ExperimentStatus {
+  SUGGESTED
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+type ExperimentsResult {
+  items: [Experiment!]!
+  derivedFromOpportunities: Boolean!
+}
+
 input FilterInput {
   scope: ScopeFilterInput = null
   who: WhoFilterInput = null
@@ -758,6 +783,36 @@ type IdentityMappingHealth {
   unmappedCount: Int!
   unmappedIdentities: [UnmappedIdentity!]!
   suggestedAliases: [AliasSuggestion!]!
+}
+
+type ImproveOpportunitiesResult {
+  orgId: String!
+  opportunities: [ImproveOpportunity!]!
+  detectorReady: Boolean!
+  totalCount: Int!
+}
+
+type ImproveOpportunity {
+  opportunityId: String!
+  kind: ImproveOpportunityKind!
+  entityType: String!
+  entityId: String!
+  title: String!
+  rationale: String!
+  score: Float!
+  severity: String!
+  evidenceRefs: [String!]!
+  recommendedAction: String!
+}
+
+enum ImproveOpportunityKind {
+  HIGH_REVIEW_LATENCY
+  SLOW_CYCLE_TIME
+  HIGH_REWORK
+  HIGH_WIP
+  LOW_THROUGHPUT
+  HIGH_CHURN
+  HIGH_CHANGE_FAILURE
 }
 
 """
@@ -1069,6 +1124,11 @@ type Query {
   """Latest rule-based recommendations for a team within a lookback window."""
   recommendations(orgId: String!, team: ID!, window: WindowInput!): [Recommendation!]!
 
+  """
+  Experiments derived from opportunity suggested_experiments (CHAOS-2219). v1: computed at query-time — no persistence table. Each experiment is a typed promotion of a suggestion string with hypothesis / metric / owner / stop_condition. ``derived_from_opportunities`` is False when the opportunities service was unavailable; items will be empty in that case.
+  """
+  experiments(orgId: String!, filters: FilterInput = null): ExperimentsResult!
+
   """AI workflow impact summary across the requested time range."""
   aiImpactSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null): AIImpactSummary!
 
@@ -1085,6 +1145,11 @@ type Query {
   AI automation opportunity recommendations. Returns an empty, stable contract until the detector ships (CHAOS-1586).
   """
   aiOpportunities(orgId: String!, scope: AIScopeInput = null, limit: Int! = 25): AIOpportunitiesResult!
+
+  """
+  Non-AI flow opportunity recommendations for the Improve surface (CHAOS-2220). Fires threshold rules over repo and team metrics (review latency, cycle time, rework, WIP, throughput, churn, change failure) and returns scored candidates. An empty list means all metrics are within thresholds — not an error.
+  """
+  improveOpportunities(scope: AIScopeInput = null, limit: Int! = 10, windowDays: Int! = 30): ImproveOpportunitiesResult!
 
   """AI governance coverage and recent policy violations."""
   aiGovernanceSummary(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, violationLimit: Int! = 100): AIGovernanceSummary!

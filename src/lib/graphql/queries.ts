@@ -558,6 +558,28 @@ query AIOpportunities($orgId: String!, $scope: AIScopeInput, $limit: Int! = 5) {
 }
 `;
 
+export const IMPROVE_OPPORTUNITIES_QUERY = `
+query ImproveOpportunities($scope: AIScopeInput, $limit: Int! = 10, $windowDays: Int! = 30) {
+  improveOpportunities(scope: $scope, limit: $limit, windowDays: $windowDays) {
+    orgId
+    detectorReady
+    totalCount
+    opportunities {
+      opportunityId
+      kind
+      entityType
+      entityId
+      title
+      rationale
+      score
+      severity
+      evidenceRefs
+      recommendedAction
+    }
+  }
+}
+`;
+
 export const AI_WORKFLOW_DRILLDOWN_QUERY = `
 query AIWorkflowDrilldown($orgId: String!, $rootType: AIWorkflowRootTypeInput!, $rootId: String!, $depth: Int! = 3, $limit: Int! = 100) {
   aiWorkflowDrilldown(orgId: $orgId, rootType: $rootType, rootId: $rootId, depth: $depth, limit: $limit) {
