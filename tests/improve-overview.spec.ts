@@ -70,7 +70,7 @@ test.describe("Improve Overview landing", () => {
         await expect(oppCard).toHaveAttribute("href", /\/opportunities/);
     });
 
-    test("Automations stays a non-clickable preview chip; Experiments is now a live link (CHAOS-2219)", async ({
+    test("both Experiments and Automations are now live links (CHAOS-2219 + CHAOS-2220)", async ({
         page,
     }) => {
         await page.goto("/improve", { waitUntil: "domcontentloaded" });
@@ -78,18 +78,22 @@ test.describe("Improve Overview landing", () => {
         const grid = page.getByTestId("area-overview-grid");
         await expect(grid).toBeVisible();
 
-        // Automations: still a preview chip — route not yet shipped.
-        const automationsCard = grid.locator("[data-signal-id]", { hasText: "Automations" });
-        await expect(automationsCard).toHaveAttribute("data-preview", "true");
-        await expect(automationsCard).toHaveAttribute("aria-disabled", "true");
-        await expect(grid.getByRole("link", { name: "Automations" })).toHaveCount(0);
-
-        // Experiments: promoted to a live area (CHAOS-2219) — must be a navigable link,
-        // NOT a disabled preview chip.
+        // Experiments: promoted to a live area (CHAOS-2219) — navigable link, not a preview chip.
         const experimentsCard = grid.locator("[data-signal-id]", { hasText: "Experiments" });
         await expect(experimentsCard).not.toHaveAttribute("data-preview", "true");
         await expect(experimentsCard).not.toHaveAttribute("aria-disabled", "true");
         await expect(grid.getByRole("link", { name: "Experiments" })).toHaveCount(1);
+        await expect(grid.getByRole("link", { name: "Experiments" })).toHaveAttribute(
+            "href",
+            /\/improve\/experiments/,
+        );
+
+        // Automations: promoted to a live area (CHAOS-2220) — navigable link, not a preview chip.
+        await expect(grid.getByRole("link", { name: "Automations" })).toHaveCount(1);
+        await expect(grid.getByRole("link", { name: "Automations" })).toHaveAttribute(
+            "href",
+            /\/improve\/automations/,
+        );
     });
 
     test("marks Improve as the single selected area on /improve", async ({ page }) => {

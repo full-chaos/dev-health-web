@@ -758,6 +758,32 @@ export type EvidenceRef = {
   windowStart: Scalars['Date']['output'];
 };
 
+export type Experiment = {
+  __typename?: 'Experiment';
+  hypothesis: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  metric: Scalars['String']['output'];
+  opportunityId: Scalars['String']['output'];
+  outcome?: Maybe<Scalars['String']['output']>;
+  owner: Scalars['String']['output'];
+  startDate?: Maybe<Scalars['Date']['output']>;
+  status: ExperimentStatus;
+  stopCondition: Scalars['String']['output'];
+  stopDate?: Maybe<Scalars['Date']['output']>;
+};
+
+export type ExperimentStatus =
+  | 'ABANDONED'
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'SUGGESTED';
+
+export type ExperimentsResult = {
+  __typename?: 'ExperimentsResult';
+  derivedFromOpportunities: Scalars['Boolean']['output'];
+  items: Array<Experiment>;
+};
+
 export type FilterInput = {
   how?: InputMaybe<HowFilterInput>;
   scope?: InputMaybe<ScopeFilterInput>;
@@ -832,6 +858,37 @@ export type IdentityMappingHealth = {
   unmappedCount: Scalars['Int']['output'];
   unmappedIdentities: Array<UnmappedIdentity>;
 };
+
+export type ImproveOpportunitiesResult = {
+  __typename?: 'ImproveOpportunitiesResult';
+  detectorReady: Scalars['Boolean']['output'];
+  opportunities: Array<ImproveOpportunity>;
+  orgId: Scalars['String']['output'];
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ImproveOpportunity = {
+  __typename?: 'ImproveOpportunity';
+  entityId: Scalars['String']['output'];
+  entityType: Scalars['String']['output'];
+  evidenceRefs: Array<Scalars['String']['output']>;
+  kind: ImproveOpportunityKind;
+  opportunityId: Scalars['String']['output'];
+  rationale: Scalars['String']['output'];
+  recommendedAction: Scalars['String']['output'];
+  score: Scalars['Float']['output'];
+  severity: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+};
+
+export type ImproveOpportunityKind =
+  | 'HIGH_CHANGE_FAILURE'
+  | 'HIGH_CHURN'
+  | 'HIGH_REVIEW_LATENCY'
+  | 'HIGH_REWORK'
+  | 'HIGH_WIP'
+  | 'LOW_THROUGHPUT'
+  | 'SLOW_CYCLE_TIME';
 
 export type MaintainerShare = {
   __typename?: 'MaintainerShare';
@@ -1140,10 +1197,14 @@ export type Query = {
   compoundingRisk: CompoundingRiskResult;
   /** Operator data-health and trust surface */
   dataHealth: DataHealth;
+  /** Experiments derived from opportunity suggested_experiments (CHAOS-2219). v1: computed at query-time — no persistence table. Each experiment is a typed promotion of a suggestion string with hypothesis / metric / owner / stop_condition. ``derived_from_opportunities`` is False when the opportunities service was unavailable; items will be empty in that case. */
+  experiments: ExperimentsResult;
   /** Get home dashboard metrics */
   home: HomeResult;
   /** Top file hotspots ranked by risk_score (churn x complexity x ownership concentration). Reads from the append-only ``file_hotspot_daily`` table. */
   hotspots: HotspotsResult;
+  /** Non-AI flow opportunity recommendations for the Improve surface (CHAOS-2220). Fires threshold rules over repo and team metrics (review latency, cycle time, rework, WIP, throughput, churn, change failure) and returns scored candidates. An empty list means all metrics are within thresholds — not an error. */
+  improveOpportunities: ImproveOpportunitiesResult;
   /** Weekly Engineering Operating Review */
   operatingReview: OperatingReview;
   /** Get first-party product telemetry dashboard metrics */
@@ -1284,6 +1345,12 @@ export type QueryDataHealthArgs = {
 };
 
 
+export type QueryExperimentsArgs = {
+  filters?: InputMaybe<FilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
 export type QueryHomeArgs = {
   filters?: InputMaybe<FilterInput>;
   orgId: Scalars['String']['input'];
@@ -1292,6 +1359,13 @@ export type QueryHomeArgs = {
 
 export type QueryHotspotsArgs = {
   input: HotspotsInput;
+};
+
+
+export type QueryImproveOpportunitiesArgs = {
+  limit?: Scalars['Int']['input'];
+  scope?: InputMaybe<AiScopeInput>;
+  windowDays?: Scalars['Int']['input'];
 };
 
 
