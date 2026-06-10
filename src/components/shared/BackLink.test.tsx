@@ -41,7 +41,7 @@ describe("BackLink", () => {
     it("is not styled as a filter pill (quiet inline link, no pill background)", () => {
         render(<BackLink href="/" />);
         const link = screen.getByRole("link", { name: /back to cockpit/i });
-        expect(link.className).not.toContain("rounded-full");
-        expect(link.className).toContain("text-(--ink-muted)");
+        expect(link.className).not.toContain("rounded-(--radius-pill)");
+        expect(link.className).toContain("text-(--text-muted)");
     });
 });

@@ -20,9 +20,11 @@ describe("Button", () => {
     it("applies variant + size classes through buttonClassName", () => {
         const primary = buttonClassName("primary", "md");
         expect(primary).toContain("bg-(--accent-2)");
-        expect(primary).toContain("rounded-full");
+        expect(primary).toContain("rounded-(--radius-pill)");
+        expect(primary).toContain("text-label-caps");
         const ghostSm = buttonClassName("ghost", "sm");
         expect(ghostSm).toContain("border-transparent");
-        expect(ghostSm).toContain("text-[10px]");
+        expect(ghostSm).toContain("px-3");
+        expect(ghostSm).toContain("text-(--text-muted)");
     });
 });
