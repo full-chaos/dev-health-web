@@ -12,7 +12,8 @@ playwright-report
 test-results
 artifacts
 output
-
+**/.claude**
+**/.**
 # Generated files
 *.generated.*
 **/__generated__/
