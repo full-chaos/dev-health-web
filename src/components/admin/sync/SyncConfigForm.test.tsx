@@ -398,6 +398,91 @@ describe("SyncConfigForm", () => {
             expect(screen.getByText("Manual only (no schedule)")).toBeInTheDocument();
         });
 
+        it("round-trips preset schedule_cron + timezone from sync_options in edit mode", () => {
+            mockUseAdminTier.mockReturnValue({
+                tier: "team",
+                features: { scheduled_jobs: true },
+                limits: {},
+                minSyncIntervalHours: 0.25,
+            });
+            const initialData: SyncConfig = {
+                id: "cfg-sched",
+                name: "Scheduled Config",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: {
+                    owner: "full-chaos",
+                    search: "full-chaos/*",
+                    schedule_cron: "0 */6 * * *",
+                    timezone: "America/New_York",
+                    initial_sync_depth: 90,
+                },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                initial_sync_depth: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+
+            render(<SyncConfigForm initialData={initialData} credentials={mockCredentials} />);
+
+            // Schedule radio reflects the saved cron — NOT 'Manual only' (the bug)
+            expect(screen.getByRole("radio", { name: "Every 6 hours" })).toBeChecked();
+            expect(
+                screen.getByRole("radio", { name: "Manual only (no schedule)" }),
+            ).not.toBeChecked();
+            // Timezone round-trips from sync_options
+            expect(screen.getByLabelText("Timezone")).toHaveValue("America/New_York");
+            // Other fields still round-trip
+            expect(screen.getByLabelText("Owner / Organization")).toHaveValue("full-chaos");
+            expect(screen.getByLabelText("Git Data (Commits, Branches)")).toBeChecked();
+        });
+
+        it("falls back to custom cron radio for non-preset schedule_cron in sync_options", () => {
+            mockUseAdminTier.mockReturnValue({
+                tier: "team",
+                features: { scheduled_jobs: true },
+                limits: {},
+                minSyncIntervalHours: 0.25,
+            });
+            const initialData: SyncConfig = {
+                id: "cfg-custom",
+                name: "Custom Schedule Config",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: {
+                    owner: "full-chaos",
+                    schedule_cron: "15 3 * * *",
+                    timezone: "UTC",
+                },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                initial_sync_depth: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+
+            render(<SyncConfigForm initialData={initialData} credentials={mockCredentials} />);
+
+            expect(screen.getByRole("radio", { name: "Custom cron expression" })).toBeChecked();
+            expect(
+                screen.getByRole("radio", { name: "Manual only (no schedule)" }),
+            ).not.toBeChecked();
+            expect(screen.getByLabelText("Custom cron")).toHaveValue("15 3 * * *");
+        });
+
         it("org-wide toggle uses createSyncConfig with search and not batch", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
             renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
