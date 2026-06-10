@@ -42,7 +42,7 @@ const SURFACES: SurfaceConfig[] = [
         ),
     },
     {
-        label: "Capacity Forecast",
+        label: "Completion Forecast",
         title: "Predictable Capacity",
         description:
             "Forecast delivery constraints based on historical throughput, cycle time trends, and WIP saturation.",

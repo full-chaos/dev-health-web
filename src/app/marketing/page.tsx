@@ -21,7 +21,7 @@ const BUYERS: ReadonlyArray<Buyer> = [
         eyebrow: "For VP Engineering",
         title: "Know where delivery is constrained",
         description:
-            "Engineering Operating Review, Capacity Forecast, Bottleneck, Investment, Reliability.",
+            "Engineering Operating Review, Completion Forecast, Bottleneck, Investment, Reliability.",
         surfaces: "Operating cadence + capacity + reliability",
     },
     {
