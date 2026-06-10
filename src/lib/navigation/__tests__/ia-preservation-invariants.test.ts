@@ -381,8 +381,9 @@ describe("IA preservation invariant #8 — Lens present in global context bar", 
         "utf8",
     );
 
-    it("GlobalContextBarClient imports and renders LensSelector", () => {
-        expect(globalContextBarClientSource).toContain("LensSelector");
+    it("GlobalContextBarClient keeps LensSelector hidden until CHAOS-2253", () => {
+        expect(globalContextBarClientSource).not.toContain("<LensSelector");
+        expect(globalContextBarClientSource).toContain("CHAOS-2253");
     });
 
     it("LensSelector has a data-testid for test discoverability", () => {

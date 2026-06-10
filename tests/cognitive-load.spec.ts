@@ -3,10 +3,10 @@ import { expect, test } from "@playwright/test";
 import { clickUntilUrl, waitForHydration } from "./helpers/nav";
 
 test.describe("IA rejection regressions", () => {
-    test("Cockpit exposes the Lens control", async ({ page }) => {
+    test("Cockpit does not expose the Lens control while hidden (CHAOS-2253)", async ({ page }) => {
         await page.goto("/dashboard");
 
-        await expect(page.getByRole("radiogroup", { name: "Lens" })).toBeVisible();
+        await expect(page.getByRole("radiogroup", { name: "Lens" })).not.toBeVisible();
     });
 
     test("Landscape does not show a selected Lens state", async ({ page }) => {

@@ -108,12 +108,11 @@ describe("GlobalContextBar", () => {
         expect(lastFilter().what.repos).toEqual([]);
     });
 
-    it("renders the Lens selector in the global context bar", () => {
+    it("does not render the Lens selector while it is hidden (CHAOS-2253)", () => {
         render(<GlobalContextBar filters={defaultMetricFilter} />);
 
-        expect(screen.getByTestId("lens-selector")).toBeInTheDocument();
-        // The bar has role=em in searchParams so the legacy alias is resolved.
-        expect(screen.getByText("Lens")).toBeInTheDocument();
+        expect(screen.queryByTestId("lens-selector")).not.toBeInTheDocument();
+        expect(screen.queryByText("Lens")).not.toBeInTheDocument();
     });
 
     it("preserves existing query params (role=em) when filter changes", () => {
