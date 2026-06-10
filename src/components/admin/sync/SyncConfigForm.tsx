@@ -478,7 +478,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                     </label>
                 </div>
 
-                <UpgradeGate feature="custom_scheduling" requiredTier="enterprise">
+                <UpgradeGate feature="scheduled_jobs" requiredTier="team">
                     <SchedulePicker
                         value={formData.schedule_cron}
                         timezone={formData.timezone}

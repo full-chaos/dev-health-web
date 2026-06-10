@@ -138,7 +138,7 @@ export default function RetentionPolicyPage() {
     };
 
     return (
-        <UpgradeGate feature="retention_policies" requiredTier="enterprise">
+        <UpgradeGate feature="custom_retention" requiredTier="enterprise">
             <div>
                 <AdminHeader
                     title="Data Retention"

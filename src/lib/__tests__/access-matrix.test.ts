@@ -393,7 +393,7 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
             label: "Retention",
             href: "/admin/retention",
             description: "Compliance",
-            featureKey: "retention_policies",
+            featureKey: "custom_retention",
         },
     ];
 
@@ -413,14 +413,14 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
         return features[feature] === true;
     }
 
-    const ENTERPRISE_FEATURE_KEYS = ["audit_log", "ip_allowlist", "retention_policies"];
+    const ENTERPRISE_FEATURE_KEYS = ["audit_log", "ip_allowlist", "custom_retention"];
 
     describe("community tier (no enterprise features)", () => {
         const communityFeatures: Record<string, boolean> = {
             basic_analytics: true,
             audit_log: false,
             ip_allowlist: false,
-            retention_policies: false,
+            custom_retention: false,
         };
 
         it("hides all enterprise nav items from sidebar", () => {
@@ -453,7 +453,7 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
             team_dashboard: true,
             audit_log: true,
             ip_allowlist: false,
-            retention_policies: false,
+            custom_retention: false,
         };
 
         it("shows audit_log in sidebar but hides ip_allowlist and retention", () => {
@@ -476,7 +476,7 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
             team_dashboard: true,
             audit_log: true,
             ip_allowlist: true,
-            retention_policies: true,
+            custom_retention: true,
         };
 
         it("shows all enterprise nav items in sidebar", () => {
@@ -512,7 +512,7 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
         const enterpriseFeatures: Record<string, boolean> = {
             audit_log: true,
             ip_allowlist: true,
-            retention_policies: true,
+            custom_retention: true,
         };
 
         it("hides Organization item for superuser", () => {
@@ -539,7 +539,7 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
             const visible = filterSidebarItems(true, {
                 audit_log: false,
                 ip_allowlist: false,
-                retention_policies: false,
+                custom_retention: false,
             });
             const visibleIds = visible.map((i) => i.id);
             expect(visibleIds).not.toContain("audit");
@@ -598,11 +598,11 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
             const communityFeatures = {
                 audit_log: false,
                 ip_allowlist: false,
-                retention_policies: false,
+                custom_retention: false,
             };
             expect(communityFeatures.audit_log).toBe(false);
             expect(communityFeatures.ip_allowlist).toBe(false);
-            expect(communityFeatures.retention_policies).toBe(false);
+            expect(communityFeatures.custom_retention).toBe(false);
         });
     });
 
@@ -630,7 +630,7 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
             const enterpriseFeatures = {
                 audit_log: true,
                 ip_allowlist: true,
-                retention_policies: true,
+                custom_retention: true,
             };
             expect(enterpriseFeatures.audit_log).toBe(true);
             expect(enterpriseFeatures.ip_allowlist).toBe(true);

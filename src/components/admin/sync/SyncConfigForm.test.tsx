@@ -368,7 +368,7 @@ describe("SyncConfigForm", () => {
             expect(screen.getByRole("button", { name: "Create One Now" })).toBeInTheDocument();
         });
 
-        it("schedule picker hidden behind UpgradeGate for non-enterprise", () => {
+        it("schedule picker hidden behind UpgradeGate below team tier", () => {
             mockUseAdminTier.mockReturnValue({
                 tier: "community",
                 features: {},
@@ -377,16 +377,16 @@ describe("SyncConfigForm", () => {
             });
             render(<SyncConfigForm credentials={mockCredentials} />);
 
-            expect(screen.getByText("Enterprise Plan Feature")).toBeInTheDocument();
+            expect(screen.getByText("Team Plan Feature")).toBeInTheDocument();
             expect(
                 screen.queryByRole("radio", { name: "Manual only (no schedule)" }),
             ).not.toBeInTheDocument();
         });
 
-        it("shows schedule picker for enterprise tier", () => {
+        it("shows schedule picker for team tier", () => {
             mockUseAdminTier.mockReturnValue({
-                tier: "enterprise",
-                features: { custom_scheduling: true },
+                tier: "team",
+                features: { scheduled_jobs: true },
                 limits: {},
                 minSyncIntervalHours: 0.25,
             });

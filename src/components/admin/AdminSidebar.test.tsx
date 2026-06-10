@@ -65,7 +65,7 @@ describe("AdminSidebar", () => {
                 features={{
                     audit_log: true,
                     ip_allowlist: false,
-                    retention_policies: true,
+                    custom_retention: true,
                 }}
             />,
         );
