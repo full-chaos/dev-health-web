@@ -38,7 +38,7 @@ export function UserForm({
             onCancelAction={onCancel}
             isLoading={isLoading}
             submitLabel={isLoading ? "Saving..." : isEdit ? "Save Changes" : "Create User"}
-            className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
+            className="space-y-6 rounded-2xl border border-(--border) bg-(--card-80) p-6"
             contentClassName="grid gap-6 md:grid-cols-2"
             actionsClassName="flex justify-end gap-3 pt-4"
         >
@@ -126,7 +126,7 @@ export function UserForm({
                             checked={formData.is_active}
                             onChange={handleChange}
                             disabled={isLoading}
-                            className="h-4 w-4 rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent)"
+                            className="h-4 w-4 rounded border-(--border) text-(--accent) focus:ring-(--accent)"
                         />
                         <label htmlFor="is_active" className="text-sm text-foreground">
                             Active

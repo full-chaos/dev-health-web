@@ -82,7 +82,7 @@ export function MarketingShell({ children }: Readonly<{ children: React.ReactNod
                         </div>
                     </Link>
                     <div className="flex items-center gap-1.5">
-                        <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                        <span className="rounded-full border border-(--border) bg-(--card-70) px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
                             OSS
                         </span>
                         <BetaBadge />
@@ -118,7 +118,7 @@ export function MarketingShell({ children }: Readonly<{ children: React.ReactNod
 
             <main>{children}</main>
 
-            <footer className="border-t border-(--card-stroke)">
+            <footer className="border-t border-(--border)">
                 <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 sm:grid-cols-2 lg:grid-cols-5">
                     <div>
                         <p className="text-lg font-semibold">Full Chaos Dev Health</p>
@@ -157,7 +157,7 @@ export function MarketingShell({ children }: Readonly<{ children: React.ReactNod
                         </div>
                     ))}
                 </div>
-                <div className="border-t border-(--card-stroke)">
+                <div className="border-t border-(--border)">
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
                         <p className="text-xs text-(--ink-muted)">
                             &copy; {new Date().getFullYear()} Full Chaos Studios. All rights

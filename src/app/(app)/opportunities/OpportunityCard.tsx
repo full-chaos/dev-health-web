@@ -15,7 +15,7 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
     const hasArtifacts = card.evidence_links.length > 0;
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+        <div className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
             <h2 className="font-(--font-display) text-xl">{card.title}</h2>
             <p className="mt-2 text-sm text-(--ink-muted)">{card.rationale}</p>
 
@@ -29,7 +29,7 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                             <Link
                                 key={link}
                                 href={buildExploreUrl({ api: link, filters, role: activeRole })}
-                                className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1"
+                                className="rounded-full border border-(--border) bg-(--card) px-3 py-1"
                             >
                                 Open artifact ↗
                             </Link>
@@ -38,7 +38,7 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                 ) : (
                     <p
                         aria-disabled="true"
-                        className="mt-2 inline-block rounded-full border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-1 text-xs text-(--ink-muted)"
+                        className="mt-2 inline-block rounded-full border border-dashed border-(--border) bg-(--card-70) px-3 py-1 text-xs text-(--ink-muted)"
                     >
                         No linked artifacts in this window
                     </p>
@@ -54,7 +54,7 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                         {card.suggested_experiments.map((experiment) => (
                             <div
                                 key={experiment}
-                                className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-3 py-2"
                             >
                                 {experiment}
                             </div>

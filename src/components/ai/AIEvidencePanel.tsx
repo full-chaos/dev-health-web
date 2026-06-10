@@ -14,7 +14,7 @@ type AIEvidencePanelProps = {
 export function AIEvidencePanel({ filter }: AIEvidencePanelProps) {
     return (
         <section
-            className="rounded-3xl border border-(--card-stroke) bg-card p-6"
+            className="rounded-3xl border border-(--border) bg-card p-6"
             data-testid="ai-evidence-panel"
         >
             <h3 className="font-(--font-display) text-lg">Evidence by pull request</h3>

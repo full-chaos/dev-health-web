@@ -21,7 +21,7 @@ function formatLowVarianceWeeks(days: number): string {
 
 function SkeletonCard() {
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-6 animate-pulse">
+        <div className="rounded-3xl border border-(--border) bg-card p-6 animate-pulse">
             <div className="h-6 bg-(--card-70) rounded w-1/3 mb-4" />
             <div className="space-y-3">
                 <div className="h-4 bg-(--card-70) rounded w-1/2" />
@@ -43,7 +43,7 @@ function ErrorCard({ error }: { error: Error }) {
 
 function EmptyCard() {
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+        <div className="rounded-3xl border border-(--border) bg-card p-6">
             <h3 className="text-lg font-semibold text-foreground mb-2">No Forecast Available</h3>
             <p className="text-sm text-(--ink-muted)">
                 Insufficient throughput history to generate a forecast. Need at least 14 days of
@@ -71,7 +71,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
           : "All Teams";
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+        <div className="rounded-3xl border border-(--border) bg-card p-6">
             <div className="mb-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-foreground">Completion Forecast</h3>
@@ -90,7 +90,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
 
             <div className="space-y-2 mb-4">
                 {hasLowVarianceForecast ? (
-                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
+                    <div className="rounded-2xl border border-(--border) bg-(--card-70) px-4 py-3">
                         <span className="text-sm text-(--ink-muted)">Forecast range</span>
                         <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                             <span className="font-semibold text-foreground">
@@ -103,7 +103,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
                     </div>
                 ) : (
                     <>
-                        <div className="flex items-center justify-between py-2 border-b border-(--card-stroke)">
+                        <div className="flex items-center justify-between py-2 border-b border-(--border)">
                             <span className="text-sm text-(--ink-muted)">50% chance</span>
                             <div className="text-right">
                                 <span className="font-medium text-green-500">
@@ -117,7 +117,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between py-2 border-b border-(--card-stroke) bg-amber-500/10 -mx-2 px-2 rounded">
+                        <div className="flex items-center justify-between py-2 border-b border-(--border) bg-amber-500/10 -mx-2 px-2 rounded">
                             <span className="text-sm font-medium text-amber-400">85% chance</span>
                             <div className="text-right flex items-center">
                                 <span className="font-bold text-amber-400">
@@ -151,7 +151,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
                 )}
             </div>
 
-            <div className="pt-4 border-t border-(--card-stroke)">
+            <div className="pt-4 border-t border-(--border)">
                 <div className="flex items-center justify-between text-sm">
                     <span className="text-(--ink-muted)">Throughput</span>
                     <span className="text-foreground">

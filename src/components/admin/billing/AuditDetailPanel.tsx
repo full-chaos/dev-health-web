@@ -39,10 +39,10 @@ function StateDiff({
     }
 
     return (
-        <div className="overflow-auto rounded-xl border border-(--card-stroke) bg-(--card-70)">
+        <div className="overflow-auto rounded-xl border border-(--border) bg-(--card-70)">
             <table className="w-full text-left text-xs">
                 <thead>
-                    <tr className="border-b border-(--card-stroke)">
+                    <tr className="border-b border-(--border)">
                         <th className="p-2 font-medium">Field</th>
                         <th className="p-2 font-medium">Local</th>
                         <th className="p-2 font-medium">Stripe</th>
@@ -59,7 +59,7 @@ function StateDiff({
                         return (
                             <tr
                                 key={key}
-                                className={`border-b border-(--card-stroke)/60 ${matches ? "" : "bg-(--accent)/10"}`}
+                                className={`border-b border-(--border)/60 ${matches ? "" : "bg-(--accent)/10"}`}
                             >
                                 <td className="p-2 font-medium">{key}</td>
                                 <td
@@ -87,14 +87,14 @@ export function AuditDetailPanel({ entry, onResolveAction }: AuditDetailPanelPro
 
     if (!entry) {
         return (
-            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 text-sm text-(--ink-muted)">
+            <div className="rounded-2xl border border-(--border) bg-(--card-80) p-4 text-sm text-(--ink-muted)">
                 Select an audit entry to inspect local vs Stripe state.
             </div>
         );
     }
 
     return (
-        <div className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
+        <div className="space-y-3 rounded-2xl border border-(--border) bg-(--card-80) p-4">
             <p className="text-sm font-medium">{entry.description}</p>
             <StateDiff local={entry.local_state} stripe={entry.stripe_state} />
             <form
@@ -114,7 +114,7 @@ export function AuditDetailPanel({ entry, onResolveAction }: AuditDetailPanelPro
                     value={resolution}
                     onChange={(event) => setResolution(event.target.value)}
                     placeholder="resolution details"
-                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-(--border) bg-(--card-70) px-3 py-2 text-sm"
                 />
                 <button
                     type="submit"

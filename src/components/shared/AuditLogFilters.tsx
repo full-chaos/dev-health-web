@@ -55,7 +55,7 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                     end_date: endDate || undefined,
                 });
             }}
-            className="mb-6 grid gap-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 sm:grid-cols-2 lg:grid-cols-5"
+            className="mb-6 grid gap-4 rounded-2xl border border-(--border) bg-(--card-80) p-4 sm:grid-cols-2 lg:grid-cols-5"
         >
             <div>
                 <label
@@ -70,7 +70,7 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                     value={action}
                     onChange={(e) => setAction(e.target.value)}
                     placeholder="e.g. org.create"
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                 />
             </div>
             <div>
@@ -86,7 +86,7 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                     value={resourceType}
                     onChange={(e) => setResourceType(e.target.value)}
                     placeholder="e.g. organization"
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                 />
             </div>
             <div>
@@ -101,7 +101,7 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                 />
             </div>
             <div>
@@ -116,7 +116,7 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                 />
             </div>
             <div className="flex items-end">
@@ -144,7 +144,7 @@ function BillingAuditLogFilters({ onApply }: { onApply: (f: BillingAuditFilter) 
 
     return (
         <form
-            className="grid gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 md:grid-cols-5"
+            className="grid gap-3 rounded-2xl border border-(--border) bg-(--card-80) p-4 md:grid-cols-5"
             onSubmit={(e) => {
                 e.preventDefault();
                 onApply({
@@ -160,18 +160,18 @@ function BillingAuditLogFilters({ onApply }: { onApply: (f: BillingAuditFilter) 
                 value={resourceType}
                 onChange={(e) => setResourceType(e.target.value)}
                 placeholder="resource type"
-                className="rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm"
+                className="rounded-xl border border-(--border) bg-(--card-70) px-3 py-2 text-sm"
             />
             <input
                 value={action}
                 onChange={(e) => setAction(e.target.value)}
                 placeholder="action"
-                className="rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm"
+                className="rounded-xl border border-(--border) bg-(--card-70) px-3 py-2 text-sm"
             />
             <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm"
+                className="rounded-xl border border-(--border) bg-(--card-70) px-3 py-2 text-sm"
             >
                 <option value="">any status</option>
                 <option value="matched">matched</option>
@@ -182,14 +182,14 @@ function BillingAuditLogFilters({ onApply }: { onApply: (f: BillingAuditFilter) 
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm"
+                className="rounded-xl border border-(--border) bg-(--card-70) px-3 py-2 text-sm"
             />
             <div className="flex gap-2">
                 <input
                     type="date"
                     value={toDate}
                     onChange={(e) => setToDate(e.target.value)}
-                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-(--border) bg-(--card-70) px-3 py-2 text-sm"
                 />
                 <button
                     type="submit"

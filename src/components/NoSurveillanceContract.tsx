@@ -20,7 +20,7 @@ type NoSurveillanceContractProps = {
 export function NoSurveillanceContract({ compact = false }: NoSurveillanceContractProps) {
     return (
         <section
-            className={`rounded-3xl border border-(--card-stroke) bg-(--card-80) ${
+            className={`rounded-3xl border border-(--border) bg-(--card-80) ${
                 compact ? "p-5" : "p-6"
             }`}
             data-testid="no-surveillance-contract"
@@ -39,7 +39,7 @@ export function NoSurveillanceContract({ compact = false }: NoSurveillanceContra
                 {CONTRACT_ITEMS.map((item) => (
                     <article
                         key={item.title}
-                        className="rounded-2xl border border-(--card-stroke) bg-card px-4 py-3"
+                        className="rounded-2xl border border-(--border) bg-card px-4 py-3"
                     >
                         <h3 className="text-sm font-semibold text-(--foreground)">{item.title}</h3>
                         <p className="mt-2 text-xs leading-5 text-(--ink-muted)">{item.body}</p>

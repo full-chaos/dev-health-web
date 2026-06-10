@@ -207,7 +207,7 @@ async function resolveOperatingReview(
 
 function AllTeamsBadge() {
     return (
-        <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
+        <section className="rounded-2xl border border-(--border) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
             Showing the cross-team aggregate{" "}
             <span className="font-medium text-foreground">(All Teams)</span>. Pick a team from the{" "}
             <span className="font-medium text-foreground">Team</span> filter above to scope to one
@@ -218,7 +218,7 @@ function AllTeamsBadge() {
 
 function SelectedTeamsBadge({ teamIds }: { teamIds: string[] }) {
     return (
-        <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
+        <section className="rounded-2xl border border-(--border) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
             Showing operating review data for{" "}
             <span className="font-medium text-foreground">
                 {teamIds.length} selected {teamIds.length === 1 ? "team" : "teams"}
@@ -237,7 +237,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                     <a
                         key={section.key}
                         href={`#${section.key}`}
-                        className={`rounded-2xl border bg-card p-4 transition hover:border-primary/50 ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sm shadow-sky-500/10" : "border-border"}`}
+                        className={`rounded-2xl border bg-card p-4 transition hover:border-primary/50 ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-(--accent-ai)/40 shadow-sm shadow-(--accent-ai)/10" : "border-border"}`}
                     >
                         <h2 className="text-base font-semibold">{section.title}</h2>
                         <p className="mt-2 text-xs text-muted-foreground">
@@ -252,7 +252,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                 <section
                     id={section.key}
                     key={section.key}
-                    className={`rounded-[1.75rem] border bg-card/90 p-6 shadow-sm ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sky-500/10" : "border-border"}`}
+                    className={`rounded-[1.75rem] border bg-card/90 p-6 shadow-sm ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-(--accent-ai)/40 shadow-(--accent-ai)/10" : "border-border"}`}
                 >
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div>
@@ -314,7 +314,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
 function AIWorkflowIntelligenceCallout() {
     return (
         <div
-            className="mt-5 rounded-2xl border border-sky-400/30 bg-sky-500/5 p-4"
+            className="mt-5 rounded-2xl border border-(--accent-ai)/30 bg-(--accent-ai)/5 p-4"
             data-testid="operating-review-ai-workflow-callout"
         >
             <p className="text-sm text-muted-foreground">
@@ -324,25 +324,25 @@ function AIWorkflowIntelligenceCallout() {
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-(--accent-ai)/30 bg-background/60 px-3 py-1 text-foreground"
                     href="/ai"
                 >
                     {CTA_LABELS.aiImpact}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-(--accent-ai)/30 bg-background/60 px-3 py-1 text-foreground"
                     href="/ai/review-load"
                 >
                     {CTA_LABELS.aiReviewLoad}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-(--accent-ai)/30 bg-background/60 px-3 py-1 text-foreground"
                     href="/ai/risk"
                 >
                     {CTA_LABELS.aiRisk}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-(--accent-ai)/30 bg-background/60 px-3 py-1 text-foreground"
                     href="/ai/automations"
                 >
                     {CTA_LABELS.aiAutomations}

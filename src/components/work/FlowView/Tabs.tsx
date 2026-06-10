@@ -98,7 +98,7 @@ export function Tabs({ activeTab, onTabChange }: TabsProps) {
                     className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${
                         activeTab === tab.id
                             ? "border-(--accent-2) bg-(--accent-2) text-white"
-                            : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
+                            : "border-(--border) text-(--ink-muted) hover:border-(--card-stroke)/60"
                     }`}
                 >
                     {tab.label}

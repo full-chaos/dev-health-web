@@ -54,7 +54,7 @@ export function CredentialCard({
     };
 
     return (
-        <div className="flex flex-col justify-between rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm transition-shadow hover:shadow-md">
+        <div className="flex flex-col justify-between rounded-lg border border-(--border) bg-(--surface-base) p-6 shadow-sm transition-shadow hover:shadow-md">
             <div>
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-(--ink-base)">{credential.name}</h3>
@@ -73,7 +73,7 @@ export function CredentialCard({
                     type="button"
                     onClick={handleTest}
                     disabled={isTesting || isDeleting}
-                    className="inline-flex items-center justify-center rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-1.5 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted) disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md border border-(--border) bg-(--surface-base) px-3 py-1.5 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted) disabled:opacity-50"
                 >
                     {isTesting ? "Testing..." : "Test"}
                 </button>
@@ -81,7 +81,7 @@ export function CredentialCard({
                     type="button"
                     onClick={onEdit}
                     disabled={isTesting || isDeleting}
-                    className="inline-flex items-center justify-center rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-1.5 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted) disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md border border-(--border) bg-(--surface-base) px-3 py-1.5 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted) disabled:opacity-50"
                 >
                     Edit
                 </button>
@@ -97,7 +97,7 @@ export function CredentialCard({
 
             {showDeleteConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-md rounded-xl border border-(--card-stroke) bg-(--card) p-6 shadow-2xl">
+                    <div className="w-full max-w-md rounded-xl border border-(--border) bg-(--card) p-6 shadow-2xl">
                         <h3 className="mb-4 text-lg font-semibold text-(--foreground)">
                             Delete Credential
                         </h3>
@@ -116,7 +116,7 @@ export function CredentialCard({
                                 type="button"
                                 onClick={() => setShowDeleteConfirm(false)}
                                 disabled={isDeleting}
-                                className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm hover:bg-(--card-80) disabled:opacity-50"
+                                className="rounded-md border border-(--border) px-4 py-2 text-sm hover:bg-(--card-80) disabled:opacity-50"
                             >
                                 Cancel
                             </button>

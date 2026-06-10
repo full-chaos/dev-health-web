@@ -47,7 +47,7 @@ export function DeleteUserButton({ userId, userEmail }: DeleteUserButtonProps) {
                         type="button"
                         onClick={() => setIsConfirming(false)}
                         disabled={isDeleting}
-                        className="flex-1 rounded-lg border border-(--card-stroke) px-3 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70)"
+                        className="flex-1 rounded-lg border border-(--border) px-3 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70)"
                     >
                         Cancel
                     </button>

@@ -167,7 +167,7 @@ export function GlobalContextBarClient({ filters, origin, orgName }: GlobalConte
             ref={barRef}
             aria-label="Global context"
             data-testid="global-context-bar"
-            className="rounded-2xl border border-(--card-stroke) bg-(--card-90)/80 px-4 py-3 text-xs backdrop-blur-sm"
+            className="rounded-2xl border border-(--border) bg-(--card-90)/80 px-4 py-3 text-xs backdrop-blur-sm"
         >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <div className="flex items-center gap-2">
@@ -180,7 +180,7 @@ export function GlobalContextBarClient({ filters, origin, orgName }: GlobalConte
                         className={`rounded-full border px-3 py-1.5 font-medium transition-colors ${
                             isOrgScope
                                 ? "border-(--accent-2) bg-(--accent-2)/15 text-foreground"
-                                : "border-(--card-stroke) bg-(--card-80) text-(--ink-muted) hover:text-foreground"
+                                : "border-(--border) bg-(--card-80) text-(--ink-muted) hover:text-foreground"
                         }`}
                     >
                         {orgLabel}
@@ -212,7 +212,7 @@ export function GlobalContextBarClient({ filters, origin, orgName }: GlobalConte
                     <span className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
                         Window
                     </span>
-                    <div className="flex rounded-full border border-(--card-stroke) bg-(--card-80) p-1">
+                    <div className="flex rounded-full border border-(--border) bg-(--card-80) p-1">
                         {WINDOW_OPTIONS.map((days) => {
                             const active = filters.time.range_days === days;
                             return (

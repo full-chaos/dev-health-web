@@ -41,7 +41,7 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
                 </div>
                 {lockedRepoId && (
                     <span
-                        className="inline-flex items-center gap-1.5 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1 text-xs text-(--ink-muted)"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-(--border) bg-(--card-80) px-3 py-1 text-xs text-(--ink-muted)"
                         data-testid="locked-repo-pill"
                     >
                         <svg
@@ -65,9 +65,9 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
             </div>
 
             {/* Table */}
-            <div className="rounded-2xl border border-(--card-stroke) bg-card overflow-hidden">
+            <div className="rounded-2xl border border-(--border) bg-card overflow-hidden">
                 {fetching && allEdges.length === 0 ? (
-                    <div className="divide-y divide-(--card-stroke)">
+                    <div className="divide-y divide-(--border)">
                         {Array.from({ length: 8 }).map((_, i) => (
                             <div key={i} className="flex gap-3 px-3 py-3 animate-pulse">
                                 <div className="h-5 w-16 rounded bg-(--card-70)" />
@@ -86,7 +86,7 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
                         />
                     </div>
                 ) : (
-                    <div className="divide-y divide-(--card-stroke)">
+                    <div className="divide-y divide-(--border)">
                         {allEdges.map((edge) => (
                             <SecurityAlertRow
                                 key={edge.cursor}
@@ -103,7 +103,7 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
                     <button
                         onClick={() => fetchMore(pageInfo.endCursor!)}
                         disabled={fetching}
-                        className="rounded-full border border-(--card-stroke) px-6 py-2 text-xs uppercase tracking-[0.15em] transition hover:bg-(--card-80) disabled:opacity-50"
+                        className="rounded-full border border-(--border) px-6 py-2 text-xs uppercase tracking-[0.15em] transition hover:bg-(--card-80) disabled:opacity-50"
                     >
                         {fetching ? "Loading…" : "Load more"}
                     </button>

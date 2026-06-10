@@ -17,7 +17,7 @@ type IntegrationCardProps = {
 
 export function IntegrationCard({ provider }: IntegrationCardProps) {
     return (
-        <div className="flex flex-col justify-between rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm transition-shadow hover:shadow-md">
+        <div className="flex flex-col justify-between rounded-lg border border-(--border) bg-(--surface-base) p-6 shadow-sm transition-shadow hover:shadow-md">
             <div>
                 <div className="mb-4 flex items-center justify-between">
                     <div className="flex h-12 w-12 items-center justify-center rounded-md bg-(--surface-muted)">

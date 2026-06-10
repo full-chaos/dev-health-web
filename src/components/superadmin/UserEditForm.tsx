@@ -44,7 +44,7 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         type="email"
                         defaultValue={user.email}
                         required
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                     />
                 </div>
                 <div className="space-y-2">
@@ -55,7 +55,7 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         id="username"
                         name="username"
                         defaultValue={user.username || ""}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                     />
                 </div>
             </div>
@@ -68,7 +68,7 @@ export function UserEditForm({ user }: UserEditFormProps) {
                     id="full_name"
                     name="full_name"
                     defaultValue={user.full_name || ""}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                    className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                 />
             </div>
 
@@ -79,7 +79,7 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         id="is_active"
                         name="is_active"
                         defaultChecked={user.is_active}
-                        className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-70) text-(--accent) focus:ring-(--accent)"
+                        className="h-4 w-4 rounded border-(--border) bg-(--card-70) text-(--accent) focus:ring-(--accent)"
                     />
                     <label htmlFor="is_active" className="text-sm font-medium">
                         Active
@@ -91,7 +91,7 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         id="is_verified"
                         name="is_verified"
                         defaultChecked={user.is_verified}
-                        className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-70) text-(--accent) focus:ring-(--accent)"
+                        className="h-4 w-4 rounded border-(--border) bg-(--card-70) text-(--accent) focus:ring-(--accent)"
                     />
                     <label htmlFor="is_verified" className="text-sm font-medium">
                         Verified
@@ -103,7 +103,7 @@ export function UserEditForm({ user }: UserEditFormProps) {
                         id="is_superuser"
                         name="is_superuser"
                         defaultChecked={user.is_superuser}
-                        className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-70) text-(--accent) focus:ring-(--accent)"
+                        className="h-4 w-4 rounded border-(--border) bg-(--card-70) text-(--accent) focus:ring-(--accent)"
                     />
                     <label htmlFor="is_superuser" className="text-sm font-medium">
                         Superuser

@@ -29,7 +29,7 @@ function SectionCard({
     children: React.ReactNode;
 }) {
     return (
-        <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 shadow-[0_24px_80px_-56px_rgba(0,0,0,0.55)]">
+        <section className="rounded-3xl border border-(--border) bg-(--card-80) p-5 shadow-[0_24px_80px_-56px_rgba(0,0,0,0.55)]">
             <div className="mb-4">
                 <h2 className="text-lg font-semibold text-foreground">{title}</h2>
                 <p className="mt-1 text-sm text-(--ink-muted)">{description}</p>
@@ -54,7 +54,7 @@ function DataTable({ headers, rows }: { headers: string[]; rows: Array<Array<str
         <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
                 <thead className="text-xs uppercase tracking-[0.16em] text-(--ink-muted)">
-                    <tr className="border-b border-(--card-stroke)">
+                    <tr className="border-b border-(--border)">
                         {headers.map((header) => (
                             <th key={header} className="py-2 pr-4 font-medium">
                                 {header}
@@ -62,7 +62,7 @@ function DataTable({ headers, rows }: { headers: string[]; rows: Array<Array<str
                         ))}
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-(--card-stroke)">
+                <tbody className="divide-y divide-(--border)">
                     {rows.map((row) => (
                         <tr key={row.join("|")}>
                             {row.map((cell, cellIndex) => (
@@ -112,10 +112,7 @@ export function ProductTelemetryDashboard({
                     ["Feature views", formatNumber(totalFeatureViews), "Stable feature IDs viewed"],
                     ["Client errors", formatNumber(totalErrors), "Rendered by route and boundary"],
                 ].map(([label, value, caption]) => (
-                    <div
-                        key={label}
-                        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
-                    >
+                    <div key={label} className="rounded-3xl border border-(--border) bg-card p-5">
                         <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                             {label}
                         </p>
@@ -240,7 +237,7 @@ export function ProductTelemetryDashboard({
                         ].map(([label, value]) => (
                             <div
                                 key={label}
-                                className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4"
+                                className="rounded-2xl border border-(--border) bg-(--card-70) p-4"
                             >
                                 <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                                     {label}

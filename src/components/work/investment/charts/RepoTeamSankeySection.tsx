@@ -86,7 +86,7 @@ export function RepoTeamSankeySection({
     );
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                     <h3 className="font-(--font-display) text-lg">Theme &rarr; Repo &rarr; Team</h3>
@@ -96,7 +96,7 @@ export function RepoTeamSankeySection({
                     Two-hop allocation to highlight team ownership behind repos.
                 </span>
             </div>
-            <div className="mb-4 mt-2 border-l-2 border-(--card-stroke) py-1 pl-3 text-xs leading-relaxed text-(--ink-muted)">
+            <div className="mb-4 mt-2 border-l-2 border-(--border) py-1 pl-3 text-xs leading-relaxed text-(--ink-muted)">
                 This view uses repo-to-team mapping when available. Missing repo associations are
                 routed through an unassigned repo node.
             </div>
@@ -133,7 +133,7 @@ export function RepoTeamSankeySection({
                         }}
                     />
                 ) : (
-                    <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
+                    <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-(--border) bg-(--card-70) text-center text-sm text-(--ink-muted)">
                         <div>
                             <p>We currently have no teams associated with work items.</p>
                             <p className="mt-2 text-xs text-(--ink-muted)">

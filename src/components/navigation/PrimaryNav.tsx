@@ -98,7 +98,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                     // borders. The active area owns one expanded list; A10 keeps exactly
                     // one child selected with hover/focus visually distinct.
                     <div
-                        className="mt-1 ml-3 flex flex-col gap-0.5 border-l border-(--card-stroke) pl-2"
+                        className="mt-1 ml-3 flex flex-col gap-0.5 border-l border-(--border) pl-2"
                         data-testid={`nav-children-${area.id}`}
                     >
                         {visibleChildren.map((child) => renderChild(child, activeChildId))}
@@ -111,7 +111,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     return (
         <aside className="w-full md:max-w-56 md:shrink-0">
             <div className="md:sticky md:top-6">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-4">
                     <div>
                         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                             Full Chaos Dev Health Ops
@@ -133,11 +133,11 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                     </nav>
 
                     {/* Utility tray — visually separated from main spine */}
-                    <div className="mt-4 border-t border-(--card-stroke) pt-3 space-y-2 text-xs">
+                    <div className="mt-4 border-t border-(--border) pt-3 space-y-2 text-xs">
                         {utilityAreas.map((area) => renderArea(area))}
                     </div>
 
-                    <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs text-(--ink-muted)">
+                    <div className="mt-4 rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-3 py-2 text-xs text-(--ink-muted)">
                         The active area expands to its destinations; open one to drill in.
                     </div>
                 </div>

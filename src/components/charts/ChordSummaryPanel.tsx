@@ -30,9 +30,7 @@ export function ChordSummaryPanel({
 }: ChordSummaryPanelProps) {
     if (loading) {
         return (
-            <section
-                className={`rounded-3xl border border-(--card-stroke) bg-card p-4 ${className}`}
-            >
+            <section className={`rounded-3xl border border-(--border) bg-card p-4 ${className}`}>
                 <div className="space-y-6">
                     {loadingSections.map((section) => (
                         <div key={section} className="space-y-3">
@@ -55,9 +53,7 @@ export function ChordSummaryPanel({
 
     if (!dataset || dataset.nodes.length === 0) {
         return (
-            <section
-                className={`rounded-3xl border border-(--card-stroke) bg-card p-4 ${className}`}
-            >
+            <section className={`rounded-3xl border border-(--border) bg-card p-4 ${className}`}>
                 <EmptyState
                     title="No summary yet"
                     description="Adjust filters to reveal exchange patterns."
@@ -77,7 +73,7 @@ export function ChordSummaryPanel({
 
     return (
         <section
-            className={`rounded-3xl border border-(--card-stroke) bg-card p-4 space-y-6 ${className}`}
+            className={`rounded-3xl border border-(--border) bg-card p-4 space-y-6 ${className}`}
         >
             {/* Top Importers */}
             <div>
@@ -191,7 +187,7 @@ export function ChordSummaryPanel({
 
             {/* Overflow Row */}
             {summary.otherShare > 0 && (
-                <div className="pt-2 border-t border-(--card-stroke)">
+                <div className="pt-2 border-t border-(--border)">
                     <p className="text-xs text-(--ink-muted) text-center">
                         {formatNumber(summary.otherShare * 100, {
                             maximumFractionDigits: 1,

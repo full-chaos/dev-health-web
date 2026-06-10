@@ -20,7 +20,7 @@ export function SyncConfigGroup({ parent, childConfigs }: SyncConfigGroupProps) 
     const groupStatus = failedCount > 0 ? "failed" : successCount > 0 ? "success" : "never";
 
     return (
-        <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) overflow-hidden">
+        <div className="rounded-xl border border-(--border) bg-(--card-80) overflow-hidden">
             {/* Parent header — clickable to expand/collapse */}
             <button
                 type="button"
@@ -30,7 +30,7 @@ export function SyncConfigGroup({ parent, childConfigs }: SyncConfigGroupProps) 
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
                         <h3 className="font-medium text-foreground">{parent.name}</h3>
-                        <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2 py-0.5 text-xs text-(--ink-muted)">
+                        <span className="rounded-full border border-(--border) bg-(--card-70) px-2 py-0.5 text-xs text-(--ink-muted)">
                             {childConfigs.length} repo{childConfigs.length !== 1 ? "s" : ""}
                         </span>
                     </div>
@@ -70,7 +70,7 @@ export function SyncConfigGroup({ parent, childConfigs }: SyncConfigGroupProps) 
 
             {/* Children */}
             {expanded && (
-                <div className="border-t border-(--card-stroke) p-4 grid gap-4 md:grid-cols-2">
+                <div className="border-t border-(--border) p-4 grid gap-4 md:grid-cols-2">
                     {childConfigs.map((child) => (
                         <SyncConfigCard key={child.id} config={child} />
                     ))}

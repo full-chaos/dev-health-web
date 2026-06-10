@@ -158,8 +158,8 @@ export function EditCredentialModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-xl rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl">
-                <div className="flex items-center justify-between border-b border-(--card-stroke) p-6">
+            <div className="w-full max-w-xl rounded-xl border border-(--border) bg-(--card) shadow-2xl">
+                <div className="flex items-center justify-between border-b border-(--border) p-6">
                     <h2 className="text-lg font-semibold text-(--foreground)">
                         Edit {existingCredential.name}
                     </h2>
@@ -185,7 +185,7 @@ export function EditCredentialModal({
                             type="text"
                             value={existingCredential.name}
                             disabled
-                            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm text-(--ink-muted) cursor-not-allowed"
+                            className="w-full rounded-lg border border-(--border) bg-(--card-80) px-3 py-2 text-sm text-(--ink-muted) cursor-not-allowed"
                         />
                     </div>
 
@@ -208,7 +208,7 @@ export function EditCredentialModal({
                                 placeholder={
                                     field.type === "password" ? "Enter new token to update..." : ""
                                 }
-                                className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                             />
                         </div>
                     ))}
@@ -225,7 +225,7 @@ export function EditCredentialModal({
                         <button
                             type="button"
                             onClick={handleClose}
-                            className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm"
+                            className="rounded-md border border-(--border) px-4 py-2 text-sm"
                         >
                             Cancel
                         </button>
@@ -233,7 +233,7 @@ export function EditCredentialModal({
                             type="button"
                             onClick={handleTestConnection}
                             disabled={isTesting || isSaving || !canRunTest}
-                            className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm hover:bg-(--card-80) disabled:opacity-50"
+                            className="rounded-md border border-(--border) px-4 py-2 text-sm hover:bg-(--card-80) disabled:opacity-50"
                         >
                             {isTesting ? "Testing..." : "Test Connection"}
                         </button>

@@ -33,7 +33,7 @@ export default async function SuperadminDashboard() {
             {/* Key Metrics Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 {/* Organizations */}
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <div className="text-sm font-medium text-(--ink-muted)">
                         Total Organizations
                     </div>
@@ -46,7 +46,7 @@ export default async function SuperadminDashboard() {
                 </div>
 
                 {/* Users */}
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <div className="text-sm font-medium text-(--ink-muted)">Total Users</div>
                     <div className="mt-2 text-3xl font-bold text-foreground">
                         {stats.total_users}
@@ -57,7 +57,7 @@ export default async function SuperadminDashboard() {
                 </div>
 
                 {/* Superusers */}
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <div className="text-sm font-medium text-(--ink-muted)">Superusers</div>
                     <div className="mt-2 text-3xl font-bold text-purple-500">
                         {stats.superuser_count}
@@ -66,7 +66,7 @@ export default async function SuperadminDashboard() {
                 </div>
 
                 {/* Memberships */}
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <div className="text-sm font-medium text-(--ink-muted)">Total Memberships</div>
                     <div className="mt-2 text-3xl font-bold text-foreground">
                         {stats.total_memberships}
@@ -77,7 +77,7 @@ export default async function SuperadminDashboard() {
 
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Tier Distribution */}
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <h3 className="mb-4 text-lg font-semibold text-foreground">
                         Tier Distribution
                     </h3>
@@ -100,7 +100,7 @@ export default async function SuperadminDashboard() {
                 </div>
 
                 {/* Sync Health */}
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <h3 className="mb-4 text-lg font-semibold text-foreground">Sync Health</h3>
 
                     <div className="grid gap-4 sm:grid-cols-2">

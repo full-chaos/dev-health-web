@@ -26,7 +26,7 @@ type InvestmentPreviewProps = {
 
 function LoadingState() {
     return (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]">
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--border) bg-(--card-70) h-[320px]">
             <div className="mb-4 flex gap-1">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:0ms]" />
                 <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:150ms]" />
@@ -93,7 +93,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
 
     if (!hasData) {
         return (
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]">
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--border) bg-(--card-70) h-[320px]">
                 <span className="text-sm text-(--ink-muted)">
                     Investment data not yet available for this window.
                 </span>
@@ -102,7 +102,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
     }
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-4">
+        <div className="rounded-3xl border border-(--border) bg-card p-4">
             <InvestmentMixSunburst
                 themeDistribution={mix.theme_distribution}
                 subcategoryDistribution={mix.subcategory_distribution}

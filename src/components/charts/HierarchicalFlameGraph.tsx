@@ -148,7 +148,7 @@ export function HierarchicalFlameGraph({
                     disabled={!hasChildren}
                     className={`
             flex items-center w-full text-left px-2 text-xs truncate
-            border border-(--card-stroke) rounded-sm mb-0.5
+            border border-(--border) rounded-sm mb-0.5
             transition-all duration-150 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]
             ${hasChildren ? "cursor-pointer hover:brightness-110" : "cursor-default"}
             ${isSearchMatch ? "ring-2 ring-(--accent-2)" : ""}
@@ -218,14 +218,14 @@ export function HierarchicalFlameGraph({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search..."
-                        className="px-3 py-1 text-xs rounded-full border border-(--card-stroke) bg-card text-foreground placeholder:text-(--ink-muted) w-36"
+                        className="px-3 py-1 text-xs rounded-full border border-(--border) bg-card text-foreground placeholder:text-(--ink-muted) w-36"
                     />
                     {/* Reset */}
                     {(zoomStack.length > 0 || searchQuery) && (
                         <button
                             type="button"
                             onClick={handleReset}
-                            className="px-3 py-1 text-xs rounded-full border border-(--card-stroke) bg-card text-(--accent-2)"
+                            className="px-3 py-1 text-xs rounded-full border border-(--border) bg-card text-(--accent-2)"
                         >
                             {CTA_LABELS.reset}
                         </button>
@@ -246,7 +246,7 @@ export function HierarchicalFlameGraph({
             </div>
 
             {/* Flame Graph */}
-            <div className="flex-1 overflow-auto rounded-lg border border-(--card-stroke) bg-(--card-80) p-2 min-h-0">
+            <div className="flex-1 overflow-auto rounded-lg border border-(--border) bg-(--card-80) p-2 min-h-0">
                 {filteredChildren.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-sm text-(--ink-muted)">
                         {searchQuery ? (
@@ -267,7 +267,7 @@ export function HierarchicalFlameGraph({
             {/* Tooltip */}
             {hoveredNode && (
                 <div
-                    className="fixed z-50 px-3 py-2 text-xs rounded-lg border border-(--card-stroke) bg-card shadow-lg pointer-events-none max-w-xs"
+                    className="fixed z-50 px-3 py-2 text-xs rounded-lg border border-(--border) bg-card shadow-lg pointer-events-none max-w-xs"
                     style={{
                         left: tooltipPos.x + 12,
                         top: tooltipPos.y + 12,
@@ -285,7 +285,7 @@ export function HierarchicalFlameGraph({
                             {formatShare(hoveredNode.value, totalValue)}
                         </span>
                     </div>
-                    <div className="flex justify-between border-b border-(--card-stroke) pb-1">
+                    <div className="flex justify-between border-b border-(--border) pb-1">
                         <span className="text-(--ink-muted)">Total Elapsed</span>
                         <span className="text-foreground font-mono">
                             {formatValue(totalValue, unit)} {unit}

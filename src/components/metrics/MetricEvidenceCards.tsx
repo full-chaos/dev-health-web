@@ -58,7 +58,7 @@ export function MetricEvidenceCards({
                     return (
                         <article
                             key={metric}
-                            className="group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg"
+                            className="group rounded-3xl border border-(--border) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg"
                         >
                             <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                 <span>{label}</span>
@@ -102,7 +102,7 @@ export function MetricEvidenceCards({
                                             height={64}
                                         />
                                     ) : (
-                                        <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--border) bg-(--card-70) text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                                             Trend
                                         </div>
                                     )}

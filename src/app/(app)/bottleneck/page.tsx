@@ -133,7 +133,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                         </div>
                         <Link
                             href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                            className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                         >
                             {CTA_LABELS.backToCockpit}
                         </Link>

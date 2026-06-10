@@ -51,7 +51,7 @@ export function MetricCard({
 
     const body = (
         <>
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+            <div className="flex items-center justify-between text-label-caps uppercase text-(--text-muted)">
                 <div className="flex items-center">
                     <span>{label}</span>
                     {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
@@ -70,7 +70,7 @@ export function MetricCard({
                             : formatMetricValue(value, unit ?? "")}
                     </p>
                     {captionText && (
-                        <p className="mt-2 text-xs text-(--ink-muted)">{captionText}</p>
+                        <p className="mt-2 text-xs text-(--text-muted)">{captionText}</p>
                     )}
                 </div>
                 <div className="h-16 w-full">

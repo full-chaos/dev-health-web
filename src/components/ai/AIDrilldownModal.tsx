@@ -22,7 +22,7 @@ export function AIDrilldownModal({ metric, filter, onClose }: AIDrilldownModalPr
             data-testid="ai-drilldown-modal"
         >
             <div
-                className="w-full max-w-3xl rounded-3xl border border-(--card-stroke) bg-card p-6 shadow-xl"
+                className="w-full max-w-3xl rounded-3xl border border-(--border) bg-card p-6 shadow-xl"
                 onClick={(event) => event.stopPropagation()}
             >
                 <div className="flex items-start justify-between gap-4">
@@ -41,7 +41,7 @@ export function AIDrilldownModal({ metric, filter, onClose }: AIDrilldownModalPr
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs font-semibold text-(--ink-muted) hover:text-foreground"
+                        className="rounded-full border border-(--border) px-3 py-1 text-xs font-semibold text-(--ink-muted) hover:text-foreground"
                         aria-label="Close evidence drilldown"
                     >
                         Close

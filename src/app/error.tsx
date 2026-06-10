@@ -34,7 +34,7 @@ export default function Error({ error, reset }: ErrorProps) {
                 </p>
                 <button
                     onClick={reset}
-                    className="rounded-full border border-(--card-stroke) px-6 py-2.5 text-xs uppercase tracking-[0.2em] hover:border-(--accent) transition"
+                    className="rounded-full border border-(--border) px-6 py-2.5 text-xs uppercase tracking-[0.2em] hover:border-(--accent) transition"
                 >
                     Try again
                 </button>

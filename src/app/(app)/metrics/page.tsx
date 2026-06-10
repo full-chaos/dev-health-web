@@ -186,7 +186,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                         )}
                     />
 
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                    <section className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -219,7 +219,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                                             filters,
                                             role: activeRole,
                                         })}
-                                        className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition hover:text-foreground"
+                                        className="rounded-full border border-(--border) bg-(--card) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition hover:text-foreground"
                                     >
                                         {data?.label ?? metric}
                                     </Link>
@@ -247,7 +247,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     </section>
 
                     <section className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-4">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">
                                     Likely associations
@@ -282,7 +282,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                                                     filters,
                                                     role: activeRole,
                                                 })}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                                className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                                             >
                                                 <EntityLabel id={driver.label} />
                                                 <span className="text-xs text-(--ink-muted)">
@@ -299,7 +299,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                             )}
                         </div>
 
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-4">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">
                                     Primary contributors
@@ -336,7 +336,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                                                     filters,
                                                     role: activeRole,
                                                 })}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                                className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                                             >
                                                 <EntityLabel id={contributor.label} />
                                                 <span className="text-xs text-(--ink-muted)">
@@ -359,7 +359,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                         </div>
                     </section>
 
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                    <section className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                         <div className="flex items-center justify-between">
                             <h2 className="font-(--font-display) text-xl">Summary</h2>
                             <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -370,18 +370,10 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                             <table className="min-w-full border-collapse text-sm">
                                 <thead className="text-left text-(--ink-muted)">
                                     <tr>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Metric
-                                        </th>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Current
-                                        </th>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Delta
-                                        </th>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Explore
-                                        </th>
+                                        <th className="border-b border-(--border) pb-2">Metric</th>
+                                        <th className="border-b border-(--border) pb-2">Current</th>
+                                        <th className="border-b border-(--border) pb-2">Delta</th>
+                                        <th className="border-b border-(--border) pb-2">Explore</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -393,10 +385,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                                             role: activeRole,
                                         });
                                         return (
-                                            <tr
-                                                key={metric}
-                                                className="border-b border-(--card-stroke)"
-                                            >
+                                            <tr key={metric} className="border-b border-(--border)">
                                                 <td className="py-3 pr-4 font-medium">
                                                     <Link href={href} className="block">
                                                         {data?.label ?? metric}

@@ -31,7 +31,7 @@ export function AIComparisonCard({
     const spark = [baselineValue ?? 0, aiValue ?? 0];
 
     return (
-        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
+        <div className="rounded-2xl border border-(--border) bg-(--card-80) p-4">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">

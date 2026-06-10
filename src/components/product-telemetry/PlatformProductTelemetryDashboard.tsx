@@ -14,7 +14,7 @@ const formatNumber = (value: number | null | undefined) =>
 
 function StatCard({ label, value, caption }: { label: string; value: string; caption: string }) {
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">{label}</p>
             <p className="mt-3 font-(--font-display) text-3xl font-semibold text-foreground">
                 {value}
@@ -35,7 +35,7 @@ function TopOrgsTable({
 }) {
     if (rows.length === 0) {
         return (
-            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-8 text-center text-sm text-(--ink-muted)">
+            <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-8 text-center text-sm text-(--ink-muted)">
                 No orgs reported product telemetry in this window.
             </div>
         );
@@ -52,14 +52,14 @@ function TopOrgsTable({
         <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
                 <thead className="text-xs uppercase tracking-[0.16em] text-(--ink-muted)">
-                    <tr className="border-b border-(--card-stroke)">
+                    <tr className="border-b border-(--border)">
                         <th className="py-2 pr-4 font-medium">Organization</th>
                         <th className="py-2 pr-4 font-medium">Events</th>
                         <th className="py-2 pr-4 font-medium">Sessions</th>
                         <th className="py-2 pr-4 font-medium">Anonymous users</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-(--card-stroke)">
+                <tbody className="divide-y divide-(--border)">
                     {rows.map((org) => {
                         const label =
                             org.orgName || org.orgSlug || `${org.orgIdHash.slice(0, 12)}\u2026`;
@@ -133,7 +133,7 @@ export function PlatformProductTelemetryDashboard({
                 />
             </div>
 
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 shadow-[0_24px_80px_-56px_rgba(0,0,0,0.55)]">
+            <section className="rounded-3xl border border-(--border) bg-(--card-80) p-5 shadow-[0_24px_80px_-56px_rgba(0,0,0,0.55)]">
                 <div className="mb-4 flex items-baseline justify-between gap-4">
                     <div>
                         <h2 className="text-lg font-semibold text-foreground">Top organizations</h2>

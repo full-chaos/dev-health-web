@@ -210,7 +210,7 @@ function ComponentBars({ row }: { row: CompoundingRiskRowView }) {
                 return (
                     <article
                         key={component.key}
-                        className="rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-sm"
+                        className="rounded-2xl border border-(--border) bg-card p-4 shadow-sm"
                         data-testid={`component-${component.label.toLowerCase().replace(/\s+/g, "-")}`}
                     >
                         <div className="flex items-center justify-between gap-3">
@@ -246,7 +246,7 @@ function ScopeTable({
     if (rows.length === 0) {
         return (
             <p
-                className="rounded-2xl border border-(--card-stroke) bg-card p-6 text-sm text-(--ink-muted)"
+                className="rounded-2xl border border-(--border) bg-card p-6 text-sm text-(--ink-muted)"
                 data-testid="empty-state"
             >
                 No Compounding Risk data is available for this org yet. Run{" "}
@@ -257,7 +257,7 @@ function ScopeTable({
     }
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-(--border) bg-(--card-90) shadow-sm">
             <table className="w-full text-sm" data-testid="compounding-risk-table">
                 <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                     <tr>
@@ -287,7 +287,7 @@ function ScopeTable({
                                 data-testid="risk-row"
                                 data-scope-id={row.scopeId}
                                 data-severity={row.severity}
-                                className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                                className="border-t border-(--border)/60 hover:bg-(--card-60)/60"
                             >
                                 <td className="px-5 py-3 align-middle font-medium">
                                     {row.scopeLabel}
@@ -357,7 +357,7 @@ export function CompoundingRiskDashboard({
         return (
             <div className="flex flex-col gap-6" data-testid="compounding-risk-dashboard">
                 <section
-                    className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
+                    className="rounded-2xl border border-(--border) bg-card p-8 shadow-sm"
                     data-testid="all-scores-null-state"
                 >
                     <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
@@ -381,7 +381,7 @@ export function CompoundingRiskDashboard({
                     </p>
 
                     {missingInputs.length > 0 && (
-                        <div className="mt-8 rounded-2xl border border-(--card-stroke) bg-(--card-60) p-6">
+                        <div className="mt-8 rounded-2xl border border-(--border) bg-(--card-60) p-6">
                             <h3 className="text-sm font-semibold tracking-tight">
                                 Missing inputs across all {breakout}s:
                             </h3>
@@ -408,7 +408,7 @@ export function CompoundingRiskDashboard({
 
     return (
         <div className="flex flex-col gap-6" data-testid="compounding-risk-dashboard">
-            <section className="overflow-hidden rounded-[2rem] border border-(--card-stroke) bg-(--card-80) shadow-sm">
+            <section className="overflow-hidden rounded-[2rem] border border-(--border) bg-(--card-80) shadow-sm">
                 <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
                     <div className="p-8">
                         <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
@@ -427,7 +427,7 @@ export function CompoundingRiskDashboard({
                             </time>
                         </p>
                     </div>
-                    <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
+                    <div className="border-t border-(--border) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
                             Headline
                         </p>
@@ -456,7 +456,7 @@ export function CompoundingRiskDashboard({
 
             {headline && (
                 <section
-                    className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+                    className="rounded-[1.75rem] border border-(--border) bg-(--card-90) p-6 shadow-sm"
                     data-testid="component-breakdown"
                 >
                     <div className="flex items-center justify-between gap-3">

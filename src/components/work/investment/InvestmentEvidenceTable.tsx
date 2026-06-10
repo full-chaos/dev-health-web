@@ -140,7 +140,7 @@ export function InvestmentEvidenceTable({
     };
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 className="font-(--font-display) text-lg">Evidence drilldown</h3>
@@ -157,7 +157,7 @@ export function InvestmentEvidenceTable({
                     <div
                         role="radiogroup"
                         aria-label="Group evidence by"
-                        className="flex gap-1 rounded-full border border-(--card-stroke) bg-(--card-70) p-1"
+                        className="flex gap-1 rounded-full border border-(--border) bg-(--card-70) p-1"
                     >
                         {GROUP_OPTIONS.map((option) => (
                             <button
@@ -179,8 +179,8 @@ export function InvestmentEvidenceTable({
                 </div>
             </div>
 
-            <div className="mt-4 overflow-hidden rounded-2xl border border-(--card-stroke)">
-                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-(--card-stroke) bg-(--card-70) px-4 py-2 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+            <div className="mt-4 overflow-hidden rounded-2xl border border-(--border)">
+                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-(--border) bg-(--card-70) px-4 py-2 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                     <span>{GROUP_OPTIONS.find((o) => o.id === groupBy)?.label}</span>
                     <span className="text-right">Units</span>
                     <span className="text-right">Weighted effort</span>
@@ -196,7 +196,7 @@ export function InvestmentEvidenceTable({
                         return (
                             <div
                                 key={group.key}
-                                className="border-b border-(--card-stroke) last:border-b-0"
+                                className="border-b border-(--border) last:border-b-0"
                             >
                                 <button
                                     type="button"
@@ -242,7 +242,7 @@ export function InvestmentEvidenceTable({
                                             return (
                                                 <li
                                                     key={unit.work_unit_id}
-                                                    className="rounded-2xl border border-(--card-stroke) bg-(--card-70)"
+                                                    className="rounded-2xl border border-(--border) bg-(--card-70)"
                                                 >
                                                     <button
                                                         type="button"
@@ -263,7 +263,7 @@ export function InvestmentEvidenceTable({
                                                                 {formatWorkUnitLabel(unit)}
                                                             </span>
                                                             {formatWorkUnitTypeLabel(unit) ? (
-                                                                <span className="shrink-0 rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                                                <span className="shrink-0 rounded-full border border-(--border) px-2 py-0.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                                                     {formatWorkUnitTypeLabel(unit)}
                                                                 </span>
                                                             ) : null}
@@ -286,7 +286,7 @@ export function InvestmentEvidenceTable({
                                                     </button>
 
                                                     {unitOpen && (
-                                                        <div className="space-y-4 border-t border-(--card-stroke) px-4 py-4">
+                                                        <div className="space-y-4 border-t border-(--border) px-4 py-4">
                                                             <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                                                 <span>
                                                                     ID:{" "}
@@ -368,7 +368,7 @@ export function InvestmentEvidenceTable({
                                                                         unit.work_unit_id,
                                                                     )
                                                                 }
-                                                                className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40"
+                                                                className="rounded-full border border-(--border) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40"
                                                             >
                                                                 {CTA_LABELS.openEvidence}
                                                             </button>

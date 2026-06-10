@@ -97,7 +97,7 @@ export default async function CapacityPage({ searchParams }: CapacityPageProps) 
 
                         <FilterBar view="capacity-planning" />
 
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
+                        <div className="rounded-2xl border border-(--border) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
                             <span className="text-foreground font-semibold uppercase tracking-wider">
                                 Perspective:
                             </span>{" "}

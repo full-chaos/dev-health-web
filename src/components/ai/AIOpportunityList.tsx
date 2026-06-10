@@ -40,7 +40,7 @@ function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef |
 
     return (
         <div
-            className="mt-3 rounded-2xl border border-(--card-stroke) bg-background/50 p-3"
+            className="mt-3 rounded-2xl border border-(--border) bg-background/50 p-3"
             data-testid="ai-opportunity-workgraph-evidence"
         >
             <p className="text-xs uppercase tracking-[0.12em] text-(--ink-muted)">
@@ -69,7 +69,7 @@ export function AIOpportunityList({
 
     if (!detectorReady) {
         return (
-            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
+            <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
                 <p className="font-medium text-foreground">
                     No automation candidates in this scope yet
                 </p>
@@ -94,7 +94,7 @@ export function AIOpportunityList({
             {recommendations.slice(0, 5).map((item) => (
                 <li
                     key={item.opportunityId}
-                    className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4"
+                    className="rounded-2xl border border-(--border) bg-(--card-80) p-4"
                 >
                     <div className="flex items-start justify-between gap-3">
                         <div>
@@ -120,7 +120,7 @@ export function AIOpportunityList({
                                         key={`${ref.rootType}:${ref.rootId}`}
                                         type="button"
                                         onClick={() => setSelectedRef(selected ? null : ref)}
-                                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${selected ? "border-(--accent-positive) bg-(--accent-positive)/10 text-foreground" : "border-(--card-stroke) bg-background/60 text-(--ink-muted) hover:text-foreground"}`}
+                                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${selected ? "border-(--accent-positive) bg-(--accent-positive)/10 text-foreground" : "border-(--border) bg-background/60 text-(--ink-muted) hover:text-foreground"}`}
                                     >
                                         Work Graph: {ref.label}
                                     </button>

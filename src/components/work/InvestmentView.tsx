@@ -39,7 +39,7 @@ type InvestmentViewProps = {
 function ExplainerCards() {
     return (
         <div className="grid gap-4 lg:grid-cols-2">
-            <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
+            <details className="rounded-2xl border border-(--border) bg-(--card-70) px-4 py-4">
                 <summary className="cursor-pointer list-none font-(--font-display) text-base">
                     What this investment view represents
                 </summary>
@@ -75,7 +75,7 @@ function ExplainerCards() {
                     </p>
                 </div>
             </details>
-            <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
+            <details className="rounded-2xl border border-(--border) bg-(--card-70) px-4 py-4">
                 <summary className="cursor-pointer list-none font-(--font-display) text-base">
                     How to read the visuals
                 </summary>
@@ -160,7 +160,7 @@ export function InvestmentView({
     const evidenceBlock = (
         <div
             id="work-unit-calculation"
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+            className="rounded-3xl border border-(--border) bg-card p-5"
         >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -180,7 +180,7 @@ export function InvestmentView({
                     </label>
                     <select
                         id="work-unit-select"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs"
+                        className="rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-xs"
                         value={selectedUnitId}
                         onChange={(event) => {
                             if (event.target.value) {
@@ -202,7 +202,7 @@ export function InvestmentView({
 
             {data.selectedUnit ? (
                 <div className="mt-6 grid gap-6 lg:grid-cols-3">
-                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                    <div className="rounded-2xl border border-(--border) bg-(--card-70) p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                             Overview
                         </p>
@@ -212,7 +212,7 @@ export function InvestmentView({
                                 {formatWorkUnitLabel(data.selectedUnit)}
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-(--ink-muted)">
                                     {data.selectedUnitTypeLabel ? (
-                                        <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
+                                        <span className="rounded-full border border-(--border) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
                                             {data.selectedUnitTypeLabel}
                                         </span>
                                     ) : null}
@@ -244,7 +244,7 @@ export function InvestmentView({
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                    <div className="rounded-2xl border border-(--border) bg-(--card-70) p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                             Structural evidence
                         </p>
@@ -263,7 +263,7 @@ export function InvestmentView({
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                    <div className="rounded-2xl border border-(--border) bg-(--card-70) p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                             Contextual evidence
                         </p>
@@ -282,7 +282,7 @@ export function InvestmentView({
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 lg:col-span-3">
+                    <div className="rounded-2xl border border-(--border) bg-(--card-70) p-4 lg:col-span-3">
                         <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                             Textual evidence
                         </p>
@@ -377,7 +377,7 @@ export function InvestmentView({
                                                             }
                                                         </p>
                                                     </div>
-                                                    <div className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3">
+                                                    <div className="rounded-lg border border-(--border) bg-(--card-70) p-3">
                                                         <p className="text-xs font-medium italic text-(--ink-muted)">
                                                             {
                                                                 data.explanation

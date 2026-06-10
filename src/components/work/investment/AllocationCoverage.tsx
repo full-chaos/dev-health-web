@@ -102,7 +102,7 @@ export function AllocationCoverage({
     ];
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <div>
                 <h3 className="font-(--font-display) text-lg">
                     Coverage gaps &amp; unassigned ownership
@@ -116,7 +116,7 @@ export function AllocationCoverage({
                 {cards.map((card) => (
                     <div
                         key={card.id}
-                        className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4"
+                        className="rounded-2xl border border-(--border) bg-(--card-70) p-4"
                     >
                         <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                             {card.label}
@@ -136,7 +136,7 @@ export function AllocationCoverage({
                         )}
                     </div>
                 ))}
-                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                <div className="rounded-2xl border border-(--border) bg-(--card-70) p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                         Unassigned ownership
                     </p>

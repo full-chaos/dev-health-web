@@ -231,7 +231,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                           : "Create Configuration"
                 }
                 className="max-w-2xl space-y-6"
-                contentClassName="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
+                contentClassName="space-y-6 rounded-2xl border border-(--border) bg-(--card-80) p-6"
                 actionsClassName="flex items-center gap-4"
                 actionsStart={
                     <Link
@@ -290,7 +290,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         <button
                             type="button"
                             onClick={() => setShowCredentialModal(true)}
-                            className="rounded-md border border-(--card-stroke) px-2 py-1 text-xs font-medium text-(--foreground) hover:bg-(--card-70)"
+                            className="rounded-md border border-(--border) px-2 py-1 text-xs font-medium text-(--foreground) hover:bg-(--card-70)"
                         >
                             + New
                         </button>
@@ -402,7 +402,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         {availableTargets.map((target) => (
                             <label
                                 key={target.id}
-                                className="flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 hover:bg-(--card-60)"
+                                className="flex items-center gap-2 rounded-lg border border-(--border) bg-(--card-70) p-3 hover:bg-(--card-60)"
                             >
                                 <input
                                     type="checkbox"
@@ -410,7 +410,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                     onChange={(e) =>
                                         handleTargetChange(target.id, e.target.checked)
                                     }
-                                    className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                                    className="h-4 w-4 rounded border-(--border) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
                                 />
                                 <span className="text-sm">{target.label}</span>
                             </label>
@@ -451,8 +451,8 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                         isSelected
                                             ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
                                             : isGated
-                                              ? "cursor-not-allowed border-[var(--card-stroke)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-50"
-                                              : "border-[var(--card-stroke)] hover:border-[var(--accent)]/50"
+                                              ? "cursor-not-allowed border-[var(--border)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-50"
+                                              : "border-[var(--border)] hover:border-[var(--accent)]/50"
                                     }`}
                                 >
                                     {opt.label}
@@ -471,7 +471,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         name="is_active"
                         checked={formData.is_active}
                         onChange={handleChange}
-                        className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                        className="h-4 w-4 rounded border-(--border) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
                     />
                     <label htmlFor="is_active" className="text-sm font-medium">
                         Enable automatic sync schedule

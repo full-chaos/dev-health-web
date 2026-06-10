@@ -120,8 +120,8 @@ export function RefundDialog({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-xl rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl">
-                <div className="flex items-center justify-between border-b border-(--card-stroke) p-6">
+            <div className="w-full max-w-xl rounded-xl border border-(--border) bg-(--card) shadow-2xl">
+                <div className="flex items-center justify-between border-b border-(--border) p-6">
                     <h2 className="text-lg font-semibold text-(--foreground)">Issue Refund</h2>
                     <button
                         type="button"
@@ -133,7 +133,7 @@ export function RefundDialog({
                 </div>
 
                 <div className="space-y-4 p-6">
-                    <div className="rounded-md border border-(--card-stroke) bg-(--card-80) p-3 text-sm text-(--ink-muted)">
+                    <div className="rounded-md border border-(--border) bg-(--card-80) p-3 text-sm text-(--ink-muted)">
                         <p>Invoice total: ${centsToDollars(invoiceAmountCents)}</p>
                         <p>Refundable balance: ${centsToDollars(refundableAmountCents)}</p>
                     </div>
@@ -162,7 +162,7 @@ export function RefundDialog({
                                 step="0.01"
                                 value={amountInput}
                                 onChange={(event) => setAmountInput(event.target.value)}
-                                className="w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-sm"
+                                className="w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-sm"
                             />
                         </div>
                     )}
@@ -182,7 +182,7 @@ export function RefundDialog({
                                     event.target.value as (typeof REFUND_REASONS)[number]["value"],
                                 )
                             }
-                            className="w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-sm"
                         >
                             {REFUND_REASONS.map((option) => (
                                 <option key={option.value} value={option.value}>
@@ -204,7 +204,7 @@ export function RefundDialog({
                             value={description}
                             onChange={(event) => setDescription(event.target.value)}
                             rows={3}
-                            className="w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-sm"
+                            className="w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-sm"
                         />
                     </div>
 
@@ -224,7 +224,7 @@ export function RefundDialog({
                                 <button
                                     type="button"
                                     onClick={() => setConfirming(false)}
-                                    className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm"
+                                    className="rounded-md border border-(--border) px-4 py-2 text-sm"
                                 >
                                     Back
                                 </button>

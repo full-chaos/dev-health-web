@@ -38,7 +38,7 @@ export function LineagePopover({ metricId }: { metricId: string }) {
                 />
             </svg>
 
-            <div className="absolute z-10 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-card border border-(--card-stroke) rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none">
+            <div className="absolute z-10 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-card border border-(--border) rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none">
                 <div className="text-xs font-semibold uppercase tracking-wider text-(--ink-muted) mb-2">
                     Metric Lineage
                 </div>
@@ -58,7 +58,7 @@ export function LineagePopover({ metricId }: { metricId: string }) {
                                 {data.dataHealth.metricLineage.sourceTables.map((t) => (
                                     <span
                                         key={t}
-                                        className="px-1.5 py-0.5 rounded-sm bg-(--card-70) border border-(--card-stroke) text-xs font-mono"
+                                        className="px-1.5 py-0.5 rounded-sm bg-(--card-70) border border-(--border) text-xs font-mono"
                                     >
                                         {t}
                                     </span>

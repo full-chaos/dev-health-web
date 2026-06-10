@@ -14,7 +14,7 @@ export function SuggestedActions({ actions }: SuggestedActionsProps) {
     if (!actions || actions.length === 0) return null;
 
     return (
-        <section className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4">
+        <section className="space-y-3 rounded-2xl border border-(--border) bg-(--card-90) p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                 Recommended next steps
             </p>

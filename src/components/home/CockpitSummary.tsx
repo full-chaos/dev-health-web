@@ -78,7 +78,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
         <section
             data-testid="cockpit-summary"
             data-status={status}
-            className={`relative overflow-hidden rounded-[32px] border border-(--card-stroke) bg-gradient-to-br ${meta.glow} to-(--card-80) p-6 shadow-[0_28px_90px_-52px_rgba(0,0,0,0.6)] sm:p-8`}
+            className={`relative overflow-hidden rounded-[32px] border border-(--border) bg-gradient-to-br ${meta.glow} to-(--card-80) p-6 shadow-[0_28px_90px_-52px_rgba(0,0,0,0.6)] sm:p-8`}
         >
             <EvidencePanel
                 isOpen={panel.isOpen}
@@ -135,7 +135,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                             <EntityLabel variant="text" id={topSignal.title} />
                         </h2>
                         <div className="flex items-center gap-2 text-xs">
-                            <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 font-bold uppercase tracking-[0.16em] text-(--ink-muted)">
+                            <span className="rounded-full border border-(--border) bg-(--card-70) px-2.5 py-0.5 font-bold uppercase tracking-[0.16em] text-(--ink-muted)">
                                 {topSignal.severity}
                             </span>
                             {(topSignal.scope_entity?.id ?? topSignal.affected_scope) ? (
@@ -143,7 +143,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                                     id={topSignal.scope_entity?.id ?? topSignal.affected_scope}
                                     displayName={topSignal.scope_entity?.display_name ?? null}
                                     data-testid="cockpit-top-change-scope"
-                                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 font-medium text-(--ink-muted)"
+                                    className="rounded-full border border-(--border) bg-(--card-70) px-2.5 py-0.5 font-medium text-(--ink-muted)"
                                 />
                             ) : null}
                             {topSignal.delta ? (
@@ -176,7 +176,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                                 metric: topSignal.metric,
                             })
                         }
-                        className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"
+                        className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--border) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"
                     >
                         Open evidence
                         <span aria-hidden>↗</span>

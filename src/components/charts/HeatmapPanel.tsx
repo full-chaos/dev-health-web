@@ -219,7 +219,7 @@ export function HeatmapPanel({
 
     if (!data || !data.axes?.x?.length || !data.axes?.y?.length) {
         return (
-            <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
+            <div className="rounded-3xl border border-dashed border-(--border) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
                 {emptyState}
             </div>
         );
@@ -229,7 +229,7 @@ export function HeatmapPanel({
     const showArtifacts = !loading && artifacts.length > 0;
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h2 className="font-(--font-display) text-xl">{title}</h2>
@@ -243,7 +243,7 @@ export function HeatmapPanel({
                 {isFlat ? (
                     <div
                         data-testid="heatmap-flat-state"
-                        className="flex h-[320px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-6 text-center text-sm text-(--ink-muted)"
+                        className="flex h-[320px] items-center justify-center rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-6 text-center text-sm text-(--ink-muted)"
                     >
                         {flatStateLabel}
                     </div>
@@ -251,7 +251,7 @@ export function HeatmapPanel({
                     <HeatmapChart data={data} height={320} onCellSelectAction={handleCellSelect} />
                 )}
             </div>
-            <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
+            <div className="mt-4 rounded-2xl border border-(--border) bg-(--card-80) p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                         {evidenceTitle}
@@ -276,7 +276,7 @@ export function HeatmapPanel({
                                 <>
                                     <div className="flex items-center justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-2">
-                                            <span className="shrink-0 rounded border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-[10px] font-bold uppercase text-(--ink-muted)">
+                                            <span className="shrink-0 rounded border border-(--border) bg-(--card-70) px-1.5 py-0.5 text-[10px] font-bold uppercase text-(--ink-muted)">
                                                 {artifact.type}
                                             </span>
                                             <span className="truncate" title={artifact.title}>
@@ -308,14 +308,14 @@ export function HeatmapPanel({
                                 <Link
                                     key={artifactKey}
                                     href={artifact.link}
-                                    className="block rounded-2xl border border-(--card-stroke) bg-card px-3 py-2 transition-colors hover:border-(--accent)/40"
+                                    className="block rounded-2xl border border-(--border) bg-card px-3 py-2 transition-colors hover:border-(--accent)/40"
                                 >
                                     {body}
                                 </Link>
                             ) : (
                                 <div
                                     key={artifactKey}
-                                    className="rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
+                                    className="rounded-2xl border border-(--border) bg-card px-3 py-2"
                                 >
                                     {body}
                                 </div>

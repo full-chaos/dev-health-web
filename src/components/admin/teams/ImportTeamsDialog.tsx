@@ -124,7 +124,7 @@ export function ImportTeamsDialog() {
             <button
                 type="button"
                 onClick={handleOpen}
-                className="cursor-pointer rounded-lg border border-(--card-stroke) bg-(--card) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) transition-colors"
+                className="cursor-pointer rounded-lg border border-(--border) bg-(--card) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) transition-colors"
             >
                 Import Teams
             </button>
@@ -133,8 +133,8 @@ export function ImportTeamsDialog() {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-2xl rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl max-h-[90vh] flex flex-col">
-                <div className="flex items-center justify-between border-b border-(--card-stroke) p-6">
+            <div className="w-full max-w-2xl rounded-xl border border-(--border) bg-(--card) shadow-2xl max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between border-b border-(--border) p-6">
                     <h2 className="text-xl font-semibold text-foreground">Import Teams</h2>
                     <button
                         type="button"
@@ -153,7 +153,7 @@ export function ImportTeamsDialog() {
                                     type="button"
                                     key={provider.id}
                                     onClick={() => handleDiscover(provider.id)}
-                                    className="cursor-pointer flex flex-col items-start gap-2 rounded-lg border border-(--card-stroke) bg-(--card-80) p-4 text-left hover:border-(--accent) hover:bg-(--card) transition-all"
+                                    className="cursor-pointer flex flex-col items-start gap-2 rounded-lg border border-(--border) bg-(--card-80) p-4 text-left hover:border-(--accent) hover:bg-(--card) transition-all"
                                 >
                                     <span className="font-medium text-foreground">
                                         {provider.name}
@@ -200,7 +200,7 @@ export function ImportTeamsDialog() {
                                         onChange={(e) =>
                                             setOnConflict(e.target.value as "skip" | "merge")
                                         }
-                                        className="cursor-pointer rounded border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-foreground focus:border-(--accent) focus:outline-none"
+                                        className="cursor-pointer rounded border border-(--border) bg-(--card-80) px-2 py-1 text-foreground focus:border-(--accent) focus:outline-none"
                                     >
                                         <option value="skip">Skip existing</option>
                                         <option value="merge">Merge with existing</option>
@@ -208,7 +208,7 @@ export function ImportTeamsDialog() {
                                 </div>
                             </div>
 
-                            <div className="max-h-[400px] overflow-y-auto rounded-lg border border-(--card-stroke)">
+                            <div className="max-h-[400px] overflow-y-auto rounded-lg border border-(--border)">
                                 {discoveredTeams.length === 0 ? (
                                     <div className="p-8 text-center text-(--ink-muted)">
                                         No teams found.
@@ -226,7 +226,7 @@ export function ImportTeamsDialog() {
                                                             discoveredTeams.length > 0
                                                         }
                                                         onChange={toggleAll}
-                                                        className="cursor-pointer rounded border-(--card-stroke) bg-(--card) text-(--accent) focus:ring-(--accent)"
+                                                        className="cursor-pointer rounded border-(--border) bg-(--card) text-(--accent) focus:ring-(--accent)"
                                                     />
                                                 </th>
                                                 <th className="p-3 font-medium">Team</th>
@@ -234,7 +234,7 @@ export function ImportTeamsDialog() {
                                                 <th className="p-3 font-medium">Associations</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-(--card-stroke)">
+                                        <tbody className="divide-y divide-(--border)">
                                             {discoveredTeams.map((team) => (
                                                 <tr
                                                     key={team.provider_team_id}
@@ -253,7 +253,7 @@ export function ImportTeamsDialog() {
                                                                 toggleTeam(team.provider_team_id)
                                                             }
                                                             onClick={(e) => e.stopPropagation()}
-                                                            className="cursor-pointer rounded border-(--card-stroke) bg-(--card) text-(--accent) focus:ring-(--accent)"
+                                                            className="cursor-pointer rounded border-(--border) bg-(--card) text-(--accent) focus:ring-(--accent)"
                                                         />
                                                     </td>
                                                     <td className="p-3">
@@ -313,7 +313,7 @@ export function ImportTeamsDialog() {
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4 rounded-lg border border-(--card-stroke) bg-(--card-80) p-4">
+                            <div className="grid grid-cols-3 gap-4 rounded-lg border border-(--border) bg-(--card-80) p-4">
                                 <div>
                                     <div className="text-2xl font-bold text-foreground">
                                         {importResult.imported}
@@ -337,7 +337,7 @@ export function ImportTeamsDialog() {
                     )}
                 </div>
 
-                <div className="flex items-center justify-end gap-3 border-t border-(--card-stroke) p-6">
+                <div className="flex items-center justify-end gap-3 border-t border-(--border) p-6">
                     {step === "result" ? (
                         <button
                             type="button"

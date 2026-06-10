@@ -377,7 +377,7 @@ export function WorkGraphExplorer({
                         <label
                             key={type}
                             title={NODE_TYPE_LABELS[type]}
-                            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-(--card-stroke) bg-(--card-90) px-2 py-1 text-(--ink-muted) transition-colors hover:text-foreground"
+                            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-(--border) bg-(--card-90) px-2 py-1 text-(--ink-muted) transition-colors hover:text-foreground"
                         >
                             <input
                                 type="checkbox"
@@ -455,7 +455,7 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                 <button
                     type="button"
                     onClick={onToggleAction}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-(--card-stroke) text-sm transition-colors hover:border-(--accent)/40 hover:text-foreground"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-(--border) text-sm transition-colors hover:border-(--accent)/40 hover:text-foreground"
                     aria-label="Expand legend"
                     title="Expand legend"
                 >
@@ -488,14 +488,14 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                 <button
                     type="button"
                     onClick={onToggleAction}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-(--card-stroke) text-sm transition-colors hover:border-(--accent)/40 hover:text-foreground"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-(--border) text-sm transition-colors hover:border-(--accent)/40 hover:text-foreground"
                     aria-label="Collapse legend"
                     title="Collapse legend"
                 >
                     ▶
                 </button>
             </div>
-            <div className="mt-3 space-y-4 border-t border-(--card-stroke) pt-3">
+            <div className="mt-3 space-y-4 border-t border-(--border) pt-3">
                 <section className="space-y-2">
                     <p className="text-[10px] font-medium uppercase tracking-[0.18em]">
                         Node Types

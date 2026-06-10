@@ -35,7 +35,7 @@ export default function Loading() {
                     <div className="h-10 bg-(--card-70) rounded-full animate-pulse" />
 
                     {/* Context strip — metric label + active filters */}
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
+                    <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5 animate-pulse">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="space-y-2">
                                 <div className="h-3 bg-(--card-70) rounded w-16" />
@@ -66,7 +66,7 @@ export default function Loading() {
                     {/* Evidence: Snapshot + Top Associations + Contributors (3-col grid) */}
                     <div className="grid gap-6 lg:grid-cols-3 animate-pulse">
                         {/* Snapshot card */}
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5 space-y-3">
                             <div className="h-3 bg-(--card-70) rounded w-20" />
                             <div className="h-9 bg-(--card-70) rounded w-24" />
                             <div className="h-4 bg-(--card-70) rounded w-40" />
@@ -74,7 +74,7 @@ export default function Loading() {
                         </div>
 
                         {/* Top Associations card */}
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-4">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5 space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="h-6 bg-(--card-70) rounded w-36" />
                                 <div className="h-3 bg-(--card-70) rounded w-24" />
@@ -88,7 +88,7 @@ export default function Loading() {
                         </div>
 
                         {/* Contributors card */}
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-4">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5 space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="h-6 bg-(--card-70) rounded w-28" />
                                 <div className="h-3 bg-(--card-70) rounded w-24" />
@@ -103,7 +103,7 @@ export default function Loading() {
                     </div>
 
                     {/* Evidence shortcuts */}
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
+                    <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5 animate-pulse">
                         <div className="h-6 bg-(--card-70) rounded w-40 mb-3" />
                         <div className="flex flex-wrap gap-3">
                             {Array.from({ length: 4 }).map((_, i) => (

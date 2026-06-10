@@ -76,7 +76,7 @@ export function IdentityGapsTable() {
                     These identities have been observed in events but are not mapped to any
                     canonical user.
                 </p>
-                <div className="rounded-xl border border-(--card-stroke) bg-card overflow-hidden">
+                <div className="rounded-xl border border-(--border) bg-card overflow-hidden">
                     <DataTable
                         data={health.unmappedIdentities}
                         columns={columns}
@@ -93,7 +93,7 @@ export function IdentityGapsTable() {
                         Heuristic suggestions based on name/email similarity. Requires manual
                         confirmation.
                     </p>
-                    <div className="rounded-xl border border-(--card-stroke) bg-card divide-y divide-(--card-stroke)">
+                    <div className="rounded-xl border border-(--border) bg-card divide-y divide-(--border)">
                         {health.suggestedAliases.map((suggestion, idx) => (
                             <AliasSuggestionRow key={idx} suggestion={suggestion} />
                         ))}

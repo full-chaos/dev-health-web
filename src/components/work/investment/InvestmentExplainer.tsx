@@ -16,7 +16,7 @@ export function InvestmentExplainer({
     onRegenerate,
 }: InvestmentExplainerProps) {
     return (
-        <details open className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <details open className="rounded-3xl border border-(--border) bg-card p-5">
             <summary className="cursor-pointer list-none font-(--font-display) text-lg">
                 What this investment mix indicates
             </summary>
@@ -33,7 +33,7 @@ export function InvestmentExplainer({
                         type="button"
                         onClick={onRegenerate}
                         disabled={isExplainingMix}
-                        className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted) disabled:opacity-50"
+                        className="rounded-full border border-(--border) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted) disabled:opacity-50"
                     >
                         {isExplainingMix ? "Generating..." : "Regenerate explanation"}
                     </button>
@@ -64,7 +64,7 @@ export function InvestmentExplainer({
                                     {mixExplanation.data.top_findings.slice(0, 3).map((finding) => (
                                         <div
                                             key={`${finding.finding}-${finding.evidence.theme}-${finding.evidence.share_pct}`}
-                                            className="rounded-lg border border-(--card-stroke) bg-background/50 p-3"
+                                            className="rounded-lg border border-(--border) bg-background/50 p-3"
                                         >
                                             <p className="text-sm">{finding.finding}</p>
                                             <div className="mt-2 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
@@ -85,7 +85,7 @@ export function InvestmentExplainer({
                             </div>
                         )}
 
-                        <div className="rounded-lg border border-(--card-stroke) bg-background/30 p-3">
+                        <div className="rounded-lg border border-(--border) bg-background/30 p-3">
                             <div className="flex items-center gap-3">
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Confidence

@@ -55,7 +55,7 @@ export function AITestGapsPanel({ filter }: AITestGapsPanelProps) {
                     loading={risk.fetching}
                 />
                 <section
-                    className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                    className="rounded-3xl border border-(--border) bg-card p-5"
                     data-testid="ai-test-gap-baseline"
                 >
                     <h3 className="font-(--font-display) text-lg">Baseline test gap rate</h3>
@@ -72,7 +72,7 @@ export function AITestGapsPanel({ filter }: AITestGapsPanelProps) {
                     </p>
                 </section>
                 <section
-                    className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                    className="rounded-3xl border border-(--border) bg-card p-5"
                     data-testid="ai-test-gap-prs"
                 >
                     <h3 className="font-(--font-display) text-lg">PRs with test gaps</h3>

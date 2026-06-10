@@ -155,13 +155,13 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                 {(person?.identities ?? []).map((identity) => (
                                     <span
                                         key={`${personId}-${identity.provider}-${identity.handle}`}
-                                        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
+                                        className="rounded-full border border-(--border) bg-(--card-70) px-3 py-1"
                                     >
                                         {identity.provider}: {identity.handle}
                                     </span>
                                 ))}
                                 {person?.active === false && (
-                                    <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1">
+                                    <span className="rounded-full border border-(--border) bg-(--card-70) px-3 py-1">
                                         Inactive
                                     </span>
                                 )}
@@ -208,7 +208,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                     </section>
 
                     <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                        <div className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-2xl">Narrative</h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -237,7 +237,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                         );
                                     })
                                 ) : (
-                                    <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3">
+                                    <p className="rounded-2xl border border-dashed border-(--border) bg-(--card-60) px-4 py-3">
                                         Narrative insights will appear once data is ingested.
                                     </p>
                                 )}
@@ -246,7 +246,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
 
                         <div className="grid gap-4">
                             <div
-                                className={`rounded-3xl border border-(--card-stroke) p-5 text-sm ${
+                                className={`rounded-3xl border border-(--border) p-5 text-sm ${
                                     coverageLow
                                         ? "bg-amber-50/80 text-amber-900"
                                         : "bg-(--card-80) text-(--ink-muted)"
@@ -264,7 +264,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                     Attribution accuracy reflects linked accounts.
                                 </p>
                             </div>
-                            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
+                            <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
                                 <div className="flex items-center justify-between">
                                     <p className="text-xs uppercase tracking-[0.15em]">Freshness</p>
                                     <ClientTimestamp
@@ -278,7 +278,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                             ([key, value]) => (
                                                 <div
                                                     key={key}
-                                                    className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                                    className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-3 py-2"
                                                 >
                                                     <span className="uppercase tracking-[0.2em]">
                                                         {key}
@@ -290,7 +290,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                             ),
                                         )
                                     ) : (
-                                        <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-3 py-2">
+                                        <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-60) px-3 py-2">
                                             Freshness details pending.
                                         </div>
                                     )}
@@ -300,7 +300,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                     </section>
 
                     <section className="grid gap-6 lg:grid-cols-3">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                        <div className="rounded-3xl border border-(--border) bg-card p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">Work mix</h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -311,7 +311,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                 {workMixData.length ? (
                                     <DonutChart data={workMixData} height={260} />
                                 ) : (
-                                    <div className="flex min-h-64 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                    <div className="flex min-h-64 items-center justify-center rounded-3xl border border-dashed border-(--border) bg-(--card-60) text-sm text-(--ink-muted)">
                                         Work mix data unavailable.
                                     </div>
                                 )}
@@ -320,7 +320,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                 {(workMix?.categories ?? []).map((category) => (
                                     <div
                                         key={category.key}
-                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                        className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-3 py-2"
                                     >
                                         <span>{category.name}</span>
                                         <span className="text-xs text-(--ink-muted)">
@@ -331,7 +331,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                             </div>
                         </div>
 
-                        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                        <div className="rounded-3xl border border-(--border) bg-card p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">Flow breakdown</h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -345,7 +345,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                         values={flowStages.map((stage) => stage.value)}
                                     />
                                 ) : (
-                                    <div className="flex min-h-60 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                    <div className="flex min-h-60 items-center justify-center rounded-3xl border border-dashed border-(--border) bg-(--card-60) text-sm text-(--ink-muted)">
                                         Flow stage detail unavailable.
                                     </div>
                                 )}
@@ -354,7 +354,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                 {flowStages.map((stage) => (
                                     <div
                                         key={stage.stage}
-                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                        className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-3 py-2"
                                     >
                                         <span>{stage.stage}</span>
                                         <span className="text-xs text-(--ink-muted)">
@@ -367,7 +367,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                             </div>
                         </div>
 
-                        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                        <div className="rounded-3xl border border-(--border) bg-card p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">Collaboration</h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -379,7 +379,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                     collaborationStats.map((stat) => (
                                         <div
                                             key={`${stat.label}-${stat.value}`}
-                                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                            className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-3 py-2"
                                         >
                                             <span>{stat.label}</span>
                                             <span className="text-xs text-(--ink-muted)">
@@ -388,7 +388,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-3 py-3 text-sm text-(--ink-muted)">
+                                    <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-60) px-3 py-3 text-sm text-(--ink-muted)">
                                         Collaboration counts pending.
                                     </div>
                                 )}
@@ -396,7 +396,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                         </div>
                     </section>
 
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <section className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
                         <div className="flex items-center justify-between">
                             <h2 className="font-(--font-display) text-xl">View metric</h2>
                             <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -412,7 +412,7 @@ export default async function PersonPage({ params, searchParams }: PersonPagePro
                                         range_days,
                                         compare_days,
                                     )}
-                                    className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-4 py-3 text-sm"
+                                    className="flex items-center justify-between rounded-2xl border border-(--border) bg-card px-4 py-3 text-sm"
                                 >
                                     <span>{getMetricLabel(metric)}</span>
                                     <span className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">

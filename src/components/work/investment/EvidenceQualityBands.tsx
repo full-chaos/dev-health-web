@@ -59,7 +59,7 @@ export function EvidenceQualityBands({ evidenceQualityDistribution }: EvidenceQu
 
     return (
         <div className="space-y-3">
-            <div className="flex h-3 w-full overflow-hidden rounded-full border border-(--card-stroke) bg-(--card-70)">
+            <div className="flex h-3 w-full overflow-hidden rounded-full border border-(--border) bg-(--card-70)">
                 {segments.map((segment) => {
                     const pct = segment.share * 100;
                     if (pct <= 0) return null;

@@ -80,7 +80,7 @@ export function ProviderCredentialsList({
             </div>
 
             {credentials.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-(--border-subtle) bg-(--surface-base) py-12 text-center">
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-(--border) bg-(--surface-base) py-12 text-center">
                     <h3 className="mb-2 text-lg font-medium text-(--ink-base)">
                         No credentials saved
                     </h3>

@@ -282,7 +282,7 @@ function buildTrendOption(
 function KpiCard({ label, value, caption }: { label: string; value: ReactNode; caption: string }) {
     return (
         <article
-            className="rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-sm"
+            className="rounded-2xl border border-(--border) bg-card p-4 shadow-sm"
             data-testid="kpi-card"
         >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
@@ -307,7 +307,7 @@ function Panel({
 }) {
     return (
         <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+            className="rounded-[1.75rem] border border-(--border) bg-(--card-90) p-6 shadow-sm"
             data-testid={testId}
         >
             <div className="mb-4">
@@ -330,7 +330,7 @@ function FileTable({
     testId: string;
 }) {
     return (
-        <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-(--border) bg-(--card-90) shadow-sm">
             <table className="w-full text-sm" data-testid={testId}>
                 <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                     <tr>
@@ -567,7 +567,7 @@ function HotspotsView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                             <tr
                                 key={`${row.repoId}-${row.filePath}`}
                                 data-testid="hotspot-row"
-                                className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                                className="border-t border-(--border)/60 hover:bg-(--card-60)/60"
                             >
                                 <td
                                     className="px-5 py-3 align-middle font-medium font-mono text-[0.82em]"
@@ -650,7 +650,7 @@ function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                         <tr
                             key={`${row.repoId}-${row.filePath}`}
                             data-testid="ownership-row"
-                            className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                            className="border-t border-(--border)/60 hover:bg-(--card-60)/60"
                         >
                             <td
                                 className="px-5 py-3 align-middle font-medium font-mono text-[0.82em]"
@@ -723,7 +723,7 @@ function ChurnView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                         <tr
                             key={`${row.repoId}-${row.filePath}`}
                             data-testid="churn-row"
-                            className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                            className="border-t border-(--border)/60 hover:bg-(--card-60)/60"
                         >
                             <td
                                 className="px-5 py-3 align-middle font-medium font-mono text-[0.82em]"
@@ -778,7 +778,7 @@ export function ComplexityDashboard({
     if (isEmpty) {
         return (
             <section
-                className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
+                className="rounded-2xl border border-(--border) bg-card p-8 shadow-sm"
                 data-testid="empty-state"
             >
                 <h2 className="text-2xl font-semibold tracking-tight">

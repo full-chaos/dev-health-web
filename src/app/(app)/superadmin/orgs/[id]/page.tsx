@@ -36,7 +36,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
                 {membersError ? (
                     <div className="text-red-500">Error loading members: {membersError}</div>
                 ) : (
-                    <div className="overflow-x-auto rounded-lg border border-(--card-stroke)">
+                    <div className="overflow-x-auto rounded-lg border border-(--border)">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-(--card-70) text-(--ink-muted)">
                                 <tr>
@@ -45,7 +45,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
                                     <th className="px-4 py-3 font-medium">Joined</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-(--card-stroke)">
+                            <tbody className="divide-y divide-(--border)">
                                 {members?.map((member) => (
                                     <tr key={member.id}>
                                         <td className="px-4 py-3 font-mono text-xs">

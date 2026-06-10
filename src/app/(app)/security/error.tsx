@@ -17,7 +17,7 @@ export default function SecurityError({
                 action={
                     <button
                         onClick={reset}
-                        className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] transition hover:bg-(--card-80)"
+                        className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em] transition hover:bg-(--card-80)"
                     >
                         Try again
                     </button>

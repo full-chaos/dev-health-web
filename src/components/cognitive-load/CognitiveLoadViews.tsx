@@ -55,7 +55,7 @@ export function OverviewView({
 }) {
     return (
         <>
-            <section className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
+            <section className="rounded-[1.75rem] border border-(--border) bg-(--card-90) p-6 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
@@ -88,7 +88,7 @@ export function OverviewView({
                 </p>
 
                 {!signals ? (
-                    <div className="mt-6 rounded-2xl border border-(--card-stroke) bg-(--card-60) p-5 text-(--ink-muted)">
+                    <div className="mt-6 rounded-2xl border border-(--border) bg-(--card-60) p-5 text-(--ink-muted)">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em]">
                             No data for this window
                         </p>
@@ -105,7 +105,7 @@ export function OverviewView({
                         {signals.map((signal) => (
                             <article
                                 key={signal.label}
-                                className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+                                className="rounded-3xl border border-(--border) bg-card p-5 shadow-sm"
                             >
                                 <div className="flex items-start justify-between gap-3">
                                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -132,7 +132,7 @@ export function OverviewView({
                 )}
             </section>
 
-            <section className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
+            <section className="rounded-[1.75rem] border border-(--border) bg-(--card-90) p-6 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
                     Aggregation contract
                 </p>

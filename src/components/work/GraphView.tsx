@@ -310,7 +310,7 @@ export function GraphView({
             className={`grid gap-4 2xl:items-start ${isLegendCollapsed ? "2xl:grid-cols-[minmax(0,1fr)_3.25rem]" : "2xl:grid-cols-[minmax(0,1fr)_17rem]"}`}
         >
             <div className="order-1 min-w-0 space-y-4">
-                <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
+                <div className="bg-card rounded-lg border border-(--border) p-4">
                     <div className="mb-4 flex items-center justify-between gap-4">
                         <div>
                             <h3 className="text-lg font-medium">{tabHeading[graphTab]}</h3>
@@ -334,7 +334,7 @@ export function GraphView({
                     </div>
 
                     {showConnectionSelector && (
-                        <div className="mb-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3 text-xs">
+                        <div className="mb-4 rounded-2xl border border-(--border) bg-(--card-70) p-3 text-xs">
                             <div className="grid gap-3 lg:grid-cols-[minmax(13rem,1.1fr)_minmax(11rem,0.9fr)_minmax(14rem,1.2fr)]">
                                 <label className="grid min-w-0 gap-1">
                                     <span className="uppercase tracking-[0.18em] text-(--ink-muted)">
@@ -346,7 +346,7 @@ export function GraphView({
                                             setConnectionSliceId(event.target.value);
                                             setSelectedNode(null);
                                         }}
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+                                        className="min-w-0 rounded-xl border border-(--border) bg-background px-3 py-2 text-foreground"
                                     >
                                         {CONNECTION_SLICES.map((slice) => (
                                             <option key={slice.id} value={slice.id}>
@@ -365,7 +365,7 @@ export function GraphView({
                                             setTheme(event.target.value);
                                             setSubcategory("all");
                                         }}
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+                                        className="min-w-0 rounded-xl border border-(--border) bg-background px-3 py-2 text-foreground"
                                     >
                                         <option value="all">All themes</option>
                                         {INVESTMENT_THEMES.map((item) => (
@@ -382,7 +382,7 @@ export function GraphView({
                                     <select
                                         value={subcategory}
                                         onChange={(event) => setSubcategory(event.target.value)}
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+                                        className="min-w-0 rounded-xl border border-(--border) bg-background px-3 py-2 text-foreground"
                                     >
                                         <option value="all">All subcategories</option>
                                         {visibleSubcategories.map((item) => (
@@ -393,7 +393,7 @@ export function GraphView({
                                     </select>
                                 </label>
                             </div>
-                            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-(--card-stroke) pt-3 text-xs text-(--ink-muted)">
+                            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-(--border) pt-3 text-xs text-(--ink-muted)">
                                 <span title={activeConnectionSlice.description}>
                                     {activeConnectionSlice.description}
                                 </span>
@@ -439,7 +439,7 @@ export function GraphView({
                     ) : (
                         <div
                             data-testid="work-graph-panel"
-                            className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-background/30"
+                            className="overflow-hidden rounded-2xl border border-(--border) bg-background/30"
                         >
                             <WorkGraphExplorer
                                 edges={displayEdges}
@@ -468,7 +468,7 @@ export function GraphView({
 
             <div className="order-2 2xl:sticky 2xl:top-4">
                 <div
-                    className={`rounded-2xl border border-(--card-stroke) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}
+                    className={`rounded-2xl border border-(--border) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}
                 >
                     <WorkGraphLegend
                         collapsed={isLegendCollapsed}
@@ -511,7 +511,7 @@ function InflowOutflowView({ edges, loading, error }: DerivedViewProps) {
 
     return (
         <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+            className="rounded-[1.75rem] border border-(--border) bg-(--card-90) p-6 shadow-sm"
             data-testid="inflow-outflow-panel"
         >
             <div className="mb-4">
@@ -536,7 +536,7 @@ function InflowOutflowView({ edges, loading, error }: DerivedViewProps) {
                     description="No work graph edges are available for this scope and window."
                 />
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
+                <div className="overflow-hidden rounded-2xl border border-(--border) bg-(--card-90)">
                     <table className="w-full text-sm" data-testid="inflow-outflow-table">
                         <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                             <tr>
@@ -551,7 +551,7 @@ function InflowOutflowView({ edges, loading, error }: DerivedViewProps) {
                                 <tr
                                     key={row.type}
                                     data-testid="inflow-outflow-row"
-                                    className="border-t border-(--card-stroke)/60"
+                                    className="border-t border-(--border)/60"
                                 >
                                     <td className="px-5 py-3 align-middle font-medium">
                                         {NODE_TYPE_LABELS[row.type]}
@@ -626,7 +626,7 @@ function ArtifactsView({ edges, loading, error }: DerivedViewProps) {
 
     return (
         <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+            className="rounded-[1.75rem] border border-(--border) bg-(--card-90) p-6 shadow-sm"
             data-testid="artifacts-panel"
         >
             <div className="mb-4">
@@ -651,7 +651,7 @@ function ArtifactsView({ edges, loading, error }: DerivedViewProps) {
                     description="No work graph entities are available for this scope and window."
                 />
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
+                <div className="overflow-hidden rounded-2xl border border-(--border) bg-(--card-90)">
                     <table className="w-full text-sm" data-testid="artifacts-table">
                         <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                             <tr>
@@ -666,7 +666,7 @@ function ArtifactsView({ edges, loading, error }: DerivedViewProps) {
                                 <tr
                                     key={`${row.type}:${row.id}`}
                                     data-testid="artifact-row"
-                                    className="border-t border-(--card-stroke)/60"
+                                    className="border-t border-(--border)/60"
                                 >
                                     <td className="px-5 py-3 align-middle text-(--ink-muted)">
                                         {NODE_TYPE_LABELS[row.type]}
@@ -722,7 +722,7 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
     };
 
     return (
-        <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
+        <div className="bg-card rounded-lg border border-(--border) p-4">
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <span className={`w-3 h-3 rounded-sm ${typeColors[node.type]}`} />
@@ -886,7 +886,7 @@ function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
 
     return (
         <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+            className="rounded-[1.75rem] border border-(--border) bg-(--card-90) p-6 shadow-sm"
             data-testid="review-network-panel"
         >
             <div className="mb-4">
@@ -933,7 +933,7 @@ function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
                             total reviews
                         </span>
                     </div>
-                    <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
+                    <div className="overflow-hidden rounded-2xl border border-(--border) bg-(--card-90)">
                         <table className="w-full text-sm" data-testid="review-network-table">
                             <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                                 <tr>
@@ -948,7 +948,7 @@ function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
                                     <tr
                                         key={`${row.reviewer}|${row.author}`}
                                         data-testid="review-network-row"
-                                        className="border-t border-(--card-stroke)/60"
+                                        className="border-t border-(--border)/60"
                                     >
                                         <td className="px-5 py-3 align-middle">
                                             <span className="font-medium" title={row.reviewer}>

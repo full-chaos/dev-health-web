@@ -115,7 +115,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
                 />
                 {reviewLoad?.reviewerConcentration.dataAvailable ? (
                     <section
-                        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        className="rounded-3xl border border-(--border) bg-card p-5"
                         data-testid="ai-reviewer-concentration"
                     >
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)">

@@ -33,7 +33,7 @@ export function ImproveOpportunityList({
 }) {
     if (!detectorReady) {
         return (
-            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
+            <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-80) p-5 text-sm text-(--ink-muted)">
                 <p className="font-medium text-foreground">No flow opportunities detected</p>
                 <p className="mt-2">
                     As review, cycle time, rework, WIP, throughput, churn, and change failure data
@@ -57,7 +57,7 @@ export function ImproveOpportunityList({
             {opportunities.map((item) => (
                 <li
                     key={item.opportunityId}
-                    className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4"
+                    className="rounded-2xl border border-(--border) bg-(--card-80) p-4"
                 >
                     <div className="flex items-start justify-between gap-3">
                         <div>

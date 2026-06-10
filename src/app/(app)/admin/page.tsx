@@ -15,7 +15,7 @@ export default async function AdminDashboardPage() {
             />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <h3 className="font-medium text-foreground">User Management</h3>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         Manage users, roles, and permissions across the organization.
@@ -30,7 +30,7 @@ export default async function AdminDashboardPage() {
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <h3 className="font-medium text-foreground">Integrations</h3>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         Configure connections to GitHub, GitLab, Jira, and other tools.
@@ -45,7 +45,7 @@ export default async function AdminDashboardPage() {
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <h3 className="font-medium text-foreground">Sync Status</h3>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         Monitor data synchronization jobs and troubleshoot issues.

@@ -13,7 +13,7 @@ export function SettingsSection({ title, description, children, danger }: Settin
             className={`mb-8 rounded-lg border p-6 ${
                 danger
                     ? "border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-900/10"
-                    : "border-(--card-stroke) bg-(--card)"
+                    : "border-(--border) bg-(--card)"
             }`}
         >
             <div className="mb-6">

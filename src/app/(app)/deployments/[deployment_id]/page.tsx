@@ -42,18 +42,18 @@ export default async function DeploymentDetailPage({ params }: DeploymentDetailP
                         </div>
                         <Link
                             href="/explore"
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                            className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                         >
                             Back to Explore
                         </Link>
                     </header>
 
                     {!flame ? (
-                        <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                        <div className="rounded-3xl border border-dashed border-(--border) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
                             Flame data unavailable for this deployment.
                         </div>
                     ) : (
-                        <section className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+                        <section className="rounded-3xl border border-(--border) bg-card p-6">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <h2 className="font-(--font-display) text-xl">

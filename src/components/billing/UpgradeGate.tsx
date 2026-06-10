@@ -31,7 +31,7 @@ export function UpgradeGate({
     const requiredTierLabel = requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1);
 
     return (
-        <div className="relative min-h-[400px] w-full overflow-hidden rounded-3xl border border-(--card-stroke) bg-(--card)">
+        <div className="relative min-h-[400px] w-full overflow-hidden rounded-3xl border border-(--border) bg-(--card)">
             {/* Frosted overlay effect */}
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-(--card)/80 backdrop-blur-sm p-8 text-center">
                 <div className="max-w-md space-y-6">
@@ -45,14 +45,14 @@ export function UpgradeGate({
                         <p className="text-(--ink-muted)">{featureDescription}</p>
                     </div>
 
-                    <div className="rounded-xl border border-(--card-stroke) bg-(--background) p-4 text-sm">
+                    <div className="rounded-xl border border-(--border) bg-(--background) p-4 text-sm">
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-(--ink-muted)">Current Plan</span>
                             <span className="font-medium text-(--foreground) capitalize">
                                 {currentTier}
                             </span>
                         </div>
-                        <div className="my-2 border-t border-(--card-stroke)" />
+                        <div className="my-2 border-t border-(--border)" />
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-(--ink-muted)">Required Plan</span>
                             <span className="font-medium text-(--accent)">{requiredTierLabel}</span>

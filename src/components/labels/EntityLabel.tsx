@@ -48,7 +48,7 @@ type EntityLabelProps = {
 };
 
 const BADGE_CLASS =
-    "rounded-full border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)";
+    "rounded-full border border-(--border) bg-(--card-70) px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)";
 
 export function EntityLabel({
     id,

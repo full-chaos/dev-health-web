@@ -65,7 +65,7 @@ function SourceList({ heading, sources }: { heading: string; sources: string[] }
             {sources.map((source) => (
                 <span
                     key={source}
-                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 text-xs text-(--ink-muted)"
+                    className="rounded-full border border-(--border) bg-(--card-70) px-2.5 py-0.5 text-xs text-(--ink-muted)"
                 >
                     {source}
                 </span>
@@ -87,7 +87,7 @@ export function DataConfidenceIndicator({ confidence, className }: DataConfidenc
             data-testid="data-confidence-indicator"
             data-level={level}
             aria-label={`Data confidence: ${meta.label}`}
-            className={`flex flex-col gap-3 rounded-3xl border border-(--card-stroke) bg-(--card-70) px-4 py-3 ${className ?? ""}`}
+            className={`flex flex-col gap-3 rounded-3xl border border-(--border) bg-(--card-70) px-4 py-3 ${className ?? ""}`}
         >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">

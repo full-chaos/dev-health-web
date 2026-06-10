@@ -27,7 +27,7 @@ export function ChartTypeToggle<T extends string = string>({
 }: ChartTypeToggleProps<T>) {
     return (
         <div
-            className={`inline-flex rounded-lg border border-(--card-stroke) bg-(--card-70) p-0.5 ${className}`}
+            className={`inline-flex rounded-lg border border-(--border) bg-(--card-70) p-0.5 ${className}`}
             role="radiogroup"
             aria-label="Chart type"
         >

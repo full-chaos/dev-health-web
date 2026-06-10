@@ -76,7 +76,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
     return (
         <Link
             href={`/admin/sync/${config.id}`}
-            className="block cursor-pointer rounded-xl border border-(--card-stroke) bg-(--card-80) p-6 transition-all hover:border-(--card-stroke-hover)"
+            className="block cursor-pointer rounded-xl border border-(--border) bg-(--card-80) p-6 transition-all hover:border-(--card-stroke-hover)"
         >
             <div className="flex items-start justify-between">
                 <div>
@@ -94,7 +94,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                 <SyncStatusBadge status={getStatus()} />
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-(--card-stroke) pt-4">
+            <div className="mt-6 flex items-center justify-between border-t border-(--border) pt-4">
                 <div className="text-xs text-(--ink-muted)">
                     <ClientTimestamp
                         value={config.last_sync_at}
@@ -119,7 +119,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                                 type="button"
                                 onClick={() => setShowDeleteConfirm(false)}
                                 disabled={isPending}
-                                className="rounded-md border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-xs font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
+                                className="rounded-md border border-(--border) bg-(--card-70) px-2 py-1 text-xs font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
                             >
                                 Cancel
                             </button>
@@ -130,7 +130,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                                 type="button"
                                 onClick={handleToggleActive}
                                 disabled={isPending}
-                                className="rounded-md border border-(--card-stroke) bg-(--card-70) px-3 py-1.5 text-xs font-medium text-foreground hover:border-(--accent) hover:text-(--accent) disabled:opacity-50"
+                                className="rounded-md border border-(--border) bg-(--card-70) px-3 py-1.5 text-xs font-medium text-foreground hover:border-(--accent) hover:text-(--accent) disabled:opacity-50"
                             >
                                 {config.is_active ? "Pause" : "Resume"}
                             </button>

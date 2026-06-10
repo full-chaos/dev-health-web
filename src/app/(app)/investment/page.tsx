@@ -106,7 +106,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                                         role: activeRole,
                                         origin: activeOrigin,
                                     })}
-                                    className="rounded-full border border-(--card-stroke) px-4 py-2"
+                                    className="rounded-full border border-(--border) px-4 py-2"
                                 >
                                     {CTA_LABELS.inspectAssociations}
                                 </Link>
@@ -124,7 +124,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
 
                         <FilterBar view="investment" />
 
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
+                        <div className="rounded-2xl border border-(--border) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
                             <span className="text-foreground font-semibold uppercase tracking-wider">
                                 Perspective:
                             </span>{" "}

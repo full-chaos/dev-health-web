@@ -21,7 +21,7 @@ export function LegalDocument({
 }: LegalDocumentProps) {
     return (
         <section className="mx-auto max-w-4xl px-6 pb-24 pt-16 sm:pt-24">
-            <div className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-8 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.45)] sm:p-12">
+            <div className="rounded-[2rem] border border-(--border) bg-(--card-80) p-8 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.45)] sm:p-12">
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">{eyebrow}</p>
                 <h1 className="mt-4 font-(--font-display) text-4xl leading-tight sm:text-5xl">
                     {title}

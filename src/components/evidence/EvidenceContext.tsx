@@ -23,11 +23,11 @@ export function EvidenceContext({ data }: EvidenceContextProps) {
             ? "border-green-400/20 bg-green-400/10 text-green-300"
             : data.trend === "down"
               ? "border-red-400/20 bg-red-400/10 text-red-300"
-              : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted)";
+              : "border-(--border) bg-(--card-70) text-(--ink-muted)";
     const trendIcon = data.trend === "up" ? "↗" : data.trend === "down" ? "↘" : "→";
 
     return (
-        <section className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4">
+        <section className="space-y-3 rounded-2xl border border-(--border) bg-(--card-90) p-4">
             <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Context</p>
                 {data.trend && (
@@ -40,7 +40,7 @@ export function EvidenceContext({ data }: EvidenceContextProps) {
                 )}
             </div>
 
-            <div className="rounded-xl border border-(--card-stroke) bg-background/35 p-3">
+            <div className="rounded-xl border border-(--border) bg-background/35 p-3">
                 <p className="text-sm leading-6 text-foreground">
                     <span className="font-semibold text-(--accent)">{roleConfig.framing}</span>{" "}
                     {data.summary || "No summary available for this metric."}

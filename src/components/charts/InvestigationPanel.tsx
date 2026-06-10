@@ -126,7 +126,7 @@ export function InvestigationPanel({
 
     return (
         <div className="flex h-full flex-col bg-(--card-80) text-xs shadow-xl animate-in fade-in slide-in-from-right-4 duration-300">
-            <header className="flex items-center justify-between border-b border-(--card-stroke) p-4">
+            <header className="flex items-center justify-between border-b border-(--border) p-4">
                 <div>
                     <p className="text-[10px] uppercase tracking-widest text-(--ink-muted)">
                         Investigation
@@ -136,7 +136,7 @@ export function InvestigationPanel({
                 <button
                     type="button"
                     onClick={onCloseAction}
-                    className="rounded-full border border-(--card-stroke) p-1.5 text-[10px] uppercase tracking-widest text-(--ink-muted) hover:bg-(--card-70)"
+                    className="rounded-full border border-(--border) p-1.5 text-[10px] uppercase tracking-widest text-(--ink-muted) hover:bg-(--card-70)"
                     title="Close panel"
                 >
                     ✕
@@ -184,7 +184,7 @@ export function InvestigationPanel({
                                     className={`group flex items-center justify-between rounded-xl border px-4 py-3 transition ${
                                         isSuggested
                                             ? "border-(--accent-2) bg-(--accent-2)/5"
-                                            : "border-(--card-stroke) bg-card hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5"
+                                            : "border-(--border) bg-card hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5"
                                     }`}
                                 >
                                     <div className="flex flex-col gap-0.5 text-left">
@@ -207,7 +207,7 @@ export function InvestigationPanel({
                 </section>
             </div>
 
-            <footer className="border-t border-(--card-stroke) p-4 bg-(--card-90)">
+            <footer className="border-t border-(--border) p-4 bg-(--card-90)">
                 <p className="text-[10px] text-(--ink-muted) text-center font-medium">
                     Lens: {roleConfig.label}
                 </p>

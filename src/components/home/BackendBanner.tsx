@@ -22,7 +22,7 @@ export function BackendBanner({ meta }: BackendBannerProps) {
     }
 
     return (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-xs">
             {meta.last_ingest_at && (
                 <>
                     <span className="text-(--ink-muted)">•</span>

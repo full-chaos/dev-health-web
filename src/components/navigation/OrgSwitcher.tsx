@@ -97,7 +97,7 @@ export function OrgSwitcher() {
     }
 
     return (
-        <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3">
+        <div className="mt-4 rounded-2xl border border-(--border) bg-(--card-70) p-3">
             <label
                 htmlFor="org-switcher"
                 className="text-[10px] uppercase tracking-widest text-(--ink-muted)"
@@ -109,7 +109,7 @@ export function OrgSwitcher() {
                 value={activeOrgId}
                 disabled={isPending || !canSwitchOrganizations}
                 onChange={(event) => switchOrg(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-(--card-stroke) bg-(--background) px-3 py-2 text-sm text-foreground outline-none transition focus:border-(--accent) disabled:opacity-60"
+                className="mt-2 w-full rounded-xl border border-(--border) bg-(--background) px-3 py-2 text-sm text-foreground outline-none transition focus:border-(--accent) disabled:opacity-60"
                 aria-describedby="org-switcher-data"
             >
                 {state.organizations.map((org) => (

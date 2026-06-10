@@ -52,7 +52,7 @@ export default async function SyncStatusPage() {
             )}
 
             {configs.length === 0 && !result.error && (
-                <div className="rounded-lg border border-(--card-stroke) bg-(--card-80) p-8 text-center text-(--ink-muted)">
+                <div className="rounded-lg border border-(--border) bg-(--card-80) p-8 text-center text-(--ink-muted)">
                     No sync configurations found. Create a new configuration to get started.
                 </div>
             )}

@@ -31,7 +31,7 @@ const BUCKET_TREATMENTS = {
     },
     unknown: {
         label: "Unknown attribution",
-        className: "border-(--card-stroke) bg-background/60 text-(--ink-muted)",
+        className: "border-(--border) bg-background/60 text-(--ink-muted)",
     },
 } as const;
 

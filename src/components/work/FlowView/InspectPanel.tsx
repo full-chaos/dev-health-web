@@ -84,7 +84,7 @@ export function InspectPanel({
 }: InspectPanelProps) {
     return (
         <div className="flex flex-col gap-4">
-            <div className="h-full min-h-96 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+            <div className="h-full min-h-96 rounded-3xl border border-(--border) bg-(--card-80) p-5">
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     Inspect Flow
                 </p>
@@ -172,10 +172,10 @@ export function InspectPanel({
                             </div>
                         )}
 
-                        <div className="grid gap-3 pt-4 border-t border-(--card-stroke)">
+                        <div className="grid gap-3 pt-4 border-t border-(--border)">
                             <Link
                                 href={evidenceUrl || "#"}
-                                className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
+                                className="flex items-center justify-between rounded-xl border border-(--border) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
                             >
                                 <span>{CTA_LABELS.openEvidence}</span>
                                 <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
@@ -184,7 +184,7 @@ export function InspectPanel({
                             </Link>
                             <Link
                                 href={flameUrl || "#"}
-                                className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
+                                className="flex items-center justify-between rounded-xl border border-(--border) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
                             >
                                 <span>{CTA_LABELS.openArtifact}</span>
                                 <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
@@ -193,7 +193,7 @@ export function InspectPanel({
                             </Link>
                             <Link
                                 href={buildFlowWorkGraphUrl(selection, filters, activeRole)}
-                                className="flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
+                                className="flex items-center justify-between rounded-xl border border-(--border) bg-card px-4 py-3 text-xs uppercase tracking-widest text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
                             >
                                 <span>{CTA_LABELS.openWorkGraph}</span>
                                 <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
@@ -204,7 +204,7 @@ export function InspectPanel({
                     </div>
                 )}
                 {(contextEntityLabel || contextZone) && (
-                    <div className="pt-4 mt-6 border-t border-(--card-stroke)">
+                    <div className="pt-4 mt-6 border-t border-(--border)">
                         <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                             Analysis Context
                         </p>

@@ -50,7 +50,7 @@ export function UserSetPasswordForm({ userId }: UserSetPasswordFormProps) {
                         type="password"
                         required
                         minLength={8}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                     />
                 </div>
                 <div className="space-y-2">
@@ -63,7 +63,7 @@ export function UserSetPasswordForm({ userId }: UserSetPasswordFormProps) {
                         type="password"
                         required
                         minLength={8}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                     />
                 </div>
             </div>

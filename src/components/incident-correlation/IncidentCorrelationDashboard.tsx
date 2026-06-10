@@ -353,7 +353,7 @@ export function IncidentCorrelationDashboard({
     if (!hasAnyData) {
         return (
             <div
-                className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
+                className="rounded-2xl border border-(--border) bg-card p-8 shadow-sm"
                 data-testid="empty-state"
             >
                 <h2 className="text-2xl font-semibold tracking-tight">
@@ -405,7 +405,7 @@ export function IncidentCorrelationDashboard({
                     const hasCfrTrend = hasRenderableSeries(cfrTrendData);
                     return (
                         <section
-                            className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
+                            className="rounded-3xl border border-(--border) bg-(--card) p-5"
                             aria-label="Change failure rate trend"
                         >
                             <div className="flex items-center justify-between">
@@ -447,7 +447,7 @@ export function IncidentCorrelationDashboard({
                     className="grid gap-6 lg:grid-cols-2"
                     aria-label="Change failure root cause"
                 >
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                    <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                         <div className="flex items-center justify-between">
                             <h2 className="font-(--font-display) text-xl">
                                 Change Failure Associations
@@ -483,7 +483,7 @@ export function IncidentCorrelationDashboard({
                         )}
                     </div>
 
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                    <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                         <div className="flex items-center justify-between">
                             <h2 className="font-(--font-display) text-xl">Contributors</h2>
                             <Link
@@ -502,7 +502,7 @@ export function IncidentCorrelationDashboard({
                                 {topContributors.map((c) => (
                                     <div
                                         key={c.id}
-                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                        className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                                     >
                                         <EntityLabel id={c.id} displayName={c.display_name} />
                                         <span className="text-xs text-(--ink-muted)">
@@ -533,7 +533,7 @@ export function IncidentCorrelationDashboard({
                             records
                         </p>
                     </div>
-                    <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
+                    <div className="overflow-hidden rounded-2xl border border-(--border) bg-(--card-90) shadow-sm">
                         <table className="w-full text-sm" data-testid="incident-linkage-table">
                             <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                                 <tr>
@@ -546,7 +546,7 @@ export function IncidentCorrelationDashboard({
                                 {incidentRows.slice(0, 50).map((row) => (
                                     <tr
                                         key={row.incidentId}
-                                        className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                                        className="border-t border-(--border)/60 hover:bg-(--card-60)/60"
                                         data-testid="incident-row"
                                         data-incident-id={row.incidentId}
                                     >
@@ -577,7 +577,7 @@ export function IncidentCorrelationDashboard({
             {/* ── Sankey: PR → deployment → incident ──────────────────────────────── */}
             {sankeyData && (
                 <section
-                    className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
+                    className="rounded-3xl border border-(--border) bg-(--card) p-5"
                     aria-label="Correlation flow diagram"
                 >
                     <h2 className="font-(--font-display) text-xl">
@@ -600,7 +600,7 @@ export function IncidentCorrelationDashboard({
             {/* ── Sub-empty: metrics/explain present but no edges ─────────────────── */}
             {!hasEdgeData && (doraMetrics.length > 0 || hasExplainData) && (
                 <section
-                    className="rounded-2xl border border-(--card-stroke) bg-(--card-60) p-6 text-sm text-(--ink-muted)"
+                    className="rounded-2xl border border-(--border) bg-(--card-60) p-6 text-sm text-(--ink-muted)"
                     data-testid="empty-edges-state"
                 >
                     No deployment-incident linkage found yet. Deployment and incident associations

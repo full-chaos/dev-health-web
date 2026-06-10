@@ -97,7 +97,7 @@ function LandscapeTable({
         );
     }
     return (
-        <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-(--border) bg-(--card-90) shadow-sm">
             <table className="w-full text-sm" data-testid={testId}>
                 <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                     <tr>
@@ -130,7 +130,7 @@ function TabPanel({
 }) {
     return (
         <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+            className="rounded-[1.75rem] border border-(--border) bg-(--card-90) p-6 shadow-sm"
             data-testid={testId}
         >
             <div className="mb-4">
@@ -185,7 +185,7 @@ function TeamsView({
                     <tr
                         key={r.id}
                         data-testid="teams-row"
-                        className="border-t border-(--card-stroke)/60"
+                        className="border-t border-(--border)/60"
                     >
                         <td className="px-5 py-3 align-middle font-medium">{r.label}</td>
                         <td className="px-5 py-3 text-right tabular-nums">
@@ -252,7 +252,7 @@ function ReposView({ hotspots }: { hotspots: HotspotRow[] }) {
                     <tr
                         key={r.repoName}
                         data-testid="repos-row"
-                        className="border-t border-(--card-stroke)/60"
+                        className="border-t border-(--border)/60"
                     >
                         <td className="px-5 py-3 align-middle font-medium">{r.repoName}</td>
                         <td className="px-5 py-3 text-right tabular-nums">
@@ -301,7 +301,7 @@ function OwnershipView({ busFactor }: { busFactor: BusFactor | null }) {
                         <tr
                             key={r.repoId}
                             data-testid="ownership-row"
-                            className="border-t border-(--card-stroke)/60"
+                            className="border-t border-(--border)/60"
                         >
                             <td className="px-5 py-3 align-middle font-medium">{r.repoName}</td>
                             <td className="px-5 py-3 text-right tabular-nums">
@@ -350,7 +350,7 @@ function HotspotsView({ hotspots }: { hotspots: HotspotRow[] }) {
                         <tr
                             key={`${r.repoId}-${r.filePath}`}
                             data-testid="hotspots-row"
-                            className="border-t border-(--card-stroke)/60"
+                            className="border-t border-(--border)/60"
                         >
                             <td
                                 className="px-5 py-3 align-middle font-mono text-[0.82em]"
@@ -493,7 +493,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                     />
 
                     {!canQuery && (
-                        <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
+                        <section className="rounded-3xl border border-dashed border-(--border) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
                             Individual landscapes are available from the individual view.
                         </section>
                     )}
@@ -511,7 +511,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                                     className={`rounded-full border px-3 py-1 ${
                                         bucket === "week"
                                             ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                            : "border-(--card-stroke)"
+                                            : "border-(--border)"
                                     }`}
                                 >
                                     {CTA_LABELS.week}
@@ -525,7 +525,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                                     className={`rounded-full border px-3 py-1 ${
                                         bucket === "month"
                                             ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                            : "border-(--card-stroke)"
+                                            : "border-(--border)"
                                     }`}
                                 >
                                     {CTA_LABELS.month}

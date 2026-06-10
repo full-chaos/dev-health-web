@@ -12,7 +12,7 @@ type AuthCardProps = {
 
 export function AuthCard({ children, signInHref, signUpHref, providers = [] }: AuthCardProps) {
     return (
-        <div className="w-full max-w-md rounded-2xl border border-[var(--card-stroke)] bg-[var(--card)] p-6 sm:p-8 shadow-lg space-y-6">
+        <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 sm:p-8 shadow-lg space-y-6">
             <AuthTabs signInHref={signInHref} signUpHref={signUpHref} />
 
             <SocialLoginButtons providers={providers} />

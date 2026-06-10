@@ -105,27 +105,27 @@ export function SchedulePicker({
                     return (
                         <label
                             key={modeValue}
-                            className="flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 hover:bg-(--card-60)"
+                            className="flex items-center gap-2 rounded-lg border border-(--border) bg-(--card-70) p-3 hover:bg-(--card-60)"
                         >
                             <input
                                 type="radio"
                                 name="schedule-mode"
                                 checked={mode === modeValue}
                                 onChange={() => handleModeChange(modeValue)}
-                                className="h-4 w-4 border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                                className="h-4 w-4 border-(--border) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
                             />
                             <span className="text-sm">{preset.label}</span>
                         </label>
                     );
                 })}
 
-                <label className="flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 hover:bg-(--card-60)">
+                <label className="flex items-center gap-2 rounded-lg border border-(--border) bg-(--card-70) p-3 hover:bg-(--card-60)">
                     <input
                         type="radio"
                         name="schedule-mode"
                         checked={mode === "custom"}
                         onChange={() => handleModeChange("custom")}
-                        className="h-4 w-4 border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                        className="h-4 w-4 border-(--border) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
                     />
                     <span className="text-sm">Custom cron expression</span>
                 </label>
@@ -148,7 +148,7 @@ export function SchedulePicker({
                             onChange(event.target.value || null, selectedTimezone);
                         }}
                         placeholder="e.g., 15 3 * * *"
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                     />
                     {minIntervalHours !== undefined && minIntervalHours > 0 && (
                         <p className="mt-1.5 text-xs text-(--ink-muted)">
@@ -175,7 +175,7 @@ export function SchedulePicker({
                     id="schedule-timezone"
                     value={selectedTimezone}
                     onChange={(event) => handleTimezoneChange(event.target.value)}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                    className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                 >
                     {timezones.map((tz) => (
                         <option key={tz} value={tz}>

@@ -62,7 +62,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
 
             {/* Key Shifts — role-aware delta row (CHAOS-2094) */}
             <section
-                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+                className="rounded-3xl border border-(--border) bg-(--card-80) p-5"
                 data-testid="key-shifts-row"
             >
                 <div className="flex items-center justify-between">
@@ -96,7 +96,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                     filters,
                                     role: activeRole,
                                 })}
-                                className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
+                                className="group rounded-2xl border border-(--border) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
                             >
                                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                     {delta.label}
@@ -122,7 +122,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
             </section>
 
             <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                     <h2 className="font-(--font-display) text-2xl">Notable shifts</h2>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         Short shifts from the selected window.
@@ -141,14 +141,14 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             </button>
                         ))}
                         {!home?.summary?.length && (
-                            <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3">
+                            <p className="rounded-2xl border border-dashed border-(--border) bg-(--card-60) px-4 py-3">
                                 Summary will appear once data is ingested.
                             </p>
                         )}
                     </div>
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-xl">Investigation threads</h3>
                         <Link
@@ -165,7 +165,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                       type="button"
                                       key={key}
                                       onClick={() => openPanel(tile.title, { apiUrl: tile.link })}
-                                      className="group w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
+                                      className="group w-full text-left rounded-2xl border border-(--border) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
                                   >
                                       <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                           {tile.title}
@@ -181,7 +181,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             : null}
                         <Link
                             href={withFilterParam("/opportunities", filters, activeRole)}
-                            className="block rounded-2xl border border-(--card-stroke) bg-(--accent)/15 px-4 py-3"
+                            className="block rounded-2xl border border-(--border) bg-(--accent)/15 px-4 py-3"
                         >
                             <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                 Focus thread
@@ -198,7 +198,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
             </section>
 
             <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-xl">Limiting factor</h3>
                         <button
@@ -239,7 +239,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                 type="button"
                                 key={`${item.label}-${idx}`}
                                 onClick={() => openPanel(item.label, { apiUrl: item.link })}
-                                className="block w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3 hover:bg-(--card-60) transition-colors"
+                                className="block w-full text-left rounded-2xl border border-(--border) bg-(--card-70) px-4 py-3 hover:bg-(--card-60) transition-colors"
                             >
                                 {item.label}
                             </button>
@@ -249,7 +249,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                         {(home?.constraint.experiments ?? []).map((experiment) => (
                             <span
                                 key={experiment}
-                                className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
+                                className="rounded-full border border-(--border) bg-(--card-70) px-3 py-1"
                             >
                                 {experiment}
                             </span>
@@ -257,7 +257,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                     </div>
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-xl">Recent events</h3>
                         <Link
@@ -273,7 +273,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                 type="button"
                                 key={`${event.type}-${idx}`}
                                 onClick={() => openPanel(event.type, { apiUrl: event.link })}
-                                className="block w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 hover:border-(--card-stroke)/80 transition-colors"
+                                className="block w-full text-left rounded-2xl border border-(--border) bg-(--card) px-4 py-3 hover:border-(--card-stroke)/80 transition-colors"
                             >
                                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                     <span>{event.type}</span>
@@ -283,7 +283,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             </button>
                         ))}
                         {!home?.events?.length && (
-                            <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card) px-4 py-3 text-(--ink-muted)">
+                            <p className="rounded-2xl border border-dashed border-(--border) bg-(--card) px-4 py-3 text-(--ink-muted)">
                                 No major shifts detected in the current window.
                             </p>
                         )}

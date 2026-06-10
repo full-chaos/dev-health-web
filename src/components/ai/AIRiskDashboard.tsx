@@ -129,7 +129,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
             <div className="grid gap-4 lg:grid-cols-3">
                 {hotspotRow ? (
                     <section
-                        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        className="rounded-3xl border border-(--border) bg-card p-5"
                         data-testid="ai-hotspot-overlap"
                     >
                         <h3 className="font-(--font-display) text-lg">Hotspot file overlap</h3>
@@ -166,7 +166,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                 )}
                 {complexityRow ? (
                     <section
-                        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        className="rounded-3xl border border-(--border) bg-card p-5"
                         data-testid="ai-complexity-overlap"
                     >
                         <h3 className="font-(--font-display) text-lg">
@@ -201,7 +201,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                     />
                 )}
                 <section
-                    className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                    className="rounded-3xl border border-(--border) bg-card p-5"
                     data-testid="ai-linked-incidents"
                 >
                     <h3 className="font-(--font-display) text-lg">Linked incidents</h3>

@@ -82,7 +82,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
     };
 
     const inputClass =
-        "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow";
+        "w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow";
 
     return (
         <>
@@ -144,7 +144,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
+                    className="w-full rounded-lg border border-[var(--border)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
                 >
                     {loading ? "Signing in..." : "Sign in"}
                 </button>

@@ -133,7 +133,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                     <GlobalContextBar filters={filters} />
                     <FilterBar view="testops" />
 
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                    <section className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                             TestOps summary
                         </p>

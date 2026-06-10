@@ -62,7 +62,7 @@ export function OrgCreateForm() {
                         value={name}
                         onChange={handleNameChange}
                         required
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                         placeholder="Acme Corp"
                     />
                 </div>
@@ -76,7 +76,7 @@ export function OrgCreateForm() {
                         value={slug}
                         onChange={handleSlugChange}
                         required
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                         placeholder="acme-corp"
                     />
                 </div>
@@ -90,7 +90,7 @@ export function OrgCreateForm() {
                     id="description"
                     name="description"
                     rows={3}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                    className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                     placeholder="Optional description"
                 />
             </div>
@@ -104,7 +104,7 @@ export function OrgCreateForm() {
                         id="tier"
                         name="tier"
                         defaultValue="community"
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                     >
                         <option value="community">Community</option>
                         <option value="team">Team</option>
@@ -118,7 +118,7 @@ export function OrgCreateForm() {
                     <input
                         id="owner_user_id"
                         name="owner_user_id"
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                         placeholder="UUID of initial owner"
                     />
                 </div>

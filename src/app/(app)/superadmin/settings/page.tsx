@@ -41,7 +41,7 @@ export default async function SettingsPage() {
                         {settings.length === 0 ? (
                             <div className="text-sm text-(--ink-muted)">No settings found.</div>
                         ) : (
-                            <div className="overflow-x-auto rounded-lg border border-(--card-stroke)">
+                            <div className="overflow-x-auto rounded-lg border border-(--border)">
                                 <table className="w-full text-left text-sm">
                                     <thead className="bg-(--card-70) text-(--ink-muted)">
                                         <tr>
@@ -50,7 +50,7 @@ export default async function SettingsPage() {
                                             <th className="px-4 py-3 font-medium">Description</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-(--card-stroke)">
+                                    <tbody className="divide-y divide-(--border)">
                                         {settings.map((setting) => (
                                             <tr key={setting.key}>
                                                 <td className="px-4 py-3 font-mono text-xs">
@@ -73,7 +73,7 @@ export default async function SettingsPage() {
                     </SettingsSection>
                 ))}
 
-                <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-center">
+                <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) p-6 text-center">
                     <p className="text-sm text-(--ink-muted)">
                         To edit these settings, please use the{" "}
                         <Link href="/admin/settings" className="text-(--accent) hover:underline">

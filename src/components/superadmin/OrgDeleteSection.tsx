@@ -86,7 +86,7 @@ export function OrgDeleteSection({ orgId, orgSlug }: OrgDeleteSectionProps) {
                                 id="confirm-slug"
                                 value={confirmSlug}
                                 onChange={(e) => setConfirmSlug(e.target.value)}
-                                className="block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                                className="block w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                                 placeholder={orgSlug}
                             />
                             <button

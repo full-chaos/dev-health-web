@@ -246,8 +246,8 @@ export function EvidencePanel({
                 onClick={onCloseAction}
             />
 
-            <div className="relative z-10 flex h-full w-full flex-col rounded-l-3xl border-l border-(--card-stroke) bg-card shadow-2xl animate-in fade-in slide-in-from-right-4 duration-300 md:max-w-lg">
-                <header className="flex items-center justify-between border-b border-(--card-stroke) bg-(--card-90) p-6">
+            <div className="relative z-10 flex h-full w-full flex-col rounded-l-3xl border-l border-(--border) bg-card shadow-2xl animate-in fade-in slide-in-from-right-4 duration-300 md:max-w-lg">
+                <header className="flex items-center justify-between border-b border-(--border) bg-(--card-90) p-6">
                     <div>
                         <p className="text-xs uppercase tracking-widest text-(--ink-muted)">
                             Evidence & Context
@@ -257,7 +257,7 @@ export function EvidencePanel({
                     <button
                         type="button"
                         onClick={onCloseAction}
-                        className="rounded-full border border-(--card-stroke) p-2 text-xs uppercase tracking-widest text-(--ink-muted) transition-colors hover:bg-(--card-70) hover:text-foreground"
+                        className="rounded-full border border-(--border) p-2 text-xs uppercase tracking-widest text-(--ink-muted) transition-colors hover:bg-(--card-70) hover:text-foreground"
                         title={CTA_LABELS.closePanel}
                     >
                         ✕
@@ -277,7 +277,7 @@ export function EvidencePanel({
                             {showDevDiagnostics && errorDetail ? (
                                 <pre
                                     data-testid="evidence-error-diagnostics"
-                                    className="overflow-x-auto whitespace-pre-wrap rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4 text-xs leading-5 text-(--ink-muted)"
+                                    className="overflow-x-auto whitespace-pre-wrap rounded-2xl border border-(--border) bg-(--card-90) p-4 text-xs leading-5 text-(--ink-muted)"
                                 >
                                     {errorDetail}
                                 </pre>
@@ -290,7 +290,7 @@ export function EvidencePanel({
                             {data.evidence?.length ? (
                                 <EvidenceItems items={data.evidence} />
                             ) : (
-                                <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
+                                <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
                                     No contributing artifacts were returned for this metric and
                                     filter window. This is a partial-data state, not a zero signal.
                                 </div>
@@ -305,7 +305,7 @@ export function EvidencePanel({
                     )}
                 </div>
 
-                <footer className="border-t border-(--card-stroke) bg-(--card-90) p-6">
+                <footer className="border-t border-(--border) bg-(--card-90) p-6">
                     <Link
                         href={exploreUrl}
                         className="flex w-full items-center justify-center rounded-xl border border-(--accent)/20 bg-(--accent)/10 px-4 py-3 text-sm font-medium text-(--accent) transition-colors hover:bg-(--accent)/20"
@@ -322,7 +322,7 @@ function EvidenceProvenanceStrip({ provenance }: { provenance?: EvidenceProvenan
     const confidence = provenance?.identity_confidence;
 
     return (
-        <section className="grid gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4 text-xs text-(--ink-muted)">
+        <section className="grid gap-3 rounded-2xl border border-(--border) bg-(--card-90) p-4 text-xs text-(--ink-muted)">
             <p className="text-xs uppercase tracking-[0.2em]">Quality + provenance</p>
             <div className="grid gap-2 sm:grid-cols-2">
                 <EvidenceProvenanceItem
@@ -355,7 +355,7 @@ function EvidenceProvenanceStrip({ provenance }: { provenance?: EvidenceProvenan
 
 function EvidenceProvenanceItem({ label, value }: { label: string; value: string }) {
     return (
-        <span className="rounded-xl border border-(--card-stroke) bg-background/35 px-3 py-2 leading-5">
+        <span className="rounded-xl border border-(--border) bg-background/35 px-3 py-2 leading-5">
             {label}: {value}
         </span>
     );

@@ -53,13 +53,13 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
                     <section className="flex flex-col gap-4">
                         {reports.length === 0 ? (
-                            <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
+                            <div className="rounded-3xl border border-(--border) bg-(--card) p-10 text-center">
                                 <p className="text-(--ink-muted)">
                                     No saved reports yet. Create your first report to get started.
                                 </p>
                                 <Link
                                     href="/reports/new"
-                                    className="mt-4 inline-block rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                                    className="mt-4 inline-block rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
                                     {CTA_LABELS.createReport}
                                 </Link>
@@ -70,7 +70,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                                     <Link
                                         key={report.id}
                                         href={`/reports/${report.id}`}
-                                        className="group flex flex-col justify-between rounded-3xl border border-(--card-stroke) bg-(--card) p-5 hover:border-(--accent) transition-colors"
+                                        className="group flex flex-col justify-between rounded-3xl border border-(--border) bg-(--card) p-5 hover:border-(--accent) transition-colors"
                                     >
                                         <div>
                                             <div className="flex items-start justify-between gap-2">

@@ -105,7 +105,7 @@ export default function NewReportPage() {
                         </div>
                     </header>
 
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6 md:p-8">
+                    <div className="rounded-3xl border border-(--border) bg-(--card) p-6 md:p-8">
                         <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl">
                             <div className="space-y-4">
                                 <h2 className="font-(--font-display) text-xl">Basic Details</h2>
@@ -120,7 +120,7 @@ export default function NewReportPage() {
                                         required
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="w-full rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                         placeholder="e.g., Weekly Engineering Health"
                                     />
                                 </div>
@@ -137,7 +137,7 @@ export default function NewReportPage() {
                                         rows={3}
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
-                                        className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="w-full rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                         placeholder="What is this report for?"
                                     />
                                 </div>
@@ -158,7 +158,7 @@ export default function NewReportPage() {
                                             id="scope"
                                             value={scope}
                                             onChange={(e) => setScope(e.target.value)}
-                                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                            className="w-full rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                         >
                                             <option value="org">Organization</option>
                                             <option value="team">Team</option>
@@ -177,7 +177,7 @@ export default function NewReportPage() {
                                             id="dateRange"
                                             value={dateRange}
                                             onChange={(e) => setDateRange(e.target.value)}
-                                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                            className="w-full rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                         >
                                             <option value="last_7_days">Last 7 Days</option>
                                             <option value="last_30_days">Last 30 Days</option>
@@ -194,11 +194,11 @@ export default function NewReportPage() {
                                         {AVAILABLE_METRICS.map((metric) => (
                                             <label
                                                 key={metric}
-                                                className="flex items-center gap-2 rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm cursor-pointer hover:border-(--accent) transition-colors"
+                                                className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm cursor-pointer hover:border-(--accent) transition-colors"
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    className="rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent)"
+                                                    className="rounded border-(--border) text-(--accent) focus:ring-(--accent)"
                                                     checked={selectedMetrics.has(metric)}
                                                     onChange={() => toggleMetric(metric)}
                                                 />
@@ -216,7 +216,7 @@ export default function NewReportPage() {
                                         id="schedule"
                                         value={schedule}
                                         onChange={(e) => setSchedule(e.target.value)}
-                                        className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="w-full rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                     >
                                         <option value="none">None (Manual only)</option>
                                         <option value="weekly">Weekly</option>
@@ -231,10 +231,10 @@ export default function NewReportPage() {
                                 </div>
                             )}
 
-                            <div className="flex items-center justify-end gap-4 pt-4 border-t border-(--card-stroke)">
+                            <div className="flex items-center justify-end gap-4 pt-4 border-t border-(--border)">
                                 <Link
                                     href="/reports"
-                                    className="rounded-full border border-(--card-stroke) px-6 py-2 text-sm font-medium hover:bg-(--card-70) transition-colors"
+                                    className="rounded-full border border-(--border) px-6 py-2 text-sm font-medium hover:bg-(--card-70) transition-colors"
                                 >
                                     Cancel
                                 </Link>

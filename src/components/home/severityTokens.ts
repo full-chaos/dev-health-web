@@ -13,7 +13,7 @@ export const SEVERITY_BADGE: Record<SignalSeverity, string> = {
     critical: "border-red-500/30 bg-red-500/15 text-red-300",
     high: "border-amber-500/30 bg-amber-500/15 text-amber-300",
     medium: "border-(--accent-2)/30 bg-(--accent-2)/12 text-(--accent-2)",
-    low: "border-(--card-stroke) bg-(--card-70) text-(--ink-muted)",
+    low: "border-(--border) bg-(--card-70) text-(--ink-muted)",
 };
 
 /** Severity badge labels. */
@@ -55,7 +55,7 @@ export const directionAccent = (direction: SignalDirection): string =>
 // rather than a badge). The badge map below covers only the badge-bearing states.
 
 /** Neutral / informational chip — calm, non-alarming. */
-export const NEUTRAL_BADGE = "border-(--card-stroke) bg-(--card-70) text-(--ink-muted)";
+export const NEUTRAL_BADGE = "border-(--border) bg-(--card-70) text-(--ink-muted)";
 export const NEUTRAL_LABEL = "Info";
 
 /** Badge classes for any badge-bearing area-signal state ("unavailable" excluded). */

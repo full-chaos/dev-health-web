@@ -28,7 +28,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             >
                 <Link
                     href={`/admin/users/${user.id}/edit`}
-                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-stroke)"
+                    className="rounded-lg border border-(--border) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-stroke)"
                 >
                     Edit User
                 </Link>
@@ -36,7 +36,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
 
             <div className="grid gap-6 md:grid-cols-3">
                 <div className="md:col-span-2 space-y-6">
-                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <div className="rounded-2xl border border-(--border) bg-(--card-80) p-6">
                         <h3 className="mb-4 text-lg font-medium">Profile Information</h3>
                         <dl className="grid gap-4 sm:grid-cols-2">
                             <div>
@@ -99,12 +99,12 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 </div>
 
                 <div className="space-y-6">
-                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <div className="rounded-2xl border border-(--border) bg-(--card-80) p-6">
                         <h3 className="mb-4 text-lg font-medium">Quick Actions</h3>
                         <div className="space-y-3">
                             <Link
                                 href={`/admin/users/${user.id}/edit`}
-                                className="block w-full rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground text-left"
+                                className="block w-full rounded-lg border border-(--border) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground text-left"
                             >
                                 Edit Profile
                             </Link>

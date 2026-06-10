@@ -16,7 +16,7 @@ export function InvestmentChart({
     unit,
 }: InvestmentChartProps) {
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <InvestmentMixSunburst
                 themeDistribution={themeDistribution}
                 subcategoryDistribution={subcategoryDistribution}

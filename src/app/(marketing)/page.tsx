@@ -196,7 +196,7 @@ export default function MarketingPage() {
                         </Link>
                         <Link
                             href="https://github.com/full-chaos/dev-health-ops"
-                            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
+                            className="rounded-full border border-(--border) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
                             View on GitHub
                         </Link>
@@ -205,8 +205,8 @@ export default function MarketingPage() {
 
                 {/* Mock dashboard preview */}
                 <div className="mx-auto mt-16 max-w-5xl">
-                    <div className="overflow-hidden rounded-3xl border border-(--card-stroke) bg-(--card-80) shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
-                        <div className="border-b border-(--card-stroke) px-4 py-3">
+                    <div className="overflow-hidden rounded-3xl border border-(--border) bg-(--card-80) shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
+                        <div className="border-b border-(--border) px-4 py-3">
                             <div className="flex items-center gap-2">
                                 <div className="size-3 rounded-full bg-(--card-stroke)" />
                                 <div className="size-3 rounded-full bg-(--card-stroke)" />
@@ -220,7 +220,7 @@ export default function MarketingPage() {
                             {["DORA", "Flow", "Quality"].map((tab) => (
                                 <div
                                     key={tab}
-                                    className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4"
+                                    className="rounded-2xl border border-(--border) bg-(--card) p-4"
                                 >
                                     <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                                         {tab}
@@ -262,7 +262,7 @@ export default function MarketingPage() {
                     {FEATURES.map((feature) => (
                         <div
                             key={feature.label}
-                            className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
+                            className="group rounded-3xl border border-(--border) bg-(--card-80) p-6 transition hover:-translate-y-1"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
@@ -283,7 +283,7 @@ export default function MarketingPage() {
 
             {/* How it works */}
             <section id="how-it-works" className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-8 sm:p-12">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                         How it works
                     </p>
@@ -333,7 +333,7 @@ export default function MarketingPage() {
                     {PERSONAS.map((persona) => (
                         <div
                             key={persona.tag}
-                            className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
+                            className="group rounded-3xl border border-(--border) bg-(--card-80) p-6 transition hover:-translate-y-1"
                         >
                             <div className="flex items-center justify-between">
                                 <span className="rounded-full bg-(--accent)/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
@@ -354,7 +354,7 @@ export default function MarketingPage() {
 
             {/* CTA */}
             <section className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-8 text-center sm:p-12">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                         Open source
                     </p>
@@ -375,7 +375,7 @@ export default function MarketingPage() {
                         </Link>
                         <Link
                             href="https://github.com/full-chaos/dev-health-ops"
-                            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
+                            className="rounded-full border border-(--border) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
                             Star on GitHub
                         </Link>

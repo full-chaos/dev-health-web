@@ -17,7 +17,7 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
 
     if (jobs.length === 0) {
         return (
-            <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
+            <div className="rounded-xl border border-(--border) bg-(--card-80) p-8 text-center">
                 <p className="text-sm text-(--ink-muted)">No sync history available.</p>
             </div>
         );
@@ -39,8 +39,8 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
     };
 
     return (
-        <div className="overflow-hidden rounded-xl border border-(--card-stroke) bg-(--card-80)">
-            <table className="min-w-full divide-y divide-(--card-stroke)">
+        <div className="overflow-hidden rounded-xl border border-(--border) bg-(--card-80)">
+            <table className="min-w-full divide-y divide-(--border)">
                 <thead className="bg-(--card-bg)">
                     <tr>
                         <th
@@ -75,7 +75,7 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
                         </th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-(--card-stroke) bg-(--card-80)">
+                <tbody className="divide-y divide-(--border) bg-(--card-80)">
                     {paginatedJobs.map((job) => {
                         const duration = job.duration_seconds
                             ? `${Math.round(job.duration_seconds)}s`
@@ -116,7 +116,7 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
                 </tbody>
             </table>
 
-            <div className="flex items-center justify-between border-t border-(--card-stroke) px-6 py-4">
+            <div className="flex items-center justify-between border-t border-(--border) px-6 py-4">
                 <span className="text-sm text-(--ink-muted)">
                     Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}
                 </span>
@@ -125,7 +125,7 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
                         type="button"
                         onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
                         disabled={offset === 0}
-                        className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg border border-(--border) bg-(--card-80) px-4 py-2 text-sm font-medium hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Previous
                     </button>
@@ -133,7 +133,7 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
                         type="button"
                         onClick={() => setOffset((prev) => prev + limit)}
                         disabled={offset + limit >= total}
-                        className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg border border-(--border) bg-(--card-80) px-4 py-2 text-sm font-medium hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Next
                     </button>

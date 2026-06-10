@@ -79,7 +79,7 @@ export default function OrgAuditLogPage() {
                                 type="button"
                                 onClick={handlePrevPage}
                                 disabled={offset === 0}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
+                                className="rounded-lg border border-(--border) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
                             >
                                 Previous
                             </button>
@@ -90,7 +90,7 @@ export default function OrgAuditLogPage() {
                                 type="button"
                                 onClick={handleNextPage}
                                 disabled={logs.length < limit}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
+                                className="rounded-lg border border-(--border) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
                             >
                                 Next
                             </button>

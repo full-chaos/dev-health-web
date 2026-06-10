@@ -215,7 +215,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
     return (
         <SettingsSection title="Billing" description="Manage your subscription and history.">
-            <div className="rounded-md border border-(--card-stroke) bg-(--background) p-4">
+            <div className="rounded-md border border-(--border) bg-(--background) p-4">
                 <div className="flex items-start justify-between gap-4">
                     <div className="space-y-2">
                         <p className="text-sm text-(--ink-muted)">Current Plan</p>
@@ -240,7 +240,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                                         className={`mt-4 max-w-sm rounded-lg border p-4 ${
                                             isTrialWarning
                                                 ? "border-amber-500/30 bg-amber-500/10"
-                                                : "border-(--card-stroke) bg-(--card-80)"
+                                                : "border-(--border) bg-(--card-80)"
                                         }`}
                                     >
                                         <div className="flex items-center justify-between mb-2">
@@ -301,7 +301,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                                     : openPlanModal
                             }
                             disabled={isPending}
-                            className="rounded-md border border-(--card-stroke) px-3 py-2 text-sm hover:bg-(--card) disabled:opacity-50"
+                            className="rounded-md border border-(--border) px-3 py-2 text-sm hover:bg-(--card) disabled:opacity-50"
                         >
                             {isFree ? "Start free trial" : "Change Plan"}
                         </button>
@@ -334,13 +334,13 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                 </div>
             </div>
 
-            <details className="mt-4 rounded-md border border-(--card-stroke) bg-(--background) p-4">
+            <details className="mt-4 rounded-md border border-(--border) bg-(--background) p-4">
                 <summary className="cursor-pointer text-sm font-semibold text-(--foreground)">
                     Subscription History ({history.length})
                 </summary>
                 <ul className="mt-3 space-y-3">
                     {history.map((item) => (
-                        <li key={item.id} className="rounded-md border border-(--card-stroke) p-3">
+                        <li key={item.id} className="rounded-md border border-(--border) p-3">
                             <div className="flex items-center justify-between gap-4 text-sm">
                                 <span className="font-medium text-(--foreground)">
                                     {item.event_type}
@@ -361,7 +361,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
             {showPlanModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-                    <div className="w-full max-w-lg rounded-lg border border-(--card-stroke) bg-(--card-80) p-6 shadow-lg">
+                    <div className="w-full max-w-lg rounded-lg border border-(--border) bg-(--card-80) p-6 shadow-lg">
                         <h3 className="text-lg font-semibold text-(--foreground)">Change Plan</h3>
                         <p className="mt-1 text-sm text-(--ink-muted)">
                             Select the plan you want to switch to.
@@ -396,8 +396,8 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                                                 isSelected
                                                     ? "border-(--accent) bg-(--accent)/10 ring-1 ring-(--accent)"
                                                     : isCurrent
-                                                      ? "border-(--card-stroke) bg-(--card-70) opacity-60 cursor-not-allowed"
-                                                      : "border-(--card-stroke) hover:border-(--accent)/50"
+                                                      ? "border-(--border) bg-(--card-70) opacity-60 cursor-not-allowed"
+                                                      : "border-(--border) hover:border-(--accent)/50"
                                             }`}
                                         >
                                             <div className="flex items-center justify-between">
@@ -451,7 +451,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
                             <button
                                 type="button"
                                 onClick={() => setShowPlanModal(false)}
-                                className="rounded-md border border-(--card-stroke) px-3 py-2 text-sm hover:bg-(--card) text-(--foreground)"
+                                className="rounded-md border border-(--border) px-3 py-2 text-sm hover:bg-(--card) text-(--foreground)"
                             >
                                 Cancel
                             </button>

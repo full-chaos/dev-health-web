@@ -46,7 +46,7 @@ type ChartFrameProps = {
 };
 
 const annotationToneClassName: Record<ChartFrameAnnotationTone, string> = {
-    default: "border-(--card-stroke) bg-(--card-80) text-(--ink-muted)",
+    default: "border-(--border) bg-(--card-80) text-(--ink-muted)",
     positive: "border-(--positive)/30 bg-(--positive)/10 text-(--positive)",
     caution: "border-(--caution)/30 bg-(--caution)/10 text-(--caution)",
     negative: "border-(--accent-negative)/30 bg-(--accent-negative)/10 text-(--accent-negative)",
@@ -132,7 +132,7 @@ export function ChartFrame({
 
     return (
         <section
-            className={`rounded-(--radius-lg) border border-(--card-stroke) bg-(--card) p-5 shadow-(--elevation-card) ${className ?? ""}`.trim()}
+            className={`rounded-(--radius-lg) border border-(--border) bg-(--card) p-5 shadow-(--elevation-card) ${className ?? ""}`.trim()}
             data-testid={testId}
         >
             <div className="flex flex-wrap items-start justify-between gap-4">

@@ -71,20 +71,20 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                             />
                         ))}
                         {data && data.items.length === 0 && (
-                            <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                            <div className="rounded-3xl border border-dashed border-(--border) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
                                 No open opportunities in this window — nothing is trending worse for
                                 the current scope.
                             </div>
                         )}
                         {!data && (
-                            <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                            <div className="rounded-3xl border border-dashed border-(--border) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
                                 Opportunity data unavailable.
                             </div>
                         )}
                     </section>
 
                     <section
-                        className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-(--border) bg-card p-5"
                         aria-label="AI automation opportunities"
                         data-testid="improve-ai-automations-crosslink"
                     >

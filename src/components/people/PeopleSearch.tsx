@@ -186,7 +186,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
     }, [fetchPlans, shouldFetch]);
 
     return (
-        <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+        <section className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -200,27 +200,27 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
 
             <div className="mt-4 space-y-3">
                 {shouldShowResults && isLoading && (
-                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                    <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                         Searching people...
                     </div>
                 )}
                 {shouldShowResults && error && (
-                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                    <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                         {error}
                     </div>
                 )}
                 {showQueryEmpty && (
-                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                    <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                         No matches yet. Try another spelling or handle.
                     </div>
                 )}
                 {showTeamEmpty && (
-                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                    <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                         No matches for the selected team filter.
                     </div>
                 )}
                 {showFocusEmpty && (
-                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                    <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                         No matches for the selected people filter.
                     </div>
                 )}
@@ -230,12 +230,12 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
                     visibleResults.length > 0 &&
                     focusActive &&
                     !hasFocusMatches && (
-                        <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                        <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                             No matches for the selected people filter.
                         </div>
                     )}
                 {!shouldShowResults && !focusActive && (
-                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                    <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                         {emptyPrompt}
                     </div>
                 )}
@@ -248,7 +248,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
                         <Link
                             key={person.person_id}
                             href={href}
-                            className={`block rounded-2xl border border-(--card-stroke) bg-card px-4 py-3 transition hover:-translate-y-1 ${
+                            className={`block rounded-2xl border border-(--border) bg-card px-4 py-3 transition hover:-translate-y-1 ${
                                 focusActive && !isFocus ? "opacity-50" : "opacity-100"
                             }`}
                         >
@@ -268,7 +268,7 @@ export function PeopleSearch({ query, filters }: PeopleSearchProps) {
                                             {(person.identities ?? []).map((identity) => (
                                                 <span
                                                     key={`${person.person_id}-${identity.provider}-${identity.handle}`}
-                                                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
+                                                    className="rounded-full border border-(--border) bg-(--card-70) px-3 py-1"
                                                 >
                                                     {identity.provider}: {identity.handle}
                                                 </span>

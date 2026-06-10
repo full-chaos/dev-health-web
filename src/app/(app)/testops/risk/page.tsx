@@ -166,7 +166,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                         </div>
                         <Link
                             href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                            className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                         >
                             {CTA_LABELS.backToCockpit}
                         </Link>
@@ -211,13 +211,13 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                     </section>
 
                     <section className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                             <h2 className="font-(--font-display) text-xl mb-4">Risk Trend</h2>
                             <div className="h-64">
                                 <TimeseriesChart data={timeseriesData} valueFormat="percent" />
                             </div>
                         </div>
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                             <h2 className="font-(--font-display) text-xl mb-4">
                                 Quality Drag Breakdown
                             </h2>
@@ -231,7 +231,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                         </div>
                     </section>
 
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                    <section className="rounded-3xl border border-(--border) bg-(--card) p-5">
                         <h2 className="font-(--font-display) text-xl mb-4">
                             Risk vs Throughput (by Repo)
                         </h2>

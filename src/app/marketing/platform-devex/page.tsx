@@ -160,7 +160,7 @@ export default function PlatformDevexPage() {
                         </Link>
                         <Link
                             href="/marketing/pricing"
-                            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
+                            className="rounded-full border border-(--border) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
                             See pricing
                         </Link>
@@ -184,7 +184,7 @@ export default function PlatformDevexPage() {
                                         </p>
                                     </div>
                                     {surface.comingSoon && (
-                                        <span className="rounded-full border border-(--card-stroke) bg-(--card) px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        <span className="rounded-full border border-(--border) bg-(--card) px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
                                             Coming soon
                                         </span>
                                     )}
@@ -201,7 +201,7 @@ export default function PlatformDevexPage() {
                             return (
                                 <div
                                     key={surface.label}
-                                    className="block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 opacity-90"
+                                    className="block rounded-3xl border border-(--border) bg-(--card-80) p-6 opacity-90"
                                     aria-disabled="true"
                                 >
                                     {cardInner}
@@ -212,7 +212,7 @@ export default function PlatformDevexPage() {
                             <Link
                                 key={surface.label}
                                 href={surface.href}
-                                className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
+                                className="group block rounded-3xl border border-(--border) bg-(--card-80) p-6 transition hover:-translate-y-1"
                             >
                                 {cardInner}
                             </Link>
@@ -223,7 +223,7 @@ export default function PlatformDevexPage() {
 
             {/* No surveillance, just signal — canonical section, identical across all buyer pages */}
             <section className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-8 sm:p-12">
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                             Our posture
@@ -268,7 +268,7 @@ export default function PlatformDevexPage() {
                         ].map((pillar) => (
                             <li
                                 key={pillar.id}
-                                className="rounded-2xl border border-(--card-stroke) bg-(--card) p-5"
+                                className="rounded-2xl border border-(--border) bg-(--card) p-5"
                             >
                                 <p className="font-(--font-display) text-base">{pillar.title}</p>
                                 <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
@@ -286,7 +286,7 @@ export default function PlatformDevexPage() {
 
             {/* Final CTA */}
             <section className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-8 text-center sm:p-12">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                         Open source
                     </p>
@@ -309,7 +309,7 @@ export default function PlatformDevexPage() {
                             href="https://github.com/full-chaos/dev-health-ops"
                             target="_blank"
                             rel="noopener"
-                            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
+                            className="rounded-full border border-(--border) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
                             Star on GitHub
                         </a>

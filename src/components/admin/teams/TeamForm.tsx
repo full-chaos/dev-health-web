@@ -57,7 +57,7 @@ export function TeamForm({
             isLoading={isLoading}
             submitLabel={isLoading ? "Saving…" : isEditing ? "Update Team" : "Create Team"}
             className="max-w-2xl space-y-6"
-            contentClassName="space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
+            contentClassName="space-y-4 rounded-2xl border border-(--border) bg-(--card-80) p-6"
             actionsClassName="flex items-center gap-4"
             actionsStart={
                 <Link

@@ -70,7 +70,7 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
     return (
         <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                     <h2 className="font-(--font-display) text-xl mb-4">Latest Rendered Report</h2>
                     {latestRun?.renderedMarkdown ? (
                         <MarkdownRenderer content={latestRun.renderedMarkdown} />
@@ -83,7 +83,7 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
             </div>
 
             <div className="space-y-6">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                     <h2 className="font-(--font-display) text-xl mb-4">Configuration</h2>
                     <dl className="space-y-4 text-sm">
                         <div>
@@ -130,20 +130,20 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
                     </dl>
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                     <h2 className="font-(--font-display) text-xl mb-4">Run History</h2>
                     {runs.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead>
-                                    <tr className="border-b border-(--card-stroke) text-(--ink-muted)">
+                                    <tr className="border-b border-(--border) text-(--ink-muted)">
                                         <th className="pb-2 font-medium">Date</th>
                                         <th className="pb-2 font-medium">Status</th>
                                         <th className="pb-2 font-medium">Duration</th>
                                         <th className="pb-2 font-medium">Trigger</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-(--card-stroke)">
+                                <tbody className="divide-y divide-(--border)">
                                     {runs.map((run) => (
                                         <tr
                                             key={run.id}
@@ -234,7 +234,7 @@ export default function SingleReportPage() {
                 <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                     <PrimaryNav filters={defaultMetricFilter} active="reports" />
                     <main className="flex min-w-0 flex-1 flex-col gap-8">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-10 text-center">
                             <p className="text-(--ink-muted)">Loading report...</p>
                         </div>
                     </main>
@@ -249,11 +249,11 @@ export default function SingleReportPage() {
                 <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                     <PrimaryNav filters={defaultMetricFilter} active="reports" />
                     <main className="flex min-w-0 flex-1 flex-col gap-8">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-10 text-center">
                             <p className="text-(--ink-muted)">Report not found.</p>
                             <Link
                                 href="/reports"
-                                className="mt-4 inline-block rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                                className="mt-4 inline-block rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                             >
                                 Back to Reports
                             </Link>
@@ -413,13 +413,13 @@ export default function SingleReportPage() {
                                         type="text"
                                         value={editName}
                                         onChange={(e) => setEditName(e.target.value)}
-                                        className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 font-(--font-display) text-2xl focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="w-full rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 font-(--font-display) text-2xl focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                     />
                                     <textarea
                                         value={editDescription}
                                         onChange={(e) => setEditDescription(e.target.value)}
                                         rows={2}
-                                        className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="w-full rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                         placeholder="Description"
                                     />
                                     <div className="flex gap-2">
@@ -433,7 +433,7 @@ export default function SingleReportPage() {
                                         <button
                                             onClick={handleEditCancel}
                                             disabled={isSaving}
-                                            className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                                            className="rounded-full border border-(--border) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                         >
                                             Cancel
                                         </button>
@@ -454,13 +454,13 @@ export default function SingleReportPage() {
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={handleEditStart}
-                                    className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                                    className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
                                     Edit
                                 </button>
                                 <button
                                     onClick={handleCloneStart}
-                                    className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                                    className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
                                     Clone
                                 </button>
@@ -482,14 +482,14 @@ export default function SingleReportPage() {
                     </header>
 
                     {showCloneDialog && (
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-6">
                             <h2 className="font-(--font-display) text-lg mb-3">Clone Report</h2>
                             <div className="space-y-3 max-w-md">
                                 <input
                                     type="text"
                                     value={cloneName}
                                     onChange={(e) => setCloneName(e.target.value)}
-                                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                    className="w-full rounded-xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                     placeholder="Name for cloned report"
                                 />
                                 <div className="flex gap-2">
@@ -503,7 +503,7 @@ export default function SingleReportPage() {
                                     <button
                                         onClick={() => setShowCloneDialog(false)}
                                         disabled={isCloning}
-                                        className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                                        className="rounded-full border border-(--border) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                     >
                                         Cancel
                                     </button>
@@ -532,7 +532,7 @@ export default function SingleReportPage() {
                                 <button
                                     onClick={() => setShowDeleteConfirm(false)}
                                     disabled={isDeleting}
-                                    className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                                    className="rounded-full border border-(--border) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
                                     Cancel
                                 </button>

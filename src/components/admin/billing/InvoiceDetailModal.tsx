@@ -26,8 +26,8 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
             role="dialog"
             aria-modal="true"
         >
-            <div className="max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--background) shadow-2xl">
-                <div className="flex items-center justify-between border-b border-(--card-stroke) px-6 py-4">
+            <div className="max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-(--border) bg-(--background) shadow-2xl">
+                <div className="flex items-center justify-between border-b border-(--border) px-6 py-4">
                     <div>
                         <h3 className="font-(--font-display) text-xl text-foreground">
                             Invoice Details
@@ -37,13 +37,13 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm hover:bg-(--card-70)"
+                        className="rounded-md border border-(--border) px-3 py-1.5 text-sm hover:bg-(--card-70)"
                     >
                         Close
                     </button>
                 </div>
 
-                <div className="grid gap-4 border-b border-(--card-stroke) bg-(--card-80) px-6 py-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 border-b border-(--border) bg-(--card-80) px-6 py-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                         <p className="text-(--ink-muted)">Status</p>
                         <p className="font-medium text-foreground">{invoice.status}</p>
@@ -68,7 +68,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
 
                 <div className="max-h-[50vh] overflow-auto p-6">
                     <table className="w-full text-left text-sm">
-                        <thead className="border-b border-(--card-stroke) text-(--ink-muted)">
+                        <thead className="border-b border-(--border) text-(--ink-muted)">
                             <tr>
                                 <th className="px-3 py-2 font-medium">Description</th>
                                 <th className="px-3 py-2 font-medium">Qty</th>
@@ -76,7 +76,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                                 <th className="px-3 py-2 font-medium text-right">Amount</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-(--card-stroke)">
+                        <tbody className="divide-y divide-(--border)">
                             {invoice.line_items.map((line) => (
                                 <tr key={line.id}>
                                     <td className="px-3 py-3 text-foreground">

@@ -16,7 +16,7 @@ export function AuthTabs({
     const isSignIn = pathname === "/auth/signin";
 
     return (
-        <div className="flex rounded-lg border border-[var(--card-stroke)] overflow-hidden">
+        <div className="flex rounded-lg border border-[var(--border)] overflow-hidden">
             <Link
                 href={signInHref}
                 className={`flex-1 py-3 text-center font-medium text-sm transition-colors ${

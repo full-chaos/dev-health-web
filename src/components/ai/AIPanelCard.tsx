@@ -11,7 +11,7 @@ type AIPanelCardProps = {
 export function AIPanelCard({ title, description, evidenceHref, children }: AIPanelCardProps) {
     return (
         <section
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+            className="rounded-3xl border border-(--border) bg-card p-5 shadow-sm"
             data-testid={`ai-panel-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
         >
             <div className="flex items-start justify-between gap-4">

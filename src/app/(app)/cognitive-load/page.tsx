@@ -291,7 +291,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                     className="flex min-w-0 flex-1 flex-col gap-6"
                     data-testid="cognitive-load-dashboard"
                 >
-                    <section className="overflow-hidden rounded-[2rem] border border-(--card-stroke) bg-(--card-80) shadow-sm">
+                    <section className="overflow-hidden rounded-[2rem] border border-(--border) bg-(--card-80) shadow-sm">
                         <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
                             <div className="p-8">
                                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--ink-muted)">
@@ -306,7 +306,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                                     does not collect IDE, keystroke, prompt, or session telemetry.
                                 </p>
                             </div>
-                            <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
+                            <div className="border-t border-(--border) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
                                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
                                     Guardrail
                                 </p>

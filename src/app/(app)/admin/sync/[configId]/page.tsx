@@ -45,7 +45,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
                         />
                         <Link
                             href={`/admin/sync/${config.id}/edit`}
-                            className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
+                            className="rounded-md border border-(--border) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
                         >
                             Edit Config
                         </Link>
@@ -57,7 +57,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
             <SyncProgressBar configId={config.id} provider={config.provider} orgId={orgId} />
 
             <div className="grid gap-6 md:grid-cols-3">
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
                         Current Status
                     </h3>
@@ -66,7 +66,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
                         Last Sync
                     </h3>
@@ -75,7 +75,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
                     </p>
                 </div>
 
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                     <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
                         Active
                     </h3>

@@ -45,7 +45,7 @@ export function AIAutomationsDashboard({ filter }: AIAutomationsDashboardProps) 
 function AutomationsSkeleton() {
     return (
         <div
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+            className="rounded-3xl border border-(--border) bg-card p-5"
             data-testid="ai-automations-loading"
         >
             <div className="h-40 animate-pulse rounded-2xl bg-(--card-80)" />

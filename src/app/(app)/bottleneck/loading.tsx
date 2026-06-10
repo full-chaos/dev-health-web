@@ -40,7 +40,7 @@ export default function Loading() {
                         {Array.from({ length: 3 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3"
+                                className="rounded-3xl border border-(--border) bg-(--card) p-5 space-y-3"
                             >
                                 <div className="h-3 bg-(--card-70) rounded w-20" />
                                 <div className="h-8 bg-(--card-70) rounded w-14" />

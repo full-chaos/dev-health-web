@@ -140,7 +140,7 @@ export function TeamExchangeChordSection({
 
     return (
         <section
-            className={`rounded-3xl border border-(--card-stroke) bg-card p-5 ${className ?? ""}`}
+            className={`rounded-3xl border border-(--border) bg-card p-5 ${className ?? ""}`}
             data-scope-level={filters.scope.level}
         >
             <header className="flex flex-wrap items-start justify-between gap-4">
@@ -148,7 +148,7 @@ export function TeamExchangeChordSection({
                     <div className="flex flex-wrap items-center gap-3">
                         <h3 className="font-(--font-display) text-lg">Team exchange chord</h3>
                         {highlightedLabel ? (
-                            <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            <span className="rounded-full border border-(--border) px-2 py-0.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                 Highlighted: {highlightedLabel}
                             </span>
                         ) : null}

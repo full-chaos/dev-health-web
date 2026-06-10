@@ -86,11 +86,11 @@ export function DataTable<T>({
                                     value={search.value}
                                     onChange={(event) => onSearchChangeAction?.(event.target.value)}
                                     placeholder={search.placeholder ?? "Search"}
-                                    className="rounded-md border border-(--card-stroke) bg-(--card-60) px-2 py-1 text-sm text-foreground"
+                                    className="rounded-md border border-(--border) bg-(--card-60) px-2 py-1 text-sm text-foreground"
                                 />
                                 <button
                                     type="submit"
-                                    className="rounded-md border border-(--card-stroke) px-2.5 py-1 text-xs font-medium text-foreground hover:bg-(--card-70)"
+                                    className="rounded-md border border-(--border) px-2.5 py-1 text-xs font-medium text-foreground hover:bg-(--card-70)"
                                 >
                                     {search.buttonLabel ?? "Filter"}
                                 </button>
@@ -108,9 +108,9 @@ export function DataTable<T>({
                 </div>
             )}
 
-            <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
+            <div className="overflow-x-auto rounded-2xl border border-(--border) bg-(--card-80)">
                 <table className="w-full text-left text-sm">
-                    <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
+                    <thead className="border-b border-(--border) bg-(--card-70) text-(--ink-muted)">
                         <tr>
                             {columns.map((column) => (
                                 <th
@@ -122,7 +122,7 @@ export function DataTable<T>({
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-(--card-stroke)">
+                    <tbody className="divide-y divide-(--border)">
                         {data.map((row) => (
                             <tr
                                 key={rowKeyAction(row)}
@@ -160,7 +160,7 @@ export function DataTable<T>({
                             onPageChangeAction(Math.max(0, pagination.offset - pagination.limit))
                         }
                         disabled={isPending || pagination.offset === 0}
-                        className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm disabled:opacity-50"
+                        className="rounded-md border border-(--border) px-3 py-1.5 text-sm disabled:opacity-50"
                     >
                         Previous
                     </button>
@@ -168,7 +168,7 @@ export function DataTable<T>({
                         type="button"
                         onClick={() => onPageChangeAction(pagination.offset + pagination.limit)}
                         disabled={isPending || currentPage >= totalPages}
-                        className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm disabled:opacity-50"
+                        className="rounded-md border border-(--border) px-3 py-1.5 text-sm disabled:opacity-50"
                     >
                         Next
                     </button>

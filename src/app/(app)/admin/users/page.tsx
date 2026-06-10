@@ -35,7 +35,7 @@ export default async function UsersPage() {
                 <input
                     type="text"
                     placeholder="Search users..."
-                    className="w-full max-w-sm rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                    className="w-full max-w-sm rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                 />
             </div>
 

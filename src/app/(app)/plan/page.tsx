@@ -36,7 +36,7 @@ function riskValue(risk: ThroughputRiskOverlay) {
 
 function RiskCard({ risk }: { risk: ThroughputRiskOverlay }) {
     return (
-        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-5">
+        <div className="rounded-2xl border border-(--border) bg-(--card-80) p-5">
             <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold">{risk.label}</h3>
                 <span
@@ -59,7 +59,7 @@ function RiskCard({ risk }: { risk: ThroughputRiskOverlay }) {
 
 function EmptyForecastState({ scopeLabel }: { scopeLabel: string }) {
     return (
-        <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8">
+        <section className="rounded-3xl border border-(--border) bg-(--card-80) p-8">
             <h2 className="text-xl font-semibold">No forecast available</h2>
             <p className="mt-2 text-sm text-(--ink-muted)">
                 Scope: <span className="text-foreground">{scopeLabel}</span>
@@ -126,7 +126,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
 
                     {forecast ? (
                         <>
-                            <section className="grid gap-4 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 md:grid-cols-[auto_1fr]">
+                            <section className="grid gap-4 rounded-3xl border border-(--border) bg-(--card-80) p-6 md:grid-cols-[auto_1fr]">
                                 <div>
                                     <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                                         Delivery confidence
@@ -152,7 +152,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                 ].map(([label, weeks]) => (
                                     <div
                                         key={label as string}
-                                        className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
+                                        className="rounded-3xl border border-(--border) bg-(--card-80) p-6"
                                     >
                                         <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                                             {label}
@@ -167,7 +167,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                 ))}
                             </section>
 
-                            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                            <section className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <h2 className="text-xl font-semibold">
@@ -204,7 +204,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                 <RiskCard risk={forecast.incidentLoad} />
                             </section>
 
-                            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                            <section className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
                                 <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                                     Primary risk callout
                                 </p>

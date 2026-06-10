@@ -18,12 +18,12 @@ export function EvidenceItems({ items }: EvidenceItemsProps) {
     if (!items || items.length === 0) return null;
 
     return (
-        <section className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4">
+        <section className="space-y-3 rounded-2xl border border-(--border) bg-(--card-90) p-4">
             <div className="flex items-center justify-between gap-3">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
                     Supporting Evidence
                 </p>
-                <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[10px] text-(--ink-muted)">
+                <span className="rounded-full border border-(--border) px-2 py-0.5 text-[10px] text-(--ink-muted)">
                     {items.length} artifacts
                 </span>
             </div>
@@ -34,12 +34,12 @@ export function EvidenceItems({ items }: EvidenceItemsProps) {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group block rounded-xl border border-(--card-stroke) bg-background/35 p-3 transition-all hover:border-(--accent)/40 hover:bg-(--accent)/5"
+                        className="group block rounded-xl border border-(--border) bg-background/35 p-3 transition-all hover:border-(--accent)/40 hover:bg-(--accent)/5"
                     >
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 space-y-1.5">
                                 <div className="flex items-center gap-2">
-                                    <span className="rounded border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-[10px] font-bold uppercase text-(--ink-muted)">
+                                    <span className="rounded border border-(--border) bg-(--card-70) px-1.5 py-0.5 text-[10px] font-bold uppercase text-(--ink-muted)">
                                         {item.type}
                                     </span>
                                     <span className="truncate font-mono text-xs text-(--ink-muted)">

@@ -10,7 +10,7 @@ type ReconciliationTriggerProps = {
 
 export function ReconciliationTrigger({ running, report, onRun }: ReconciliationTriggerProps) {
     return (
-        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
+        <div className="rounded-2xl border border-(--border) bg-(--card-80) p-4">
             <button
                 type="button"
                 onClick={() => void onRun()}

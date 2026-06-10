@@ -189,7 +189,7 @@ export function ConfidencePanel({
                 </p>
             </div>
 
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+            <div className="rounded-3xl border border-(--border) bg-card p-5">
                 <h3 className="font-(--font-display) text-lg">Classification confidence</h3>
                 {confidence ? (
                     <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -236,7 +236,7 @@ export function ConfidencePanel({
                 )}
             </div>
 
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+            <div className="rounded-3xl border border-(--border) bg-card p-5">
                 <h3 className="font-(--font-display) text-lg">Evidence quality bands</h3>
                 <p className="mt-1 text-sm text-(--ink-muted)">
                     Share of work units at each evidence-quality band. Segment width is the share;
@@ -255,7 +255,7 @@ export function ConfidencePanel({
                 isLoading={isCategoryFlowLoading}
             />
 
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+            <div className="rounded-3xl border border-(--border) bg-card p-5">
                 <h3 className="font-(--font-display) text-lg">Low-confidence areas</h3>
                 <p className="mt-1 text-sm text-(--ink-muted)">
                     Work units whose categorization leans on weaker evidence. These are the first
@@ -270,7 +270,7 @@ export function ConfidencePanel({
                         {lowConfidenceUnits.map(({ unit, themeKey }) => (
                             <li
                                 key={unit.work_unit_id}
-                                className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm"
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2 text-sm"
                             >
                                 <span className="min-w-0 truncate text-foreground">
                                     {formatWorkUnitLabel(unit)}
@@ -289,7 +289,8 @@ export function ConfidencePanel({
                 )}
             </div>
 
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+            {/* No border here: the nested MetricCard draws its own border + elevation (C4 — no stacked outlines) */}
+            <div className="rounded-3xl bg-card p-5">
                 <h3 className="font-(--font-display) text-lg">Rework</h3>
                 <p className="mt-1 text-sm text-(--ink-muted)">
                     Share of PRs that were reopened or required follow-up rework commits. The

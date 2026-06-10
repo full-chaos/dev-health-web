@@ -25,7 +25,7 @@ export function VoidConfirmDialog({
             role="dialog"
             aria-modal="true"
         >
-            <div className="w-full max-w-md rounded-2xl border border-(--card-stroke) bg-(--background) p-6 shadow-2xl">
+            <div className="w-full max-w-md rounded-2xl border border-(--border) bg-(--background) p-6 shadow-2xl">
                 <h3 className="font-(--font-display) text-lg text-foreground">Void Invoice</h3>
                 <p className="mt-2 text-sm text-(--ink-muted)">
                     This will void{" "}
@@ -38,7 +38,7 @@ export function VoidConfirmDialog({
                         type="button"
                         onClick={onCancel}
                         disabled={isPending}
-                        className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm hover:bg-(--card-70) disabled:opacity-50"
+                        className="rounded-md border border-(--border) px-3 py-1.5 text-sm hover:bg-(--card-70) disabled:opacity-50"
                     >
                         Cancel
                     </button>

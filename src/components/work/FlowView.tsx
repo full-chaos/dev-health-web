@@ -224,7 +224,7 @@ export function FlowView({ filters, activeRole }: FlowViewProps) {
         <div className="flex flex-col gap-6">
             <Tabs activeTab={subTab} onTabChange={handleSubTabChange} />
             <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+                <div className="rounded-3xl border border-(--border) bg-card p-6">
                     <Toolbar
                         currentTabLabel={currentTabDef.label}
                         currentTabDescription={currentTabDef.description}

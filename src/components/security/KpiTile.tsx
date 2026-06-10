@@ -33,7 +33,7 @@ export function KpiTile({ label, value, delta, tone = "default", loading = false
 
     return (
         <div
-            className={`flex flex-col gap-1 rounded-2xl border border-(--card-stroke) bg-card px-5 py-4 border-l-4 ${accentClass}`}
+            className={`flex flex-col gap-1 rounded-2xl border border-(--border) bg-card px-5 py-4 border-l-4 ${accentClass}`}
         >
             <span className="text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
                 {label}

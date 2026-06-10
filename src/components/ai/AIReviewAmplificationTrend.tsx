@@ -85,7 +85,7 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
 
     return (
         <section
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+            className="rounded-3xl border border-(--border) bg-card p-5"
             data-testid="ai-review-amplification-trend"
         >
             <h3 className="font-(--font-display) text-lg">Review amplification trend</h3>

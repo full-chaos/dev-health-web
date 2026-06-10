@@ -103,7 +103,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
 
             {/* Row 2: Severity breakdown + Top repos */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-(--card-stroke) bg-card p-4">
+                <div className="rounded-2xl border border-(--border) bg-card p-4">
                     <p className="mb-3 text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
                         By Severity
                     </p>
@@ -114,7 +114,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                     )}
                 </div>
                 <div
-                    className="rounded-2xl border border-(--card-stroke) bg-card p-4"
+                    className="rounded-2xl border border-(--border) bg-card p-4"
                     data-testid="top-repos-chart"
                 >
                     <p className="mb-3 text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
@@ -129,7 +129,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
             </div>
 
             {/* Row 3: Trend chart */}
-            <div className="rounded-2xl border border-(--card-stroke) bg-card p-4">
+            <div className="rounded-2xl border border-(--border) bg-card p-4">
                 <p className="mb-3 text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
                     Trend (last 30 days)
                 </p>

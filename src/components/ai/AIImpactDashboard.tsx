@@ -71,7 +71,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
     return (
         <div className="flex flex-col gap-6" data-testid="ai-impact-dashboard">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                <div className="rounded-3xl border border-(--border) bg-card p-5">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                         AI-assisted work share
                     </p>
@@ -83,7 +83,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                         AI-assisted.
                     </p>
                 </div>
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                <div className="rounded-3xl border border-(--border) bg-card p-5">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                         Agent-created work share
                     </p>
@@ -95,7 +95,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                         PRs appear agent-created.
                     </p>
                 </div>
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                <div className="rounded-3xl border border-(--border) bg-card p-5">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                         Unknown attribution
                     </p>

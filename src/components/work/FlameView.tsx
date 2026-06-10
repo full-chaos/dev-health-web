@@ -80,7 +80,7 @@ export function FlameView({ filters }: FlameViewProps) {
 
     return (
         <div className="flex flex-col gap-6">
-            <section className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+            <section className="rounded-3xl border border-(--border) bg-card p-6">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                     <div>
                         <h2 className="text-xl font-(--font-display)">{modeLabels[mode]}</h2>
@@ -103,7 +103,7 @@ export function FlameView({ filters }: FlameViewProps) {
                                 className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${
                                     mode === m
                                         ? "border-(--accent-2) bg-(--accent-2) text-white"
-                                        : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
+                                        : "border-(--border) text-(--ink-muted) hover:border-(--card-stroke)/60"
                                 }`}
                             >
                                 {modeLabels[m]}
@@ -128,7 +128,7 @@ export function FlameView({ filters }: FlameViewProps) {
                         />
                     ) : (
                         !loading && (
-                            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--border) bg-(--card-70) text-sm text-(--ink-muted)">
                                 No flame data available for this scope and window.
                             </div>
                         )

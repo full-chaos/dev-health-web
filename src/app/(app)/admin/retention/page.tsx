@@ -153,7 +153,7 @@ export default function RetentionPolicyPage() {
 
                 <div className="mb-6">
                     {showAddForm ? (
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-5">
+                        <div className="rounded-2xl border border-(--border) bg-(--card-80) p-5">
                             <div className="grid gap-4 sm:grid-cols-3">
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-(--ink-muted)">
@@ -167,7 +167,7 @@ export default function RetentionPolicyPage() {
                                                 resource_type: e.target.value,
                                             })
                                         }
-                                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                                     >
                                         <option value="">Select...</option>
                                         {resourceTypes.map((rt) => (
@@ -191,7 +191,7 @@ export default function RetentionPolicyPage() {
                                                 retention_days: parseInt(e.target.value) || 90,
                                             })
                                         }
-                                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                                     />
                                 </div>
                                 <div>
@@ -208,7 +208,7 @@ export default function RetentionPolicyPage() {
                                                 description: e.target.value || null,
                                             })
                                         }
-                                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                                     />
                                 </div>
                             </div>
@@ -227,7 +227,7 @@ export default function RetentionPolicyPage() {
                                         setShowAddForm(false);
                                         setFormData({ resource_type: "", retention_days: 90 });
                                     }}
-                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium"
+                                    className="rounded-lg border border-(--border) bg-(--card-70) px-4 py-2 text-sm font-medium"
                                 >
                                     Cancel
                                 </button>
@@ -250,10 +250,10 @@ export default function RetentionPolicyPage() {
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
+                        <div className="overflow-x-auto rounded-2xl border border-(--border) bg-(--card-80)">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
+                                    <tr className="border-b border-(--border) bg-(--card-70) text-(--ink-muted)">
                                         <th className="px-4 py-3 text-left font-medium">
                                             Resource Type
                                         </th>
@@ -287,7 +287,7 @@ export default function RetentionPolicyPage() {
                                         policies.map((policy) => (
                                             <tr
                                                 key={policy.id}
-                                                className="border-b border-(--card-stroke) last:border-0"
+                                                className="border-b border-(--border) last:border-0"
                                             >
                                                 <td className="px-4 py-3 font-mono text-xs">
                                                     {policy.resource_type}
@@ -323,7 +323,7 @@ export default function RetentionPolicyPage() {
                                                             type="button"
                                                             onClick={() => handleToggle(policy)}
                                                             disabled={togglingId === policy.id}
-                                                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-xs font-medium disabled:opacity-50"
+                                                            className="rounded-lg border border-(--border) bg-(--card-70) px-3 py-1 text-xs font-medium disabled:opacity-50"
                                                         >
                                                             {policy.is_active
                                                                 ? "Disable"
@@ -333,7 +333,7 @@ export default function RetentionPolicyPage() {
                                                             type="button"
                                                             onClick={() => handleDryRun(policy.id)}
                                                             disabled={executingId === policy.id}
-                                                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-xs font-medium disabled:opacity-50"
+                                                            className="rounded-lg border border-(--border) bg-(--card-70) px-3 py-1 text-xs font-medium disabled:opacity-50"
                                                         >
                                                             Dry Run
                                                         </button>
@@ -373,7 +373,7 @@ export default function RetentionPolicyPage() {
                                 type="button"
                                 onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
                                 disabled={offset === 0}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
+                                className="rounded-lg border border-(--border) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
                             >
                                 Previous
                             </button>
@@ -384,7 +384,7 @@ export default function RetentionPolicyPage() {
                                 type="button"
                                 onClick={() => setOffset((prev) => prev + limit)}
                                 disabled={policies.length < limit}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
+                                className="rounded-lg border border-(--border) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
                             >
                                 Next
                             </button>

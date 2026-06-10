@@ -31,7 +31,7 @@ export function ToolbarActions({
                         value={peopleQuery}
                         onChange={(event) => updatePeopleQuery(event.target.value)}
                         placeholder="Name or handle"
-                        className="w-full sm:w-56 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs"
+                        className="w-full sm:w-56 rounded-full border border-(--border) bg-card px-4 py-2 text-xs"
                     />
                 </label>
             )}
@@ -43,7 +43,7 @@ export function ToolbarActions({
                     className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition-colors ${
                         showAdvanced
                             ? "border-(--accent) bg-(--accent-10) text-(--accent)"
-                            : "border-(--card-stroke) bg-(--card-70) hover:border-(--ink-muted)"
+                            : "border-(--border) bg-(--card-70) hover:border-(--ink-muted)"
                     }`}
                     aria-expanded={showAdvanced}
                 >

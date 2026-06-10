@@ -274,7 +274,7 @@ export function InvestmentMixSection({
     const categoryScopeLabel = focusTheme ? "Subcategory" : "Theme";
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h3 className="font-(--font-display) text-lg">
@@ -291,7 +291,7 @@ export function InvestmentMixSection({
                         <button
                             type="button"
                             onClick={() => setFocusTheme(null)}
-                            className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                            className="rounded-full border border-(--border) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
                         >
                             {CTA_LABELS.clearTheme}
                         </button>
@@ -344,7 +344,7 @@ export function InvestmentMixSection({
                             {treemapWorkGraphUrl && (
                                 <Link
                                     href={treemapWorkGraphUrl}
-                                    className="ml-auto rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40"
+                                    className="ml-auto rounded-full border border-(--border) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40"
                                 >
                                     {CTA_LABELS.openWorkGraph} ↗
                                 </Link>
@@ -387,7 +387,7 @@ export function InvestmentMixSection({
                             onThemeClickAction={handleThemeClick}
                             onSubcategoryClickAction={handleSubcategoryClick}
                         />
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                        <div className="rounded-2xl border border-(--border) bg-(--card-70) p-4">
                             <div className="flex items-center justify-between">
                                 <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                     {focusTheme ? "Subcategory breakdown" : "Themes"}
@@ -401,7 +401,7 @@ export function InvestmentMixSection({
                             {focusedWorkGraphUrl && (
                                 <Link
                                     href={focusedWorkGraphUrl}
-                                    className="mt-3 flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-xs uppercase tracking-[0.2em] text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
+                                    className="mt-3 flex items-center justify-between rounded-xl border border-(--border) bg-card px-3 py-2 text-xs uppercase tracking-[0.2em] text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
                                 >
                                     <span>{CTA_LABELS.openWorkGraph}</span>
                                     <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
@@ -423,7 +423,7 @@ export function InvestmentMixSection({
                                                     onClick={() =>
                                                         handleSubcategoryClick(entry.key)
                                                     }
-                                                    className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
+                                                    className="flex w-full items-center justify-between rounded-xl border border-(--border) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
                                                 >
                                                     <div className="min-w-0">
                                                         <div className="truncate text-sm text-foreground">
@@ -461,7 +461,7 @@ export function InvestmentMixSection({
                                                 key={entry.key}
                                                 type="button"
                                                 onClick={() => handleThemeClick(entry.key)}
-                                                className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
+                                                className="flex w-full items-center justify-between rounded-xl border border-(--border) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
                                             >
                                                 <div className="min-w-0">
                                                     <div className="truncate text-sm text-foreground">

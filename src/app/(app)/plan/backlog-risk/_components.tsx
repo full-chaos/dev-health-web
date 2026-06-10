@@ -40,7 +40,7 @@ export function WipCongestionCard({ overlay, backlogSize }: WipCongestionCardPro
     const ratioLabel = `×${formatNumber(ratio, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     return (
-        <section className="grid gap-4 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 md:grid-cols-2">
+        <section className="grid gap-4 rounded-3xl border border-(--border) bg-(--card-80) p-6 md:grid-cols-2">
             <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                     WIP Congestion
@@ -83,7 +83,7 @@ export function ForecastContent({ forecast }: ForecastContentProps) {
             />
 
             <section className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
                     <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
                         Stale WIP
                     </h2>
@@ -95,7 +95,7 @@ export function ForecastContent({ forecast }: ForecastContentProps) {
                     />
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
                     <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
                         Unestimated Debt
                     </h2>
@@ -115,7 +115,7 @@ export function ForecastContent({ forecast }: ForecastContentProps) {
 
 export function NoForecastState() {
     return (
-        <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8">
+        <section className="rounded-3xl border border-(--border) bg-(--card-80) p-8">
             <DataState
                 variant="insufficient-confidence"
                 title="Not enough throughput history"

@@ -77,7 +77,7 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
     };
 
     const inputClass =
-        "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow";
+        "w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow";
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -142,7 +142,7 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
                     type="checkbox"
                     checked={agreedToTerms}
                     onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-[var(--card-stroke)] accent-[var(--accent)]"
+                    className="mt-0.5 h-4 w-4 rounded border-[var(--border)] accent-[var(--accent)]"
                 />
                 <span className="text-sm text-[var(--foreground)]">
                     I agree to the{" "}
@@ -159,7 +159,7 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
             <button
                 type="submit"
                 disabled={loading || !agreedToTerms}
-                className="w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
+                className="w-full rounded-lg border border-[var(--border)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
             >
                 {loading ? "Creating account..." : "Create account"}
             </button>

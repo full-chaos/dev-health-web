@@ -39,14 +39,14 @@ export default async function MappingHealthPage() {
             )}
 
             {!error && !coverageData && (
-                <div className="rounded-lg border border-(--card-stroke) bg-(--card-80) p-8 text-center text-(--ink-muted)">
+                <div className="rounded-lg border border-(--border) bg-(--card-80) p-8 text-center text-(--ink-muted)">
                     No mapping coverage data found.
                 </div>
             )}
 
             {coverageData && (
                 <div className="grid gap-6 md:grid-cols-2">
-                    <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                         <h3 className="font-semibold text-lg mb-4">Deployments Coverage</h3>
                         <p className="text-sm text-(--ink-muted) mb-4">
                             Percentage of deployments successfully mapped back to work items.
@@ -57,7 +57,7 @@ export default async function MappingHealthPage() {
                         />
                     </div>
 
-                    <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
                         <h3 className="font-semibold text-lg mb-4">Work Items Coverage</h3>
                         <p className="text-sm text-(--ink-muted) mb-4">
                             Percentage of work items successfully mapped back to deployments.

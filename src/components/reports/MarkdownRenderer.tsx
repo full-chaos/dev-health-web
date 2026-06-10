@@ -41,7 +41,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
             </div>
 
             {provenance && (
-                <div className="border-t border-(--card-stroke) pt-4">
+                <div className="border-t border-(--border) pt-4">
                     <button
                         onClick={() => setShowProvenance(!showProvenance)}
                         className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-(--ink-muted) hover:text-foreground transition-colors"
@@ -73,7 +73,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
             )}
 
             {footer && (
-                <div className="border-t border-(--card-stroke) pt-3 text-[10px] text-(--ink-muted) tracking-wide">
+                <div className="border-t border-(--border) pt-3 text-[10px] text-(--ink-muted) tracking-wide">
                     {footer}
                 </div>
             )}

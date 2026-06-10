@@ -9,7 +9,7 @@ type FilterPillProps = {
 
 export function FilterPill({ label, value, onClear, onClick }: FilterPillProps) {
     return (
-        <div className="flex items-center gap-1 rounded-full border border-(--card-stroke) bg-card pl-3 pr-1 py-1 text-xs transition-colors hover:border-(--accent)">
+        <div className="flex items-center gap-1 rounded-full border border-(--border) bg-card pl-3 pr-1 py-1 text-xs transition-colors hover:border-(--accent)">
             <button
                 type="button"
                 onClick={onClick}

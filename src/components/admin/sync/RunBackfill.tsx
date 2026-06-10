@@ -91,7 +91,7 @@ export function RunBackfill({ configId }: RunBackfillProps) {
     const isTerminal = activeJob?.status === "completed" || activeJob?.status === "failed";
 
     return (
-        <div className="space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6 mt-6">
+        <div className="space-y-4 rounded-2xl border border-(--border) bg-(--card-80) p-6 mt-6">
             <div>
                 <h3 className="text-sm font-medium">Run Historical Backfill</h3>
                 <p className="mt-1 text-xs text-(--ink-muted)">
@@ -107,7 +107,7 @@ export function RunBackfill({ configId }: RunBackfillProps) {
                         type="date"
                         value={since}
                         onChange={(e) => setSince(e.target.value)}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
                     />
                 </div>
                 <div className="flex-1">
@@ -118,7 +118,7 @@ export function RunBackfill({ configId }: RunBackfillProps) {
                         type="date"
                         value={before}
                         onChange={(e) => setBefore(e.target.value)}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
                     />
                 </div>
                 <button
@@ -132,7 +132,7 @@ export function RunBackfill({ configId }: RunBackfillProps) {
 
             {/* Progress section */}
             {activeJob && (
-                <div className="space-y-2 pt-2 border-t border-(--card-stroke)">
+                <div className="space-y-2 pt-2 border-t border-(--border)">
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-(--ink-muted)">
                             {activeJob.status === "pending" && "Waiting to start..."}

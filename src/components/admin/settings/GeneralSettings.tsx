@@ -48,7 +48,7 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
                         name="name"
                         defaultValue={org?.name ?? ""}
                         disabled={isLoading}
-                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                        className="mt-1 block w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
                     />
                 </div>
                 <div>
@@ -61,7 +61,7 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
                         name="slug"
                         defaultValue={org?.slug ?? ""}
                         disabled
-                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--ink-muted) shadow-sm opacity-50 cursor-not-allowed"
+                        className="mt-1 block w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-(--ink-muted) shadow-sm opacity-50 cursor-not-allowed"
                     />
                 </div>
                 <div>
@@ -77,7 +77,7 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
                         rows={3}
                         defaultValue={org?.description ?? ""}
                         disabled={isLoading}
-                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                        className="mt-1 block w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
                     />
                 </div>
                 <div className="flex justify-end">

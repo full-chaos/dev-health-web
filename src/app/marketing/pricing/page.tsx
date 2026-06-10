@@ -287,7 +287,7 @@ export default async function PricingPage() {
                             className={`rounded-3xl border p-6 transition ${
                                 tier.highlighted
                                     ? "relative border-(--accent) bg-(--card-80) shadow-[0_8px_40px_-12px_rgba(103,80,164,0.3)] sm:-mt-4 sm:p-8"
-                                    : "border-(--card-stroke) bg-(--card-80)"
+                                    : "border-(--border) bg-(--card-80)"
                             }`}
                         >
                             {tier.highlighted && (
@@ -342,7 +342,7 @@ export default async function PricingPage() {
                                         className={`block w-full rounded-full py-3 text-center text-sm font-medium transition ${
                                             tier.highlighted
                                                 ? "bg-(--accent) text-white hover:opacity-90"
-                                                : "border border-(--card-stroke) bg-(--card-70) hover:border-foreground/30"
+                                                : "border border-(--border) bg-(--card-70) hover:border-foreground/30"
                                         }`}
                                     >
                                         {tier.cta}
@@ -353,7 +353,7 @@ export default async function PricingPage() {
                                         className={`block w-full rounded-full py-3 text-center text-sm font-medium transition ${
                                             tier.highlighted
                                                 ? "bg-(--accent) text-white hover:opacity-90"
-                                                : "border border-(--card-stroke) bg-(--card-70) hover:border-foreground/30"
+                                                : "border border-(--border) bg-(--card-70) hover:border-foreground/30"
                                         }`}
                                     >
                                         {tier.cta}
@@ -367,7 +367,7 @@ export default async function PricingPage() {
 
             {/* Comparison Table */}
             <section className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 sm:p-12">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-8 sm:p-12">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                         Compare plans
                     </p>
@@ -378,7 +378,7 @@ export default async function PricingPage() {
                     <div className="mt-10 overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b border-(--card-stroke)">
+                                <tr className="border-b border-(--border)">
                                     <th className="pb-4 pr-4 text-left text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                         Feature
                                     </th>
@@ -395,10 +395,7 @@ export default async function PricingPage() {
                             </thead>
                             <tbody>
                                 {COMPARISON.map((row) => (
-                                    <tr
-                                        key={row.feature}
-                                        className="border-b border-(--card-stroke)/50"
-                                    >
+                                    <tr key={row.feature} className="border-b border-(--border)/50">
                                         <td className="py-4 pr-4 text-sm">{row.feature}</td>
                                         <td className="py-4 px-4 text-center">
                                             <span className="inline-flex justify-center">
@@ -425,7 +422,7 @@ export default async function PricingPage() {
 
             {/* CTA */}
             <section className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-8 text-center sm:p-12">
                     <h2 className="font-(--font-display) text-3xl sm:text-4xl">
                         Ready to understand your engineering effort?
                     </h2>
@@ -442,7 +439,7 @@ export default async function PricingPage() {
                         </Link>
                         <a
                             href="mailto:support@fullchaos.studio"
-                            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
+                            className="rounded-full border border-(--border) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
                             Talk to sales
                         </a>

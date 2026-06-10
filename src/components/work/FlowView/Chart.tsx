@@ -79,11 +79,11 @@ export function Chart({
 
             {subTab === "investment_mix" &&
                 (investmentMixLoading ? (
-                    <div className="flex h-96 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                    <div className="flex h-96 items-center justify-center rounded-2xl border border-dashed border-(--border) bg-(--card-70) text-sm text-(--ink-muted)">
                         Loading investment mix…
                     </div>
                 ) : !investmentMix ? (
-                    <div className="flex h-96 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                    <div className="flex h-96 items-center justify-center rounded-2xl border border-dashed border-(--border) bg-(--card-70) text-sm text-(--ink-muted)">
                         Investment mix unavailable for this scope and window.
                     </div>
                 ) : (
@@ -104,7 +104,7 @@ export function Chart({
                                 onInvestmentMixClick(subcategoryKey, "subcategory")
                             }
                         />
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+                        <div className="rounded-2xl border border-(--border) bg-(--card-70) p-4">
                             <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                 {investmentMixFocusTheme ? "Focused theme" : "How to use"}
                             </p>
@@ -175,7 +175,7 @@ export function Chart({
                     />
                 ) : (
                     !isLoading && (
-                        <div className="flex h-96 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                        <div className="flex h-96 items-center justify-center rounded-2xl border border-dashed border-(--border) bg-(--card-70) text-sm text-(--ink-muted)">
                             No flow data available for this scope and window.
                         </div>
                     )

@@ -76,7 +76,7 @@ export default function MarketingHubPage() {
                         <Link
                             key={buyer.slug}
                             href={`/marketing/${buyer.slug}`}
-                            className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 transition hover:-translate-y-1 hover:border-(--accent)/50"
+                            className="group block rounded-3xl border border-(--border) bg-(--card-80) p-8 transition hover:-translate-y-1 hover:border-(--accent)/50"
                         >
                             <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
                                 {buyer.eyebrow}
@@ -101,7 +101,7 @@ export default function MarketingHubPage() {
 
             {/* No surveillance pillar (compact form, links to full buyer pages) */}
             <section className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-8 text-center sm:p-12">
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                         Our posture
                     </p>
@@ -120,7 +120,7 @@ export default function MarketingHubPage() {
 
             {/* CTA */}
             <section className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-8 text-center sm:p-12">
                     <h2 className="font-(--font-display) text-3xl sm:text-4xl">
                         Ready to see where your effort is going?
                     </h2>
@@ -138,7 +138,7 @@ export default function MarketingHubPage() {
                         </Link>
                         <Link
                             href="/marketing/pricing"
-                            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
+                            className="rounded-full border border-(--border) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
                             See pricing
                         </Link>

@@ -105,7 +105,7 @@ export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
     const stageLabel = progress.stage || progress.currentStep || `${percentage}% complete`;
 
     return (
-        <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+        <div className="rounded-xl border border-(--border) bg-(--card-80) p-6">
             <div className="mb-2 flex items-center justify-between text-sm">
                 <span className="font-medium text-foreground">
                     {progress.status === "RUNNING" ? "Syncing..." : progress.status}

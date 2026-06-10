@@ -66,10 +66,10 @@ export function EntitlementsDetail({
     return (
         <div className="space-y-8">
             {/* Limits Section */}
-            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+            <div className="rounded-2xl border border-(--border) bg-(--card-80) p-6">
                 <h3 className="mb-4 text-lg font-medium">Limits</h3>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="rounded-xl border border-(--card-stroke) bg-(--card-70) p-4">
+                    <div className="rounded-xl border border-(--border) bg-(--card-70) p-4">
                         <div className="text-sm text-(--ink-muted)">Licensed Users</div>
                         <div className="mt-1 text-2xl font-semibold">
                             {entitlements.licensed_users === null
@@ -77,7 +77,7 @@ export function EntitlementsDetail({
                                 : entitlements.licensed_users}
                         </div>
                     </div>
-                    <div className="rounded-xl border border-(--card-stroke) bg-(--card-70) p-4">
+                    <div className="rounded-xl border border-(--border) bg-(--card-70) p-4">
                         <div className="text-sm text-(--ink-muted)">Licensed Repos</div>
                         <div className="mt-1 text-2xl font-semibold">
                             {entitlements.licensed_repos === null
@@ -88,7 +88,7 @@ export function EntitlementsDetail({
                     {Object.entries(entitlements.limits).map(([key, value]) => (
                         <div
                             key={key}
-                            className="rounded-xl border border-(--card-stroke) bg-(--card-70) p-4"
+                            className="rounded-xl border border-(--border) bg-(--card-70) p-4"
                         >
                             <div className="text-sm text-(--ink-muted)">{key}</div>
                             <div className="mt-1 text-2xl font-semibold">
@@ -100,9 +100,9 @@ export function EntitlementsDetail({
             </div>
 
             {/* Features Section */}
-            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+            <div className="rounded-2xl border border-(--border) bg-(--card-80) p-6">
                 <h3 className="mb-4 text-lg font-medium">Features</h3>
-                <div className="overflow-x-auto rounded-xl border border-(--card-stroke)">
+                <div className="overflow-x-auto rounded-xl border border-(--border)">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-(--card-70) text-(--ink-muted)">
                             <tr>
@@ -111,7 +111,7 @@ export function EntitlementsDetail({
                                 <th className="px-4 py-3 font-medium">Source</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-(--card-stroke)">
+                        <tbody className="divide-y divide-(--border)">
                             {Object.entries(entitlements.features).map(([key, enabled]) => {
                                 const isOverridden =
                                     entitlements.features_override &&
@@ -146,7 +146,7 @@ export function EntitlementsDetail({
             </div>
 
             {/* Overrides Section */}
-            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+            <div className="rounded-2xl border border-(--border) bg-(--card-80) p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium">Feature Overrides</h3>
                     <button
@@ -161,7 +161,7 @@ export function EntitlementsDetail({
                 {isCreating && (
                     <form
                         onSubmit={handleCreateOverride}
-                        className="mb-6 rounded-xl border border-(--card-stroke) bg-(--card-70) p-4"
+                        className="mb-6 rounded-xl border border-(--border) bg-(--card-70) p-4"
                     >
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
@@ -175,7 +175,7 @@ export function EntitlementsDetail({
                                     id="feature-select"
                                     value={selectedFeatureId}
                                     onChange={(e) => setSelectedFeatureId(e.target.value)}
-                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                    className="w-full rounded-lg border border-(--border) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                                     required
                                 >
                                     <option value="">Select a feature...</option>
@@ -197,7 +197,7 @@ export function EntitlementsDetail({
                                     id="state-select"
                                     value={overrideEnabled ? "true" : "false"}
                                     onChange={(e) => setOverrideEnabled(e.target.value === "true")}
-                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                    className="w-full rounded-lg border border-(--border) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                                 >
                                     <option value="true">Enabled</option>
                                     <option value="false">Disabled</option>
@@ -216,7 +216,7 @@ export function EntitlementsDetail({
                                     value={overrideReason}
                                     onChange={(e) => setOverrideReason(e.target.value)}
                                     placeholder="Why is this override being applied?"
-                                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                                    className="w-full rounded-lg border border-(--border) bg-(--card-80) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                                 />
                             </div>
                         </div>
@@ -234,7 +234,7 @@ export function EntitlementsDetail({
                 {overrides.length === 0 ? (
                     <div className="text-sm text-(--ink-muted)">No overrides active.</div>
                 ) : (
-                    <div className="overflow-x-auto rounded-xl border border-(--card-stroke)">
+                    <div className="overflow-x-auto rounded-xl border border-(--border)">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-(--card-70) text-(--ink-muted)">
                                 <tr>
@@ -245,7 +245,7 @@ export function EntitlementsDetail({
                                     <th className="px-4 py-3 font-medium text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-(--card-stroke)">
+                            <tbody className="divide-y divide-(--border)">
                                 {overrides.map((override) => (
                                     <tr key={override.id}>
                                         <td className="px-4 py-3 font-mono text-xs">

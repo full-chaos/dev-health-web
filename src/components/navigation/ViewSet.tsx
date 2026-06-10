@@ -16,7 +16,7 @@ type ViewSetProps = {
 };
 
 const TAB_CONTAINER =
-    "flex items-center gap-1 overflow-x-auto whitespace-nowrap border-b border-(--card-stroke) px-1 scrollbar-hide";
+    "flex items-center gap-1 overflow-x-auto whitespace-nowrap border-b border-(--border) px-1 scrollbar-hide";
 
 const TAB_BASE =
     "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-3 text-[10px] uppercase tracking-[0.18em] transition-all";
@@ -25,7 +25,7 @@ const TAB_ACTIVE = "border-(--accent) text-foreground font-semibold";
 const TAB_INACTIVE =
     "border-transparent text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground";
 
-const VERTICAL_CONTAINER = "mt-1 ml-3 flex flex-col gap-0.5 border-l border-(--card-stroke) pl-2";
+const VERTICAL_CONTAINER = "mt-1 ml-3 flex flex-col gap-0.5 border-l border-(--border) pl-2";
 
 const VERTICAL_BASE =
     "group relative flex items-center rounded-xl px-3 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/35";

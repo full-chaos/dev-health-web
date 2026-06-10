@@ -44,7 +44,7 @@ export function AIComparisonMetricCard({
 
     return (
         <article
-            className="flex min-h-[188px] flex-col justify-between rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+            className="flex min-h-[188px] flex-col justify-between rounded-3xl border border-(--border) bg-card p-5 shadow-sm"
             data-testid="ai-comparison-metric-card"
         >
             <div>
@@ -52,7 +52,7 @@ export function AIComparisonMetricCard({
                     <h3 className="font-(--font-display) text-lg">{title}</h3>
                     {tooltip && (
                         <span
-                            className="rounded-full border border-(--card-stroke) px-2 py-1 text-xs text-(--ink-muted)"
+                            className="rounded-full border border-(--border) px-2 py-1 text-xs text-(--ink-muted)"
                             title={tooltip}
                             aria-label={tooltip}
                         >

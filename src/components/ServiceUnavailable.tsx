@@ -12,7 +12,7 @@ export function ServiceUnavailable() {
                 <p className="text-sm text-(--ink-muted)">
                     The API status check failed. The API must be available to load this view.
                 </p>
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-6 text-sm text-(--ink-muted)">
                     <p>Quick checks:</p>
                     <ul className="mt-2 list-disc space-y-1 pl-4">
                         <li>API at {config.api.baseUrl}</li>
@@ -20,7 +20,7 @@ export function ServiceUnavailable() {
                 </div>
                 <Link
                     href="/dashboard"
-                    className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                    className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                 >
                     Retry
                 </Link>

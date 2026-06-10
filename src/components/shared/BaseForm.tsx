@@ -3,7 +3,7 @@
 import { useState, type ChangeEvent, type ReactNode, type SyntheticEvent } from "react";
 
 export const inputClass =
-    "w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)";
+    "w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)";
 
 export function useBaseFormState<T>(initialState: T) {
     const [formData, setFormData] = useState<T>(initialState);
@@ -39,7 +39,7 @@ export function BaseForm({
     submitLabel,
     cancelLabel = "Cancel",
     className = "space-y-6",
-    contentClassName = "space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6",
+    contentClassName = "space-y-4 rounded-2xl border border-(--border) bg-(--card-80) p-6",
     actionsClassName = "flex justify-end gap-3 pt-4",
     children,
     actionsStart,
@@ -54,7 +54,7 @@ export function BaseForm({
                         type="button"
                         onClick={onCancelAction}
                         disabled={isLoading}
-                        className="rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground disabled:opacity-50"
+                        className="rounded-lg border border-(--border) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground disabled:opacity-50"
                     >
                         {cancelLabel}
                     </button>

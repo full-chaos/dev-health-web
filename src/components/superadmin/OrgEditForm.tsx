@@ -41,7 +41,7 @@ export function OrgEditForm({ org }: OrgEditFormProps) {
                         name="name"
                         defaultValue={org.name}
                         required
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                     />
                 </div>
                 <div className="space-y-2">
@@ -52,7 +52,7 @@ export function OrgEditForm({ org }: OrgEditFormProps) {
                         id="slug"
                         defaultValue={org.slug}
                         disabled
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70)/50 px-3 py-2 text-sm text-(--ink-muted) outline-none"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70)/50 px-3 py-2 text-sm text-(--ink-muted) outline-none"
                     />
                 </div>
             </div>
@@ -66,7 +66,7 @@ export function OrgEditForm({ org }: OrgEditFormProps) {
                     name="description"
                     defaultValue={org.description || ""}
                     rows={3}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                    className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                 />
             </div>
 
@@ -79,7 +79,7 @@ export function OrgEditForm({ org }: OrgEditFormProps) {
                         id="tier"
                         name="tier"
                         defaultValue={org.tier}
-                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
+                        className="w-full rounded-lg border border-(--border) bg-(--card-70) px-3 py-2 text-sm outline-none focus:border-(--accent)"
                     >
                         <option value="community">Community</option>
                         <option value="team">Team</option>
@@ -92,7 +92,7 @@ export function OrgEditForm({ org }: OrgEditFormProps) {
                         id="is_active"
                         name="is_active"
                         defaultChecked={org.is_active}
-                        className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-70) text-(--accent) focus:ring-(--accent)"
+                        className="h-4 w-4 rounded border-(--border) bg-(--card-70) text-(--accent) focus:ring-(--accent)"
                     />
                     <label htmlFor="is_active" className="text-sm font-medium">
                         Active

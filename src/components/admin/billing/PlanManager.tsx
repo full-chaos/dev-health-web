@@ -188,14 +188,14 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
 
     return (
         <div className="space-y-8">
-            <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+            <section className="rounded-2xl border border-(--border) bg-(--card-80) p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="font-(--font-display) text-xl">Plan Editor</h2>
                     {editingPlanId && (
                         <button
                             type="button"
                             onClick={resetForm}
-                            className="rounded-lg border border-(--card-stroke) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
+                            className="rounded-lg border border-(--border) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
                         >
                             Cancel edit
                         </button>
@@ -208,7 +208,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                             setFormState((current) => ({ ...current, name: event.target.value }))
                         }
                         placeholder="Plan name"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm"
+                        className="rounded-lg border border-(--border) bg-(--card) px-3 py-2 text-sm"
                         required
                     />
                     <input
@@ -217,7 +217,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                             setFormState((current) => ({ ...current, key: event.target.value }))
                         }
                         placeholder="Plan key"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm"
+                        className="rounded-lg border border-(--border) bg-(--card) px-3 py-2 text-sm"
                         required
                     />
                     <input
@@ -226,7 +226,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                             setFormState((current) => ({ ...current, tier: event.target.value }))
                         }
                         placeholder="Tier"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm"
+                        className="rounded-lg border border-(--border) bg-(--card) px-3 py-2 text-sm"
                         required
                     />
                     <input
@@ -239,7 +239,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                             }))
                         }
                         placeholder="Display order"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm"
+                        className="rounded-lg border border-(--border) bg-(--card) px-3 py-2 text-sm"
                     />
                     <input
                         value={formState.description}
@@ -250,7 +250,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                             }))
                         }
                         placeholder="Description"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm md:col-span-2"
+                        className="rounded-lg border border-(--border) bg-(--card) px-3 py-2 text-sm md:col-span-2"
                     />
                     <input
                         value={formState.bundle_ids_csv}
@@ -261,7 +261,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                             }))
                         }
                         placeholder="Bundle IDs (comma-separated)"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm md:col-span-2"
+                        className="rounded-lg border border-(--border) bg-(--card) px-3 py-2 text-sm md:col-span-2"
                     />
                     <textarea
                         value={formState.prices_json}
@@ -273,7 +273,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                         }
                         placeholder='[{"interval":"monthly","amount":4900,"currency":"usd"}]'
                         rows={8}
-                        className="rounded-lg border border-(--card-stroke) bg-(--card) px-3 py-2 text-sm font-(--font-mono) md:col-span-2"
+                        className="rounded-lg border border-(--border) bg-(--card) px-3 py-2 text-sm font-(--font-mono) md:col-span-2"
                     />
                     <label className="flex items-center gap-2 text-sm text-(--ink-muted)">
                         <input
@@ -300,7 +300,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                 </form>
             </section>
 
-            <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+            <section className="rounded-2xl border border-(--border) bg-(--card-80) p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="font-(--font-display) text-xl">Plans</h2>
                     <button
@@ -316,7 +316,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                     {sortedPlans.map((plan) => (
                         <article
                             key={plan.id}
-                            className="rounded-xl border border-(--card-stroke) bg-(--card) p-4"
+                            className="rounded-xl border border-(--border) bg-(--card) p-4"
                         >
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
@@ -335,14 +335,14 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                                             setEditingPlanId(plan.id);
                                             setFormState(mapPlanToForm(plan));
                                         }}
-                                        className="rounded-lg border border-(--card-stroke) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
+                                        className="rounded-lg border border-(--border) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
                                     >
                                         Edit
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => onSync(plan.id)}
-                                        className="rounded-lg border border-(--card-stroke) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
+                                        className="rounded-lg border border-(--border) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
                                     >
                                         Sync Stripe
                                     </button>

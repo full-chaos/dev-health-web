@@ -123,7 +123,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                         </div>
                         <Link
                             href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                            className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                         >
                             {CTA_LABELS.backToCockpit}
                         </Link>
@@ -146,7 +146,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                             spark={churnMetric?.spark}
                             caption="Churn over the active window"
                         />
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                        <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">
                                     Ownership Patterns
@@ -159,7 +159,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                 Ownership concentration shows who carries the most-changed code in
                                 this view.
                             </p>
-                            <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                            <div className="mt-4 rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
                                 Connect a Git provider with commit history to surface ownership
                                 concentration here.
                             </div>
@@ -198,7 +198,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                     </section>
 
                     <section className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">Hotspots</h2>
                                 <Link
@@ -227,7 +227,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                                     filters,
                                                     role: activeRole,
                                                 })}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                                className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                                             >
                                                 <span>{item.label}</span>
                                                 <span className="text-xs text-(--ink-muted)">
@@ -249,7 +249,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                             )}
                         </div>
 
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">Bus Factor</h2>
                                 <Link
@@ -269,7 +269,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                             </p>
                             {hasBusFactorEvidence ? (
                                 <div className="mt-4 space-y-4 text-sm">
-                                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
+                                    <div className="rounded-2xl border border-(--border) bg-(--card-70) px-4 py-3">
                                         <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                             Scope-wide bus factor
                                         </p>
@@ -290,7 +290,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                             {topMaintainers.map((maintainer) => (
                                                 <div
                                                     key={maintainer.author}
-                                                    className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                                    className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                                                 >
                                                     <span className="truncate pr-4">
                                                         {maintainer.author}
@@ -312,7 +312,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                                 {riskyRepos.map((repo) => (
                                                     <div
                                                         key={repo.repoId}
-                                                        className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
+                                                        className="rounded-2xl border border-(--border) bg-(--card-70) px-4 py-3"
                                                     >
                                                         <div className="flex items-center justify-between gap-3">
                                                             <span className="font-medium">
@@ -329,7 +329,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                                                     .map((maintainer) => (
                                                                         <span
                                                                             key={`${repo.repoId}-${maintainer.author}`}
-                                                                            className="rounded-full border border-(--card-stroke) px-2 py-1 text-xs text-(--ink-muted)"
+                                                                            className="rounded-full border border-(--border) px-2 py-1 text-xs text-(--ink-muted)"
                                                                         >
                                                                             {maintainer.author} ·{" "}
                                                                             {maintainer.sharePercent.toFixed(
@@ -355,7 +355,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                 </div>
                             ) : (
                                 <div className="mt-4 space-y-2 text-sm">
-                                    <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-(--ink-muted)">
+                                    <div className="rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-4 py-3 text-(--ink-muted)">
                                         Connect a Git provider with commit history to surface
                                         bus-factor risk for this view.
                                     </div>

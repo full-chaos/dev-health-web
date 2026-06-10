@@ -73,7 +73,7 @@ export function IntegrationForm({
     };
 
     return (
-        <div className="max-w-2xl rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm">
+        <div className="max-w-2xl rounded-lg border border-(--border) bg-(--surface-base) p-6 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-(--ink-base)">Configuration</h2>
                 <ConnectionStatus status={status} />
@@ -82,7 +82,7 @@ export function IntegrationForm({
             <form onSubmit={handleSubmit} className="space-y-6">
                 {children}
 
-                <div className="flex items-center justify-end gap-4 pt-4 border-t border-(--border-subtle)">
+                <div className="flex items-center justify-end gap-4 pt-4 border-t border-(--border)">
                     {onCancel && (
                         <button
                             type="button"

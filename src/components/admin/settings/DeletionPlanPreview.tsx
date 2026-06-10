@@ -38,8 +38,8 @@ export function DeletionPlanPreview({
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-md border border-(--card-stroke)">
-                <table className="min-w-full divide-y divide-(--card-stroke)">
+            <div className="overflow-hidden rounded-md border border-(--border)">
+                <table className="min-w-full divide-y divide-(--border)">
                     <thead className="bg-(--card-70)">
                         <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider">
@@ -50,7 +50,7 @@ export function DeletionPlanPreview({
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-(--card-stroke) bg-(--background)">
+                    <tbody className="divide-y divide-(--border) bg-(--background)">
                         {Object.entries(plan.deletedCounts).map(([category, count]) => (
                             <tr key={category}>
                                 <td className="px-4 py-3 text-sm text-(--foreground) capitalize">
@@ -104,7 +104,7 @@ export function DeletionPlanPreview({
                 </div>
             )}
 
-            <div className="space-y-4 pt-4 border-t border-(--card-stroke)">
+            <div className="space-y-4 pt-4 border-t border-(--border)">
                 <p className="text-sm text-(--foreground)">
                     Type <strong>{expectedConfirmText}</strong> to confirm deletion:
                 </p>
@@ -121,7 +121,7 @@ export function DeletionPlanPreview({
                         type="button"
                         onClick={onCancel}
                         disabled={isPending}
-                        className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--foreground) hover:bg-(--card-70) disabled:opacity-50"
+                        className="rounded-md border border-(--border) px-4 py-2 text-sm font-medium text-(--foreground) hover:bg-(--card-70) disabled:opacity-50"
                     >
                         Cancel
                     </button>

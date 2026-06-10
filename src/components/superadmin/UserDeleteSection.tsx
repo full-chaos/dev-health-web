@@ -67,7 +67,7 @@ export function UserDeleteSection({ userId, userEmail }: UserDeleteSectionProps)
                             id="confirm-email"
                             value={confirmEmail}
                             onChange={(e) => setConfirmEmail(e.target.value)}
-                            className="block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                            className="block w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                             placeholder={userEmail}
                         />
                         <button

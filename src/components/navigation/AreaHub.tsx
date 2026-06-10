@@ -63,7 +63,7 @@ export function AreaHub({ areaId, signals, filters, role, title, description }: 
         <section
             aria-label={`${area.label} signals`}
             data-testid="area-hub"
-            className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+            className="rounded-3xl border border-(--border) bg-(--card-80) p-5"
         >
             <div>
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">

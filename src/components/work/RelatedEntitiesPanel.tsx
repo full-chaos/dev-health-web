@@ -98,7 +98,7 @@ export function RelatedEntitiesPanel({
     const grouped = groupEdgesByRelatedType(rootType, rootId, relatedEdges);
 
     return (
-        <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
+        <section className="rounded-3xl border border-(--border) bg-(--card) p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -110,7 +110,7 @@ export function RelatedEntitiesPanel({
                         relationship evidence that created each edge.
                     </p>
                 </div>
-                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm">
+                <div className="rounded-2xl border border-(--border) bg-(--card-70) px-4 py-3 text-sm">
                     <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                         Investment theme
                     </p>
@@ -126,7 +126,7 @@ export function RelatedEntitiesPanel({
             </div>
 
             {relatedEdges.length === 0 ? (
-                <div className="mt-6 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
+                <div className="mt-6 rounded-2xl border border-dashed border-(--border) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
                     No data for related entities.
                 </div>
             ) : (
@@ -137,7 +137,7 @@ export function RelatedEntitiesPanel({
                         return (
                             <div
                                 key={type}
-                                className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4"
+                                className="rounded-2xl border border-(--border) bg-(--card-70) p-4"
                             >
                                 <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-(--ink-muted)">
                                     {entityLabels[type] ?? labelInvestmentKey(type)}
@@ -155,7 +155,7 @@ export function RelatedEntitiesPanel({
                                         return (
                                             <article
                                                 key={edge.edgeId}
-                                                className="rounded-2xl border border-(--card-stroke) bg-background/35 p-4"
+                                                className="rounded-2xl border border-(--border) bg-background/35 p-4"
                                             >
                                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                                     <Link
@@ -164,7 +164,7 @@ export function RelatedEntitiesPanel({
                                                     >
                                                         {linkedId}
                                                     </Link>
-                                                    <span className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                                                    <span className="rounded-full border border-(--border) px-3 py-1 text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                                                         {labelInvestmentKey(edge.edgeType)}
                                                     </span>
                                                 </div>
@@ -205,7 +205,7 @@ export function RelatedEntitiesPanel({
                 </div>
             )}
 
-            <div className="mt-6 rounded-2xl border border-(--card-stroke) bg-background/35 p-4">
+            <div className="mt-6 rounded-2xl border border-(--border) bg-background/35 p-4">
                 <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-(--ink-muted)">
                     Evidence quotes
                 </h3>

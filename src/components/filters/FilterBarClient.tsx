@@ -66,7 +66,7 @@ export function FilterBarClient({
             ref={barRef}
             data-testid="filter-bar"
             data-view={view ?? "default"}
-            className={`w-full rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4 backdrop-blur-sm transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
+            className={`w-full rounded-2xl border border-(--border) bg-(--card-70) p-4 backdrop-blur-sm transition-all duration-300 ease-in-out ${condensed ? "py-2" : "py-4"}`}
         >
             <div className="flex w-full flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">

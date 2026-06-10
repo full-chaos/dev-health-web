@@ -141,7 +141,7 @@ export function ThemeToggle() {
 
     return (
         <div
-            className={`group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) p-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${
+            className={`group inline-flex items-center gap-2 rounded-full border border-(--border) bg-(--card-80) p-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${
                 isCollapsed ? "w-10 overflow-hidden" : "px-3 py-2"
             }`}
         >
@@ -166,7 +166,7 @@ export function ThemeToggle() {
                         type="button"
                         onClick={handleToggle}
                         aria-label="Toggle light/dark"
-                        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:-translate-y-0.5"
+                        className="rounded-full border border-(--border) bg-(--card-70) px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:-translate-y-0.5"
                     >
                         {theme === "dark" ? "Dark" : "Light"}
                     </button>

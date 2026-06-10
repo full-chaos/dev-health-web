@@ -21,7 +21,7 @@ export function EvidenceView({
 }: EvidenceViewProps) {
     return (
         <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+            <div className="rounded-3xl border border-(--border) bg-card p-5">
                 <div className="flex items-center justify-between">
                     <h2 className="font-(--font-display) text-xl">WIP Associations</h2>
                     <Link
@@ -44,7 +44,7 @@ export function EvidenceView({
                                 filters,
                                 role: activeRole,
                             })}
-                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                            className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                         >
                             <span>{driver.label}</span>
                             <span className="text-xs text-(--ink-muted)">
@@ -60,7 +60,7 @@ export function EvidenceView({
                 </div>
             </div>
 
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+            <div className="rounded-3xl border border-(--border) bg-card p-5">
                 <div className="flex items-center justify-between">
                     <h2 className="font-(--font-display) text-xl">Blocked Associations</h2>
                 </div>
@@ -73,7 +73,7 @@ export function EvidenceView({
                                 filters,
                                 role: activeRole,
                             })}
-                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                            className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                         >
                             <span>{driver.label}</span>
                             <span className="text-xs text-(--ink-muted)">

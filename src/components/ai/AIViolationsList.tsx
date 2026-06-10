@@ -9,7 +9,7 @@ export function AIViolationsList({ violations, loading }: AIViolationsListProps)
     if (loading) {
         return (
             <section
-                className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                className="rounded-3xl border border-(--border) bg-card p-5"
                 data-testid="ai-violations-list"
             >
                 <h3 className="font-(--font-display) text-lg">Security findings</h3>
@@ -20,7 +20,7 @@ export function AIViolationsList({ violations, loading }: AIViolationsListProps)
 
     return (
         <section
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+            className="rounded-3xl border border-(--border) bg-card p-5"
             data-testid="ai-violations-list"
         >
             <div className="flex items-center justify-between gap-3">
@@ -40,7 +40,7 @@ export function AIViolationsList({ violations, loading }: AIViolationsListProps)
                     No PR-scoped governance violations appear in this range.
                 </p>
             ) : (
-                <ul className="mt-4 divide-y divide-(--card-stroke)">
+                <ul className="mt-4 divide-y divide-(--border)">
                     {violations.slice(0, 8).map((violation) => (
                         <li
                             key={`${violation.ruleId}-${violation.subjectId}-${violation.observedAt}`}

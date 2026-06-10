@@ -88,7 +88,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                         </div>
                         <Link
                             href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                            className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                         >
                             {CTA_LABELS.backToCockpit}
                         </Link>
@@ -140,7 +140,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                     </section>
 
                     {reworkThemeAllocation.length > 0 && (
-                        <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                        <section className="rounded-3xl border border-(--border) bg-(--card) p-5">
                             <h2 className="font-(--font-display) text-xl">Rework by Theme</h2>
                             <p className="mt-1 text-sm text-(--ink-muted)">
                                 Distribution of rework pressure across investment themes in the
@@ -185,7 +185,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                     )}
 
                     <section className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">
                                     Change Failure Associations
@@ -217,7 +217,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                                                     filters,
                                                     role: activeRole,
                                                 })}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                                className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                                             >
                                                 <EntityLabel
                                                     id={driver.id}
@@ -237,7 +237,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                             )}
                         </div>
 
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">Contributors</h2>
                                 <Link
@@ -261,7 +261,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                                                 filters,
                                                 role: activeRole,
                                             })}
-                                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                            className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-4 py-2"
                                         >
                                             <EntityLabel
                                                 id={contributor.id}

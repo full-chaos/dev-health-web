@@ -82,7 +82,7 @@ function PrTable({
     }
     return (
         <div
-            className="max-h-72 overflow-y-auto rounded-2xl border border-(--card-stroke)"
+            className="max-h-72 overflow-y-auto rounded-2xl border border-(--border)"
             data-testid="ai-drilldown-table"
         >
             <table className="w-full text-left text-sm">
@@ -95,7 +95,7 @@ function PrTable({
                         <th className="px-3 py-2 font-semibold">Merged</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-(--card-stroke)">
+                <tbody className="divide-y divide-(--border)">
                     {rows.map((pr) => {
                         const key = prRowKey(pr);
                         const isSelected = key === selectedKey;
@@ -185,7 +185,7 @@ export function EvidencePanel({ selected }: { selected: AiAttributedPr | null })
                 {drilldown.edges.slice(0, 25).map((edge) => (
                     <li
                         key={edge.edgeId}
-                        className="rounded-2xl border border-(--card-stroke) bg-background/40 px-3 py-2 text-sm"
+                        className="rounded-2xl border border-(--border) bg-background/40 px-3 py-2 text-sm"
                     >
                         <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.12em] text-(--ink-muted)">
                             <span className="font-semibold text-foreground">{edge.edgeType}</span>
@@ -265,7 +265,7 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search title, kind, or PR number"
-                className="mt-1 w-full rounded-full border border-(--card-stroke) bg-background/60 px-4 py-2 text-sm focus:border-(--accent-positive) focus:outline-none"
+                className="mt-1 w-full rounded-full border border-(--border) bg-background/60 px-4 py-2 text-sm focus:border-(--accent-positive) focus:outline-none"
                 data-testid="ai-drilldown-search"
             />
 

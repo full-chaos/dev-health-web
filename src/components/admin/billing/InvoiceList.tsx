@@ -184,7 +184,7 @@ export function InvoiceList({
                             <button
                                 type="button"
                                 onClick={() => handleOpenDetail(invoice.id)}
-                                className="rounded-md border border-(--card-stroke) px-2.5 py-1 text-xs font-medium text-foreground hover:bg-(--card-70)"
+                                className="rounded-md border border-(--border) px-2.5 py-1 text-xs font-medium text-foreground hover:bg-(--card-70)"
                             >
                                 View
                             </button>
@@ -210,7 +210,7 @@ export function InvoiceList({
         <label className="flex items-center gap-2 text-sm text-(--ink-muted)">
             <span>Status</span>
             <select
-                className="rounded-md border border-(--card-stroke) bg-(--card-80) px-2 py-1 text-sm text-foreground"
+                className="rounded-md border border-(--border) bg-(--card-80) px-2 py-1 text-sm text-foreground"
                 value={statusFilter}
                 onChange={(event) => {
                     const nextStatus = event.target.value;

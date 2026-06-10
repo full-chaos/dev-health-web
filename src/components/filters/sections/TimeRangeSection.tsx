@@ -26,7 +26,7 @@ export function TimeRangeSection({
     updateFilters,
 }: TimeRangeSectionProps) {
     return (
-        <div className="flex items-center rounded-full border border-(--card-stroke) bg-card p-1">
+        <div className="flex items-center rounded-full border border-(--border) bg-card p-1">
             {DATE_PRESETS.map((preset) => (
                 <button
                     key={preset.days}
@@ -41,7 +41,7 @@ export function TimeRangeSection({
                     {preset.label}
                 </button>
             ))}
-            <div className="relative ml-1 border-l border-(--card-stroke) pl-1">
+            <div className="relative ml-1 border-l border-(--border) pl-1">
                 <button
                     type="button"
                     onClick={() => setOpenMenu(openMenu === "date" ? null : "date")}
@@ -54,14 +54,14 @@ export function TimeRangeSection({
                     {isCustomDateRange ? dateValue : "Custom"}
                 </button>
                 {openMenu === "date" && (
-                    <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
+                    <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--border) bg-card p-4 shadow-lg">
                         <div className="grid gap-3 text-xs">
                             <label className="flex flex-col gap-2">
                                 <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Start date
                                 </span>
                                 <input
-                                    className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
+                                    className="rounded-xl border border-(--border) bg-(--card-60) px-3 py-2 text-sm"
                                     type="date"
                                     value={formatDateInput(startDate)}
                                     onChange={(event) => {
@@ -93,7 +93,7 @@ export function TimeRangeSection({
                                     End date
                                 </span>
                                 <input
-                                    className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2 text-sm"
+                                    className="rounded-xl border border-(--border) bg-(--card-60) px-3 py-2 text-sm"
                                     type="date"
                                     value={formatDateInput(endDate)}
                                     onChange={(event) => {

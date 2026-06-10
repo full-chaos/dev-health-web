@@ -40,7 +40,7 @@ export default function Loading() {
                     </div>
 
                     {/* Active tab section header + metric chips */}
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
+                    <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5 animate-pulse">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="space-y-2">
                                 <div className="h-3 bg-(--card-70) rounded w-28" />
@@ -60,7 +60,7 @@ export default function Loading() {
                         {Array.from({ length: 4 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3"
+                                className="rounded-3xl border border-(--border) bg-(--card) p-5 space-y-3"
                             >
                                 <div className="h-3 bg-(--card-70) rounded w-24" />
                                 <div className="h-8 bg-(--card-70) rounded w-16" />
@@ -75,7 +75,7 @@ export default function Loading() {
 
                     {/* Associations + Contributors side by side */}
                     <div className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 animate-pulse space-y-4">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5 animate-pulse space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="h-6 bg-(--card-70) rounded w-40" />
                                 <div className="h-3 bg-(--card-70) rounded w-24" />
@@ -88,7 +88,7 @@ export default function Loading() {
                                 ))}
                             </div>
                         </div>
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 animate-pulse space-y-4">
+                        <div className="rounded-3xl border border-(--border) bg-(--card) p-5 animate-pulse space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="h-6 bg-(--card-70) rounded w-44" />
                                 <div className="h-3 bg-(--card-70) rounded w-24" />
@@ -104,7 +104,7 @@ export default function Loading() {
                     </div>
 
                     {/* Summary table */}
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
+                    <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5 animate-pulse">
                         <div className="flex items-center justify-between mb-4">
                             <div className="h-6 bg-(--card-70) rounded w-24" />
                             <div className="h-3 bg-(--card-70) rounded w-28" />

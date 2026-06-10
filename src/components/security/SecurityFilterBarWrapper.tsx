@@ -139,7 +139,7 @@ export function SecurityFilterBarWrapper({ encodedFilter }: SecurityFilterBarWra
     return (
         <section
             aria-label="Security filters"
-            className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4"
+            className="rounded-2xl border border-(--border) bg-(--card-80) p-4"
             data-testid="security-filter-bar"
         >
             <div className="flex flex-col gap-3">

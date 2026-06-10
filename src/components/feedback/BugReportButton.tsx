@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import type { FeedbackPayload, FeedbackResponse, FeedbackType } from "@/components/feedback/types";
 
 const inputClassName =
-    "w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground placeholder:text-(--ink-muted) focus:border-(--accent) focus:outline-none";
+    "w-full rounded-xl border border-(--border) bg-(--card-70) px-3 py-2 text-sm text-foreground placeholder:text-(--ink-muted) focus:border-(--accent) focus:outline-none";
 
 type FeedbackFormState = {
     title: string;
@@ -117,13 +117,13 @@ export function BugReportButton() {
                         onClick={closePanel}
                     />
                     <div
-                        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md translate-x-0 border-l border-(--card-stroke) bg-(--card-80) shadow-2xl transition-transform duration-300 ease-out"
+                        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md translate-x-0 border-l border-(--border) bg-(--card-80) shadow-2xl transition-transform duration-300 ease-out"
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="bug-report-title"
                     >
                         <div className="flex h-full flex-col">
-                            <div className="flex items-center justify-between border-b border-(--card-stroke) px-5 py-4">
+                            <div className="flex items-center justify-between border-b border-(--border) px-5 py-4">
                                 <h2
                                     id="bug-report-title"
                                     className="font-(--font-display) text-lg text-foreground"

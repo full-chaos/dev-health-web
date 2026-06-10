@@ -55,7 +55,7 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
     };
 
     return (
-        <section className="rounded-3xl border border-(--card-stroke) bg-(--card-90) p-5 shadow-sm">
+        <section className="rounded-3xl border border-(--border) bg-(--card-90) p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -71,7 +71,7 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
                     <label className="flex flex-col gap-2 text-sm">
                         <span className="text-xs text-(--ink-muted)">Start date</span>
                         <input
-                            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                            className="rounded-xl border border-(--border) bg-card px-3 py-2"
                             type="date"
                             value={formatDateInput(startDate)}
                             onChange={(event) => {
@@ -91,7 +91,7 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
                     <label className="flex flex-col gap-2 text-sm">
                         <span className="text-xs text-(--ink-muted)">End date</span>
                         <input
-                            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                            className="rounded-xl border border-(--border) bg-card px-3 py-2"
                             type="date"
                             value={formatDateInput(endDate)}
                             onChange={(event) => {
@@ -113,11 +113,11 @@ export function PersonRangeBar({ rangeDays }: PersonRangeBarProps) {
                 <div className="mt-4 grid gap-3 sm:grid-cols-2" aria-hidden="true">
                     <div className="flex flex-col gap-2">
                         <div className="h-3 w-16 rounded bg-(--card-70) animate-pulse" />
-                        <div className="h-10 rounded-xl border border-(--card-stroke) bg-(--card-70) animate-pulse" />
+                        <div className="h-10 rounded-xl border border-(--border) bg-(--card-70) animate-pulse" />
                     </div>
                     <div className="flex flex-col gap-2">
                         <div className="h-3 w-16 rounded bg-(--card-70) animate-pulse" />
-                        <div className="h-10 rounded-xl border border-(--card-stroke) bg-(--card-70) animate-pulse" />
+                        <div className="h-10 rounded-xl border border-(--border) bg-(--card-70) animate-pulse" />
                     </div>
                 </div>
             )}

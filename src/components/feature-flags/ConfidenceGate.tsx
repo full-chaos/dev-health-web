@@ -31,7 +31,7 @@ export function ConfidenceGate({
 
     if (level === "suppress") {
         return (
-            <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) py-12 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-(--border) bg-(--card-70) py-12 text-center">
                 <div className="rounded-full bg-(--accent-negative)/10 p-3 text-(--accent-negative)">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"

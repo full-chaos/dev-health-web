@@ -137,7 +137,7 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
                         </div>
                         <Link
                             href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                            className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                         >
                             Back to cockpit
                         </Link>

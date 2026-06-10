@@ -21,7 +21,7 @@ export function RoleSelectorWithSuspense({ className }: { className?: string }) 
                         {["IC", "EM", "PM", "Leadership"].map((label) => (
                             <span
                                 key={label}
-                                className="rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-1.5 text-xs font-medium uppercase tracking-[0.15em] text-(--ink-muted)"
+                                className="rounded-full border border-(--border) bg-(--card-80) px-3 py-1.5 text-xs font-medium uppercase tracking-[0.15em] text-(--ink-muted)"
                             >
                                 {label}
                             </span>

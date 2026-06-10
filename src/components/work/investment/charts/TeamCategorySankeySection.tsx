@@ -205,7 +205,7 @@ export function TeamCategorySankeySection({
     );
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
@@ -238,7 +238,7 @@ export function TeamCategorySankeySection({
                                 <button
                                     type="button"
                                     onClick={() => setFocusedTeam(null)}
-                                    className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                                    className="inline-flex items-center gap-2 rounded-full border border-(--border) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
                                 >
                                     Drilldown: Team = {focusedTeam}
                                     <span className="text-xs">x</span>
@@ -251,7 +251,7 @@ export function TeamCategorySankeySection({
                                         setSelectedCategory(null);
                                         setFocusSubcategory(null);
                                     }}
-                                    className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                                    className="inline-flex items-center gap-2 rounded-full border border-(--border) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
                                 >
                                     Drilldown: Theme = {selectedCategory}
                                     <span className="text-xs">x</span>
@@ -273,7 +273,7 @@ export function TeamCategorySankeySection({
                             {topCategorySummary.map((entry) => (
                                 <span
                                     key={entry.name}
-                                    className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs"
+                                    className="rounded-full border border-(--border) px-2 py-0.5 text-xs"
                                 >
                                     {entry.name}{" "}
                                     {formatNumber(entry.share, { maximumFractionDigits: 0 })}%
@@ -283,7 +283,7 @@ export function TeamCategorySankeySection({
                     )}
                 </div>
             </div>
-            <div className="mb-4 mt-2 border-l-2 border-(--card-stroke) py-1 pl-3 text-xs leading-relaxed text-(--ink-muted)">
+            <div className="mb-4 mt-2 border-l-2 border-(--border) py-1 pl-3 text-xs leading-relaxed text-(--ink-muted)">
                 This view shows where effort appears to land across teams, themes, and repos for the
                 selected window. Allocation reflects attribution, not dependency or impact.
             </div>
@@ -291,7 +291,7 @@ export function TeamCategorySankeySection({
                 {isSankeyLoading ? (
                     <p className="text-sm text-(--ink-muted)">Loading allocation data...</p>
                 ) : !sankeyFlow || !sankeyFlow.links.length ? (
-                    <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
+                    <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-(--border) bg-(--card-70) text-center text-sm text-(--ink-muted)">
                         No allocation path available for this scope and window.
                     </div>
                 ) : (

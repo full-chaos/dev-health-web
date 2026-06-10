@@ -19,7 +19,7 @@ export default function Loading() {
                 <NavSkeleton />
                 <main className="flex min-w-0 flex-1 flex-col gap-10">
                     {/* Header card */}
-                    <div className="rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse">
+                    <div className="rounded-[32px] border border-(--border) bg-(--card-80) p-6 animate-pulse">
                         <div className="flex flex-col gap-6">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div className="space-y-4">
@@ -47,7 +47,7 @@ export default function Loading() {
                     <div className="h-10 bg-(--card-70) rounded-full animate-pulse" />
 
                     {/* Monitoring views section */}
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse">
+                    <div className="rounded-3xl border border-(--border) bg-(--card-80) p-6 animate-pulse">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="space-y-2">
                                 <div className="h-3 bg-(--card-70) rounded w-32" />
@@ -59,7 +59,7 @@ export default function Loading() {
                             {Array.from({ length: 4 }).map((_, i) => (
                                 <div
                                     key={i}
-                                    className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 space-y-2"
+                                    className="rounded-2xl border border-(--border) bg-(--card) px-4 py-3 space-y-2"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="h-3 bg-(--card-70) rounded w-16" />
@@ -73,13 +73,13 @@ export default function Loading() {
                     </div>
 
                     {/* Cockpit / key signals area */}
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse space-y-4">
+                    <div className="rounded-3xl border border-(--border) bg-(--card-80) p-6 animate-pulse space-y-4">
                         <div className="h-5 bg-(--card-70) rounded w-40" />
                         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                             {Array.from({ length: 4 }).map((_, i) => (
                                 <div
                                     key={i}
-                                    className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4 space-y-3"
+                                    className="rounded-2xl border border-(--border) bg-(--card) p-4 space-y-3"
                                 >
                                     <div className="h-3 bg-(--card-70) rounded w-20" />
                                     <div className="h-7 bg-(--card-70) rounded w-16" />

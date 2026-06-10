@@ -49,7 +49,7 @@ export function SocialLoginButtons({ providers = [] }: SocialLoginButtonsProps) 
     if (providers.length === 0) return null;
 
     const buttonClass =
-        "w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors flex items-center justify-center gap-2";
+        "w-full rounded-lg border border-[var(--border)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors flex items-center justify-center gap-2";
 
     return (
         <div className="space-y-3">

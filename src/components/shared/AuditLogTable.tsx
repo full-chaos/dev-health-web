@@ -52,9 +52,9 @@ function BillingAuditLogTable({
     onSelect?: (id: string) => void;
 }) {
     return (
-        <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-80)">
+        <div className="overflow-hidden rounded-2xl border border-(--border) bg-(--card-80)">
             <table className="w-full text-left text-sm">
-                <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
+                <thead className="border-b border-(--border) bg-(--card-70) text-(--ink-muted)">
                     <tr>
                         <th className="px-4 py-3 font-medium">Action</th>
                         <th className="px-4 py-3 font-medium">Resource</th>
@@ -62,7 +62,7 @@ function BillingAuditLogTable({
                         <th className="px-4 py-3 font-medium">Created</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-(--card-stroke)">
+                <tbody className="divide-y divide-(--border)">
                     {entries.map((entry) => (
                         <tr
                             key={entry.id}
@@ -106,9 +106,9 @@ function BillingAuditLogTable({
 
 function AdminAuditLogTable({ entries }: { entries: AuditEntry[] }) {
     return (
-        <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
+        <div className="overflow-x-auto rounded-2xl border border-(--border) bg-(--card-80)">
             <table className="w-full text-left text-sm">
-                <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
+                <thead className="border-b border-(--border) bg-(--card-70) text-(--ink-muted)">
                     <tr>
                         <th className="px-6 py-4 font-medium">Timestamp</th>
                         <th className="px-6 py-4 font-medium">Action</th>
@@ -118,7 +118,7 @@ function AdminAuditLogTable({ entries }: { entries: AuditEntry[] }) {
                         <th className="px-6 py-4 font-medium">Description</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-(--card-stroke)">
+                <tbody className="divide-y divide-(--border)">
                     {entries.map((entry) => (
                         <tr key={entry.id} className="hover:bg-(--card-70)/50">
                             <td className="px-6 py-4 text-(--ink-muted)">

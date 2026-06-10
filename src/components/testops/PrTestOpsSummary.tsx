@@ -59,7 +59,7 @@ export function PrTestOpsSummary({
         : 0;
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 flex flex-col gap-4">
+        <div className="rounded-3xl border border-(--border) bg-(--card) p-5 flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="font-(--font-display) text-lg">TestOps Summary</h3>

@@ -31,7 +31,7 @@ type ExperimentsPageProps = {
 function ExperimentCard({ experiment }: { experiment: Experiment }) {
     return (
         <article
-            className="flex flex-col gap-3 rounded-3xl border border-(--card-stroke) bg-card p-6"
+            className="flex flex-col gap-3 rounded-3xl border border-(--border) bg-card p-6"
             data-testid="experiment-card"
         >
             <header className="flex items-start justify-between gap-4">

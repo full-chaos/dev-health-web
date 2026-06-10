@@ -99,7 +99,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                     data-testid="ai-impact-evidence-sparse-page"
                 />
             ) : (
-                <div className="overflow-hidden rounded-3xl border border-(--card-stroke)">
+                <div className="overflow-hidden rounded-3xl border border-(--border)">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-card text-xs uppercase tracking-[0.14em] text-(--ink-muted)">
                             <tr>
@@ -111,7 +111,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                                 <th className="px-4 py-3 font-semibold">Merged</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-(--card-stroke)">
+                        <tbody className="divide-y divide-(--border)">
                             {fetching && rows.length === 0 ? (
                                 <tr>
                                     <td
@@ -175,7 +175,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                             setOffset(Math.max(0, offset - PAGE_SIZE));
                             setSelectedKey(null);
                         }}
-                        className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs font-semibold disabled:opacity-40"
+                        className="rounded-full border border-(--border) px-3 py-1 text-xs font-semibold disabled:opacity-40"
                     >
                         {CTA_LABELS.previousPage}
                     </button>
@@ -186,14 +186,14 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                             setOffset(offset + PAGE_SIZE);
                             setSelectedKey(null);
                         }}
-                        className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs font-semibold disabled:opacity-40"
+                        className="rounded-full border border-(--border) px-3 py-1 text-xs font-semibold disabled:opacity-40"
                     >
                         {CTA_LABELS.nextPage}
                     </button>
                 </div>
             </div>
 
-            <section className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+            <section className="rounded-3xl border border-(--border) bg-card p-5">
                 <h3 className="font-(--font-display) text-lg">Work Graph evidence</h3>
                 <div className="mt-3">
                     <EvidencePanel selected={selected} />

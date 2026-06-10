@@ -87,7 +87,7 @@ export function SecuritySettings() {
                         value={sessionTimeout}
                         onChange={(e) => setSessionTimeout(e.target.value)}
                         disabled={isPending || !loaded}
-                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                        className="mt-1 block w-full rounded-md border border-(--border) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
                     >
                         {SESSION_TIMEOUT_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>

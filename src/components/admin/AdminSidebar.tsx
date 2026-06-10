@@ -69,7 +69,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
     return (
         <aside className="w-full md:max-w-[220px] md:shrink-0">
             <div className="md:sticky md:top-6">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                     <div>
                         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                             Full Chaos Dev Health Ops
@@ -123,7 +123,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                             </Link>
                         )}
                     </nav>
-                    <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
+                    <div className="mt-5 rounded-2xl border border-dashed border-(--border) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
                         Return to{" "}
                         <Link href="/dashboard" className="underline hover:text-foreground">
                             main app

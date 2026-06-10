@@ -255,7 +255,7 @@ export function QuadrantPanel({
 
     if (!scopedData || !scopedData.points?.length) {
         return (
-            <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
+            <div className="rounded-3xl border border-dashed border-(--border) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
                 {emptyState}
             </div>
         );
@@ -317,7 +317,7 @@ export function QuadrantPanel({
     };
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="rounded-3xl border border-(--border) bg-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h2 className="font-(--font-display) text-xl">{title}</h2>
@@ -330,7 +330,7 @@ export function QuadrantPanel({
                             ref={triggerRef}
                             type="button"
                             onClick={() => setIsGuideOpen(true)}
-                            className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs uppercase tracking-[0.25em] text-(--ink-muted) btn-help"
+                            className="flex items-center gap-2 rounded-full border border-(--border) bg-(--card-80) px-3 py-2 text-xs uppercase tracking-[0.25em] text-(--ink-muted) btn-help"
                         >
                             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-xs text-foreground">
                                 ⓘ
@@ -356,7 +356,7 @@ export function QuadrantPanel({
                               aria-modal="true"
                               aria-label={infoTitle}
                               onKeyDown={handleDialogKeyDown}
-                              className="relative z-10 w-full max-w-lg rounded-3xl border border-(--card-stroke) bg-card p-5 text-xs text-(--ink-muted) shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
+                              className="relative z-10 w-full max-w-lg rounded-3xl border border-(--border) bg-card p-5 text-xs text-(--ink-muted) shadow-[0_30px_70px_-35px_rgba(0,0,0,0.7)]"
                           >
                               <div className="flex items-start justify-between gap-4">
                                   <div>
@@ -369,7 +369,7 @@ export function QuadrantPanel({
                                       ref={closeBtnRef}
                                       type="button"
                                       onClick={() => setIsGuideOpen(false)}
-                                      className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                                      className="rounded-full border border-(--border) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
                                   >
                                       {CTA_LABELS.closePanel}
                                   </button>
@@ -402,7 +402,7 @@ export function QuadrantPanel({
             <div className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)">
                 {hasInterpretationOverlay ? (
                     <div className="space-y-1">
-                        <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">
+                        <label className="inline-flex items-center gap-2 rounded-full border border-(--border) bg-(--card-80) px-3 py-2 text-xs">
                             <input
                                 type="checkbox"
                                 checked={showZoneOverlay}
@@ -440,7 +440,7 @@ export function QuadrantPanel({
                             />
                         </div>
                         {showZoneLegend ? (
-                            <div className="min-w-0 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 text-xs text-(--ink-muted)">
+                            <div className="min-w-0 rounded-2xl border border-(--border) bg-(--card-80) p-4 text-xs text-(--ink-muted)">
                                 <div className="flex items-center justify-between">
                                     <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                         Zone legend
@@ -475,7 +475,7 @@ export function QuadrantPanel({
                                                 }
                                                 className={`flex w-full gap-3 rounded-xl border px-2 py-2 text-left transition ${
                                                     isActive
-                                                        ? "border-(--card-stroke) bg-(--card-70)"
+                                                        ? "border-(--border) bg-(--card-70)"
                                                         : "border-transparent"
                                                 }`}
                                             >
@@ -502,7 +502,7 @@ export function QuadrantPanel({
                     </div>
 
                     {!activeSelectedPoint && (
-                        <div className="text-xs text-(--ink-muted) bg-(--card-80) rounded-2xl p-4 border border-dashed border-(--card-stroke)">
+                        <div className="text-xs text-(--ink-muted) bg-(--card-80) rounded-2xl p-4 border border-dashed border-(--border)">
                             <p>
                                 {isPersonScope
                                     ? "Individual in view."
@@ -515,7 +515,7 @@ export function QuadrantPanel({
                                         return isPersonScope ? (
                                             <span
                                                 key={pointKey}
-                                                className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2)"
+                                                className="rounded-full border border-(--border) bg-card px-3 py-1 text-(--accent-2)"
                                             >
                                                 {point.entity_label}
                                             </span>
@@ -524,7 +524,7 @@ export function QuadrantPanel({
                                                 key={pointKey}
                                                 type="button"
                                                 onClick={() => handlePointSelect(point)}
-                                                className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
+                                                className="rounded-full border border-(--border) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
                                             >
                                                 {point.entity_label}
                                             </button>
@@ -541,7 +541,7 @@ export function QuadrantPanel({
                                 <Link
                                     key={`${link.href}-${link.label}`}
                                     href={link.href}
-                                    className="rounded-full border border-(--card-stroke) bg-(--card-80) px-4 py-2 uppercase tracking-[0.2em] text-(--accent-2) hover:bg-(--accent-2)/5 transition"
+                                    className="rounded-full border border-(--border) bg-(--card-80) px-4 py-2 uppercase tracking-[0.2em] text-(--accent-2) hover:bg-(--accent-2)/5 transition"
                                 >
                                     {link.label}
                                 </Link>
@@ -551,7 +551,7 @@ export function QuadrantPanel({
                 </div>
 
                 {activeSelectedPoint && scopedData && (
-                    <aside className="w-full shrink-0 overflow-hidden rounded-3xl border border-(--card-stroke) shadow-2xl lg:w-96">
+                    <aside className="w-full shrink-0 overflow-hidden rounded-3xl border border-(--border) shadow-2xl lg:w-96">
                         <InvestigationPanel
                             point={activeSelectedPoint}
                             data={scopedData}

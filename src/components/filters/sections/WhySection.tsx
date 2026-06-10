@@ -16,7 +16,7 @@ export function WhySection({
     workCategory,
 }: WhySectionProps) {
     return (
-        <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
+        <details className="rounded-2xl border border-(--border) bg-(--card-70) p-4">
             <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                 Why
             </summary>
@@ -24,7 +24,7 @@ export function WhySection({
                 <label className="flex flex-col gap-2">
                     <span className="text-xs text-(--ink-muted)">Work category</span>
                     <input
-                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        className="rounded-xl border border-(--border) bg-card px-3 py-2"
                         placeholder="feature, maintenance"
                         value={toValue(workCategory)}
                         onChange={(event) => updateWorkCategory(toList(event.target.value))}
@@ -33,7 +33,7 @@ export function WhySection({
                 <label className="flex flex-col gap-2">
                     <span className="text-xs text-(--ink-muted)">Issue type</span>
                     <input
-                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                        className="rounded-xl border border-(--border) bg-card px-3 py-2"
                         placeholder="bug, story"
                         value={toValue(issueType)}
                         onChange={(event) => updateIssueType(toList(event.target.value))}

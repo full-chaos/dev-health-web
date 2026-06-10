@@ -39,7 +39,7 @@ export function UserMenu() {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="cursor-pointer flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1.5 hover:bg-[var(--card-80)] transition-colors"
+                className="cursor-pointer flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 hover:bg-[var(--card-80)] transition-colors"
             >
                 <div className="h-6 w-6 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-xs font-bold">
                     {session.user?.email?.[0]?.toUpperCase() || "U"}
@@ -50,9 +50,9 @@ export function UserMenu() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md border border-[var(--card-stroke)] bg-[var(--card)] shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md border border-[var(--border)] bg-[var(--card)] shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <div className="py-1">
-                        <div className="px-4 py-2 text-xs text-[var(--ink-muted)] border-b border-[var(--card-stroke)]">
+                        <div className="px-4 py-2 text-xs text-[var(--ink-muted)] border-b border-[var(--border)]">
                             Signed in as
                             <br />
                             <span className="font-medium text-[var(--foreground)] truncate block">
@@ -82,7 +82,7 @@ export function UserMenu() {
                         >
                             Admin Panel
                         </Link>
-                        <div className="border-t border-[var(--card-stroke)]">
+                        <div className="border-t border-[var(--border)]">
                             <button
                                 type="button"
                                 onClick={() => signOut()}

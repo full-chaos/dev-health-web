@@ -42,7 +42,7 @@ export function ImproveAutomationsDashboard({
         <div className="flex flex-col gap-6" data-testid="improve-automations-dashboard">
             {/* ── Flow opportunity candidates ─────────────────────────────── */}
             <section
-                className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+                className="rounded-3xl border border-(--border) bg-card p-5 shadow-sm"
                 data-testid="improve-automations-flow-panel"
             >
                 <div className="flex items-start justify-between gap-4">
@@ -71,7 +71,7 @@ export function ImproveAutomationsDashboard({
 
             {/* ── AI-workflow cross-link ───────────────────────────────────── */}
             <section
-                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+                className="rounded-3xl border border-(--border) bg-(--card-80) p-5"
                 data-testid="improve-automations-ai-crosslink"
             >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -87,7 +87,7 @@ export function ImproveAutomationsDashboard({
                     </div>
                     <Link
                         href={aiAutomationsHref}
-                        className="shrink-0 rounded-2xl border border-(--card-stroke) bg-background px-4 py-2 text-sm font-medium hover:bg-(--card-80) transition-colors"
+                        className="shrink-0 rounded-2xl border border-(--border) bg-background px-4 py-2 text-sm font-medium hover:bg-(--card-80) transition-colors"
                         data-testid="improve-automations-ai-link"
                     >
                         View AI automations →
@@ -101,7 +101,7 @@ export function ImproveAutomationsDashboard({
 function AutomationsSkeleton() {
     return (
         <div
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+            className="rounded-3xl border border-(--border) bg-card p-5"
             data-testid="improve-automations-loading"
         >
             <div className="h-40 animate-pulse rounded-2xl bg-(--card-80)" />

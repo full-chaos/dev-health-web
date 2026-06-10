@@ -105,7 +105,7 @@ export function PendingChangesPanel() {
     }
 
     return (
-        <div className="mb-6 rounded-lg border border-(--card-stroke) bg-(--card)">
+        <div className="mb-6 rounded-lg border border-(--border) bg-(--card)">
             <button
                 type="button"
                 className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left"
@@ -121,8 +121,8 @@ export function PendingChangesPanel() {
             </button>
 
             {isOpen && (
-                <div className="border-t border-(--card-stroke)">
-                    <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-(--card-stroke) bg-(--card-80)">
+                <div className="border-t border-(--border)">
+                    <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-(--border) bg-(--card-80)">
                         <button
                             type="button"
                             onClick={() => handleBulkAction("approve")}
@@ -144,7 +144,7 @@ export function PendingChangesPanel() {
                     {changes.map((change) => (
                         <div
                             key={`${change.team_id}-${change.change_type}-${change.field ?? "all"}-${change.change_index}`}
-                            className="flex items-center justify-between border-b border-(--card-stroke) px-4 py-3 last:border-0 hover:bg-(--card-70)"
+                            className="flex items-center justify-between border-b border-(--border) px-4 py-3 last:border-0 hover:bg-(--card-70)"
                         >
                             <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-2">

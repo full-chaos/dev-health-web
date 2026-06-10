@@ -47,7 +47,7 @@ export default async function ProductTelemetryOrgDashboardPage({
         <div className="space-y-6">
             <Link
                 href={backHref}
-                className="inline-flex w-fit items-center rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition-colors hover:border-(--ink-muted) hover:text-foreground"
+                className="inline-flex w-fit items-center rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition-colors hover:border-(--ink-muted) hover:text-foreground"
             >
                 ← Back to all orgs
             </Link>

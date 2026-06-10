@@ -55,7 +55,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
             className={
                 emphasized
                     ? "relative overflow-hidden rounded-3xl border border-(--accent)/30 bg-gradient-to-br from-(--card) to-(--card-80) p-6 shadow-lg ring-1 ring-(--accent)/10"
-                    : "relative overflow-hidden rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
+                    : "relative overflow-hidden rounded-3xl border border-(--border) bg-(--card) p-5"
             }
         >
             {emphasized && (
@@ -113,7 +113,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
             <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
                 <span
                     data-testid="signal-confidence"
-                    className={`inline-flex items-center gap-1.5 rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 font-medium uppercase tracking-[0.12em] ${CONFIDENCE_TEXT[signal.confidence]}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border border-(--border) bg-(--card-70) px-2.5 py-1 font-medium uppercase tracking-[0.12em] ${CONFIDENCE_TEXT[signal.confidence]}`}
                 >
                     <span
                         className={`h-1.5 w-1.5 rounded-full ${CONFIDENCE_DOT[signal.confidence]}`}
@@ -122,13 +122,13 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
                 </span>
                 <span
                     data-testid="signal-scope"
-                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 text-(--ink-muted)"
+                    className="rounded-full border border-(--border) bg-(--card-70) px-2.5 py-1 text-(--ink-muted)"
                 >
                     {signal.affected_scope}
                 </span>
                 <span
                     data-testid="signal-evidence-count"
-                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 text-(--ink-muted)"
+                    className="rounded-full border border-(--border) bg-(--card-70) px-2.5 py-1 text-(--ink-muted)"
                 >
                     {signal.evidence_count} {signal.evidence_count === 1 ? "artifact" : "artifacts"}
                 </span>
@@ -157,7 +157,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
                 type="button"
                 data-testid="signal-open-evidence"
                 onClick={open}
-                className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"
+                className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--border) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"
             >
                 Open evidence
                 <span aria-hidden>↗</span>

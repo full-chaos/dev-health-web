@@ -12,13 +12,13 @@ export function EvidenceEntryCard({ entry }: { entry: Record<string, unknown> })
     const entries = Object.entries(entry);
     if (entries.length === 0) {
         return (
-            <div className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 text-xs text-(--ink-muted)">
+            <div className="rounded-lg border border-(--border) bg-card px-3 py-2 text-xs text-(--ink-muted)">
                 —
             </div>
         );
     }
     return (
-        <div className="rounded-lg border border-(--card-stroke) bg-card px-3 py-2 text-xs">
+        <div className="rounded-lg border border-(--border) bg-card px-3 py-2 text-xs">
             <dl className="space-y-1">
                 {entries.map(([key, value]) => {
                     const label = key

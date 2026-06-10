@@ -214,7 +214,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                 {(person?.identities ?? []).map((identity) => (
                                     <span
                                         key={`${personId}-${identity.provider}-${identity.handle}`}
-                                        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
+                                        className="rounded-full border border-(--border) bg-(--card-70) px-3 py-1"
                                     >
                                         {identity.provider}: {identity.handle}
                                     </span>
@@ -228,7 +228,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                     range_days,
                                     compare_days,
                                 )}
-                                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                                className="rounded-full border border-(--border) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                             >
                                 Back to individual
                             </Link>
@@ -244,7 +244,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                     <PersonRangeBar rangeDays={range_days} />
 
                     <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                        <div className="rounded-3xl border border-(--border) bg-(--card-80) p-6">
                             <h2 className="font-(--font-display) text-xl">Definition</h2>
                             <p className="mt-2 text-sm text-(--ink-muted)">
                                 {definitionSummary ??
@@ -260,7 +260,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                     {definitionEntries.map(([key, value]) => (
                                         <div
                                             key={key}
-                                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
+                                            className="flex items-center justify-between rounded-2xl border border-(--border) bg-card px-3 py-2"
                                         >
                                             <span className="uppercase tracking-[0.2em]">
                                                 {key.replace(/[_-]+/g, " ")}
@@ -276,7 +276,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                             )}
                         </div>
 
-                        <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+                        <div className="rounded-3xl border border-(--border) bg-card p-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">Timeseries</h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -287,7 +287,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                 {timeseries.length ? (
                                     <TimeseriesChart data={timeseries} height={240} />
                                 ) : (
-                                    <div className="flex h-[240px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                    <div className="flex h-[240px] items-center justify-center rounded-3xl border border-dashed border-(--border) bg-(--card-60) text-sm text-(--ink-muted)">
                                         Timeseries data unavailable.
                                     </div>
                                 )}
@@ -329,7 +329,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                             return (
                                 <div
                                     key={group.id}
-                                    className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                                    className="rounded-3xl border border-(--border) bg-card p-5"
                                 >
                                     <div className="flex items-center justify-between">
                                         <h2 className="font-(--font-display) text-xl">
@@ -353,7 +353,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                                 }
                                             />
                                         ) : (
-                                            <div className="flex h-[220px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                            <div className="flex h-[220px] items-center justify-center rounded-3xl border border-dashed border-(--border) bg-(--card-60) text-sm text-(--ink-muted)">
                                                 No breakdown data.
                                             </div>
                                         )}
@@ -362,7 +362,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                         {group.items.map((item, index) => (
                                             <div
                                                 key={`${group.id}-${item.label ?? "unknown"}-${index}`}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                                className="flex items-center justify-between rounded-2xl border border-(--border) bg-(--card-70) px-3 py-2"
                                             >
                                                 {group.isEntity ? (
                                                     <EntityLabel id={item.label} />
@@ -381,7 +381,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                     </section>
 
                     <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                        <div className="rounded-3xl border border-(--border) bg-card p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">Associations</h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -396,7 +396,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                         return (
                                             <div
                                                 key={`${driver.text}-${idx}`}
-                                                className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
+                                                className="rounded-2xl border border-(--border) bg-(--card-70) px-4 py-3"
                                             >
                                                 <p className="text-sm text-foreground">
                                                     {driver.text}
@@ -413,14 +413,14 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                         );
                                     })
                                 ) : (
-                                    <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
+                                    <p className="rounded-2xl border border-dashed border-(--border) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
                                         Association statements will appear once data is ingested.
                                     </p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                        <div className="rounded-3xl border border-(--border) bg-(--card-80) p-5">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">
                                     {CTA_LABELS.evidence}
@@ -435,7 +435,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                     className={`rounded-full border px-3 py-2 ${
                                         evidenceType === "prs"
                                             ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                            : "border-(--card-stroke) text-(--ink-muted)"
+                                            : "border-(--border) text-(--ink-muted)"
                                     }`}
                                 >
                                     PRs
@@ -445,7 +445,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                     className={`rounded-full border px-3 py-2 ${
                                         evidenceType === "issues"
                                             ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                            : "border-(--card-stroke) text-(--ink-muted)"
+                                            : "border-(--border) text-(--ink-muted)"
                                     }`}
                                 >
                                     Issues
@@ -456,10 +456,10 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                     <table className="min-w-full border-collapse">
                                         <thead className="text-left text-(--ink-muted)">
                                             <tr>
-                                                <th className="border-b border-(--card-stroke) pb-2">
+                                                <th className="border-b border-(--border) pb-2">
                                                     Item
                                                 </th>
-                                                <th className="border-b border-(--card-stroke) pb-2">
+                                                <th className="border-b border-(--border) pb-2">
                                                     Details
                                                 </th>
                                             </tr>
@@ -471,7 +471,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                                 return (
                                                     <tr
                                                         key={`item-${idx}`}
-                                                        className="border-b border-(--card-stroke)"
+                                                        className="border-b border-(--border)"
                                                     >
                                                         <td className="py-2 pr-4 font-medium">
                                                             <a
@@ -502,7 +502,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                 </div>
                             )}
                             {!evidenceType && (
-                                <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
+                                <div className="mt-4 rounded-2xl border border-dashed border-(--border) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
                                     Choose PRs or Issues to review evidence.
                                 </div>
                             )}

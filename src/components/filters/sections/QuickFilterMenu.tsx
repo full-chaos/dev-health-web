@@ -35,7 +35,7 @@ export function QuickFilterMenu({
             <button
                 type="button"
                 onClick={() => setOpenMenu(openMenu === menuKey ? null : menuKey)}
-                className={`flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs ${
+                className={`flex items-center gap-2 rounded-full border border-(--border) bg-card px-4 py-2 text-xs ${
                     variant === "accent" && isActive ? "border-(--accent) text-(--accent)" : ""
                 }`}
                 aria-expanded={openMenu === menuKey}
@@ -45,7 +45,7 @@ export function QuickFilterMenu({
                 <span className="text-(--ink-muted)">▾</span>
             </button>
             {openMenu === menuKey && (
-                <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
+                <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--border) bg-card p-4 shadow-lg">
                     <div className="max-h-56 overflow-auto">
                         <OptionList
                             emptyLabel={emptyLabel}

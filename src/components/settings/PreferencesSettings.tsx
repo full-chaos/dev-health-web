@@ -134,7 +134,7 @@ export function PreferencesSettings() {
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                 theme === "light"
                                     ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                                    : "border-(--border) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
                             <span className="block text-lg mb-1">☀️</span>
@@ -146,7 +146,7 @@ export function PreferencesSettings() {
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                 theme === "dark"
                                     ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                                    : "border-(--border) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
                             <span className="block text-lg mb-1">🌙</span>
@@ -168,7 +168,7 @@ export function PreferencesSettings() {
                                 className={`rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                     palette === p.value
                                         ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                                        : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                                        : "border-(--border) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                                 }`}
                             >
                                 {p.label}
@@ -195,7 +195,7 @@ export function PreferencesSettings() {
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                 !telemetryOptedOut
                                     ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                                    : "border-(--border) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
                             Enabled
@@ -207,7 +207,7 @@ export function PreferencesSettings() {
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                 telemetryOptedOut
                                     ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
+                                    : "border-(--border) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
                             Disabled

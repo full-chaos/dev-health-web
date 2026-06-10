@@ -18,7 +18,7 @@ export default function ForgotPasswordPage() {
                     </p>
                 </div>
 
-                <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
+                <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--border)]">
                     <ForgotPasswordForm />
                 </div>
             </div>

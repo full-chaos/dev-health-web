@@ -19,9 +19,9 @@ function getTierBadge(tier: string) {
 
 export function LicenseTable({ orgs }: LicenseTableProps) {
     return (
-        <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
+        <div className="overflow-x-auto rounded-2xl border border-(--border) bg-(--card-80)">
             <table className="w-full text-left text-sm">
-                <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
+                <thead className="border-b border-(--border) bg-(--card-70) text-(--ink-muted)">
                     <tr>
                         <th className="px-6 py-4 font-medium">Organization</th>
                         <th className="px-6 py-4 font-medium">Slug</th>
@@ -30,7 +30,7 @@ export function LicenseTable({ orgs }: LicenseTableProps) {
                         <th className="px-6 py-4 font-medium text-right">Actions</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-(--card-stroke)">
+                <tbody className="divide-y divide-(--border)">
                     {orgs.map((org) => (
                         <tr key={org.id} className="hover:bg-(--card-70)/50">
                             <td className="px-6 py-4 font-medium text-foreground">

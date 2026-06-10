@@ -110,7 +110,7 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
                     type="text"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                    className="w-full px-3 py-2 border rounded-md border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                     placeholder="My Company"
                 />
                 <p className="text-xs text-[var(--ink-muted)]">

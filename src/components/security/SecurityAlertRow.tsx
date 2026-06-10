@@ -28,7 +28,7 @@ function relativeAge(iso: string): string {
 }
 
 const ROW_BASE =
-    "grid grid-cols-[auto_auto_1fr_auto_auto_auto_auto_auto] items-center gap-x-3 border-b border-[var(--card-stroke)] px-3 py-2 text-sm hover:bg-[var(--card-70)] transition-colors";
+    "grid grid-cols-[auto_auto_1fr_auto_auto_auto_auto_auto] items-center gap-x-3 border-b border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--card-70)] transition-colors";
 
 export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
     const {

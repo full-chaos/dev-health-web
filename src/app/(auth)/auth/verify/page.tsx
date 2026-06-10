@@ -46,7 +46,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
                         Email Verification
                     </h2>
                 </div>
-                <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
+                <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--border)]">
                     {success ? (
                         <div className="space-y-6">
                             <div className="p-4 text-sm text-green-400 bg-green-950/50 rounded-md border border-green-800 text-center">

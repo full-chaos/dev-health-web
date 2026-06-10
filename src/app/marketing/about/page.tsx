@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
     return (
         <section className="mx-auto max-w-5xl px-6 pb-24 pt-16 sm:pt-24">
-            <div className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-8 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.45)] sm:p-12">
+            <div className="rounded-[2rem] border border-(--border) bg-(--card-80) p-8 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.45)] sm:p-12">
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     About Dev Health
                 </p>
