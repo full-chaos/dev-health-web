@@ -70,20 +70,26 @@ test.describe("Improve Overview landing", () => {
         await expect(oppCard).toHaveAttribute("href", /\/opportunities/);
     });
 
-    test("keeps Experiments + Automations as non-clickable preview chips", async ({ page }) => {
+    test("Automations stays a non-clickable preview chip; Experiments is now a live link (CHAOS-2219)", async ({
+        page,
+    }) => {
         await page.goto("/improve", { waitUntil: "domcontentloaded" });
 
         const grid = page.getByTestId("area-overview-grid");
         await expect(grid).toBeVisible();
 
-        for (const label of ["Experiments", "Automations"]) {
-            const card = grid.locator("[data-signal-id]", { hasText: label });
-            await expect(card).toHaveAttribute("data-preview", "true");
-            await expect(card).toHaveAttribute("aria-disabled", "true");
-        }
-        // Preview chips are never links (dead route can't 404).
-        await expect(grid.getByRole("link", { name: "Experiments" })).toHaveCount(0);
+        // Automations: still a preview chip — route not yet shipped.
+        const automationsCard = grid.locator("[data-signal-id]", { hasText: "Automations" });
+        await expect(automationsCard).toHaveAttribute("data-preview", "true");
+        await expect(automationsCard).toHaveAttribute("aria-disabled", "true");
         await expect(grid.getByRole("link", { name: "Automations" })).toHaveCount(0);
+
+        // Experiments: promoted to a live area (CHAOS-2219) — must be a navigable link,
+        // NOT a disabled preview chip.
+        const experimentsCard = grid.locator("[data-signal-id]", { hasText: "Experiments" });
+        await expect(experimentsCard).not.toHaveAttribute("data-preview", "true");
+        await expect(experimentsCard).not.toHaveAttribute("aria-disabled", "true");
+        await expect(grid.getByRole("link", { name: "Experiments" })).toHaveCount(1);
     });
 
     test("marks Improve as the single selected area on /improve", async ({ page }) => {
