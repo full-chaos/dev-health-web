@@ -69,7 +69,7 @@ export default async function ExperimentsPage({ searchParams }: ExperimentsPageP
 
     const [health, experimentsResult] = await Promise.all([
         checkApiHealth(),
-        getExperimentsViaGraphQL(orgId),
+        getExperimentsViaGraphQL(orgId, filters),
     ]);
 
     if (!health.ok && !isTestMode) {

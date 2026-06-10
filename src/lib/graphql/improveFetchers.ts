@@ -6,24 +6,31 @@
  * data was available.
  */
 
+import type { MetricFilter } from "@/lib/filters/types";
 import { EXPERIMENTS_QUERY } from "./queries";
+import { translateMetricFilterToGraphQL } from "./investmentFetchers";
 import { graphqlFetch } from "./urqlClient";
-import type { ExperimentsQueryResponse, ExperimentsResult, FilterInput } from "./types";
+import type { ExperimentsQueryResponse, ExperimentsResult } from "./types";
 
 /**
  * Fetch derived experiments for the Improve / Experiments page.
+ *
+ * Accepts the standard MetricFilter (from URL params / filterFromQueryParams)
+ * and translates it to GraphQL FilterInput before sending — normalising
+ * scope.level from lowercase ("org", "team") to GraphQL uppercase ("ORG", "TEAM").
  *
  * Returns null if the GraphQL query fails — callers should render a DataState
  * variant rather than throwing.
  */
 export async function getExperimentsViaGraphQL(
     orgId: string,
-    filters?: FilterInput | null,
+    filters?: MetricFilter | null,
 ): Promise<ExperimentsResult | null> {
     try {
+        const graphqlFilters = filters ? translateMetricFilterToGraphQL(filters) : null;
         const response = await graphqlFetch<ExperimentsQueryResponse>(
             EXPERIMENTS_QUERY,
-            { orgId, filters: filters ?? null },
+            { orgId, filters: graphqlFilters },
             { orgId },
         );
         return response.experiments;

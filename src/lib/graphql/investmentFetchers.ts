@@ -64,8 +64,13 @@ function buildDateRange(filters: MetricFilter): {
 
 /**
  * Translate internal MetricFilter to GraphQL FilterInput.
+ *
+ * Exported for reuse by other GraphQL fetchers (e.g. improveFetchers).
+ * Key invariant: MetricFilter scope.level is lowercase ("org", "team") while
+ * the GraphQL ScopeLevelInput enum is uppercase ("ORG", "TEAM") — this
+ * function normalises the case via .toUpperCase().
  */
-function translateMetricFilterToGraphQL(filters: MetricFilter): FilterInput {
+export function translateMetricFilterToGraphQL(filters: MetricFilter): FilterInput {
     return {
         scope: {
             level: filters.scope.level.toUpperCase() as ScopeLevelInput,
