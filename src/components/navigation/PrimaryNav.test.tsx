@@ -104,12 +104,14 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.queryByRole("link", { name: /^Security$/i })).toBeNull();
     });
 
-    it("never renders preview (navVisible:false) children — verified via Improve", () => {
+    it("renders navVisible children and hides preview (navVisible:false) children — verified via Improve", () => {
         navigationMock.pathname = "/opportunities";
         render(<PrimaryNav filters={makeFilter()} active="opportunities" />);
 
+        // Opportunities and Experiments are navVisible:true → rendered.
         expect(screen.getByRole("link", { name: /^Opportunities$/i })).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: /^Experiments$/i })).toBeNull();
+        expect(screen.getByRole("link", { name: /^Experiments$/i })).toBeInTheDocument();
+        // Automations is still navVisible:false (preview) → not rendered.
         expect(screen.queryByRole("link", { name: /^Automations$/i })).toBeNull();
     });
 

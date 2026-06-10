@@ -593,3 +593,40 @@ export interface AIWorkflowDrilldownResult {
 export interface AIWorkflowDrilldownQueryResponse {
     aiWorkflowDrilldown: AIWorkflowDrilldownResult;
 }
+
+// ==== Improve — Experiments Types (CHAOS-2219) ====
+
+export type ExperimentStatus = "suggested" | "active" | "completed" | "abandoned";
+
+/**
+ * A process experiment derived from or promoted from an opportunity.
+ *
+ * v1: all experiments are derived (status="suggested") from
+ * OpportunityCard.suggested_experiments at query-time; no persistence table
+ * is used.  Fields for owned/tracked experiments (owner, stopCondition,
+ * startDate, stopDate, outcome) are included in the schema for v2 promotion.
+ *
+ * Field names match the GraphQL camelCase response format.
+ */
+export interface Experiment {
+    id: string;
+    opportunityId: string;
+    hypothesis: string;
+    metric: string;
+    owner: string;
+    stopCondition: string;
+    status: ExperimentStatus;
+    startDate: string | null;
+    stopDate: string | null;
+    outcome: string | null;
+}
+
+export interface ExperimentsResult {
+    items: Experiment[];
+    /** True when experiments were derived from live opportunity data. */
+    derivedFromOpportunities: boolean;
+}
+
+export interface ExperimentsQueryResponse {
+    experiments: ExperimentsResult;
+}
