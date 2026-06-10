@@ -28,6 +28,7 @@ import {
     executeRetentionPolicy,
     listRetentionResourceTypes,
     getOrgEntitlements,
+    createSyncConfig,
 } from "../server";
 
 function mockSession() {
@@ -131,6 +132,50 @@ describe("admin/server credential actions", () => {
             const result = await deleteCredential("github", "default");
             expect(result.error).toBeUndefined();
             expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
+            fetchSpy.mockRestore();
+        });
+    });
+});
+
+describe("admin/server sync config actions", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+    });
+
+    describe("createSyncConfig", () => {
+        it("calls revalidatePath after successful creation", async () => {
+            mockSession();
+            const cfg = {
+                id: "sc-1",
+                name: "Nightly",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: { owner: "myorg" },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2025-01-01T00:00:00Z",
+                updated_at: "2025-01-01T00:00:00Z",
+                parent_id: null,
+            };
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(new Response(JSON.stringify(cfg), { status: 200 }));
+
+            const result = await createSyncConfig({
+                name: "Nightly",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: { owner: "myorg" },
+            });
+            expect(result.data).toBeDefined();
+            expect(revalidatePath).toHaveBeenCalledWith("/admin/sync");
             fetchSpy.mockRestore();
         });
     });
