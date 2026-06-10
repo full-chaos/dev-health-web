@@ -156,9 +156,7 @@ export const METRIC_CATEGORY_MAP: Record<string, string> = {
  */
 export function sortDeltasByRole(deltas: MetricDelta[], lensId: string): MetricDelta[] {
     // 1. Pre-sort by magnitude so stable sort preserves within-category ordering.
-    const byMagnitude = [...deltas].sort(
-        (a, b) => Math.abs(b.delta_pct) - Math.abs(a.delta_pct),
-    );
+    const byMagnitude = [...deltas].sort((a, b) => Math.abs(b.delta_pct) - Math.abs(a.delta_pct));
     // 2. Wrap as category-proxy items: applyLensPriority orders by item.id.
     const proxied = byMagnitude.map((delta) => ({
         id: METRIC_CATEGORY_MAP[delta.metric] ?? delta.metric,

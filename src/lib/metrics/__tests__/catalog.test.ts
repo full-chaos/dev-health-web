@@ -90,12 +90,7 @@ describe("sortDeltasByRole", () => {
             makeDelta("coverage"),
         ];
         const sorted = sortDeltasByRole(deltas, ROLE_CONFIGS.leadership.id);
-        expect(sorted.map((d) => d.metric)).toEqual([
-            "coverage",
-            "churn",
-            "cycle_time",
-            "wip",
-        ]);
+        expect(sorted.map((d) => d.metric)).toEqual(["coverage", "churn", "cycle_time", "wip"]);
     });
 
     it("within same category, surfaces the largest absolute delta_pct first", () => {

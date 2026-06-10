@@ -83,7 +83,10 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                 </div>
 
                 {sortedDeltas.length > 0 ? (
-                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="key-shifts-grid">
+                    <div
+                        className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4"
+                        data-testid="key-shifts-grid"
+                    >
                         {/* Role-priority ordering intentionally trumps magnitude; show top 8 per window. */}
                         {sortedDeltas.slice(0, 8).map((delta) => (
                             <Link

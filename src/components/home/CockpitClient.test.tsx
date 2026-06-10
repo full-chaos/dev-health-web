@@ -32,8 +32,22 @@ const makeHome = (overrides: Partial<HomeResponse> = {}): HomeResponse => ({
         },
     },
     deltas: [
-        { metric: "cycle_time", label: "Cycle Time", value: 48, unit: "hours", delta_pct: -12, spark: [] },
-        { metric: "review_latency", label: "Review Latency", value: 6, unit: "hours", delta_pct: -5, spark: [] },
+        {
+            metric: "cycle_time",
+            label: "Cycle Time",
+            value: 48,
+            unit: "hours",
+            delta_pct: -12,
+            spark: [],
+        },
+        {
+            metric: "review_latency",
+            label: "Review Latency",
+            value: 6,
+            unit: "hours",
+            delta_pct: -5,
+            spark: [],
+        },
         { metric: "wip", label: "WIP", value: 8, unit: "items", delta_pct: 10, spark: [] },
         { metric: "churn", label: "Code Churn", value: 18, unit: "%", delta_pct: 3, spark: [] },
     ],
@@ -71,7 +85,11 @@ describe("CockpitClient — Key Shifts row", () => {
             freshness: {
                 last_ingested_at: null,
                 sources: { github: "ok" },
-                coverage: { repos_covered_pct: 80, prs_linked_to_issues_pct: 0, issues_with_cycle_states_pct: 0 },
+                coverage: {
+                    repos_covered_pct: 80,
+                    prs_linked_to_issues_pct: 0,
+                    issues_with_cycle_states_pct: 0,
+                },
             },
         });
         render(<CockpitClient home={homeWithSources} filters={filters} activeRole="ic" />);
