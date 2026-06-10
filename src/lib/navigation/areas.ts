@@ -324,6 +324,12 @@ export const navAreas: readonly NavArea[] = [
                 navVisible: true,
             },
             {
+                id: "backlog-risk",
+                label: "Backlog Risk",
+                path: "/plan/backlog-risk",
+                navVisible: true,
+            },
+            {
                 id: "operating-review",
                 label: "Operating Review",
                 path: "/operating-review",
