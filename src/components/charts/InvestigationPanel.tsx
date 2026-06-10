@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActiveRole } from "@/components/RoleSelector";
+import { useActiveRole } from "@/lib/lensContext.client";
 import { getRoleConfig } from "@/lib/roleContext";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActiveRole } from "@/components/RoleSelector";
+import { useActiveRole } from "@/lib/lensContext.client";
 import { getRoleConfig } from "@/lib/roleContext";
 
 type EvidenceData = {
