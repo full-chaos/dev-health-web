@@ -11,7 +11,7 @@ import {
     formatWorkUnitLabel,
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { MetricDelta } from "@/lib/types";
+import type { MetricDelta, ReworkThemeAllocation } from "@/lib/types";
 import { type InvestmentTab } from "./investment/types";
 import { useInvestmentData } from "./investment/useInvestmentData";
 import { InvestmentExplainer } from "./investment/InvestmentExplainer";
@@ -27,8 +27,10 @@ type InvestmentViewProps = {
     filters: MetricFilter;
     activeRole?: string;
     activeTab?: InvestmentTab;
-    /** Real `rework_ratio` metric for the Rework tab; absent → honest empty. */
+    /** Real `pr_rework_ratio` metric for the Rework card; absent → honest empty. */
     reworkMetric?: MetricDelta;
+    /** Per-theme rework breakdown from home; absent/empty → honest empty. */
+    reworkThemeAllocation?: ReworkThemeAllocation[];
 };
 
 // ── Sub-sections (render helpers) ────────────────────────────────────────────
@@ -103,6 +105,7 @@ export function InvestmentView({
     activeRole,
     activeTab = "overview",
     reworkMetric,
+    reworkThemeAllocation,
 }: InvestmentViewProps) {
     const data = useInvestmentData({ filters });
 
@@ -457,6 +460,7 @@ export function InvestmentView({
                 repoTeamFlow={data.repoTeamFlow}
                 isCategoryFlowLoading={data.isCategoryFlowLoading}
                 reworkMetric={reworkMetric}
+                reworkThemeAllocation={reworkThemeAllocation}
             />
         );
     }

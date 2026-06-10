@@ -1698,6 +1698,15 @@ export const handlers = [
                     delta_pct: -5,
                 },
                 { metric: "churn", label: "Churn", unit: "%", value: 18, delta_pct: 3 },
+                // CHAOS-2163: pr_rework_ratio replaces legacy rework_ratio on the Investment/Quality rework card.
+                // value is already a 0-100 percentage (ops emits value * 100).
+                {
+                    metric: "pr_rework_ratio",
+                    label: "PR Rework Ratio",
+                    unit: "%",
+                    value: 18,
+                    delta_pct: -3,
+                },
             ],
             summary: [{ text: "Team velocity appears stable over the past 14 days." }],
             tiles: {},
@@ -1766,6 +1775,50 @@ export const handlers = [
                 missing_sources: ["CI", "Incidents"],
                 caveats: ["Some repos lack linked issues."],
             },
+            // CHAOS-2163: allocation_pct is already 0-100 (ops computes allocation/total*100.0).
+            // Themes are canonical keys from investment_taxonomy.py.
+            rework_theme_allocation: [
+                {
+                    theme: "feature_delivery",
+                    label: "Feature Delivery",
+                    allocation: 120,
+                    allocation_pct: 40,
+                    prs_merged: 120,
+                    churn_loc: 45000,
+                },
+                {
+                    theme: "maintenance",
+                    label: "Maintenance / Tech Debt",
+                    allocation: 75,
+                    allocation_pct: 25,
+                    prs_merged: 75,
+                    churn_loc: 28000,
+                },
+                {
+                    theme: "quality",
+                    label: "Quality / Reliability",
+                    allocation: 60,
+                    allocation_pct: 20,
+                    prs_merged: 60,
+                    churn_loc: 22000,
+                },
+                {
+                    theme: "operational",
+                    label: "Operational / Support",
+                    allocation: 30,
+                    allocation_pct: 10,
+                    prs_merged: 30,
+                    churn_loc: 11000,
+                },
+                {
+                    theme: "risk",
+                    label: "Risk / Security",
+                    allocation: 15,
+                    allocation_pct: 5,
+                    prs_merged: 15,
+                    churn_loc: 5500,
+                },
+            ],
         }),
     ),
 

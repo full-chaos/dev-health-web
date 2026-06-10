@@ -117,8 +117,8 @@ function makeData(overrides: Partial<UseInvestmentDataResult> = {}): UseInvestme
 }
 
 const reworkMetric: MetricDelta = {
-    metric: "rework_ratio",
-    label: "Rework Ratio",
+    metric: "pr_rework_ratio",
+    label: "PR Rework Ratio",
     value: 96,
     unit: "%",
     delta_pct: 4,
@@ -135,7 +135,7 @@ describe("InvestmentView — Confidence tab", () => {
         useInvestmentDataMock.mockReset();
     });
 
-    it("renders the real rework_ratio MetricCard when a metric is provided", () => {
+    it("renders the real pr_rework_ratio MetricCard when a metric is provided", () => {
         useInvestmentDataMock.mockReturnValue(makeData());
         render(
             <InvestmentView
@@ -145,14 +145,14 @@ describe("InvestmentView — Confidence tab", () => {
             />,
         );
 
-        expect(screen.getByText("Rework ratio")).toBeInTheDocument();
+        expect(screen.getByText("PR Rework Ratio")).toBeInTheDocument();
         expect(screen.getByText(/96%/)).toBeInTheDocument();
         expect(screen.getByText(/\+4%/)).toBeInTheDocument();
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();
         expect(screen.queryByText(/Rework signal not available yet/i)).not.toBeInTheDocument();
     });
 
-    it("links the rework MetricCard into Explore for the rework_ratio metric", () => {
+    it("links the rework MetricCard into Explore for the pr_rework_ratio metric", () => {
         useInvestmentDataMock.mockReturnValue(makeData());
         render(
             <InvestmentView
@@ -161,9 +161,9 @@ describe("InvestmentView — Confidence tab", () => {
                 reworkMetric={reworkMetric}
             />,
         );
-        const link = screen.getByRole("link", { name: /rework ratio/i });
+        const link = screen.getByRole("link", { name: /pr rework ratio/i });
         expect(link).toHaveAttribute("href", expect.stringContaining("/explore"));
-        expect(link).toHaveAttribute("href", expect.stringContaining("metric=rework_ratio"));
+        expect(link).toHaveAttribute("href", expect.stringContaining("metric=pr_rework_ratio"));
     });
 
     it("renders the honest empty state when no rework metric is available", () => {
@@ -171,7 +171,51 @@ describe("InvestmentView — Confidence tab", () => {
         render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
 
         expect(screen.getByText(/Rework signal not available yet/i)).toBeInTheDocument();
-        expect(screen.queryByText("Rework ratio")).not.toBeInTheDocument();
+        expect(screen.queryByText("PR Rework Ratio")).not.toBeInTheDocument();
+    });
+
+    // Contract: allocation_pct from ops is already in 0-100 range; NO ×100 multiplication.
+    // A backend value of 25 must render as "25%" label and a 25%-width bar.
+    it("renders rework theme allocation with allocation_pct already in 0-100 range (no double-scaling)", () => {
+        useInvestmentDataMock.mockReturnValue(makeData());
+        const { container } = render(
+            <InvestmentView
+                filters={baseFilters}
+                activeTab="confidence"
+                reworkThemeAllocation={[
+                    {
+                        theme: "maintenance",
+                        label: "Maintenance / Tech Debt",
+                        allocation: 75,
+                        allocation_pct: 25,
+                        prs_merged: 75,
+                        churn_loc: 28000,
+                    },
+                ]}
+            />,
+        );
+
+        // Label shows "25%", not "2500%"
+        expect(screen.getByText("25%")).toBeInTheDocument();
+        // Theme label is rendered
+        expect(screen.getByText("Maintenance / Tech Debt")).toBeInTheDocument();
+        // Bar div has width: 25%, not width: 2500%
+        const bar = container.querySelector('[style*="width: 25%"]');
+        expect(bar).not.toBeNull();
+    });
+
+    it("hides the rework theme breakdown section when allocation is empty", () => {
+        useInvestmentDataMock.mockReturnValue(makeData());
+        const { container } = render(
+            <InvestmentView
+                filters={baseFilters}
+                activeTab="confidence"
+                reworkThemeAllocation={[]}
+            />,
+        );
+
+        expect(screen.queryByText(/Rework by theme/i)).not.toBeInTheDocument();
+        expect(container.querySelector('[style*="width:"]')).toBeNull();
     });
 
     it("renders the evidence-quality band encoding from the persisted distribution", () => {

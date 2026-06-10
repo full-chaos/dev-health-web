@@ -64,7 +64,8 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         : null;
     const features = entitlements?.data?.features ?? {};
 
-    const reworkMetric = getMetric(home?.deltas ?? [], "rework_ratio");
+    const reworkMetric = getMetric(home?.deltas ?? [], "pr_rework_ratio");
+    const reworkThemeAllocation = home?.rework_theme_allocation ?? [];
 
     const tabs: ViewSetItem[] = INVESTMENT_TABS.map((id) => ({
         id,
@@ -146,6 +147,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                             activeRole={activeRole}
                             activeTab={activeTab}
                             reworkMetric={reworkMetric}
+                            reworkThemeAllocation={reworkThemeAllocation}
                         />
                     </UpgradeGate>
                 </main>

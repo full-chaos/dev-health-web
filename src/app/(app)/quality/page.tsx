@@ -12,7 +12,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue } from "@/lib/formatters";
+import { formatDelta, formatMetricValue, formatNumber } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
@@ -53,7 +53,8 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 
     const changeFailureMetric = getMetric(deltas, "change_failure_rate");
     const ciMetric = getMetric(deltas, "ci_success");
-    const reworkMetric = getMetric(deltas, "rework_ratio");
+    const reworkMetric = getMetric(deltas, "pr_rework_ratio");
+    const reworkThemeAllocation = home?.rework_theme_allocation ?? [];
 
     const drivers = (explain?.drivers ?? []).slice(0, 5);
     const contributors = (explain?.contributors ?? []).slice(0, 5);
@@ -124,9 +125,9 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                             caption="Pipeline success"
                         />
                         <MetricCard
-                            label={reworkMetric?.label ?? "Rework Ratio"}
+                            label={reworkMetric?.label ?? "PR Rework Ratio"}
                             href={buildExploreUrl({
-                                metric: "rework_ratio",
+                                metric: "pr_rework_ratio",
                                 filters,
                                 role: activeRole,
                             })}
@@ -134,9 +135,54 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                             unit={reworkMetric?.unit}
                             delta={placeholderDeltas ? undefined : reworkMetric?.delta_pct}
                             spark={reworkMetric?.spark}
-                            caption="Churn from rework"
+                            caption="PRs requiring rework"
                         />
                     </section>
+
+                    {reworkThemeAllocation.length > 0 && (
+                        <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                            <h2 className="font-(--font-display) text-xl">Rework by Theme</h2>
+                            <p className="mt-1 text-sm text-(--ink-muted)">
+                                Distribution of rework pressure across investment themes in the
+                                selected window.
+                            </p>
+                            <ul className="mt-4 space-y-4">
+                                {reworkThemeAllocation.map((row) => (
+                                    <li key={row.theme}>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="font-medium">{row.label}</span>
+                                            <span className="text-xs text-(--ink-muted)">
+                                                {formatNumber(row.allocation_pct, {
+                                                    maximumFractionDigits: 1,
+                                                })}
+                                                %
+                                            </span>
+                                        </div>
+                                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-(--card-stroke)">
+                                            <div
+                                                className="h-full rounded-full bg-(--accent-2)"
+                                                style={{
+                                                    width: `${Math.min(100, row.allocation_pct)}%`,
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="mt-1 flex gap-3 text-[11px] text-(--ink-muted)">
+                                            <span>
+                                                {row.prs_merged.toLocaleString()} PR
+                                                {row.prs_merged !== 1 ? "s" : ""}
+                                            </span>
+                                            <span>
+                                                {formatNumber(row.churn_loc / 1000, {
+                                                    maximumFractionDigits: 1,
+                                                })}
+                                                k churn LOC
+                                            </span>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
 
                     <section className="grid gap-6 lg:grid-cols-2">
                         <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
