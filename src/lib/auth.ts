@@ -327,6 +327,10 @@ const nextAuth = NextAuth({
             // Only runs when token is NOT expired (fresh or just-refreshed).
             // Runs every 5 minutes, skips on initial login.
             const VALIDATION_INTERVAL = 5 * 60 * 1000;
+            // On a failed validation attempt (429/5xx/network), retry after a short
+            // backoff instead of on every request — otherwise a rate-limited backend
+            // gets hammered by every JWT callback until one succeeds (CHAOS-2232).
+            const VALIDATION_BACKOFF = 60 * 1000;
             if (
                 !user &&
                 token.access_token &&
@@ -349,9 +353,22 @@ const nextAuth = NextAuth({
                             return token;
                         }
                         token.last_validated = now;
+                    } else if (res.status === 429 || res.status >= 500) {
+                        // 429/5xx — transient; don't invalidate, retry after backoff
+                        token.last_validated = now - VALIDATION_INTERVAL + VALIDATION_BACKOFF;
+                    } else {
+                        // Other 4xx (400/401/403/422) — the backend rejected the token
+                        // outright; no backoff reprieve. Defense-in-depth: the endpoint
+                        // normally signals bad tokens via 200 + valid:false.
+                        token.access_token = undefined;
+                        token.refresh_token = undefined;
+                        token.error = "user_invalid";
+                        return token;
                     }
                 } catch {
-                    // Network error — don't invalidate for transient failures
+                    // Network error — don't invalidate for transient failures,
+                    // but back off instead of retrying on every request
+                    token.last_validated = now - VALIDATION_INTERVAL + VALIDATION_BACKOFF;
                 }
             }
 

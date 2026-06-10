@@ -389,4 +389,134 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.expires_at as number).toBeGreaterThan(Date.now());
         expect(result.error).toBeUndefined();
     });
+
+    // CHAOS-2232: periodic /auth/validate backoff — a 429/5xx/network failure must
+    // not invalidate the session AND must not retry on every subsequent request.
+    const VALIDATION_INTERVAL = 5 * 60 * 1000;
+
+    function validationDueToken(): Record<string, unknown> {
+        return {
+            id: "user-1",
+            access_token: "valid-access",
+            refresh_token: "valid-refresh",
+            expires_at: Date.now() + 3600 * 1000, // not expired — skips refresh path
+            last_validated: Date.now() - VALIDATION_INTERVAL - 1000, // validation due
+        };
+    }
+
+    it("(f) 429 on /auth/validate preserves session and backs off instead of retrying every request", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 429,
+            json: async () => ({ detail: "rate limited" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const first = await jwt({ token: validationDueToken(), user: null, account: null });
+
+        expect(first.access_token).toBe("valid-access");
+        expect(first.refresh_token).toBe("valid-refresh");
+        expect(first.error).toBeUndefined();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        // Backoff stamped: next attempt is deferred, not permanently skipped
+        const nextDue = (first.last_validated as number) + VALIDATION_INTERVAL;
+        expect(nextDue).toBeGreaterThan(Date.now());
+        expect(nextDue).toBeLessThanOrEqual(Date.now() + 60 * 1000);
+
+        // Immediate follow-up callback must NOT re-fetch
+        const second = await jwt({ token: first, user: null, account: null });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(second.access_token).toBe("valid-access");
+    });
+
+    it("(g) network error on /auth/validate preserves session and backs off", async () => {
+        const fetchMock = vi.fn().mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({ token: validationDueToken(), user: null, account: null });
+
+        expect(result.access_token).toBe("valid-access");
+        expect(result.error).toBeUndefined();
+        const nextDue = (result.last_validated as number) + VALIDATION_INTERVAL;
+        expect(nextDue).toBeGreaterThan(Date.now());
+
+        await jwt({ token: result, user: null, account: null });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("(h) successful validation after backoff window stamps a full interval", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ valid: true }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const token = validationDueToken();
+        // Simulate an elapsed backoff: validation due again
+        const before = Date.now();
+        const result = await jwt({ token, user: null, account: null });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(result.access_token).toBe("valid-access");
+        expect(result.last_validated as number).toBeGreaterThanOrEqual(before);
+    });
+
+    it("(i) valid:false from /auth/validate still invalidates the session", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ valid: false }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({ token: validationDueToken(), user: null, account: null });
+
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBeUndefined();
+        expect(result.error).toBe("user_invalid");
+    });
+
+    it("(j) 401 on /auth/validate invalidates the session — no backoff reprieve", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 401,
+            json: async () => ({ detail: "invalid token" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({ token: validationDueToken(), user: null, account: null });
+
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBeUndefined();
+        expect(result.error).toBe("user_invalid");
+    });
+
+    it("(k) 503 on /auth/validate preserves session and backs off", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 503,
+            json: async () => ({ detail: "service unavailable" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const first = await jwt({ token: validationDueToken(), user: null, account: null });
+
+        expect(first.access_token).toBe("valid-access");
+        expect(first.refresh_token).toBe("valid-refresh");
+        expect(first.error).toBeUndefined();
+        const nextDue = (first.last_validated as number) + VALIDATION_INTERVAL;
+        expect(nextDue).toBeGreaterThan(Date.now());
+        expect(nextDue).toBeLessThanOrEqual(Date.now() + 60 * 1000);
+
+        // Immediate follow-up callback must NOT re-fetch
+        await jwt({ token: first, user: null, account: null });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 });
