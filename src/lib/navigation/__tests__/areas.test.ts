@@ -137,6 +137,7 @@ describe("selectedAreaIdForPathname", () => {
         { pathname: "/investment", expected: "diagnose" },
         { pathname: "/people/abc", expected: "diagnose" },
         { pathname: "/landscape", expected: "diagnose" },
+        { pathname: "/explore", expected: "diagnose" },
         { pathname: "/plan", expected: "plan" },
         { pathname: "/plan/delivery-forecast", expected: "plan" },
         { pathname: "/capacity-planning", expected: "plan" },
