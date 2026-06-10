@@ -59,7 +59,7 @@ export const iaPreservationBaseline = {
         {
             areaId: "plan",
             childId: "capacity",
-            label: "Capacity Forecast",
+            label: "Completion Forecast",
             path: "/plan/capacity",
         },
         {

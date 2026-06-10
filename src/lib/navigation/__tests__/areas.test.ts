@@ -78,7 +78,7 @@ describe("navArea.children — locked child navigation", () => {
                 "People",
                 "Code",
             ],
-            Plan: ["Overview", "Capacity Forecast", "Backlog Risk", "Operating Review"],
+            Plan: ["Overview", "Completion Forecast", "Backlog Risk", "Operating Review"],
             Improve: ["Overview", "Opportunities", "Experiments", "Automations"],
             Govern: [
                 "Overview",
@@ -300,7 +300,7 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
-        expect(navTitleForPathname("/plan/capacity")).toBe("Capacity Forecast");
+        expect(navTitleForPathname("/plan/capacity")).toBe("Completion Forecast");
         expect(navTitleForPathname("/plan/backlog-risk")).toBe("Backlog Risk");
         // operating-review is hidden (navVisible: false) — title falls back to the area label.
         expect(navTitleForPathname("/operating-review")).toBe("Plan");

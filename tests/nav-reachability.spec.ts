@@ -150,7 +150,7 @@ test.describe("primary navigation reachability", () => {
         for (const child of [
             { label: "Overview", url: /\/plan(?:[?#].*)?$/, path: "/plan" },
             {
-                label: "Capacity Forecast",
+                label: "Completion Forecast",
                 url: /\/plan\/capacity(?:[?#].*)?$/,
                 path: "/plan/capacity",
             },
