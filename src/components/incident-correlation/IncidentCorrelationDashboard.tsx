@@ -6,7 +6,7 @@
  *   2. Enlarged change_failure_rate sparkline (V1 trend — no multi-week chart, see CHAOS-1757).
  *   3. Drivers + Contributors (HorizontalBarChart from getExplainData).
  *   4. Linked incidents table — client-side join of DEPLOYS + LINKED_INCIDENT edges.
- *   5. SankeyChart — top N deployments → incidents → work items (skipped when join is empty).
+ *   5. SankeyChart — top N PRs → deployments → incidents (skipped when join is empty).
  *   6. Empty state mirroring CompoundingRiskDashboard voice.
  *
  * V1 limitations (documented in PR body):
@@ -56,13 +56,40 @@ export type WorkGraphEdge = {
     provider: string | null;
 };
 
-/** Joined incident row: one incident with its linked deployments and work items. */
+/**
+ * Joined incident row: one incident with the deployments that triggered it and
+ * the PRs that caused those deployments.
+ *
+ * Backend edge semantics (CHAOS-2119 correction):
+ *   DEPLOYS:          sourceId = PR,         targetId = deployment
+ *   LINKED_INCIDENT:  sourceId = deployment,  targetId = incident
+ *
+ * The Sankey therefore flows: PR → Deployment → Incident.
+ */
 export type IncidentRow = {
     incidentId: string;
-    /** Server-resolved display name for incidentId (A7/CHAOS-2089). */
+    /** Server-resolved display name for incidentId. From LINKED_INCIDENT targetDisplayName. */
     incidentDisplayName?: string | null;
+    /** Deployment IDs linked to this incident. From LINKED_INCIDENT sourceId. */
     deploymentIds: string[];
-    workItemIds: string[];
+    /**
+     * PRs keyed by deployment ID — only the PRs that actually caused each deployment.
+     * Preserves the exact PR→deployment association so buildSankeyData can emit correct
+     * edges without cross-joining every PR to every deployment in the incident.
+     *
+     * Example: { "dep-a": ["pr-1", "pr-2"], "dep-b": ["pr-3"] }
+     */
+    prIdsByDeployment: Record<string, string[]>;
+    /**
+     * Server-resolved display names for deployment IDs (CHAOS-2119).
+     * Populated from LINKED_INCIDENT edge sourceDisplayName (deployment name).
+     */
+    deploymentDisplayNames?: Record<string, string | null>;
+    /**
+     * Server-resolved display names for all PR IDs across all deployments (CHAOS-2119).
+     * Populated from DEPLOYS edge sourceDisplayName (PR name).
+     */
+    prDisplayNames?: Record<string, string | null>;
 };
 
 export type IncidentCorrelationDashboardProps = {
@@ -97,11 +124,13 @@ const hasMeaningfulAssociations = (items: Contributor[]) =>
 // ---------------------------------------------------------------------------
 
 /**
- * Join DEPLOYS and LINKED_INCIDENT edge sets by incident ID.
+ * Join DEPLOYS and LINKED_INCIDENT edge sets into incident-centric rows.
  *
- * Convention (consistent with dev-health-ops backend):
- *   DEPLOYS:          sourceId = deployment,  targetId = incident
- *   LINKED_INCIDENT:  sourceId = incident,    targetId = work_item
+ * Authoritative backend semantics (ops/work_graph/models.py, ai_workflow.py):
+ *   DEPLOYS:          source = PR,         target = deployment
+ *   LINKED_INCIDENT:  source = deployment,  target = incident
+ *
+ * Produced Sankey flow: PR → Deployment → Incident
  *
  * V1 limitation: no time-windowed filtering — schema doesn't support it.
  */
@@ -109,43 +138,94 @@ export function joinEdges(
     deploysEdges: WorkGraphEdge[],
     incidentEdges: WorkGraphEdge[],
 ): IncidentRow[] {
-    const deploysByIncident = new Map<string, Set<string>>();
+    // ── Step 1: LINKED_INCIDENT (deployment → incident) ─────────────────────
+    // incidentId = targetId, deploymentId = sourceId
+    const deploymentsByIncident = new Map<string, Set<string>>();
     const incidentDisplayNames = new Map<string, string | null>();
-    for (const edge of deploysEdges) {
-        const incidentId = edge.targetId;
-        const deploymentId = edge.sourceId;
-        if (!deploysByIncident.has(incidentId)) {
-            deploysByIncident.set(incidentId, new Set());
-        }
-        deploysByIncident.get(incidentId)!.add(deploymentId);
-        const displayName = edge.targetDisplayName ?? null;
-        if (displayName || !incidentDisplayNames.has(incidentId)) {
-            incidentDisplayNames.set(incidentId, displayName);
-        }
-    }
+    // deployment display name: from LINKED_INCIDENT sourceDisplayName
+    const deploymentDisplayNames = new Map<string, string | null>();
 
-    const workItemsByIncident = new Map<string, Set<string>>();
     for (const edge of incidentEdges) {
-        const incidentId = edge.sourceId;
-        const workItemId = edge.targetId;
-        if (!workItemsByIncident.has(incidentId)) {
-            workItemsByIncident.set(incidentId, new Set());
+        const incidentId = edge.targetId; // LINKED_INCIDENT target = incident
+        const deploymentId = edge.sourceId; // LINKED_INCIDENT source = deployment
+        if (!deploymentsByIncident.has(incidentId)) {
+            deploymentsByIncident.set(incidentId, new Set());
         }
-        workItemsByIncident.get(incidentId)!.add(workItemId);
-        const displayName = edge.sourceDisplayName ?? null;
+        deploymentsByIncident.get(incidentId)!.add(deploymentId);
+
+        // Incident display name from targetDisplayName.
+        // First non-null value wins; null fills only if no entry yet.
+        const incName = edge.targetDisplayName ?? null;
         if (!incidentDisplayNames.has(incidentId)) {
-            incidentDisplayNames.set(incidentId, displayName);
+            incidentDisplayNames.set(incidentId, incName);
+        } else if (incidentDisplayNames.get(incidentId) == null && incName != null) {
+            incidentDisplayNames.set(incidentId, incName);
+        }
+        // Deployment display name from sourceDisplayName. First non-null wins.
+        if (!deploymentDisplayNames.has(deploymentId)) {
+            deploymentDisplayNames.set(deploymentId, edge.sourceDisplayName ?? null);
+        } else if (
+            deploymentDisplayNames.get(deploymentId) == null &&
+            edge.sourceDisplayName != null
+        ) {
+            deploymentDisplayNames.set(deploymentId, edge.sourceDisplayName);
         }
     }
 
-    const allIncidentIds = new Set([...deploysByIncident.keys(), ...workItemsByIncident.keys()]);
+    // ── Step 2: DEPLOYS (PR → deployment) ───────────────────────────────────
+    // prId = sourceId, deploymentId = targetId
+    const prsByDeployment = new Map<string, Set<string>>();
+    const prDisplayNames = new Map<string, string | null>();
 
-    return Array.from(allIncidentIds).map((incidentId) => ({
-        incidentId,
-        incidentDisplayName: incidentDisplayNames.get(incidentId) ?? null,
-        deploymentIds: Array.from(deploysByIncident.get(incidentId) ?? []),
-        workItemIds: Array.from(workItemsByIncident.get(incidentId) ?? []),
-    }));
+    for (const edge of deploysEdges) {
+        const prId = edge.sourceId; // DEPLOYS source = PR
+        const deploymentId = edge.targetId; // DEPLOYS target = deployment
+        if (!prsByDeployment.has(deploymentId)) {
+            prsByDeployment.set(deploymentId, new Set());
+        }
+        prsByDeployment.get(deploymentId)!.add(prId);
+
+        // PR display name from DEPLOYS sourceDisplayName
+        if (edge.sourceDisplayName != null) {
+            prDisplayNames.set(prId, edge.sourceDisplayName);
+        } else if (!prDisplayNames.has(prId)) {
+            prDisplayNames.set(prId, null);
+        }
+        // Deployment display name may also come from DEPLOYS targetDisplayName
+        if (edge.targetDisplayName != null && !deploymentDisplayNames.has(deploymentId)) {
+            deploymentDisplayNames.set(deploymentId, edge.targetDisplayName);
+        }
+    }
+
+    // ── Step 3: Build incident-centric rows ─────────────────────────────────
+    return Array.from(deploymentsByIncident.keys()).map((incidentId) => {
+        const depIds = Array.from(deploymentsByIncident.get(incidentId) ?? []);
+
+        // Preserve the PR→deployment association: keyed by deploymentId so
+        // buildSankeyData can emit only the true PR→deployment edges (no cross-join).
+        const prIdsByDeployment: Record<string, string[]> = {};
+        const allPrIds = new Set<string>();
+        for (const depId of depIds) {
+            const prs = Array.from(prsByDeployment.get(depId) ?? []);
+            prIdsByDeployment[depId] = prs;
+            for (const prId of prs) {
+                allPrIds.add(prId);
+            }
+        }
+
+        return {
+            incidentId,
+            incidentDisplayName: incidentDisplayNames.get(incidentId) ?? null,
+            deploymentIds: depIds,
+            prIdsByDeployment,
+            deploymentDisplayNames: Object.fromEntries(
+                depIds.map((id) => [id, deploymentDisplayNames.get(id) ?? null]),
+            ),
+            prDisplayNames: Object.fromEntries(
+                Array.from(allPrIds).map((id) => [id, prDisplayNames.get(id) ?? null]),
+            ),
+        };
+    });
 }
 
 /**
@@ -158,29 +238,57 @@ export function buildSankeyData(
     const limited = rows.slice(0, MAX_SANKEY_INCIDENTS);
     const nodes: SankeyNode[] = [];
     const links: SankeyLink[] = [];
+
+    // CHAOS-2118: key nodes by (type, id) — a composite to prevent two different
+    // node types whose raw UUIDs happen to be equal from merging into one node.
+    // Links also reference by nodeKey so display-name collisions are impossible.
     const seen = new Set<string>();
 
-    const addNode = (name: string, group: string) => {
-        if (!seen.has(name)) {
-            nodes.push({ name, group });
-            seen.add(name);
+    const makeNodeKey = (group: string, rawId: string) => `${group}:${rawId}`;
+
+    // nodeKey serves as SankeyNode.id — the ECharts adapter uses node.id when
+    // present, so this key is what ECharts sees internally.
+    const addNode = (rawId: string, name: string, group: string) => {
+        const nodeKey = makeNodeKey(group, rawId);
+        if (!seen.has(nodeKey)) {
+            nodes.push({ id: nodeKey, name, group });
+            seen.add(nodeKey);
         }
     };
 
     for (const row of limited) {
-        const incName = row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
-        addNode(incName, "incident");
+        // Incident label: prefer server-resolved display name; fall back to short ID prefix
+        const incLabel = row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
+        addNode(row.incidentId, incLabel, "incident");
+        const incKey = makeNodeKey("incident", row.incidentId);
 
         for (const depId of row.deploymentIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
-            const depName = `dep:${depId.slice(0, 8)}`;
-            addNode(depName, "deployment");
-            links.push({ source: depName, target: incName, value: 1 });
+            // CHAOS-2119: use server-resolved deployment name when available
+            const resolved = row.deploymentDisplayNames?.[depId];
+            const depLabel = resolved?.trim() || `dep:${depId.slice(0, 8)}`;
+            addNode(depId, depLabel, "deployment");
+            const depKey = makeNodeKey("deployment", depId);
+            // Flow: deployment → incident (link by composite key, never by label)
+            links.push({ source: depKey, target: incKey, value: 1 });
         }
 
-        for (const wiId of row.workItemIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
-            const wiName = `wi:${wiId.slice(0, 8)}`;
-            addNode(wiName, "work_item");
-            links.push({ source: incName, target: wiName, value: 1 });
+        // Flow: PR → deployment.  Iterate deployment-first and emit only the
+        // exact (pr, dep) pairs from prIdsByDeployment.  This prevents the
+        // cross-join bug where every PR is incorrectly linked to every deployment
+        // in the incident regardless of their actual relationship (CHAOS-2118).
+        let depLinksEmitted = 0;
+        for (const [depId, prIds] of Object.entries(row.prIdsByDeployment)) {
+            if (depLinksEmitted >= MAX_LINKS_PER_INCIDENT) break;
+            const depKey = makeNodeKey("deployment", depId);
+            for (const prId of prIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
+                // CHAOS-2119: use server-resolved PR name when available
+                const resolved = row.prDisplayNames?.[prId];
+                const prLabel = resolved?.trim() || `pr:${prId.slice(0, 8)}`;
+                addNode(prId, prLabel, "pr");
+                const prKey = makeNodeKey("pr", prId);
+                links.push({ source: prKey, target: depKey, value: 1 });
+            }
+            depLinksEmitted++;
         }
     }
 
@@ -414,7 +522,7 @@ export function IncidentCorrelationDashboard({
                 </section>
             )}
 
-            {/* ── Deployment ↔ Incident ↔ Work-item table ────────────────────────── */}
+            {/* ── PR ↔ Deployment ↔ Incident table ────────────────────────────────── */}
             {hasEdgeData && (
                 <section aria-label="Linked incidents">
                     <div className="mb-4 flex items-baseline justify-between">
@@ -431,7 +539,7 @@ export function IncidentCorrelationDashboard({
                                 <tr>
                                     <th className="px-5 py-3 text-left">Incident ID</th>
                                     <th className="px-5 py-3 text-right">Linked Deployments</th>
-                                    <th className="px-5 py-3 text-right">Linked Work Items</th>
+                                    <th className="px-5 py-3 text-right">Linked PRs</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -453,7 +561,10 @@ export function IncidentCorrelationDashboard({
                                             {row.deploymentIds.length}
                                         </td>
                                         <td className="px-5 py-3 text-right tabular-nums">
-                                            {row.workItemIds.length}
+                                            {
+                                                new Set(Object.values(row.prIdsByDeployment).flat())
+                                                    .size
+                                            }
                                         </td>
                                     </tr>
                                 ))}
@@ -463,14 +574,14 @@ export function IncidentCorrelationDashboard({
                 </section>
             )}
 
-            {/* ── Sankey: deployment → incident → work-item ───────────────────────── */}
+            {/* ── Sankey: PR → deployment → incident ──────────────────────────────── */}
             {sankeyData && (
                 <section
                     className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
                     aria-label="Correlation flow diagram"
                 >
                     <h2 className="font-(--font-display) text-xl">
-                        Deployment → Incident → Work Item Flow
+                        PR → Deployment → Incident Flow
                     </h2>
                     <p className="mt-1 text-xs text-(--ink-muted)">
                         Top {MAX_SANKEY_INCIDENTS} incidents by linkage. Labels are shortened so the

@@ -4,8 +4,8 @@
  * RSC entry. Composes existing primitives:
  *   - REST  getHomeData(filters)                    → change_failure_rate + other DORA deltas
  *   - REST  getExplainData("change_failure_rate")   → drivers + contributors
- *   - GQL   WORK_GRAPH_EDGES_QUERY (edgeType DEPLOYS)          → deployment→incident edges
- *   - GQL   WORK_GRAPH_EDGES_QUERY (edgeType LINKED_INCIDENT)  → incident→work-item edges
+ *   - GQL   WORK_GRAPH_EDGES_QUERY (edgeType DEPLOYS)          → PR→deployment edges
+ *   - GQL   WORK_GRAPH_EDGES_QUERY (edgeType LINKED_INCIDENT)  → deployment→incident edges
  *
  * V1 limitations (also documented in PR body):
  *   1. No time-windowed edge filter — WorkGraphEdgeFilterInput schema does not support it.
@@ -71,7 +71,7 @@ async function fetchEdges(
     } catch (err) {
         // Surface as empty state rather than crashing; the dashboard already shows
         // a populated empty-state message.
-        console.warn(`workGraphEdges(${edgeType}) query failed`, err);
+        console.warn("workGraphEdges query failed", { edgeType }, err);
         return [];
     }
 }
@@ -128,7 +128,7 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
                                 Incident Correlation
                             </h1>
                             <p className="mt-2 text-sm text-(--ink-muted)">
-                                Connect DORA change-failure signals to deployment and work-item
+                                Connect DORA change-failure signals to PR, deployment, and incident
                                 evidence.
                             </p>
                             <p className="mt-2 text-sm text-(--ink-muted)">

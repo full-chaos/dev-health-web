@@ -13,6 +13,69 @@ import { formatNumber, formatPercent } from "@/lib/formatters";
 
 echarts.use([EChartsSankeyChart]);
 
+// ---------------------------------------------------------------------------
+// Adapter — exported for unit testing (CHAOS-2118)
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps the caller's node/link objects to the stable internal key space that
+ * ECharts requires.
+ *
+ * Key scheme (highest-priority first):
+ *   1. node.id   — explicit UUID / composite key; bypasses collision on name
+ *   2. group:name — when group is set but id is absent (legacy)
+ *   3. name      — bare fallback
+ *
+ * CHAOS-2118 fix: chartNode.name is computed via makeKey(node) rather than
+ * keyByRef.get(node.name) so that two nodes sharing the same display name
+ * (e.g. two incidents both labelled "Production Outage") do NOT share a key.
+ * The old lookup path silently overwrote keyByRef[displayName] and both nodes
+ * ended up with the same ECharts identity key — ECharts then de-duplicated
+ * them into a single visible node.
+ */
+export function buildSankeyAdapterData(
+    nodes: SankeyNode[],
+    links: SankeyLink[],
+): { chartNodes: SankeyNode[]; chartLinks: SankeyLink[]; labelByKey: Map<string, string> } {
+    const keyByRef = new Map<string, string>();
+    const labelByKey = new Map<string, string>();
+
+    const makeKey = (node: SankeyNode) => {
+        if (node.id) return node.id;
+        if (node.group) return `${node.group}:${node.name}`;
+        return node.name;
+    };
+
+    nodes.forEach((node) => {
+        const key = makeKey(node);
+        // Name mapping kept for backward-compat with link sources that still
+        // reference by display name (non-id legacy callers). The first write
+        // wins — later nodes with the same display name do NOT overwrite.
+        if (!keyByRef.has(node.name)) {
+            keyByRef.set(node.name, key);
+        }
+        if (node.id) {
+            keyByRef.set(node.id, key);
+        }
+        labelByKey.set(key, node.name);
+    });
+
+    // Use makeKey(node) directly — NOT keyByRef.get(node.name) — so each node
+    // gets its own key regardless of display-name collisions.
+    const chartNodes = nodes.map((node) => ({
+        ...node,
+        name: makeKey(node),
+    }));
+
+    const chartLinks = links.map((link) => ({
+        ...link,
+        source: keyByRef.get(link.source) ?? link.source,
+        target: keyByRef.get(link.target) ?? link.target,
+    }));
+
+    return { chartNodes, chartLinks, labelByKey };
+}
+
 type SankeyChartProps = {
     nodes: SankeyNode[];
     links: SankeyLink[];
@@ -94,42 +157,10 @@ export function SankeyChart({
         [height, width, style],
     );
 
-    const { chartNodes, chartLinks, labelByKey } = useMemo(() => {
-        const keyByRef = new Map<string, string>();
-        const labelByKey = new Map<string, string>();
-
-        const makeKey = (node: SankeyNode) => {
-            if (node.id) {
-                return node.id;
-            }
-            if (node.group) {
-                return `${node.group}:${node.name}`;
-            }
-            return node.name;
-        };
-
-        nodes.forEach((node) => {
-            const key = makeKey(node);
-            keyByRef.set(node.name, key);
-            if (node.id) {
-                keyByRef.set(node.id, key);
-            }
-            labelByKey.set(key, node.name);
-        });
-
-        const chartNodes = nodes.map((node) => ({
-            ...node,
-            name: keyByRef.get(node.name) ?? makeKey(node),
-        }));
-
-        const chartLinks = links.map((link) => ({
-            ...link,
-            source: keyByRef.get(link.source) ?? link.source,
-            target: keyByRef.get(link.target) ?? link.target,
-        }));
-
-        return { chartNodes, chartLinks, labelByKey };
-    }, [nodes, links]);
+    const { chartNodes, chartLinks, labelByKey } = useMemo(
+        () => buildSankeyAdapterData(nodes, links),
+        [nodes, links],
+    );
 
     const displayNameForKey = useCallback(
         (value: string) => {
