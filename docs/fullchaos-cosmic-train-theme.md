@@ -28,31 +28,31 @@ Use a gradient overlay or soft glow around text to echo the train’s fire trail
 
 ```css
 :root {
-  --fullchaos-space: #090b1d;
-  --fullchaos-meteor: #ffb035;
-  --fullchaos-starfire: #ff5f1f;
-  --fullchaos-ion: #63d7ff;
+    --fullchaos-space: #090b1d;
+    --fullchaos-meteor: #ffb035;
+    --fullchaos-starfire: #ff5f1f;
+    --fullchaos-ion: #63d7ff;
 }
 
 body {
-  background: var(--fullchaos-space);
-  color: #f5f3f0;
-  font-family: "Space Grotesk", system-ui, sans-serif;
+    background: var(--fullchaos-space);
+    color: #f5f3f0;
+    font-family: "Space Grotesk", system-ui, sans-serif;
 }
 
 .highlight {
-  border: 1px solid var(--fullchaos-starfire);
-  background: radial-gradient(circle at top center, rgba(247, 197, 72, 0.2), transparent 60%);
-  box-shadow: 0 0 25px rgba(255, 90, 31, 0.4);
+    border: 1px solid var(--fullchaos-starfire);
+    background: radial-gradient(circle at top center, rgba(247, 197, 72, 0.2), transparent 60%);
+    box-shadow: 0 0 25px rgba(255, 90, 31, 0.4);
 }
 
 a {
-  color: var(--fullchaos-ion);
-  text-decoration: none;
+    color: var(--fullchaos-ion);
+    text-decoration: none;
 }
 
 a:hover {
-  color: var(--fullchaos-meteor);
+    color: var(--fullchaos-meteor);
 }
 ```
 

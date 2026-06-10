@@ -1,26 +1,53 @@
-import { redirect } from "next/navigation";
+import { AIImpactDashboard } from "@/components/ai/AIImpactDashboard";
+import { AIPageHeader } from "@/components/ai/AIPageHeader";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { checkApiHealth } from "@/lib/api/system";
+import { metricFilterToAIFilter } from "@/lib/filters/ai";
+import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { withFilterParam } from "@/lib/filters/url";
+import { navTrailForPathname } from "@/lib/navigation/areas";
 
-type AIImpactRedirectProps = {
-	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+type AIImpactPageProps = {
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-/**
- * `/ai/impact` is now the `/ai` index (Impact tab). This redirect keeps the
- * previously-reachable deep link working — and avoids two routes resolving to
- * the same Impact content — by forwarding to `/ai` with filter params intact.
- */
-export default async function AIImpactRedirect({
-	searchParams,
-}: AIImpactRedirectProps) {
-	const params = (await searchParams) ?? {};
-	const query = new URLSearchParams();
-	for (const [key, value] of Object.entries(params)) {
-		if (typeof value === "string") {
-			query.set(key, value);
-		} else if (Array.isArray(value) && value.length > 0) {
-			query.set(key, value[0]);
-		}
-	}
-	const qs = query.toString();
-	redirect(qs ? `/ai?${qs}` : "/ai");
+export default async function AIImpactPage({ searchParams }: AIImpactPageProps) {
+    const params = (await searchParams) ?? {};
+    const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const role = Array.isArray(params.role) ? params.role[0] : params.role;
+    const aiFilter = metricFilterToAIFilter(filters);
+    const health = await checkApiHealth();
+
+    if (!health.ok) {
+        return <ServiceUnavailable />;
+    }
+
+    return (
+        <>
+            <AIPageHeader
+                eyebrow="AI"
+                title="Impact"
+                breadcrumbs={[
+                    ...navTrailForPathname("/ai/impact").map((c) => ({
+                        ...c,
+                        href: c.href ?? "/ai",
+                    })),
+                    { label: "Impact" },
+                ]}
+            >
+                Org-wide view of how AI-assisted workflows appear to influence delivery, review
+                load, quality gaps, and operational drag.
+            </AIPageHeader>
+
+            <GlobalContextBar filters={filters} />
+            <FilterBar view="ai" />
+            <AIImpactDashboard
+                filter={aiFilter}
+                evidenceHref={withFilterParam("/ai/impact/evidence", filters, role)}
+            />
+        </>
+    );
 }

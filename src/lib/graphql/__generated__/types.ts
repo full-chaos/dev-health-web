@@ -56,6 +56,14 @@ export type AiComparisonSide = {
   testGapRate?: Maybe<Scalars['Float']['output']>;
 };
 
+export type AiComplexityOverlapRow = {
+  __typename?: 'AIComplexityOverlapRow';
+  bucket: Scalars['String']['output'];
+  complexityOverlapRate?: Maybe<Scalars['Float']['output']>;
+  prsTotal: Scalars['Int']['output'];
+  prsTouchingHighComplexity: Scalars['Int']['output'];
+};
+
 export type AiDateRangeInput = {
   endDate: Scalars['Date']['input'];
   startDate: Scalars['Date']['input'];
@@ -99,6 +107,15 @@ export type AiGovernanceViolationRow = {
   teamId?: Maybe<Scalars['String']['output']>;
 };
 
+export type AiHotspotOverlapRow = {
+  __typename?: 'AIHotspotOverlapRow';
+  avgHotspotRiskScore?: Maybe<Scalars['Float']['output']>;
+  bucket: Scalars['String']['output'];
+  hotspotOverlapRate?: Maybe<Scalars['Float']['output']>;
+  prsTotal: Scalars['Int']['output'];
+  prsTouchingHotspots: Scalars['Int']['output'];
+};
+
 export type AiImpactBucketRow = {
   __typename?: 'AIImpactBucketRow';
   bucket: Scalars['String']['output'];
@@ -134,6 +151,15 @@ export type AiImpactBucketTotals = {
   testGapRate?: Maybe<Scalars['Float']['output']>;
 };
 
+export type AiImpactScopeRollupRow = {
+  __typename?: 'AIImpactScopeRollupRow';
+  aiAssistedPrRatio?: Maybe<Scalars['Float']['output']>;
+  aiPrsTotal: Scalars['Int']['output'];
+  reworkRateDelta?: Maybe<Scalars['Float']['output']>;
+  scopeId: Scalars['String']['output'];
+  scopeLabel: Scalars['String']['output'];
+};
+
 export type AiImpactSummary = {
   __typename?: 'AIImpactSummary';
   agentCreatedPrs: Scalars['Int']['output'];
@@ -147,7 +173,9 @@ export type AiImpactSummary = {
   humanPrs: Scalars['Int']['output'];
   missingStates: Array<AiMissingState>;
   orgId: Scalars['String']['output'];
+  repoBreakdown: Array<AiImpactScopeRollupRow>;
   startDate: Scalars['Date']['output'];
+  teamBreakdown: Array<AiImpactScopeRollupRow>;
   totalPrs: Scalars['Int']['output'];
   unknownPrs: Scalars['Int']['output'];
 };
@@ -190,10 +218,15 @@ export type AiOpportunity = {
 };
 
 export type AiOpportunityKind =
+  | 'DEPENDENCY_UPDATES'
+  | 'DOCUMENTATION_DRIFT'
+  | 'FLAKY_TEST_TRIAGE'
   | 'HIGH_REVIEW_LOAD'
   | 'HIGH_REWORK'
+  | 'MECHANICAL_MIGRATIONS'
   | 'REPETITIVE_CHANGE'
   | 'SLOW_CYCLE'
+  | 'TEST_GENERATION'
   | 'UNCOVERED_TEST_AREA';
 
 export type AiReviewLoadResult = {
@@ -212,10 +245,12 @@ export type AiReviewLoadRow = {
   __typename?: 'AIReviewLoadRow';
   bucket: Scalars['String']['output'];
   changesRequestedPerPr?: Maybe<Scalars['Float']['output']>;
+  pickupLatencyHours?: Maybe<Scalars['Float']['output']>;
   postFirstReviewPushesCount: Scalars['Int']['output'];
   postFirstReviewPushesPerPr?: Maybe<Scalars['Float']['output']>;
   prsTotal: Scalars['Int']['output'];
   reviewAmplification?: Maybe<Scalars['Float']['output']>;
+  reviewCommentsPerLoc?: Maybe<Scalars['Float']['output']>;
   reviewsPerPr?: Maybe<Scalars['Float']['output']>;
   reviewsTotal: Scalars['Int']['output'];
 };
@@ -230,8 +265,10 @@ export type AiReviewerConcentrationSummary = {
 export type AiRiskBreakdownResult = {
   __typename?: 'AIRiskBreakdownResult';
   byBucket: Array<AiRiskBreakdownRow>;
+  complexityOverlap: Array<AiComplexityOverlapRow>;
   dataAvailable: Scalars['Boolean']['output'];
   endDate: Scalars['Date']['output'];
+  hotspotOverlap: Array<AiHotspotOverlapRow>;
   missingStates: Array<AiMissingState>;
   orgId: Scalars['String']['output'];
   startDate: Scalars['Date']['output'];
@@ -343,6 +380,8 @@ export type AnalyticsRequestInput = {
 export type AnalyticsResult = {
   __typename?: 'AnalyticsResult';
   breakdowns: Array<BreakdownResult>;
+  evidenceQualityDistribution?: Maybe<Scalars['JSON']['output']>;
+  evidenceQualityStats?: Maybe<EvidenceQualityStats>;
   flowMatrix?: Maybe<FlowMatrixResult>;
   sankey?: Maybe<SankeyResult>;
   timeseries: Array<TimeseriesResult>;
@@ -351,6 +390,7 @@ export type AnalyticsResult = {
 export type BreakdownItem = {
   __typename?: 'BreakdownItem';
   key: Scalars['String']['output'];
+  label?: Maybe<Scalars['String']['output']>;
   value: Scalars['Float']['output'];
 };
 
@@ -489,6 +529,31 @@ export type CloneSavedReportInput = {
   newName?: InputMaybe<Scalars['String']['input']>;
   parameterOverrides?: InputMaybe<Scalars['JSON']['input']>;
   sourceReportId: Scalars['String']['input'];
+};
+
+export type CognitiveLoadInput = {
+  orgId: Scalars['String']['input'];
+  sinceDate: Scalars['Date']['input'];
+  teamId?: InputMaybe<Scalars['String']['input']>;
+  untilDate: Scalars['Date']['input'];
+};
+
+export type CognitiveLoadResult = {
+  __typename?: 'CognitiveLoadResult';
+  orgId: Scalars['String']['output'];
+  signals: Array<CognitiveLoadSignal>;
+  teamId?: Maybe<Scalars['String']['output']>;
+  totalDays: Scalars['Int']['output'];
+};
+
+export type CognitiveLoadSignal = {
+  __typename?: 'CognitiveLoadSignal';
+  afterHoursCommitRatio?: Maybe<Scalars['Float']['output']>;
+  contextSpreadCount: Scalars['Float']['output'];
+  day: Scalars['Date']['output'];
+  prInterruptionLoad: Scalars['Float']['output'];
+  reviewRequestLoad: Scalars['Float']['output'];
+  weekendCommitRatio?: Maybe<Scalars['Float']['output']>;
 };
 
 export type ComplexityPoint = {
@@ -675,6 +740,14 @@ export type DimensionInput =
   | 'THEME'
   | 'WORK_TYPE';
 
+export type EvidenceQualityStats = {
+  __typename?: 'EvidenceQualityStats';
+  bandCounts: Scalars['JSON']['output'];
+  mean?: Maybe<Scalars['Float']['output']>;
+  stddev?: Maybe<Scalars['Float']['output']>;
+  total: Scalars['Int']['output'];
+};
+
 export type EvidenceRef = {
   __typename?: 'EvidenceRef';
   field: Scalars['String']['output'];
@@ -718,6 +791,7 @@ export type HomeResult = {
   __typename?: 'HomeResult';
   deltas: Array<MetricDelta>;
   freshness: Freshness;
+  reworkThemeAllocation: Array<ReworkThemeAllocation>;
 };
 
 export type HotspotRow = {
@@ -787,6 +861,7 @@ export type MeasureInput =
   | 'PIPELINE_QUEUE_TIME'
   | 'PIPELINE_RERUN_RATE'
   | 'PIPELINE_SUCCESS_RATE'
+  | 'PR_REWORK_RATIO'
   | 'TEST_FAILURE_RATE'
   | 'TEST_FLAKE_RATE'
   | 'TEST_PASS_RATE'
@@ -1057,6 +1132,8 @@ export type Query = {
   capacityForecasts: CapacityForecastConnection;
   /** Get catalog of available dimensions, measures, and limits */
   catalog: CatalogResult;
+  /** Daily cognitive-load signals (PR interruption, context spread, review request load, after-hours and weekend commit ratios). Reads from ``user_metrics_daily`` and ``team_metrics_daily`` — no recomputation, pure surface of persisted metrics. */
+  cognitiveLoad: CognitiveLoadResult;
   /** Cyclomatic complexity trend by repo or file. Reads from append-only ``repo_complexity_daily`` / ``file_complexity_snapshots`` tables — no recomputation, pure surface of persisted data. */
   complexityTimeseries: ComplexityTimeseriesResult;
   /** Compounding Risk composite: churn × complexity × ownership × review-latency. Inspectable score with persisted weights, thresholds, raw inputs, and normalized components. */
@@ -1077,6 +1154,8 @@ export type Query = {
   recommendations: Array<Recommendation>;
   /** List report runs for a saved report */
   reportRuns: ReportRunConnection;
+  /** Reviewer-to-author collaboration edges from ``review_edges_daily``. Ordered by review count descending.  Use ``repoIds`` to narrow to specific repositories.  Org-scoped; no recomputation. */
+  reviewEdges: ReviewEdgesResult;
   /** Get a saved report by ID */
   savedReport?: Maybe<SavedReportType>;
   /** List saved reports for an organization */
@@ -1184,6 +1263,11 @@ export type QueryCatalogArgs = {
 };
 
 
+export type QueryCognitiveLoadArgs = {
+  input: CognitiveLoadInput;
+};
+
+
 export type QueryComplexityTimeseriesArgs = {
   input: ComplexityTimeseriesInput;
 };
@@ -1239,6 +1323,11 @@ export type QueryReportRunsArgs = {
   limit?: Scalars['Int']['input'];
   orgId: Scalars['String']['input'];
   reportId: Scalars['String']['input'];
+};
+
+
+export type QueryReviewEdgesArgs = {
+  input: ReviewEdgesInput;
 };
 
 
@@ -1331,6 +1420,39 @@ export type ReportRunType = {
   startedAt?: Maybe<Scalars['DateTime']['output']>;
   status: Scalars['String']['output'];
   triggeredBy: Scalars['String']['output'];
+};
+
+export type ReviewEdgeRow = {
+  __typename?: 'ReviewEdgeRow';
+  author: Scalars['String']['output'];
+  day: Scalars['Date']['output'];
+  repoId?: Maybe<Scalars['String']['output']>;
+  reviewer: Scalars['String']['output'];
+  reviewsCount: Scalars['Int']['output'];
+};
+
+export type ReviewEdgesInput = {
+  limit?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  sinceDate: Scalars['Date']['input'];
+  untilDate: Scalars['Date']['input'];
+};
+
+export type ReviewEdgesResult = {
+  __typename?: 'ReviewEdgesResult';
+  edges: Array<ReviewEdgeRow>;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ReworkThemeAllocation = {
+  __typename?: 'ReworkThemeAllocation';
+  allocation: Scalars['Float']['output'];
+  allocationPct: Scalars['Float']['output'];
+  churnLoc: Scalars['Int']['output'];
+  label: Scalars['String']['output'];
+  prsMerged: Scalars['Int']['output'];
+  theme: Scalars['String']['output'];
 };
 
 export type SankeyCoverage = {
@@ -1700,8 +1822,10 @@ export type WorkGraphEdgeResult = {
   provenance: WorkGraphProvenance;
   provider?: Maybe<Scalars['String']['output']>;
   repoId?: Maybe<Scalars['String']['output']>;
+  sourceDisplayName?: Maybe<Scalars['String']['output']>;
   sourceId: Scalars['String']['output'];
   sourceType: WorkGraphNodeType;
+  targetDisplayName?: Maybe<Scalars['String']['output']>;
   targetId: Scalars['String']['output'];
   targetType: WorkGraphNodeType;
 };

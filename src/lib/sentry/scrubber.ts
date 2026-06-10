@@ -25,34 +25,34 @@ const SENSITIVE_URL_PATTERN = /\/(auth|admin\/credentials)/;
  * a fresh object per call) or `null` to drop the event.
  */
 export function scrubEvent(event: ErrorEvent, _hint?: EventHint): ErrorEvent | null {
-  if (event.request) {
-    // 1. Remove cookies
-    delete event.request.cookies;
+    if (event.request) {
+        // 1. Remove cookies
+        delete event.request.cookies;
 
-    // 2 & 3. Remove sensitive headers
-    if (event.request.headers) {
-      // Work on a shallow copy of headers to avoid mutating across references
-      const headers = { ...event.request.headers } as Record<string, string>;
-      delete headers["authorization"];
-      delete headers["x-csrf-token"];
-      event.request.headers = headers;
+        // 2 & 3. Remove sensitive headers
+        if (event.request.headers) {
+            // Work on a shallow copy of headers to avoid mutating across references
+            const headers = { ...event.request.headers } as Record<string, string>;
+            delete headers["authorization"];
+            delete headers["x-csrf-token"];
+            event.request.headers = headers;
+        }
+
+        // 4. Drop body for auth / credential endpoints
+        const url = event.request.url ?? "";
+        if (SENSITIVE_URL_PATTERN.test(url)) {
+            delete event.request.data;
+        }
     }
 
-    // 4. Drop body for auth / credential endpoints
-    const url = event.request.url ?? "";
-    if (SENSITIVE_URL_PATTERN.test(url)) {
-      delete event.request.data;
+    // 5. Strip IP in production unless opt-in flag is set
+    const isProduction = process.env.NODE_ENV === "production";
+    const includeIp = process.env.SENTRY_INCLUDE_IP === "true";
+    if (isProduction && !includeIp && event.user) {
+        delete event.user.ip_address;
     }
-  }
 
-  // 5. Strip IP in production unless opt-in flag is set
-  const isProduction = process.env.NODE_ENV === "production";
-  const includeIp = process.env.SENTRY_INCLUDE_IP === "true";
-  if (isProduction && !includeIp && event.user) {
-    delete event.user.ip_address;
-  }
-
-  return event;
+    return event;
 }
 
 type SentryInitOptions = Parameters<typeof Sentry.init>[0];
@@ -68,14 +68,14 @@ type SentryInitOptions = Parameters<typeof Sentry.init>[0];
  *   Sentry.init(attachBeforeSend({ dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN }));
  */
 export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
-  const existing = config?.beforeSend;
-  return {
-    ...config,
-    beforeSend(event: ErrorEvent, hint: EventHint) {
-      const scrubbed = scrubEvent(event, hint);
-      if (scrubbed === null) return null;
-      if (existing) return existing(scrubbed, hint);
-      return scrubbed;
-    },
-  };
+    const existing = config?.beforeSend;
+    return {
+        ...config,
+        beforeSend(event: ErrorEvent, hint: EventHint) {
+            const scrubbed = scrubEvent(event, hint);
+            if (scrubbed === null) return null;
+            if (existing) return existing(scrubbed, hint);
+            return scrubbed;
+        },
+    };
 }

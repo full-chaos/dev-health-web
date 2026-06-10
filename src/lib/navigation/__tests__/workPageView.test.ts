@@ -1,66 +1,82 @@
 import { describe, it, expect } from "vitest";
-import { resolveActiveView, WORK_TABS } from "../workPageView";
+import {
+    buildLegacyWorkRedirectTarget,
+    LEGACY_WORK_TAB_REDIRECTS,
+    resolveLegacyWorkRedirect,
+} from "../workPageView";
 
-// Unit tests for the work/page.tsx activeView resolution logic (CHAOS-2075,
-// Codex review fix): legacy ?tab= deep links must resolve to "work", not
-// silently fall through to "overview".
-
-describe("resolveActiveView", () => {
-  describe("explicit ?view= param", () => {
-    it("returns 'overview' when view=overview", () => {
-      expect(resolveActiveView("overview", undefined)).toBe("overview");
+describe("legacy Work route redirects", () => {
+    it.each([
+        ["overview", "/diagnose"],
+        ["flow", "/metrics?tab=flow"],
+        ["investment", "/investment"],
+        ["landscape", "/landscape"],
+        ["capacity", "/plan/capacity"],
+        ["heatmap", "/cognitive-load?tab=heatmap"],
+        ["flame", "/complexity?tab=flame"],
+        ["graph", "/diagnose/work-graph"],
+        ["evidence", "/diagnose/work-graph?evidence=open"],
+    ] as const)("redirects /work?tab=%s to %s", (tab, target) => {
+        expect(resolveLegacyWorkRedirect({ tab })).toBe(target);
     });
 
-    it("returns 'work' when view=work", () => {
-      expect(resolveActiveView("work", undefined)).toBe("work");
+    it("redirects bare /work and the retired work view to Diagnose overview", () => {
+        expect(resolveLegacyWorkRedirect({})).toBe("/diagnose");
+        expect(resolveLegacyWorkRedirect({ view: "overview" })).toBe("/diagnose");
+        expect(resolveLegacyWorkRedirect({ view: "work" })).toBe("/diagnose/work-graph");
     });
 
-    it("?view=work wins even when a tab param is also present", () => {
-      expect(resolveActiveView("work", "flow")).toBe("work");
+    it("keeps the redirect map explicit for every retired Work tab", () => {
+        expect(LEGACY_WORK_TAB_REDIRECTS).toEqual({
+            overview: "/diagnose",
+            flow: "/metrics?tab=flow",
+            investment: "/investment",
+            landscape: "/landscape",
+            capacity: "/plan/capacity",
+            heatmap: "/cognitive-load?tab=heatmap",
+            flame: "/complexity?tab=flame",
+            graph: "/diagnose/work-graph",
+            evidence: "/diagnose/work-graph?evidence=open",
+        });
     });
 
-    it("?view=overview wins even when a tab param is also present", () => {
-      expect(resolveActiveView("overview", "flow")).toBe("overview");
+    it("merges preserved filter params into retired targets that already have a query string", () => {
+        expect(
+            buildLegacyWorkRedirectTarget("/metrics?tab=flow", {
+                tab: "flow",
+                f: "scope-team",
+                role: "engineering-manager",
+            }),
+        ).toBe("/metrics?tab=flow&f=scope-team&role=engineering-manager");
     });
 
-    it("ignores an unknown view param and falls through to legacy-tab / default logic", () => {
-      // Unknown view + valid tab → legacy deep-link path → "work"
-      expect(resolveActiveView("unknown", "flow")).toBe("overview");
-    });
-  });
-
-  describe("legacy ?tab= deep links (no view param)", () => {
-    it.each(WORK_TABS)(
-      "resolves to 'work' when view is absent and tab=%s",
-      (tab) => {
-        expect(resolveActiveView(undefined, tab)).toBe("work");
-      },
-    );
-
-    it("resolves /work?tab=flow to 'work' (primary Codex finding)", () => {
-      expect(resolveActiveView(undefined, "flow")).toBe("work");
+    it("does not let incoming params clobber target-owned query params", () => {
+        expect(
+            buildLegacyWorkRedirectTarget("/diagnose/work-graph?evidence=open", {
+                tab: "evidence",
+                evidence: "closed",
+                f: "scope-team",
+            }),
+        ).toBe("/diagnose/work-graph?evidence=open&f=scope-team");
     });
 
-    it("resolves /work?tab=investment to 'work'", () => {
-      expect(resolveActiveView(undefined, "investment")).toBe("work");
+    it("treats the retired work view overview as the Work Graph destination", () => {
+        expect(resolveLegacyWorkRedirect({ view: "work", tab: "overview" })).toBe(
+            "/diagnose/work-graph",
+        );
     });
 
-    it("resolves /work?tab=flame to 'work'", () => {
-      expect(resolveActiveView(undefined, "flame")).toBe("work");
+    it("preserves repeated filter values while stripping retired tab and view params", () => {
+        expect(
+            buildLegacyWorkRedirectTarget("/cognitive-load?tab=heatmap", {
+                tab: "heatmap",
+                view: "work",
+                f: ["scope-team", "date-window"],
+            }),
+        ).toBe("/cognitive-load?tab=heatmap&f=scope-team&f=date-window");
     });
 
-    it("ignores an invalid tab value and returns 'overview'", () => {
-      expect(resolveActiveView(undefined, "not-a-tab")).toBe("overview");
+    it("ignores unknown legacy tabs instead of creating a generic overview loopback", () => {
+        expect(resolveLegacyWorkRedirect({ tab: "unknown" })).toBeNull();
     });
-  });
-
-  describe("bare /work (no params)", () => {
-    it("returns 'overview' when both view and tab are absent", () => {
-      expect(resolveActiveView(undefined, undefined)).toBe("overview");
-    });
-
-    it("returns 'overview' when view is an empty string", () => {
-      expect(resolveActiveView("", undefined)).toBe("overview");
-    });
-  });
 });

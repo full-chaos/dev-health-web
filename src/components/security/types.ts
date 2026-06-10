@@ -5,10 +5,10 @@
 // also narrowing string → literal for badge safety via intersection.
 
 import type {
-  SecurityAlertNode,
-  SeverityBucket,
-  RepoAlertCount,
-  TrendPoint,
+    SecurityAlertNode,
+    SeverityBucket,
+    RepoAlertCount,
+    TrendPoint,
 } from "@/lib/graphql/__generated__/types";
 import type { SecuritySeverity, SecuritySource, SecurityState } from "@/lib/filters/security";
 
@@ -16,13 +16,13 @@ import type { SecuritySeverity, SecuritySource, SecurityState } from "@/lib/filt
 // back to the union literals the badge components expect. At runtime these will
 // always match because the backend emits lowercase values.
 export type SecurityAlertRowData = Omit<SecurityAlertNode, "severity" | "source" | "state"> & {
-  severity: SecuritySeverity;
-  source: SecuritySource;
-  state: SecurityState;
+    severity: SecuritySeverity;
+    source: SecuritySource;
+    state: SecurityState;
 };
 
 export type SeverityBucketData = Omit<SeverityBucket, "severity"> & {
-  severity: SecuritySeverity;
+    severity: SecuritySeverity;
 };
 
 export type RepoAlertCountData = RepoAlertCount;

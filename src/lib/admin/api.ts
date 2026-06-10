@@ -14,20 +14,20 @@ import { retentionApi } from "./api/retention";
 import { platformApi, impersonationApi } from "./api/platform";
 
 export const adminApi = {
-  settings: settingsApi,
-  credentials: credentialsApi,
-  syncConfigs: syncConfigsApi,
-  identities: identitiesApi,
-  teams: teamsApi,
-  users: usersApi,
-  orgs: orgsApi,
-  licensing: licensingApi,
-  audit: auditApi,
-  ipAllowlist: ipAllowlistApi,
-  retention: retentionApi,
-  impersonation: impersonationApi,
-  platform: platformApi,
-  platformAudit: platformAuditApi,
+    settings: settingsApi,
+    credentials: credentialsApi,
+    syncConfigs: syncConfigsApi,
+    identities: identitiesApi,
+    teams: teamsApi,
+    users: usersApi,
+    orgs: orgsApi,
+    licensing: licensingApi,
+    audit: auditApi,
+    ipAllowlist: ipAllowlistApi,
+    retention: retentionApi,
+    impersonation: impersonationApi,
+    platform: platformApi,
+    platformAudit: platformAuditApi,
 };
 
 export type AdminApi = typeof adminApi;

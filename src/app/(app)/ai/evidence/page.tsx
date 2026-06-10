@@ -1,30 +1,20 @@
-import { AIPageHeader } from "@/components/ai/AIPageHeader";
-import { AITabPreview } from "@/components/ai/AITabPreview";
+import { permanentRedirect } from "next/navigation";
+
+type AIEvidenceRedirectProps = {
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+};
 
 /**
- * Evidence tab — preview. The "AI Workflow Intelligence" summary currently
- * lives on the dashboard and operating-review surfaces. A consolidated evidence
- * view under the AI area is scoped but not yet backed by its own data, so it is
- * marked preview rather than rendering an empty evidence panel.
+ * CHAOS-2197: Evidence lives as a tab inside Governance Risk. The old
+ * standalone preview route redirects there, preserving filter scope.
  */
-export default function AIEvidencePage() {
-	return (
-		<>
-			<AIPageHeader eyebrow="AI Workflows" title="Evidence">
-				A consolidated evidence trail for AI workflow signals — tracing each
-				pattern back to Work Graph edges and source PRs — is coming. Today the
-				AI Workflow Intelligence summary lives on the Operating Review.
-			</AIPageHeader>
-			<AITabPreview
-				whereNow={{
-					label: "View AI Workflow Intelligence on Operating Review",
-					href: "/operating-review#ai-workflow-intelligence",
-				}}
-			>
-				Evidence will surface here once AI workflow signals are linked to their
-				underlying Work Graph edges. No fabricated evidence is shown until that
-				data is available.
-			</AITabPreview>
-		</>
-	);
+export default async function AIEvidenceRedirect({ searchParams }: AIEvidenceRedirectProps) {
+    const params = (await searchParams) ?? {};
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        const single = Array.isArray(value) ? value[0] : value;
+        if (single != null) query.set(key, single);
+    }
+    query.set("view", "evidence");
+    permanentRedirect(`/ai/risk?${query.toString()}`);
 }

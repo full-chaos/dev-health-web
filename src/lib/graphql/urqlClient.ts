@@ -21,7 +21,7 @@ import { graphqlFetch } from "./server";
 const GRAPHQL_PATH = "/graphql";
 
 export interface UrqlClientOptions {
-  orgId?: string;
+    orgId?: string;
 }
 
 /**
@@ -31,48 +31,48 @@ export interface UrqlClientOptions {
  * @returns Configured urql client
  */
 export function createUrqlClient(options: UrqlClientOptions = {}): Client {
-  const { orgId } = options;
+    const { orgId } = options;
 
-  const url = new URL(GRAPHQL_PATH, resolveOrigin());
+    const url = new URL(GRAPHQL_PATH, resolveOrigin());
 
-  if (orgId) {
-    url.searchParams.set("org_id", orgId);
-  }
+    if (orgId) {
+        url.searchParams.set("org_id", orgId);
+    }
 
-  return createClient({
-    url: url.toString(),
-    exchanges: [
-      mapExchange({
-        onOperation(operation) {
-          if (!orgId) return operation;
+    return createClient({
+        url: url.toString(),
+        exchanges: [
+            mapExchange({
+                onOperation(operation) {
+                    if (!orgId) return operation;
 
-          const fetchOptions =
-            typeof operation.context.fetchOptions === "object"
-              ? operation.context.fetchOptions
-              : {};
+                    const fetchOptions =
+                        typeof operation.context.fetchOptions === "object"
+                            ? operation.context.fetchOptions
+                            : {};
 
-          return {
-            ...operation,
-            context: {
-              ...operation.context,
-              fetchOptions: {
-                ...fetchOptions,
-                headers: {
-                  ...((fetchOptions.headers ?? {}) as Record<string, string>),
-                  "X-Org-Id": orgId,
+                    return {
+                        ...operation,
+                        context: {
+                            ...operation.context,
+                            fetchOptions: {
+                                ...fetchOptions,
+                                headers: {
+                                    ...((fetchOptions.headers ?? {}) as Record<string, string>),
+                                    "X-Org-Id": orgId,
+                                },
+                            },
+                        },
+                    };
                 },
-              },
-            },
-          };
-        },
-      }),
-      timingExchange,
-      errorExchange,
-      cacheExchange,
-      fetchExchange,
-    ],
-    requestPolicy: "cache-and-network",
-  });
+            }),
+            timingExchange,
+            errorExchange,
+            cacheExchange,
+            fetchExchange,
+        ],
+        requestPolicy: "cache-and-network",
+    });
 }
 
 let _client: Client | null = null;
@@ -85,24 +85,24 @@ let _currentOrgId: string | undefined;
  * use `getServerClient` from `./server.ts` for per-request isolation.
  */
 export function getUrqlClient(orgId?: string): Client {
-  if (_client && orgId !== _currentOrgId) {
-    _client = null;
-  }
+    if (_client && orgId !== _currentOrgId) {
+        _client = null;
+    }
 
-  if (!_client) {
-    _client = createUrqlClient({ orgId });
-    _currentOrgId = orgId;
-  }
+    if (!_client) {
+        _client = createUrqlClient({ orgId });
+        _currentOrgId = orgId;
+    }
 
-  return _client;
+    return _client;
 }
 
 /**
  * Reset the shared browser client (useful for testing or org switching).
  */
 export function resetUrqlClient(): void {
-  _client = null;
-  _currentOrgId = undefined;
+    _client = null;
+    _currentOrgId = undefined;
 }
 
 export { graphqlFetch };

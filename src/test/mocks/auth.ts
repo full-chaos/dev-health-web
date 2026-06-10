@@ -40,32 +40,32 @@ import type { Session } from "next-auth";
 import { auth } from "@/lib/auth";
 
 export type MockSessionOverrides = {
-  access_token?: string;
-  expires?: string;
-  error?: string;
-  user?: Partial<Session["user"]>;
+    access_token?: string;
+    expires?: string;
+    error?: string;
+    user?: Partial<Session["user"]>;
 };
 
 export const defaultMockSession: Session = Object.freeze({
-  access_token: "test-token",
-  user: Object.freeze({
-    id: "user-1",
-    org_id: "org-1",
-  }) as Session["user"],
-  expires: new Date(Date.now() + 86400000).toISOString(),
+    access_token: "test-token",
+    user: Object.freeze({
+        id: "user-1",
+        org_id: "org-1",
+    }) as Session["user"],
+    expires: new Date(Date.now() + 86400000).toISOString(),
 }) as Session;
 
 export function makeMockSession(overrides: MockSessionOverrides = {}): Session {
-  const { user: userOverrides, ...rest } = overrides;
-  return {
-    access_token: defaultMockSession.access_token,
-    expires: defaultMockSession.expires,
-    ...rest,
-    user: {
-      ...defaultMockSession.user,
-      ...userOverrides,
-    },
-  };
+    const { user: userOverrides, ...rest } = overrides;
+    return {
+        access_token: defaultMockSession.access_token,
+        expires: defaultMockSession.expires,
+        ...rest,
+        user: {
+            ...defaultMockSession.user,
+            ...userOverrides,
+        },
+    };
 }
 
 /**
@@ -82,29 +82,29 @@ export function makeMockSession(overrides: MockSessionOverrides = {}): Session {
  * registered at the top of the test file.
  */
 export function mockAuth(
-  sessionOrOverrides?: Session | null | MockSessionOverrides,
+    sessionOrOverrides?: Session | null | MockSessionOverrides,
 ): Session | null {
-  let resolved: Session | null;
-  if (sessionOrOverrides === null) {
-    resolved = null;
-  } else if (sessionOrOverrides && isFullSession(sessionOrOverrides)) {
-    resolved = sessionOrOverrides;
-  } else {
-    resolved = makeMockSession(sessionOrOverrides);
-  }
-  vi.mocked(auth).mockResolvedValue(resolved);
-  return resolved;
+    let resolved: Session | null;
+    if (sessionOrOverrides === null) {
+        resolved = null;
+    } else if (sessionOrOverrides && isFullSession(sessionOrOverrides)) {
+        resolved = sessionOrOverrides;
+    } else {
+        resolved = makeMockSession(sessionOrOverrides);
+    }
+    vi.mocked(auth).mockResolvedValue(resolved);
+    return resolved;
 }
 
 function isFullSession(value: unknown): value is Session {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "expires" in value &&
-    typeof (value as Session).expires === "string" &&
-    "user" in value &&
-    typeof (value as Session).user === "object" &&
-    (value as Session).user !== null &&
-    "id" in (value as Session).user
-  );
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        "expires" in value &&
+        typeof (value as Session).expires === "string" &&
+        "user" in value &&
+        typeof (value as Session).user === "object" &&
+        (value as Session).user !== null &&
+        "id" in (value as Session).user
+    );
 }

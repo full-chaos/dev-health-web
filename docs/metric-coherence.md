@@ -47,11 +47,11 @@ it with either a **real period-over-period delta** or an **explicit labeled stat
 ```tsx
 // Period-over-period change (%); undefined when history is insufficient.
 function getDelta(buckets: { value: number }[]) {
-  if (buckets.length < 2) return undefined;
-  const prev = buckets[0].value;
-  const curr = buckets[buckets.length - 1].value;
-  if (prev === 0) return undefined;
-  return ((curr - prev) / Math.abs(prev)) * 100;
+    if (buckets.length < 2) return undefined;
+    const prev = buckets[0].value;
+    const curr = buckets[buckets.length - 1].value;
+    if (prev === 0) return undefined;
+    return ((curr - prev) / Math.abs(prev)) * 100;
 }
 ```
 

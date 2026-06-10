@@ -37,20 +37,20 @@ import { WORK_GRAPH_EDGES_QUERY } from "@/lib/graphql/queries";
 // ---------------------------------------------------------------------------
 
 type PageProps = {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 type WorkGraphEdgesResponse = {
-  workGraphEdges: {
-    edges: WorkGraphEdge[];
-    totalCount: number;
-    pageInfo: {
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-      startCursor: string | null;
-      endCursor: string | null;
+    workGraphEdges: {
+        edges: WorkGraphEdge[];
+        totalCount: number;
+        pageInfo: {
+            hasNextPage: boolean;
+            hasPreviousPage: boolean;
+            startCursor: string | null;
+            endCursor: string | null;
+        };
     };
-  };
 };
 
 // ---------------------------------------------------------------------------
@@ -58,22 +58,22 @@ type WorkGraphEdgesResponse = {
 // ---------------------------------------------------------------------------
 
 async function fetchEdges(
-  orgId: string,
-  edgeType: "DEPLOYS" | "LINKED_INCIDENT",
+    orgId: string,
+    edgeType: "DEPLOYS" | "LINKED_INCIDENT",
 ): Promise<WorkGraphEdge[]> {
-  try {
-    const data = await graphqlFetch<WorkGraphEdgesResponse>(
-      WORK_GRAPH_EDGES_QUERY,
-      { orgId, filters: { edgeType, limit: 500 } },
-      { orgId },
-    );
-    return data.workGraphEdges?.edges ?? [];
-  } catch (err) {
-    // Surface as empty state rather than crashing; the dashboard already shows
-    // a populated empty-state message.
-    console.warn(`workGraphEdges(${edgeType}) query failed`, err);
-    return [];
-  }
+    try {
+        const data = await graphqlFetch<WorkGraphEdgesResponse>(
+            WORK_GRAPH_EDGES_QUERY,
+            { orgId, filters: { edgeType, limit: 500 } },
+            { orgId },
+        );
+        return data.workGraphEdges?.edges ?? [];
+    } catch (err) {
+        // Surface as empty state rather than crashing; the dashboard already shows
+        // a populated empty-state message.
+        console.warn(`workGraphEdges(${edgeType}) query failed`, err);
+        return [];
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -81,78 +81,83 @@ async function fetchEdges(
 // ---------------------------------------------------------------------------
 
 export default async function IncidentCorrelationPage({ searchParams }: PageProps) {
-  const session = await requireSession();
-  const params = (await searchParams) ?? {};
+    const session = await requireSession();
+    const params = (await searchParams) ?? {};
 
-  const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-  const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-  const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
+    const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+    const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
 
-  const activeRole = typeof roleParam === "string" ? roleParam : undefined;
-  const activeOrigin = typeof originParam === "string" ? originParam : undefined;
+    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+    const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
-  const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-  const orgId = session.user?.org_id ?? "demo-org";
+    const orgId = session.user?.org_id ?? "demo-org";
 
-  // Run all fetches in parallel to eliminate waterfall
-  const [health, home, explain, deploysEdges, incidentEdges] = await Promise.all([
-    checkApiHealth(),
-    fetchOrNull(getHomeData(filters), "incident-correlation/home-data"),
-    fetchOrNull(
-      getExplainData({ metric: "change_failure_rate", filters }),
-      "incident-correlation/explain-cfr",
-    ),
-    fetchEdges(orgId, "DEPLOYS"),
-    fetchEdges(orgId, "LINKED_INCIDENT"),
-  ]);
+    // Run all fetches in parallel to eliminate waterfall
+    const [health, home, explain, deploysEdges, incidentEdges] = await Promise.all([
+        checkApiHealth(),
+        fetchOrNull(getHomeData(filters), "incident-correlation/home-data"),
+        fetchOrNull(
+            getExplainData({ metric: "change_failure_rate", filters }),
+            "incident-correlation/explain-cfr",
+        ),
+        fetchEdges(orgId, "DEPLOYS"),
+        fetchEdges(orgId, "LINKED_INCIDENT"),
+    ]);
 
-  if (!health.ok) {
-    return <ServiceUnavailable />;
-  }
+    if (!health.ok) {
+        return <ServiceUnavailable />;
+    }
 
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-        <PrimaryNav filters={filters} active="incident-correlation" role={activeRole} />
-        <main
-          className="flex min-w-0 flex-1 flex-col gap-8"
-          data-testid="incident-correlation-page"
-        >
-          <header className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Investigate</p>
-              <h1 className="mt-2 font-(--font-display) text-3xl">Incident Correlation</h1>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Connect DORA change-failure signals to deployment and work-item evidence.
-              </p>
-              <p className="mt-2 text-sm text-(--ink-muted)">
-                Open a metric or incident row to investigate.
-              </p>
+    return (
+        <div className="min-h-screen bg-background text-foreground">
+            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+                <PrimaryNav filters={filters} active="incident-correlation" role={activeRole} />
+                <main
+                    className="flex min-w-0 flex-1 flex-col gap-8"
+                    data-testid="incident-correlation-page"
+                >
+                    <header className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                Investigate
+                            </p>
+                            <h1 className="mt-2 font-(--font-display) text-3xl">
+                                Incident Correlation
+                            </h1>
+                            <p className="mt-2 text-sm text-(--ink-muted)">
+                                Connect DORA change-failure signals to deployment and work-item
+                                evidence.
+                            </p>
+                            <p className="mt-2 text-sm text-(--ink-muted)">
+                                Open a metric or incident row to investigate.
+                            </p>
+                        </div>
+                        <Link
+                            href={withFilterParam("/", filters, activeRole)}
+                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                        >
+                            Back to cockpit
+                        </Link>
+                    </header>
+
+                    <ContextStrip filters={filters} origin={activeOrigin} />
+
+                    <IncidentCorrelationDashboard
+                        orgId={orgId}
+                        deltas={home?.deltas ?? []}
+                        drivers={explain?.drivers ?? []}
+                        contributors={explain?.contributors ?? []}
+                        explainUnit={explain?.unit}
+                        deploysEdges={deploysEdges}
+                        incidentEdges={incidentEdges}
+                        filters={filters}
+                        role={activeRole}
+                    />
+                </main>
             </div>
-            <Link
-              href={withFilterParam("/", filters, activeRole)}
-              className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-            >
-              Back to cockpit
-            </Link>
-          </header>
-
-          <ContextStrip filters={filters} origin={activeOrigin} />
-
-          <IncidentCorrelationDashboard
-            orgId={orgId}
-            deltas={home?.deltas ?? []}
-            drivers={explain?.drivers ?? []}
-            contributors={explain?.contributors ?? []}
-            explainUnit={explain?.unit}
-            deploysEdges={deploysEdges}
-            incidentEdges={incidentEdges}
-            filters={filters}
-            role={activeRole}
-          />
-        </main>
-      </div>
-    </div>
-  );
+        </div>
+    );
 }

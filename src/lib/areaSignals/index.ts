@@ -10,12 +10,14 @@
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { MetricFilter } from "@/lib/filters/types";
 
+import { getAISignals } from "./ai";
 import { getDiagnoseSignals } from "./diagnose";
 import { getGovernSignals } from "./govern";
 import { getImproveSignals } from "./improve";
 import type { AreaSignal } from "./types";
 
 export type { AreaSignal, AreaSignalState } from "./types";
+export { getAISignals } from "./ai";
 export { getDiagnoseSignals } from "./diagnose";
 export { getGovernSignals } from "./govern";
 export { getImproveSignals } from "./improve";
@@ -26,26 +28,32 @@ export { getImproveSignals } from "./improve";
  * return `[]` (no signal grid).
  */
 export async function getAreaSignals(
-  areaId: NavAreaId,
-  filters: MetricFilter,
-  isTestMode = false,
+    areaId: NavAreaId,
+    filters: MetricFilter,
+    isTestMode = false,
 ): Promise<AreaSignal[]> {
-  switch (areaId) {
-    case "govern":
-      return getGovernSignals(filters, isTestMode);
-    case "diagnose":
-      return getDiagnoseSignals(filters, isTestMode);
-    case "improve":
-      return getImproveSignals(filters, isTestMode);
-    case "cockpit":
-      // Cockpit's single sub-area (Operating Review) has no severity metric; it
-      // is a navigational surface. Render it as a calm "neutral" card rather
-      // than implying a finding (leave-as-is per CHAOS-2074).
-      return descriptorStubs(areaId, "neutral");
-    default:
-      // reports / admin — no signal grid.
-      return [];
-  }
+    switch (areaId) {
+        case "govern":
+            return getGovernSignals(filters, isTestMode);
+        case "diagnose":
+            return getDiagnoseSignals(filters, isTestMode);
+        case "improve":
+            return getImproveSignals(filters, isTestMode);
+        case "plan":
+            void filters;
+            void isTestMode;
+            return descriptorStubs(areaId, "unavailable");
+        case "ai":
+            return getAISignals(filters, isTestMode);
+        case "cockpit":
+            // Cockpit's single sub-area (Operating Review) has no severity metric; it
+            // is a navigational surface. Render it as a calm "neutral" card rather
+            // than implying a finding (leave-as-is per CHAOS-2074).
+            return descriptorStubs(areaId, "neutral");
+        default:
+            // reports / admin — no signal grid.
+            return [];
+    }
 }
 
 /**
@@ -53,16 +61,16 @@ export async function getAreaSignals(
  * "neutral" → calm navigational card for areas without severity metrics.
  */
 function descriptorStubs(areaId: NavAreaId, state: "unavailable" | "neutral"): AreaSignal[] {
-  const area = getAreaById(areaId);
-  if (!area) return [];
-  return area.hubItems.map((item) => ({
-    id: item.id,
-    label: item.label,
-    href: item.href,
-    cluster: item.cluster,
-    metricLabel: item.metricLabel ?? item.description ?? item.label,
-    value: "",
-    state,
-    demoted: item.demoted,
-  }));
+    const area = getAreaById(areaId);
+    if (!area) return [];
+    return area.hubItems.map((item) => ({
+        id: item.id,
+        label: item.label,
+        href: item.href,
+        cluster: item.cluster,
+        metricLabel: item.metricLabel ?? item.description ?? item.label,
+        value: "",
+        state,
+        demoted: item.demoted,
+    }));
 }

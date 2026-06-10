@@ -9,8 +9,8 @@ import { z } from "zod";
 // =============================================================================
 
 export const DateRangeSchema = z.object({
-  startDate: z.string(),
-  endDate: z.string(),
+    startDate: z.string(),
+    endDate: z.string(),
 });
 
 // =============================================================================
@@ -18,15 +18,15 @@ export const DateRangeSchema = z.object({
 // =============================================================================
 
 export const TimeseriesBucketSchema = z.object({
-  date: z.string(),
-  value: z.number(),
+    date: z.string(),
+    value: z.number(),
 });
 
 export const TimeseriesResultSchema = z.object({
-  dimension: z.string(),
-  dimensionValue: z.string(),
-  measure: z.string(),
-  buckets: z.array(TimeseriesBucketSchema),
+    dimension: z.string(),
+    dimensionValue: z.string(),
+    measure: z.string(),
+    buckets: z.array(TimeseriesBucketSchema),
 });
 
 // =============================================================================
@@ -34,14 +34,17 @@ export const TimeseriesResultSchema = z.object({
 // =============================================================================
 
 export const BreakdownItemSchema = z.object({
-  key: z.string(),
-  value: z.number(),
+    key: z.string(),
+    value: z.number(),
+    // Server-resolved human display name (CHAOS-2089, Framework A7). Optional for
+    // back-compat; falls back to key-derived rendering when absent.
+    label: z.string().nullish(),
 });
 
 export const BreakdownResultSchema = z.object({
-  dimension: z.string(),
-  measure: z.string(),
-  items: z.array(BreakdownItemSchema),
+    dimension: z.string(),
+    measure: z.string(),
+    items: z.array(BreakdownItemSchema),
 });
 
 // =============================================================================
@@ -49,27 +52,27 @@ export const BreakdownResultSchema = z.object({
 // =============================================================================
 
 export const SankeyNodeSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  dimension: z.string(),
-  value: z.number(),
+    id: z.string(),
+    label: z.string(),
+    dimension: z.string(),
+    value: z.number(),
 });
 
 export const SankeyEdgeSchema = z.object({
-  source: z.string(),
-  target: z.string(),
-  value: z.number(),
+    source: z.string(),
+    target: z.string(),
+    value: z.number(),
 });
 
 export const SankeyCoverageSchema = z.object({
-  teamCoverage: z.number(),
-  repoCoverage: z.number(),
+    teamCoverage: z.number(),
+    repoCoverage: z.number(),
 });
 
 export const SankeyResultSchema = z.object({
-  nodes: z.array(SankeyNodeSchema),
-  edges: z.array(SankeyEdgeSchema),
-  coverage: SankeyCoverageSchema.nullable().optional(),
+    nodes: z.array(SankeyNodeSchema),
+    edges: z.array(SankeyEdgeSchema),
+    coverage: SankeyCoverageSchema.nullable().optional(),
 });
 
 // =============================================================================
@@ -77,9 +80,9 @@ export const SankeyResultSchema = z.object({
 // =============================================================================
 
 export const AnalyticsResultSchema = z.object({
-  timeseries: z.array(TimeseriesResultSchema),
-  breakdowns: z.array(BreakdownResultSchema),
-  sankey: SankeyResultSchema.nullable().optional(),
+    timeseries: z.array(TimeseriesResultSchema),
+    breakdowns: z.array(BreakdownResultSchema),
+    sankey: SankeyResultSchema.nullable().optional(),
 });
 
 // =============================================================================
@@ -87,56 +90,56 @@ export const AnalyticsResultSchema = z.object({
 // =============================================================================
 
 export const DimensionInputSchema = z.enum([
-  "TEAM",
-  "REPO",
-  "AUTHOR",
-  "WORK_TYPE",
-  "THEME",
-  "SUBCATEGORY",
+    "TEAM",
+    "REPO",
+    "AUTHOR",
+    "WORK_TYPE",
+    "THEME",
+    "SUBCATEGORY",
 ]);
 
 export const MeasureInputSchema = z.enum([
-  "COUNT",
-  "CHURN_LOC",
-  "CYCLE_TIME_HOURS",
-  "THROUGHPUT",
-  "PIPELINE_SUCCESS_RATE",
-  "PIPELINE_FAILURE_RATE",
-  "PIPELINE_DURATION_P95",
-  "PIPELINE_QUEUE_TIME",
-  "PIPELINE_RERUN_RATE",
-  "TEST_PASS_RATE",
-  "TEST_FAILURE_RATE",
-  "TEST_FLAKE_RATE",
-  "TEST_SUITE_DURATION_P95",
-  "COVERAGE_LINE_PCT",
-  "COVERAGE_BRANCH_PCT",
-  "COVERAGE_DELTA_PCT",
+    "COUNT",
+    "CHURN_LOC",
+    "CYCLE_TIME_HOURS",
+    "THROUGHPUT",
+    "PIPELINE_SUCCESS_RATE",
+    "PIPELINE_FAILURE_RATE",
+    "PIPELINE_DURATION_P95",
+    "PIPELINE_QUEUE_TIME",
+    "PIPELINE_RERUN_RATE",
+    "TEST_PASS_RATE",
+    "TEST_FAILURE_RATE",
+    "TEST_FLAKE_RATE",
+    "TEST_SUITE_DURATION_P95",
+    "COVERAGE_LINE_PCT",
+    "COVERAGE_BRANCH_PCT",
+    "COVERAGE_DELTA_PCT",
 ]);
 
 export const BucketIntervalInputSchema = z.enum(["DAY", "WEEK", "MONTH"]);
 
 export const TimeseriesRequestInputSchema = z.object({
-  dimension: DimensionInputSchema,
-  measure: MeasureInputSchema,
-  interval: BucketIntervalInputSchema,
-  dateRange: DateRangeSchema,
+    dimension: DimensionInputSchema,
+    measure: MeasureInputSchema,
+    interval: BucketIntervalInputSchema,
+    dateRange: DateRangeSchema,
 });
 
 export const BreakdownRequestInputSchema = z.object({
-  dimension: DimensionInputSchema,
-  measure: MeasureInputSchema,
-  dateRange: DateRangeSchema,
-  topN: z.number().optional().default(10),
+    dimension: DimensionInputSchema,
+    measure: MeasureInputSchema,
+    dateRange: DateRangeSchema,
+    topN: z.number().optional().default(10),
 });
 
 export const SankeyRequestInputSchema = z.object({
-  path: z.array(DimensionInputSchema),
-  measure: MeasureInputSchema,
-  dateRange: DateRangeSchema,
-  maxNodes: z.number().optional().default(100),
-  maxEdges: z.number().optional().default(500),
-  useInvestment: z.boolean().optional(),
+    path: z.array(DimensionInputSchema),
+    measure: MeasureInputSchema,
+    dateRange: DateRangeSchema,
+    maxNodes: z.number().optional().default(100),
+    maxEdges: z.number().optional().default(500),
+    useInvestment: z.boolean().optional(),
 });
 
 // =============================================================================
@@ -146,43 +149,43 @@ export const SankeyRequestInputSchema = z.object({
 export const ScopeLevelInputSchema = z.enum(["ORG", "TEAM", "REPO", "SERVICE", "DEVELOPER"]);
 
 export const ScopeFilterInputSchema = z.object({
-  level: ScopeLevelInputSchema.optional(),
-  ids: z.array(z.string().min(1)).optional(),
+    level: ScopeLevelInputSchema.optional(),
+    ids: z.array(z.string().min(1)).optional(),
 });
 
 export const WhoFilterInputSchema = z.object({
-  developers: z.array(z.string().min(1)).optional(),
-  roles: z.array(z.string().min(1)).optional(),
+    developers: z.array(z.string().min(1)).optional(),
+    roles: z.array(z.string().min(1)).optional(),
 });
 
 export const WhatFilterInputSchema = z.object({
-  repos: z.array(z.string().min(1)).optional(),
-  services: z.array(z.string().min(1)).optional(),
+    repos: z.array(z.string().min(1)).optional(),
+    services: z.array(z.string().min(1)).optional(),
 });
 
 export const WhyFilterInputSchema = z.object({
-  workCategory: z.array(z.string().min(1)).optional(),
-  issueType: z.array(z.string().min(1)).optional(),
+    workCategory: z.array(z.string().min(1)).optional(),
+    issueType: z.array(z.string().min(1)).optional(),
 });
 
 export const HowFilterInputSchema = z.object({
-  flowStage: z.array(z.string().min(1)).optional(),
+    flowStage: z.array(z.string().min(1)).optional(),
 });
 
 export const FilterInputSchema = z.object({
-  scope: ScopeFilterInputSchema.optional(),
-  who: WhoFilterInputSchema.optional(),
-  what: WhatFilterInputSchema.optional(),
-  why: WhyFilterInputSchema.optional(),
-  how: HowFilterInputSchema.optional(),
+    scope: ScopeFilterInputSchema.optional(),
+    who: WhoFilterInputSchema.optional(),
+    what: WhatFilterInputSchema.optional(),
+    why: WhyFilterInputSchema.optional(),
+    how: HowFilterInputSchema.optional(),
 });
 
 export const AnalyticsRequestInputSchema = z.object({
-  timeseries: z.array(TimeseriesRequestInputSchema).default([]),
-  breakdowns: z.array(BreakdownRequestInputSchema).default([]),
-  sankey: SankeyRequestInputSchema.optional(),
-  useInvestment: z.boolean().optional(),
-  filters: FilterInputSchema.optional(),
+    timeseries: z.array(TimeseriesRequestInputSchema).default([]),
+    breakdowns: z.array(BreakdownRequestInputSchema).default([]),
+    sankey: SankeyRequestInputSchema.optional(),
+    useInvestment: z.boolean().optional(),
+    filters: FilterInputSchema.optional(),
 });
 
 // =============================================================================

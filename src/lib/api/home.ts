@@ -10,25 +10,32 @@ import { normalizeFilters, postJson } from "./_shared";
  * resolver share one POST instead of issuing two identical requests per render.
  */
 export const getHomeData = cache(async function getHomeData(filters: MetricFilter) {
-  const normalized = normalizeFilters(filters);
-  return postJson<HomeResponse>("/api/v1/home", { filters: normalized }, 60, {
-    f: encodeFilterParam(normalized),
-  });
+    const normalized = normalizeFilters(filters);
+    return postJson<HomeResponse>("/api/v1/home", { filters: normalized }, 60, {
+        f: encodeFilterParam(normalized),
+    });
 });
 
 export async function getExplainData(params: { metric: string; filters: MetricFilter }) {
-  const normalized = normalizeFilters(params.filters);
-  return postJson<ExplainResponse>(
-    "/api/v1/explain",
-    { metric: params.metric, filters: normalized },
-    60,
-    { metric: params.metric, f: encodeFilterParam(normalized) },
-  );
+    const normalized = normalizeFilters(params.filters);
+    return postJson<ExplainResponse>(
+        "/api/v1/explain",
+        { metric: params.metric, filters: normalized },
+        60,
+        { metric: params.metric, f: encodeFilterParam(normalized) },
+    );
 }
 
-export async function getOpportunities(filters: MetricFilter) {
-  const normalized = normalizeFilters(filters);
-  return postJson<OpportunitiesResponse>("/api/v1/opportunities", { filters: normalized }, 120, {
-    f: encodeFilterParam(normalized),
-  });
-}
+/**
+ * Per-request memoized opportunities fetch. React.cache() deduplicates calls
+ * within a single RSC render tree so the /opportunities page and the Improve
+ * area-signal resolver (getImproveSignals) share ONE POST instead of issuing two
+ * identical requests per render — and read from the same list/count snapshot.
+ * Safe to memoize: getOpportunities is only ever called server-side (RSC).
+ */
+export const getOpportunities = cache(async function getOpportunities(filters: MetricFilter) {
+    const normalized = normalizeFilters(filters);
+    return postJson<OpportunitiesResponse>("/api/v1/opportunities", { filters: normalized }, 120, {
+        f: encodeFilterParam(normalized),
+    });
+});

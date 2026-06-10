@@ -17,6 +17,13 @@ query InvestmentBreakdown($orgId: String!, $batch: AnalyticsRequestInput!) {
         value
       }
     }
+    evidenceQualityDistribution
+    evidenceQualityStats {
+      mean
+      stddev
+      total
+      bandCounts
+    }
   }
 }
 `;
@@ -182,6 +189,10 @@ query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
         source
         target
         value
+      }
+      coverage {
+        teamCoverage
+        repoCoverage
       }
     }
   }
@@ -357,8 +368,10 @@ query WorkGraphEdges($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
       edgeId
       sourceType
       sourceId
+      sourceDisplayName
       targetType
       targetId
+      targetDisplayName
       edgeType
       provenance
       confidence
@@ -461,6 +474,20 @@ query AIImpactSummary($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
       incidentRate
       testGapPrs
       testGapRate
+    }
+    repoBreakdown {
+      scopeId
+      scopeLabel
+      aiPrsTotal
+      aiAssistedPrRatio
+      reworkRateDelta
+    }
+    teamBreakdown {
+      scopeId
+      scopeLabel
+      aiPrsTotal
+      aiAssistedPrRatio
+      reworkRateDelta
     }
   }
 }
@@ -614,6 +641,8 @@ query AIReviewLoad($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AISco
       reviewAmplification
       postFirstReviewPushesCount
       postFirstReviewPushesPerPr
+      pickupLatencyHours
+      reviewCommentsPerLoc
     }
     daily {
       bucket
@@ -624,6 +653,8 @@ query AIReviewLoad($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AISco
       reviewAmplification
       postFirstReviewPushesCount
       postFirstReviewPushesPerPr
+      pickupLatencyHours
+      reviewCommentsPerLoc
     }
     reviewerConcentration {
       dataAvailable
@@ -693,6 +724,19 @@ query AIRiskBreakdown($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
       testGapRate
       incidentsCount
       incidentRate
+    }
+    hotspotOverlap {
+      bucket
+      prsTotal
+      prsTouchingHotspots
+      hotspotOverlapRate
+      avgHotspotRiskScore
+    }
+    complexityOverlap {
+      bucket
+      prsTotal
+      prsTouchingHighComplexity
+      complexityOverlapRate
     }
     missingStates {
       key
@@ -826,6 +870,47 @@ query Hotspots($input: HotspotsInput!) {
       riskScore
       evidenceUrl
     }
+  }
+}
+`;
+
+// ==== Cognitive Load Queries (CHAOS-2077) ====
+
+// Daily cognitive-load signals: PR interruption load, context spread, review request load,
+// after-hours and weekend commit ratios. Backed by user_metrics_daily and team_metrics_daily.
+export const COGNITIVE_LOAD_QUERY = `
+query CognitiveLoad($input: CognitiveLoadInput!) {
+  cognitiveLoad(input: $input) {
+    orgId
+    teamId
+    totalDays
+    signals {
+      day
+      prInterruptionLoad
+      contextSpreadCount
+      reviewRequestLoad
+      afterHoursCommitRatio
+      weekendCommitRatio
+    }
+  }
+}
+`;
+
+// ==== Review Edges Queries (CHAOS-2077) ====
+
+// Reviewer→author collaboration edges from review_edges_daily.
+// Used by the Work-Graph "Review Network" tab.
+export const REVIEW_EDGES_QUERY = `
+query ReviewEdges($input: ReviewEdgesInput!) {
+  reviewEdges(input: $input) {
+    edges {
+      reviewer
+      author
+      reviewsCount
+      day
+      repoId
+    }
+    totalCount
   }
 }
 `;

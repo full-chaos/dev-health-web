@@ -9,33 +9,46 @@
 import { Suspense } from "react";
 import { FilterBarClient } from "./FilterBarClient";
 import {
-  type FilterBarClientProps,
-  type FilterBarView,
-  resolveScopeLock,
-  resolveVisibility,
+    type FilterBarClientProps,
+    type FilterBarView,
+    resolveScopeLock,
+    resolveVisibility,
 } from "./filterBarConfig";
 
 type FilterBarProps = {
-  condensed?: boolean;
-  view?: FilterBarView;
-  tab?: string;
+    condensed?: boolean;
+    view?: FilterBarView;
+    tab?: string;
 };
 
 export function FilterBar({ condensed, view, tab }: FilterBarProps) {
-  const resolvedVisibility = resolveVisibility(view, tab);
-  const resolvedScopeLock = resolveScopeLock(view);
+    const baseVisibility = resolveVisibility(view, tab);
+    const resolvedVisibility = {
+        ...baseVisibility,
+        scope: false,
+        date: false,
+        repo: false,
+    };
+    const resolvedScopeLock = resolveScopeLock(view);
+    const hasPageFilters = Boolean(
+        resolvedVisibility.developer || resolvedVisibility.workType || resolvedVisibility.flowStage,
+    );
 
-  const clientProps: FilterBarClientProps = {
-    condensed,
-    view,
-    tab,
-    resolvedVisibility,
-    resolvedScopeLock,
-  };
+    if (!hasPageFilters) {
+        return null;
+    }
 
-  return (
-    <Suspense fallback={<div className="h-14 animate-pulse rounded-xl bg-(--card-80)" />}>
-      <FilterBarClient {...clientProps} />
-    </Suspense>
-  );
+    const clientProps: FilterBarClientProps = {
+        condensed,
+        view,
+        tab,
+        resolvedVisibility,
+        resolvedScopeLock,
+    };
+
+    return (
+        <Suspense fallback={<div className="h-14 animate-pulse rounded-2xl bg-(--card-80)" />}>
+            <FilterBarClient {...clientProps} />
+        </Suspense>
+    );
 }

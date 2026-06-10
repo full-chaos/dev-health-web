@@ -19,9 +19,9 @@
 import type { SignalSeverity } from "@/lib/types";
 
 export type SeverityThresholds = {
-  readonly critical: number;
-  readonly high: number;
-  readonly medium: number;
+    readonly critical: number;
+    readonly high: number;
+    readonly medium: number;
 };
 
 // CHAOS-2074: provisional thresholds — pending product calibration.
@@ -37,9 +37,9 @@ export const BACKEND_LADDER: SeverityThresholds = { critical: 60, high: 35, medi
  * (lower-is-better on the shortfall): s >= 40 crit, >= 25 high, >= 10 med.
  */
 export const PIPELINE_SHORTFALL_THRESHOLDS: SeverityThresholds = {
-  critical: 40,
-  high: 25,
-  medium: 10,
+    critical: 40,
+    high: 25,
+    medium: 10,
 };
 
 /**
@@ -60,22 +60,22 @@ export const FLAKE_THRESHOLDS: SeverityThresholds = { critical: 15, high: 8, med
  * (higher-is-better, `<`): < 40 crit, < 55 high, < 70 med, else low.
  */
 export const DELIVERY_RISK_THRESHOLDS: SeverityThresholds = {
-  critical: 40,
-  high: 55,
-  medium: 70,
+    critical: 40,
+    high: 55,
+    medium: 70,
 };
 
 export type DeriveDirection = "lowerIsBetter" | "higherIsBetter";
 
 export type DeriveStateOptions = {
-  /** Severity cut points (see the exported constants). */
-  thresholds: SeverityThresholds;
-  /**
-   * Metric polarity.
-   *  - "lowerIsBetter": ladder is `value >= cut` (bigger = worse).
-   *  - "higherIsBetter": ladder is `value < cut` (smaller = worse).
-   */
-  direction: DeriveDirection;
+    /** Severity cut points (see the exported constants). */
+    thresholds: SeverityThresholds;
+    /**
+     * Metric polarity.
+     *  - "lowerIsBetter": ladder is `value >= cut` (bigger = worse).
+     *  - "higherIsBetter": ladder is `value < cut` (smaller = worse).
+     */
+    direction: DeriveDirection;
 };
 
 /**
@@ -86,18 +86,18 @@ export type DeriveStateOptions = {
  * points are checked from most to least severe so the worst matching band wins.
  */
 export function deriveState(value: number, opts: DeriveStateOptions): SignalSeverity {
-  const { thresholds, direction } = opts;
+    const { thresholds, direction } = opts;
 
-  if (direction === "higherIsBetter") {
-    if (value < thresholds.critical) return "critical";
-    if (value < thresholds.high) return "high";
-    if (value < thresholds.medium) return "medium";
+    if (direction === "higherIsBetter") {
+        if (value < thresholds.critical) return "critical";
+        if (value < thresholds.high) return "high";
+        if (value < thresholds.medium) return "medium";
+        return "low";
+    }
+
+    // lowerIsBetter
+    if (value >= thresholds.critical) return "critical";
+    if (value >= thresholds.high) return "high";
+    if (value >= thresholds.medium) return "medium";
     return "low";
-  }
-
-  // lowerIsBetter
-  if (value >= thresholds.critical) return "critical";
-  if (value >= thresholds.high) return "high";
-  if (value >= thresholds.medium) return "medium";
-  return "low";
 }

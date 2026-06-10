@@ -6,43 +6,43 @@
 import { getServerEnv } from "@/lib/config";
 
 type RuntimeConfig = {
-  publicEnv?: Record<string, string>;
+    publicEnv?: Record<string, string>;
 };
 
 const readRuntimeConfig = (): RuntimeConfig | undefined => {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  return window.__DEV_HEALTH_RUNTIME__;
+    if (typeof window === "undefined") {
+        return undefined;
+    }
+    return window.__DEV_HEALTH_RUNTIME__;
 };
 
 const getPublicEnvValue = (key: string): string | undefined => {
-  const runtime = readRuntimeConfig();
-  const runtimeValue = runtime?.publicEnv?.[key];
-  if (runtimeValue !== undefined) {
-    return runtimeValue;
-  }
-  return process.env[key];
+    const runtime = readRuntimeConfig();
+    const runtimeValue = runtime?.publicEnv?.[key];
+    if (runtimeValue !== undefined) {
+        return runtimeValue;
+    }
+    return process.env[key];
 };
 
 export const runtimeConfig = {
-  /**
-   * Check if GraphQL analytics is enabled.
-   *
-   * Defaults to TRUE unless explicitly set to "false".
-   * Set NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=false to disable.
-   */
-  useGraphQLAnalytics: (): boolean => {
-    if (typeof window !== "undefined") {
-      const value = getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
-      // Default to true unless explicitly set to "false"
-      return value !== "false";
-    }
-    const raw =
-      getServerEnv().USE_GRAPHQL_ANALYTICS ??
-      getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
-    // Default to true unless explicitly set to "false"
-    return raw !== "false";
-  },
-  docsUrl: (): string => getPublicEnvValue("NEXT_PUBLIC_DOCS_URL") || "/docs",
+    /**
+     * Check if GraphQL analytics is enabled.
+     *
+     * Defaults to TRUE unless explicitly set to "false".
+     * Set NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS=false to disable.
+     */
+    useGraphQLAnalytics: (): boolean => {
+        if (typeof window !== "undefined") {
+            const value = getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
+            // Default to true unless explicitly set to "false"
+            return value !== "false";
+        }
+        const raw =
+            getServerEnv().USE_GRAPHQL_ANALYTICS ??
+            getPublicEnvValue("NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS");
+        // Default to true unless explicitly set to "false"
+        return raw !== "false";
+    },
+    docsUrl: (): string => getPublicEnvValue("NEXT_PUBLIC_DOCS_URL") || "/docs",
 };

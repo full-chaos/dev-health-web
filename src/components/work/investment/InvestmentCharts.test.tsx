@@ -14,219 +14,297 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 
 const { treemapSpy, sankeySpy, sunburstSpy } = vi.hoisted(() => ({
-  treemapSpy: vi.fn(),
-  sankeySpy: vi.fn(),
-  sunburstSpy: vi.fn(),
+    treemapSpy: vi.fn(),
+    sankeySpy: vi.fn(),
+    sunburstSpy: vi.fn(),
 }));
 
 vi.mock("@/components/charts/chartTheme", () => ({
-  useChartTheme: () => ({
-    text: "#111827",
-    grid: "#e5e7eb",
-    muted: "#6b7280",
-    background: "#ffffff",
-    stroke: "#d1d5db",
-    accent1: "#2563eb",
-    accent2: "#7c3aed",
-    accent3: "#ef4444",
-  }),
-  useChartColors: () => ["#2563eb", "#14b8a6", "#f97316", "#a855f7", "#ec4899"],
+    useChartTheme: () => ({
+        text: "#111827",
+        grid: "#e5e7eb",
+        muted: "#6b7280",
+        background: "#ffffff",
+        stroke: "#d1d5db",
+        accent1: "#2563eb",
+        accent2: "#7c3aed",
+        accent3: "#ef4444",
+    }),
+    useChartColors: () => ["#2563eb", "#14b8a6", "#f97316", "#a855f7", "#ec4899"],
 }));
 
 vi.mock("@/components/charts/TreemapChart", async () => {
-  const actual = await vi.importActual<typeof import("@/components/charts/TreemapChart")>(
-    "@/components/charts/TreemapChart",
-  );
-  return {
-    ...actual,
-    TreemapChart: (props: Record<string, unknown>) => {
-      treemapSpy(props);
-      return <div data-testid="treemap-chart" />;
-    },
-  };
+    const actual = await vi.importActual<typeof import("@/components/charts/TreemapChart")>(
+        "@/components/charts/TreemapChart",
+    );
+    return {
+        ...actual,
+        TreemapChart: (props: Record<string, unknown>) => {
+            treemapSpy(props);
+            return <div data-testid="treemap-chart" />;
+        },
+    };
 });
 
 vi.mock("@/components/charts/SankeyChart", () => ({
-  SankeyChart: (props: Record<string, unknown>) => {
-    sankeySpy(props);
-    return <div data-testid="sankey-chart" />;
-  },
+    SankeyChart: (props: Record<string, unknown>) => {
+        sankeySpy(props);
+        return <div data-testid="sankey-chart" />;
+    },
 }));
 
 vi.mock("@/components/charts/InvestmentMixSunburst", () => ({
-  InvestmentMixSunburst: (props: Record<string, unknown>) => {
-    sunburstSpy(props);
-    return <div data-testid="sunburst-chart" />;
-  },
+    InvestmentMixSunburst: (props: Record<string, unknown>) => {
+        sunburstSpy(props);
+        return <div data-testid="sunburst-chart" />;
+    },
 }));
 
 vi.mock("@/lib/graphql/hooks/useChordFlow", () => ({
-  useChordFlow: () => ({ data: null, fetching: false, error: undefined }),
+    useChordFlow: () => ({ data: null, fetching: false, error: undefined }),
 }));
 
 const baseFilters: MetricFilter = {
-  scope: { level: "org", ids: [] },
-  time: { range_days: 30, compare_days: 30 },
-  who: { developers: [] },
-  what: { repos: [] },
-  why: { work_category: [], issue_type: [] },
-  how: { flow_stage: [] },
+    scope: { level: "org", ids: [] },
+    time: { range_days: 30, compare_days: 30 },
+    who: { developers: [] },
+    what: { repos: [] },
+    why: { work_category: [], issue_type: [] },
+    how: { flow_stage: [] },
 };
 
 const sampleWorkUnit: WorkUnitInvestment = {
-  work_unit_id: "wu-1",
-  work_unit_name: "Feature work",
-  work_unit_type: "pr",
-  title: "Feature work",
-  time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
-  effort: { metric: "active_hours", value: 1 },
-  investment: {
-    themes: { feature: 0.8, quality: 0.2 },
-    subcategories: { "feature.build": 0.8, "quality.tests": 0.2 },
-  },
-  evidence_quality: { value: 0.75, band: "high" },
-  evidence: { textual: [], structural: [], contextual: [] },
+    work_unit_id: "wu-1",
+    work_unit_name: "Feature work",
+    work_unit_type: "pr",
+    title: "Feature work",
+    time_range: { start: "2026-02-01T00:00:00Z", end: "2026-03-01T00:00:00Z" },
+    effort: { metric: "active_hours", value: 1 },
+    investment: {
+        themes: { feature: 0.8, quality: 0.2 },
+        subcategories: { "feature.build": 0.8, "quality.tests": 0.2 },
+    },
+    evidence_quality: { value: 0.75, band: "high" },
+    evidence: { textual: [], structural: [], contextual: [] },
 };
 
 const sampleSankey: SankeyResponse = {
-  mode: "investment",
-  nodes: [{ name: "TEAM: core" }, { name: "THEME: feature" }, { name: "REPO: org/repo" }],
-  links: [
-    { source: "TEAM: core", target: "THEME: feature", value: 10 },
-    { source: "THEME: feature", target: "REPO: org/repo", value: 10 },
-  ],
+    mode: "investment",
+    nodes: [{ name: "TEAM: core" }, { name: "THEME: feature" }, { name: "REPO: org/repo" }],
+    links: [
+        { source: "TEAM: core", target: "THEME: feature", value: 10 },
+        { source: "THEME: feature", target: "REPO: org/repo", value: 10 },
+    ],
 };
 
 type Props = Parameters<typeof InvestmentCharts>[0];
 
 function baseProps(overrides: Partial<Props> = {}): Props {
-  return {
-    filters: baseFilters,
-    workUnits: [sampleWorkUnit],
-    isLoading: false,
-    investmentMix: null,
-    isMixLoading: false,
-    focusTheme: null,
-    setFocusTheme: vi.fn(),
-    setFocusSubcategory: vi.fn(),
-    selectedCategory: null,
-    setSelectedCategory: vi.fn(),
-    focusedTeam: null,
-    setFocusedTeam: vi.fn(),
-    teamCategoryFlow: sampleSankey,
-    baselineSankeyFlow: sampleSankey,
-    isCategoryFlowLoading: false,
-    repoTeamFlow: sampleSankey,
-    isRepoTeamLoading: false,
-    repoTeamFlowFailed: false,
-    selectedThemeKey: null,
-    showSubcategories: false,
-    ...overrides,
-  };
+    return {
+        filters: baseFilters,
+        workUnits: [sampleWorkUnit],
+        isLoading: false,
+        investmentMix: null,
+        isMixLoading: false,
+        focusTheme: null,
+        setFocusTheme: vi.fn(),
+        setFocusSubcategory: vi.fn(),
+        selectedCategory: null,
+        setSelectedCategory: vi.fn(),
+        focusedTeam: null,
+        setFocusedTeam: vi.fn(),
+        teamCategoryFlow: sampleSankey,
+        baselineSankeyFlow: sampleSankey,
+        isCategoryFlowLoading: false,
+        repoTeamFlow: sampleSankey,
+        isRepoTeamLoading: false,
+        repoTeamFlowFailed: false,
+        selectedThemeKey: null,
+        showSubcategories: false,
+        ...overrides,
+    };
 }
 
 describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
-  beforeEach(() => {
-    treemapSpy.mockClear();
-    sankeySpy.mockClear();
-    sunburstSpy.mockClear();
-  });
-
-  afterEach(() => cleanup());
-
-  describe("section landmarks", () => {
-    it("renders the three h3 section headings that a split refactor must preserve", () => {
-      render(<InvestmentCharts {...baseProps()} />);
-      expect(
-        screen.getByRole("heading", { level: 3, name: /treemap|investment mix/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("heading", { level: 3, name: /team burden flow/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe("loading states", () => {
-    it('shows "Loading work units..." when isLoading is true', () => {
-      render(<InvestmentCharts {...baseProps({ isLoading: true, workUnits: [] })} />);
-      expect(screen.getByText(/loading work units/i)).toBeInTheDocument();
+    beforeEach(() => {
+        treemapSpy.mockClear();
+        sankeySpy.mockClear();
+        sunburstSpy.mockClear();
     });
 
-    it('shows "Loading flow data..." when isCategoryFlowLoading is true', () => {
-      render(
-        <InvestmentCharts
-          {...baseProps({
-            isCategoryFlowLoading: true,
-            teamCategoryFlow: null,
-            baselineSankeyFlow: null,
-          })}
-        />,
-      );
-      expect(screen.getByText(/loading flow data/i)).toBeInTheDocument();
+    afterEach(() => cleanup());
+
+    describe("section landmarks", () => {
+        it("renders the three h3 section headings that a split refactor must preserve", () => {
+            render(<InvestmentCharts {...baseProps()} />);
+            expect(
+                screen.getByRole("heading", {
+                    level: 3,
+                    name: /treemap|investment mix/i,
+                }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
+            ).toBeInTheDocument();
+        });
     });
 
-    it('shows "Loading destination view..." when isRepoTeamLoading is true', () => {
-      render(<InvestmentCharts {...baseProps({ isRepoTeamLoading: true, repoTeamFlow: null })} />);
-      expect(screen.getByText(/loading destination view/i)).toBeInTheDocument();
-    });
-  });
+    describe("loading states", () => {
+        it('shows "Loading work units..." when isLoading is true', () => {
+            render(<InvestmentCharts {...baseProps({ isLoading: true, workUnits: [] })} />);
+            expect(screen.getByText(/loading work units/i)).toBeInTheDocument();
+        });
 
-  describe("empty states", () => {
-    it('shows "No work unit investments available." when workUnits is empty and not loading', () => {
-      render(<InvestmentCharts {...baseProps({ workUnits: [], isLoading: false })} />);
-      expect(screen.getByText(/no work unit investments available/i)).toBeInTheDocument();
-    });
-  });
+        it('shows "Loading allocation data..." when isCategoryFlowLoading is true', () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({
+                        isCategoryFlowLoading: true,
+                        teamCategoryFlow: null,
+                        baselineSankeyFlow: null,
+                    })}
+                />,
+            );
+            expect(screen.getByText(/loading allocation data/i)).toBeInTheDocument();
+        });
 
-  describe("chart mount points", () => {
-    it("renders the sankey chart when teamCategoryFlow has data", () => {
-      render(<InvestmentCharts {...baseProps()} />);
-      expect(screen.getAllByTestId("sankey-chart").length).toBeGreaterThan(0);
-      expect(sankeySpy).toHaveBeenCalled();
+        it('shows "Loading destination view..." when isRepoTeamLoading is true', () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({ isRepoTeamLoading: true, repoTeamFlow: null })}
+                />,
+            );
+            expect(screen.getByText(/loading destination view/i)).toBeInTheDocument();
+        });
     });
 
-    it("passes an object payload to the sankey chart (contract is object, not specific prop names)", () => {
-      // The safety net intentionally does NOT assert specific prop names on SankeyChart.
-      // The CHAOS-1227 split may reshape the props (e.g. pass pre-computed nodes/links
-      // from a new sub-component). Over-specifying this contract would force churn in the
-      // test on every internal refactor. Asserting "an object was passed" is the coarsest
-      // useful invariant that still catches complete prop-wiring regressions.
-      render(<InvestmentCharts {...baseProps()} />);
-      expect(sankeySpy).toHaveBeenCalled();
-      const firstCall = sankeySpy.mock.calls[0]?.[0];
-      expect(firstCall).toBeTypeOf("object");
+    describe("empty states", () => {
+        it('shows "No work unit investments available." when workUnits is empty and not loading', () => {
+            render(<InvestmentCharts {...baseProps({ workUnits: [], isLoading: false })} />);
+            expect(screen.getByText(/no work unit investments available/i)).toBeInTheDocument();
+        });
     });
-  });
 
-  describe("interaction invariants", () => {
-    it("renders the investment and mix chart toggles so users can switch views", () => {
-      render(<InvestmentCharts {...baseProps()} />);
+    describe("chart mount points", () => {
+        it("renders the sankey chart when teamCategoryFlow has data", () => {
+            render(<InvestmentCharts {...baseProps()} />);
+            expect(screen.getAllByTestId("sankey-chart").length).toBeGreaterThan(0);
+            expect(sankeySpy).toHaveBeenCalled();
+        });
 
-      const radiogroups = screen.getAllByRole("radiogroup", { name: /chart type/i });
-      expect(radiogroups.length).toBeGreaterThanOrEqual(2);
-      expect(screen.getByRole("radio", { name: /treemap/i })).toBeInTheDocument();
-      expect(screen.getByRole("radio", { name: /sunburst/i })).toBeInTheDocument();
-      expect(screen.getByRole("radio", { name: /sankey/i })).toBeInTheDocument();
-      expect(screen.getByRole("radio", { name: /chord/i })).toBeInTheDocument();
+        it("passes an object payload to the sankey chart (contract is object, not specific prop names)", () => {
+            // The safety net intentionally does NOT assert specific prop names on SankeyChart.
+            // The CHAOS-1227 split may reshape the props (e.g. pass pre-computed nodes/links
+            // from a new sub-component). Over-specifying this contract would force churn in the
+            // test on every internal refactor. Asserting "an object was passed" is the coarsest
+            // useful invariant that still catches complete prop-wiring regressions.
+            render(<InvestmentCharts {...baseProps()} />);
+            expect(sankeySpy).toHaveBeenCalled();
+            const firstCall = sankeySpy.mock.calls[0]?.[0];
+            expect(firstCall).toBeTypeOf("object");
+        });
     });
-  });
 
-  describe("repo-team failure state", () => {
-    it("still renders the three sections when repoTeamFlowFailed is true", () => {
-      render(
-        <InvestmentCharts
-          {...baseProps({
-            repoTeamFlowFailed: true,
-            repoTeamFlow: null,
-          })}
-        />,
-      );
-      expect(
-        screen.getByRole("heading", { level: 3, name: /where effort lands/i }),
-      ).toBeInTheDocument();
+    describe("interaction invariants", () => {
+        it("renders the investment and mix chart toggles so users can switch views", () => {
+            render(<InvestmentCharts {...baseProps()} />);
+
+            const radiogroups = screen.getAllByRole("radiogroup", {
+                name: /chart type/i,
+            });
+            expect(radiogroups.length).toBeGreaterThanOrEqual(2);
+            expect(screen.getByRole("radio", { name: /treemap/i })).toBeInTheDocument();
+            expect(screen.getByRole("radio", { name: /sunburst/i })).toBeInTheDocument();
+            expect(screen.getByRole("radio", { name: /sankey/i })).toBeInTheDocument();
+            expect(screen.getByRole("radio", { name: /chord/i })).toBeInTheDocument();
+        });
     });
-  });
+
+    describe("repo-team failure state", () => {
+        it("still renders the three sections when repoTeamFlowFailed is true", () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({
+                        repoTeamFlowFailed: true,
+                        repoTeamFlow: null,
+                    })}
+                />,
+            );
+            expect(
+                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
+            ).toBeInTheDocument();
+        });
+
+        it("renders the unavailable DataState (no Sankey) when repoTeamFlowFailed is true", () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({
+                        repoTeamFlowFailed: true,
+                        repoTeamFlow: null,
+                    })}
+                />,
+            );
+            // Honest-empty: DataState replaces the Sankey when flow endpoint fails.
+            expect(screen.getByText(/repo-to-team allocation unavailable/i)).toBeInTheDocument();
+        });
+    });
+
+    describe("section prop", () => {
+        it('default (section="all") renders both mix and flows sections', () => {
+            render(<InvestmentCharts {...baseProps()} />);
+            // mix heading
+            expect(
+                screen.getByRole("heading", {
+                    level: 3,
+                    name: /treemap|investment mix/i,
+                }),
+            ).toBeInTheDocument();
+            // flows headings
+            expect(
+                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
+            ).toBeInTheDocument();
+        });
+
+        it('section="mix" renders only the mix section (no flows sankeys)', () => {
+            render(<InvestmentCharts {...baseProps({ section: "mix" })} />);
+            // mix heading is present
+            expect(
+                screen.getByRole("heading", {
+                    level: 3,
+                    name: /treemap|investment mix/i,
+                }),
+            ).toBeInTheDocument();
+            // flow headings are NOT present
+            expect(
+                screen.queryByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('section="flows" renders only the flows section (no mix heading)', () => {
+            render(<InvestmentCharts {...baseProps({ section: "flows" })} />);
+            // mix heading is NOT present
+            expect(
+                screen.queryByRole("heading", {
+                    level: 3,
+                    name: /treemap|investment mix/i,
+                }),
+            ).not.toBeInTheDocument();
+            // flows headings ARE present
+            expect(
+                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
+            ).toBeInTheDocument();
+        });
+    });
 });

@@ -1,7 +1,7 @@
 import {
-	resolveEntityLabel,
-	scrubIdentifiers,
-	type ResolveEntityLabelOptions,
+    resolveEntityLabel,
+    scrubIdentifiers,
+    type ResolveEntityLabelOptions,
 } from "@/lib/labels/entityLabel";
 
 /**
@@ -30,105 +30,98 @@ import {
  *     that legitimately contain "/" (e.g. "CI/CD is slowing down").
  */
 type EntityLabelProps = {
-	/** Raw identifier (UUID, `repo:web-app`, `org/web-app`, …) or narrative string. */
-	id?: string | null;
-	/** Server-resolved human display name. Preferred — wins over all degradation. */
-	displayName?: string | null;
-	/** Explicit client-side name (alias of `displayName`, lower precedence). */
-	name?: string | null;
-	/** `id` → name lookup map for batch-resolved surfaces. */
-	nameMap?: ResolveEntityLabelOptions["nameMap"];
-	/** Label used when `id` is empty / missing. Defaults to `"Unknown"`. */
-	fallback?: string;
-	variant?: "entity" | "text";
-	/** Show the explicit "Unresolved" badge on degraded labels. Defaults to true. */
-	showUnresolvedBadge?: boolean;
-	className?: string;
-	"data-testid"?: string;
+    /** Raw identifier (UUID, `repo:web-app`, `org/web-app`, …) or narrative string. */
+    id?: string | null;
+    /** Server-resolved human display name. Preferred — wins over all degradation. */
+    displayName?: string | null;
+    /** Explicit client-side name (alias of `displayName`, lower precedence). */
+    name?: string | null;
+    /** `id` → name lookup map for batch-resolved surfaces. */
+    nameMap?: ResolveEntityLabelOptions["nameMap"];
+    /** Label used when `id` is empty / missing. Defaults to `"Unknown"`. */
+    fallback?: string;
+    variant?: "entity" | "text";
+    /** Show the explicit "Unresolved" badge on degraded labels. Defaults to true. */
+    showUnresolvedBadge?: boolean;
+    className?: string;
+    "data-testid"?: string;
 };
 
 const BADGE_CLASS =
-	"rounded-full border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)";
+    "rounded-full border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)";
 
 export function EntityLabel({
-	id,
-	displayName,
-	name,
-	nameMap,
-	fallback,
-	variant = "entity",
-	showUnresolvedBadge = true,
-	className,
-	"data-testid": testId,
+    id,
+    displayName,
+    name,
+    nameMap,
+    fallback,
+    variant = "entity",
+    showUnresolvedBadge = true,
+    className,
+    "data-testid": testId,
 }: EntityLabelProps) {
-	const raw = typeof id === "string" ? id.trim() : "";
-	const resolvedName = displayName?.trim() || name?.trim() || undefined;
+    const raw = typeof id === "string" ? id.trim() : "";
+    const resolvedName = displayName?.trim() || name?.trim() || undefined;
 
-	// Narrative guard (CHAOS-2064): backend-built prose can interpolate an
-	// unresolved id directly into a sentence. Scrub embedded UUID/hash tokens to
-	// stable short tokens so a raw id never renders inside a headline / title.
-	// Prose with no id tokens (or an explicit display name) renders verbatim.
-	if (variant === "text" && !resolvedName && raw) {
-		const scrubbed = scrubIdentifiers(raw);
-		if (!scrubbed.changed) {
-			return (
-				<span className={className} data-testid={testId} data-resolved="true">
-					{raw}
-				</span>
-			);
-		}
-		return (
-			<span
-				className={className}
-				title={raw}
-				data-testid={testId}
-				data-resolved="false"
-			>
-				{scrubbed.text}
-				{showUnresolvedBadge ? (
-					<span className={`ml-1.5 align-middle ${BADGE_CLASS}`}>
-						Unresolved
-					</span>
-				) : null}
-			</span>
-		);
-	}
+    // Narrative guard (CHAOS-2064): backend-built prose can interpolate an
+    // unresolved id directly into a sentence. Scrub embedded UUID/hash tokens to
+    // stable short tokens so a raw id never renders inside a headline / title.
+    // Prose with no id tokens (or an explicit display name) renders verbatim.
+    if (variant === "text" && !resolvedName && raw) {
+        const scrubbed = scrubIdentifiers(raw);
+        if (!scrubbed.changed) {
+            return (
+                <span className={className} data-testid={testId} data-resolved="true">
+                    {raw}
+                </span>
+            );
+        }
+        return (
+            <span className={className} title={raw} data-testid={testId} data-resolved="false">
+                {scrubbed.text}
+                {showUnresolvedBadge ? (
+                    <span className={`ml-1.5 align-middle ${BADGE_CLASS}`}>Unresolved</span>
+                ) : null}
+            </span>
+        );
+    }
 
-	const resolved = resolveEntityLabel(id, {
-		name: resolvedName,
-		nameMap,
-		fallback,
-		// Opt into the canonical guardrail: degraded ids carry an explicit
-		// "Unresolved" affordance rather than leaking a bare UUID.
-		unresolvedFallback: "Unresolved",
-	});
+    const resolved = resolveEntityLabel(id, {
+        name: resolvedName,
+        nameMap,
+        fallback,
+        // Opt into the canonical guardrail: degraded ids carry an explicit
+        // "Unresolved" affordance rather than leaking a bare UUID.
+        unresolvedFallback: "Unresolved",
+    });
 
-	if (resolved.resolved) {
-		return (
-			<span
-				className={className}
-				title={resolved.title}
-				data-testid={testId}
-				data-resolved="true"
-			>
-				{resolved.label}
-			</span>
-		);
-	}
+    if (resolved.resolved) {
+        return (
+            <span
+                className={className}
+                title={resolved.title}
+                data-testid={testId}
+                data-resolved="true"
+            >
+                {resolved.label}
+            </span>
+        );
+    }
 
-	// Degraded: render the stable short token + an explicit Unresolved badge.
-	const shortToken = resolved.short ?? resolved.label;
-	return (
-		<span
-			className={className}
-			title={resolved.title}
-			data-testid={testId}
-			data-resolved="false"
-		>
-			<span className="font-mono">{shortToken}</span>
-			{showUnresolvedBadge ? (
-				<span className={`ml-1.5 align-middle ${BADGE_CLASS}`}>Unresolved</span>
-			) : null}
-		</span>
-	);
+    // Degraded: render the stable short token + an explicit Unresolved badge.
+    const shortToken = resolved.short ?? resolved.label;
+    return (
+        <span
+            className={className}
+            title={resolved.title}
+            data-testid={testId}
+            data-resolved="false"
+        >
+            <span className="font-mono">{shortToken}</span>
+            {showUnresolvedBadge ? (
+                <span className={`ml-1.5 align-middle ${BADGE_CLASS}`}>Unresolved</span>
+            ) : null}
+        </span>
+    );
 }

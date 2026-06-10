@@ -71,44 +71,44 @@ This plan addresses critical user experience gaps in the dev-health-web applicat
 
 1. **Remove collapse behavior**
 
-   ```tsx
-   // FilterBar.tsx - Remove isCollapsed state and conditional rendering
-   // Always render the expanded state
-   ```
+    ```tsx
+    // FilterBar.tsx - Remove isCollapsed state and conditional rendering
+    // Always render the expanded state
+    ```
 
 2. **Create pill-based filter component**
 
-   ```tsx
-   // New component: src/components/filters/FilterPill.tsx
-   type FilterPillProps = {
-     label: string;
-     value: string;
-     onClear: () => void;
-     onClick: () => void;
-   };
-   ```
+    ```tsx
+    // New component: src/components/filters/FilterPill.tsx
+    type FilterPillProps = {
+        label: string;
+        value: string;
+        onClear: () => void;
+        onClick: () => void;
+    };
+    ```
 
 3. **Add date preset buttons**
 
-   ```tsx
-   // Add quick select buttons: 7d | 14d | 30d | 90d | Custom
-   const DATE_PRESETS = [
-     { label: "7d", days: 7 },
-     { label: "14d", days: 14 },
-     { label: "30d", days: 30 },
-     { label: "90d", days: 90 },
-   ];
-   ```
+    ```tsx
+    // Add quick select buttons: 7d | 14d | 30d | 90d | Custom
+    const DATE_PRESETS = [
+        { label: "7d", days: 7 },
+        { label: "14d", days: 14 },
+        { label: "30d", days: 30 },
+        { label: "90d", days: 90 },
+    ];
+    ```
 
 4. **Move FilterBar into page headers**
-   - Currently: Fixed position at top of viewport
-   - Target: Inline within each page's header section
-   - Update: `page.tsx`, `work/page.tsx`, `metrics/page.tsx`, etc.
+    - Currently: Fixed position at top of viewport
+    - Target: Inline within each page's header section
+    - Update: `page.tsx`, `work/page.tsx`, `metrics/page.tsx`, etc.
 
 5. **Reduce dropdown complexity**
-   - Use combobox with search for long lists (repos, developers)
-   - Show "X selected" badge instead of listing all values
-   - Add "Clear all" button when filters are active
+    - Use combobox with search for long lists (repos, developers)
+    - Show "X selected" badge instead of listing all values
+    - Add "Clear all" button when filters are active
 
 #### Acceptance Criteria
 
@@ -158,64 +158,69 @@ ADMIN (existing)
 
 1. **Update PrimaryNav.tsx**
 
-   ```tsx
-   const navGroups = [
-     {
-       id: "cockpit",
-       label: "Cockpit",
-       items: [{ id: "home", label: "Home", href: "/", description: "Overview" }],
-     },
-     {
-       id: "observe",
-       label: "Observe",
-       items: [
-         { id: "metrics", label: "Metrics", href: "/metrics?tab=dora", description: "Trends" },
-         { id: "people", label: "People", href: "/people", description: "Individual" },
-         {
-           id: "landscape",
-           label: "Landscape",
-           href: "/explore/landscape",
-           description: "Quadrants",
-         },
-       ],
-     },
-     {
-       id: "investigate",
-       label: "Investigate",
-       items: [
-         { id: "work", label: "Work", href: "/work", description: "Investment" },
-         { id: "code", label: "Code", href: "/code", description: "Ownership" },
-         {
-           id: "opportunities",
-           label: "Opportunities",
-           href: "/opportunities",
-           description: "Threads",
-         },
-       ],
-     },
-   ];
-   ```
+    ```tsx
+    const navGroups = [
+        {
+            id: "cockpit",
+            label: "Cockpit",
+            items: [{ id: "home", label: "Home", href: "/", description: "Overview" }],
+        },
+        {
+            id: "observe",
+            label: "Observe",
+            items: [
+                {
+                    id: "metrics",
+                    label: "Metrics",
+                    href: "/metrics?tab=dora",
+                    description: "Trends",
+                },
+                { id: "people", label: "People", href: "/people", description: "Individual" },
+                {
+                    id: "landscape",
+                    label: "Landscape",
+                    href: "/explore/landscape",
+                    description: "Quadrants",
+                },
+            ],
+        },
+        {
+            id: "investigate",
+            label: "Investigate",
+            items: [
+                { id: "work", label: "Work", href: "/work", description: "Investment" },
+                { id: "code", label: "Code", href: "/code", description: "Ownership" },
+                {
+                    id: "opportunities",
+                    label: "Opportunities",
+                    href: "/opportunities",
+                    description: "Threads",
+                },
+            ],
+        },
+    ];
+    ```
 
 2. **Add collapsible group headers**
-   - Groups start expanded
-   - Clicking group label toggles collapse
-   - Store collapsed state in localStorage
+    - Groups start expanded
+    - Clicking group label toggles collapse
+    - Store collapsed state in localStorage
 
 3. **Remove redundant items**
-   - `Capacity` → Move to tab within `/work?tab=capacity`
-   - `Quality` → Move to tab within `/metrics?tab=quality`
-   - Keep route aliases for backward compatibility
+    - `Capacity` → Move to tab within `/work?tab=capacity`
+    - `Quality` → Move to tab within `/metrics?tab=quality`
+    - Keep route aliases for backward compatibility
 
 4. **Update route structure** (optional, for clean URLs)
-   ```
-   /observe/metrics
-   /observe/people
-   /observe/landscape
-   /investigate/work
-   /investigate/code
-   /investigate/opportunities
-   ```
-   Note: If changing routes, add redirects from old paths.
+    ```
+    /observe/metrics
+    /observe/people
+    /observe/landscape
+    /investigate/work
+    /investigate/code
+    /investigate/opportunities
+    ```
+    Note: If changing routes, add redirects from old paths.
 
 #### Acceptance Criteria
 
@@ -240,59 +245,59 @@ ADMIN (existing)
 #### Components to Create
 
 1. **WelcomeModal** (`src/components/onboarding/WelcomeModal.tsx`)
-   - Shown on first sign-in (check localStorage flag)
-   - Asks: "What's your role?" with IC/EM/PM/Leadership options
-   - Sets role preference and persists to user profile if authenticated
+    - Shown on first sign-in (check localStorage flag)
+    - Asks: "What's your role?" with IC/EM/PM/Leadership options
+    - Sets role preference and persists to user profile if authenticated
 
 2. **GuidedTour** (`src/components/onboarding/GuidedTour.tsx`)
-   - Step-by-step tooltip tour of Cockpit
-   - Highlights: Key Shifts, Monitoring Views, Limiting Factor, Investigation Threads
-   - Uses library: `driver.js` or custom implementation
-   - Skip button always visible
+    - Step-by-step tooltip tour of Cockpit
+    - Highlights: Key Shifts, Monitoring Views, Limiting Factor, Investigation Threads
+    - Uses library: `driver.js` or custom implementation
+    - Skip button always visible
 
 3. **EmptyStateEducation** (`src/components/onboarding/EmptyStateEducation.tsx`)
-   - When no data exists, show sample data with "This is what you'll see" overlay
-   - Include CTA: "Connect GitHub to see real metrics"
+    - When no data exists, show sample data with "This is what you'll see" overlay
+    - Include CTA: "Connect GitHub to see real metrics"
 
 4. **DataIngestionProgress** (`src/components/onboarding/DataIngestionProgress.tsx`)
-   - Progress indicator during initial data sync
-   - States: "Connecting..." → "Syncing commits..." → "Analyzing PRs..." → "Ready!"
+    - Progress indicator during initial data sync
+    - States: "Connecting..." → "Syncing commits..." → "Analyzing PRs..." → "Ready!"
 
 #### Implementation Steps
 
 1. **Create onboarding state management**
 
-   ```tsx
-   // src/lib/onboarding.ts
-   type OnboardingState = {
-     hasSeenWelcome: boolean;
-     hasCompletedTour: boolean;
-     selectedRole: string | null;
-   };
+    ```tsx
+    // src/lib/onboarding.ts
+    type OnboardingState = {
+        hasSeenWelcome: boolean;
+        hasCompletedTour: boolean;
+        selectedRole: string | null;
+    };
 
-   export function getOnboardingState(): OnboardingState;
-   export function updateOnboardingState(updates: Partial<OnboardingState>): void;
-   export function resetOnboarding(): void;
-   ```
+    export function getOnboardingState(): OnboardingState;
+    export function updateOnboardingState(updates: Partial<OnboardingState>): void;
+    export function resetOnboarding(): void;
+    ```
 
 2. **Add WelcomeModal trigger to layout**
 
-   ```tsx
-   // src/app/layout.tsx
-   // After session check, render <WelcomeModal /> if !hasSeenWelcome
-   ```
+    ```tsx
+    // src/app/layout.tsx
+    // After session check, render <WelcomeModal /> if !hasSeenWelcome
+    ```
 
 3. **Integrate GuidedTour on Cockpit**
 
-   ```tsx
-   // src/app/page.tsx
-   // After data loads, check if !hasCompletedTour, render <GuidedTour />
-   ```
+    ```tsx
+    // src/app/page.tsx
+    // After data loads, check if !hasCompletedTour, render <GuidedTour />
+    ```
 
 4. **Create empty state components**
-   - Wrap each data section with empty state fallback
-   - Use same visual structure but with placeholder/sample data
-   - Add explanatory text and connection CTAs
+    - Wrap each data section with empty state fallback
+    - Use same visual structure but with placeholder/sample data
+    - Add explanatory text and connection CTAs
 
 #### Acceptance Criteria
 
@@ -332,57 +337,57 @@ ADMIN (existing)
 
 1. **EvidencePanel** (`src/components/evidence/EvidencePanel.tsx`)
 
-   ```tsx
-   type EvidencePanelProps = {
-     isOpen: boolean;
-     onClose: () => void;
-     title: string;
-     metric?: string;
-     evidenceLink?: string;
-     children?: React.ReactNode;
-   };
-   ```
+    ```tsx
+    type EvidencePanelProps = {
+        isOpen: boolean;
+        onClose: () => void;
+        title: string;
+        metric?: string;
+        evidenceLink?: string;
+        children?: React.ReactNode;
+    };
+    ```
 
 2. **EvidenceContext** (`src/components/evidence/EvidenceContext.tsx`)
-   - Displays "Why this matters" explanation based on metric type
-   - Shows trend direction and magnitude
+    - Displays "Why this matters" explanation based on metric type
+    - Shows trend direction and magnitude
 
 3. **EvidenceItems** (`src/components/evidence/EvidenceItems.tsx`)
-   - Lists specific PRs, issues, or contributors
-   - Compact card format with key details
-   - Links to detail pages
+    - Lists specific PRs, issues, or contributors
+    - Compact card format with key details
+    - Links to detail pages
 
 4. **SuggestedActions** (`src/components/evidence/SuggestedActions.tsx`)
-   - Displays experiment suggestions from API
-   - Actionable recommendations
+    - Displays experiment suggestions from API
+    - Actionable recommendations
 
 #### Implementation Steps
 
 1. **Create EvidencePanel component**
-   - Slide-in from right (width: 480px desktop, full-width mobile)
-   - Header with title, close button, "Open in Explore" link
-   - Scrollable content area
-   - Overlay behind panel to dim main content
+    - Slide-in from right (width: 480px desktop, full-width mobile)
+    - Header with title, close button, "Open in Explore" link
+    - Scrollable content area
+    - Overlay behind panel to dim main content
 
 2. **Add panel state to Cockpit**
 
-   ```tsx
-   // src/app/page.tsx (convert to client component or use state management)
-   const [evidencePanel, setEvidencePanel] = useState<{
-     isOpen: boolean;
-     metric?: string;
-     evidenceLink?: string;
-   }>({ isOpen: false });
-   ```
+    ```tsx
+    // src/app/page.tsx (convert to client component or use state management)
+    const [evidencePanel, setEvidencePanel] = useState<{
+        isOpen: boolean;
+        metric?: string;
+        evidenceLink?: string;
+    }>({ isOpen: false });
+    ```
 
 3. **Update evidence links to open panel**
-   - Replace `<Link>` with `<button onClick={() => openPanel(...)}>` for inline evidence
-   - Keep `<Link>` for cases where full page is appropriate
+    - Replace `<Link>` with `<button onClick={() => openPanel(...)}>` for inline evidence
+    - Keep `<Link>` for cases where full page is appropriate
 
 4. **Fetch evidence data in panel**
-   - Use existing `getExplainData` API
-   - Show loading skeleton while fetching
-   - Handle error states gracefully
+    - Use existing `getExplainData` API
+    - Show loading skeleton while fetching
+    - Handle error states gracefully
 
 #### Acceptance Criteria
 
@@ -421,29 +426,29 @@ ADMIN (existing)
 
 ```css
 :root[data-palette="mission-control"][data-theme="dark"] {
-  --background: #0a0e14;
-  --foreground: #e6e6e6;
-  --ink-muted: #8b949e;
+    --background: #0a0e14;
+    --foreground: #e6e6e6;
+    --ink-muted: #8b949e;
 
-  /* Status colors */
-  --accent: #58a6ff; /* Primary action */
-  --accent-2: #3fb950; /* Success/positive */
-  --accent-3: #d29922; /* Warning/amber */
-  --accent-negative: #f85149; /* Error/negative */
+    /* Status colors */
+    --accent: #58a6ff; /* Primary action */
+    --accent-2: #3fb950; /* Success/positive */
+    --accent-3: #d29922; /* Warning/amber */
+    --accent-negative: #f85149; /* Error/negative */
 
-  /* Surface colors */
-  --card: #161b22;
-  --card-stroke: #30363d;
+    /* Surface colors */
+    --card: #161b22;
+    --card-stroke: #30363d;
 
-  /* Chart colors - high contrast for data viz */
-  --chart-color-1: #58a6ff;
-  --chart-color-2: #3fb950;
-  --chart-color-3: #d29922;
-  --chart-color-4: #f85149;
-  --chart-color-5: #a371f7;
-  --chart-color-6: #39d353;
-  --chart-color-7: #db6d28;
-  --chart-color-8: #8b949e;
+    /* Chart colors - high contrast for data viz */
+    --chart-color-1: #58a6ff;
+    --chart-color-2: #3fb950;
+    --chart-color-3: #d29922;
+    --chart-color-4: #f85149;
+    --chart-color-5: #a371f7;
+    --chart-color-6: #39d353;
+    --chart-color-7: #db6d28;
+    --chart-color-8: #8b949e;
 }
 ```
 
@@ -459,38 +464,38 @@ ADMIN (existing)
 #### Implementation Steps
 
 1. **Add new palette to globals.css**
-   - Create `mission-control` palette alongside existing ones
-   - Make it the default for new users
+    - Create `mission-control` palette alongside existing ones
+    - Make it the default for new users
 
 2. **Update font imports in layout.tsx**
-   - Add Google Fonts or self-hosted fonts
-   - Update CSS variable assignments
+    - Add Google Fonts or self-hosted fonts
+    - Update CSS variable assignments
 
 3. **Add background texture**
 
-   ```css
-   .bg-grid {
-     background-image:
-       linear-gradient(rgba(88, 166, 255, 0.03) 1px, transparent 1px),
-       linear-gradient(90deg, rgba(88, 166, 255, 0.03) 1px, transparent 1px);
-     background-size: 20px 20px;
-   }
-   ```
+    ```css
+    .bg-grid {
+        background-image:
+            linear-gradient(rgba(88, 166, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(88, 166, 255, 0.03) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+    ```
 
 4. **Update component styling**
-   - Cards: Sharper corners (rounded-xl → rounded-lg)
-   - Borders: More prominent (border-2 in key areas)
-   - Text: Increased contrast ratios
-   - Animations: Add pulse to live status indicators
+    - Cards: Sharper corners (rounded-xl → rounded-lg)
+    - Borders: More prominent (border-2 in key areas)
+    - Text: Increased contrast ratios
+    - Animations: Add pulse to live status indicators
 
 5. **Create status indicator components**
-   ```tsx
-   // Pulsing dot for live data
-   <span className="relative flex h-2 w-2">
-     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-   </span>
-   ```
+    ```tsx
+    // Pulsing dot for live data
+    <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+    </span>
+    ```
 
 #### Acceptance Criteria
 
@@ -517,31 +522,31 @@ ADMIN (existing)
 
 1. **Create bottom navigation for mobile**
 
-   ```tsx
-   // src/components/navigation/MobileNav.tsx
-   const mobileNavItems = [
-     { id: "home", icon: HomeIcon, label: "Cockpit", href: "/" },
-     { id: "metrics", icon: ChartIcon, label: "Metrics", href: "/metrics" },
-     { id: "work", icon: BriefcaseIcon, label: "Work", href: "/work" },
-     { id: "people", icon: UsersIcon, label: "People", href: "/people" },
-     { id: "more", icon: MenuIcon, label: "More", onClick: openDrawer },
-   ];
-   ```
+    ```tsx
+    // src/components/navigation/MobileNav.tsx
+    const mobileNavItems = [
+        { id: "home", icon: HomeIcon, label: "Cockpit", href: "/" },
+        { id: "metrics", icon: ChartIcon, label: "Metrics", href: "/metrics" },
+        { id: "work", icon: BriefcaseIcon, label: "Work", href: "/work" },
+        { id: "people", icon: UsersIcon, label: "People", href: "/people" },
+        { id: "more", icon: MenuIcon, label: "More", onClick: openDrawer },
+    ];
+    ```
 
 2. **Create mobile filter modal**
-   - Full-screen modal triggered by floating action button
-   - Stacked filter sections (not horizontal)
-   - Large touch targets for all controls
+    - Full-screen modal triggered by floating action button
+    - Stacked filter sections (not horizontal)
+    - Large touch targets for all controls
 
 3. **Add responsive breakpoints to layouts**
-   - Hide sidebar on mobile (`md:block hidden`)
-   - Show bottom nav on mobile (`md:hidden block`)
-   - Adjust card grids: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
+    - Hide sidebar on mobile (`md:block hidden`)
+    - Show bottom nav on mobile (`md:hidden block`)
+    - Adjust card grids: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
 
 4. **Optimize charts for mobile**
-   - Reduce data point density
-   - Use horizontal scroll for wide charts
-   - Add pinch-to-zoom for complex visualizations
+    - Reduce data point density
+    - Use horizontal scroll for wide charts
+    - Add pinch-to-zoom for complex visualizations
 
 #### Acceptance Criteria
 

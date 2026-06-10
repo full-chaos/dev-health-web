@@ -8,21 +8,21 @@ import { BetaBadge } from "./BetaBadge";
  * The hidden path is exercised by integration tests that set the env before import.
  */
 describe("BetaBadge", () => {
-  it("renders a span with 'Beta' text", () => {
-    render(<BetaBadge />);
-    expect(screen.getByText("Beta")).toBeInTheDocument();
-  });
+    it("renders a span with 'Beta' text", () => {
+        render(<BetaBadge />);
+        expect(screen.getByText("Beta")).toBeInTheDocument();
+    });
 
-  it("renders with the expected badge styles", () => {
-    render(<BetaBadge />);
-    const badge = screen.getByText("Beta");
-    expect(badge.tagName).toBe("SPAN");
-    expect(badge).toHaveClass("uppercase");
-  });
+    it("renders with the expected badge styles", () => {
+        render(<BetaBadge />);
+        const badge = screen.getByText("Beta");
+        expect(badge.tagName).toBe("SPAN");
+        expect(badge).toHaveClass("uppercase");
+    });
 
-  it("is accessible — no role attribute needed for a decorative badge", () => {
-    render(<BetaBadge />);
-    const badge = screen.getByText("Beta");
-    expect(badge).toBeVisible();
-  });
+    it("is accessible — no role attribute needed for a decorative badge", () => {
+        render(<BetaBadge />);
+        const badge = screen.getByText("Beta");
+        expect(badge).toBeVisible();
+    });
 });

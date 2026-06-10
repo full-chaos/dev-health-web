@@ -26,30 +26,38 @@ import type { ConfidenceLevel, SignalDirection, SignalSeverity } from "@/lib/typ
 export type AreaSignalState = SignalSeverity | "neutral" | "unavailable";
 
 export type AreaSignal = {
-  /** Stable id, mirrors the originating `NavAreaHubItem.id`. */
-  id: string;
-  /** Sub-area label (e.g. "Coverage", "Security"). */
-  label: string;
-  /** Destination route (already filter-decorated by AreaHub at render time). */
-  href: string;
-  /** Optional sub-group header within the area (Govern: "Quality" | "Risk"). */
-  cluster?: string;
-  /** Short metric name shown on the card (e.g. "Line coverage", "Open criticals"). */
-  metricLabel: string;
-  /**
-   * Pre-formatted headline value via `@/lib/formatters` (e.g. "83%", "2").
-   * Empty string when `state === "unavailable"`.
-   */
-  value: string;
-  /** Severity ladder, widened with "neutral" / "unavailable" (honest states). */
-  state: AreaSignalState;
-  /** Optional trend glyph direction for the metric. */
-  direction?: SignalDirection;
-  /** Optional confidence in the resolved value. */
-  confidence?: ConfidenceLevel;
-  /**
-   * R4-style low-value single surface (e.g. Feature Flags): render visually
-   * secondary within its cluster rather than at equal billing.
-   */
-  demoted?: boolean;
+    /** Stable id, mirrors the originating `NavAreaHubItem.id`. */
+    id: string;
+    /** Sub-area label (e.g. "Coverage", "Security"). */
+    label: string;
+    /** Destination route (already filter-decorated by AreaHub at render time). */
+    href: string;
+    /** Optional sub-group header within the area (Govern: "Quality" | "Risk"). */
+    cluster?: string;
+    /** Short metric name shown on the card (e.g. "Line coverage", "Open criticals"). */
+    metricLabel: string;
+    /**
+     * Pre-formatted headline value via `@/lib/formatters` (e.g. "83%", "2").
+     * Empty string when `state === "unavailable"`.
+     */
+    value: string;
+    /** Severity ladder, widened with "neutral" / "unavailable" (honest states). */
+    state: AreaSignalState;
+    /** Optional trend glyph direction for the metric. */
+    direction?: SignalDirection;
+    /** Optional confidence in the resolved value. */
+    confidence?: ConfidenceLevel;
+    /**
+     * R4-style low-value single surface (e.g. Feature Flags): render visually
+     * secondary within its cluster rather than at equal billing.
+     */
+    demoted?: boolean;
+    /**
+     * Preview sub-area whose destination route does NOT yet exist (its nav child
+     * is `preview: true` with no backing page). Such a card is rendered NON-CLICKABLE
+     * — visible and honest ("No data for this window") but never a live `<Link>`,
+     * so it can't 404. Distinct from `state === "unavailable"`, which is shared by
+     * areas whose routes DO exist (Govern/Diagnose) and must stay clickable.
+     */
+    preview?: boolean;
 };

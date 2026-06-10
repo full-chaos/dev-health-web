@@ -12,9 +12,9 @@ import type { SankeyResult } from "./types";
 type ChordSankeyInput = Pick<SankeyResult, "nodes" | "edges">;
 
 const METADATA_KEY_BY_GROUPING = {
-  team: "team",
-  repo: "repo",
-  work_type: "workType",
+    team: "team",
+    repo: "repo",
+    work_type: "workType",
 } as const;
 
 /**
@@ -22,8 +22,8 @@ const METADATA_KEY_BY_GROUPING = {
  * Returns the input unchanged if no colon.
  */
 export function stripDimensionPrefix(id: string): string {
-  const separatorIndex = id.indexOf(":");
-  return separatorIndex === -1 ? id : id.slice(separatorIndex + 1).trim();
+    const separatorIndex = id.indexOf(":");
+    return separatorIndex === -1 ? id : id.slice(separatorIndex + 1).trim();
 }
 
 /**
@@ -33,39 +33,39 @@ export function stripDimensionPrefix(id: string): string {
  * Filters out edges where either endpoint's dimension != `grouping`.
  */
 export function adaptSankeyToChord(
-  sankey: ChordSankeyInput,
-  grouping: ChordGroupingDimension,
+    sankey: ChordSankeyInput,
+    grouping: ChordGroupingDimension,
 ): ChordRecord[] {
-  const nodesById = new Map(sankey.nodes.map((node) => [node.id, node]));
-  const metadataKey = METADATA_KEY_BY_GROUPING[grouping];
+    const nodesById = new Map(sankey.nodes.map((node) => [node.id, node]));
+    const metadataKey = METADATA_KEY_BY_GROUPING[grouping];
 
-  return sankey.edges.flatMap((edge) => {
-    const sourceNode = nodesById.get(edge.source);
-    const targetNode = nodesById.get(edge.target);
+    return sankey.edges.flatMap((edge) => {
+        const sourceNode = nodesById.get(edge.source);
+        const targetNode = nodesById.get(edge.target);
 
-    if (!sourceNode || !targetNode) {
-      return [];
-    }
+        if (!sourceNode || !targetNode) {
+            return [];
+        }
 
-    if (
-      sourceNode.dimension.toLowerCase() !== grouping ||
-      targetNode.dimension.toLowerCase() !== grouping
-    ) {
-      return [];
-    }
+        if (
+            sourceNode.dimension.toLowerCase() !== grouping ||
+            targetNode.dimension.toLowerCase() !== grouping
+        ) {
+            return [];
+        }
 
-    const source = stripDimensionPrefix(sourceNode.label || sourceNode.id);
-    const target = stripDimensionPrefix(targetNode.label || targetNode.id);
+        const source = stripDimensionPrefix(sourceNode.label || sourceNode.id);
+        const target = stripDimensionPrefix(targetNode.label || targetNode.id);
 
-    return [
-      {
-        source,
-        target,
-        value: edge.value,
-        metadata: {
-          [metadataKey]: source,
-        },
-      },
-    ];
-  });
+        return [
+            {
+                source,
+                target,
+                value: edge.value,
+                metadata: {
+                    [metadataKey]: source,
+                },
+            },
+        ];
+    });
 }

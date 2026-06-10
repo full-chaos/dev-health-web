@@ -2,47 +2,47 @@ import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  test: {
-    // Component tests use jsdom; lib/util tests keep node environment.
-    // Projects allow different environments per directory.
-    projects: [
-      {
-        extends: true,
-        test: {
-          name: "unit",
-          environment: "node",
-          include: [
-            "src/lib/**/__tests__/**/*.test.ts",
-            "src/utils/**/__tests__/**/*.test.ts",
-            "src/data/**/__tests__/**/*.test.ts",
-            "scripts/**/__tests__/**/*.test.mjs",
-          ],
+    resolve: {
+        alias: {
+            "@": path.resolve(__dirname, "./src"),
         },
-      },
-      {
-        extends: true,
-        test: {
-          name: "components",
-          environment: "jsdom",
-          globals: true,
-          setupFiles: ["src/test/setup.ts"],
-          include: [
-            "src/components/**/*.test.tsx",
-            "src/app/**/*.test.tsx",
-            "src/lib/**/__tests__/**/*.test.tsx",
-          ],
-        },
-      },
-    ],
-    coverage: {
-      provider: "v8",
-      include: ["src/components/**", "src/app/**"],
-      reporter: ["text", "lcov"],
     },
-  },
+    test: {
+        // Component tests use jsdom; lib/util tests keep node environment.
+        // Projects allow different environments per directory.
+        projects: [
+            {
+                extends: true,
+                test: {
+                    name: "unit",
+                    environment: "node",
+                    include: [
+                        "src/lib/**/__tests__/**/*.test.ts",
+                        "src/utils/**/__tests__/**/*.test.ts",
+                        "src/data/**/__tests__/**/*.test.ts",
+                        "scripts/**/__tests__/**/*.test.mjs",
+                    ],
+                },
+            },
+            {
+                extends: true,
+                test: {
+                    name: "components",
+                    environment: "jsdom",
+                    globals: true,
+                    setupFiles: ["src/test/setup.ts"],
+                    include: [
+                        "src/components/**/*.test.tsx",
+                        "src/app/**/*.test.tsx",
+                        "src/lib/**/__tests__/**/*.test.tsx",
+                    ],
+                },
+            },
+        ],
+        coverage: {
+            provider: "v8",
+            include: ["src/components/**", "src/app/**"],
+            reporter: ["text", "lcov"],
+        },
+    },
 });

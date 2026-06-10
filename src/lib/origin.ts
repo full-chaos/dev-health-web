@@ -9,10 +9,10 @@ const DEFAULT_BACKEND_URL = "http://127.0.0.1:8000";
  * @returns The base URL to use for API requests
  */
 export function resolveOrigin(): string {
-  if (isBrowser) {
-    return window.location.origin;
-  }
-  return getServerEnv().BACKEND_URL ?? DEFAULT_BACKEND_URL;
+    if (isBrowser) {
+        return window.location.origin;
+    }
+    return getServerEnv().BACKEND_URL ?? DEFAULT_BACKEND_URL;
 }
 
 /**
@@ -22,5 +22,5 @@ export function resolveOrigin(): string {
  * @returns The backend URL from environment or default
  */
 export function getBackendUrl(): string {
-  return getServerEnv().BACKEND_URL ?? DEFAULT_BACKEND_URL;
+    return getServerEnv().BACKEND_URL ?? DEFAULT_BACKEND_URL;
 }

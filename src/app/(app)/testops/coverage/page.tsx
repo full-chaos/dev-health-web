@@ -1,13 +1,13 @@
-import Link from "next/link";
-
 import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { QualityCoverageTabs } from "@/components/testops/QualityCoverageTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { checkApiHealth } from "@/lib/api/system";
+import { BackLink } from "@/components/shared/BackLink";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchCoverageMetrics } from "@/lib/testops/fetchers";
@@ -20,6 +20,8 @@ import {
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
+
+import { TestOpsTabs } from "../TestOpsTabs";
 
 type CoveragePageProps = {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -132,44 +134,45 @@ export default async function CoveragePage({
 			}))
 		: [];
 
-	const repoIds = repoBreakdown?.items
-		? repoBreakdown.items.map((item: BreakdownItem) => item.key)
-		: [];
-	const repoValues = repoBreakdown?.items
-		? repoBreakdown.items.map((item: BreakdownItem) => item.value)
-		: [];
-	// Render-safe labels: never expose a raw repo UUID as an axis label;
-	// unresolved ids degrade to a stable short label with the full id in the tooltip.
+	const repoItems = repoBreakdown?.items ?? [];
+	const repoIds = repoItems.map((item: BreakdownItem) => item.key);
+	const repoValues = repoItems.map((item: BreakdownItem) => item.value);
+	// Render-safe labels (A7): prefer the server-resolved display name; a
+	// genuinely-unresolved repo id degrades to a stable short label with the full
+	// id in the tooltip — never a bare UUID as the axis label.
 	const { labels: repoCategories, titles: repoTitles } = resolveEntityLabels(
 		repoIds,
-		{ unresolvedFallback: "Unresolved" },
+		(_id, i) => ({
+			name: repoItems[i]?.label ?? undefined,
+			unresolvedFallback: "Unresolved",
+		}),
 	);
 
 	return (
 		<div className="min-h-screen bg-background text-foreground">
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-				<PrimaryNav filters={filters} active="coverage" role={activeRole} />
+			<div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
+				<PrimaryNav filters={filters} active="testops" role={activeRole} />
 				<main className="flex min-w-0 flex-1 flex-col gap-8">
-					<header className="flex flex-wrap items-center justify-between gap-4">
+					<header className="flex flex-col gap-4">
+						<BackLink href={withFilterParam("/", filters, activeRole)} />
 						<div>
 							<p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
 								TestOps
 							</p>
-							<h1 className="mt-2 font-(--font-display) text-3xl">Coverage</h1>
+							<h1 className="mt-2 font-(--font-display) text-3xl">TestOps</h1>
 							<p className="mt-2 text-sm text-(--ink-muted)">
 								Code coverage metrics and trends.
 							</p>
 						</div>
-						<Link
-							href={withFilterParam("/", filters, activeRole)}
-							className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-						>
-							Back to cockpit
-						</Link>
 					</header>
 
-					<QualityCoverageTabs filters={filters} role={activeRole} />
+					<TestOpsTabs
+						activeId="coverage"
+						filters={filters}
+						role={activeRole}
+					/>
 
+					<GlobalContextBar filters={filters} />
 					<FilterBar view="testops" />
 
 					<section className="grid gap-4 lg:grid-cols-3">
@@ -184,7 +187,6 @@ export default async function CoveragePage({
 								<MetricCard
 									key={id}
 									label={def.label}
-									href="#"
 									value={value}
 									unit={
 										def.unit === "percentage"
@@ -201,14 +203,22 @@ export default async function CoveragePage({
 					</section>
 
 					<section className="grid gap-6 lg:grid-cols-2">
-						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-							<h2 className="font-(--font-display) text-xl mb-4">
-								Line Coverage Trend
-							</h2>
+						<ChartFrame
+							title="Line Coverage Trend"
+							interpretation="Line coverage appears over time so drops are visible before they become release risk."
+							threshold={{
+								label: "Target baseline",
+								value: "80%",
+								tone: "info",
+							}}
+							isEmpty={timeseriesData.length === 0}
+							stateTitle="Coverage trend not populated"
+							stateDescription="Coverage history appears here once CI coverage data is connected for this scope."
+						>
 							<div className="h-64">
-								<TimeseriesChart data={timeseriesData} />
+								<TimeseriesChart data={timeseriesData} valueFormat="percent" />
 							</div>
-						</div>
+						</ChartFrame>
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
 							<h2 className="font-(--font-display) text-xl mb-4">
 								Coverage by Repository
@@ -218,6 +228,7 @@ export default async function CoveragePage({
 									categories={repoCategories}
 									values={repoValues}
 									categoryTitles={repoTitles}
+									valueFormat="percent"
 								/>
 							</div>
 						</div>

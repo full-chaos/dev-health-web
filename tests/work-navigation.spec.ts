@@ -1,102 +1,129 @@
 import { test, expect } from "@playwright/test";
+
 import { decodeFilter, encodeFilterParam } from "../src/lib/filters/encode";
 import { defaultMetricFilter } from "../src/lib/filters/defaults";
-import { clickUntilUrl } from "./helpers/nav";
+import { clickUntilUrl, waitForHydration } from "./helpers/nav";
 
 const filterWith30d = encodeFilterParam({
-  ...defaultMetricFilter,
-  time: { ...defaultMetricFilter.time, range_days: 30, compare_days: 30 },
+    ...defaultMetricFilter,
+    time: { ...defaultMetricFilter.time, range_days: 30, compare_days: 30 },
 });
 
-test.describe("Work Tabbed Navigation", () => {
-  test.beforeEach(async ({ page }) => {
-    // Bare /work is the Diagnose "overview" view (CHAOS-2073). The tabbed Work
-    // content lives under ?view=work; land there so the WorkTabNav is present.
-    await page.goto("/work?view=work");
-    await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible({
-      timeout: 15000,
+const diagnoseChildren = [
+    { label: "Overview", href: /\/diagnose(?:[?#].*)?$/ },
+    { label: "Flow", href: /\/metrics(?:[?#].*)?$/ },
+    { label: "Investment", href: /\/investment(?:[?#].*)?$/ },
+    { label: "Landscape", href: /\/landscape(?:[?#].*)?$/ },
+    { label: "Work Graph", href: /\/diagnose\/work-graph(?:[?#].*)?$/ },
+    { label: "Complexity", href: /\/complexity(?:[?#].*)?$/ },
+    { label: "Cognitive Load", href: /\/cognitive-load(?:[?#].*)?$/ },
+    { label: "Bottlenecks", href: /\/bottleneck(?:[?#].*)?$/ },
+    { label: "People", href: /\/people(?:[?#].*)?$/ },
+    { label: "Code", href: /\/code(?:[?#].*)?$/ },
+] as const;
+
+test.describe("Diagnose navigation", () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto("/diagnose");
+        await waitForHydration(page);
+        await expect(page.getByRole("heading", { name: "Diagnose", level: 1 })).toBeVisible({
+            timeout: 15000,
+        });
     });
-  });
 
-  test("default tab is landscape", async ({ page }) => {
-    await expect(page).toHaveURL(/\/work(\?tab=landscape)?/);
-    await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
-  });
+    test("overview renders AreaOverview without Work tabs", async ({ page }) => {
+        await expect(page.getByTestId("area-overview")).toBeVisible();
+        await expect(page.getByRole("navigation", { name: "Diagnose views" })).toHaveCount(0);
+        await expect(page.getByRole("navigation", { name: "Work views" })).toHaveCount(0);
+        await expect(page.getByRole("link", { name: "Work", exact: true })).toHaveCount(0);
+    });
 
-  test("switches tabs correctly", async ({ page }) => {
-    // Resilient tab clicks: under load the test-mode dev server can swallow the
-    // first <Link> click (handler not yet attached / mid re-render), so retry the
-    // whole click+assert until the URL lands (matches the nav-reachability pattern).
-    await clickUntilUrl(page, page.getByRole("link", { name: /^Heatmap$/i }), /tab=heatmap/);
-    await expect(page.getByText("Review wait density")).toBeVisible();
+    test("sidebar exposes first-class Diagnose children", async ({ page }) => {
+        const children = page.getByTestId("nav-children-diagnose");
+        await expect(children).toBeVisible();
 
-    await clickUntilUrl(page, page.getByRole("link", { name: /^Flow$/i }), /tab=flow/);
-    await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
-    await expect(page.getByTestId("flow-chart-container")).toBeVisible();
+        for (const child of diagnoseChildren) {
+            await expect(
+                children.getByRole("link", { name: child.label, exact: true }),
+            ).toHaveAttribute("href", child.href);
+        }
+    });
 
-    await clickUntilUrl(page, page.getByRole("link", { name: /^Investment$/i }), /tab=investment/);
-    await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Treemap" })).toBeVisible();
+    test("routes Flow Investment and Landscape as Diagnose destinations", async ({ page }) => {
+        const children = page.getByTestId("nav-children-diagnose");
 
-    await clickUntilUrl(page, page.getByRole("link", { name: /^Flame$/i }), /tab=flame/);
-    await expect(page.getByRole("heading", { name: "Elapsed Time Breakdown" })).toBeVisible();
-    await expect(page.getByTestId("chart-flame")).toBeVisible();
-  });
+        await clickUntilUrl(
+            page,
+            children.getByRole("link", { name: "Flow", exact: true }),
+            /\/metrics(?:[?#].*)?$/,
+        );
+        await expect(page.getByRole("heading", { name: "Monitoring view" })).toBeVisible();
 
-  test("investment tab preserves filters across navigation", async ({ page }) => {
-    await page.goto(`/work?tab=investment&f=${filterWith30d}`);
-    await expect(page.getByRole("heading", { name: "Work Unit Investment" })).toBeVisible();
+        await page.goto("/diagnose");
+        await clickUntilUrl(
+            page,
+            page.getByTestId("nav-children-diagnose").getByRole("link", {
+                name: "Investment",
+                exact: true,
+            }),
+            /\/investment(?:[?#].*)?$/,
+        );
+        await expect(page.getByRole("heading", { name: "Unlock investment view" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Upgrade to Team" })).toBeVisible();
 
-    await page.getByRole("link", { name: /^Flow$/i }).click();
-    await expect(page).toHaveURL(/tab=flow/);
-    const filters = decodeFilter(new URL(page.url()).searchParams.get("f"));
-    expect(filters.time.range_days).toBe(30);
-  });
+        await page.goto("/diagnose");
+        await clickUntilUrl(
+            page,
+            page.getByTestId("nav-children-diagnose").getByRole("link", {
+                name: "Landscape",
+                exact: true,
+            }),
+            /\/landscape(?:[?#].*)?$/,
+        );
+        await expect(page.getByRole("heading", { name: "Landscape" })).toBeVisible();
+    });
 
-  test("preserves filters across tabs", async ({ page }) => {
-    await page.goto(`/work?tab=flow&f=${filterWith30d}`);
-    await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
+    test("legacy Work deep links: removed tabs redirect to first-class destinations", async ({
+        page,
+    }) => {
+        // REMOVED_WORK_TAB_REDIRECTS (workPageView.ts): these tabs no longer render
+        // in the hub — the server redirects to the first-class destination and
+        // forwards the f= filter param.
+        const redirectCases = [
+            { tab: "overview", targetPattern: /\/diagnose(?:[?#].*)?$/ },
+            { tab: "flow", targetPattern: /\/metrics(?:[?#].*)?$/ },
+            { tab: "investment", targetPattern: /\/investment(?:[?#].*)?$/ },
+            { tab: "landscape", targetPattern: /\/landscape(?:[?#].*)?$/ },
+            { tab: "capacity", targetPattern: /\/plan\/capacity(?:[?#].*)?$/ },
+            { tab: "heatmap", targetPattern: /\/cognitive-load(?:[?#].*)?$/ },
+            { tab: "flame", targetPattern: /\/complexity(?:[?#].*)?$/ },
+            { tab: "graph", targetPattern: /\/diagnose\/work-graph(?:[?#].*)?$/ },
+            { tab: "evidence", targetPattern: /\/diagnose\/work-graph(?:[?#].*)?$/ },
+        ] as const;
 
-    await page.getByRole("link", { name: /^Heatmap$/i }).click();
-    await expect(page).toHaveURL(/tab=heatmap/);
-    const filters = decodeFilter(new URL(page.url()).searchParams.get("f"));
-    expect(filters.time.range_days).toBe(30);
-  });
+        for (const { tab, targetPattern } of redirectCases) {
+            await page.goto(`/work?tab=${tab}&f=${filterWith30d}`);
+            await waitForHydration(page);
 
-  test("investigation panel launcher navigates to flow tab with context", async ({ page }) => {
-    // Go to landscape
-    await page.goto("/work?tab=landscape");
+            // Server redirect: final URL must match the first-class destination.
+            await expect(page).toHaveURL(targetPattern);
 
-    // Open an investigation (this might need specific test IDs in your UI)
-    // For now, we'll try to find a button in the quadrant panel
-    // Mocking the behavior by going to a known investigation state if possible
-    // Or assume there's a dot to click in demo mode
+            // Filter context is forwarded to the redirect target.
+            expect(decodeFilter(new URL(page.url()).searchParams.get("f")).time.range_days).toBe(
+                30,
+            );
+        }
+    });
 
-    // Let's check for the presence of the link in the panel
-    // We'll use the demo page if it has the quadrant chart
-    await page.goto("/demo");
-    const quadrantPanel = page.getByTestId("quadrant-investigation");
-    await quadrantPanel.getByRole("button", { name: "Core" }).click();
+    test("legacy Work deep links: bare work view redirects to Work Graph instead of overview", async ({
+        page,
+    }) => {
+        await page.goto(`/work?view=work&f=${filterWith30d}`);
+        await waitForHydration(page);
 
-    const flowLink = page.getByRole("link", { name: /view flow/i });
-    await expect(flowLink).toBeVisible();
-    await expect(flowLink).toHaveAttribute("href", /tab=flow/);
-    await expect(flowLink).toHaveAttribute("href", /context_entity_id=/);
-
-    await flowLink.click();
-    await expect(page).toHaveURL(/tab=flow/);
-    await expect(page).toHaveURL(/context_entity_id=/);
-    await expect(page.getByText("Filtering flow by")).toBeVisible();
-  });
-
-  test("flow tab inspect panel deep-links to flame tab", async ({ page }) => {
-    await page.goto(`/work?tab=flow&f=${filterWith30d}`);
-    await expect(page.getByRole("heading", { name: "Investment Mix" })).toBeVisible();
-
-    await page.goto(`/work?tab=flame&mode=throughput&context_node=Backend&f=${filterWith30d}`);
-    await expect(page.getByRole("heading", { name: "Throughput Breakdown" })).toBeVisible();
-    await expect(
-      page.getByText(/Analyzing decomposition starting from node/).first(),
-    ).toBeVisible();
-  });
+        await expect(page).toHaveURL(/\/diagnose\/work-graph(?:[?#].*)?$/);
+        await expect(page.getByRole("heading", { name: "Work Graph", level: 1 })).toBeVisible();
+        await expect(page.getByRole("tablist", { name: "Work views" })).toHaveCount(0);
+        expect(decodeFilter(new URL(page.url()).searchParams.get("f")).time.range_days).toBe(30);
+    });
 });

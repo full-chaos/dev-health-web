@@ -1,28 +1,35 @@
+import { bucketEquals, bucketKey } from "@/lib/ai/buckets";
 import type {
-  AiImpactBucketRow,
-  AiImpactBucketTotals,
-  AiLeverageComponents,
+    AiImpactBucketRow,
+    AiImpactBucketTotals,
+    AiLeverageComponents,
 } from "@/lib/graphql/__generated__/types";
 
+/**
+ * GraphQL INPUT enum vocabulary (`AIAttributionBucketInput`) — uppercase wire
+ * values used in filter variables sent to the backend. Row OUTPUTS
+ * (`bucket: String!`) are lowercase snake_case; never compare them to these
+ * literals raw — use `bucketEquals`/`bucketKey` (CHAOS-2225).
+ */
 export const AI_BUCKETS = [
-  "AI_ASSISTED",
-  "AI_REVIEW",
-  "AGENT_CREATED",
-  "HUMAN",
-  "UNKNOWN",
+    "AI_ASSISTED",
+    "AI_REVIEW",
+    "AGENT_CREATED",
+    "HUMAN",
+    "UNKNOWN",
 ] as const;
 
 export function bucketLabel(bucket: string): string {
-  return bucket
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+    return bucket
+        .toLowerCase()
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
 }
 
 export function formatPercent(value?: number | null): string {
-  if (value == null || Number.isNaN(value)) return "—";
-  return `${(value * 100).toFixed(1)}%`;
+    if (value == null || Number.isNaN(value)) return "—";
+    return `${(value * 100).toFixed(1)}%`;
 }
 
 /**
@@ -32,42 +39,42 @@ export function formatPercent(value?: number | null): string {
  * missing denominator as 1 and emits absurd percents like 1200.0%.
  */
 export function safeRatio(numerator?: number | null, denominator?: number | null): number | null {
-  if (numerator == null || denominator == null) return null;
-  if (denominator === 0) return null;
-  return numerator / denominator;
+    if (numerator == null || denominator == null) return null;
+    if (denominator === 0) return null;
+    return numerator / denominator;
 }
 
 export function formatNumber(value?: number | null, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "—";
-  return value.toFixed(digits);
+    if (value == null || Number.isNaN(value)) return "—";
+    return value.toFixed(digits);
 }
 
 export function formatSigned(value?: number | null, suffix = ""): string {
-  if (value == null || Number.isNaN(value)) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(1)}${suffix}`;
+    if (value == null || Number.isNaN(value)) return "—";
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${value.toFixed(1)}${suffix}`;
 }
 
 export function assistedWorkShareRows(rows: AiImpactBucketTotals[]) {
-  const assistedBuckets = new Set<string>(AI_BUCKETS);
-  return rows
-    .filter((row) => assistedBuckets.has(row.bucket))
-    .map((row) => ({ name: bucketLabel(row.bucket), value: row.prsTotal }));
+    const assistedBuckets = new Set<string>(AI_BUCKETS.map(bucketKey));
+    return rows
+        .filter((row) => assistedBuckets.has(bucketKey(row.bucket)))
+        .map((row) => ({ name: bucketLabel(row.bucket), value: row.prsTotal }));
 }
 
 export function agentCreatedTrend(rows: AiImpactBucketRow[]) {
-  return rows
-    .filter((row) => row.bucket === "AGENT_CREATED")
-    .map((row, index) => ({ day: String(index + 1), value: row.prsTotal }));
+    return rows
+        .filter((row) => bucketEquals(row.bucket, "AGENT_CREATED"))
+        .map((row, index) => ({ day: String(index + 1), value: row.prsTotal }));
 }
 
 export function leverageSeries(components?: AiLeverageComponents | null) {
-  return [
-    { label: "PR volume", value: components?.prsComponent ?? 0 },
-    { label: "Cycle", value: components?.cycleTimeComponent ?? 0 },
-    { label: "Review", value: components?.reviewComponent ?? 0 },
-    { label: "Rework", value: components?.reworkComponent ?? 0 },
-    { label: "Test", value: components?.testComponent ?? 0 },
-    { label: "Incident", value: components?.incidentComponent ?? 0 },
-  ];
+    return [
+        { label: "PR volume", value: components?.prsComponent ?? 0 },
+        { label: "Cycle", value: components?.cycleTimeComponent ?? 0 },
+        { label: "Review", value: components?.reviewComponent ?? 0 },
+        { label: "Rework", value: components?.reworkComponent ?? 0 },
+        { label: "Test", value: components?.testComponent ?? 0 },
+        { label: "Incident", value: components?.incidentComponent ?? 0 },
+    ];
 }

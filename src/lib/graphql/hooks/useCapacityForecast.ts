@@ -8,22 +8,22 @@
 import { useQuery } from "urql";
 import { CAPACITY_FORECAST_QUERY } from "../queries";
 import type {
-  CapacityForecast,
-  CapacityForecastInput,
-  CapacityForecastQueryResponse,
+    CapacityForecast,
+    CapacityForecastInput,
+    CapacityForecastQueryResponse,
 } from "../types";
 
 interface UseCapacityForecastOptions {
-  orgId: string;
-  input?: CapacityForecastInput;
-  pause?: boolean;
+    orgId: string;
+    input?: CapacityForecastInput;
+    pause?: boolean;
 }
 
 interface UseCapacityForecastResult {
-  data: CapacityForecast | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
+    data: CapacityForecast | null;
+    loading: boolean;
+    error: Error | null;
+    refetch: () => void;
 }
 
 /**
@@ -47,21 +47,21 @@ interface UseCapacityForecastResult {
  * ```
  */
 export function useCapacityForecast(
-  options: UseCapacityForecastOptions,
+    options: UseCapacityForecastOptions,
 ): UseCapacityForecastResult {
-  const { orgId, input, pause = false } = options;
+    const { orgId, input, pause = false } = options;
 
-  const [result, reexecute] = useQuery<CapacityForecastQueryResponse>({
-    query: CAPACITY_FORECAST_QUERY,
-    variables: { orgId, input: input ?? null },
-    pause,
-    requestPolicy: "cache-and-network",
-  });
+    const [result, reexecute] = useQuery<CapacityForecastQueryResponse>({
+        query: CAPACITY_FORECAST_QUERY,
+        variables: { orgId, input: input ?? null },
+        pause,
+        requestPolicy: "cache-and-network",
+    });
 
-  return {
-    data: result.data?.capacityForecast ?? null,
-    loading: result.fetching,
-    error: result.error ?? null,
-    refetch: reexecute,
-  };
+    return {
+        data: result.data?.capacityForecast ?? null,
+        loading: result.fetching,
+        error: result.error ?? null,
+        refetch: reexecute,
+    };
 }

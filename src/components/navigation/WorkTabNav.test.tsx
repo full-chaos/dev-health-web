@@ -1,69 +1,33 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@/test/utils";
-import { WorkTabNav } from "./WorkTabNav";
-import type { MetricFilter } from "@/lib/filters/types";
+import { describe, expect, it } from "vitest";
 
-vi.mock("next/link", () => ({
-  default: ({
-    href,
-    children,
-    ...props
-  }: {
-    href: string;
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}));
+import { navAreas } from "@/lib/navigation/areas";
+import { LEGACY_WORK_TAB_REDIRECTS } from "@/lib/navigation/workPageView";
 
-vi.mock("@/lib/filters/url", () => ({
-  withFilterParam: (href: string) => href,
-}));
+describe("Work lens retirement", () => {
+    it("removes the Work tab strip from the canonical IA", () => {
+        const diagnose = navAreas.find((area) => area.id === "diagnose");
 
-const filters: MetricFilter = {
-  scope: { level: "repo", ids: [] },
-  time: { range_days: 30, compare_days: 0, start_date: undefined, end_date: undefined },
-  who: {},
-  what: {},
-  why: {},
-  how: {},
-};
+        expect(diagnose?.children.map((child) => child.label)).toEqual([
+            "Overview",
+            "Flow",
+            "Investment",
+            "Landscape",
+            "Work Graph",
+            "Complexity",
+            "Cognitive Load",
+            "Bottlenecks",
+            "People",
+            "Code",
+        ]);
+        expect(diagnose?.children.some((child) => child.label === "Work")).toBe(false);
+    });
 
-describe("WorkTabNav", () => {
-  it("renders all tab labels", () => {
-    render(<WorkTabNav activeTab="landscape" filters={filters} />);
-    for (const label of [
-      "Landscape",
-      "Heatmap",
-      "Flow",
-      "Investment",
-      "Capacity",
-      "Flame",
-      "Evidence",
-      "Work Graph",
-    ]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    }
-  });
-
-  it("marks the active tab with aria-current='page'", () => {
-    render(<WorkTabNav activeTab="flow" filters={filters} />);
-    const activeLink = screen.getByText("Flow").closest("a");
-    expect(activeLink).toHaveAttribute("aria-current", "page");
-  });
-
-  it("does not mark inactive tabs with aria-current", () => {
-    render(<WorkTabNav activeTab="flow" filters={filters} />);
-    const inactiveLink = screen.getByText("Landscape").closest("a");
-    expect(inactiveLink).not.toHaveAttribute("aria-current");
-  });
-
-  it("sets correct href for each tab", () => {
-    render(<WorkTabNav activeTab="landscape" filters={filters} />);
-    const flowLink = screen.getByText("Flow").closest("a");
-    expect(flowLink).toHaveAttribute("href", "/work?tab=flow");
-  });
+    it("keeps former Work tabs reachable only through explicit redirects", () => {
+        expect(LEGACY_WORK_TAB_REDIRECTS).toMatchObject({
+            heatmap: "/cognitive-load?tab=heatmap",
+            flame: "/complexity?tab=flame",
+            graph: "/diagnose/work-graph",
+            evidence: "/diagnose/work-graph?evidence=open",
+        });
+    });
 });

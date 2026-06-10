@@ -1,45 +1,47 @@
-// ── Work page active-view resolution ─────────────────────────────────────────
-//
-// Extracted from src/app/(app)/work/page.tsx so the resolution is unit-testable
-// without rendering the RSC. The logic must stay in sync with the page.
-//
-// Rules (Codex review fix — CHAOS-2075):
-//   1. `?view=overview|work` — explicit view param wins.
-//   2. `?tab=<workTab>` without a `view` param — legacy deep link emitted by
-//      WorkTabNav before two-level nav; resolve to "work" so the Work content
-//      branch renders and the existing `tab` logic picks the sub-view.
-//   3. Bare `/work` (no view, no tab) → "overview".
+export const LEGACY_WORK_TAB_REDIRECTS = {
+    overview: "/diagnose",
+    flow: "/metrics?tab=flow",
+    investment: "/investment",
+    landscape: "/landscape",
+    capacity: "/plan/capacity",
+    heatmap: "/cognitive-load?tab=heatmap",
+    flame: "/complexity?tab=flame",
+    graph: "/diagnose/work-graph",
+    evidence: "/diagnose/work-graph?evidence=open",
+} as const;
 
-export type DiagnoseView = "overview" | "work";
-export const DIAGNOSE_VIEWS: DiagnoseView[] = ["overview", "work"];
+export type SearchParamsRecord = {
+    [key: string]: string | string[] | undefined;
+};
 
-export const WORK_TABS = [
-  "landscape",
-  "heatmap",
-  "flow",
-  "investment",
-  "capacity",
-  "flame",
-  "evidence",
-  "graph",
-] as const;
+export type LegacyWorkTab = keyof typeof LEGACY_WORK_TAB_REDIRECTS;
 
-/**
- * Resolve the active DiagnoseView from raw URL search params.
- *
- * @param viewParam - the raw `view` query param value (string | undefined)
- * @param tabParam  - the raw `tab` query param value (string | undefined)
- */
-export function resolveActiveView(
-  viewParam: string | undefined,
-  tabParam: string | undefined,
-): DiagnoseView {
-  if (DIAGNOSE_VIEWS.includes(viewParam as DiagnoseView)) {
-    return viewParam as DiagnoseView;
-  }
-  // Legacy ?tab= deep link: no explicit view but a valid work tab → show Work.
-  if (!viewParam && typeof tabParam === "string" && (WORK_TABS as readonly string[]).includes(tabParam)) {
-    return "work";
-  }
-  return "overview";
+type LegacyWorkRedirectInput = {
+    view?: string;
+    tab?: string;
+};
+
+export function buildLegacyWorkRedirectTarget(targetPath: string, params: SearchParamsRecord) {
+    const [pathname, existingQuery = ""] = targetPath.split("?", 2);
+    const nextParams = new URLSearchParams(existingQuery);
+    for (const [key, value] of Object.entries(params)) {
+        if (key !== "tab" && key !== "view") {
+            if (nextParams.has(key)) continue;
+            if (typeof value === "string") {
+                nextParams.set(key, value);
+            } else {
+                for (const entry of value ?? []) {
+                    nextParams.append(key, entry);
+                }
+            }
+        }
+    }
+    const query = nextParams.toString();
+    return query ? `${pathname}?${query}` : pathname;
+}
+
+export function resolveLegacyWorkRedirect({ view, tab }: LegacyWorkRedirectInput): string | null {
+    if (view === "work" && (!tab || tab === "overview")) return LEGACY_WORK_TAB_REDIRECTS.graph;
+    if (tab) return LEGACY_WORK_TAB_REDIRECTS[tab as LegacyWorkTab] ?? null;
+    return LEGACY_WORK_TAB_REDIRECTS.overview;
 }

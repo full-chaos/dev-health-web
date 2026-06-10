@@ -1,7 +1,7 @@
 {
-  "no-raw-id-in-jsx": [],
-  "no-hardcoded-style": [],
-  "cta-from-registry": [],
-  "no-internal-leak": [],
-  "chart-values-formatted": []
+    "no-raw-id-in-jsx": [],
+    "no-hardcoded-style": [],
+    "cta-from-registry": [],
+    "no-internal-leak": [],
+    "chart-values-formatted": []
 }

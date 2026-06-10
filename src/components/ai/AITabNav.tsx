@@ -6,77 +6,50 @@ import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 
-/**
- * Route-based tab strip for the unified AI Workflows area.
- *
- * Convention follows the route-per-tab pattern used by TestOps (each tab is
- * its own `/ai/*` route) rather than the `?tab=` query pattern used by
- * `/metrics`. This was chosen because every AI tab already maps to a distinct
- * data surface / dashboard, and keeping discrete routes preserves the
- * previously-reachable URLs (`/ai/review-load`, …) as deep links.
- *
- * `preview` tabs have no distinct backing data yet and render a clearly-scoped
- * preview surface — never a blank or broken destination.
- */
-export type AITabId =
-  | "impact"
-  | "attribution"
-  | "review-load"
-  | "test-gaps"
-  | "risk"
-  | "evidence"
-  | "automations";
+export type AITabId = "overview" | "impact" | "review-load" | "risk" | "automations";
 
 type AITab = {
-  id: AITabId;
-  label: string;
-  href: string;
-  preview?: boolean;
+    id: AITabId;
+    label: string;
+    href: string;
 };
 
 const AI_TABS: AITab[] = [
-  { id: "impact", label: "Impact", href: "/ai" },
-  {
-    id: "attribution",
-    label: "Attribution",
-    href: "/ai/attribution",
-    preview: true,
-  },
-  { id: "review-load", label: "Review Load", href: "/ai/review-load" },
-  { id: "test-gaps", label: "Test Gaps", href: "/ai/test-gaps", preview: true },
-  { id: "risk", label: "Governance Risk", href: "/ai/risk" },
-  { id: "evidence", label: "Evidence", href: "/ai/evidence", preview: true },
-  { id: "automations", label: "Automations", href: "/ai/automations" },
+    { id: "overview", label: "Overview", href: "/ai" },
+    { id: "impact", label: "Impact", href: "/ai/impact" },
+    { id: "review-load", label: "Review Load", href: "/ai/review-load" },
+    { id: "risk", label: "Governance Risk", href: "/ai/risk" },
+    { id: "automations", label: "Automations", href: "/ai/automations" },
 ];
 
-/** Resolve the active tab from the current pathname. `/ai` maps to Impact. */
-function activeTabFromPath(pathname: string): AITabId {
-  if (pathname === "/ai" || pathname === "/ai/impact") return "impact";
-  const match = AI_TABS.find(
-    (tab) => tab.href !== "/ai" && (pathname === tab.href || pathname.startsWith(tab.href + "/")),
-  );
-  return match?.id ?? "impact";
+/**
+ * Resolves the active strip tab from the pathname. Preview routes that are not
+ * in the strip (e.g. /ai/attribution) return "none" so no tab claims a false
+ * active state (CHAOS-2200) — ModeTabs simply renders no underline.
+ */
+function activeTabFromPath(pathname: string): AITabId | "none" {
+    if (pathname === "/ai") return "overview";
+    const match = AI_TABS.find(
+        (tab) =>
+            tab.href !== "/ai" && (pathname === tab.href || pathname.startsWith(tab.href + "/")),
+    );
+    return match?.id ?? "none";
 }
 
 type AITabNavProps = {
-  filters: MetricFilter;
-  role?: string;
+    filters: MetricFilter;
+    role?: string;
 };
 
 export function AITabNav({ filters, role }: AITabNavProps) {
-  const pathname = usePathname();
-  const activeTab = activeTabFromPath(pathname);
+    const pathname = usePathname();
+    const activeTab = activeTabFromPath(pathname);
 
-  const items: ModeTabItem<AITabId>[] = AI_TABS.map((tab) => ({
-    id: tab.id,
-    label: tab.label,
-    href: withFilterParam(tab.href, filters, role),
-    badge: tab.preview ? (
-      <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] text-(--ink-muted)">
-        Preview
-      </span>
-    ) : undefined,
-  }));
+    const items: ModeTabItem<AITabId | "none">[] = AI_TABS.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        href: withFilterParam(tab.href, filters, role),
+    }));
 
-  return <ModeTabs items={items} activeId={activeTab} ariaLabel="AI Workflows" />;
+    return <ModeTabs items={items} activeId={activeTab} ariaLabel="AI views" />;
 }
