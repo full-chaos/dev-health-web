@@ -1915,3 +1915,36 @@ export type WorkGraphProvenance =
   | 'EXPLICIT_TEXT'
   | 'HEURISTIC'
   | 'NATIVE';
+
+// ── Improve / Flow opportunity types (CHAOS-2220) ─────────────────────────────
+
+export type ImproveOpportunityKind =
+  | 'HIGH_CHANGE_FAILURE'
+  | 'HIGH_CHURN'
+  | 'HIGH_REWORK'
+  | 'HIGH_REVIEW_LATENCY'
+  | 'HIGH_WIP'
+  | 'LOW_THROUGHPUT'
+  | 'SLOW_CYCLE_TIME';
+
+export type ImproveOpportunity = {
+  __typename?: 'ImproveOpportunity';
+  opportunityId: string;
+  kind: ImproveOpportunityKind;
+  entityType: string;
+  entityId: string;
+  title: string;
+  rationale: string;
+  score: number;
+  severity: string;
+  evidenceRefs: Array<string>;
+  recommendedAction: string;
+};
+
+export type ImproveOpportunitiesResult = {
+  __typename?: 'ImproveOpportunitiesResult';
+  orgId: string;
+  opportunities: Array<ImproveOpportunity>;
+  detectorReady: boolean;
+  totalCount: number;
+};

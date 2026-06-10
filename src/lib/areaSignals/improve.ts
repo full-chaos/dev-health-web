@@ -30,17 +30,30 @@
 //     "neutral" whenever the fetch SUCCEEDS (a count is informational, not a
 //     severity), including a healthy zero ("0 open"). Only a FAILED fetch
 //     (safe() → undefined) degrades to "unavailable" (genuine "not connected").
-//   - Experiments: REAL — count derived from opportunitiesData.items[*].suggested_experiments
+//   - Experiments (CHAOS-2219): REAL — count derived from opportunitiesData.items[*].suggested_experiments
 //     (no extra fetch; same data the Opportunities card already reads).  State is
 //     "neutral" on a successful fetch (even zero), "unavailable" only on failure.
-//   - Automations: UNAVAILABLE + preview (route /improve/automations, no page yet).
+//   - Automations (CHAOS-2220): REAL — count of flow opportunities from
+//     FlowOpportunityDetector via `improveOpportunities` GraphQL query.
+//     "neutral" when detectorReady (even zero is a valid "all green" state).
+//     "unavailable" when the fetch fails or the detector is not ready.
 
+import { auth } from "@/lib/auth";
 import { getHomeData, getOpportunities } from "@/lib/api/home";
+import { graphqlFetch } from "@/lib/graphql/server";
+import { IMPROVE_OPPORTUNITIES_QUERY } from "@/lib/graphql/queries";
+import type { ImproveOpportunitiesResult } from "@/lib/graphql/__generated__/types";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
 import { formatNumber } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
+
+/** Resolve the org scope from the auth session (mirrors ai.ts). */
+async function resolveOrgId(): Promise<string> {
+    const session = await auth();
+    return (session?.user?.org_id as string | undefined) ?? "default-org";
+}
 
 import type { AreaSignal, AreaSignalState } from "./types";
 import { sortBySeverity } from "./sort";
@@ -132,7 +145,6 @@ export async function getImproveSignals(
     filters: MetricFilter,
     isTestMode = false,
 ): Promise<AreaSignal[]> {
-    void isTestMode;
     const improve = getAreaById("improve");
     if (!improve) return [];
 
@@ -140,18 +152,25 @@ export async function getImproveSignals(
     const byId = new Map(improve.hubItems.map((item) => [item.id, item]));
     const descriptor = (id: string): NavAreaHubItem | undefined => byId.get(id);
 
+    // Resolve the org id for GraphQL calls (Automations signal).
+    const orgId = isTestMode ? "test-org" : await resolveOrgId();
+
     // ── Fetch every source in parallel (no serial N+1) ──────────────────────────
     // home `deltas[]` drives the synthesized top signal (worst worsened metric);
     // opportunities drives the Opportunities workflow card + gates the top signal.
-    // Both are plain REST (`/api/v1/home`, `/api/v1/opportunities`) — fetched
-    // UNCONDITIONALLY (mirrors `getDiagnoseSignals` / `getGovernSignals`, which
-    // call `getHomeData` with no test-mode gate). Under Playwright the dev server
-    // points BACKEND_URL at the MSW mock, so these resolve to deterministic mock
-    // data and the Overview renders real cards in e2e; `safe()` degrades a failed
-    // fetch to honest-empty. `isTestMode` is intentionally NOT a fetch gate here.
-    const [opportunitiesData, homeData] = await Promise.all([
+    // automations data comes from FlowOpportunityDetector via GraphQL.
+    const [opportunitiesData, homeData, automationsData] = await Promise.all([
         safe(() => getOpportunities(filters), "opportunities"),
         safe(() => getHomeData(filters), "home"),
+        safe(
+            () =>
+                graphqlFetch<{ improveOpportunities: ImproveOpportunitiesResult }>(
+                    IMPROVE_OPPORTUNITIES_QUERY,
+                    { orgId, scope: null, limit: 10, windowDays: 30 },
+                    { orgId },
+                ).then((r) => r.improveOpportunities),
+            "improve-automations",
+        ),
     ]);
 
     const signals: AreaSignal[] = [];
@@ -226,12 +245,20 @@ export async function getImproveSignals(
         push("experiments", { ...UNAVAILABLE, metricLabel: "Experiments" });
     }
 
-    // ── Automations — UNAVAILABLE + preview (no backend / no route yet) ──────────
-    push("improve-automations", {
-        ...UNAVAILABLE,
-        preview: true,
-        metricLabel: "Automations",
-    });
+    // ── Automations (CHAOS-2220) — REAL signal from FlowOpportunityDetector ───────
+    // detectorReady=true + N detected → "neutral" with count ("N detected").
+    // detectorReady=true + 0 detected → "neutral" ("0 detected" = all green, not error).
+    // fetch failed (safe() → undefined) → "unavailable".
+    if (automationsData) {
+        const count = automationsData.totalCount ?? 0;
+        push("improve-automations", {
+            state: "neutral",
+            value: `${formatNumber(count)} detected`,
+            metricLabel: count > 0 ? "flow opportunities" : "all metrics within thresholds",
+        });
+    } else {
+        push("improve-automations", { ...UNAVAILABLE, metricLabel: "Automations" });
+    }
 
     return sortBySeverity(signals);
 }
