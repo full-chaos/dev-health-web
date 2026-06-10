@@ -353,9 +353,17 @@ const nextAuth = NextAuth({
                             return token;
                         }
                         token.last_validated = now;
-                    } else {
+                    } else if (res.status === 429 || res.status >= 500) {
                         // 429/5xx — transient; don't invalidate, retry after backoff
                         token.last_validated = now - VALIDATION_INTERVAL + VALIDATION_BACKOFF;
+                    } else {
+                        // Other 4xx (400/401/403/422) — the backend rejected the token
+                        // outright; no backoff reprieve. Defense-in-depth: the endpoint
+                        // normally signals bad tokens via 200 + valid:false.
+                        token.access_token = undefined;
+                        token.refresh_token = undefined;
+                        token.error = "user_invalid";
+                        return token;
                     }
                 } catch {
                     // Network error — don't invalidate for transient failures,

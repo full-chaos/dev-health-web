@@ -480,4 +480,43 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.refresh_token).toBeUndefined();
         expect(result.error).toBe("user_invalid");
     });
+
+    it("(j) 401 on /auth/validate invalidates the session — no backoff reprieve", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 401,
+            json: async () => ({ detail: "invalid token" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({ token: validationDueToken(), user: null, account: null });
+
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBeUndefined();
+        expect(result.error).toBe("user_invalid");
+    });
+
+    it("(k) 503 on /auth/validate preserves session and backs off", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 503,
+            json: async () => ({ detail: "service unavailable" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const first = await jwt({ token: validationDueToken(), user: null, account: null });
+
+        expect(first.access_token).toBe("valid-access");
+        expect(first.refresh_token).toBe("valid-refresh");
+        expect(first.error).toBeUndefined();
+        const nextDue = (first.last_validated as number) + VALIDATION_INTERVAL;
+        expect(nextDue).toBeGreaterThan(Date.now());
+        expect(nextDue).toBeLessThanOrEqual(Date.now() + 60 * 1000);
+
+        // Immediate follow-up callback must NOT re-fetch
+        await jwt({ token: first, user: null, account: null });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 });
