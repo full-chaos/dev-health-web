@@ -157,6 +157,7 @@ export const navAreas: readonly NavArea[] = [
             "/complexity",
             "/cognitive-load",
             "/bottleneck",
+            "/explore",
         ],
         legacyActiveIds: [
             "work",

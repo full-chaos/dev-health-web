@@ -137,6 +137,7 @@ describe("selectedAreaIdForPathname", () => {
         { pathname: "/investment", expected: "diagnose" },
         { pathname: "/people/abc", expected: "diagnose" },
         { pathname: "/landscape", expected: "diagnose" },
+        { pathname: "/explore", expected: "diagnose" },
         { pathname: "/plan", expected: "plan" },
         { pathname: "/plan/delivery-forecast", expected: "plan" },
         { pathname: "/capacity-planning", expected: "plan" },
@@ -325,5 +326,24 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
     it("returns an empty trail/title for routes no area owns", () => {
         expect(navTrailForPathname("/prs/123")).toEqual([]);
         expect(navTitleForPathname("/prs/123")).toBe("");
+    });
+});
+
+describe("navTitleForPathname / navTrailForPathname — /explore (CHAOS-2096)", () => {
+    it("titles /explore as 'Diagnose'", () => {
+        expect(navTitleForPathname("/explore")).toBe("Diagnose");
+    });
+
+    it("builds /explore trail with Diagnose area only", () => {
+        const trail = navTrailForPathname("/explore");
+        expect(trail.map((c) => c.label)).toEqual(["Diagnose"]);
+    });
+
+    it("only Diagnose area claims /explore prefix (no conflicts)", () => {
+        const exploreOwners = navAreas.filter((area) =>
+            area.ownedPathPrefixes.some((prefix) => prefix === "/explore"),
+        );
+        expect(exploreOwners).toHaveLength(1);
+        expect(exploreOwners[0]?.id).toBe("diagnose");
     });
 });
