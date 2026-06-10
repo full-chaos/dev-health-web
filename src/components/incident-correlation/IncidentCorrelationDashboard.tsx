@@ -72,15 +72,21 @@ export type IncidentRow = {
     incidentDisplayName?: string | null;
     /** Deployment IDs linked to this incident. From LINKED_INCIDENT sourceId. */
     deploymentIds: string[];
-    /** PR IDs that caused the linked deployments. From DEPLOYS sourceId. */
-    prIds: string[];
+    /**
+     * PRs keyed by deployment ID — only the PRs that actually caused each deployment.
+     * Preserves the exact PR→deployment association so buildSankeyData can emit correct
+     * edges without cross-joining every PR to every deployment in the incident.
+     *
+     * Example: { "dep-a": ["pr-1", "pr-2"], "dep-b": ["pr-3"] }
+     */
+    prIdsByDeployment: Record<string, string[]>;
     /**
      * Server-resolved display names for deployment IDs (CHAOS-2119).
      * Populated from LINKED_INCIDENT edge sourceDisplayName (deployment name).
      */
     deploymentDisplayNames?: Record<string, string | null>;
     /**
-     * Server-resolved display names for PR IDs (CHAOS-2119).
+     * Server-resolved display names for all PR IDs across all deployments (CHAOS-2119).
      * Populated from DEPLOYS edge sourceDisplayName (PR name).
      */
     prDisplayNames?: Record<string, string | null>;
@@ -191,25 +197,29 @@ export function joinEdges(
     // ── Step 3: Build incident-centric rows ─────────────────────────────────
     return Array.from(deploymentsByIncident.keys()).map((incidentId) => {
         const depIds = Array.from(deploymentsByIncident.get(incidentId) ?? []);
-        // Collect all PRs that caused any of this incident's deployments
-        const prIdSet = new Set<string>();
+
+        // Preserve the PR→deployment association: keyed by deploymentId so
+        // buildSankeyData can emit only the true PR→deployment edges (no cross-join).
+        const prIdsByDeployment: Record<string, string[]> = {};
+        const allPrIds = new Set<string>();
         for (const depId of depIds) {
-            for (const prId of prsByDeployment.get(depId) ?? []) {
-                prIdSet.add(prId);
+            const prs = Array.from(prsByDeployment.get(depId) ?? []);
+            prIdsByDeployment[depId] = prs;
+            for (const prId of prs) {
+                allPrIds.add(prId);
             }
         }
-        const prIds = Array.from(prIdSet);
 
         return {
             incidentId,
             incidentDisplayName: incidentDisplayNames.get(incidentId) ?? null,
             deploymentIds: depIds,
-            prIds,
+            prIdsByDeployment,
             deploymentDisplayNames: Object.fromEntries(
                 depIds.map((id) => [id, deploymentDisplayNames.get(id) ?? null]),
             ),
             prDisplayNames: Object.fromEntries(
-                prIds.map((id) => [id, prDisplayNames.get(id) ?? null]),
+                Array.from(allPrIds).map((id) => [id, prDisplayNames.get(id) ?? null]),
             ),
         };
     });
@@ -260,22 +270,23 @@ export function buildSankeyData(
             links.push({ source: depKey, target: incKey, value: 1 });
         }
 
-        for (const prId of row.prIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
-            // CHAOS-2119: use server-resolved PR name when available
-            const resolved = row.prDisplayNames?.[prId];
-            const prLabel = resolved?.trim() || `pr:${prId.slice(0, 8)}`;
-            addNode(prId, prLabel, "pr");
-            const prKey = makeNodeKey("pr", prId);
-            // Flow: PR → deployment (but we link PR → incident's deployment)
-            // Since each PR is linked to deployments, flow is pr → deployment.
-            // The deployment node for this PR may come from different incidents;
-            // we connect to the deployment that links to this incident.
-            for (const depId of row.deploymentIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
-                // Only add PR→deployment link when this PR caused this deployment
-                // (deploymentIds are the deployments for this incident row)
-                const depKey = makeNodeKey("deployment", depId);
+        // Flow: PR → deployment.  Iterate deployment-first and emit only the
+        // exact (pr, dep) pairs from prIdsByDeployment.  This prevents the
+        // cross-join bug where every PR is incorrectly linked to every deployment
+        // in the incident regardless of their actual relationship (CHAOS-2118).
+        let depLinksEmitted = 0;
+        for (const [depId, prIds] of Object.entries(row.prIdsByDeployment)) {
+            if (depLinksEmitted >= MAX_LINKS_PER_INCIDENT) break;
+            const depKey = makeNodeKey("deployment", depId);
+            for (const prId of prIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
+                // CHAOS-2119: use server-resolved PR name when available
+                const resolved = row.prDisplayNames?.[prId];
+                const prLabel = resolved?.trim() || `pr:${prId.slice(0, 8)}`;
+                addNode(prId, prLabel, "pr");
+                const prKey = makeNodeKey("pr", prId);
                 links.push({ source: prKey, target: depKey, value: 1 });
             }
+            depLinksEmitted++;
         }
     }
 
@@ -548,7 +559,7 @@ export function IncidentCorrelationDashboard({
                                             {row.deploymentIds.length}
                                         </td>
                                         <td className="px-5 py-3 text-right tabular-nums">
-                                            {row.prIds.length}
+                                            {new Set(Object.values(row.prIdsByDeployment).flat()).size}
                                         </td>
                                     </tr>
                                 ))}

@@ -135,7 +135,7 @@ describe("joinEdges", () => {
         expect(rows[0].incidentId).toBe("inc-1");
         expect(rows[0].deploymentIds).toContain("dep-a");
         expect(rows[0].deploymentIds).toContain("dep-b");
-        expect(rows[0].prIds).toHaveLength(0);
+        expect(Object.values(rows[0].prIdsByDeployment).flat()).toHaveLength(0);
     });
 
     it("collects PR IDs per incident via deployment join from DEPLOYS edges", () => {
@@ -149,8 +149,9 @@ describe("joinEdges", () => {
         const rows = joinEdges(deploys, incidents);
         expect(rows).toHaveLength(1);
         expect(rows[0].incidentId).toBe("inc-1");
-        expect(rows[0].prIds).toContain("pr-x");
-        expect(rows[0].prIds).toContain("pr-y");
+        const allPrs = Object.values(rows[0].prIdsByDeployment).flat();
+        expect(allPrs).toContain("pr-x");
+        expect(allPrs).toContain("pr-y");
     });
 
     it("joins DEPLOYS and LINKED_INCIDENT edges via shared deploymentId", () => {
@@ -161,7 +162,7 @@ describe("joinEdges", () => {
         expect(rows).toHaveLength(1);
         expect(rows[0].incidentId).toBe("inc-1");
         expect(rows[0].deploymentIds).toContain("dep-a");
-        expect(rows[0].prIds).toContain("pr-a");
+        expect(rows[0].prIdsByDeployment["dep-a"]).toContain("pr-a");
     });
 
     it("produces separate rows for distinct incident IDs", () => {
@@ -256,6 +257,27 @@ describe("joinEdges", () => {
         const rows = joinEdges([], incidents);
         expect(rows[0].incidentDisplayName).toBe("INC-CANONICAL");
     });
+
+    // CHAOS-2118: prIdsByDeployment must preserve which PR caused which deployment
+    it("prIdsByDeployment preserves PR→deployment association (no cross-join)", () => {
+        // Two deployments, each triggered by a distinct PR.
+        // dep-a → inc-1 (LINKED_INCIDENT), pr-1 → dep-a (DEPLOYS)
+        // dep-b → inc-1 (LINKED_INCIDENT), pr-2 → dep-b (DEPLOYS)
+        const incidents: WorkGraphEdge[] = [
+            makeEdge("l1", "dep-a", "inc-1", "LINKED_INCIDENT"),
+            makeEdge("l2", "dep-b", "inc-1", "LINKED_INCIDENT"),
+        ];
+        const deploys: WorkGraphEdge[] = [
+            makeEdge("d1", "pr-1", "dep-a", "DEPLOYS"),
+            makeEdge("d2", "pr-2", "dep-b", "DEPLOYS"),
+        ];
+        const rows = joinEdges(deploys, incidents);
+        expect(rows).toHaveLength(1);
+        // dep-a should only contain pr-1 (not pr-2)
+        expect(rows[0].prIdsByDeployment["dep-a"]).toEqual(["pr-1"]);
+        // dep-b should only contain pr-2 (not pr-1)
+        expect(rows[0].prIdsByDeployment["dep-b"]).toEqual(["pr-2"]);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -269,7 +291,7 @@ describe("buildSankeyData", () => {
 
     it("returns null when all incidents have no linked nodes (no links produced)", () => {
         // An incident with no deployments or PRs produces no links
-        const rows = [{ incidentId: "inc-1", deploymentIds: [], prIds: [] }];
+        const rows = [{ incidentId: "inc-1", deploymentIds: [], prIdsByDeployment: {} }];
         expect(buildSankeyData(rows)).toBeNull();
     });
 
@@ -279,7 +301,7 @@ describe("buildSankeyData", () => {
             {
                 incidentId: "inc-abc123",
                 deploymentIds: ["dep-xyz789"],
-                prIds: ["pr-lmn456"],
+                prIdsByDeployment: { "dep-xyz789": ["pr-lmn456"] },
             },
         ];
         const result = buildSankeyData(rows);
@@ -294,7 +316,7 @@ describe("buildSankeyData", () => {
                 incidentId: "4e00fff2-df66-5028-8ebd-e4535332300b",
                 incidentDisplayName: "INC-2025-404",
                 deploymentIds: ["dep-xyz789"],
-                prIds: ["pr-lmn456"],
+                prIdsByDeployment: { "dep-xyz789": ["pr-lmn456"] },
             },
         ];
 
@@ -316,13 +338,13 @@ describe("buildSankeyData", () => {
                 incidentId: "uuid-inc-aaa",
                 incidentDisplayName: "Production Outage",
                 deploymentIds: ["dep-001"],
-                prIds: [],
+                prIdsByDeployment: {},
             },
             {
                 incidentId: "uuid-inc-bbb",
                 incidentDisplayName: "Production Outage", // same label, different id
                 deploymentIds: ["dep-002"],
-                prIds: [],
+                prIdsByDeployment: {},
             },
         ];
 
@@ -353,7 +375,7 @@ describe("buildSankeyData", () => {
                 incidentId: "uuid-inc-aaa",
                 incidentDisplayName: "INC-A",
                 deploymentIds: ["dep-111", "dep-222"],
-                prIds: [],
+                prIdsByDeployment: {},
                 deploymentDisplayNames: {
                     "dep-111": "deploy/main",
                     "dep-222": "deploy/main", // same label, different id
@@ -381,7 +403,7 @@ describe("buildSankeyData", () => {
             {
                 incidentId: sharedUuid,   // incident with this UUID
                 deploymentIds: [sharedUuid], // deployment with the SAME UUID
-                prIds: [],
+                prIdsByDeployment: {},
             },
         ];
 
@@ -405,7 +427,7 @@ describe("buildSankeyData", () => {
                 incidentId: "uuid-inc-001",
                 incidentDisplayName: "INC-2025-001",
                 deploymentIds: ["dep-uuid-abc"],
-                prIds: ["pr-uuid-xyz"],
+                prIdsByDeployment: { "dep-uuid-abc": ["pr-uuid-xyz"] },
                 deploymentDisplayNames: { "dep-uuid-abc": "payments-service deploy #42" },
                 prDisplayNames: { "pr-uuid-xyz": "Fix: checkout null pointer" },
             },
@@ -432,6 +454,46 @@ describe("buildSankeyData", () => {
         expect(names).not.toContain("pr:pr-uuid-x");
     });
 
+    // CHAOS-2118 cross-join regression: multi-deployment incident with distinct PR sets
+    // must only produce the true PR→deployment edges, never false cross-links.
+    it("does not cross-join PRs to unrelated deployments (CHAOS-2118 regression)", () => {
+        // pr-a caused dep-a; pr-b caused dep-b.
+        // The false edges pr-a→dep-b and pr-b→dep-a must NOT appear.
+        const rows = [
+            {
+                incidentId: "inc-multi",
+                deploymentIds: ["dep-a", "dep-b"],
+                prIdsByDeployment: {
+                    "dep-a": ["pr-a"],
+                    "dep-b": ["pr-b"],
+                },
+            },
+        ];
+
+        const result = buildSankeyData(rows);
+
+        expect(result).not.toBeNull();
+        // True edges: pr-a→dep-a, pr-b→dep-b, dep-a→inc-multi, dep-b→inc-multi = 4 links
+        expect(result!.links).toHaveLength(4);
+
+        const prAToDep = result!.links.filter(
+            (l) => l.source === "pr:pr-a" && l.target === "deployment:dep-a",
+        );
+        const prBToDep = result!.links.filter(
+            (l) => l.source === "pr:pr-b" && l.target === "deployment:dep-b",
+        );
+        expect(prAToDep).toHaveLength(1);
+        expect(prBToDep).toHaveLength(1);
+
+        // Assert the false cross-links are absent
+        const falseLinks = result!.links.filter(
+            (l) =>
+                (l.source === "pr:pr-a" && l.target === "deployment:dep-b") ||
+                (l.source === "pr:pr-b" && l.target === "deployment:dep-a"),
+        );
+        expect(falseLinks).toHaveLength(0);
+    });
+
     // CHAOS-2119: unresolved fallback uses controlled short-id prefix
     it("falls back to short-id prefix for unresolved deployment/PR nodes (CHAOS-2119)", () => {
         const rows = [
@@ -439,7 +501,9 @@ describe("buildSankeyData", () => {
                 incidentId: "uuid-inc-001",
                 incidentDisplayName: "INC-2025-001",
                 deploymentIds: ["abcdef12-0000-0000-0000-000000000000"],
-                prIds: ["12345678-0000-0000-0000-000000000000"],
+                prIdsByDeployment: {
+                    "abcdef12-0000-0000-0000-000000000000": ["12345678-0000-0000-0000-000000000000"],
+                },
                 deploymentDisplayNames: { "abcdef12-0000-0000-0000-000000000000": null },
                 prDisplayNames: { "12345678-0000-0000-0000-000000000000": null },
             },
