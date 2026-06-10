@@ -93,6 +93,48 @@ describe("ChartFrame", () => {
         expect(screen.queryByTestId("chart-child")).not.toBeInTheDocument();
     });
 
+    it("renders a directionality pill from the direction prop", () => {
+        render(
+            <ChartFrame
+                title="Success Rate Trend"
+                interpretation="Share of completed runs that succeed."
+                direction="up"
+            >
+                <div data-testid="chart-child">chart body</div>
+            </ChartFrame>,
+        );
+
+        expect(screen.getByText("Higher is better")).toBeInTheDocument();
+        expect(screen.getByTestId("chart-child")).toBeInTheDocument();
+    });
+
+    it("renders 'Lower is better' for a down direction alongside other annotations", () => {
+        render(
+            <ChartFrame
+                title="Failure Rate Trend"
+                interpretation="Share of completed runs that fail."
+                direction="down"
+                threshold={{ label: "Target baseline", value: "80%" }}
+            >
+                <div data-testid="chart-child">chart body</div>
+            </ChartFrame>,
+        );
+
+        expect(screen.getByText("Lower is better")).toBeInTheDocument();
+        expect(screen.getByText("Target baseline")).toBeInTheDocument();
+        expect(screen.getByText("80%")).toBeInTheDocument();
+    });
+
+    it("renders no annotation row when direction, threshold and band are absent", () => {
+        const { container } = render(
+            <ChartFrame title="Bare Trend" interpretation="No annotations.">
+                <div data-testid="chart-child">chart body</div>
+            </ChartFrame>,
+        );
+
+        expect(container.querySelector("[data-annotation]")).toBeNull();
+    });
+
     it("renders descriptor annotations whose value is zero", () => {
         render(
             <ChartFrame

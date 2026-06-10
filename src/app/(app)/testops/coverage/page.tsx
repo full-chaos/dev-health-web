@@ -11,7 +11,7 @@ import { BackLink } from "@/components/shared/BackLink";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { fetchCoverageMetrics } from "@/lib/testops/fetchers";
-import { TESTOPS_MEASURES } from "@/lib/testops/constants";
+import { COVERAGE_LINE_TARGET_PCT, TESTOPS_MEASURES } from "@/lib/testops/constants";
 import {
 	TimeseriesResult,
 	TimeseriesBucket,
@@ -206,9 +206,10 @@ export default async function CoveragePage({
 						<ChartFrame
 							title="Line Coverage Trend"
 							interpretation="Line coverage appears over time so drops are visible before they become release risk."
+							direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
 							threshold={{
 								label: "Target baseline",
-								value: "80%",
+								value: `${COVERAGE_LINE_TARGET_PCT}%`,
 								tone: "info",
 							}}
 							isEmpty={timeseriesData.length === 0}
@@ -216,7 +217,14 @@ export default async function CoveragePage({
 							stateDescription="Coverage history appears here once CI coverage data is connected for this scope."
 						>
 							<div className="h-64">
-								<TimeseriesChart data={timeseriesData} valueFormat="percent" />
+								<TimeseriesChart
+									data={timeseriesData}
+									valueFormat="percent"
+									baseline={{
+										value: COVERAGE_LINE_TARGET_PCT,
+										label: "Target baseline",
+									}}
+								/>
 							</div>
 						</ChartFrame>
 						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">

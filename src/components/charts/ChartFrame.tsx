@@ -12,10 +12,18 @@ type ChartFrameAnnotationDescriptor = {
 
 type ChartFrameAnnotation = ReactNode | ChartFrameAnnotationDescriptor;
 
+export type ChartDirection = "up" | "down";
+
+const directionLabel: Record<ChartDirection, string> = {
+    up: "Higher is better",
+    down: "Lower is better",
+};
+
 type ChartFrameProps = {
     title: ReactNode;
     interpretation: ReactNode;
     children: ReactNode;
+    direction?: ChartDirection;
     threshold?: ChartFrameAnnotation;
     band?: ChartFrameAnnotation;
     state?: DataStateVariant;
@@ -95,6 +103,7 @@ export function ChartFrame({
     title,
     interpretation,
     children,
+    direction,
     threshold,
     band,
     state,
@@ -110,7 +119,8 @@ export function ChartFrame({
     "data-testid": testId,
 }: ChartFrameProps) {
     const dataState = resolveDataState({ state, isLoading, isError, isEmpty });
-    const hasAnnotations = annotationPresent(threshold) || annotationPresent(band);
+    const hasAnnotations =
+        direction != null || annotationPresent(threshold) || annotationPresent(band);
 
     return (
         <section
@@ -126,6 +136,11 @@ export function ChartFrame({
                 </div>
                 {hasAnnotations && (
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                        {direction != null &&
+                            renderAnnotation(
+                                { label: directionLabel[direction] },
+                                "Chart direction",
+                            )}
                         {renderAnnotation(threshold, "Chart threshold")}
                         {renderAnnotation(band, "Chart band")}
                     </div>

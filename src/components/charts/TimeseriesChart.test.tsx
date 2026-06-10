@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { orderTimeseriesPoints } from "./timeseriesData";
+import { buildBaselineMarkLine } from "./TimeseriesChart";
 
 describe("orderTimeseriesPoints", () => {
     it("orders by the full ISO day, not the display label, across a year boundary", () => {
@@ -24,5 +25,33 @@ describe("orderTimeseriesPoints", () => {
             { day: "2026-06-01", value: 2 },
         ]);
         expect(categories).toEqual(["2026-06-01", "2026-06-02"]);
+    });
+});
+
+describe("buildBaselineMarkLine", () => {
+    const color = "#49454f";
+
+    it("returns undefined when no baseline is provided", () => {
+        expect(buildBaselineMarkLine(undefined, color)).toBeUndefined();
+    });
+
+    it("returns undefined for a non-finite baseline value", () => {
+        expect(buildBaselineMarkLine({ value: Number.NaN }, color)).toBeUndefined();
+    });
+
+    it("builds a silent dashed markLine pinned to the baseline value", () => {
+        const markLine = buildBaselineMarkLine({ value: 80, label: "Target baseline" }, color);
+        expect(markLine).toMatchObject({
+            silent: true,
+            symbol: "none",
+            lineStyle: { type: "dashed", color },
+            data: [{ yAxis: 80 }],
+        });
+        expect(markLine?.label).toMatchObject({ show: true, formatter: "Target baseline" });
+    });
+
+    it("hides the label when none is given", () => {
+        const markLine = buildBaselineMarkLine({ value: 80 }, color);
+        expect(markLine?.label).toMatchObject({ show: false });
     });
 });

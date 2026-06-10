@@ -96,3 +96,9 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
         goodDirection: "up",
     },
 };
+
+// Product-level target already shipped as the "Target baseline" annotation on
+// the Coverage page; centralized so the pill and the on-chart baseline can't
+// drift apart. No equivalent documented target exists for pipeline measures —
+// do not invent one (CHAOS-2038).
+export const COVERAGE_LINE_TARGET_PCT = 80;
