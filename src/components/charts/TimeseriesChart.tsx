@@ -12,6 +12,11 @@ import { echarts } from "@/lib/echartsInit";
 
 echarts.use([LineChart]);
 
+export type TimeseriesBaseline = {
+    value: number;
+    label?: string;
+};
+
 type TimeseriesChartProps = {
     data: TimeseriesPoint[];
     height?: number | string;
@@ -19,7 +24,26 @@ type TimeseriesChartProps = {
     className?: string;
     style?: CSSProperties;
     valueFormat?: ChartValueFormat;
+    baseline?: TimeseriesBaseline;
 };
+
+export function buildBaselineMarkLine(baseline: TimeseriesBaseline | undefined, color: string) {
+    if (!baseline || !Number.isFinite(baseline.value)) {
+        return undefined;
+    }
+    return {
+        silent: true,
+        symbol: "none",
+        lineStyle: { type: "dashed" as const, color, width: 1 },
+        label: {
+            show: Boolean(baseline.label),
+            formatter: baseline.label ?? "",
+            position: "insideEndTop" as const,
+            color,
+        },
+        data: [{ yAxis: baseline.value }],
+    };
+}
 
 type NumericChartParam = {
     name?: string;
@@ -34,9 +58,11 @@ export function TimeseriesChart({
     className,
     style,
     valueFormat = "number",
+    baseline,
 }: TimeseriesChartProps) {
     const chartTheme = useChartTheme();
     const { categories, values } = orderTimeseriesPoints(data);
+    const baselineMarkLine = buildBaselineMarkLine(baseline, chartTheme.muted);
 
     const mergedStyle: CSSProperties = {
         height,
@@ -93,6 +119,7 @@ export function TimeseriesChart({
                         symbolSize: 6,
                         lineStyle: { width: 2 },
                         areaStyle: { opacity: 0.12 },
+                        ...(baselineMarkLine ? { markLine: baselineMarkLine } : {}),
                     },
                 ],
             }}

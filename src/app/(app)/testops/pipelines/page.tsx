@@ -4,6 +4,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { DataState } from "@/components/ui/DataState";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { ChartFrame } from "@/components/charts/ChartFrame";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
 import { checkApiHealth } from "@/lib/api/system";
@@ -189,14 +190,21 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
                     </p>
 
                     <section className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                            <h2 className="font-(--font-display) text-xl mb-4">
-                                Success Rate Trend
-                            </h2>
+                        <ChartFrame
+                            title="Success Rate Trend"
+                            headingLevel="h2"
+                            interpretation="Share of completed pipeline runs that succeed, day by day — a sustained dip flags CI instability before it blocks delivery."
+                            direction={TESTOPS_MEASURES.PIPELINE_SUCCESS_RATE.goodDirection}
+                            isError={Boolean(testOpsData.fetchFailed)}
+                            stateMessage="Pipeline analytics could not be loaded. The trend will reappear once the data service recovers."
+                            isEmpty={timeseriesData.length === 0}
+                            stateTitle="Pipeline trend not populated"
+                            stateDescription="Success-rate history appears here once pipeline runs are ingested for this scope."
+                        >
                             <div className="h-64">
-                                <TimeseriesChart data={timeseriesData} />
+                                <TimeseriesChart data={timeseriesData} valueFormat="percent" />
                             </div>
-                        </div>
+                        </ChartFrame>
                         <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
                             <h2 className="font-(--font-display) text-xl mb-4">Failure Patterns</h2>
                             {failurePatterns.isEmpty ? (

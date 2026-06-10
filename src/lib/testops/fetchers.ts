@@ -101,6 +101,7 @@ export async function fetchTestOpsData(
             pipelines: EMPTY_ANALYTICS,
             tests: EMPTY_ANALYTICS,
             coverage: EMPTY_ANALYTICS,
+            fetchFailed: true,
         };
     }
 }
