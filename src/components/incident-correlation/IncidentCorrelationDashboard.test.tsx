@@ -245,6 +245,150 @@ describe("buildSankeyData", () => {
             expect.arrayContaining([expect.objectContaining({ name: "inc:4e00fff2" })]),
         );
     });
+
+    // CHAOS-2118: collision regression — identical display names must not merge nodes
+    it("produces separate nodes for two incidents with the same display name (CHAOS-2118)", () => {
+        const rows = [
+            {
+                incidentId: "uuid-inc-aaa",
+                incidentDisplayName: "Production Outage",
+                deploymentIds: ["dep-001"],
+                workItemIds: [],
+            },
+            {
+                incidentId: "uuid-inc-bbb",
+                incidentDisplayName: "Production Outage", // same label, different id
+                deploymentIds: ["dep-002"],
+                workItemIds: [],
+            },
+        ];
+
+        const result = buildSankeyData(rows);
+
+        expect(result).not.toBeNull();
+        // 4 nodes: 2 incidents (distinct UUIDs) + 2 deployments
+        expect(result!.nodes).toHaveLength(4);
+        // Each incident node has its own id
+        expect(result!.nodes).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ id: "uuid-inc-aaa", name: "Production Outage" }),
+                expect.objectContaining({ id: "uuid-inc-bbb", name: "Production Outage" }),
+            ]),
+        );
+        // Links reference the correct incident by UUID (not collapsed)
+        expect(result!.links).toHaveLength(2);
+        const linkTargets = result!.links.map((l) => l.target).sort();
+        expect(linkTargets).toEqual(["uuid-inc-aaa", "uuid-inc-bbb"].sort());
+    });
+
+    // CHAOS-2118: uniqueness for deployments with the same display name
+    it("produces separate deployment nodes even when their labels collide (CHAOS-2118)", () => {
+        const rows = [
+            {
+                incidentId: "uuid-inc-aaa",
+                incidentDisplayName: "INC-A",
+                deploymentIds: ["dep-111", "dep-222"],
+                workItemIds: [],
+                deploymentDisplayNames: {
+                    "dep-111": "deploy/main",
+                    "dep-222": "deploy/main", // same label, different id
+                },
+            },
+        ];
+
+        const result = buildSankeyData(rows);
+
+        expect(result).not.toBeNull();
+        // 3 nodes: 1 incident + 2 deployments
+        expect(result!.nodes).toHaveLength(3);
+        expect(result!.nodes).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ id: "dep-111" }),
+                expect.objectContaining({ id: "dep-222" }),
+            ]),
+        );
+    });
+
+    // CHAOS-2119: resolved labels surface in nodes
+    it("uses server-resolved deployment and work-item display names (CHAOS-2119)", () => {
+        const rows = [
+            {
+                incidentId: "uuid-inc-001",
+                incidentDisplayName: "INC-2025-001",
+                deploymentIds: ["dep-uuid-abc"],
+                workItemIds: ["wi-uuid-xyz"],
+                deploymentDisplayNames: { "dep-uuid-abc": "payments-service #42" },
+                workItemDisplayNames: { "wi-uuid-xyz": "JIRA-9876" },
+            },
+        ];
+
+        const result = buildSankeyData(rows);
+
+        expect(result).not.toBeNull();
+        expect(result!.nodes).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ id: "dep-uuid-abc", name: "payments-service #42" }),
+                expect.objectContaining({ id: "wi-uuid-xyz", name: "JIRA-9876" }),
+            ]),
+        );
+        // No raw short-id fallback rendered when name is resolved
+        const names = result!.nodes.map((n) => n.name);
+        expect(names).not.toContain("dep:dep-uuid");
+        expect(names).not.toContain("wi:wi-uuid-x");
+    });
+
+    // CHAOS-2119: unresolved fallback uses controlled short-id prefix
+    it("falls back to short-id prefix for unresolved deployment/work-item nodes (CHAOS-2119)", () => {
+        const rows = [
+            {
+                incidentId: "uuid-inc-001",
+                incidentDisplayName: "INC-2025-001",
+                deploymentIds: ["abcdef12-0000-0000-0000-000000000000"],
+                workItemIds: ["12345678-0000-0000-0000-000000000000"],
+                deploymentDisplayNames: { "abcdef12-0000-0000-0000-000000000000": null },
+                workItemDisplayNames: { "12345678-0000-0000-0000-000000000000": null },
+            },
+        ];
+
+        const result = buildSankeyData(rows);
+
+        expect(result).not.toBeNull();
+        // Deployment: null name → dep:<first 8 chars>
+        expect(result!.nodes).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ id: "abcdef12-0000-0000-0000-000000000000", name: "dep:abcdef12" }),
+                expect.objectContaining({ id: "12345678-0000-0000-0000-000000000000", name: "wi:12345678" }),
+            ]),
+        );
+    });
+
+    // CHAOS-2119: joinEdges propagates sourceDisplayName (DEPLOYS) and targetDisplayName (LINKED_INCIDENT)
+    it("joinEdges populates deploymentDisplayNames from DEPLOYS sourceDisplayName (CHAOS-2119)", () => {
+        const deploys: WorkGraphEdge[] = [
+            makeEdge("d1", "dep-uuid-abc", "inc-uuid-001", "DEPLOYS", {
+                sourceDisplayName: "api-gateway #7",
+                targetDisplayName: "INC-2025-001",
+            }),
+        ];
+
+        const rows = joinEdges(deploys, []);
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].deploymentDisplayNames).toEqual({ "dep-uuid-abc": "api-gateway #7" });
+    });
+
+    it("joinEdges populates workItemDisplayNames from LINKED_INCIDENT targetDisplayName (CHAOS-2119)", () => {
+        const incidents: WorkGraphEdge[] = [
+            makeEdge("l1", "inc-uuid-001", "wi-uuid-xyz", "LINKED_INCIDENT", {
+                targetDisplayName: "JIRA-9876",
+            }),
+        ];
+
+        const rows = joinEdges([], incidents);
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].workItemDisplayNames).toEqual({ "wi-uuid-xyz": "JIRA-9876" });
+    });
 });
 
 // ---------------------------------------------------------------------------

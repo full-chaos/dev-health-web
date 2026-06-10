@@ -63,6 +63,16 @@ export type IncidentRow = {
     incidentDisplayName?: string | null;
     deploymentIds: string[];
     workItemIds: string[];
+    /**
+     * Server-resolved display names for deployment IDs (CHAOS-2119).
+     * Populated from DEPLOYS edge sourceDisplayName.
+     */
+    deploymentDisplayNames?: Record<string, string | null>;
+    /**
+     * Server-resolved display names for work item IDs (CHAOS-2119).
+     * Populated from LINKED_INCIDENT edge targetDisplayName.
+     */
+    workItemDisplayNames?: Record<string, string | null>;
 };
 
 export type IncidentCorrelationDashboardProps = {
@@ -111,6 +121,8 @@ export function joinEdges(
 ): IncidentRow[] {
     const deploysByIncident = new Map<string, Set<string>>();
     const incidentDisplayNames = new Map<string, string | null>();
+    // CHAOS-2119: capture server-resolved deployment display names from DEPLOYS sourceDisplayName
+    const deploymentDisplayNames = new Map<string, string | null>();
     for (const edge of deploysEdges) {
         const incidentId = edge.targetId;
         const deploymentId = edge.sourceId;
@@ -122,9 +134,17 @@ export function joinEdges(
         if (displayName || !incidentDisplayNames.has(incidentId)) {
             incidentDisplayNames.set(incidentId, displayName);
         }
+        // Prefer a non-null resolved name; keep the first entry if already set
+        if (edge.sourceDisplayName != null) {
+            deploymentDisplayNames.set(deploymentId, edge.sourceDisplayName);
+        } else if (!deploymentDisplayNames.has(deploymentId)) {
+            deploymentDisplayNames.set(deploymentId, null);
+        }
     }
 
     const workItemsByIncident = new Map<string, Set<string>>();
+    // CHAOS-2119: capture server-resolved work item display names from LINKED_INCIDENT targetDisplayName
+    const workItemDisplayNames = new Map<string, string | null>();
     for (const edge of incidentEdges) {
         const incidentId = edge.sourceId;
         const workItemId = edge.targetId;
@@ -136,16 +156,32 @@ export function joinEdges(
         if (!incidentDisplayNames.has(incidentId)) {
             incidentDisplayNames.set(incidentId, displayName);
         }
+        // Prefer a non-null resolved name; keep the first entry if already set
+        if (edge.targetDisplayName != null) {
+            workItemDisplayNames.set(workItemId, edge.targetDisplayName);
+        } else if (!workItemDisplayNames.has(workItemId)) {
+            workItemDisplayNames.set(workItemId, null);
+        }
     }
 
     const allIncidentIds = new Set([...deploysByIncident.keys(), ...workItemsByIncident.keys()]);
 
-    return Array.from(allIncidentIds).map((incidentId) => ({
-        incidentId,
-        incidentDisplayName: incidentDisplayNames.get(incidentId) ?? null,
-        deploymentIds: Array.from(deploysByIncident.get(incidentId) ?? []),
-        workItemIds: Array.from(workItemsByIncident.get(incidentId) ?? []),
-    }));
+    return Array.from(allIncidentIds).map((incidentId) => {
+        const depIds = Array.from(deploysByIncident.get(incidentId) ?? []);
+        const wiIds = Array.from(workItemsByIncident.get(incidentId) ?? []);
+        return {
+            incidentId,
+            incidentDisplayName: incidentDisplayNames.get(incidentId) ?? null,
+            deploymentIds: depIds,
+            workItemIds: wiIds,
+            deploymentDisplayNames: Object.fromEntries(
+                depIds.map((id) => [id, deploymentDisplayNames.get(id) ?? null]),
+            ),
+            workItemDisplayNames: Object.fromEntries(
+                wiIds.map((id) => [id, workItemDisplayNames.get(id) ?? null]),
+            ),
+        };
+    });
 }
 
 /**
@@ -158,29 +194,41 @@ export function buildSankeyData(
     const limited = rows.slice(0, MAX_SANKEY_INCIDENTS);
     const nodes: SankeyNode[] = [];
     const links: SankeyLink[] = [];
+    // CHAOS-2118: key by ID (UUID), not display name, to prevent collision when two
+    // incidents share the same display name string.
     const seen = new Set<string>();
 
-    const addNode = (name: string, group: string) => {
-        if (!seen.has(name)) {
-            nodes.push({ name, group });
-            seen.add(name);
+    // id  = stable UUID used as the Sankey node key and in link source/target
+    // name = human-readable label rendered on the chart
+    const addNode = (id: string, name: string, group: string) => {
+        if (!seen.has(id)) {
+            nodes.push({ id, name, group });
+            seen.add(id);
         }
     };
 
     for (const row of limited) {
-        const incName = row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
-        addNode(incName, "incident");
+        // Incident label: prefer server-resolved display name; fall back to short ID prefix
+        const incLabel =
+            row.incidentDisplayName?.trim() || `inc:${row.incidentId.slice(0, 8)}`;
+        addNode(row.incidentId, incLabel, "incident");
 
         for (const depId of row.deploymentIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
-            const depName = `dep:${depId.slice(0, 8)}`;
-            addNode(depName, "deployment");
-            links.push({ source: depName, target: incName, value: 1 });
+            // CHAOS-2119: use server-resolved deployment name when available
+            const resolved = row.deploymentDisplayNames?.[depId];
+            const depLabel = resolved?.trim() || `dep:${depId.slice(0, 8)}`;
+            addNode(depId, depLabel, "deployment");
+            // Link by ID — not display name — so collisions on label are impossible
+            links.push({ source: depId, target: row.incidentId, value: 1 });
         }
 
         for (const wiId of row.workItemIds.slice(0, MAX_LINKS_PER_INCIDENT)) {
-            const wiName = `wi:${wiId.slice(0, 8)}`;
-            addNode(wiName, "work_item");
-            links.push({ source: incName, target: wiName, value: 1 });
+            // CHAOS-2119: use server-resolved work item name when available
+            const resolved = row.workItemDisplayNames?.[wiId];
+            const wiLabel = resolved?.trim() || `wi:${wiId.slice(0, 8)}`;
+            addNode(wiId, wiLabel, "work_item");
+            // Link by ID — not display name
+            links.push({ source: row.incidentId, target: wiId, value: 1 });
         }
     }
 
