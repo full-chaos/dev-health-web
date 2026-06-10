@@ -914,3 +914,27 @@ query ReviewEdges($input: ReviewEdgesInput!) {
   }
 }
 `;
+
+// ==== Improve — Experiments Query (CHAOS-2219) ====
+
+// Derived experiments promoted from OpportunityCard.suggested_experiments.
+// v1: status is always "suggested"; no persistence table — computed at query-time.
+export const EXPERIMENTS_QUERY = `
+query Experiments($orgId: String!, $filters: FilterInput) {
+  experiments(orgId: $orgId, filters: $filters) {
+    items {
+      id
+      opportunityId
+      hypothesis
+      metric
+      owner
+      stopCondition
+      status
+      startDate
+      stopDate
+      outcome
+    }
+    derivedFromOpportunities
+  }
+}
+`;

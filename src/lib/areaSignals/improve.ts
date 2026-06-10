@@ -30,9 +30,10 @@
 //     "neutral" whenever the fetch SUCCEEDS (a count is informational, not a
 //     severity), including a healthy zero ("0 open"). Only a FAILED fetch
 //     (safe() → undefined) degrades to "unavailable" (genuine "not connected").
-//   - Experiments: UNAVAILABLE + preview (route /improve/experiments has no page
-//     yet → card is rendered non-clickable so it can't 404).
-//   - Automations: UNAVAILABLE + preview (route /improve/automations, same).
+//   - Experiments: REAL — count derived from opportunitiesData.items[*].suggested_experiments
+//     (no extra fetch; same data the Opportunities card already reads).  State is
+//     "neutral" on a successful fetch (even zero), "unavailable" only on failure.
+//   - Automations: UNAVAILABLE + preview (route /improve/automations, no page yet).
 
 import { getHomeData, getOpportunities } from "@/lib/api/home";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
@@ -207,12 +208,23 @@ export async function getImproveSignals(
         push("opportunities", { ...UNAVAILABLE, metricLabel: "Opportunities" });
     }
 
-    // ── Experiments — UNAVAILABLE + preview (no backend / no route yet) ──────────
-    push("experiments", {
-        ...UNAVAILABLE,
-        preview: true,
-        metricLabel: "Experiments",
-    });
+    // ── Experiments — REAL (count derived from opportunity suggested_experiments) ──
+    // Experiments are derived from the same opportunities payload already fetched
+    // above (no extra API call).  A successful fetch with zero experiments is still
+    // "neutral" — healthy zero; only a failed fetch degrades to "unavailable".
+    if (opportunitiesData) {
+        const experimentCount = (opportunitiesData.items ?? []).reduce(
+            (sum, card) => sum + (card.suggested_experiments?.length ?? 0),
+            0,
+        );
+        push("experiments", {
+            state: "neutral",
+            value: `${formatNumber(experimentCount)} suggested`,
+            metricLabel: "Suggested next steps",
+        });
+    } else {
+        push("experiments", { ...UNAVAILABLE, metricLabel: "Experiments" });
+    }
 
     // ── Automations — UNAVAILABLE + preview (no backend / no route yet) ──────────
     push("improve-automations", {

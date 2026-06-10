@@ -382,8 +382,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "experiments",
                 label: "Experiments",
                 path: "/improve/experiments",
-                navVisible: false,
-                preview: true,
+                navVisible: true,
             },
             {
                 id: "improve-automations",
