@@ -174,6 +174,50 @@ describe("InvestmentView — Confidence tab", () => {
         expect(screen.queryByText("PR Rework Ratio")).not.toBeInTheDocument();
     });
 
+    // Contract: allocation_pct from ops is already in 0-100 range; NO ×100 multiplication.
+    // A backend value of 25 must render as "25%" label and a 25%-width bar.
+    it("renders rework theme allocation with allocation_pct already in 0-100 range (no double-scaling)", () => {
+        useInvestmentDataMock.mockReturnValue(makeData());
+        const { container } = render(
+            <InvestmentView
+                filters={baseFilters}
+                activeTab="confidence"
+                reworkThemeAllocation={[
+                    {
+                        theme: "maintenance",
+                        label: "Maintenance / Tech Debt",
+                        allocation: 75,
+                        allocation_pct: 25,
+                        prs_merged: 75,
+                        churn_loc: 28000,
+                    },
+                ]}
+            />,
+        );
+
+        // Label shows "25%", not "2500%"
+        expect(screen.getByText("25%")).toBeInTheDocument();
+        // Theme label is rendered
+        expect(screen.getByText("Maintenance / Tech Debt")).toBeInTheDocument();
+        // Bar div has width: 25%, not width: 2500%
+        const bar = container.querySelector('[style*="width: 25%"]');
+        expect(bar).not.toBeNull();
+    });
+
+    it("hides the rework theme breakdown section when allocation is empty", () => {
+        useInvestmentDataMock.mockReturnValue(makeData());
+        const { container } = render(
+            <InvestmentView
+                filters={baseFilters}
+                activeTab="confidence"
+                reworkThemeAllocation={[]}
+            />,
+        );
+
+        expect(screen.queryByText(/Rework by theme/i)).not.toBeInTheDocument();
+        expect(container.querySelector('[style*="width:"]')).toBeNull();
+    });
+
     it("renders the evidence-quality band encoding from the persisted distribution", () => {
         useInvestmentDataMock.mockReturnValue(
             makeData({

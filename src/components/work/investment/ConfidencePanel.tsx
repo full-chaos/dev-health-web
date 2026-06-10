@@ -331,7 +331,7 @@ export function ConfidencePanel({
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="font-medium">{row.label}</span>
                                         <span className="text-xs text-(--ink-muted)">
-                                            {formatNumber(row.allocation_pct * 100, {
+                                            {formatNumber(row.allocation_pct, {
                                                 maximumFractionDigits: 1,
                                             })}
                                             %
@@ -341,7 +341,7 @@ export function ConfidencePanel({
                                         <div
                                             className="h-full rounded-full bg-(--accent-2)"
                                             style={{
-                                                width: `${Math.min(100, row.allocation_pct * 100)}%`,
+                                                width: `${Math.min(100, row.allocation_pct)}%`,
                                             }}
                                         />
                                     </div>
