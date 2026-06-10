@@ -1,3 +1,4 @@
+import { applyLensPriority, type LensId } from "@/lib/lensContext";
 import type { MetricDelta } from "@/lib/types";
 
 export type MetricPolarity = "lowerIsBetter" | "higherIsBetter";
@@ -114,6 +115,56 @@ export const FALLBACK_DELTAS: MetricDelta[] = METRIC_CATALOG.map((item) => ({
     delta_pct: 0,
     spark: [],
 }));
+
+/**
+ * Maps each metric key to its investigation-flow category.
+ *
+ * Category strings must exactly match the `investigationOrder` entries defined
+ * in `src/lib/roleContext.ts` (e.g. "review", "cycle", "churn", "wip",
+ * "investment") — these are the canonical vocabulary.  `applyLensPriority`
+ * from lensContext is the single ordering implementation; this map is its
+ * metric-level input.
+ */
+export const METRIC_CATEGORY_MAP: Record<string, string> = {
+    review_latency: "review",
+    review_load: "review",
+    cycle_time: "cycle",
+    throughput: "cycle",
+    deploy_freq: "cycle",
+    ci_success: "cycle",
+    change_failure_rate: "cycle",
+    churn: "churn",
+    churn_loc: "churn",
+    rework_ratio: "churn",
+    pr_rework_ratio: "churn",
+    compounding_risk: "churn",
+    wip: "wip",
+    wip_saturation: "wip",
+    wip_overlap: "wip",
+    blocked_work: "wip",
+    coverage: "investment",
+};
+
+/**
+ * Sort `deltas` by the given lens's `investigationOrder`.
+ *
+ * Delegates category ordering to `applyLensPriority` (the single ordering
+ * implementation).  Within each category, larger |delta_pct| surfaces first:
+ * pre-sort by magnitude so `applyLensPriority`'s stable sort preserves it.
+ * Metrics with no matching category are appended in their original order.
+ * Never mutates the input array.
+ */
+export function sortDeltasByRole(deltas: MetricDelta[], lensId: string): MetricDelta[] {
+    // 1. Pre-sort by magnitude so stable sort preserves within-category ordering.
+    const byMagnitude = [...deltas].sort((a, b) => Math.abs(b.delta_pct) - Math.abs(a.delta_pct));
+    // 2. Wrap as category-proxy items: applyLensPriority orders by item.id.
+    const proxied = byMagnitude.map((delta) => ({
+        id: METRIC_CATEGORY_MAP[delta.metric] ?? delta.metric,
+        delta,
+    }));
+    // 3. Apply role-aware ordering then unwrap.
+    return applyLensPriority(proxied, lensId as LensId, "cockpit").map((p) => p.delta);
+}
 
 export const getMetricLabel = (metric: string) => {
     const match = metricMetaByKey.get(metric);

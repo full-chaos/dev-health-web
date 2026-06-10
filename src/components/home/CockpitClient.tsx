@@ -6,6 +6,10 @@ import { EvidencePanel } from "@/components/evidence";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
+import { MetricDelta } from "@/components/shared/MetricDelta";
+import { DataState } from "@/components/ui/DataState";
+import { sortDeltasByRole, getMetricPolarity } from "@/lib/metrics/catalog";
+import { formatMetricValue } from "@/lib/formatters";
 import type { HomeResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -38,6 +42,13 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
         setPanelState((prev) => ({ ...prev, isOpen: false }));
     };
 
+    const rawDeltas = home?.deltas ?? [];
+    const sortedDeltas = sortDeltasByRole(rawDeltas, activeRole);
+
+    // Distinguish "no sources connected" from "sources present but no deltas computed".
+    const hasSources = Object.keys(home?.freshness?.sources ?? {}).length > 0;
+    const emptyVariant = hasSources ? "detector-enabled-no-findings" : "no-data-connected";
+
     return (
         <>
             <EvidencePanel
@@ -48,6 +59,67 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                 metric={panelState.metric}
                 filters={filters}
             />
+
+            {/* Key Shifts — role-aware delta row (CHAOS-2094) */}
+            <section
+                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+                data-testid="key-shifts-row"
+            >
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                            Key Shifts
+                        </p>
+                        <p className="mt-1 text-sm text-(--ink-muted)">
+                            Metric movements ordered for your role.
+                        </p>
+                    </div>
+                    <Link
+                        href={buildExploreUrl({ filters, role: activeRole })}
+                        className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                    >
+                        {CTA_LABELS.openInExplore}
+                    </Link>
+                </div>
+
+                {sortedDeltas.length > 0 ? (
+                    <div
+                        className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4"
+                        data-testid="key-shifts-grid"
+                    >
+                        {/* Role-priority ordering intentionally trumps magnitude; show top 8 per window. */}
+                        {sortedDeltas.slice(0, 8).map((delta) => (
+                            <Link
+                                key={delta.metric}
+                                href={buildExploreUrl({
+                                    metric: delta.metric,
+                                    filters,
+                                    role: activeRole,
+                                })}
+                                className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
+                            >
+                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                    {delta.label}
+                                </p>
+                                <p className="mt-2 text-base font-semibold text-foreground">
+                                    {formatMetricValue(delta.value, delta.unit)}
+                                </p>
+                                <MetricDelta
+                                    value={delta.delta_pct}
+                                    inverseGood={
+                                        getMetricPolarity(delta.metric) === "lowerIsBetter"
+                                    }
+                                    className="mt-1"
+                                />
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="mt-4">
+                        <DataState variant={emptyVariant} />
+                    </div>
+                )}
+            </section>
 
             <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
