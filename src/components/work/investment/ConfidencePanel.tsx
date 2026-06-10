@@ -16,6 +16,7 @@ import {
 import type {
     InvestmentConfidence,
     MetricDelta,
+    ReworkThemeAllocation,
     SankeyResponse,
     WorkUnitInvestment,
 } from "@/lib/types";
@@ -34,6 +35,8 @@ type ConfidencePanelProps = {
     repoTeamFlow: SankeyResponse | null | undefined;
     isCategoryFlowLoading: boolean;
     reworkMetric?: MetricDelta;
+    /** Per-theme rework breakdown from home; absent/empty → honest empty. */
+    reworkThemeAllocation?: ReworkThemeAllocation[];
 };
 
 const CONFIDENCE_TONE: Record<string, string> = {
@@ -154,6 +157,7 @@ export function ConfidencePanel({
     repoTeamFlow,
     isCategoryFlowLoading,
     reworkMetric,
+    reworkThemeAllocation = [],
 }: ConfidencePanelProps) {
     const confidence =
         mixExplanation.data?.confidence ??
@@ -288,15 +292,15 @@ export function ConfidencePanel({
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
                 <h3 className="font-(--font-display) text-lg">Rework</h3>
                 <p className="mt-1 text-sm text-(--ink-muted)">
-                    Share of churn in files changed by more than one commit in the window. Richer
-                    rework signals are still being wired up.
+                    Share of PRs that were reopened or required follow-up rework commits. The
+                    breakdown shows which investment themes carry the most rework pressure.
                 </p>
                 {reworkMetric ? (
                     <div className="mt-4 grid gap-4 sm:max-w-md">
                         <MetricCard
-                            label="Rework ratio"
+                            label="PR Rework Ratio"
                             href={buildExploreUrl({
-                                metric: "rework_ratio",
+                                metric: "pr_rework_ratio",
                                 filters,
                                 role: activeRole,
                             })}
@@ -304,7 +308,7 @@ export function ConfidencePanel({
                             unit={reworkMetric.unit}
                             delta={reworkMetric.delta_pct}
                             spark={reworkMetric.spark}
-                            caption="Churn from rework"
+                            caption="PRs requiring rework"
                         />
                     </div>
                 ) : (
@@ -314,6 +318,48 @@ export function ConfidencePanel({
                             title="Rework signal not available yet"
                             description="A dedicated rework breakdown isn't wired for this scope yet."
                         />
+                    </div>
+                )}
+                {reworkThemeAllocation.length > 0 && (
+                    <div className="mt-5">
+                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                            Rework by theme
+                        </p>
+                        <ul className="mt-3 space-y-3">
+                            {reworkThemeAllocation.map((row) => (
+                                <li key={row.theme}>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="font-medium">{row.label}</span>
+                                        <span className="text-xs text-(--ink-muted)">
+                                            {formatNumber(row.allocation_pct * 100, {
+                                                maximumFractionDigits: 1,
+                                            })}
+                                            %
+                                        </span>
+                                    </div>
+                                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-(--card-stroke)">
+                                        <div
+                                            className="h-full rounded-full bg-(--accent-2)"
+                                            style={{
+                                                width: `${Math.min(100, row.allocation_pct * 100)}%`,
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="mt-1 flex gap-3 text-[11px] text-(--ink-muted)">
+                                        <span>
+                                            {row.prs_merged.toLocaleString()} PR
+                                            {row.prs_merged !== 1 ? "s" : ""}
+                                        </span>
+                                        <span>
+                                            {formatNumber(row.churn_loc / 1000, {
+                                                maximumFractionDigits: 1,
+                                            })}
+                                            k churn LOC
+                                        </span>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 )}
             </div>

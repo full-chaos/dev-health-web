@@ -118,6 +118,21 @@ export type DataConfidence = {
     caveats: string[];
 };
 
+/**
+ * Per-theme rework allocation breakdown from `/api/v1/home`.
+ * Field names match the ops REST schema exactly (snake_case).
+ * Themes are canonical lowercase keys: feature_delivery | operational |
+ * maintenance | quality | risk.
+ */
+export type ReworkThemeAllocation = {
+    theme: string;
+    label: string;
+    allocation: number;
+    allocation_pct: number;
+    prs_merged: number;
+    churn_loc: number;
+};
+
 export type HomeResponse = {
     freshness: Freshness;
     deltas: MetricDelta[];
@@ -130,6 +145,8 @@ export type HomeResponse = {
     signals?: CockpitSignal[];
     limiting_factor?: LimitingFactor;
     data_confidence?: DataConfidence;
+    /** Rework distribution by investment theme (CHAOS-2163). Optional for back-compat. */
+    rework_theme_allocation?: ReworkThemeAllocation[];
 };
 
 export type Contributor = {
