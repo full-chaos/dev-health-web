@@ -162,11 +162,14 @@ export function GlobalContextBarClient({ filters, origin, orgName }: GlobalConte
     const isOrgScope = filters.scope.level === "org";
 
     return (
+        // backdrop-blur creates a stacking context, so the menus' inner z-50
+        // cannot escape it — the bar itself must sit above the FilterBar's
+        // sibling stacking context (relative z-20) for open menus to paint over it.
         <section
             ref={barRef}
             aria-label="Global context"
             data-testid="global-context-bar"
-            className="rounded-2xl border border-(--card-stroke) bg-(--card-90)/80 px-4 py-3 text-xs backdrop-blur-sm"
+            className="relative z-30 rounded-2xl border border-(--card-stroke) bg-(--card-90)/80 px-4 py-3 text-xs backdrop-blur-sm"
         >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <div className="flex items-center gap-2">
