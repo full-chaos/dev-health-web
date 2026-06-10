@@ -78,7 +78,7 @@ describe("navArea.children — locked child navigation", () => {
                 "People",
                 "Code",
             ],
-            Plan: ["Overview", "Capacity Forecast", "Operating Review"],
+            Plan: ["Overview", "Capacity Forecast", "Backlog Risk", "Operating Review"],
             Improve: ["Overview", "Opportunities", "Experiments", "Automations"],
             Govern: [
                 "Overview",
@@ -217,6 +217,11 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
             pathname: "/plan/capacity",
             childId: "capacity",
         },
+        {
+            areaId: "plan",
+            pathname: "/plan/backlog-risk",
+            childId: "backlog-risk",
+        },
         // NOTE: operating-review is hidden (navVisible: false, CHAOS-2181
         // follow-up) and therefore intentionally absent from selection cases.
         {
@@ -296,6 +301,7 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
         expect(navTitleForPathname("/plan/capacity")).toBe("Capacity Forecast");
+        expect(navTitleForPathname("/plan/backlog-risk")).toBe("Backlog Risk");
         // operating-review is hidden (navVisible: false) — title falls back to the area label.
         expect(navTitleForPathname("/operating-review")).toBe("Plan");
         expect(navTitleForPathname("/improve")).toBe("Overview");
