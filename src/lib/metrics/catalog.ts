@@ -115,6 +115,57 @@ export const FALLBACK_DELTAS: MetricDelta[] = METRIC_CATALOG.map((item) => ({
     spark: [],
 }));
 
+/**
+ * Maps each metric key to its investigation-flow category.
+ * Categories align with the `investigationOrder` entries in roleContext.ts
+ * ("review", "cycle", "churn", "wip", "investment").
+ */
+export const METRIC_CATEGORY_MAP: Record<string, string> = {
+    review_latency: "review",
+    review_load: "review",
+    cycle_time: "cycle",
+    throughput: "cycle",
+    deploy_freq: "cycle",
+    ci_success: "cycle",
+    change_failure_rate: "cycle",
+    churn: "churn",
+    churn_loc: "churn",
+    rework_ratio: "churn",
+    pr_rework_ratio: "churn",
+    compounding_risk: "churn",
+    wip: "wip",
+    wip_saturation: "wip",
+    wip_overlap: "wip",
+    blocked_work: "wip",
+    coverage: "investment",
+};
+
+/**
+ * Sort `deltas` according to a role's `investigationOrder`.
+ *
+ * - Metrics whose category appears first in `investigationOrder` sort first.
+ * - Within a category, the biggest absolute delta_pct surfaces first.
+ * - Metrics with no matching category sort to the end in original order.
+ * - Never mutates the input; always returns a new array.
+ */
+export function sortDeltasByRole(
+    deltas: MetricDelta[],
+    investigationOrder: readonly string[],
+): MetricDelta[] {
+    return [...deltas].sort((a, b) => {
+        const catA = METRIC_CATEGORY_MAP[a.metric] ?? "";
+        const catB = METRIC_CATEGORY_MAP[b.metric] ?? "";
+        const ia = catA ? investigationOrder.indexOf(catA) : -1;
+        const ib = catB ? investigationOrder.indexOf(catB) : -1;
+        // Unknown categories sink to the end
+        const normA = ia === -1 ? investigationOrder.length : ia;
+        const normB = ib === -1 ? investigationOrder.length : ib;
+        if (normA !== normB) return normA - normB;
+        // Within the same category: larger absolute delta first
+        return Math.abs(b.delta_pct) - Math.abs(a.delta_pct);
+    });
+}
+
 export const getMetricLabel = (metric: string) => {
     const match = metricMetaByKey.get(metric);
     if (match) {
