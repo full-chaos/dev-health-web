@@ -44,7 +44,7 @@ const navItems: NavItem[] = [
         label: "Retention",
         href: "/admin/retention",
         description: "Compliance",
-        featureKey: "retention_policies",
+        featureKey: "custom_retention",
     },
 ];
 
