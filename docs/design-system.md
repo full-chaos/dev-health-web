@@ -47,6 +47,12 @@ Use tokens only. **No hardcoded hex or px in components**, if a value is missing
 - **C5 Charts**, one palette + conventions: sequential scale for heatmaps that **must map data variance** (Churn heatmap renders uniform cyan today), categorical palette for series, consistent axis/gridline/tooltip styling, **styled tooltips** (Pipelines shows a blank white tooltip box), and a `ChartFrame` wrapper exposing title / interpretation / threshold slots.
 - **C6 Density & alignment**, consistent KPI card layout, card heights, and sparkline treatment across TestOps / Work / Coverage.
 
+### Locked decisions (CHAOS-2107, V1 token foundation)
+
+- **D1 — accent = orange (resolved).** The canonical palette is `fullchaos-infinity-knot-redux` (the app default in `src/app/layout.tsx`); its `--accent` (`#f47b20` dark / `#e04520` light) is the product realization of the Penpot `#F97316` accent. Blue-accent palettes (`fullchaos`, `echarts`, `material`) remain opt-in variants; they inherit the same semantic role tokens, so restyles must reference roles, never a literal orange.
+- **D2 — radius scale locked (resolved).** One scale only: `--radius-sm` 6 / `--radius-md` 10 / `--radius-lg` 16 / `--radius-pill` 999. The Penpot card radius of 24 snaps to `--radius-lg` (16); no `xl` token is added.
+- **Token inventory (defined in `src/app/globals.css`, all palettes):** color roles `--surface`, `--surface-raised`, `--border` (dark runs dimmer than `--card-stroke` per CHAOS-2067; bright strokes reserved for `--card-stroke-active`), `--text-primary`, `--text-secondary`, `--text-muted`, status `--positive` / `--caution` / `--negative` / `--info`, `--accent-ai`; typography utilities `text-display` 32/40, `text-h1` 24/32, `text-h2` 18/26, `text-h3` 15/22, `text-body` 14/22, `text-label-caps` 11/16 (+0.08em tracking); spacing `--space-card` 24 / `--space-card-sm` 16 on the 4px base scale; radius + elevation (`--elevation-card`, `--elevation-drawer`) as above.
+
 ## Part D: CTA vocabulary registry (typed constants)
 
 Approved (add new ones here before use): `Open evidence`, `Inspect associations`, `Open artifact`, `Present in view`, `Export report`, `Apply filters`, `Reset filters`, `Copy`; navigation `Back to Cockpit`, `Back to {area}`.

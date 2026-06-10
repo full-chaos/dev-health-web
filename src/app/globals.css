@@ -580,12 +580,44 @@
     );
 }
 
+/* ============================================================
+ * SEMANTIC TOKEN FOUNDATION (Framework Part C — CHAOS-2107)
+ *
+ * Cross-palette role tokens. Derived via alias/color-mix from
+ * the per-palette primitives above; redeclare per-palette only
+ * when a palette genuinely diverges.
+ *
+ * Locked decisions (recorded in docs/design-system.md Part C):
+ *   D1 accent = orange — canonical palette is
+ *      fullchaos-infinity-knot-redux (app default); its accent
+ *      realizes Penpot #F97316. Blue-accent palettes are
+ *      opt-in variants.
+ *   D2 radius scale stays sm 6 / md 10 / lg 16 / pill 999;
+ *      Penpot card 24 snaps to --radius-lg. No xl token.
+ *
+ * Spacing (C3): 4px base scale — 4/8/12/16/24/32/48 via
+ * Tailwind spacing utilities; card padding standardizes on
+ * --space-card (24) / --space-card-sm (16).
+ * ============================================================ */
 :root,
 :root[data-theme="light"],
 :root[data-palette][data-theme="light"] {
+    /* C2 color roles */
+    --surface: var(--card);
+    --surface-raised: color-mix(in srgb, var(--card) 97%, var(--foreground));
+    --border: var(--card-stroke);
+    --text-primary: var(--foreground);
+    --text-secondary: color-mix(in srgb, var(--foreground) 72%, var(--ink-muted));
+    --text-muted: var(--ink-muted);
     --positive: #16a34a;
     --caution: #f59e0b;
+    --negative: #dc2626;
     --info: #2563eb;
+    --accent-ai: #7c3aed;
+    /* C3 spacing */
+    --space-card: 24px;
+    --space-card-sm: 16px;
+    /* C4 radius & elevation — prefer surface + hairline over stacked bright outlines */
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 16px;
@@ -597,9 +629,15 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
+        --surface-raised: color-mix(in srgb, var(--card) 92%, var(--foreground));
+        /* CHAOS-2067: dark borders run dimmer than --card-stroke; bright
+           strokes are reserved for --card-stroke-active states */
+        --border: color-mix(in srgb, var(--card-stroke) 65%, var(--background));
         --positive: #34d399;
         --caution: #fbbf24;
+        --negative: #f87171;
         --info: #60a5fa;
+        --accent-ai: #a78bfa;
         --elevation-card: 0 22px 58px -40px rgb(0 0 0 / 0.65);
         --elevation-drawer: 0 32px 90px -42px rgb(0 0 0 / 0.75);
         --card-stroke-active: color-mix(in srgb, var(--accent) 45%, var(--card-stroke));
@@ -608,9 +646,15 @@
 
 :root[data-theme="dark"],
 :root[data-palette][data-theme="dark"] {
+    --surface-raised: color-mix(in srgb, var(--card) 92%, var(--foreground));
+    /* CHAOS-2067: dark borders run dimmer than --card-stroke; bright
+       strokes are reserved for --card-stroke-active states */
+    --border: color-mix(in srgb, var(--card-stroke) 65%, var(--background));
     --positive: #34d399;
     --caution: #fbbf24;
+    --negative: #f87171;
     --info: #60a5fa;
+    --accent-ai: #a78bfa;
     --elevation-card: 0 22px 58px -40px rgb(0 0 0 / 0.65);
     --elevation-drawer: 0 32px 90px -42px rgb(0 0 0 / 0.75);
     --card-stroke-active: color-mix(in srgb, var(--accent) 45%, var(--card-stroke));
@@ -627,17 +671,45 @@
     --color-card-stroke-active: var(--card-stroke-active);
     --color-foreground: var(--foreground);
     --color-ink-muted: var(--ink-muted);
+    --color-surface: var(--surface);
+    --color-surface-raised: var(--surface-raised);
+    --color-border-subtle: var(--border);
+    --color-ink-secondary: var(--text-secondary);
     --color-accent: var(--accent);
     --color-accent-2: var(--accent-2);
     --color-accent-3: var(--accent-3);
+    --color-accent-ai: var(--accent-ai);
     --color-accent-negative: var(--accent-negative);
     --color-positive: var(--positive);
     --color-caution: var(--caution);
+    --color-negative: var(--negative);
     --color-info: var(--info);
     --color-app-gradient: var(--app-gradient);
     --font-sans: var(--font-body);
     --font-display: var(--font-display);
     --font-mono: var(--font-mono);
+}
+
+/* ============================================================
+ * TYPOGRAPHY SCALE (C1 — locked)
+ * Generates text-display / text-h1 / text-h2 / text-h3 /
+ * text-body / text-label-caps utilities. Page title = h1;
+ * section header = h2; uppercase descriptors = label-caps.
+ * ============================================================ */
+@theme {
+    --text-display: 32px;
+    --text-display--line-height: 40px;
+    --text-h1: 24px;
+    --text-h1--line-height: 32px;
+    --text-h2: 18px;
+    --text-h2--line-height: 26px;
+    --text-h3: 15px;
+    --text-h3--line-height: 22px;
+    --text-body: 14px;
+    --text-body--line-height: 22px;
+    --text-label-caps: 11px;
+    --text-label-caps--line-height: 16px;
+    --text-label-caps--letter-spacing: 0.08em;
 }
 
 /* ============================================================
