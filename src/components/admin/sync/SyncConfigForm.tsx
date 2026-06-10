@@ -57,6 +57,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     const [localCredentials, setLocalCredentials] = useState(credentials);
     const { features, minSyncIntervalHours, limits } = useAdminTier();
     const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
+    const [syncAllRepos, setSyncAllRepos] = useState(false);
 
     const {
         formData,
@@ -111,11 +112,12 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                     repos: [],
                     gitlab_url: "",
                 }));
+                setSyncAllRepos(false);
             } else {
                 handleBaseChange(e);
             }
         },
-        [handleBaseChange, setFormData],
+        [handleBaseChange, setFormData, setSyncAllRepos],
     );
 
     const handleTargetChange = useCallback(
@@ -131,13 +133,15 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
     );
 
     const buildSyncOptions = useCallback((): Record<string, unknown> => {
-        const opts: Record<string, unknown> = {};
+        const opts: Record<string, unknown> = {
+            ...(initialData?.sync_options ?? {}),
+        };
         if (formData.owner) opts.owner = formData.owner;
         if (formData.provider === "gitlab" && formData.gitlab_url) {
             opts.gitlab_url = formData.gitlab_url;
         }
         return opts;
-    }, [formData.owner, formData.provider, formData.gitlab_url]);
+    }, [initialData, formData.owner, formData.provider, formData.gitlab_url]);
 
     const handleSubmit = useCallback(
         (e: SyntheticEvent<HTMLFormElement>) => {
@@ -178,7 +182,27 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                             sync_options: syncOptions,
                         };
 
-                        if (formData.repos.length > 0) {
+                        if (syncAllRepos) {
+                            const orgSyncOptions = {
+                                ...syncOptions,
+                                owner: formData.owner,
+                                search: `${formData.owner}/*`,
+                            };
+                            result = await createSyncConfig({
+                                ...base,
+                                sync_options: orgSyncOptions,
+                            });
+                            if (result?.error) {
+                                toast.error(result.error);
+                            } else {
+                                toast.success("Config created");
+                                if (onSuccessAction) {
+                                    onSuccessAction();
+                                } else {
+                                    router.push("/admin/sync");
+                                }
+                            }
+                        } else if (formData.repos.length > 0) {
                             result = await batchCreateSyncConfigs({
                                 ...base,
                                 repos: formData.repos,
@@ -215,7 +239,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                 }
             });
         },
-        [initialData, formData, buildSyncOptions, onSuccessAction, router],
+        [initialData, formData, syncAllRepos, buildSyncOptions, onSuccessAction, router],
     );
 
     return (
@@ -369,7 +393,25 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                 />
                             </div>
                         )}
-                        {!initialData && formData.credential_id && formData.owner ? (
+                        {!initialData && (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="sync_all_repos"
+                                    name="sync_all_repos"
+                                    checked={syncAllRepos}
+                                    onChange={(e) => setSyncAllRepos(e.target.checked)}
+                                    className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                                />
+                                <label htmlFor="sync_all_repos" className="text-sm font-medium">
+                                    Sync all repositories in this organization
+                                </label>
+                            </div>
+                        )}
+                        {!initialData &&
+                        !syncAllRepos &&
+                        formData.credential_id &&
+                        formData.owner ? (
                             <div>
                                 <span className="mb-2 block text-sm font-medium text-(--ink-muted)">
                                     Select Repositories
@@ -483,7 +525,11 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         value={formData.schedule_cron}
                         timezone={formData.timezone}
                         onChange={(cron, tz) =>
-                            setFormData((prev) => ({ ...prev, schedule_cron: cron, timezone: tz }))
+                            setFormData((prev) => ({
+                                ...prev,
+                                schedule_cron: cron,
+                                timezone: tz,
+                            }))
                         }
                         minIntervalHours={minSyncIntervalHours}
                     />

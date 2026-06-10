@@ -275,7 +275,10 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "glorg", gitlab_url: "https://gitlab.example.com" },
+                    sync_options: {
+                        owner: "glorg",
+                        gitlab_url: "https://gitlab.example.com",
+                    },
                 });
             });
         });
@@ -319,7 +322,7 @@ describe("SyncConfigForm", () => {
             expect(screen.getByLabelText("Owner / Organization")).toHaveValue("existingorg");
         });
 
-        it("sends sync_options on update in edit mode", async () => {
+        it("preserves existing sync_options on update in edit mode", async () => {
             mockUpdateSyncConfig.mockResolvedValue(undefined);
             const initialData: SyncConfig = {
                 id: "cfg-1",
@@ -355,7 +358,7 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "neworg" },
+                    sync_options: { owner: "neworg", repo: "oldrepo" },
                 });
             });
         });
@@ -393,6 +396,95 @@ describe("SyncConfigForm", () => {
             render(<SyncConfigForm credentials={mockCredentials} />);
 
             expect(screen.getByText("Manual only (no schedule)")).toBeInTheDocument();
+        });
+
+        it("org-wide toggle uses createSyncConfig with search and not batch", async () => {
+            mockCreateSyncConfig.mockResolvedValue(undefined);
+            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Org Sync");
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await userEvent.type(screen.getByLabelText("Owner / Organization"), "myorg");
+            await userEvent.click(
+                screen.getByLabelText("Sync all repositories in this organization"),
+            );
+            await userEvent.click(screen.getByRole("button", { name: "Create Configuration" }));
+
+            await waitFor(() => {
+                expect(mockCreateSyncConfig).toHaveBeenCalledWith({
+                    name: "Org Sync",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: [],
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: { owner: "myorg", search: "myorg/*" },
+                });
+            });
+            expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
+        });
+
+        it("hides repo selector when org-wide toggle is on", async () => {
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await userEvent.type(screen.getByLabelText("Owner / Organization"), "myorg");
+            expect(screen.getByText("Select Repositories")).toBeInTheDocument();
+
+            await userEvent.click(
+                screen.getByLabelText("Sync all repositories in this organization"),
+            );
+            expect(screen.queryByText("Select Repositories")).not.toBeInTheDocument();
+        });
+
+        it("selecting concrete repos still uses batchCreateSyncConfigs", async () => {
+            mockBatchCreateSyncConfigs.mockResolvedValue({ data: { count: 1 } });
+            mockListReposForCredential.mockResolvedValue({
+                data: {
+                    provider: "github",
+                    owner: "myorg",
+                    repos: [
+                        {
+                            name: "repo-a",
+                            full_name: "myorg/repo-a",
+                            description: null,
+                            is_private: false,
+                            is_archived: false,
+                            default_branch: "main",
+                            language: null,
+                            stargazers_count: null,
+                            forks_count: null,
+                            updated_at: null,
+                        },
+                    ],
+                    total: 1,
+                },
+            });
+            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Repo Sync");
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await userEvent.type(screen.getByLabelText("Owner / Organization"), "myorg");
+
+            const repoCheckbox = await screen.findByLabelText("repo-a");
+            await userEvent.click(repoCheckbox);
+            await userEvent.click(screen.getByRole("button", { name: "Create Configuration" }));
+
+            await waitFor(() => {
+                expect(mockBatchCreateSyncConfigs).toHaveBeenCalledWith({
+                    name: "Repo Sync",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: [],
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: { owner: "myorg" },
+                    repos: ["repo-a"],
+                });
+            });
+            expect(mockCreateSyncConfig).not.toHaveBeenCalled();
         });
     });
 });

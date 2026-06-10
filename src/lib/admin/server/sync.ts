@@ -26,7 +26,9 @@ export async function listSyncConfigs(): Promise<ActionResult<SyncConfig[]>> {
 export async function createSyncConfig(data: SyncConfigCreate): Promise<ActionResult<SyncConfig>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        return adminApi.syncConfigs.create(data, token, orgId);
+        const result = await adminApi.syncConfigs.create(data, token, orgId);
+        revalidatePath("/admin/sync");
+        return result;
     });
 }
 
