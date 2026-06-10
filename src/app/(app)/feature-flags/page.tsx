@@ -12,6 +12,7 @@ import { fetchFeatureFlagsData, fetchFeatureFlagList } from "@/lib/feature-flags
 import { FF_MEASURES } from "@/lib/feature-flags/constants";
 import { getServerEnv } from "@/lib/config";
 import { fetchFlagPage } from "./actions";
+import { fetchOrNull } from "@/lib/fetchOrNull";
 
 type FeatureFlagsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -49,7 +50,10 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
     // (which replaces the entire app shell including the sidebar).
     const [health, ffData, flagList] = await Promise.all([
         checkApiHealth(),
-        fetchFeatureFlagsData({ startDate, endDate }, isTestMode).catch(() => null),
+        fetchOrNull(
+            fetchFeatureFlagsData({ startDate, endDate }, isTestMode),
+            "feature-flags/data",
+        ),
         fetchFeatureFlagList(0, 20),
     ]);
 

@@ -11,7 +11,6 @@ import {
     navAreas,
     selectedAreaIdForPathname,
     selectedChildForPathname,
-    basePath,
     type NavArea,
     type NavChildRoute,
 } from "@/lib/navigation/areas";

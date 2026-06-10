@@ -17,12 +17,7 @@ import {
     getSparkline,
     getDelta,
 } from "@/lib/testops/aggregateSeries";
-import {
-    TimeseriesResult,
-    TimeseriesBucket,
-    BreakdownResult,
-    BreakdownItem,
-} from "@/lib/graphql/schemas/analytics";
+import { TimeseriesBucket, BreakdownResult, BreakdownItem } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
 import { TestOpsTabs } from "../TestOpsTabs";

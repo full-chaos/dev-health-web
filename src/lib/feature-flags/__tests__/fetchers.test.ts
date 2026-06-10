@@ -359,8 +359,7 @@ describe("fetchFeatureFlagsData — error fallback", () => {
 
     it("does not silently return a zero-valued 'healthy' summary on failure", async () => {
         mockAuth.mockRejectedValueOnce(new Error("session expired"));
-        const result = await fetchFeatureFlagsData(DATE_RANGE).catch(() => null);
-        // result must be null (thrown), never an object masquerading as healthy zeros
-        expect(result).toBeNull();
+        // Must reject — never resolve to a zero-valued summary masquerading as healthy.
+        await expect(fetchFeatureFlagsData(DATE_RANGE)).rejects.toThrow("session expired");
     });
 });
