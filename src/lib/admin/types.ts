@@ -132,7 +132,7 @@ export interface SyncJob {
     id: string;
     config_id: string;
     status: "pending" | "running" | "success" | "failed";
-    started_at: string;
+    started_at: string | null;
     completed_at: string | null;
     duration_seconds: number | null;
     items_synced: number;
