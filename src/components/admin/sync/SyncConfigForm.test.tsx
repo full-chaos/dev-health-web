@@ -444,6 +444,60 @@ describe("SyncConfigForm", () => {
             expect(screen.getByLabelText("Git Data (Commits, Branches)")).toBeChecked();
         });
 
+        it("strips stale schedule keys from sync_options and clears schedule on update", async () => {
+            mockUpdateSyncConfig.mockResolvedValue(undefined);
+            mockUseAdminTier.mockReturnValue({
+                tier: "team",
+                features: { scheduled_jobs: true },
+                limits: {},
+                minSyncIntervalHours: 0.25,
+            });
+            const initialData: SyncConfig = {
+                id: "cfg-clear",
+                name: "Scheduled Config",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: {
+                    owner: "full-chaos",
+                    search: "full-chaos/*",
+                    schedule_cron: "0 0 * * *",
+                    timezone: "America/Los_Angeles",
+                    initial_sync_depth: 0,
+                },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                initial_sync_depth: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+
+            renderWithToaster(
+                <SyncConfigForm initialData={initialData} credentials={mockCredentials} />,
+            );
+
+            await userEvent.click(screen.getByRole("radio", { name: "Manual only (no schedule)" }));
+            await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+
+            await waitFor(() => {
+                expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-clear", {
+                    sync_targets: ["git"],
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: "America/Los_Angeles",
+                    initial_sync_depth: 0,
+                    // Stale schedule keys must NOT ride along inside sync_options —
+                    // they previously resurrected the old schedule on the backend.
+                    sync_options: { owner: "full-chaos", search: "full-chaos/*" },
+                });
+            });
+        });
+
         it("falls back to custom cron radio for non-preset schedule_cron in sync_options", () => {
             mockUseAdminTier.mockReturnValue({
                 tier: "team",
