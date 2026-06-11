@@ -1,4 +1,3 @@
-import { resolveActiveOrgId } from "@/lib/impersonation";
 /**
  * /improve/experiments — Experiments sub-area (CHAOS-2219).
  *
@@ -66,7 +65,7 @@ export default async function ExperimentsPage({ searchParams }: ExperimentsPageP
     const isTestMode =
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
-    const orgId = resolveActiveOrgId(session.user) ?? "demo-org";
+    const orgId = session.user?.org_id ?? "demo-org";
 
     const [health, experimentsResult] = await Promise.all([
         checkApiHealth(),

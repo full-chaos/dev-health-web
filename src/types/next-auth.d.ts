@@ -7,7 +7,10 @@ declare module "next-auth" {
     interface Session {
         user: {
             id: string;
+            /** EFFECTIVE org: the impersonation target's org while impersonating, else the user's own org. */
             org_id?: string;
+            /** The user's own org, regardless of impersonation. For identity-semantic checks only. */
+            real_org_id?: string;
             role?: string;
             is_superuser?: boolean;
             permissions?: string[];

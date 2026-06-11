@@ -1,4 +1,3 @@
-import { resolveActiveOrgId } from "@/lib/impersonation";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -10,11 +9,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
     const isSuperuser = session.user.is_superuser === true;
 
-    if (isSuperuser && !resolveActiveOrgId(session.user)) {
+    if (isSuperuser && !session.user.org_id) {
         redirect("/superadmin");
     }
 
-    const orgId = resolveActiveOrgId(session.user);
+    const orgId = session.user.org_id;
     const entitlements = orgId ? await getOrgEntitlements(orgId) : null;
     const tier = entitlements?.data?.tier ?? "community";
     const features = entitlements?.data?.features ?? {};

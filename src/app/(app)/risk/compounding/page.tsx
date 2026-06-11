@@ -1,4 +1,3 @@
-import { resolveActiveOrgId } from "@/lib/impersonation";
 /**
  * /risk/compounding — Compounding Risk surface (CHAOS-1642).
  *
@@ -149,7 +148,7 @@ export default async function CompoundingRiskPage({ searchParams }: CompoundingR
     const isDeveloperScope = filters.scope.level === "developer";
     const breakout = pickBreakoutFromQuery(breakoutParam);
 
-    const orgId = resolveActiveOrgId(session.user) ?? "demo-org";
+    const orgId = session.user?.org_id ?? "demo-org";
 
     const fetched = isDeveloperScope ? null : await fetchCompoundingRisk(orgId, breakout);
 

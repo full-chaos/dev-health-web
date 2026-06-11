@@ -1,4 +1,3 @@
-import { resolveActiveOrgId } from "@/lib/impersonation";
 import type {
     DrilldownResponse,
     InvestmentResponse,
@@ -27,7 +26,7 @@ export async function getInvestment(filters: MetricFilter) {
     if (runtimeConfig.useGraphQLAnalytics()) {
         const auth = await getAuth();
         const session = await auth();
-        const orgId = resolveActiveOrgId(session?.user);
+        const orgId = session?.user?.org_id as string | undefined;
         return getInvestmentViaGraphQL(normalized, orgId);
     }
 
@@ -94,7 +93,7 @@ export async function getInvestmentFlow(params: {
     if (runtimeConfig.useGraphQLAnalytics()) {
         const auth = await getAuth();
         const session = await auth();
-        const orgId = resolveActiveOrgId(session?.user);
+        const orgId = session?.user?.org_id as string | undefined;
         return getInvestmentFlowViaGraphQL({
             ...params,
             filters: normalized,
@@ -138,7 +137,7 @@ export async function getInvestmentRepoTeamFlow(params: {
     if (runtimeConfig.useGraphQLAnalytics()) {
         const auth = await getAuth();
         const session = await auth();
-        const orgId = resolveActiveOrgId(session?.user);
+        const orgId = session?.user?.org_id as string | undefined;
         return getInvestmentRepoTeamFlowViaGraphQL({
             ...params,
             filters: normalized,

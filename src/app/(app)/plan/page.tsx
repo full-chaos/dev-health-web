@@ -1,4 +1,3 @@
-import { resolveActiveOrgId } from "@/lib/impersonation";
 import { VerticalBarChart } from "@/components/charts/VerticalBarChart";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
@@ -87,7 +86,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
     const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
     if (!health.ok) return <ServiceUnavailable />;
 
-    const orgId = resolveActiveOrgId(session.user) ?? "default-org";
+    const orgId = session.user.org_id ?? "default-org";
     const forecast = await fetchOrNull(
         getThroughputForecastViaGraphQL(orgId, {
             teamIds,

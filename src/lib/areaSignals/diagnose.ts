@@ -1,4 +1,3 @@
-import { resolveActiveOrgId } from "@/lib/impersonation";
 // ── Diagnose area signal resolver (CHAOS-2074) ────────────────────────────────
 //
 // Resolves the Diagnose landing's sub-area signal cards. Mirrors the Govern
@@ -162,7 +161,7 @@ function avgInterruptionLoad(result: CognitiveLoadResult | undefined): number | 
 /** Resolve the org scope from the auth session (mirrors the area fetchers). */
 async function resolveOrgId(): Promise<string> {
     const session = await auth();
-    return resolveActiveOrgId(session?.user) ?? "default-org";
+    return (session?.user?.org_id as string | undefined) ?? "default-org";
 }
 
 /**

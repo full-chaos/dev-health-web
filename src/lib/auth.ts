@@ -8,6 +8,7 @@ import { cache } from "react";
 import { getBackendUrl } from "@/lib/origin";
 import { logger } from "@/lib/logger";
 import { getServerEnv } from "@/lib/config";
+import { resolveActiveOrgId } from "@/lib/impersonation";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -387,17 +388,26 @@ const nextAuth = NextAuth({
         async session({ session, token }) {
             if (token) {
                 session.user.id = token.id as string;
-                session.user.org_id = token.org_id as string;
-                session.user.role = token.role as string;
-                session.user.is_superuser = (token.is_superuser as boolean) ?? false;
-                session.user.permissions = token.permissions as string[];
-                session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false;
-                session.access_token = token.access_token as string;
                 session.user.is_impersonating = !!token.is_impersonating;
                 session.user.impersonated_user_id = token.impersonated_user_id as
                     | string
                     | undefined;
                 session.user.impersonated_org_id = token.impersonated_org_id as string | undefined;
+                // org_id is the EFFECTIVE org: while impersonating it is the
+                // impersonation target's org, so every consumer (proxy, GraphQL
+                // providers, RSC fetchers) is impersonation-aware by construction.
+                // Identity-semantic checks must read real_org_id instead.
+                session.user.real_org_id = token.org_id as string | undefined;
+                session.user.org_id = resolveActiveOrgId({
+                    org_id: token.org_id as string | undefined,
+                    is_impersonating: !!token.is_impersonating,
+                    impersonated_org_id: token.impersonated_org_id as string | undefined,
+                }) as string;
+                session.user.role = token.role as string;
+                session.user.is_superuser = (token.is_superuser as boolean) ?? false;
+                session.user.permissions = token.permissions as string[];
+                session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false;
+                session.access_token = token.access_token as string;
                 if (token.error) {
                     session.error = token.error as string;
                 }

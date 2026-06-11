@@ -3,12 +3,13 @@
  *
  * During an active impersonation session the backend scopes all data access
  * to the impersonation TARGET org (see CHAOS-2303: impersonation context
- * takes precedence over the admin's JWT org). The frontend must mirror that
- * precedence: a superuser who is also a member of an organization has a
- * `session.user.org_id` of their own, and forwarding it as the org scope
- * (`X-Org-Id` header / GraphQL `orgId` variable) while impersonating causes
- * the backend org-scope guard to reject every query
- * ("Access denied: cannot query data for org ...").
+ * takes precedence over the admin's JWT org). The frontend mirrors that
+ * precedence CENTRALLY: the NextAuth `session()` callback (src/lib/auth.ts)
+ * assigns `session.user.org_id = resolveActiveOrgId(...)`, so every consumer
+ * (proxy, GraphQL providers, RSC fetchers) sees the effective org without
+ * per-call-site checks. The admin's own org remains available as
+ * `session.user.real_org_id` for identity-semantic checks (e.g. the
+ * superadmin sidebar's org-admin access).
  */
 
 export interface OrgScopedUser {
