@@ -62,6 +62,23 @@ describe("SyncJobHistory", () => {
         expect(screen.getByText("Showing 1-10 of 12")).toBeInTheDocument();
     });
 
+    it("renders an em dash for pending jobs with null started_at, not the epoch date", () => {
+        const pendingJob: SyncJob = {
+            id: "job-pending",
+            config_id: "cfg-1",
+            status: "pending",
+            started_at: null,
+            completed_at: null,
+            duration_seconds: null,
+            items_synced: 0,
+        };
+        render(<SyncJobHistory jobs={[pendingJob]} />);
+
+        expect(screen.getByText("—")).toBeInTheDocument();
+        // new Date(null) coerces to epoch 0; the 1969/1970 date must never render.
+        expect(screen.queryByText(/19[67]\d/)).not.toBeInTheDocument();
+    });
+
     it("shows empty state when there are no jobs", () => {
         render(<SyncJobHistory jobs={[]} />);
 

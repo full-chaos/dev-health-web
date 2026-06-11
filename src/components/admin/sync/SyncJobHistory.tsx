@@ -79,7 +79,7 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
                     {paginatedJobs.map((job) => {
                         const duration = job.duration_seconds
                             ? `${Math.round(job.duration_seconds)}s`
-                            : job.completed_at
+                            : job.completed_at && job.started_at
                               ? Math.round(
                                     (new Date(job.completed_at).getTime() -
                                         new Date(job.started_at).getTime()) /
@@ -93,7 +93,9 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
                                     <SyncStatusBadge status={getBadgeStatus(job.status)} />
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                                    {new Date(job.started_at).toLocaleString()}
+                                    {job.started_at
+                                        ? new Date(job.started_at).toLocaleString()
+                                        : "—"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-(--ink-muted)">
                                     {duration}
