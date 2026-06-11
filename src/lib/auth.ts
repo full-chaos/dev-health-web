@@ -254,9 +254,11 @@ const nextAuth = NextAuth({
                         const statusData = (await statusRes.json()) as {
                             is_impersonating: boolean;
                             target_user_id?: string | null;
+                            target_org_id?: string | null;
                         };
                         token.is_impersonating = statusData.is_impersonating;
                         token.impersonated_user_id = statusData.target_user_id ?? undefined;
+                        token.impersonated_org_id = statusData.target_org_id ?? undefined;
                     }
                 } catch {
                     // Network error — keep existing impersonation state
@@ -387,6 +389,7 @@ const nextAuth = NextAuth({
                 session.user.impersonated_user_id = token.impersonated_user_id as
                     | string
                     | undefined;
+                session.user.impersonated_org_id = token.impersonated_org_id as string | undefined;
                 if (token.error) {
                     session.error = token.error as string;
                 }

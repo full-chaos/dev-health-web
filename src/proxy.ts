@@ -3,6 +3,7 @@ import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { logger } from "@/lib/logger";
 import { checkRateLimit, type RateLimitOptions } from "@/lib/rate-limit";
 
@@ -20,7 +21,12 @@ const ROUTE_LIMITS: Array<{
 }> = [
     {
         match: (method, pathname) => method === "POST" && pathname.startsWith("/api/v1/auth/login"),
-        opts: { failClosed: true, namespace: "auth-login", windowMs: 15 * 60_000, maxRequests: 10 },
+        opts: {
+            failClosed: true,
+            namespace: "auth-login",
+            windowMs: 15 * 60_000,
+            maxRequests: 10,
+        },
     },
     {
         match: (method, pathname) =>
@@ -47,7 +53,12 @@ const ROUTE_LIMITS: Array<{
     {
         match: (method, pathname) =>
             MUTATING_METHODS.includes(method) && pathname.startsWith("/api/v1/auth/"),
-        opts: { failClosed: true, namespace: "auth-other", windowMs: 15 * 60_000, maxRequests: 20 },
+        opts: {
+            failClosed: true,
+            namespace: "auth-other",
+            windowMs: 15 * 60_000,
+            maxRequests: 20,
+        },
     },
     {
         match: (method, pathname) =>
@@ -159,7 +170,9 @@ async function enforceProxyRateLimit(
     if (!routeLimit) return null;
 
     const env = getServerEnv();
-    const clientIp = getClientIp(request, { trustProxy: isTrustProxyEnabled(env.TRUST_PROXY) });
+    const clientIp = getClientIp(request, {
+        trustProxy: isTrustProxyEnabled(env.TRUST_PROXY),
+    });
     const bucket = pathBucket(pathname);
     const identity = pathname.startsWith("/api/v1/admin/credentials/test-connection")
         ? `user:${sessionUserId ?? `ip:${clientIp}`}`
@@ -185,7 +198,12 @@ export async function proxy(request: NextRequest) {
     const response = await handleRequest(request);
 
     log.info(
-        { method, path: pathname, status: response.status, duration_ms: Date.now() - start },
+        {
+            method,
+            path: pathname,
+            status: response.status,
+            duration_ms: Date.now() - start,
+        },
         "request",
     );
 
@@ -202,9 +220,12 @@ async function handleRequest(request: NextRequest) {
     if (pathname === "/") {
         const session = await auth();
         if (session && session.access_token) {
-            // Superadmins without an org belong in the admin panel, not the dashboard
+            // Superadmins without an org belong in the admin panel, not the dashboard.
+            // While impersonating, the target's org counts as the active org.
             const target =
-                !session.user?.org_id && session.user?.is_superuser ? "/superadmin" : "/dashboard";
+                !resolveActiveOrgId(session.user) && session.user?.is_superuser
+                    ? "/superadmin"
+                    : "/dashboard";
             const redirect = NextResponse.redirect(new URL(target, request.url), 303);
             redirect.headers.set("x-nonce", nonce);
             redirect.headers.set("Content-Security-Policy", csp);
@@ -234,7 +255,10 @@ async function handleRequest(request: NextRequest) {
         }
         accessToken = session.access_token;
         sessionUserId = session.user?.id;
-        orgId = session.user?.org_id;
+        // Impersonation-aware: while impersonating, scope to the target's org
+        // (not the admin's own org) so backend org guards accept the request
+        // and org-required routes resolve for org-less superusers (CHAOS-2303).
+        orgId = resolveActiveOrgId(session.user);
         isSuperuser = session.user?.is_superuser ?? false;
     }
 
