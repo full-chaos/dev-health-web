@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { CoverageBar } from "../_components/CoverageBar";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
@@ -10,7 +11,7 @@ import { requireSession } from "@/lib/auth";
 export default async function MappingHealthPage() {
     const session = await requireSession();
 
-    const teamId = session.user.org_id || "default";
+    const teamId = resolveActiveOrgId(session.user) || "default";
 
     let coverageData = null;
     let error: string | null = null;

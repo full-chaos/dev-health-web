@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 // Shared internal helpers for billing actions — NOT a server action file.
 // Do not re-export from the barrel; these are implementation details.
 import { auth } from "@/lib/auth";
@@ -34,7 +35,7 @@ export async function resolveOrgId(orgId?: string): Promise<ActionResult<string 
         return { error: "Unauthorized" };
     }
 
-    const sessionOrgId = session.user?.org_id;
+    const sessionOrgId = resolveActiveOrgId(session.user);
     const isSuperuser = session.user?.is_superuser ?? false;
 
     if (!orgId) {

@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 /**
  * /incident-correlation — DORA change-failure root cause surface (CHAOS-1746).
  *
@@ -93,7 +94,7 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-    const orgId = session.user?.org_id ?? "demo-org";
+    const orgId = resolveActiveOrgId(session.user) ?? "demo-org";
 
     // Run all fetches in parallel to eliminate waterfall
     const [health, home, explain, deploysEdges, incidentEdges] = await Promise.all([

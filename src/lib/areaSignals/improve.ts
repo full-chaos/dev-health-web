@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 // ── Improve area signal resolver (CHAOS-2217) ─────────────────────────────────
 //
 // Resolves the Improve landing's signal cards. Mirrors the Govern reference
@@ -53,7 +54,7 @@ async function resolveOrgId(): Promise<string | undefined> {
     try {
         const { auth } = await import("@/lib/auth");
         const session = await auth();
-        return session?.user?.org_id as string | undefined;
+        return resolveActiveOrgId(session?.user);
     } catch {
         return undefined;
     }

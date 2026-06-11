@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 // ── AI area signal resolver (CHAOS-2206) ───────────────────────────────────────
 //
 // Resolves the AI landing's sub-area signal cards. Mirrors the Govern resolver
@@ -90,7 +91,7 @@ function buildSignal(
 /** Resolve the org scope from the auth session. */
 async function resolveOrgId(): Promise<string> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return resolveActiveOrgId(session?.user) ?? "default-org";
 }
 
 /**

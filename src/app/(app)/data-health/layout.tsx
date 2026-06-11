@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { requireRole } from "@/lib/auth";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { getOrgEntitlements } from "@/lib/admin/server";
@@ -5,7 +6,7 @@ import { getOrgEntitlements } from "@/lib/admin/server";
 export default async function DataHealthLayout({ children }: { children: React.ReactNode }) {
     const session = await requireRole(["admin", "owner", "operator"], "/data-health");
 
-    const orgId = session.user.org_id;
+    const orgId = resolveActiveOrgId(session.user);
     const entitlements = orgId ? await getOrgEntitlements(orgId) : null;
     const tier = entitlements?.data?.tier ?? "community";
     const features = entitlements?.data?.features ?? {};

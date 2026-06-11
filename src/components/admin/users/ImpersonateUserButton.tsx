@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import type { User } from "@/lib/admin/types";
 
 export function ImpersonateUserButton({ user }: { user: User }) {
-    const { data: session } = useSession();
+    const { data: session, update } = useSession();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
@@ -35,6 +35,10 @@ export function ImpersonateUserButton({ user }: { user: User }) {
                 return;
             }
             if (result.data) {
+                // Force an immediate server-verified impersonation status re-poll
+                // so org scoping switches to the target org without waiting for
+                // the 30s JWT poll interval (CHAOS-2309).
+                await update({ impersonationChanged: true });
                 router.refresh();
                 router.push("/dashboard");
             }

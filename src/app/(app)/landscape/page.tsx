@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import type { ReactNode } from "react";
 import Link from "next/link";
 
@@ -403,7 +404,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     const scopeType = scopeTypeMap[filters.scope.level] ?? "org";
     const scopeId = filters.scope.ids[0] ?? "";
     const canQuery = scopeType !== "person" || Boolean(scopeId);
-    const orgId = session.user?.org_id ?? scopeId;
+    const orgId = resolveActiveOrgId(session.user) ?? scopeId;
 
     const until = new Date();
     const since = new Date(until);

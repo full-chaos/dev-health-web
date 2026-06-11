@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { auth } from "@/lib/auth";
 import { AdminApiError } from "../api";
 import type { ActionResult } from "@/lib/result";
@@ -14,7 +15,7 @@ export async function getSessionContext(): Promise<SessionContext> {
     }
     return {
         token: session.access_token,
-        orgId: session.user?.org_id || undefined,
+        orgId: resolveActiveOrgId(session.user) || undefined,
     };
 }
 

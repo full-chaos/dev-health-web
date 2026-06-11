@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 /**
  * /complexity — Complexity Trends surface (CHAOS-1745).
  *
@@ -165,7 +166,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
         },
     ];
 
-    const orgId = session.user?.org_id ?? "demo-org";
+    const orgId = resolveActiveOrgId(session.user) ?? "demo-org";
 
     const { sinceUtc, untilUtc } = complexityWindowFromFilter(filters.time);
     const scopeInput = complexityScopeInputFromFilter(filters);

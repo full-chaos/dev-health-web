@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 // ── Govern area signal resolver (CHAOS-2074) ──────────────────────────────────
 //
 // Resolves the Govern landing's sub-area signal cards. This is the REFERENCE
@@ -388,7 +389,7 @@ function pickWorstCompoundingRow(
 /** Resolve the org scope from the auth session (mirrors the area fetchers). */
 async function resolveOrgId(): Promise<string> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return resolveActiveOrgId(session?.user) ?? "default-org";
 }
 
 /**

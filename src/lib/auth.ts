@@ -229,6 +229,14 @@ const nextAuth = NextAuth({
                 token.error = undefined;
             }
 
+            // Impersonation start/stop: the client signals the change via
+            // update({ impersonationChanged: true }). The payload is NOT trusted —
+            // it only bypasses the 30s poll throttle so the status below is
+            // re-read from the backend immediately (server-verified).
+            if (trigger === "update" && session?.impersonationChanged) {
+                token.last_impersonation_check = undefined;
+            }
+
             // For superusers: sync impersonation state from backend at most every 30s.
             // This ensures router.refresh() picks up the current impersonation state
             // without hammering the backend on every JWT callback.

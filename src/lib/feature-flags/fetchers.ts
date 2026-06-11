@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import type { WorkGraphEdgesResult } from "@/lib/graphql/types";
@@ -30,7 +31,7 @@ const EMPTY_RESULT: WorkGraphEdgesResult = {
 async function resolveOrgId(orgId?: string): Promise<string> {
     if (orgId) return orgId;
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return resolveActiveOrgId(session?.user) ?? "default-org";
 }
 
 export async function fetchFeatureFlagRegistry(

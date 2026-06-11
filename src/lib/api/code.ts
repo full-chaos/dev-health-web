@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { AuthErrors } from "@/lib/constants/errors";
 import type { MetricFilter } from "@/lib/filters/types";
 import { getBusFactorViaGraphQL } from "@/lib/graphql/codeFetchers";
@@ -8,7 +9,7 @@ import { getAuth } from "./_shared";
 export async function getBusFactorData(filters: MetricFilter): Promise<BusFactor | null> {
     const auth = await getAuth();
     const session = await auth();
-    const orgId = session?.user?.org_id;
+    const orgId = resolveActiveOrgId(session?.user);
 
     if (!orgId) {
         throw new Error(AuthErrors.OrgIdRequiredFromSession);

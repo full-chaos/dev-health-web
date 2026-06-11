@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import {
     ConnectorStatusTable,
@@ -18,7 +19,7 @@ export default async function ConnectorsHealthPage() {
     // or maybe the schema means orgId instead of team, but we'll pass a default if needed.
     // Actually, for global Data Health, "teamId" might just be "global" or something, but we'll use "current" or some dummy value
     // Let's see what operatingReviewFetchers uses.
-    const teamId = session.user.org_id || "default";
+    const teamId = resolveActiveOrgId(session.user) || "default";
 
     let data: ConnectorStatusItem[] = [];
     let error: string | null = null;

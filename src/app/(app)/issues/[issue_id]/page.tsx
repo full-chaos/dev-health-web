@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import Link from "next/link";
 
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
@@ -27,7 +28,7 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
 
     const { issue_id: issueId } = await params;
     const session = await requireSession();
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = resolveActiveOrgId(session.user) ?? "default-org";
     const [flame, drilldown] = await Promise.all([
         fetchOrNull(getFlame({ entity_type: "issue", entity_id: issueId }), "issue-flame"),
         getAIWorkflowDrilldownViaGraphQL({

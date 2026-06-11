@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { ContextStrip } from "@/components/navigation/ContextStrip";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -113,7 +114,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     // -------------------------------------------------------------------------
     // Fetch real cognitive-load data
     // -------------------------------------------------------------------------
-    const orgId = session.user.org_id ?? "";
+    const orgId = resolveActiveOrgId(session.user) ?? "";
     const teamId =
         filters.scope.level === "team" && filters.scope.ids.length > 0
             ? filters.scope.ids[0]

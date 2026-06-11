@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -97,7 +98,7 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
     // on other tabs. The GraphView client component receives the pre-fetched
     // result as a prop and renders it without a client-side round-trip.
     const session = await requireSession();
-    const orgId = session.user.org_id ?? "";
+    const orgId = resolveActiveOrgId(session.user) ?? "";
     const { sinceDate, untilDate } = dateRangeFromFilter(filters.time);
     const repoIds = filters.what?.repos?.length ? filters.what.repos : null;
 

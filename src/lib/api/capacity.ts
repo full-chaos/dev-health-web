@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { AuthErrors } from "@/lib/constants/errors";
 import { getCapacityForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
 import type { CapacityForecast, CapacityForecastInput } from "@/lib/graphql/types";
@@ -11,7 +12,7 @@ export async function getCapacityForecast(params: {
     if (!orgId) {
         const auth = await getAuth();
         const session = await auth();
-        orgId = session?.user?.org_id;
+        orgId = resolveActiveOrgId(session?.user);
     }
     if (!orgId) {
         throw new Error(AuthErrors.OrgIdRequiredFromSession);

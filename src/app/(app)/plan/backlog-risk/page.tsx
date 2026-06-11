@@ -1,3 +1,4 @@
+import { resolveActiveOrgId } from "@/lib/impersonation";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -33,7 +34,7 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
     const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
     if (!health.ok) return <ServiceUnavailable />;
 
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = resolveActiveOrgId(session.user) ?? "default-org";
     const forecast = await fetchOrNull(
         getThroughputForecastViaGraphQL(orgId, {
             teamIds,
