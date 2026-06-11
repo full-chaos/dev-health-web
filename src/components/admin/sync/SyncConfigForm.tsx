@@ -144,6 +144,12 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         const opts: Record<string, unknown> = {
             ...(initialData?.sync_options ?? {}),
         };
+        // schedule_cron / timezone / initial_sync_depth are owned by the
+        // top-level payload fields. Strip stale copies from the carried-over
+        // sync_options so they can never resurrect an old schedule on save.
+        delete opts.schedule_cron;
+        delete opts.timezone;
+        delete opts.initial_sync_depth;
         if (formData.owner) opts.owner = formData.owner;
         if (formData.provider === "gitlab" && formData.gitlab_url) {
             opts.gitlab_url = formData.gitlab_url;
