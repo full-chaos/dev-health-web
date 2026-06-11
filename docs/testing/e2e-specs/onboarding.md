@@ -1,4 +1,4 @@
-# Onboarding Journeys
+# E2E Spec: Onboarding Journeys
 
 ## Full Account Setup (7-Step Journey)
 

@@ -1,4 +1,4 @@
-# Platform Admin Journeys
+# E2E Spec: Platform Admin Journeys
 
 ## Impersonation Lifecycle
 

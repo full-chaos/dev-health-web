@@ -1,4 +1,4 @@
-# Account User Journeys
+# E2E Spec: Account User Journeys
 
 ## Dashboard Landing & Drill-down
 
