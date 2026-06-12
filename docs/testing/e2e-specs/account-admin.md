@@ -1,4 +1,4 @@
-# Account Admin Journeys
+# E2E Spec: Account Admin Journeys
 
 ## Integration Setup
 
