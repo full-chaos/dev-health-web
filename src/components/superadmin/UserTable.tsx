@@ -27,7 +27,14 @@ export function UserTable({ users }: UserTableProps) {
                 return;
             }
             if (result.data) {
-                await update({ startImpersonation: result.data });
+                // Force an immediate server-verified impersonation status re-poll
+                // (CHAOS-2309). The old `startImpersonation` payload is ignored by
+                // the jwt callback, which left the token unaware of the active
+                // impersonation for up to 30s — during that window the backend
+                // already scopes data to the target org, poisoning org-keyed
+                // client caches with the wrong org's data.
+                await update({ impersonationChanged: true });
+                router.refresh();
                 router.push("/dashboard");
             }
         } catch {

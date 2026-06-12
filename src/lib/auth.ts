@@ -263,10 +263,12 @@ const nextAuth = NextAuth({
                         const statusData = (await statusRes.json()) as {
                             is_impersonating: boolean;
                             target_user_id?: string | null;
+                            target_email?: string | null;
                             target_org_id?: string | null;
                         };
                         token.is_impersonating = statusData.is_impersonating;
                         token.impersonated_user_id = statusData.target_user_id ?? undefined;
+                        token.impersonated_email = statusData.target_email ?? undefined;
                         token.impersonated_org_id = statusData.target_org_id ?? undefined;
                     }
                 } catch {
@@ -392,6 +394,7 @@ const nextAuth = NextAuth({
                 session.user.impersonated_user_id = token.impersonated_user_id as
                     | string
                     | undefined;
+                session.user.impersonated_email = token.impersonated_email as string | undefined;
                 session.user.impersonated_org_id = token.impersonated_org_id as string | undefined;
                 // org_id is the EFFECTIVE org: while impersonating it is the
                 // impersonation target's org, so every consumer (proxy, GraphQL
