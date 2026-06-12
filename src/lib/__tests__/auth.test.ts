@@ -522,10 +522,11 @@ describe("jwt callback — token lifecycle", () => {
 
     // ── Impersonation status sync (CHAOS-2309 / CHAOS-2327 / CHAOS-2328) ───
     // The jwt callback mirrors backend impersonation state into the token by
-    // polling the (Valkey-cached) status endpoint on EVERY superuser token
-    // read — no throttle, no update-payload contract. These pin the field
-    // lifecycle at the callback level so a future auth refactor can't break
-    // it while component tests (which mock the session) still pass.
+    // polling the (Valkey-cached) status endpoint on superuser token reads,
+    // bounded by a ~3s per-process memo that update() triggers bypass. These
+    // pin the field lifecycle at the callback level so a future auth refactor
+    // can't break it while component tests (which mock the session) still
+    // pass. Each test uses a distinct token id — the memo is module-global.
 
     function superuserToken(overrides: Record<string, unknown> = {}): Record<string, unknown> {
         return {
@@ -547,7 +548,7 @@ describe("jwt callback — token lifecycle", () => {
         } as unknown as Response);
     }
 
-    it("(l) every superuser token read polls status and stores the target identity", async () => {
+    it("(l) a plain superuser token read polls status and stores the target identity", async () => {
         const fetchMock = statusFetchMock({
             is_impersonating: true,
             target_user_id: "target-1",
@@ -559,7 +560,7 @@ describe("jwt callback — token lifecycle", () => {
         const jwt = getJwtCallback();
         // Plain session read — no update trigger required (CHAOS-2328)
         const result = await jwt({
-            token: superuserToken(),
+            token: superuserToken({ id: "admin-l" }),
             user: null,
             account: null,
         });
@@ -584,6 +585,7 @@ describe("jwt callback — token lifecycle", () => {
         const jwt = getJwtCallback();
         const result = await jwt({
             token: superuserToken({
+                id: "admin-m",
                 is_impersonating: true,
                 impersonated_user_id: "target-1",
                 impersonated_email: "target@example.com",
@@ -612,7 +614,7 @@ describe("jwt callback — token lifecycle", () => {
 
         const jwt = getJwtCallback();
         const result = await jwt({
-            token: superuserToken(),
+            token: superuserToken({ id: "admin-n" }),
             user: null,
             account: null,
             trigger: "update",
@@ -630,12 +632,74 @@ describe("jwt callback — token lifecycle", () => {
 
         const jwt = getJwtCallback();
         const result = await jwt({
-            token: superuserToken({ is_superuser: false }),
+            token: superuserToken({ id: "admin-o", is_superuser: false }),
             user: null,
             account: null,
         });
 
         expect(fetchMock).not.toHaveBeenCalled();
         expect(result.is_impersonating).toBeUndefined();
+    });
+
+    it("(p) update payloads are not trusted even when the status poll fails", async () => {
+        // Codex finding: (n) only proved the property for a successful 200
+        // false. A malicious payload must also be rejected when the server
+        // can't be reached — fields stay at their previous (absent) values.
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 500,
+            json: async () => ({ detail: "boom" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: superuserToken({ id: "admin-p" }),
+            user: null,
+            account: null,
+            trigger: "update",
+            session: {
+                startImpersonation: { status: "active", target_user: { id: "evil" } },
+                impersonationChanged: true,
+            },
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(result.is_impersonating).toBeUndefined();
+        expect(result.impersonated_user_id).toBeUndefined();
+        expect(result.impersonated_org_id).toBeUndefined();
+    });
+
+    it("(q) consecutive plain reads share the memo; update() triggers bypass it", async () => {
+        const fetchMock = statusFetchMock({
+            is_impersonating: true,
+            target_user_id: "target-q",
+            target_email: "q@example.com",
+            target_org_id: "org-q",
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        // Two plain reads within the memo TTL → one backend fetch, but both
+        // tokens carry the synced state.
+        await jwt({ token: superuserToken({ id: "admin-q" }), user: null, account: null });
+        const second = await jwt({
+            token: superuserToken({ id: "admin-q" }),
+            user: null,
+            account: null,
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(second.is_impersonating).toBe(true);
+        expect(second.impersonated_user_id).toBe("target-q");
+
+        // An update() trigger must bypass the memo and re-poll immediately.
+        await jwt({
+            token: superuserToken({ id: "admin-q" }),
+            user: null,
+            account: null,
+            trigger: "update",
+            session: { impersonationChanged: true },
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 });

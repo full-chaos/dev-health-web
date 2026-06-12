@@ -37,6 +37,31 @@ const authSecret =
     authEnv.NEXTAUTH_SECRET ||
     (authEnv.NODE_ENV === "production" ? undefined : "dev-secret-change-in-production");
 
+/**
+ * Per-process micro-memo for the impersonation status poll (CHAOS-2328).
+ *
+ * The jwt callback runs on every session read — including the proxy, which
+ * calls auth() for every protected route — so an unconditional backend fetch
+ * per read would fan out badly on superuser traffic. The memo bounds it to
+ * one fetch per ~3s per web process. `update()` triggers bypass the memo, so
+ * explicit start/stop (which all impersonation components signal via
+ * update({ impersonationChanged: true })) is observed with zero delay; the
+ * worst-case cross-instance staleness is the memo TTL.
+ *
+ * Superuser sessions only — the map stays tiny; no eviction needed.
+ */
+interface ImpersonationStatusSnapshot {
+    is_impersonating: boolean;
+    impersonated_user_id?: string;
+    impersonated_email?: string;
+    impersonated_org_id?: string;
+}
+const impersonationStatusMemo = new Map<
+    string,
+    { at: number; status: ImpersonationStatusSnapshot }
+>();
+const IMPERSONATION_MEMO_TTL_MS = 3_000;
+
 const nextAuth = NextAuth({
     trustHost: true,
     logger: {
@@ -230,42 +255,7 @@ const nextAuth = NextAuth({
                 token.error = undefined;
             }
 
-            // For superusers: sync impersonation state from the backend on EVERY
-            // token read (CHAOS-2328). The status endpoint reads through a shared
-            // Valkey cache server-side, so this is a cheap in-cluster call for the
-            // handful of superuser sessions — and it removes every staleness
-            // window: start/stop are observed on the next request, on every web
-            // instance, with no update-payload contract between components and
-            // this callback. update({ impersonationChanged: true }) calls from
-            // components remain useful purely as an immediate-session-read
-            // trigger; the payload itself is never trusted.
             const now = Date.now();
-            if (token.is_superuser && token.access_token && !user) {
-                try {
-                    const backendUrl = getBackendUrl();
-                    const statusRes = await fetch(`${backendUrl}/api/v1/admin/impersonate/status`, {
-                        method: "GET",
-                        headers: {
-                            Authorization: `Bearer ${token.access_token as string}`,
-                        },
-                    });
-                    if (statusRes.ok) {
-                        const statusData = (await statusRes.json()) as {
-                            is_impersonating: boolean;
-                            target_user_id?: string | null;
-                            target_email?: string | null;
-                            target_org_id?: string | null;
-                        };
-                        token.is_impersonating = statusData.is_impersonating;
-                        token.impersonated_user_id = statusData.target_user_id ?? undefined;
-                        token.impersonated_email = statusData.target_email ?? undefined;
-                        token.impersonated_org_id = statusData.target_org_id ?? undefined;
-                    }
-                } catch {
-                    // Network error — keep existing impersonation state
-                }
-            }
-
             const expiresAt = token.expires_at as number | undefined;
             const lastValidated = token.last_validated as number | undefined;
             const tokenExpired = expiresAt && now > expiresAt - 5 * 60 * 1000;
@@ -320,6 +310,63 @@ const nextAuth = NextAuth({
                     token.access_token = undefined;
                     token.error = "refresh_unavailable";
                     return token;
+                }
+            }
+
+            // Impersonation sync for superusers (CHAOS-2328). Runs AFTER the
+            // refresh step so a just-refreshed access token is used — polling
+            // before refresh could 401 and silently keep stale impersonation
+            // state for this request. The status endpoint reads through a
+            // shared Valkey cache server-side; the per-process memo above
+            // bounds fetch fan-out, and update() triggers bypass it so
+            // explicit start/stop is observed immediately. The update payload
+            // itself is never trusted — only the server response mutates the
+            // token.
+            if (token.is_superuser && token.access_token && !user) {
+                const memoKey = token.id as string;
+                const memoized = impersonationStatusMemo.get(memoKey);
+                const memoFresh =
+                    memoized !== undefined && now - memoized.at < IMPERSONATION_MEMO_TTL_MS;
+                if (memoFresh && trigger !== "update") {
+                    token.is_impersonating = memoized.status.is_impersonating;
+                    token.impersonated_user_id = memoized.status.impersonated_user_id;
+                    token.impersonated_email = memoized.status.impersonated_email;
+                    token.impersonated_org_id = memoized.status.impersonated_org_id;
+                } else {
+                    try {
+                        const backendUrl = getBackendUrl();
+                        const statusRes = await fetch(
+                            `${backendUrl}/api/v1/admin/impersonate/status`,
+                            {
+                                method: "GET",
+                                headers: {
+                                    Authorization: `Bearer ${token.access_token as string}`,
+                                },
+                            },
+                        );
+                        if (statusRes.ok) {
+                            const statusData = (await statusRes.json()) as {
+                                is_impersonating: boolean;
+                                target_user_id?: string | null;
+                                target_email?: string | null;
+                                target_org_id?: string | null;
+                            };
+                            const status: ImpersonationStatusSnapshot = {
+                                is_impersonating: statusData.is_impersonating,
+                                impersonated_user_id: statusData.target_user_id ?? undefined,
+                                impersonated_email: statusData.target_email ?? undefined,
+                                impersonated_org_id: statusData.target_org_id ?? undefined,
+                            };
+                            token.is_impersonating = status.is_impersonating;
+                            token.impersonated_user_id = status.impersonated_user_id;
+                            token.impersonated_email = status.impersonated_email;
+                            token.impersonated_org_id = status.impersonated_org_id;
+                            impersonationStatusMemo.set(memoKey, { at: now, status });
+                        }
+                    } catch {
+                        // Network error — keep existing impersonation state and
+                        // don't memo the failure (next read retries).
+                    }
                 }
             }
 
