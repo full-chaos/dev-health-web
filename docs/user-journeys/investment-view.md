@@ -33,12 +33,12 @@ to interpreting the **confidence** of what you are looking at.
 
 You land on the **Overview** tab. Across the top you will see four tabs:
 
-| Tab | What it is for |
-| --- | -------------- |
-| **Overview** | The headline mix and the story it suggests. |
+| Tab            | What it is for                                                                  |
+| -------------- | ------------------------------------------------------------------------------- |
+| **Overview**   | The headline mix and the story it suggests.                                     |
 | **Allocation** | The full Theme → Subcategory breakdown and where effort flows (by repo / team). |
-| **Evidence** | The actual issues, PRs, and commits behind the mix. |
-| **Confidence** | How much to trust the picture (evidence quality). |
+| **Evidence**   | The actual issues, PRs, and commits behind the mix.                             |
+| **Confidence** | How much to trust the picture (evidence quality).                               |
 
 > _Screenshot placeholder: `/investment` Overview tab, showing the theme mix and headline._
 > `![Investment View — Overview tab](../screenshots/investment-overview.png)`
@@ -77,10 +77,10 @@ high-churn items can carry the mix.
 Move to the **Allocation** tab (route: `/investment?tab=allocation`) and select a theme —
 say **Feature Delivery**. It opens into its **subcategories**, the finer-grained mix:
 
-| Subcategory | Plain meaning |
-| ----------- | ------------- |
-| `feature_delivery.customer` | Work driven by a specific customer ask. |
-| `feature_delivery.roadmap` | Planned roadmap features. |
+| Subcategory                   | Plain meaning                                  |
+| ----------------------------- | ---------------------------------------------- |
+| `feature_delivery.customer`   | Work driven by a specific customer ask.        |
+| `feature_delivery.roadmap`    | Planned roadmap features.                      |
 | `feature_delivery.enablement` | Platform/tooling that enables others to build. |
 
 So a Feature Delivery slice might further suggest it **leans toward roadmap work** rather
