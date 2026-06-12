@@ -519,4 +519,106 @@ describe("jwt callback — token lifecycle", () => {
         await jwt({ token: first, user: null, account: null });
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
+
+    // ── Impersonation status sync (CHAOS-2309 / CHAOS-2327) ────────────────
+    // The jwt callback mirrors backend impersonation state into the token via
+    // a 30s-throttled poll; update({ impersonationChanged: true }) bypasses
+    // the throttle. These pin the field lifecycle at the callback level so a
+    // future auth refactor can't break it while component tests (which mock
+    // the session) still pass.
+
+    function superuserToken(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+        return {
+            id: "admin-1",
+            access_token: "valid-access",
+            refresh_token: "valid-refresh",
+            is_superuser: true,
+            expires_at: Date.now() + 3600 * 1000,
+            last_validated: Date.now(),
+            // Recent check — within the 30s throttle window
+            last_impersonation_check: Date.now() - 1000,
+            ...overrides,
+        };
+    }
+
+    function statusFetchMock(body: Record<string, unknown>) {
+        return vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => body,
+        } as unknown as Response);
+    }
+
+    it("(l) impersonationChanged bypasses the poll throttle and stores the target identity", async () => {
+        const fetchMock = statusFetchMock({
+            is_impersonating: true,
+            target_user_id: "target-1",
+            target_email: "target@example.com",
+            target_org_id: "org-target",
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: superuserToken(),
+            user: null,
+            account: null,
+            trigger: "update",
+            session: { impersonationChanged: true },
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/admin/impersonate/status");
+        expect(result.is_impersonating).toBe(true);
+        expect(result.impersonated_user_id).toBe("target-1");
+        expect(result.impersonated_email).toBe("target@example.com");
+        expect(result.impersonated_org_id).toBe("org-target");
+    });
+
+    it("(m) a status=false poll clears all impersonation fields, including the email", async () => {
+        const fetchMock = statusFetchMock({
+            is_impersonating: false,
+            target_user_id: null,
+            target_email: null,
+            target_org_id: null,
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: superuserToken({
+                is_impersonating: true,
+                impersonated_user_id: "target-1",
+                impersonated_email: "target@example.com",
+                impersonated_org_id: "org-target",
+            }),
+            user: null,
+            account: null,
+            trigger: "update",
+            session: { impersonationChanged: true },
+        });
+
+        expect(result.is_impersonating).toBe(false);
+        expect(result.impersonated_user_id).toBeUndefined();
+        expect(result.impersonated_email).toBeUndefined();
+        expect(result.impersonated_org_id).toBeUndefined();
+    });
+
+    it("(n) legacy startImpersonation update payloads are ignored and do not bypass the throttle (CHAOS-2327)", async () => {
+        const fetchMock = statusFetchMock({ is_impersonating: true });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: superuserToken(),
+            user: null,
+            account: null,
+            trigger: "update",
+            session: { startImpersonation: { status: "active" } },
+        });
+
+        // Throttle window still active — no poll, no trusted client payload
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(result.is_impersonating).toBeUndefined();
+    });
 });
