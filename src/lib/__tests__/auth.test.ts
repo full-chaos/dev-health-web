@@ -520,12 +520,12 @@ describe("jwt callback — token lifecycle", () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    // ── Impersonation status sync (CHAOS-2309 / CHAOS-2327) ────────────────
-    // The jwt callback mirrors backend impersonation state into the token via
-    // a 30s-throttled poll; update({ impersonationChanged: true }) bypasses
-    // the throttle. These pin the field lifecycle at the callback level so a
-    // future auth refactor can't break it while component tests (which mock
-    // the session) still pass.
+    // ── Impersonation status sync (CHAOS-2309 / CHAOS-2327 / CHAOS-2328) ───
+    // The jwt callback mirrors backend impersonation state into the token by
+    // polling the (Valkey-cached) status endpoint on EVERY superuser token
+    // read — no throttle, no update-payload contract. These pin the field
+    // lifecycle at the callback level so a future auth refactor can't break
+    // it while component tests (which mock the session) still pass.
 
     function superuserToken(overrides: Record<string, unknown> = {}): Record<string, unknown> {
         return {
@@ -535,8 +535,6 @@ describe("jwt callback — token lifecycle", () => {
             is_superuser: true,
             expires_at: Date.now() + 3600 * 1000,
             last_validated: Date.now(),
-            // Recent check — within the 30s throttle window
-            last_impersonation_check: Date.now() - 1000,
             ...overrides,
         };
     }
@@ -549,7 +547,7 @@ describe("jwt callback — token lifecycle", () => {
         } as unknown as Response);
     }
 
-    it("(l) impersonationChanged bypasses the poll throttle and stores the target identity", async () => {
+    it("(l) every superuser token read polls status and stores the target identity", async () => {
         const fetchMock = statusFetchMock({
             is_impersonating: true,
             target_user_id: "target-1",
@@ -559,12 +557,11 @@ describe("jwt callback — token lifecycle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
+        // Plain session read — no update trigger required (CHAOS-2328)
         const result = await jwt({
             token: superuserToken(),
             user: null,
             account: null,
-            trigger: "update",
-            session: { impersonationChanged: true },
         });
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -594,8 +591,6 @@ describe("jwt callback — token lifecycle", () => {
             }),
             user: null,
             account: null,
-            trigger: "update",
-            session: { impersonationChanged: true },
         });
 
         expect(result.is_impersonating).toBe(false);
@@ -604,8 +599,15 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.impersonated_org_id).toBeUndefined();
     });
 
-    it("(n) legacy startImpersonation update payloads are ignored and do not bypass the throttle (CHAOS-2327)", async () => {
-        const fetchMock = statusFetchMock({ is_impersonating: true });
+    it("(n) update payloads are never trusted — the server-verified status wins (CHAOS-2327)", async () => {
+        // Client claims an active impersonation via the legacy payload, but
+        // the backend says none is active: the token must reflect the server.
+        const fetchMock = statusFetchMock({
+            is_impersonating: false,
+            target_user_id: null,
+            target_email: null,
+            target_org_id: null,
+        });
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
@@ -614,10 +616,25 @@ describe("jwt callback — token lifecycle", () => {
             user: null,
             account: null,
             trigger: "update",
-            session: { startImpersonation: { status: "active" } },
+            session: { startImpersonation: { status: "active", target_user: { id: "x" } } },
         });
 
-        // Throttle window still active — no poll, no trusted client payload
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(result.is_impersonating).toBe(false);
+        expect(result.impersonated_user_id).toBeUndefined();
+    });
+
+    it("(o) non-superuser token reads never call the status endpoint", async () => {
+        const fetchMock = statusFetchMock({ is_impersonating: false });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: superuserToken({ is_superuser: false }),
+            user: null,
+            account: null,
+        });
+
         expect(fetchMock).not.toHaveBeenCalled();
         expect(result.is_impersonating).toBeUndefined();
     });

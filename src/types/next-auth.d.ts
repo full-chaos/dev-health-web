@@ -54,6 +54,5 @@ declare module "next-auth/jwt" {
         impersonated_email?: string;
         impersonated_org_id?: string;
         last_validated?: number;
-        last_impersonation_check?: number;
     }
 }

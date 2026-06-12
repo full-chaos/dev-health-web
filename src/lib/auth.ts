@@ -230,27 +230,17 @@ const nextAuth = NextAuth({
                 token.error = undefined;
             }
 
-            // Impersonation start/stop: the client signals the change via
-            // update({ impersonationChanged: true }). The payload is NOT trusted —
-            // it only bypasses the 30s poll throttle so the status below is
-            // re-read from the backend immediately (server-verified).
-            if (trigger === "update" && session?.impersonationChanged) {
-                token.last_impersonation_check = undefined;
-            }
-
-            // For superusers: sync impersonation state from backend at most every 30s.
-            // This ensures router.refresh() picks up the current impersonation state
-            // without hammering the backend on every JWT callback.
+            // For superusers: sync impersonation state from the backend on EVERY
+            // token read (CHAOS-2328). The status endpoint reads through a shared
+            // Valkey cache server-side, so this is a cheap in-cluster call for the
+            // handful of superuser sessions — and it removes every staleness
+            // window: start/stop are observed on the next request, on every web
+            // instance, with no update-payload contract between components and
+            // this callback. update({ impersonationChanged: true }) calls from
+            // components remain useful purely as an immediate-session-read
+            // trigger; the payload itself is never trusted.
             const now = Date.now();
-            const IMPERSONATION_POLL_INTERVAL = 30 * 1000; // 30 seconds — matches backend cache TTL
-            const lastImpersonationCheck = token.last_impersonation_check as number | undefined;
-            if (
-                token.is_superuser &&
-                token.access_token &&
-                !user &&
-                (!lastImpersonationCheck ||
-                    now - lastImpersonationCheck > IMPERSONATION_POLL_INTERVAL)
-            ) {
+            if (token.is_superuser && token.access_token && !user) {
                 try {
                     const backendUrl = getBackendUrl();
                     const statusRes = await fetch(`${backendUrl}/api/v1/admin/impersonate/status`, {
@@ -273,9 +263,6 @@ const nextAuth = NextAuth({
                     }
                 } catch {
                     // Network error — keep existing impersonation state
-                } finally {
-                    // Always rate-limit impersonation status checks, even on failures
-                    token.last_impersonation_check = now;
                 }
             }
 
