@@ -8,6 +8,7 @@ import { cache } from "react";
 import { getBackendUrl } from "@/lib/origin";
 import { logger } from "@/lib/logger";
 import { getServerEnv } from "@/lib/config";
+import { resolveActiveOrgId } from "@/lib/impersonation";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -229,6 +230,14 @@ const nextAuth = NextAuth({
                 token.error = undefined;
             }
 
+            // Impersonation start/stop: the client signals the change via
+            // update({ impersonationChanged: true }). The payload is NOT trusted —
+            // it only bypasses the 30s poll throttle so the status below is
+            // re-read from the backend immediately (server-verified).
+            if (trigger === "update" && session?.impersonationChanged) {
+                token.last_impersonation_check = undefined;
+            }
+
             // For superusers: sync impersonation state from backend at most every 30s.
             // This ensures router.refresh() picks up the current impersonation state
             // without hammering the backend on every JWT callback.
@@ -254,9 +263,11 @@ const nextAuth = NextAuth({
                         const statusData = (await statusRes.json()) as {
                             is_impersonating: boolean;
                             target_user_id?: string | null;
+                            target_org_id?: string | null;
                         };
                         token.is_impersonating = statusData.is_impersonating;
                         token.impersonated_user_id = statusData.target_user_id ?? undefined;
+                        token.impersonated_org_id = statusData.target_org_id ?? undefined;
                     }
                 } catch {
                     // Network error — keep existing impersonation state
@@ -377,16 +388,26 @@ const nextAuth = NextAuth({
         async session({ session, token }) {
             if (token) {
                 session.user.id = token.id as string;
-                session.user.org_id = token.org_id as string;
+                session.user.is_impersonating = !!token.is_impersonating;
+                session.user.impersonated_user_id = token.impersonated_user_id as
+                    | string
+                    | undefined;
+                session.user.impersonated_org_id = token.impersonated_org_id as string | undefined;
+                // org_id is the EFFECTIVE org: while impersonating it is the
+                // impersonation target's org, so every consumer (proxy, GraphQL
+                // providers, RSC fetchers) is impersonation-aware by construction.
+                // Identity-semantic checks must read real_org_id instead.
+                session.user.real_org_id = token.org_id as string | undefined;
+                session.user.org_id = resolveActiveOrgId({
+                    org_id: token.org_id as string | undefined,
+                    is_impersonating: !!token.is_impersonating,
+                    impersonated_org_id: token.impersonated_org_id as string | undefined,
+                }) as string;
                 session.user.role = token.role as string;
                 session.user.is_superuser = (token.is_superuser as boolean) ?? false;
                 session.user.permissions = token.permissions as string[];
                 session.user.needs_onboarding = (token.needs_onboarding as boolean) ?? false;
                 session.access_token = token.access_token as string;
-                session.user.is_impersonating = !!token.is_impersonating;
-                session.user.impersonated_user_id = token.impersonated_user_id as
-                    | string
-                    | undefined;
                 if (token.error) {
                     session.error = token.error as string;
                 }

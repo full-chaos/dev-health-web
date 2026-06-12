@@ -7,13 +7,17 @@ declare module "next-auth" {
     interface Session {
         user: {
             id: string;
+            /** EFFECTIVE org: the impersonation target's org while impersonating, else the user's own org. */
             org_id?: string;
+            /** The user's own org, regardless of impersonation. For identity-semantic checks only. */
+            real_org_id?: string;
             role?: string;
             is_superuser?: boolean;
             permissions?: string[];
             needs_onboarding?: boolean;
             is_impersonating?: boolean;
             impersonated_user_id?: string;
+            impersonated_org_id?: string;
         } & DefaultSession["user"];
         access_token?: string;
         error?: string;
@@ -46,6 +50,7 @@ declare module "next-auth/jwt" {
         error?: string;
         is_impersonating?: boolean;
         impersonated_user_id?: string;
+        impersonated_org_id?: string;
         last_validated?: number;
         last_impersonation_check?: number;
     }
