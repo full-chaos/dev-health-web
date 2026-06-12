@@ -14,6 +14,7 @@ import {
 export function ImpersonationBanner() {
     const { data: session, update } = useSession();
     const router = useRouter();
+    const isImpersonating = !!session?.user?.is_impersonating;
 
     // Impersonation is per ADMIN USER server-side, so a start/stop in any tab
     // changes the effective org in EVERY tab. React to events from other tabs
@@ -21,15 +22,33 @@ export function ImpersonationBanner() {
     // waiting for the 30s throttle (CHAOS-2347). The dedicated impersonation
     // tab closes itself when impersonation ends elsewhere.
     useEffect(() => {
+        const syncSession = async () => {
+            // next-auth's update() silently no-ops while a session fetch is
+            // already in flight — retry once so the forced re-poll cannot be
+            // dropped in the cross-tab race.
+            const result = await update({ impersonationChanged: true });
+            if (result === undefined) {
+                await new Promise((resolve) => setTimeout(resolve, 1500));
+                await update({ impersonationChanged: true });
+            }
+            router.refresh();
+        };
+
         return onImpersonationEvent((event) => {
             if (event.type === "stopped" && isImpersonationWindow()) {
                 window.close();
-                // Fall through: if the browser refused to close (e.g. the tab
-                // was reached by direct navigation), sync state like any tab.
+                if (window.closed) return;
+                // Browser refused to close (restored/duplicated tab) — don't
+                // strand the user on a route scoped to a stopped impersonation.
+                router.push("/superadmin");
             }
-            void update({ impersonationChanged: true }).then(() => router.refresh());
+            // Skip the re-poll when this tab already reflects the event (e.g.
+            // next-auth's own cross-tab session sync got here first) — keeps
+            // N-tab broadcast traffic bounded.
+            if (isImpersonating === (event.type === "started")) return;
+            void syncSession();
         });
-    }, [update, router]);
+    }, [update, router, isImpersonating]);
 
     if (!session?.user?.is_impersonating) {
         return null;

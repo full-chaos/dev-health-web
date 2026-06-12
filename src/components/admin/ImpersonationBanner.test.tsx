@@ -119,8 +119,10 @@ describe("ImpersonationBanner", () => {
         }
     });
 
-    it("re-polls the session when another tab starts or stops impersonating", async () => {
-        mockUpdate.mockResolvedValue(undefined);
+    it("re-polls the session when another tab stops impersonating", async () => {
+        // This tab still shows is_impersonating=true; a "stopped" event from
+        // another tab must force the server-verified re-poll.
+        mockUpdate.mockResolvedValue({});
         renderWithToaster(<ImpersonationBanner />);
 
         expect(eventHandlerHolder.handler).not.toBeNull();
@@ -130,6 +132,54 @@ describe("ImpersonationBanner", () => {
             expect(mockUpdate).toHaveBeenCalledWith({ impersonationChanged: true });
             expect(mockRefresh).toHaveBeenCalled();
         });
+    });
+
+    it("skips the re-poll when the tab already reflects the event", () => {
+        // session is impersonating; a "started" event carries no new state —
+        // guards against N-tab update() storms.
+        renderWithToaster(<ImpersonationBanner />);
+
+        eventHandlerHolder.handler?.({ type: "started" });
+
+        expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it("retries the forced re-poll when next-auth drops update() mid-flight", async () => {
+        vi.useFakeTimers();
+        try {
+            // First update() is dropped (returns undefined while a session
+            // fetch is in flight); the retry must fire after the backoff.
+            mockUpdate.mockResolvedValueOnce(undefined).mockResolvedValue({});
+            renderWithToaster(<ImpersonationBanner />);
+
+            eventHandlerHolder.handler?.({ type: "stopped" });
+            await vi.advanceTimersByTimeAsync(0);
+            expect(mockUpdate).toHaveBeenCalledTimes(1);
+
+            await vi.advanceTimersByTimeAsync(1500);
+            expect(mockUpdate).toHaveBeenCalledTimes(2);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("navigates the impersonation tab to /superadmin when a remote stop cannot close it", async () => {
+        vi.mocked(isImpersonationWindow).mockReturnValue(true);
+        const closeSpy = vi.spyOn(window, "close").mockImplementation(() => {});
+        // window.closed stays false — the browser refused to close the tab.
+        mockUpdate.mockResolvedValue({});
+        try {
+            renderWithToaster(<ImpersonationBanner />);
+
+            eventHandlerHolder.handler?.({ type: "stopped" });
+
+            await waitFor(() => {
+                expect(closeSpy).toHaveBeenCalled();
+                expect(mockPush).toHaveBeenCalledWith("/superadmin");
+            });
+        } finally {
+            closeSpy.mockRestore();
+        }
     });
 
     it("surfaces a toast and does not navigate when stop fails", async () => {
