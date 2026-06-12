@@ -1,13 +1,35 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { stopImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+    broadcastImpersonationEvent,
+    isImpersonationWindow,
+    onImpersonationEvent,
+} from "@/lib/impersonation-events";
 
 export function ImpersonationBanner() {
     const { data: session, update } = useSession();
     const router = useRouter();
+
+    // Impersonation is per ADMIN USER server-side, so a start/stop in any tab
+    // changes the effective org in EVERY tab. React to events from other tabs
+    // by forcing the server-verified session re-poll immediately instead of
+    // waiting for the 30s throttle (CHAOS-2347). The dedicated impersonation
+    // tab closes itself when impersonation ends elsewhere.
+    useEffect(() => {
+        return onImpersonationEvent((event) => {
+            if (event.type === "stopped" && isImpersonationWindow()) {
+                window.close();
+                // Fall through: if the browser refused to close (e.g. the tab
+                // was reached by direct navigation), sync state like any tab.
+            }
+            void update({ impersonationChanged: true }).then(() => router.refresh());
+        });
+    }, [update, router]);
 
     if (!session?.user?.is_impersonating) {
         return null;
@@ -20,9 +42,15 @@ export function ImpersonationBanner() {
             return;
         }
         // Force an immediate server-verified impersonation status re-poll so
-        // org scoping reverts to the admin's own org right away (CHAOS-2309).
+        // org scoping reverts to the admin's own org right away (CHAOS-2309),
+        // then tell every other tab to do the same.
         await update({ impersonationChanged: true });
+        broadcastImpersonationEvent({ type: "stopped" });
         router.refresh();
+        if (isImpersonationWindow()) {
+            window.close();
+            if (window.closed) return;
+        }
         router.push("/superadmin");
     };
 

@@ -8,6 +8,7 @@ import { startImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DataTable } from "@/components/shared/DataTable";
+import { broadcastImpersonationEvent, openImpersonationWindow } from "@/lib/impersonation-events";
 
 type UserTableProps = {
     users: User[];
@@ -20,9 +21,14 @@ export function UserTable({ users }: UserTableProps) {
 
     const handleImpersonate = async (userId: string) => {
         setImpersonatingId(userId);
+        // Open the impersonation tab synchronously, before any await — popup
+        // blockers do not reliably honor window.open after a network
+        // round-trip. Null (blocked) falls back to same-tab navigation.
+        const impersonationWindow = openImpersonationWindow();
         try {
             const result = await startImpersonation(userId);
             if (result.error) {
+                impersonationWindow?.close();
                 toast.error(result.error);
                 return;
             }
@@ -34,10 +40,19 @@ export function UserTable({ users }: UserTableProps) {
                 // already scopes data to the target org, poisoning org-keyed
                 // client caches with the wrong org's data.
                 await update({ impersonationChanged: true });
+                broadcastImpersonationEvent({ type: "started" });
                 router.refresh();
-                router.push("/dashboard");
+                if (impersonationWindow && !impersonationWindow.closed) {
+                    impersonationWindow.location.href = "/dashboard";
+                    impersonationWindow.focus();
+                } else {
+                    router.push("/dashboard");
+                }
+            } else {
+                impersonationWindow?.close();
             }
         } catch {
+            impersonationWindow?.close();
             toast.error("Failed to start impersonation");
         } finally {
             setImpersonatingId(null);

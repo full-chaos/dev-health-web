@@ -6,6 +6,7 @@ import { startImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { User } from "@/lib/admin/types";
+import { broadcastImpersonationEvent, openImpersonationWindow } from "@/lib/impersonation-events";
 
 export function ImpersonateUserButton({ user }: { user: User }) {
     const { data: session, update } = useSession();
@@ -28,9 +29,14 @@ export function ImpersonateUserButton({ user }: { user: User }) {
 
     const handleImpersonate = async () => {
         setLoading(true);
+        // Open the impersonation tab synchronously, before any await — popup
+        // blockers do not reliably honor window.open after a network
+        // round-trip. Null (blocked) falls back to same-tab navigation.
+        const impersonationWindow = openImpersonationWindow();
         try {
             const result = await startImpersonation(user.id);
             if (result.error) {
+                impersonationWindow?.close();
                 toast.error(result.error);
                 return;
             }
@@ -39,10 +45,19 @@ export function ImpersonateUserButton({ user }: { user: User }) {
                 // so org scoping switches to the target org without waiting for
                 // the 30s JWT poll interval (CHAOS-2309).
                 await update({ impersonationChanged: true });
+                broadcastImpersonationEvent({ type: "started" });
                 router.refresh();
-                router.push("/dashboard");
+                if (impersonationWindow && !impersonationWindow.closed) {
+                    impersonationWindow.location.href = "/dashboard";
+                    impersonationWindow.focus();
+                } else {
+                    router.push("/dashboard");
+                }
+            } else {
+                impersonationWindow?.close();
             }
         } catch {
+            impersonationWindow?.close();
             toast.error("Failed to start impersonation");
         } finally {
             setLoading(false);
