@@ -32,10 +32,10 @@ export default async function AIImpactEvidencePage({ searchParams }: AIImpactEvi
                 eyebrow="AI"
                 title="PR Evidence"
                 breadcrumbs={[
-                    ...navTrailForPathname("/ai/impact").map((c) => ({
-                        ...c,
-                        href: c.href ?? "/ai",
-                    })),
+                    // Drop the trail's final (current-page) "Impact" crumb and
+                    // re-add it as a filter-preserving link back to the rollups,
+                    // with PR Evidence as the current crumb.
+                    ...navTrailForPathname("/ai/impact").slice(0, -1),
                     { label: "Impact", href: withFilterParam("/ai/impact", filters, role) },
                     { label: "PR Evidence" },
                 ]}

@@ -36,13 +36,7 @@ export default async function ImproveAutomationsPage({
                     <AIPageHeader
                         eyebrow="Improve"
                         title="Automations"
-                        breadcrumbs={[
-                            ...navTrailForPathname("/improve/automations").map((c) => ({
-                                ...c,
-                                href: c.href ?? "/improve",
-                            })),
-                            { label: "Automations" },
-                        ]}
+                        breadcrumbs={navTrailForPathname("/improve/automations")}
                     >
                         Non-AI flow opportunities — review latency, cycle time, rework, WIP
                         congestion, throughput, churn, and change failure rate — each firing only

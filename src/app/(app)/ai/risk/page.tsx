@@ -52,18 +52,18 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
             <AIPageHeader
                 eyebrow="AI"
                 title="Governance Risk"
-                breadcrumbs={[
-                    ...navTrailForPathname("/ai/risk").map((c) => ({
-                        ...c,
-                        href: c.href ?? "/ai",
-                    })),
-                    ...(view === "overview"
-                        ? [{ label: "Governance Risk" }]
+                breadcrumbs={
+                    view === "overview"
+                        ? navTrailForPathname("/ai/risk")
                         : [
+                              // On a sub-tab the area→child trail's "Governance Risk"
+                              // crumb becomes a link back to the overview, with the
+                              // active view as the final (current) crumb.
+                              ...navTrailForPathname("/ai/risk").slice(0, -1),
                               { label: "Governance Risk", href: "/ai/risk" },
                               { label: VIEW_CRUMBS[view] },
-                          ]),
-                ]}
+                          ]
+                }
             >
                 {VIEW_LEDES[view]}
             </AIPageHeader>
