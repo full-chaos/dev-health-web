@@ -11,30 +11,11 @@ export const auditApi = {
                 if (value != null) params.set(key, String(value));
             });
         }
-        return request<AuditLogListResponse>(`/audit?${params.toString()}`, {}, token, orgId);
+        return request<AuditLogListResponse>(`/audit-logs?${params.toString()}`, {}, token, orgId);
     },
 
     get: (id: string, token?: string, orgId?: string) =>
-        request<AuditLogListResponse["items"][0]>(`/audit/${id}`, {}, token, orgId),
-
-    export: (
-        format: "json" | "csv" = "json",
-        filters?: AuditLogFilter,
-        token?: string,
-        orgId?: string,
-    ) => {
-        const params = new URLSearchParams();
-        params.set("format", format);
-        if (filters) {
-            Object.entries(filters).forEach(([key, value]) => {
-                if (value != null) params.set(key, String(value));
-            });
-        }
-        return request<Blob>(`/audit/export?${params.toString()}`, {}, token, orgId);
-    },
-
-    actions: (token?: string, orgId?: string) =>
-        request<string[]>("/audit/actions", {}, token, orgId),
+        request<AuditLogListResponse["items"][0]>(`/audit-logs/${id}`, {}, token, orgId),
 };
 
 export const platformAuditApi = {
