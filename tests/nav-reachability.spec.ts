@@ -324,6 +324,13 @@ test.describe("primary navigation reachability", () => {
             { path: "/plan/delivery-forecast", selectedLabel: "Plan" },
             { path: "/plan/capacity", selectedLabel: "Plan" },
             { path: "/operating-review", selectedLabel: "Plan" },
+            // Improve leaf routes: the Improve area has no layout.tsx, so each page
+            // must render PrimaryNav itself. /improve/automations shipped without it
+            // (full-bleed, no sidebar) — this asserts the chrome is present, since a
+            // chromeless page has no `aside a[data-active]` and fails the count check.
+            { path: "/improve/automations", selectedLabel: "Improve" },
+            { path: "/improve/experiments", selectedLabel: "Improve" },
+            { path: "/opportunities", selectedLabel: "Improve" },
         ]) {
             await expectSingleSelectedArea(page, route.path, route.selectedLabel);
         }
