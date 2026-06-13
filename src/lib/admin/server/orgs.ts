@@ -261,10 +261,3 @@ export async function getAuditLog(
         return adminApi.audit.get(id, token, orgId);
     });
 }
-
-export async function listAuditActions(): Promise<ActionResult<string[]>> {
-    return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
-        return adminApi.audit.actions(token, orgId);
-    });
-}

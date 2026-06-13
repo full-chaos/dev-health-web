@@ -15,7 +15,6 @@ import {
     testConnection,
     listAuditLogs,
     getAuditLog,
-    listAuditActions,
     listIPAllowlistEntries,
     createIPAllowlistEntry,
     updateIPAllowlistEntry,
@@ -335,21 +334,6 @@ describe("admin/server audit log actions", () => {
             const result = await getAuditLog("al-1");
             expect(result.data).toBeDefined();
             expect(result.data?.id).toBe("al-1");
-            fetchSpy.mockRestore();
-        });
-    });
-
-    describe("listAuditActions", () => {
-        it("returns available actions on success", async () => {
-            mockSession();
-            const actions = ["user.login", "user.logout", "credential.create"];
-            const fetchSpy = vi
-                .spyOn(global, "fetch")
-                .mockResolvedValue(new Response(JSON.stringify(actions), { status: 200 }));
-
-            const result = await listAuditActions();
-            expect(result.data).toBeDefined();
-            expect(result.data).toHaveLength(3);
             fetchSpy.mockRestore();
         });
     });

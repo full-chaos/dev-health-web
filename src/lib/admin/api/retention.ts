@@ -10,18 +10,18 @@ import type {
 export const retentionApi = {
     list: (limit = 50, offset = 0, token?: string, orgId?: string) =>
         request<RetentionPolicyListResponse>(
-            `/retention?limit=${limit}&offset=${offset}`,
+            `/retention-policies?limit=${limit}&offset=${offset}`,
             {},
             token,
             orgId,
         ),
 
     get: (id: string, token?: string, orgId?: string) =>
-        request<RetentionPolicy>(`/retention/${id}`, {}, token, orgId),
+        request<RetentionPolicy>(`/retention-policies/${id}`, {}, token, orgId),
 
     create: (data: RetentionPolicyCreate, token?: string, orgId?: string) =>
         request<RetentionPolicy>(
-            "/retention",
+            "/retention-policies",
             { method: "POST", body: JSON.stringify(data) },
             token,
             orgId,
@@ -29,23 +29,23 @@ export const retentionApi = {
 
     update: (id: string, data: RetentionPolicyUpdate, token?: string, orgId?: string) =>
         request<RetentionPolicy>(
-            `/retention/${id}`,
+            `/retention-policies/${id}`,
             { method: "PATCH", body: JSON.stringify(data) },
             token,
             orgId,
         ),
 
     delete: (id: string, token?: string, orgId?: string) =>
-        request<void>(`/retention/${id}`, { method: "DELETE" }, token, orgId),
+        request<void>(`/retention-policies/${id}`, { method: "DELETE" }, token, orgId),
 
     execute: (id: string, dryRun = true, token?: string, orgId?: string) =>
         request<RetentionExecuteResponse>(
-            `/retention/${id}/execute`,
+            `/retention-policies/${id}/execute`,
             { method: "POST", body: JSON.stringify({ dry_run: dryRun }) },
             token,
             orgId,
         ),
 
     resourceTypes: (token?: string, orgId?: string) =>
-        request<string[]>("/retention/resource-types", {}, token, orgId),
+        request<string[]>("/retention-policies/resource-types", {}, token, orgId),
 };
