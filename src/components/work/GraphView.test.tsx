@@ -537,6 +537,105 @@ describe("GraphView", () => {
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
+    // ── Degraded fail-safe on non-canvas tabs (CHAOS-2431, round-3) ──────────────
+
+    it("inflow-outflow tab shows the prepared/degraded state under an active theme filter when degraded", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getByText(/Theme data is being prepared/i)).toBeInTheDocument();
+        // The generic table panel and its empty state must NOT render.
+        expect(screen.queryByTestId("inflow-outflow-panel")).not.toBeInTheDocument();
+    });
+
+    it("inflow-outflow tab renders normally when degradedReason is null", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: null,
+                    theme: "quality",
+                    subcategory: "quality.bugfix",
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 1,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getByTestId("inflow-outflow-panel")).toBeInTheDocument();
+        expect(screen.queryByText(/Theme data is being prepared/i)).not.toBeInTheDocument();
+    });
+
+    it("artifacts tab shows the prepared/degraded state under an active theme filter when degraded", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        expect(screen.getByText(/Theme data is being prepared/i)).toBeInTheDocument();
+        expect(screen.queryByTestId("artifacts-panel")).not.toBeInTheDocument();
+    });
+
+    it("artifacts tab renders normally when degradedReason is null", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: "Fixes ISS-1",
+                    theme: "quality",
+                    subcategory: "quality.bugfix",
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 1,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        expect(screen.getByTestId("artifacts-panel")).toBeInTheDocument();
+        expect(screen.queryByText(/Theme data is being prepared/i)).not.toBeInTheDocument();
+    });
+
     it("review-network tab shows an honest empty state when reviewEdges prop is null", () => {
         // reviewEdges=null means "not yet fetched / wrong tab" — renders the
         // review-network panel with an empty state (no work-graph-edges fallback).

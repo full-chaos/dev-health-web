@@ -293,11 +293,33 @@ export function GraphView({
         return { incomingEdges, outgoingEdges };
     }, [selectedNode, displayEdges]);
 
+    // Fail-safe (CHAOS-2431): when a theme/subcategory filter is active but the
+    // backend has not yet materialized the membership index for this org, it
+    // returns degradedReason="MEMBERSHIP_NOT_MATERIALIZED" instead of a
+    // (false-)empty edge set. Show a distinct "being prepared" state so the
+    // user does not read it as "no relationships/artifacts exist". This must be
+    // computed BEFORE the per-tab early-returns so the non-canvas tabs
+    // (inflow-outflow, artifacts) surface the same fail-safe rather than their
+    // generic empty states.
+    const themeFilterActive = theme !== "all" || subcategory !== "all";
+    const themeDataPreparing =
+        themeFilterActive && degradedReason === "MEMBERSHIP_NOT_MATERIALIZED";
+    const themeDataPreparingState = (
+        <DataState
+            variant="preview-not-populated"
+            title="Theme data is being prepared"
+            description="Theme insights are still being computed for this view — check back shortly."
+            data-testid="data-state-theme-preparing"
+        />
+    );
+
     // ── Derived table tabs (no force-directed canvas) ───────────────────────────
     if (activeTab === "inflow-outflow") {
+        if (!loading && !error && themeDataPreparing) return themeDataPreparingState;
         return <InflowOutflowView edges={edges} loading={loading} error={error} />;
     }
     if (activeTab === "artifacts") {
+        if (!loading && !error && themeDataPreparing) return themeDataPreparingState;
         return <ArtifactsView edges={edges} loading={loading} error={error} />;
     }
     if (activeTab === "review-network") {
@@ -322,17 +344,9 @@ export function GraphView({
         dependencies: "Blocking, related, duplicate, and parent-child links between work items.",
     };
     const graphTab = activeTab as "overview" | "dependencies";
-    const themeFilterActive = theme !== "all" || subcategory !== "all";
     const themeFilterSuffix = themeFilterActive
         ? ` matching ${subcategory === "all" ? labelInvestmentKey(theme) : labelInvestmentKey(subcategory)}`
         : "";
-    // Fail-safe (CHAOS-2431): when a theme/subcategory filter is active but the
-    // backend has not yet materialized the membership index for this org, it
-    // returns degradedReason="MEMBERSHIP_NOT_MATERIALIZED" instead of a
-    // (false-)empty edge set. Show a distinct "being prepared" state so the
-    // user does not read it as "no relationships exist".
-    const themeDataPreparing =
-        themeFilterActive && degradedReason === "MEMBERSHIP_NOT_MATERIALIZED";
     const emptyCopy =
         activeTab === "dependencies"
             ? `No dependency links between work items${themeFilterSuffix} in this scope and window.`
@@ -462,12 +476,7 @@ export function GraphView({
                     )}
 
                     {!loading && !error && themeDataPreparing ? (
-                        <DataState
-                            variant="preview-not-populated"
-                            title="Theme data is being prepared"
-                            description="Theme insights are still being computed for this view — check back shortly."
-                            data-testid="data-state-theme-preparing"
-                        />
+                        themeDataPreparingState
                     ) : !loading && !error && tabEdges.length === 0 ? (
                         <DataState
                             variant="detector-enabled-no-findings"
