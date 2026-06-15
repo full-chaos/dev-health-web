@@ -416,9 +416,7 @@ describe("GraphView", () => {
     });
 
     it("renders an empty state naming the active theme filter for a server-filtered set", () => {
-        mockUseSearchParams.mockReturnValue(
-            new URLSearchParams({ graph_theme: "quality" }),
-        );
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [],
             loading: false,
@@ -448,9 +446,7 @@ describe("GraphView", () => {
 
         // Distinct degraded state — NOT the generic empty state.
         expect(screen.getByText(/Theme data is being prepared/i)).toBeInTheDocument();
-        expect(
-            screen.getByText(/Theme insights are still being computed/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Theme insights are still being computed/i)).toBeInTheDocument();
         expect(screen.queryByText(/No relationships to show/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/No work graph data/i)).not.toBeInTheDocument();
     });

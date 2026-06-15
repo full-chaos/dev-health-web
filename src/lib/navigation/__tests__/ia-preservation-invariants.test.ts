@@ -49,10 +49,7 @@ const workGraphPageSource = readFileSync(join(appRoot, "diagnose/work-graph/page
 // Work Graph tab construction was extracted into buildTabs.ts (CHAOS-2431) so
 // the explorer-scoped graph_theme/graph_subcategory params can be carried onto
 // every tab href. The tab labels now live there rather than inline in page.tsx.
-const workGraphTabsSource = readFileSync(
-    join(appRoot, "diagnose/work-graph/buildTabs.ts"),
-    "utf8",
-);
+const workGraphTabsSource = readFileSync(join(appRoot, "diagnose/work-graph/buildTabs.ts"), "utf8");
 
 const testOpsTabRoutes = [
     {
