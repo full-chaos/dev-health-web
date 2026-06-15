@@ -537,7 +537,7 @@ describe("SyncConfigForm", () => {
             expect(screen.getByLabelText("Custom cron")).toHaveValue("15 3 * * *");
         });
 
-        it("org-wide toggle uses createSyncConfig with search and not batch", async () => {
+        it("sync-all toggle with owner sends all_repos + owner and not batch", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
             renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
 
@@ -545,7 +545,7 @@ describe("SyncConfigForm", () => {
             await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
             await userEvent.type(screen.getByLabelText("Owner / Organization"), "myorg");
             await userEvent.click(
-                screen.getByLabelText("Sync all repositories in this organization"),
+                screen.getByLabelText("Sync all repositories this token can access"),
             );
             await userEvent.click(screen.getByRole("button", { name: "Create Configuration" }));
 
@@ -558,7 +558,33 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "myorg", search: "myorg/*" },
+                    sync_options: { all_repos: true, owner: "myorg" },
+                });
+            });
+            expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
+        });
+
+        it("sync-all toggle with blank owner sends all_repos only (no search)", async () => {
+            mockCreateSyncConfig.mockResolvedValue(undefined);
+            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Token Sync");
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await userEvent.click(
+                screen.getByLabelText("Sync all repositories this token can access"),
+            );
+            await userEvent.click(screen.getByRole("button", { name: "Create Configuration" }));
+
+            await waitFor(() => {
+                expect(mockCreateSyncConfig).toHaveBeenCalledWith({
+                    name: "Token Sync",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: [],
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: { all_repos: true },
                 });
             });
             expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
@@ -572,7 +598,7 @@ describe("SyncConfigForm", () => {
             expect(screen.getByText("Select Repositories")).toBeInTheDocument();
 
             await userEvent.click(
-                screen.getByLabelText("Sync all repositories in this organization"),
+                screen.getByLabelText("Sync all repositories this token can access"),
             );
             expect(screen.queryByText("Select Repositories")).not.toBeInTheDocument();
         });

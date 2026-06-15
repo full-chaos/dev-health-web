@@ -197,14 +197,18 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         };
 
                         if (syncAllRepos) {
-                            const orgSyncOptions = {
+                            // Token-wide signal: the backend enumerates every
+                            // repository the credential can access when
+                            // `all_repos` is true. `owner` rides along only when
+                            // provided (buildSyncOptions adds it when truthy) to
+                            // optionally scope to a single org.
+                            const allReposSyncOptions = {
                                 ...syncOptions,
-                                owner: formData.owner,
-                                search: `${formData.owner}/*`,
+                                all_repos: true,
                             };
                             result = await createSyncConfig({
                                 ...base,
-                                sync_options: orgSyncOptions,
+                                sync_options: allReposSyncOptions,
                             });
                             if (result?.error) {
                                 toast.error(result.error);
@@ -418,9 +422,16 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                     className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
                                 />
                                 <label htmlFor="sync_all_repos" className="text-sm font-medium">
-                                    Sync all repositories in this organization
+                                    Sync all repositories this token can access
                                 </label>
                             </div>
+                        )}
+                        {!initialData && syncAllRepos && (
+                            <p className="text-xs text-(--ink-muted)">
+                                Every repository the selected credential can reach will be synced.
+                                Enter an owner above to narrow this to a single organization
+                                (optional).
+                            </p>
                         )}
                         {!initialData &&
                         !syncAllRepos &&
