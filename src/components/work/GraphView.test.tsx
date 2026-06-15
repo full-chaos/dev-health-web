@@ -325,6 +325,64 @@ describe("GraphView", () => {
         expect(screen.getByText(/No work graph data matching Quality/i)).toBeInTheDocument();
     });
 
+    it("shows the 'theme data is being prepared' state when degradedReason=MEMBERSHIP_NOT_MATERIALIZED under an active theme filter", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // Distinct degraded state — NOT the generic empty state.
+        expect(screen.getByText(/Theme data is being prepared/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Theme insights are still being computed/i),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/No relationships to show/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/No work graph data/i)).not.toBeInTheDocument();
+    });
+
+    it("shows the normal empty state when degradedReason is null and edges are empty", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // No degradation → generic empty state, no "being prepared" message.
+        expect(screen.getByText(/No relationships to show/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Theme data is being prepared/i)).not.toBeInTheDocument();
+    });
+
+    it("does NOT show the degraded state when no theme filter is active even if degradedReason is set", () => {
+        // No theme/subcategory filter → the membership index is irrelevant, so a
+        // degradedReason must not hijack the normal empty/graph rendering.
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        expect(screen.queryByText(/Theme data is being prepared/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/No relationships to show/i)).toBeInTheDocument();
+    });
+
     it("hydrates graph drilldown state from URL search params", () => {
         mockUseSearchParams.mockReturnValue(
             new URLSearchParams({

@@ -1646,6 +1646,7 @@ type WorkGraphEdgesResult {
   edges: [WorkGraphEdgeResult!]!
   totalCount: Int!
   pageInfo: PageInfo!
+  degradedReason: String
 }
 
 enum WorkGraphNodeType {

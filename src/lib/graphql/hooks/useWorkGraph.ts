@@ -19,6 +19,11 @@ interface UseWorkGraphEdgesResult {
     pageInfo: PageInfo | null;
     loading: boolean;
     error: Error | null;
+    /**
+     * Fail-safe signal from the backend (CHAOS-2431). `"MEMBERSHIP_NOT_MATERIALIZED"`
+     * means theme membership data is not yet built for this org; null = OK.
+     */
+    degradedReason: string | null;
     refetch: () => void;
 }
 
@@ -38,6 +43,7 @@ export function useWorkGraphEdges(options: UseWorkGraphEdgesOptions): UseWorkGra
         pageInfo: result.data?.workGraphEdges?.pageInfo ?? null,
         loading: result.fetching,
         error: result.error ?? null,
+        degradedReason: result.data?.workGraphEdges?.degradedReason ?? null,
         refetch: reexecute,
     };
 }

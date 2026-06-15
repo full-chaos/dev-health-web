@@ -388,6 +388,7 @@ query WorkGraphEdges($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
       startCursor
       endCursor
     }
+    degradedReason
   }
 }
 `;

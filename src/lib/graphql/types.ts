@@ -557,6 +557,13 @@ export interface WorkGraphEdgesResult {
     edges: WorkGraphEdge[];
     totalCount: number;
     pageInfo: PageInfo;
+    /**
+     * Non-null when the result is a fail-safe degraded response. The value
+     * `"MEMBERSHIP_NOT_MATERIALIZED"` means theme/subcategory membership data
+     * has not yet been built for this org, so a theme filter would otherwise
+     * silently return a false-empty graph (CHAOS-2431).
+     */
+    degradedReason?: string | null;
 }
 
 export interface WorkGraphEdgesQueryResponse {

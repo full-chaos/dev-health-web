@@ -237,7 +237,7 @@ export function GraphView({
         }),
         [filters.what?.repos, theme, subcategory],
     );
-    const { edges, loading, error, totalCount } = useWorkGraphEdges({
+    const { edges, loading, error, totalCount, degradedReason } = useWorkGraphEdges({
         orgId,
         filters: edgeFilters,
         pause: !orgId,
@@ -326,6 +326,13 @@ export function GraphView({
     const themeFilterSuffix = themeFilterActive
         ? ` matching ${subcategory === "all" ? labelInvestmentKey(theme) : labelInvestmentKey(subcategory)}`
         : "";
+    // Fail-safe (CHAOS-2431): when a theme/subcategory filter is active but the
+    // backend has not yet materialized the membership index for this org, it
+    // returns degradedReason="MEMBERSHIP_NOT_MATERIALIZED" instead of a
+    // (false-)empty edge set. Show a distinct "being prepared" state so the
+    // user does not read it as "no relationships exist".
+    const themeDataPreparing =
+        themeFilterActive && degradedReason === "MEMBERSHIP_NOT_MATERIALIZED";
     const emptyCopy =
         activeTab === "dependencies"
             ? `No dependency links between work items${themeFilterSuffix} in this scope and window.`
@@ -454,7 +461,14 @@ export function GraphView({
                         />
                     )}
 
-                    {!loading && !error && tabEdges.length === 0 ? (
+                    {!loading && !error && themeDataPreparing ? (
+                        <DataState
+                            variant="preview-not-populated"
+                            title="Theme data is being prepared"
+                            description="Theme insights are still being computed for this view — check back shortly."
+                            data-testid="data-state-theme-preparing"
+                        />
+                    ) : !loading && !error && tabEdges.length === 0 ? (
                         <DataState
                             variant="detector-enabled-no-findings"
                             title="No relationships to show"

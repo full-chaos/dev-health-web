@@ -1958,6 +1958,7 @@ export type WorkGraphEdgeTypeInput =
 
 export type WorkGraphEdgesResult = {
   __typename?: 'WorkGraphEdgesResult';
+  degradedReason?: Maybe<Scalars['String']['output']>;
   edges: Array<WorkGraphEdgeResult>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
