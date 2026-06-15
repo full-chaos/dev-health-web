@@ -378,6 +378,8 @@ query WorkGraphEdges($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
       evidence
       repoId
       provider
+      theme
+      subcategory
     }
     totalCount
     pageInfo {

@@ -156,7 +156,7 @@ describe("GraphView", () => {
         expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
     });
 
-    it("shows theme and subcategory filter context without recomputing graph data", async () => {
+    it("shows selected theme/subcategory context in summary line", async () => {
         const user = userEvent.setup();
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [
@@ -170,6 +170,8 @@ describe("GraphView", () => {
                     provenance: "NATIVE",
                     confidence: 1.0,
                     evidence: "Fixes ISS-1",
+                    theme: "quality",
+                    subcategory: "quality.bugfix",
                 },
             ],
             loading: false,
@@ -185,8 +187,201 @@ describe("GraphView", () => {
 
         expect(screen.getByText(/Quality \/ Quality \/ Bugfix/i)).toBeInTheDocument();
         expect(
-            screen.getByText(/persisted distributions drive the selected theme context/i),
-        ).toBeInTheDocument();
+            screen.queryByText(/persisted distributions drive the selected theme context/i),
+        ).not.toBeInTheDocument();
+    });
+
+    // ── Theme / subcategory filter wiring (CHAOS-2431) ─────────────────────────
+
+    it("selecting a theme hides edges whose dominant theme differs", async () => {
+        const user = userEvent.setup();
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1.0,
+                    evidence: "test",
+                    theme: "quality",
+                    subcategory: "quality.bugfix",
+                },
+                {
+                    edgeId: "e2",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-2",
+                    targetType: "PR",
+                    targetId: "PR-2",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1.0,
+                    evidence: "test",
+                    theme: "feature_delivery",
+                    subcategory: "feature_delivery.customer",
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 2,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // Before filter: both edges visible (both are FIXES which is in work-to-change slice)
+        expect(screen.getByText(/2 edges/i)).toBeInTheDocument();
+
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
+
+        // Only the quality edge remains
+        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+    });
+
+    it('"All themes" shows all edges regardless of their dominant theme', async () => {
+        const user = userEvent.setup();
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1.0,
+                    evidence: "test",
+                    theme: "quality",
+                    subcategory: "quality.bugfix",
+                },
+                {
+                    edgeId: "e2",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-2",
+                    targetType: "PR",
+                    targetId: "PR-2",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1.0,
+                    evidence: "test",
+                    theme: "maintenance",
+                    subcategory: "maintenance.refactor",
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 2,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // Start with a theme selected
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
+        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+
+        // Switch back to All themes
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "all");
+        expect(screen.getByText(/2 edges/i)).toBeInTheDocument();
+    });
+
+    it("subcategory filter narrows edges within a selected theme", async () => {
+        const user = userEvent.setup();
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1.0,
+                    evidence: "test",
+                    theme: "quality",
+                    subcategory: "quality.bugfix",
+                },
+                {
+                    edgeId: "e2",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-2",
+                    targetType: "PR",
+                    targetId: "PR-2",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1.0,
+                    evidence: "test",
+                    theme: "quality",
+                    subcategory: "quality.testing",
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 2,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // Select the theme first (both are quality)
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
+        expect(screen.getByText(/2 edges/i)).toBeInTheDocument();
+
+        // Now narrow to just quality.bugfix
+        await user.selectOptions(screen.getByLabelText(/Subcategory/i), "quality.bugfix");
+        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+    });
+
+    it("an edge with theme null is hidden under a specific theme but visible under All themes", async () => {
+        const user = userEvent.setup();
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1.0,
+                    evidence: "test",
+                    theme: "quality",
+                    subcategory: "quality.bugfix",
+                },
+                {
+                    edgeId: "e2",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-2",
+                    targetType: "PR",
+                    targetId: "PR-2",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1.0,
+                    evidence: "test",
+                    theme: null,
+                    subcategory: null,
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 2,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // Under "All themes": both edges visible
+        expect(screen.getByText(/2 edges/i)).toBeInTheDocument();
+
+        // Select a specific theme: null-theme edge is hidden
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
+        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
     });
 
     it("hydrates graph drilldown state from URL search params", () => {
@@ -210,6 +405,8 @@ describe("GraphView", () => {
                     provenance: "NATIVE",
                     confidence: 1.0,
                     evidence: "Touches src/app/page.tsx",
+                    theme: "quality",
+                    subcategory: "quality.bugfix",
                 },
             ],
             loading: false,

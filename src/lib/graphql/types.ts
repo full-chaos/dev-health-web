@@ -538,6 +538,8 @@ export interface WorkGraphEdge {
     evidence: string;
     repoId?: string;
     provider?: string;
+    theme?: string | null;
+    subcategory?: string | null;
 }
 
 export interface WorkGraphEdgeFilterInput {

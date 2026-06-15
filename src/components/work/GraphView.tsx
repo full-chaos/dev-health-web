@@ -230,16 +230,25 @@ export function GraphView({
         CONNECTION_SLICES.find((slice) => slice.id === connectionSliceId) ?? CONNECTION_SLICES[0];
 
     const tabEdges = useMemo(() => {
+        let filtered: typeof edges;
         if (activeTab === "dependencies") {
-            return edges.filter((edge) => DEPENDENCY_EDGE_TYPES.includes(edge.edgeType));
+            filtered = edges.filter((edge) => DEPENDENCY_EDGE_TYPES.includes(edge.edgeType));
+        } else {
+            // review-network is handled by the ReviewNetworkView early-return above;
+            // this path is only reached for overview and dependencies.
+            // overview
+            filtered = activeConnectionSlice.edgeTypes.length
+                ? edges.filter((edge) => activeConnectionSlice.edgeTypes.includes(edge.edgeType))
+                : edges;
         }
-        // review-network is handled by the ReviewNetworkView early-return above;
-        // this path is only reached for overview and dependencies.
-        // overview
-        return activeConnectionSlice.edgeTypes.length
-            ? edges.filter((edge) => activeConnectionSlice.edgeTypes.includes(edge.edgeType))
-            : edges;
-    }, [activeTab, edges, activeConnectionSlice]);
+        if (theme !== "all") {
+            filtered = filtered.filter((edge) => edge.theme === theme);
+        }
+        if (subcategory !== "all") {
+            filtered = filtered.filter((edge) => edge.subcategory === subcategory);
+        }
+        return filtered;
+    }, [activeTab, edges, activeConnectionSlice, theme, subcategory]);
 
     const displayEdges = useMemo(() => tabEdges.slice(0, GRAPH_RENDER_EDGE_LIMIT), [tabEdges]);
     const hiddenEdgeCount = Math.max(0, tabEdges.length - displayEdges.length);
@@ -397,13 +406,11 @@ export function GraphView({
                                 <span title={activeConnectionSlice.description}>
                                     {activeConnectionSlice.description}
                                 </span>
-                                <span>
-                                    {theme !== "all" || subcategory !== "all"
-                                        ? `Selected context: ${theme === "all" ? "all themes" : labelInvestmentKey(theme)} / ${subcategory === "all" ? "all subcategories" : labelInvestmentKey(subcategory)}. `
-                                        : ""}
-                                    Theme/subcategory are context only; persisted distributions
-                                    drive the selected theme context.
-                                </span>
+                                {(theme !== "all" || subcategory !== "all") && (
+                                    <span>
+                                        {`Selected: ${theme === "all" ? "all themes" : labelInvestmentKey(theme)} / ${subcategory === "all" ? "all subcategories" : labelInvestmentKey(subcategory)}`}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     )}
