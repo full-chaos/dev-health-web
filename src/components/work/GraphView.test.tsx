@@ -192,196 +192,137 @@ describe("GraphView", () => {
     });
 
     // ── Theme / subcategory filter wiring (CHAOS-2431) ─────────────────────────
+    //
+    // Filtering is performed SERVER-SIDE: the selected theme/subcategory are
+    // passed into the workGraphEdges query variables so the backend filters
+    // before its 1000-edge LIMIT (a sparse theme's edges must not fall outside
+    // the cap and produce a false-empty graph). These tests assert the query
+    // variables, NOT a client-side post-filter of the fetched page.
 
-    it("selecting a theme hides edges whose dominant theme differs", async () => {
-        const user = userEvent.setup();
+    /** Returns the `filters` object from the most recent useWorkGraphEdges call. */
+    function lastEdgeFilters() {
+        const calls = mockUseWorkGraphEdges.mock.calls;
+        return calls[calls.length - 1]?.[0]?.filters;
+    }
+
+    it("omits theme/subcategory from query variables under All themes", () => {
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
-                {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1.0,
-                    evidence: "test",
-                    theme: "quality",
-                    subcategory: "quality.bugfix",
-                },
-                {
-                    edgeId: "e2",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-2",
-                    targetType: "PR",
-                    targetId: "PR-2",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1.0,
-                    evidence: "test",
-                    theme: "feature_delivery",
-                    subcategory: "feature_delivery.customer",
-                },
-            ],
+            edges: [],
             loading: false,
             error: null,
-            totalCount: 2,
+            totalCount: 0,
             refetch: vi.fn(),
         });
 
         render(<GraphView filters={filters} />);
 
-        // Before filter: both edges visible (both are FIXES which is in work-to-change slice)
-        expect(screen.getByText(/2 edges/i)).toBeInTheDocument();
-
-        await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
-
-        // Only the quality edge remains
-        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+        const filtersArg = lastEdgeFilters();
+        expect(filtersArg).toEqual({ repoIds: ["repo-1"], limit: 1000 });
+        expect(filtersArg).not.toHaveProperty("theme");
+        expect(filtersArg).not.toHaveProperty("subcategory");
     });
 
-    it('"All themes" shows all edges regardless of their dominant theme', async () => {
+    it("passes the selected theme into the query variables for server-side filtering", async () => {
         const user = userEvent.setup();
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
-                {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1.0,
-                    evidence: "test",
-                    theme: "quality",
-                    subcategory: "quality.bugfix",
-                },
-                {
-                    edgeId: "e2",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-2",
-                    targetType: "PR",
-                    targetId: "PR-2",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1.0,
-                    evidence: "test",
-                    theme: "maintenance",
-                    subcategory: "maintenance.refactor",
-                },
-            ],
+            edges: [],
             loading: false,
             error: null,
-            totalCount: 2,
+            totalCount: 0,
             refetch: vi.fn(),
         });
 
         render(<GraphView filters={filters} />);
 
-        // Start with a theme selected
         await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
-        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
 
-        // Switch back to All themes
-        await user.selectOptions(screen.getByLabelText(/Theme/i), "all");
-        expect(screen.getByText(/2 edges/i)).toBeInTheDocument();
+        const filtersArg = lastEdgeFilters();
+        expect(filtersArg).toMatchObject({ theme: "quality", limit: 1000 });
+        // No subcategory selected → it must not be sent.
+        expect(filtersArg).not.toHaveProperty("subcategory");
     });
 
-    it("subcategory filter narrows edges within a selected theme", async () => {
+    it("passes the selected subcategory into the query variables", async () => {
         const user = userEvent.setup();
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
-                {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1.0,
-                    evidence: "test",
-                    theme: "quality",
-                    subcategory: "quality.bugfix",
-                },
-                {
-                    edgeId: "e2",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-2",
-                    targetType: "PR",
-                    targetId: "PR-2",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1.0,
-                    evidence: "test",
-                    theme: "quality",
-                    subcategory: "quality.testing",
-                },
-            ],
+            edges: [],
             loading: false,
             error: null,
-            totalCount: 2,
+            totalCount: 0,
             refetch: vi.fn(),
         });
 
         render(<GraphView filters={filters} />);
 
-        // Select the theme first (both are quality)
         await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
-        expect(screen.getByText(/2 edges/i)).toBeInTheDocument();
-
-        // Now narrow to just quality.bugfix
         await user.selectOptions(screen.getByLabelText(/Subcategory/i), "quality.bugfix");
-        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+
+        expect(lastEdgeFilters()).toMatchObject({
+            theme: "quality",
+            subcategory: "quality.bugfix",
+        });
     });
 
-    it("an edge with theme null is hidden under a specific theme but visible under All themes", async () => {
+    it("drops theme/subcategory from variables when switching back to All themes", async () => {
         const user = userEvent.setup();
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
-                {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1.0,
-                    evidence: "test",
-                    theme: "quality",
-                    subcategory: "quality.bugfix",
-                },
-                {
-                    edgeId: "e2",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-2",
-                    targetType: "PR",
-                    targetId: "PR-2",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1.0,
-                    evidence: "test",
-                    theme: null,
-                    subcategory: null,
-                },
-            ],
+            edges: [],
             loading: false,
             error: null,
-            totalCount: 2,
+            totalCount: 0,
             refetch: vi.fn(),
         });
 
         render(<GraphView filters={filters} />);
 
-        // Under "All themes": both edges visible
-        expect(screen.getByText(/2 edges/i)).toBeInTheDocument();
-
-        // Select a specific theme: null-theme edge is hidden
         await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
-        expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
+        expect(lastEdgeFilters()).toHaveProperty("theme", "quality");
+
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "all");
+        const filtersArg = lastEdgeFilters();
+        expect(filtersArg).not.toHaveProperty("theme");
+        expect(filtersArg).not.toHaveProperty("subcategory");
+    });
+
+    it("hydrates theme/subcategory into the query variables from URL search params", () => {
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({
+                graph_theme: "quality",
+                graph_subcategory: "quality.bugfix",
+            }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        expect(lastEdgeFilters()).toMatchObject({
+            theme: "quality",
+            subcategory: "quality.bugfix",
+        });
+    });
+
+    it("renders an empty state naming the active theme filter for a server-filtered set", () => {
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({ graph_theme: "quality" }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // Backend returned no edges for this theme → empty copy names the filter.
+        expect(screen.getByText(/No work graph data matching Quality/i)).toBeInTheDocument();
     });
 
     it("hydrates graph drilldown state from URL search params", () => {

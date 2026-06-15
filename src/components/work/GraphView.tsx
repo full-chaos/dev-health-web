@@ -7,7 +7,12 @@ import Link from "next/link";
 import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
 import { DataState } from "@/components/ui/DataState";
 import { useWorkGraphEdges } from "@/lib/graphql/hooks";
-import type { WorkGraphEdge, WorkGraphEdgeType, WorkGraphNodeType } from "@/lib/graphql/types";
+import type {
+    WorkGraphEdge,
+    WorkGraphEdgeFilterInput,
+    WorkGraphEdgeType,
+    WorkGraphNodeType,
+} from "@/lib/graphql/types";
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -218,9 +223,23 @@ export function GraphView({
 
     const contextOrgId = useOrgId();
     const orgId = filters.scope.ids[0] || contextOrgId || "";
+    // Theme / subcategory are filtered SERVER-SIDE (CHAOS-2431): the backend
+    // applies them before the LIMIT, so a sparse theme's edges can't fall
+    // outside the edge cap and produce a false-empty graph. We therefore pass
+    // the active theme/subcategory (when not "all") straight into the query
+    // variables instead of filtering the fetched page client-side.
+    const edgeFilters = useMemo<WorkGraphEdgeFilterInput>(
+        () => ({
+            repoIds: filters.what?.repos,
+            limit: GRAPH_EDGE_QUERY_LIMIT,
+            ...(theme !== "all" ? { theme } : {}),
+            ...(subcategory !== "all" ? { subcategory } : {}),
+        }),
+        [filters.what?.repos, theme, subcategory],
+    );
     const { edges, loading, error, totalCount } = useWorkGraphEdges({
         orgId,
-        filters: { repoIds: filters.what?.repos, limit: GRAPH_EDGE_QUERY_LIMIT },
+        filters: edgeFilters,
         pause: !orgId,
     });
 
@@ -230,25 +249,19 @@ export function GraphView({
         CONNECTION_SLICES.find((slice) => slice.id === connectionSliceId) ?? CONNECTION_SLICES[0];
 
     const tabEdges = useMemo(() => {
-        let filtered: typeof edges;
+        // NB: theme/subcategory are filtered server-side (see edgeFilters above),
+        // so `edges` is already scoped to the active theme/subcategory. This
+        // memo only applies the connection-slice edge-type filter for the tab.
         if (activeTab === "dependencies") {
-            filtered = edges.filter((edge) => DEPENDENCY_EDGE_TYPES.includes(edge.edgeType));
-        } else {
-            // review-network is handled by the ReviewNetworkView early-return above;
-            // this path is only reached for overview and dependencies.
-            // overview
-            filtered = activeConnectionSlice.edgeTypes.length
-                ? edges.filter((edge) => activeConnectionSlice.edgeTypes.includes(edge.edgeType))
-                : edges;
+            return edges.filter((edge) => DEPENDENCY_EDGE_TYPES.includes(edge.edgeType));
         }
-        if (theme !== "all") {
-            filtered = filtered.filter((edge) => edge.theme === theme);
-        }
-        if (subcategory !== "all") {
-            filtered = filtered.filter((edge) => edge.subcategory === subcategory);
-        }
-        return filtered;
-    }, [activeTab, edges, activeConnectionSlice, theme, subcategory]);
+        // review-network is handled by the ReviewNetworkView early-return above;
+        // this path is only reached for overview and dependencies.
+        // overview
+        return activeConnectionSlice.edgeTypes.length
+            ? edges.filter((edge) => activeConnectionSlice.edgeTypes.includes(edge.edgeType))
+            : edges;
+    }, [activeTab, edges, activeConnectionSlice]);
 
     const displayEdges = useMemo(() => tabEdges.slice(0, GRAPH_RENDER_EDGE_LIMIT), [tabEdges]);
     const hiddenEdgeCount = Math.max(0, tabEdges.length - displayEdges.length);
@@ -309,10 +322,14 @@ export function GraphView({
         dependencies: "Blocking, related, duplicate, and parent-child links between work items.",
     };
     const graphTab = activeTab as "overview" | "dependencies";
+    const themeFilterActive = theme !== "all" || subcategory !== "all";
+    const themeFilterSuffix = themeFilterActive
+        ? ` matching ${subcategory === "all" ? labelInvestmentKey(theme) : labelInvestmentKey(subcategory)}`
+        : "";
     const emptyCopy =
         activeTab === "dependencies"
-            ? "No dependency links between work items in this scope and window."
-            : "No work graph data available for this scope and window.";
+            ? `No dependency links between work items${themeFilterSuffix} in this scope and window.`
+            : `No work graph data${themeFilterSuffix} available for this scope and window.`;
 
     return (
         <div

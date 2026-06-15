@@ -548,6 +548,8 @@ export interface WorkGraphEdgeFilterInput {
     targetType?: WorkGraphNodeType;
     edgeType?: WorkGraphEdgeType;
     nodeId?: string;
+    theme?: string;
+    subcategory?: string;
     limit?: number;
 }
 
