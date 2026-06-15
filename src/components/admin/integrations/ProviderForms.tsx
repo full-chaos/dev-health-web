@@ -1,26 +1,116 @@
 export function GitHubForm() {
     return (
         <>
-            <div>
-                <label
-                    htmlFor="github-token"
-                    className="block text-sm font-medium text-(--ink-base)"
-                >
-                    Personal Access Token
-                </label>
-                <div className="mt-1">
-                    <input
-                        type="password"
-                        name="token"
-                        id="github-token"
-                        className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
-                        placeholder="ghp_..."
-                    />
-                </div>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                    Required scopes: repo, read:org, read:user
+            <div className="rounded-lg border border-(--border-subtle) bg-(--surface-muted) p-4">
+                <h3 className="text-sm font-semibold text-(--ink-base)">Personal access token</h3>
+                <p className="mt-1 text-sm text-(--ink-muted)">
+                    Use this for a manually managed token. Leave it blank when using GitHub App
+                    credentials below.
                 </p>
+                <div className="mt-4">
+                    <label
+                        htmlFor="github-token"
+                        className="block text-sm font-medium text-(--ink-base)"
+                    >
+                        Token
+                    </label>
+                    <div className="mt-1">
+                        <input
+                            type="password"
+                            name="token"
+                            id="github-token"
+                            className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                            placeholder="ghp_..."
+                        />
+                    </div>
+                    <p className="mt-2 text-sm text-(--ink-muted)">
+                        Required scopes: repo, read:org, read:user
+                    </p>
+                </div>
             </div>
+
+            <fieldset className="rounded-lg border border-(--border-subtle) bg-(--surface-muted) p-4">
+                <legend className="px-1 text-sm font-semibold text-(--ink-base)">
+                    GitHub App credentials
+                </legend>
+                <p className="mt-1 text-sm text-(--ink-muted)">
+                    Use an installation token backed by your GitHub App for higher per-installation
+                    rate limits. Leave the PAT field blank when these fields are set.
+                </p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label
+                            htmlFor="github-app-id"
+                            className="block text-sm font-medium text-(--ink-base)"
+                        >
+                            App ID
+                        </label>
+                        <div className="mt-1">
+                            <input
+                                type="text"
+                                name="appId"
+                                id="github-app-id"
+                                className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                                placeholder="123456"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            htmlFor="github-installation-id"
+                            className="block text-sm font-medium text-(--ink-base)"
+                        >
+                            Installation ID
+                        </label>
+                        <div className="mt-1">
+                            <input
+                                type="text"
+                                name="installationId"
+                                id="github-installation-id"
+                                className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                                placeholder="987654"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-4">
+                    <label
+                        htmlFor="github-private-key"
+                        className="block text-sm font-medium text-(--ink-base)"
+                    >
+                        Private key PEM
+                    </label>
+                    <div className="mt-1">
+                        <textarea
+                            name="privateKey"
+                            id="github-private-key"
+                            rows={6}
+                            className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 font-mono text-sm text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted)"
+                            placeholder="-----BEGIN PRIVATE KEY-----"
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-4">
+                    <label
+                        htmlFor="github-base-url"
+                        className="block text-sm font-medium text-(--ink-base)"
+                    >
+                        API base URL
+                    </label>
+                    <div className="mt-1">
+                        <input
+                            type="url"
+                            name="baseUrl"
+                            id="github-base-url"
+                            className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
+                            placeholder="https://api.github.com"
+                        />
+                    </div>
+                </div>
+            </fieldset>
 
             <div>
                 <label htmlFor="github-org" className="block text-sm font-medium text-(--ink-base)">
