@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
@@ -205,6 +205,8 @@ export function GraphView({
     reviewEdgesError = null,
 }: GraphViewProps) {
     const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
     const searchState = useMemo(() => getGraphSearchState(searchParams), [searchParams]);
     const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(searchState.selectedNode);
     const [theme, setTheme] = useState(searchState.theme);
@@ -212,6 +214,50 @@ export function GraphView({
     const [connectionSliceId, setConnectionSliceId] = useState(searchState.connectionSliceId);
     const [isLegendCollapsed, setIsLegendCollapsed] = useState(true);
     const graphHeight = 580;
+
+    // Theme/subcategory are authoritative server-side filters (CHAOS-2431), so
+    // the URL is their single source of truth: writing the params here updates
+    // the URL, and the searchState effect below mirrors it back into local
+    // state — keeping selection alive across reload and tab navigation. "all"
+    // removes the param. Setting a theme always clears the now-stale
+    // subcategory so the two never drift.
+    const writeGraphScope = useCallback(
+        (nextTheme: string, nextSubcategory: string) => {
+            const params = new URLSearchParams(searchParams.toString());
+            if (nextTheme === "all") {
+                params.delete("graph_theme");
+            } else {
+                params.set("graph_theme", nextTheme);
+            }
+            if (nextSubcategory === "all") {
+                params.delete("graph_subcategory");
+            } else {
+                params.set("graph_subcategory", nextSubcategory);
+            }
+            const query = params.toString();
+            router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+        },
+        [pathname, router, searchParams],
+    );
+
+    const handleThemeChange = useCallback(
+        (nextTheme: string) => {
+            // Switching theme always resets the subcategory (it belongs to the
+            // previous theme); mirror local state for immediate responsiveness.
+            setTheme(nextTheme);
+            setSubcategory("all");
+            writeGraphScope(nextTheme, "all");
+        },
+        [writeGraphScope],
+    );
+
+    const handleSubcategoryChange = useCallback(
+        (nextSubcategory: string) => {
+            setSubcategory(nextSubcategory);
+            writeGraphScope(theme, nextSubcategory);
+        },
+        [theme, writeGraphScope],
+    );
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- graph state mirrors URL search parameters.
@@ -408,10 +454,7 @@ export function GraphView({
                                     </span>
                                     <select
                                         value={theme}
-                                        onChange={(event) => {
-                                            setTheme(event.target.value);
-                                            setSubcategory("all");
-                                        }}
+                                        onChange={(event) => handleThemeChange(event.target.value)}
                                         className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
                                     >
                                         <option value="all">All themes</option>
@@ -428,7 +471,9 @@ export function GraphView({
                                     </span>
                                     <select
                                         value={subcategory}
-                                        onChange={(event) => setSubcategory(event.target.value)}
+                                        onChange={(event) =>
+                                            handleSubcategoryChange(event.target.value)
+                                        }
                                         className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
                                     >
                                         <option value="all">All subcategories</option>

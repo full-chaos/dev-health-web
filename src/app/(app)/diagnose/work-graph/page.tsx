@@ -1,10 +1,11 @@
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { ViewSet } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { BackLink } from "@/components/shared/BackLink";
 import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
+import { buildWorkGraphTabs } from "./buildTabs";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
@@ -45,38 +46,20 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
-    const tabs: ViewSetItem[] = [
-        {
-            id: "overview",
-            label: "Overview",
-            path: withFilterParam("/diagnose/work-graph", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "dependencies",
-            label: "Dependencies",
-            path: withFilterParam("/diagnose/work-graph?tab=dependencies", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "inflow-outflow",
-            label: "Inflow-Outflow",
-            path: withFilterParam("/diagnose/work-graph?tab=inflow-outflow", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "review-network",
-            label: "Review Network",
-            path: withFilterParam("/diagnose/work-graph?tab=review-network", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "artifacts",
-            label: "Artifacts",
-            path: withFilterParam("/diagnose/work-graph?tab=artifacts", filters, activeRole),
-            navVisible: true,
-        },
-    ];
+
+    const graphThemeParam = Array.isArray(params.graph_theme)
+        ? params.graph_theme[0]
+        : params.graph_theme;
+    const graphSubcategoryParam = Array.isArray(params.graph_subcategory)
+        ? params.graph_subcategory[0]
+        : params.graph_subcategory;
+    const tabs = buildWorkGraphTabs({
+        filters,
+        activeRole,
+        graphTheme: typeof graphThemeParam === "string" ? graphThemeParam : undefined,
+        graphSubcategory:
+            typeof graphSubcategoryParam === "string" ? graphSubcategoryParam : undefined,
+    });
     const activeTab =
         evidenceParam === "open"
             ? "artifacts"

@@ -46,6 +46,13 @@ const bottleneckPageSource = readFileSync(join(appRoot, "bottleneck/page.tsx"), 
 const complexityPageSource = readFileSync(join(appRoot, "complexity/page.tsx"), "utf8");
 const cognitiveLoadPageSource = readFileSync(join(appRoot, "cognitive-load/page.tsx"), "utf8");
 const workGraphPageSource = readFileSync(join(appRoot, "diagnose/work-graph/page.tsx"), "utf8");
+// Work Graph tab construction was extracted into buildTabs.ts (CHAOS-2431) so
+// the explorer-scoped graph_theme/graph_subcategory params can be carried onto
+// every tab href. The tab labels now live there rather than inline in page.tsx.
+const workGraphTabsSource = readFileSync(
+    join(appRoot, "diagnose/work-graph/buildTabs.ts"),
+    "utf8",
+);
 
 const testOpsTabRoutes = [
     {
@@ -267,6 +274,7 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         if (basePath(path) === "/diagnose/work-graph") {
             expect(routePageExists(path), path).toBe(true);
             expect(workGraphPageSource).toContain("Work Graph views");
+            // Tab labels live in buildTabs.ts (see note at workGraphTabsSource).
             for (const label of [
                 "Overview",
                 "Dependencies",
@@ -274,7 +282,7 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
                 "Review Network",
                 "Artifacts",
             ]) {
-                expect(workGraphPageSource).toContain(label);
+                expect(workGraphTabsSource).toContain(label);
             }
         }
         if (basePath(path) === "/cognitive-load") {

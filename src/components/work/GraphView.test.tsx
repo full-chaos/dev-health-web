@@ -5,14 +5,19 @@ import { GraphView } from "@/components/work/GraphView";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-const { mockUseSearchParams, mockUseWorkGraphEdges, mockUseOrgId } = vi.hoisted(() => ({
-    mockUseSearchParams: vi.fn(() => new URLSearchParams()),
-    mockUseWorkGraphEdges: vi.fn(),
-    mockUseOrgId: vi.fn(() => "org-1"),
-}));
+const { mockUseSearchParams, mockUseWorkGraphEdges, mockUseOrgId, mockReplace, mockUsePathname } =
+    vi.hoisted(() => ({
+        mockUseSearchParams: vi.fn(() => new URLSearchParams()),
+        mockUseWorkGraphEdges: vi.fn(),
+        mockUseOrgId: vi.fn(() => "org-1"),
+        mockReplace: vi.fn(),
+        mockUsePathname: vi.fn(() => "/diagnose/work-graph"),
+    }));
 
 vi.mock("next/navigation", () => ({
     useSearchParams: mockUseSearchParams,
+    useRouter: () => ({ replace: mockReplace, push: vi.fn(), prefetch: vi.fn() }),
+    usePathname: mockUsePathname,
 }));
 
 vi.mock("@/lib/graphql/hooks", () => ({
@@ -38,6 +43,7 @@ describe("GraphView", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockUseSearchParams.mockReturnValue(new URLSearchParams());
+        mockUsePathname.mockReturnValue("/diagnose/work-graph");
     });
 
     it("shows empty state when no edges returned", () => {
@@ -282,6 +288,108 @@ describe("GraphView", () => {
         const filtersArg = lastEdgeFilters();
         expect(filtersArg).not.toHaveProperty("theme");
         expect(filtersArg).not.toHaveProperty("subcategory");
+    });
+
+    // ── URL persistence of theme/subcategory (CHAOS-2431, round-4) ──────────────
+
+    /** Returns the URL string from the most recent router.replace call. */
+    function lastReplacedUrl() {
+        const calls = mockReplace.mock.calls;
+        return calls[calls.length - 1]?.[0] as string | undefined;
+    }
+
+    it("writes graph_theme to the URL when a theme is selected", async () => {
+        const user = userEvent.setup();
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
+
+        expect(mockReplace).toHaveBeenCalled();
+        const url = lastReplacedUrl() ?? "";
+        const query = new URLSearchParams(url.split("?")[1] ?? "");
+        expect(url).toContain("/diagnose/work-graph");
+        expect(query.get("graph_theme")).toBe("quality");
+    });
+
+    it("writes graph_subcategory to the URL when a subcategory is selected", async () => {
+        const user = userEvent.setup();
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
+        await user.selectOptions(screen.getByLabelText(/Subcategory/i), "quality.bugfix");
+
+        const query = new URLSearchParams((lastReplacedUrl() ?? "").split("?")[1] ?? "");
+        expect(query.get("graph_theme")).toBe("quality");
+        expect(query.get("graph_subcategory")).toBe("quality.bugfix");
+    });
+
+    it("removes graph_theme and graph_subcategory from the URL when All themes is selected", async () => {
+        const user = userEvent.setup();
+        // Start with both params present in the URL.
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({
+                graph_theme: "quality",
+                graph_subcategory: "quality.bugfix",
+            }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "all");
+
+        const url = lastReplacedUrl() ?? "";
+        const query = new URLSearchParams(url.split("?")[1] ?? "");
+        // Selecting "All themes" clears BOTH the theme and its subcategory.
+        expect(query.has("graph_theme")).toBe(false);
+        expect(query.has("graph_subcategory")).toBe(false);
+    });
+
+    it("preserves other query params when writing graph_theme to the URL", async () => {
+        const user = userEvent.setup();
+        // The theme/subcategory selectors only render on the overview tab, so
+        // exercise the write there while carrying an unrelated `f` filter param.
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({ f: "encoded-filter", role: "ic" }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        await user.selectOptions(screen.getByLabelText(/Theme/i), "quality");
+
+        const query = new URLSearchParams((lastReplacedUrl() ?? "").split("?")[1] ?? "");
+        expect(query.get("f")).toBe("encoded-filter");
+        expect(query.get("role")).toBe("ic");
+        expect(query.get("graph_theme")).toBe("quality");
     });
 
     it("hydrates theme/subcategory into the query variables from URL search params", () => {
