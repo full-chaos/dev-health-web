@@ -1569,6 +1569,8 @@ input WorkGraphEdgeFilterInput {
   targetType: WorkGraphNodeTypeInput = null
   edgeType: WorkGraphEdgeTypeInput = null
   nodeId: String = null
+  theme: String = null
+  subcategory: String = null
   limit: Int! = 1000
 }
 
@@ -1586,6 +1588,8 @@ type WorkGraphEdgeResult {
   evidence: String!
   repoId: String
   provider: String
+  theme: String
+  subcategory: String
 }
 
 enum WorkGraphEdgeType {
@@ -1642,6 +1646,7 @@ type WorkGraphEdgesResult {
   edges: [WorkGraphEdgeResult!]!
   totalCount: Int!
   pageInfo: PageInfo!
+  degradedReason: String
 }
 
 enum WorkGraphNodeType {

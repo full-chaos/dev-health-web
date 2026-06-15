@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
 import { DataState } from "@/components/ui/DataState";
 import { useWorkGraphEdges } from "@/lib/graphql/hooks";
-import type { WorkGraphEdge, WorkGraphEdgeType, WorkGraphNodeType } from "@/lib/graphql/types";
+import type {
+    WorkGraphEdge,
+    WorkGraphEdgeFilterInput,
+    WorkGraphEdgeType,
+    WorkGraphNodeType,
+} from "@/lib/graphql/types";
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -17,6 +22,7 @@ import { formatNumber } from "@/lib/formatters";
 import {
     INVESTMENT_SUBCATEGORIES,
     INVESTMENT_THEMES,
+    SUBCATEGORY_TO_THEME,
     labelInvestmentKey,
 } from "@/lib/workGraph/taxonomy";
 
@@ -173,13 +179,33 @@ function getGraphSearchState(searchParams: URLSearchParams) {
     const subcategoryParam = searchParams.get("graph_subcategory");
     const themeParam = searchParams.get("graph_theme");
     const connectionParam = searchParams.get("graph_connection");
-    const subcategory = isInvestmentSubcategory(subcategoryParam) ? subcategoryParam : "all";
-    const subcategoryTheme = subcategory === "all" ? null : subcategory.split(".", 1)[0];
-    const theme = isInvestmentTheme(themeParam)
-        ? themeParam
-        : isInvestmentTheme(subcategoryTheme)
-          ? subcategoryTheme
-          : "all";
+
+    // Theme + subcategory are ONE invariant (CHAOS-2431): a subcategory belongs
+    // to exactly one parent theme, so an explicit graph_theme that contradicts a
+    // present graph_subcategory (e.g. theme=risk + subcategory=quality.bugfix)
+    // must never be sent as a conjunctive pair (it yields a false-empty graph).
+    // We normalize here: a valid subcategory implies its parent theme; an
+    // explicit, mismatching theme wins and the stale subcategory is dropped.
+    const rawSubcategory = isInvestmentSubcategory(subcategoryParam) ? subcategoryParam : "all";
+    const subcategoryTheme = rawSubcategory === "all" ? null : SUBCATEGORY_TO_THEME[rawSubcategory];
+    const explicitTheme = isInvestmentTheme(themeParam) ? themeParam : null;
+
+    let theme: string;
+    let subcategory: string;
+    if (rawSubcategory !== "all" && subcategoryTheme) {
+        if (explicitTheme && explicitTheme !== subcategoryTheme) {
+            // Contradiction: keep the explicit theme, drop the mismatched subcategory.
+            theme = explicitTheme;
+            subcategory = "all";
+        } else {
+            // Subcategory present (no theme, or matching theme): its parent theme wins.
+            theme = subcategoryTheme;
+            subcategory = rawSubcategory;
+        }
+    } else {
+        theme = explicitTheme ?? "all";
+        subcategory = "all";
+    }
 
     return {
         theme,
@@ -200,6 +226,8 @@ export function GraphView({
     reviewEdgesError = null,
 }: GraphViewProps) {
     const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
     const searchState = useMemo(() => getGraphSearchState(searchParams), [searchParams]);
     const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(searchState.selectedNode);
     const [theme, setTheme] = useState(searchState.theme);
@@ -207,6 +235,50 @@ export function GraphView({
     const [connectionSliceId, setConnectionSliceId] = useState(searchState.connectionSliceId);
     const [isLegendCollapsed, setIsLegendCollapsed] = useState(true);
     const graphHeight = 580;
+
+    // Theme/subcategory are authoritative server-side filters (CHAOS-2431), so
+    // the URL is their single source of truth: writing the params here updates
+    // the URL, and the searchState effect below mirrors it back into local
+    // state — keeping selection alive across reload and tab navigation. "all"
+    // removes the param. Setting a theme always clears the now-stale
+    // subcategory so the two never drift.
+    const writeGraphScope = useCallback(
+        (nextTheme: string, nextSubcategory: string) => {
+            const params = new URLSearchParams(searchParams.toString());
+            if (nextTheme === "all") {
+                params.delete("graph_theme");
+            } else {
+                params.set("graph_theme", nextTheme);
+            }
+            if (nextSubcategory === "all") {
+                params.delete("graph_subcategory");
+            } else {
+                params.set("graph_subcategory", nextSubcategory);
+            }
+            const query = params.toString();
+            router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+        },
+        [pathname, router, searchParams],
+    );
+
+    const handleThemeChange = useCallback(
+        (nextTheme: string) => {
+            // Switching theme always resets the subcategory (it belongs to the
+            // previous theme); mirror local state for immediate responsiveness.
+            setTheme(nextTheme);
+            setSubcategory("all");
+            writeGraphScope(nextTheme, "all");
+        },
+        [writeGraphScope],
+    );
+
+    const handleSubcategoryChange = useCallback(
+        (nextSubcategory: string) => {
+            setSubcategory(nextSubcategory);
+            writeGraphScope(theme, nextSubcategory);
+        },
+        [theme, writeGraphScope],
+    );
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- graph state mirrors URL search parameters.
@@ -216,11 +288,58 @@ export function GraphView({
         setSelectedNode(searchState.selectedNode);
     }, [searchState]);
 
+    // Self-heal a stale/bookmarked URL whose raw params disagree with the
+    // normalized scope (CHAOS-2431): e.g. ?graph_theme=risk&graph_subcategory=
+    // quality.bugfix canonicalizes to graph_theme=risk with the subcategory
+    // dropped. writeGraphScope is idempotent, so this only fires when needed.
+    // The review-network tab is NOT theme-scoped, so its canonicalization is
+    // handled by the dedicated strip effect below — skip it here so the two do
+    // not fight (this effect would otherwise keep a valid theme).
+    useEffect(() => {
+        if (activeTab === "review-network") return;
+        const rawTheme = searchParams.get("graph_theme") ?? "all";
+        const rawSubcategory = searchParams.get("graph_subcategory") ?? "all";
+        const canonTheme = searchState.theme === "all" ? "all" : searchState.theme;
+        const canonSubcategory =
+            searchState.subcategory === "all" ? "all" : searchState.subcategory;
+        if (rawTheme !== canonTheme || rawSubcategory !== canonSubcategory) {
+            writeGraphScope(canonTheme, canonSubcategory);
+        }
+    }, [activeTab, searchParams, searchState, writeGraphScope]);
+
+    // Review Network is backed by review_edges_daily, which has NO theme
+    // attribution and ignores the filter (CHAOS-2431). A direct/bookmarked URL
+    // like ?tab=review-network&graph_theme=quality would advertise a theme
+    // scope it cannot honor, so self-heal by stripping the params. Idempotent:
+    // only fires when at least one of them is actually present.
+    useEffect(() => {
+        if (activeTab !== "review-network") return;
+        const hasTheme = searchParams.has("graph_theme");
+        const hasSubcategory = searchParams.has("graph_subcategory");
+        if (hasTheme || hasSubcategory) {
+            writeGraphScope("all", "all");
+        }
+    }, [activeTab, searchParams, writeGraphScope]);
+
     const contextOrgId = useOrgId();
     const orgId = filters.scope.ids[0] || contextOrgId || "";
-    const { edges, loading, error, totalCount } = useWorkGraphEdges({
+    // Theme / subcategory are filtered SERVER-SIDE (CHAOS-2431): the backend
+    // applies them before the LIMIT, so a sparse theme's edges can't fall
+    // outside the edge cap and produce a false-empty graph. We therefore pass
+    // the active theme/subcategory (when not "all") straight into the query
+    // variables instead of filtering the fetched page client-side.
+    const edgeFilters = useMemo<WorkGraphEdgeFilterInput>(
+        () => ({
+            repoIds: filters.what?.repos,
+            limit: GRAPH_EDGE_QUERY_LIMIT,
+            ...(theme !== "all" ? { theme } : {}),
+            ...(subcategory !== "all" ? { subcategory } : {}),
+        }),
+        [filters.what?.repos, theme, subcategory],
+    );
+    const { edges, loading, error, totalCount, degradedReason } = useWorkGraphEdges({
         orgId,
-        filters: { repoIds: filters.what?.repos, limit: GRAPH_EDGE_QUERY_LIMIT },
+        filters: edgeFilters,
         pause: !orgId,
     });
 
@@ -230,6 +349,9 @@ export function GraphView({
         CONNECTION_SLICES.find((slice) => slice.id === connectionSliceId) ?? CONNECTION_SLICES[0];
 
     const tabEdges = useMemo(() => {
+        // NB: theme/subcategory are filtered server-side (see edgeFilters above),
+        // so `edges` is already scoped to the active theme/subcategory. This
+        // memo only applies the connection-slice edge-type filter for the tab.
         if (activeTab === "dependencies") {
             return edges.filter((edge) => DEPENDENCY_EDGE_TYPES.includes(edge.edgeType));
         }
@@ -271,12 +393,91 @@ export function GraphView({
         return { incomingEdges, outgoingEdges };
     }, [selectedNode, displayEdges]);
 
+    // Fail-safe (CHAOS-2431): when a theme/subcategory filter is active but the
+    // backend has not yet materialized the membership index for this org, it
+    // returns degradedReason="MEMBERSHIP_NOT_MATERIALIZED" instead of a
+    // (false-)empty edge set. Show a distinct "being prepared" state so the
+    // user does not read it as "no relationships/artifacts exist". This must be
+    // computed BEFORE the per-tab early-returns so the non-canvas tabs
+    // (inflow-outflow, artifacts) surface the same fail-safe rather than their
+    // generic empty states.
+    const themeFilterActive = theme !== "all" || subcategory !== "all";
+    const themeDataPreparing =
+        themeFilterActive && degradedReason === "MEMBERSHIP_NOT_MATERIALIZED";
+    const themeDataPreparingState = (
+        <DataState
+            variant="preview-not-populated"
+            title="Theme data is being prepared"
+            description="Theme insights are still being computed for this view — check back shortly."
+            data-testid="data-state-theme-preparing"
+        />
+    );
+
+    const scopeLabel =
+        subcategory === "all" ? labelInvestmentKey(theme) : labelInvestmentKey(subcategory);
+
+    // Active-scope chip (CHAOS-2431): the theme/subcategory selectors only render
+    // on overview, but dependencies/inflow-outflow/artifacts also query
+    // theme-scoped edges. So on those theme-aware tabs we surface a compact chip
+    // showing the active scope with a Clear action that removes the params from
+    // the URL. Rendered BEFORE the per-tab early-returns so every theme-aware tab
+    // shows it. Overview keeps its full selectors instead.
+    const themeScopeChip =
+        themeFilterActive && activeTab !== "overview" ? (
+            <div
+                data-testid="theme-scope-chip"
+                className="mb-4 flex items-center gap-3 rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1.5 text-xs text-(--ink-muted)"
+            >
+                <span>
+                    Scope: <span className="text-foreground">{scopeLabel}</span>
+                </span>
+                <button
+                    type="button"
+                    onClick={() => handleThemeChange("all")}
+                    className="uppercase tracking-[0.18em] text-(--accent-2)"
+                    aria-label="Clear theme scope"
+                >
+                    Clear
+                </button>
+            </div>
+        ) : null;
+
     // ── Derived table tabs (no force-directed canvas) ───────────────────────────
+    // The preparing/degraded state must include the scope chip too (CHAOS-2431):
+    // these tabs have no overview selectors, so without it a user on a scoped URL
+    // while the membership index is preparing would have no way to clear the
+    // scope — the fail-safe would be a dead-end.
     if (activeTab === "inflow-outflow") {
-        return <InflowOutflowView edges={edges} loading={loading} error={error} />;
+        if (!loading && !error && themeDataPreparing) {
+            return (
+                <>
+                    {themeScopeChip}
+                    {themeDataPreparingState}
+                </>
+            );
+        }
+        return (
+            <>
+                {themeScopeChip}
+                <InflowOutflowView edges={edges} loading={loading} error={error} />
+            </>
+        );
     }
     if (activeTab === "artifacts") {
-        return <ArtifactsView edges={edges} loading={loading} error={error} />;
+        if (!loading && !error && themeDataPreparing) {
+            return (
+                <>
+                    {themeScopeChip}
+                    {themeDataPreparingState}
+                </>
+            );
+        }
+        return (
+            <>
+                {themeScopeChip}
+                <ArtifactsView edges={edges} loading={loading} error={error} />
+            </>
+        );
     }
     if (activeTab === "review-network") {
         return (
@@ -300,10 +501,13 @@ export function GraphView({
         dependencies: "Blocking, related, duplicate, and parent-child links between work items.",
     };
     const graphTab = activeTab as "overview" | "dependencies";
+    const themeFilterSuffix = themeFilterActive
+        ? ` matching ${subcategory === "all" ? labelInvestmentKey(theme) : labelInvestmentKey(subcategory)}`
+        : "";
     const emptyCopy =
         activeTab === "dependencies"
-            ? "No dependency links between work items in this scope and window."
-            : "No work graph data available for this scope and window.";
+            ? `No dependency links between work items${themeFilterSuffix} in this scope and window.`
+            : `No work graph data${themeFilterSuffix} available for this scope and window.`;
 
     return (
         <div
@@ -333,6 +537,9 @@ export function GraphView({
                         </div>
                     </div>
 
+                    {/* On the dependencies tab (no selectors) show the active-scope chip. */}
+                    {themeScopeChip}
+
                     {showConnectionSelector && (
                         <div className="mb-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3 text-xs">
                             <div className="grid gap-3 lg:grid-cols-[minmax(13rem,1.1fr)_minmax(11rem,0.9fr)_minmax(14rem,1.2fr)]">
@@ -361,10 +568,7 @@ export function GraphView({
                                     </span>
                                     <select
                                         value={theme}
-                                        onChange={(event) => {
-                                            setTheme(event.target.value);
-                                            setSubcategory("all");
-                                        }}
+                                        onChange={(event) => handleThemeChange(event.target.value)}
                                         className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
                                     >
                                         <option value="all">All themes</option>
@@ -381,7 +585,9 @@ export function GraphView({
                                     </span>
                                     <select
                                         value={subcategory}
-                                        onChange={(event) => setSubcategory(event.target.value)}
+                                        onChange={(event) =>
+                                            handleSubcategoryChange(event.target.value)
+                                        }
                                         className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
                                     >
                                         <option value="all">All subcategories</option>
@@ -397,13 +603,11 @@ export function GraphView({
                                 <span title={activeConnectionSlice.description}>
                                     {activeConnectionSlice.description}
                                 </span>
-                                <span>
-                                    {theme !== "all" || subcategory !== "all"
-                                        ? `Selected context: ${theme === "all" ? "all themes" : labelInvestmentKey(theme)} / ${subcategory === "all" ? "all subcategories" : labelInvestmentKey(subcategory)}. `
-                                        : ""}
-                                    Theme/subcategory are context only; persisted distributions
-                                    drive the selected theme context.
-                                </span>
+                                {(theme !== "all" || subcategory !== "all") && (
+                                    <span>
+                                        {`Selected: ${theme === "all" ? "all themes" : labelInvestmentKey(theme)} / ${subcategory === "all" ? "all subcategories" : labelInvestmentKey(subcategory)}`}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     )}
@@ -430,7 +634,9 @@ export function GraphView({
                         />
                     )}
 
-                    {!loading && !error && tabEdges.length === 0 ? (
+                    {!loading && !error && themeDataPreparing ? (
+                        themeDataPreparingState
+                    ) : !loading && !error && tabEdges.length === 0 ? (
                         <DataState
                             variant="detector-enabled-no-findings"
                             title="No relationships to show"

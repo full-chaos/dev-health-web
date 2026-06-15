@@ -1884,7 +1884,9 @@ export type WorkGraphEdgeFilterInput = {
   nodeId?: InputMaybe<Scalars['String']['input']>;
   repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
   sourceType?: InputMaybe<WorkGraphNodeTypeInput>;
+  subcategory?: InputMaybe<Scalars['String']['input']>;
   targetType?: InputMaybe<WorkGraphNodeTypeInput>;
+  theme?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type WorkGraphEdgeResult = {
@@ -1899,9 +1901,11 @@ export type WorkGraphEdgeResult = {
   sourceDisplayName?: Maybe<Scalars['String']['output']>;
   sourceId: Scalars['String']['output'];
   sourceType: WorkGraphNodeType;
+  subcategory?: Maybe<Scalars['String']['output']>;
   targetDisplayName?: Maybe<Scalars['String']['output']>;
   targetId: Scalars['String']['output'];
   targetType: WorkGraphNodeType;
+  theme?: Maybe<Scalars['String']['output']>;
 };
 
 export type WorkGraphEdgeType =
@@ -1954,6 +1958,7 @@ export type WorkGraphEdgeTypeInput =
 
 export type WorkGraphEdgesResult = {
   __typename?: 'WorkGraphEdgesResult';
+  degradedReason?: Maybe<Scalars['String']['output']>;
   edges: Array<WorkGraphEdgeResult>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
