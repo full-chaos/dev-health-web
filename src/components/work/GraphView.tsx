@@ -443,8 +443,19 @@ export function GraphView({
         ) : null;
 
     // ── Derived table tabs (no force-directed canvas) ───────────────────────────
+    // The preparing/degraded state must include the scope chip too (CHAOS-2431):
+    // these tabs have no overview selectors, so without it a user on a scoped URL
+    // while the membership index is preparing would have no way to clear the
+    // scope — the fail-safe would be a dead-end.
     if (activeTab === "inflow-outflow") {
-        if (!loading && !error && themeDataPreparing) return themeDataPreparingState;
+        if (!loading && !error && themeDataPreparing) {
+            return (
+                <>
+                    {themeScopeChip}
+                    {themeDataPreparingState}
+                </>
+            );
+        }
         return (
             <>
                 {themeScopeChip}
@@ -453,7 +464,14 @@ export function GraphView({
         );
     }
     if (activeTab === "artifacts") {
-        if (!loading && !error && themeDataPreparing) return themeDataPreparingState;
+        if (!loading && !error && themeDataPreparing) {
+            return (
+                <>
+                    {themeScopeChip}
+                    {themeDataPreparingState}
+                </>
+            );
+        }
         return (
             <>
                 {themeScopeChip}

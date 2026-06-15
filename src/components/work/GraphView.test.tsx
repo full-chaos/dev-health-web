@@ -831,6 +831,36 @@ describe("GraphView", () => {
         expect(screen.getByText(/Theme data is being prepared/i)).toBeInTheDocument();
         // The generic table panel and its empty state must NOT render.
         expect(screen.queryByTestId("inflow-outflow-panel")).not.toBeInTheDocument();
+        // The scope chip / clear control must still render so the fail-safe is
+        // not a dead-end (CHAOS-2431, round-8).
+        expect(screen.getByTestId("theme-scope-chip")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /clear theme scope/i })).toBeInTheDocument();
+    });
+
+    it("clear-scope works on a degraded inflow-outflow tab (fail-safe is not a dead-end)", async () => {
+        const user = userEvent.setup();
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({ graph_theme: "quality", graph_subcategory: "quality.bugfix" }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getByText(/Theme data is being prepared/i)).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /clear theme scope/i }));
+
+        expect(mockReplace).toHaveBeenCalled();
+        const url = mockReplace.mock.calls[mockReplace.mock.calls.length - 1]?.[0] as string;
+        const query = new URLSearchParams(url.split("?")[1] ?? "");
+        expect(query.has("graph_theme")).toBe(false);
+        expect(query.has("graph_subcategory")).toBe(false);
     });
 
     it("inflow-outflow tab renders normally when degradedReason is null", () => {
@@ -879,6 +909,35 @@ describe("GraphView", () => {
 
         expect(screen.getByText(/Theme data is being prepared/i)).toBeInTheDocument();
         expect(screen.queryByTestId("artifacts-panel")).not.toBeInTheDocument();
+        // Scope chip / clear control still available (CHAOS-2431, round-8).
+        expect(screen.getByTestId("theme-scope-chip")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /clear theme scope/i })).toBeInTheDocument();
+    });
+
+    it("clear-scope works on a degraded artifacts tab (fail-safe is not a dead-end)", async () => {
+        const user = userEvent.setup();
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({ graph_theme: "quality", graph_subcategory: "quality.bugfix" }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        expect(screen.getByText(/Theme data is being prepared/i)).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /clear theme scope/i }));
+
+        expect(mockReplace).toHaveBeenCalled();
+        const url = mockReplace.mock.calls[mockReplace.mock.calls.length - 1]?.[0] as string;
+        const query = new URLSearchParams(url.split("?")[1] ?? "");
+        expect(query.has("graph_theme")).toBe(false);
+        expect(query.has("graph_subcategory")).toBe(false);
     });
 
     it("artifacts tab renders normally when degradedReason is null", () => {
