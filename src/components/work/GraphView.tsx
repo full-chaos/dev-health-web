@@ -292,7 +292,11 @@ export function GraphView({
     // normalized scope (CHAOS-2431): e.g. ?graph_theme=risk&graph_subcategory=
     // quality.bugfix canonicalizes to graph_theme=risk with the subcategory
     // dropped. writeGraphScope is idempotent, so this only fires when needed.
+    // The review-network tab is NOT theme-scoped, so its canonicalization is
+    // handled by the dedicated strip effect below — skip it here so the two do
+    // not fight (this effect would otherwise keep a valid theme).
     useEffect(() => {
+        if (activeTab === "review-network") return;
         const rawTheme = searchParams.get("graph_theme") ?? "all";
         const rawSubcategory = searchParams.get("graph_subcategory") ?? "all";
         const canonTheme = searchState.theme === "all" ? "all" : searchState.theme;
@@ -301,7 +305,21 @@ export function GraphView({
         if (rawTheme !== canonTheme || rawSubcategory !== canonSubcategory) {
             writeGraphScope(canonTheme, canonSubcategory);
         }
-    }, [searchParams, searchState, writeGraphScope]);
+    }, [activeTab, searchParams, searchState, writeGraphScope]);
+
+    // Review Network is backed by review_edges_daily, which has NO theme
+    // attribution and ignores the filter (CHAOS-2431). A direct/bookmarked URL
+    // like ?tab=review-network&graph_theme=quality would advertise a theme
+    // scope it cannot honor, so self-heal by stripping the params. Idempotent:
+    // only fires when at least one of them is actually present.
+    useEffect(() => {
+        if (activeTab !== "review-network") return;
+        const hasTheme = searchParams.has("graph_theme");
+        const hasSubcategory = searchParams.has("graph_subcategory");
+        if (hasTheme || hasSubcategory) {
+            writeGraphScope("all", "all");
+        }
+    }, [activeTab, searchParams, writeGraphScope]);
 
     const contextOrgId = useOrgId();
     const orgId = filters.scope.ids[0] || contextOrgId || "";

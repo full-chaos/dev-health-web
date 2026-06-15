@@ -938,6 +938,71 @@ describe("GraphView", () => {
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
+    // ── Review Network self-heals theme scope from the URL (CHAOS-2431, round-7) ──
+
+    it("strips graph_theme/graph_subcategory from a direct review-network URL via router.replace", () => {
+        // review_edges_daily has no theme attribution, so a scoped URL is
+        // misleading — it must self-heal to an unscoped URL.
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({
+                tab: "review-network",
+                graph_theme: "quality",
+                graph_subcategory: "quality.bugfix",
+            }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <GraphView
+                filters={filters}
+                activeTab="review-network"
+                reviewEdges={null}
+                reviewEdgesLoading={false}
+                reviewEdgesError={null}
+            />,
+        );
+
+        expect(mockReplace).toHaveBeenCalled();
+        const url = mockReplace.mock.calls[mockReplace.mock.calls.length - 1]?.[0] as string;
+        const query = new URLSearchParams(url.split("?")[1] ?? "");
+        expect(query.has("graph_theme")).toBe(false);
+        expect(query.has("graph_subcategory")).toBe(false);
+        // The tab param (and other non-scope params) are preserved.
+        expect(query.get("tab")).toBe("review-network");
+        // ReviewNetworkView still renders.
+        expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
+    });
+
+    it("does not rewrite the URL on review-network when no theme scope params are present", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ tab: "review-network" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <GraphView
+                filters={filters}
+                activeTab="review-network"
+                reviewEdges={null}
+                reviewEdgesLoading={false}
+                reviewEdgesError={null}
+            />,
+        );
+
+        expect(mockReplace).not.toHaveBeenCalled();
+        expect(screen.getByTestId("review-network-panel")).toBeInTheDocument();
+    });
+
     it("review-network tab renders real reviewer→author edges when provided", () => {
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [],
