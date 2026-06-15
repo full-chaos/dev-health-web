@@ -22,6 +22,7 @@ import { formatNumber } from "@/lib/formatters";
 import {
     INVESTMENT_SUBCATEGORIES,
     INVESTMENT_THEMES,
+    SUBCATEGORY_TO_THEME,
     labelInvestmentKey,
 } from "@/lib/workGraph/taxonomy";
 
@@ -178,13 +179,33 @@ function getGraphSearchState(searchParams: URLSearchParams) {
     const subcategoryParam = searchParams.get("graph_subcategory");
     const themeParam = searchParams.get("graph_theme");
     const connectionParam = searchParams.get("graph_connection");
-    const subcategory = isInvestmentSubcategory(subcategoryParam) ? subcategoryParam : "all";
-    const subcategoryTheme = subcategory === "all" ? null : subcategory.split(".", 1)[0];
-    const theme = isInvestmentTheme(themeParam)
-        ? themeParam
-        : isInvestmentTheme(subcategoryTheme)
-          ? subcategoryTheme
-          : "all";
+
+    // Theme + subcategory are ONE invariant (CHAOS-2431): a subcategory belongs
+    // to exactly one parent theme, so an explicit graph_theme that contradicts a
+    // present graph_subcategory (e.g. theme=risk + subcategory=quality.bugfix)
+    // must never be sent as a conjunctive pair (it yields a false-empty graph).
+    // We normalize here: a valid subcategory implies its parent theme; an
+    // explicit, mismatching theme wins and the stale subcategory is dropped.
+    const rawSubcategory = isInvestmentSubcategory(subcategoryParam) ? subcategoryParam : "all";
+    const subcategoryTheme = rawSubcategory === "all" ? null : SUBCATEGORY_TO_THEME[rawSubcategory];
+    const explicitTheme = isInvestmentTheme(themeParam) ? themeParam : null;
+
+    let theme: string;
+    let subcategory: string;
+    if (rawSubcategory !== "all" && subcategoryTheme) {
+        if (explicitTheme && explicitTheme !== subcategoryTheme) {
+            // Contradiction: keep the explicit theme, drop the mismatched subcategory.
+            theme = explicitTheme;
+            subcategory = "all";
+        } else {
+            // Subcategory present (no theme, or matching theme): its parent theme wins.
+            theme = subcategoryTheme;
+            subcategory = rawSubcategory;
+        }
+    } else {
+        theme = explicitTheme ?? "all";
+        subcategory = "all";
+    }
 
     return {
         theme,
@@ -266,6 +287,21 @@ export function GraphView({
         setConnectionSliceId(searchState.connectionSliceId);
         setSelectedNode(searchState.selectedNode);
     }, [searchState]);
+
+    // Self-heal a stale/bookmarked URL whose raw params disagree with the
+    // normalized scope (CHAOS-2431): e.g. ?graph_theme=risk&graph_subcategory=
+    // quality.bugfix canonicalizes to graph_theme=risk with the subcategory
+    // dropped. writeGraphScope is idempotent, so this only fires when needed.
+    useEffect(() => {
+        const rawTheme = searchParams.get("graph_theme") ?? "all";
+        const rawSubcategory = searchParams.get("graph_subcategory") ?? "all";
+        const canonTheme = searchState.theme === "all" ? "all" : searchState.theme;
+        const canonSubcategory =
+            searchState.subcategory === "all" ? "all" : searchState.subcategory;
+        if (rawTheme !== canonTheme || rawSubcategory !== canonSubcategory) {
+            writeGraphScope(canonTheme, canonSubcategory);
+        }
+    }, [searchParams, searchState, writeGraphScope]);
 
     const contextOrgId = useOrgId();
     const orgId = filters.scope.ids[0] || contextOrgId || "";
@@ -359,14 +395,53 @@ export function GraphView({
         />
     );
 
+    const scopeLabel =
+        subcategory === "all" ? labelInvestmentKey(theme) : labelInvestmentKey(subcategory);
+
+    // Active-scope chip (CHAOS-2431): the theme/subcategory selectors only render
+    // on overview, but dependencies/inflow-outflow/artifacts also query
+    // theme-scoped edges. So on those theme-aware tabs we surface a compact chip
+    // showing the active scope with a Clear action that removes the params from
+    // the URL. Rendered BEFORE the per-tab early-returns so every theme-aware tab
+    // shows it. Overview keeps its full selectors instead.
+    const themeScopeChip =
+        themeFilterActive && activeTab !== "overview" ? (
+            <div
+                data-testid="theme-scope-chip"
+                className="mb-4 flex items-center gap-3 rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1.5 text-xs text-(--ink-muted)"
+            >
+                <span>
+                    Scope: <span className="text-foreground">{scopeLabel}</span>
+                </span>
+                <button
+                    type="button"
+                    onClick={() => handleThemeChange("all")}
+                    className="uppercase tracking-[0.18em] text-(--accent-2)"
+                    aria-label="Clear theme scope"
+                >
+                    Clear
+                </button>
+            </div>
+        ) : null;
+
     // ── Derived table tabs (no force-directed canvas) ───────────────────────────
     if (activeTab === "inflow-outflow") {
         if (!loading && !error && themeDataPreparing) return themeDataPreparingState;
-        return <InflowOutflowView edges={edges} loading={loading} error={error} />;
+        return (
+            <>
+                {themeScopeChip}
+                <InflowOutflowView edges={edges} loading={loading} error={error} />
+            </>
+        );
     }
     if (activeTab === "artifacts") {
         if (!loading && !error && themeDataPreparing) return themeDataPreparingState;
-        return <ArtifactsView edges={edges} loading={loading} error={error} />;
+        return (
+            <>
+                {themeScopeChip}
+                <ArtifactsView edges={edges} loading={loading} error={error} />
+            </>
+        );
     }
     if (activeTab === "review-network") {
         return (
@@ -425,6 +500,9 @@ export function GraphView({
                             </div>
                         </div>
                     </div>
+
+                    {/* On the dependencies tab (no selectors) show the active-scope chip. */}
+                    {themeScopeChip}
 
                     {showConnectionSelector && (
                         <div className="mb-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3 text-xs">

@@ -415,6 +415,101 @@ describe("GraphView", () => {
         });
     });
 
+    // ── Scope normalization (CHAOS-2431, round-6) ───────────────────────────────
+
+    it("normalizes a contradictory theme/subcategory pair: keeps explicit theme, drops mismatched subcategory", () => {
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({
+                graph_theme: "risk",
+                graph_subcategory: "quality.bugfix",
+            }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // The impossible conjunctive pair is never sent: theme=risk, no subcategory.
+        const filtersArg = lastEdgeFilters();
+        expect(filtersArg).toHaveProperty("theme", "risk");
+        expect(filtersArg).not.toHaveProperty("subcategory");
+    });
+
+    it("canonicalizes a stale/bookmarked contradictory URL via router.replace", () => {
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({
+                graph_theme: "risk",
+                graph_subcategory: "quality.bugfix",
+            }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        // The URL self-heals: graph_theme stays risk, the mismatched subcategory is removed.
+        expect(mockReplace).toHaveBeenCalled();
+        const url = mockReplace.mock.calls[mockReplace.mock.calls.length - 1]?.[0] as string;
+        const query = new URLSearchParams(url.split("?")[1] ?? "");
+        expect(query.get("graph_theme")).toBe("risk");
+        expect(query.has("graph_subcategory")).toBe(false);
+    });
+
+    it("preserves a matching theme/subcategory pair without rewriting the URL", () => {
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({
+                graph_theme: "quality",
+                graph_subcategory: "quality.bugfix",
+            }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        expect(lastEdgeFilters()).toMatchObject({
+            theme: "quality",
+            subcategory: "quality.bugfix",
+        });
+        // Already canonical → no self-heal rewrite.
+        expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it("derives the parent theme from a subcategory-only URL", () => {
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({ graph_subcategory: "risk.security" }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        expect(lastEdgeFilters()).toMatchObject({
+            theme: "risk",
+            subcategory: "risk.security",
+        });
+    });
+
     it("renders an empty state naming the active theme filter for a server-filtered set", () => {
         mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
         mockUseWorkGraphEdges.mockReturnValue({
@@ -639,6 +734,83 @@ describe("GraphView", () => {
         expect(screen.getByTestId("artifacts-panel")).toBeInTheDocument();
         expect(screen.getAllByTestId("artifact-row").length).toBeGreaterThanOrEqual(2);
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    // ── Active-scope chip on theme-aware non-overview tabs (CHAOS-2431, round-6) ──
+
+    it("renders an active-scope chip with the scope label on a non-overview tab when filtered", () => {
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({ graph_theme: "risk", graph_subcategory: "risk.security" }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        const chip = screen.getByTestId("theme-scope-chip");
+        expect(chip).toBeInTheDocument();
+        expect(chip).toHaveTextContent(/Scope:/i);
+        expect(chip).toHaveTextContent(/Risk \/ Security/i);
+    });
+
+    it("clear action on the scope chip removes graph_theme and graph_subcategory from the URL", async () => {
+        const user = userEvent.setup();
+        mockUseSearchParams.mockReturnValue(
+            new URLSearchParams({ graph_theme: "risk", graph_subcategory: "risk.security" }),
+        );
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="dependencies" />);
+
+        await user.click(screen.getByRole("button", { name: /clear theme scope/i }));
+
+        expect(mockReplace).toHaveBeenCalled();
+        const url = mockReplace.mock.calls[mockReplace.mock.calls.length - 1]?.[0] as string;
+        const query = new URLSearchParams(url.split("?")[1] ?? "");
+        expect(query.has("graph_theme")).toBe(false);
+        expect(query.has("graph_subcategory")).toBe(false);
+    });
+
+    it("does not render the scope chip when no theme filter is active", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="dependencies" />);
+
+        expect(screen.queryByTestId("theme-scope-chip")).not.toBeInTheDocument();
+    });
+
+    it("does not render the scope chip on the overview tab (selectors are shown there instead)", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "risk" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="overview" />);
+
+        expect(screen.queryByTestId("theme-scope-chip")).not.toBeInTheDocument();
+        // Overview keeps its full Theme selector.
+        expect(screen.getByLabelText(/Theme/i)).toBeInTheDocument();
     });
 
     // ── Degraded fail-safe on non-canvas tabs (CHAOS-2431, round-3) ──────────────
