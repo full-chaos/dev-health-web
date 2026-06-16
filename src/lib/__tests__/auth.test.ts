@@ -427,7 +427,7 @@ describe("jwt callback — token lifecycle", () => {
         expect(first.error).toBeUndefined();
         expect(fetchMock).toHaveBeenCalledTimes(1);
         // Backoff stamped: next attempt is deferred, not permanently skipped.
-        // With jitter the delay is in [base*0.5, base] = [30s, 60s] for failure 1.
+        // With full jitter the delay is in [floor, base] = [5s, 60s] for failure 1.
         const nextDue = (first.last_validated as number) + VALIDATION_INTERVAL;
         expect(nextDue).toBeGreaterThan(Date.now());
         expect(nextDue).toBeLessThanOrEqual(Date.now() + VALIDATION_BACKOFF_BASE);
@@ -547,7 +547,7 @@ describe("jwt callback — token lifecycle", () => {
     // CHAOS-2458: jittered exponential backoff — new tests
 
     it("(r) consecutive 429 failures produce escalating (capped) backoff delays", async () => {
-        // Pin Math.random to 1.0 so jitter = delay * 1.0 (upper bound) — makes
+        // Pin Math.random to 1.0 so jitter = cappedDelay (upper bound) — makes
         // the escalation easy to assert without floating-point ambiguity.
         vi.spyOn(Math, "random").mockReturnValue(1.0);
         const fetchMock = vi.fn().mockResolvedValue({
@@ -559,15 +559,15 @@ describe("jwt callback — token lifecycle", () => {
 
         const jwt = getJwtCallback();
 
-        // Failure 1: delay = min(cap, base * 2^0) * 1.0 = 60s
+        // Failure 1: cappedDelay = min(cap, base * 2^0) = 60s; random=1 → delay = floor + 1*(60s-floor) = 60s
         const t1 = validationDueToken();
         const r1 = await jwt({ token: t1, user: null, account: null });
         expect(r1.validation_failures).toBe(1);
         const delay1 = (r1.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
-        expect(delay1).toBeGreaterThanOrEqual(VALIDATION_BACKOFF_BASE * 0.5);
+        expect(delay1).toBeGreaterThanOrEqual(VALIDATION_BACKOFF_BASE - 100);
         expect(delay1).toBeLessThanOrEqual(VALIDATION_BACKOFF_BASE + 100);
 
-        // Failure 2: delay = min(cap, base * 2^1) * 1.0 = 120s
+        // Failure 2: cappedDelay = min(cap, base * 2^1) = 120s; random=1 → delay = 120s
         const t2 = {
             ...r1,
             last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
@@ -577,7 +577,7 @@ describe("jwt callback — token lifecycle", () => {
         const delay2 = (r2.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
         expect(delay2).toBeGreaterThan(delay1);
 
-        // Failure 3: delay = min(cap, base * 2^2) * 1.0 = 240s
+        // Failure 3: cappedDelay = min(cap, base * 2^2) = 240s; random=1 → delay = 240s
         const t3 = {
             ...r2,
             last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
@@ -591,7 +591,7 @@ describe("jwt callback — token lifecycle", () => {
         expect(delay3).toBeLessThanOrEqual(VALIDATION_BACKOFF_CAP + 100);
     });
 
-    it("(s) jitter is applied — delay varies with Math.random", async () => {
+    it("(s) jitter is applied — delay varies with Math.random (full window)", async () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: false,
             status: 429,
@@ -600,26 +600,30 @@ describe("jwt callback — token lifecycle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
+        // failure 1: cappedDelay = base = 60s
+        // full jitter: delay = floor + random * (cappedDelay - floor)
+        //   random=0 → delay = floor (5s)
+        //   random=1 → delay = cappedDelay (60s)
 
-        // Low random → delay near lower bound (base * 0.5)
+        // Low random → delay near floor (5s)
         vi.spyOn(Math, "random").mockReturnValue(0.0);
         const tLow = validationDueToken();
         const rLow = await jwt({ token: tLow, user: null, account: null });
         const delayLow = (rLow.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
 
-        // High random → delay near upper bound (base * 1.0)
+        // High random → delay near cappedDelay (60s)
         vi.spyOn(Math, "random").mockReturnValue(1.0);
         const tHigh = validationDueToken();
         const rHigh = await jwt({ token: tHigh, user: null, account: null });
         const delayHigh = (rHigh.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
 
-        // Lower bound: ~30s (base * 0.5)
-        expect(delayLow).toBeGreaterThanOrEqual(VALIDATION_BACKOFF_BASE * 0.5 - 100);
-        expect(delayLow).toBeLessThanOrEqual(VALIDATION_BACKOFF_BASE * 0.5 + 100);
-        // Upper bound: ~60s (base * 1.0)
-        expect(delayHigh).toBeGreaterThanOrEqual(VALIDATION_BACKOFF_BASE * 0.9);
+        // Lower bound: ~5s (floor)
+        expect(delayLow).toBeGreaterThanOrEqual(4900);
+        expect(delayLow).toBeLessThanOrEqual(5100);
+        // Upper bound: ~60s (cappedDelay = base)
+        expect(delayHigh).toBeGreaterThanOrEqual(VALIDATION_BACKOFF_BASE - 100);
         expect(delayHigh).toBeLessThanOrEqual(VALIDATION_BACKOFF_BASE + 100);
-        // High > Low (jitter spreads the range)
+        // High > Low — full window spread
         expect(delayHigh).toBeGreaterThan(delayLow);
     });
 
@@ -644,7 +648,7 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.validation_failures).toBe(0);
     });
 
-    it("(u) 5 consecutive 429 failures sign the user out (max-failures threshold)", async () => {
+    it("(u) many consecutive 429 failures keep the session recoverable (no forced logout)", async () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: false,
             status: 429,
@@ -653,33 +657,95 @@ describe("jwt callback — token lifecycle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
-        // Token already at 4 failures — one more should trip the threshold
+        // Token already at 9 failures — well past the old threshold of 5
         const token = {
             ...validationDueToken(),
-            validation_failures: 4,
+            validation_failures: 9,
         };
         const result = await jwt({ token, user: null, account: null });
 
-        expect(result.access_token).toBeUndefined();
-        expect(result.refresh_token).toBeUndefined();
-        expect(result.error).toBe("user_invalid");
-        expect(result.validation_failures).toBe(5);
+        // Session must remain recoverable — tokens preserved, no terminal error
+        expect(result.access_token).toBe("valid-access");
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.error).toBeUndefined();
+        expect(result.validation_failures).toBe(10);
+        // Delay is capped at 15 min regardless of failure count
+        const nextDue = (result.last_validated as number) + VALIDATION_INTERVAL;
+        expect(nextDue).toBeLessThanOrEqual(Date.now() + VALIDATION_BACKOFF_CAP + 100);
     });
 
-    it("(v) 5 consecutive network errors sign the user out (max-failures threshold)", async () => {
+    it("(v) many consecutive network errors keep the session recoverable (no forced logout)", async () => {
         const fetchMock = vi.fn().mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
+        // Token already at 9 failures — well past the old threshold of 5
         const token = {
             ...validationDueToken(),
-            validation_failures: 4,
+            validation_failures: 9,
         };
         const result = await jwt({ token, user: null, account: null });
 
-        expect(result.access_token).toBeUndefined();
-        expect(result.refresh_token).toBeUndefined();
-        expect(result.error).toBe("user_invalid");
+        // Session must remain recoverable — tokens preserved, no terminal error
+        expect(result.access_token).toBe("valid-access");
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.error).toBeUndefined();
+        expect(result.validation_failures).toBe(10);
+    });
+
+    it("(x) long run of transient failures then success resets counter and restores normal cadence", async () => {
+        const failMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 503,
+            json: async () => ({ detail: "service unavailable" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", failMock);
+
+        const jwt = getJwtCallback();
+
+        // Simulate 6 consecutive failures — well past the old threshold of 5
+        let tok: Record<string, unknown> = validationDueToken();
+        for (let i = 1; i <= 6; i++) {
+            tok = await jwt({
+                token: {
+                    ...tok,
+                    last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
+                },
+                user: null,
+                account: null,
+            });
+            // Session must remain recoverable throughout
+            expect(tok.access_token).toBe("valid-access");
+            expect(tok.refresh_token).toBe("valid-refresh");
+            expect(tok.error).toBeUndefined();
+            expect(tok.validation_failures).toBe(i);
+        }
+
+        // Backend recovers — next validation succeeds
+        const successMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ valid: true }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", successMock);
+
+        const recovered = await jwt({
+            token: {
+                ...tok,
+                last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
+            },
+            user: null,
+            account: null,
+        });
+
+        // Counter reset, normal 5-min cadence restored
+        expect(recovered.access_token).toBe("valid-access");
+        expect(recovered.refresh_token).toBe("valid-refresh");
+        expect(recovered.error).toBeUndefined();
+        expect(recovered.validation_failures).toBe(0);
+        // last_validated is now (full interval stamp, not a backoff offset)
+        const nextDue = (recovered.last_validated as number) + VALIDATION_INTERVAL;
+        expect(nextDue).toBeGreaterThan(Date.now() + VALIDATION_INTERVAL - 1000);
     });
 
     it("(w) valid:false from /auth/validate still invalidates the session (unchanged)", async () => {
