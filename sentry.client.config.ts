@@ -1,8 +1,5 @@
 import { publicEnv } from "@/lib/config";
-import {
-	getReplayRoutePrefixes,
-	shouldLoadReplayForPath,
-} from "@/lib/sentry/replay";
+import { getReplayRoutePrefixes, shouldLoadReplayForPath } from "@/lib/sentry/replay";
 import { attachBeforeSend } from "@/lib/sentry/scrubber";
 
 import * as Sentry from "@sentry/nextjs";
@@ -31,32 +28,32 @@ import * as Sentry from "@sentry/nextjs";
  *   NEXT_PUBLIC_SENTRY_REPLAY_ROUTES=""       // disables Replay everywhere
  */
 function shouldLoadReplay(): boolean {
-	if (typeof window === "undefined") return false;
-	return shouldLoadReplayForPath(
-		window.location.pathname,
-		getReplayRoutePrefixes(process.env.NEXT_PUBLIC_SENTRY_REPLAY_ROUTES),
-	);
+    if (typeof window === "undefined") return false;
+    return shouldLoadReplayForPath(
+        window.location.pathname,
+        getReplayRoutePrefixes(process.env.NEXT_PUBLIC_SENTRY_REPLAY_ROUTES),
+    );
 }
 
 Sentry.init(
-	attachBeforeSend({
-		dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN,
-		environment: process.env.NODE_ENV,
-		tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-		replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-		replaysOnErrorSampleRate: 1.0,
-		sendDefaultPii: false,
-	}),
+    attachBeforeSend({
+        dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN,
+        environment: process.env.NODE_ENV,
+        tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+        replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+        replaysOnErrorSampleRate: 1.0,
+        sendDefaultPii: false,
+    }),
 );
 
 if (shouldLoadReplay()) {
-	void Sentry.lazyLoadIntegration("replayIntegration")
-		.then((replayIntegration) => {
-			if (replayIntegration) {
-				Sentry.addIntegration(replayIntegration());
-			}
-		})
-		.catch((error) => {
-			console.warn("[sentry] Failed to lazy-load Replay integration", error);
-		});
+    void Sentry.lazyLoadIntegration("replayIntegration")
+        .then((replayIntegration) => {
+            if (replayIntegration) {
+                Sentry.addIntegration(replayIntegration());
+            }
+        })
+        .catch((error) => {
+            console.warn("[sentry] Failed to lazy-load Replay integration", error);
+        });
 }
