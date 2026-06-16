@@ -390,9 +390,12 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.error).toBeUndefined();
     });
 
-    // CHAOS-2232: periodic /auth/validate backoff — a 429/5xx/network failure must
-    // not invalidate the session AND must not retry on every subsequent request.
+    // CHAOS-2232 / CHAOS-2458: periodic /auth/validate backoff — a 429/5xx/network failure must
+    // not invalidate the session AND must not retry on every subsequent request. Backoff is
+    // jittered exponential (base 60s, cap 15min) so concurrent tabs/instances spread out.
     const VALIDATION_INTERVAL = 5 * 60 * 1000;
+    const VALIDATION_BACKOFF_BASE = 60 * 1000;
+    const VALIDATION_BACKOFF_CAP = 15 * 60 * 1000;
 
     function validationDueToken(): Record<string, unknown> {
         return {
@@ -413,16 +416,21 @@ describe("jwt callback — token lifecycle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
-        const first = await jwt({ token: validationDueToken(), user: null, account: null });
+        const first = await jwt({
+            token: validationDueToken(),
+            user: null,
+            account: null,
+        });
 
         expect(first.access_token).toBe("valid-access");
         expect(first.refresh_token).toBe("valid-refresh");
         expect(first.error).toBeUndefined();
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        // Backoff stamped: next attempt is deferred, not permanently skipped
+        // Backoff stamped: next attempt is deferred, not permanently skipped.
+        // With full jitter the delay is in [floor, base] = [5s, 60s] for failure 1.
         const nextDue = (first.last_validated as number) + VALIDATION_INTERVAL;
         expect(nextDue).toBeGreaterThan(Date.now());
-        expect(nextDue).toBeLessThanOrEqual(Date.now() + 60 * 1000);
+        expect(nextDue).toBeLessThanOrEqual(Date.now() + VALIDATION_BACKOFF_BASE);
 
         // Immediate follow-up callback must NOT re-fetch
         const second = await jwt({ token: first, user: null, account: null });
@@ -435,7 +443,11 @@ describe("jwt callback — token lifecycle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
-        const result = await jwt({ token: validationDueToken(), user: null, account: null });
+        const result = await jwt({
+            token: validationDueToken(),
+            user: null,
+            account: null,
+        });
 
         expect(result.access_token).toBe("valid-access");
         expect(result.error).toBeUndefined();
@@ -474,7 +486,11 @@ describe("jwt callback — token lifecycle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
-        const result = await jwt({ token: validationDueToken(), user: null, account: null });
+        const result = await jwt({
+            token: validationDueToken(),
+            user: null,
+            account: null,
+        });
 
         expect(result.access_token).toBeUndefined();
         expect(result.refresh_token).toBeUndefined();
@@ -490,7 +506,11 @@ describe("jwt callback — token lifecycle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
-        const result = await jwt({ token: validationDueToken(), user: null, account: null });
+        const result = await jwt({
+            token: validationDueToken(),
+            user: null,
+            account: null,
+        });
 
         expect(result.access_token).toBeUndefined();
         expect(result.refresh_token).toBeUndefined();
@@ -506,18 +526,246 @@ describe("jwt callback — token lifecycle", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         const jwt = getJwtCallback();
-        const first = await jwt({ token: validationDueToken(), user: null, account: null });
+        const first = await jwt({
+            token: validationDueToken(),
+            user: null,
+            account: null,
+        });
 
         expect(first.access_token).toBe("valid-access");
         expect(first.refresh_token).toBe("valid-refresh");
         expect(first.error).toBeUndefined();
         const nextDue = (first.last_validated as number) + VALIDATION_INTERVAL;
         expect(nextDue).toBeGreaterThan(Date.now());
-        expect(nextDue).toBeLessThanOrEqual(Date.now() + 60 * 1000);
+        expect(nextDue).toBeLessThanOrEqual(Date.now() + VALIDATION_BACKOFF_BASE);
 
         // Immediate follow-up callback must NOT re-fetch
         await jwt({ token: first, user: null, account: null });
         expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    // CHAOS-2458: jittered exponential backoff — new tests
+
+    it("(r) consecutive 429 failures produce escalating (capped) backoff delays", async () => {
+        // Pin Math.random to 1.0 so jitter = cappedDelay (upper bound) — makes
+        // the escalation easy to assert without floating-point ambiguity.
+        vi.spyOn(Math, "random").mockReturnValue(1.0);
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 429,
+            json: async () => ({ detail: "rate limited" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+
+        // Failure 1: cappedDelay = min(cap, base * 2^0) = 60s; random=1 → delay = floor + 1*(60s-floor) = 60s
+        const t1 = validationDueToken();
+        const r1 = await jwt({ token: t1, user: null, account: null });
+        expect(r1.validation_failures).toBe(1);
+        const delay1 = (r1.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
+        expect(delay1).toBeGreaterThanOrEqual(VALIDATION_BACKOFF_BASE - 100);
+        expect(delay1).toBeLessThanOrEqual(VALIDATION_BACKOFF_BASE + 100);
+
+        // Failure 2: cappedDelay = min(cap, base * 2^1) = 120s; random=1 → delay = 120s
+        const t2 = {
+            ...r1,
+            last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
+        };
+        const r2 = await jwt({ token: t2, user: null, account: null });
+        expect(r2.validation_failures).toBe(2);
+        const delay2 = (r2.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
+        expect(delay2).toBeGreaterThan(delay1);
+
+        // Failure 3: cappedDelay = min(cap, base * 2^2) = 240s; random=1 → delay = 240s
+        const t3 = {
+            ...r2,
+            last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
+        };
+        const r3 = await jwt({ token: t3, user: null, account: null });
+        expect(r3.validation_failures).toBe(3);
+        const delay3 = (r3.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
+        expect(delay3).toBeGreaterThan(delay2);
+
+        // Cap: delay never exceeds VALIDATION_BACKOFF_CAP (15 min)
+        expect(delay3).toBeLessThanOrEqual(VALIDATION_BACKOFF_CAP + 100);
+    });
+
+    it("(s) jitter is applied — delay varies with Math.random (full window)", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 429,
+            json: async () => ({ detail: "rate limited" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        // failure 1: cappedDelay = base = 60s
+        // full jitter: delay = floor + random * (cappedDelay - floor)
+        //   random=0 → delay = floor (5s)
+        //   random=1 → delay = cappedDelay (60s)
+
+        // Low random → delay near floor (5s)
+        vi.spyOn(Math, "random").mockReturnValue(0.0);
+        const tLow = validationDueToken();
+        const rLow = await jwt({ token: tLow, user: null, account: null });
+        const delayLow = (rLow.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
+
+        // High random → delay near cappedDelay (60s)
+        vi.spyOn(Math, "random").mockReturnValue(1.0);
+        const tHigh = validationDueToken();
+        const rHigh = await jwt({ token: tHigh, user: null, account: null });
+        const delayHigh = (rHigh.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
+
+        // Lower bound: ~5s (floor)
+        expect(delayLow).toBeGreaterThanOrEqual(4900);
+        expect(delayLow).toBeLessThanOrEqual(5100);
+        // Upper bound: ~60s (cappedDelay = base)
+        expect(delayHigh).toBeGreaterThanOrEqual(VALIDATION_BACKOFF_BASE - 100);
+        expect(delayHigh).toBeLessThanOrEqual(VALIDATION_BACKOFF_BASE + 100);
+        // High > Low — full window spread
+        expect(delayHigh).toBeGreaterThan(delayLow);
+    });
+
+    it("(t) success after failures resets the failure counter to 0", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ valid: true }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        // Token that already has 3 accumulated failures
+        const token = {
+            ...validationDueToken(),
+            validation_failures: 3,
+        };
+        const result = await jwt({ token, user: null, account: null });
+
+        expect(result.access_token).toBe("valid-access");
+        expect(result.error).toBeUndefined();
+        expect(result.validation_failures).toBe(0);
+    });
+
+    it("(u) many consecutive 429 failures keep the session recoverable (no forced logout)", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 429,
+            json: async () => ({ detail: "rate limited" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        // Token already at 9 failures — well past the old threshold of 5
+        const token = {
+            ...validationDueToken(),
+            validation_failures: 9,
+        };
+        const result = await jwt({ token, user: null, account: null });
+
+        // Session must remain recoverable — tokens preserved, no terminal error
+        expect(result.access_token).toBe("valid-access");
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.error).toBeUndefined();
+        expect(result.validation_failures).toBe(10);
+        // Delay is capped at 15 min regardless of failure count
+        const nextDue = (result.last_validated as number) + VALIDATION_INTERVAL;
+        expect(nextDue).toBeLessThanOrEqual(Date.now() + VALIDATION_BACKOFF_CAP + 100);
+    });
+
+    it("(v) many consecutive network errors keep the session recoverable (no forced logout)", async () => {
+        const fetchMock = vi.fn().mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        // Token already at 9 failures — well past the old threshold of 5
+        const token = {
+            ...validationDueToken(),
+            validation_failures: 9,
+        };
+        const result = await jwt({ token, user: null, account: null });
+
+        // Session must remain recoverable — tokens preserved, no terminal error
+        expect(result.access_token).toBe("valid-access");
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.error).toBeUndefined();
+        expect(result.validation_failures).toBe(10);
+    });
+
+    it("(x) long run of transient failures then success resets counter and restores normal cadence", async () => {
+        const failMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 503,
+            json: async () => ({ detail: "service unavailable" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", failMock);
+
+        const jwt = getJwtCallback();
+
+        // Simulate 6 consecutive failures — well past the old threshold of 5
+        let tok: Record<string, unknown> = validationDueToken();
+        for (let i = 1; i <= 6; i++) {
+            tok = await jwt({
+                token: {
+                    ...tok,
+                    last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
+                },
+                user: null,
+                account: null,
+            });
+            // Session must remain recoverable throughout
+            expect(tok.access_token).toBe("valid-access");
+            expect(tok.refresh_token).toBe("valid-refresh");
+            expect(tok.error).toBeUndefined();
+            expect(tok.validation_failures).toBe(i);
+        }
+
+        // Backend recovers — next validation succeeds
+        const successMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ valid: true }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", successMock);
+
+        const recovered = await jwt({
+            token: {
+                ...tok,
+                last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
+            },
+            user: null,
+            account: null,
+        });
+
+        // Counter reset, normal 5-min cadence restored
+        expect(recovered.access_token).toBe("valid-access");
+        expect(recovered.refresh_token).toBe("valid-refresh");
+        expect(recovered.error).toBeUndefined();
+        expect(recovered.validation_failures).toBe(0);
+        // last_validated is now (full interval stamp, not a backoff offset)
+        const nextDue = (recovered.last_validated as number) + VALIDATION_INTERVAL;
+        expect(nextDue).toBeGreaterThan(Date.now() + VALIDATION_INTERVAL - 1000);
+    });
+
+    it("(w) valid:false from /auth/validate still invalidates the session (unchanged)", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ valid: false }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: validationDueToken(),
+            user: null,
+            account: null,
+        });
+
+        expect(result.access_token).toBeUndefined();
+        expect(result.refresh_token).toBeUndefined();
+        expect(result.error).toBe("user_invalid");
     });
 
     // ── Impersonation status sync (CHAOS-2309 / CHAOS-2327 / CHAOS-2328) ───
@@ -618,7 +866,9 @@ describe("jwt callback — token lifecycle", () => {
             user: null,
             account: null,
             trigger: "update",
-            session: { startImpersonation: { status: "active", target_user: { id: "x" } } },
+            session: {
+                startImpersonation: { status: "active", target_user: { id: "x" } },
+            },
         });
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -682,7 +932,11 @@ describe("jwt callback — token lifecycle", () => {
         const jwt = getJwtCallback();
         // Two plain reads within the memo TTL → one backend fetch, but both
         // tokens carry the synced state.
-        await jwt({ token: superuserToken({ id: "admin-q" }), user: null, account: null });
+        await jwt({
+            token: superuserToken({ id: "admin-q" }),
+            user: null,
+            account: null,
+        });
         const second = await jwt({
             token: superuserToken({ id: "admin-q" }),
             user: null,
