@@ -1227,8 +1227,12 @@ export type Query = {
   securityOverview: SecurityOverview;
   /** Compute throughput-based capacity forecast */
   throughputForecast?: Maybe<ThroughputForecast>;
+  /** Server-side artifact ranking (node degree) for the work graph */
+  workGraphArtifacts: WorkGraphArtifactsResult;
   /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
+  /** Server-side inflow/outflow aggregate per node type for the work graph */
+  workGraphFlow: WorkGraphFlowResult;
 };
 
 
@@ -1437,7 +1441,19 @@ export type QueryThroughputForecastArgs = {
 };
 
 
+export type QueryWorkGraphArtifactsArgs = {
+  filters?: InputMaybe<WorkGraphEdgeFilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
 export type QueryWorkGraphEdgesArgs = {
+  filters?: InputMaybe<WorkGraphEdgeFilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryWorkGraphFlowArgs = {
   filters?: InputMaybe<WorkGraphEdgeFilterInput>;
   orgId: Scalars['String']['input'];
 };
@@ -1878,8 +1894,24 @@ export type WindowUnit =
   | 'DAY'
   | 'WEEK';
 
+export type WorkGraphArtifactRow = {
+  __typename?: 'WorkGraphArtifactRow';
+  degree: Scalars['Int']['output'];
+  displayName?: Maybe<Scalars['String']['output']>;
+  evidence?: Maybe<Scalars['String']['output']>;
+  nodeId: Scalars['String']['output'];
+  nodeType: WorkGraphNodeType;
+};
+
+export type WorkGraphArtifactsResult = {
+  __typename?: 'WorkGraphArtifactsResult';
+  degradedReason?: Maybe<Scalars['String']['output']>;
+  rows: Array<WorkGraphArtifactRow>;
+};
+
 export type WorkGraphEdgeFilterInput = {
   edgeType?: InputMaybe<WorkGraphEdgeTypeInput>;
+  edgeTypes?: InputMaybe<Array<WorkGraphEdgeTypeInput>>;
   limit?: Scalars['Int']['input'];
   nodeId?: InputMaybe<Scalars['String']['input']>;
   repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -1962,6 +1994,19 @@ export type WorkGraphEdgesResult = {
   edges: Array<WorkGraphEdgeResult>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
+};
+
+export type WorkGraphFlowResult = {
+  __typename?: 'WorkGraphFlowResult';
+  degradedReason?: Maybe<Scalars['String']['output']>;
+  rows: Array<WorkGraphFlowRow>;
+};
+
+export type WorkGraphFlowRow = {
+  __typename?: 'WorkGraphFlowRow';
+  inflow: Scalars['Int']['output'];
+  nodeType: WorkGraphNodeType;
+  outflow: Scalars['Int']['output'];
 };
 
 export type WorkGraphNodeType =

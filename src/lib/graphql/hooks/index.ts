@@ -17,5 +17,10 @@ export {
     type TaskStatus,
     type SyncProgress,
 } from "./useSubscription";
-export { useWorkGraphEdges, useNodeEdges } from "./useWorkGraph";
+export {
+    useWorkGraphEdges,
+    useWorkGraphFlow,
+    useWorkGraphArtifacts,
+    useNodeEdges,
+} from "./useWorkGraph";
 export { useSecurityOverview, useSecurityAlerts } from "./useSecurity";

@@ -393,6 +393,39 @@ query WorkGraphEdges($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
 }
 `;
 
+// Server-side inflow/outflow aggregate per node type (CHAOS-2442). Replaces the
+// client-side derivation that the Inflow/Outflow tab previously computed from a
+// capped page of edges.
+export const WORK_GRAPH_FLOW_QUERY = `
+query WorkGraphFlow($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
+  workGraphFlow(orgId: $orgId, filters: $filters) {
+    rows {
+      nodeType
+      inflow
+      outflow
+    }
+    degradedReason
+  }
+}
+`;
+
+// Server-side artifact ranking by node degree (CHAOS-2442). Replaces the
+// client-side degree count the Artifacts tab previously derived from edges.
+export const WORK_GRAPH_ARTIFACTS_QUERY = `
+query WorkGraphArtifacts($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
+  workGraphArtifacts(orgId: $orgId, filters: $filters) {
+    rows {
+      nodeType
+      nodeId
+      displayName
+      degree
+      evidence
+    }
+    degradedReason
+  }
+}
+`;
+
 // ==== Security Alert Queries ====
 
 export const SECURITY_OVERVIEW_QUERY = `
