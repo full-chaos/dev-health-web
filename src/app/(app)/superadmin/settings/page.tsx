@@ -76,7 +76,10 @@ export default async function SettingsPage() {
                 <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-center">
                     <p className="text-sm text-(--ink-muted)">
                         To edit these settings, please use the{" "}
-                        <Link href="/admin/settings" className="text-(--accent) hover:underline">
+                        <Link
+                            href="/org/admin/settings"
+                            className="text-(--accent) hover:underline"
+                        >
                             Org Admin Settings
                         </Link>{" "}
                         page or the CLI.

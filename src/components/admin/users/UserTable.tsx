@@ -28,7 +28,7 @@ export function UserTable({ users }: UserTableProps) {
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 font-medium text-foreground",
             render: (user) => (
-                <Link href={`/admin/users/${user.id}`} className="hover:underline">
+                <Link href={`/org/admin/users/${user.id}`} className="hover:underline">
                     {user.full_name || user.username || "N/A"}
                 </Link>
             ),
@@ -82,7 +82,7 @@ export function UserTable({ users }: UserTableProps) {
             className: "px-6 py-4 text-right",
             render: (user) => (
                 <Link
-                    href={`/admin/users/${user.id}/edit`}
+                    href={`/org/admin/users/${user.id}/edit`}
                     className="text-(--accent) hover:underline"
                 >
                     Edit

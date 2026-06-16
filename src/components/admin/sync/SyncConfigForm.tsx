@@ -181,7 +181,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                             if (onSuccessAction) {
                                 onSuccessAction();
                             } else {
-                                router.push("/admin/sync");
+                                router.push("/org/admin/sync");
                             }
                         }
                     } else {
@@ -217,7 +217,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                 if (onSuccessAction) {
                                     onSuccessAction();
                                 } else {
-                                    router.push("/admin/sync");
+                                    router.push("/org/admin/sync");
                                 }
                             }
                         } else if (formData.repos.length > 0) {
@@ -235,7 +235,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                 if (onSuccessAction) {
                                     onSuccessAction();
                                 } else {
-                                    router.push("/admin/sync");
+                                    router.push("/org/admin/sync");
                                 }
                             }
                         } else {
@@ -247,7 +247,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                 if (onSuccessAction) {
                                     onSuccessAction();
                                 } else {
-                                    router.push("/admin/sync");
+                                    router.push("/org/admin/sync");
                                 }
                             }
                         }
@@ -277,7 +277,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                 actionsClassName="flex items-center gap-4"
                 actionsStart={
                     <Link
-                        href="/admin/sync"
+                        href="/org/admin/sync"
                         className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
                     >
                         Cancel
@@ -355,7 +355,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                     {filteredCredentials.length === 0 && !initialData && (
                         <div className="mt-1 flex items-center gap-1 text-xs text-amber-500">
                             <span>No credentials found for this provider.</span>
-                            <Link href="/admin/integrations" className="underline">
+                            <Link href="/org/admin/integrations" className="underline">
                                 Add one first
                             </Link>
                             <span>or</span>

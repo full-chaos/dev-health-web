@@ -61,7 +61,7 @@ export function TeamForm({
             actionsClassName="flex items-center gap-4"
             actionsStart={
                 <Link
-                    href="/admin/teams"
+                    href="/org/admin/teams"
                     className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
                 >
                     Cancel

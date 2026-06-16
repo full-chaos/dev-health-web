@@ -26,7 +26,7 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
             className: "px-6 py-4 font-medium text-foreground",
             render: (identity) => (
                 <Link
-                    href={`/admin/identities/${identity.canonical_id}/edit`}
+                    href={`/org/admin/identities/${identity.canonical_id}/edit`}
                     className="hover:underline"
                 >
                     {identity.canonical_id}
@@ -59,7 +59,7 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
                         {teamIds.map((teamId) => (
                             <Link
                                 key={teamId}
-                                href={`/admin/teams/${teamId}/edit`}
+                                href={`/org/admin/teams/${teamId}/edit`}
                                 className="text-(--accent) hover:underline"
                             >
                                 {teamId}
@@ -101,7 +101,7 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
             render: (identity) => (
                 <div className="flex justify-end gap-3">
                     <Link
-                        href={`/admin/identities/${identity.canonical_id}/edit`}
+                        href={`/org/admin/identities/${identity.canonical_id}/edit`}
                         className="text-(--accent) hover:underline"
                     >
                         Edit

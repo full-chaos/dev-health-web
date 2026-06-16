@@ -27,7 +27,7 @@ export async function createSyncConfig(data: SyncConfigCreate): Promise<ActionRe
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.syncConfigs.create(data, token, orgId);
-        revalidatePath("/admin/sync");
+        revalidatePath("/org/admin/sync");
         return result;
     });
 }
@@ -51,7 +51,7 @@ export async function batchCreateSyncConfigs(
         const normalized: SyncConfigBatchCreate =
             "base" in data ? { ...data.base, repos: data.repos } : data;
         const result = await adminApi.syncConfigs.batchCreate(normalized, token, orgId);
-        revalidatePath("/admin/sync");
+        revalidatePath("/org/admin/sync");
         return result;
     });
 }
@@ -70,8 +70,8 @@ export async function updateSyncConfig(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.syncConfigs.update(id, data, token, orgId);
-        revalidatePath("/admin/sync");
-        revalidatePath(`/admin/sync/${id}`);
+        revalidatePath("/org/admin/sync");
+        revalidatePath(`/org/admin/sync/${id}`);
         return result;
     });
 }
@@ -84,7 +84,7 @@ export async function triggerBackfill(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const res = await adminApi.syncConfigs.backfill(configId, { since, before }, token, orgId);
-        revalidatePath("/admin/sync");
+        revalidatePath("/org/admin/sync");
         return res;
     });
 }
@@ -100,7 +100,7 @@ export async function deleteSyncConfig(id: string): Promise<ActionResult<void>> 
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.syncConfigs.delete(id, token, orgId);
-        revalidatePath("/admin/sync");
+        revalidatePath("/org/admin/sync");
         return result;
     });
 }
@@ -109,8 +109,8 @@ export async function triggerSync(id: string): Promise<ActionResult<void>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.syncConfigs.trigger(id, token, orgId);
-        revalidatePath("/admin/sync");
-        revalidatePath(`/admin/sync/${id}`);
+        revalidatePath("/org/admin/sync");
+        revalidatePath(`/org/admin/sync/${id}`);
         return result;
     });
 }

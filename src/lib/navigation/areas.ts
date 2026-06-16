@@ -680,24 +680,24 @@ export const navAreas: readonly NavArea[] = [
     {
         id: "admin",
         label: "Admin",
-        href: "/admin",
+        href: "/org/admin",
         placement: "utility",
-        // `/data-health` (Data Confidence) is an Admin destination outside `/admin`.
-        ownedPathPrefixes: ["/admin", "/settings", "/data-health"],
+        // `/data-health` (Data Confidence) is an Admin destination outside `/org/admin`.
+        ownedPathPrefixes: ["/org/admin", "/settings", "/data-health"],
         legacyActiveIds: ["admin", "settings", "data-health"],
         hubItems: [],
         children: [
             {
                 id: "organization",
                 label: "Organization",
-                path: "/admin",
+                path: "/org/admin",
                 navVisible: true,
                 exact: true,
             },
             {
                 id: "connections",
                 label: "Connections",
-                path: "/admin/sync",
+                path: "/org/admin/sync",
                 navVisible: true,
             },
             {
@@ -715,7 +715,7 @@ export const navAreas: readonly NavArea[] = [
             {
                 id: "billing",
                 label: "Billing",
-                path: "/admin/billing",
+                path: "/org/admin/billing",
                 navVisible: false,
                 preview: true,
             },

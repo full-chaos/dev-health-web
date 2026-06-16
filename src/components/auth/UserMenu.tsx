@@ -76,7 +76,7 @@ export function UserMenu() {
                             Preferences
                         </Link>
                         <Link
-                            href="/admin"
+                            href="/org/admin"
                             className="cursor-pointer block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
                             onClick={() => setIsOpen(false)}
                         >

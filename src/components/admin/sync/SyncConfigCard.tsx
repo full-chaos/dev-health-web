@@ -75,7 +75,7 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
 
     return (
         <Link
-            href={`/admin/sync/${config.id}`}
+            href={`/org/admin/sync/${config.id}`}
             className="block cursor-pointer rounded-xl border border-(--card-stroke) bg-(--card-80) p-6 transition-all hover:border-(--card-stroke-hover)"
         >
             <div className="flex items-start justify-between">

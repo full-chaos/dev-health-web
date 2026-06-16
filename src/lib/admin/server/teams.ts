@@ -90,7 +90,7 @@ export async function approveTeamChanges(
             token,
             orgId,
         );
-        revalidatePath("/admin/teams");
+        revalidatePath("/org/admin/teams");
         return result;
     });
 }
@@ -109,7 +109,7 @@ export async function dismissTeamChanges(
             token,
             orgId,
         );
-        revalidatePath("/admin/teams");
+        revalidatePath("/org/admin/teams");
         return result;
     });
 }

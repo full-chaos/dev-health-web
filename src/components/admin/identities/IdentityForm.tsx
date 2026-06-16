@@ -105,7 +105,7 @@ export function IdentityForm({
             actionsClassName="flex items-center gap-4"
             actionsStart={
                 <Link
-                    href="/admin/identities"
+                    href="/org/admin/identities"
                     className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
                 >
                     Cancel
