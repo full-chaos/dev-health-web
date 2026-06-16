@@ -1063,6 +1063,12 @@ type Query {
   """Query work graph edges with optional filters"""
   workGraphEdges(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphEdgesResult!
 
+  """Per-node-type inflow/outflow over the full work graph"""
+  workGraphFlow(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphFlowResult!
+
+  """Top-N work graph nodes ranked by degree over the full graph"""
+  workGraphArtifacts(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphArtifactsResult!
+
   """Paginated list of security alerts"""
   securityAlerts(orgId: String!, filters: SecurityAlertFilterInput = null, pagination: SecurityPaginationInput = null): SecurityAlertConnection!
 
@@ -1563,11 +1569,25 @@ enum WindowUnit {
   CYCLE
 }
 
+type WorkGraphArtifactRow {
+  nodeType: WorkGraphNodeType!
+  nodeId: String!
+  displayName: String
+  degree: Int!
+  evidence: String
+}
+
+type WorkGraphArtifactsResult {
+  rows: [WorkGraphArtifactRow!]!
+  degradedReason: String
+}
+
 input WorkGraphEdgeFilterInput {
   repoIds: [String!] = null
   sourceType: WorkGraphNodeTypeInput = null
   targetType: WorkGraphNodeTypeInput = null
   edgeType: WorkGraphEdgeTypeInput = null
+  edgeTypes: [WorkGraphEdgeTypeInput!] = null
   nodeId: String = null
   theme: String = null
   subcategory: String = null
@@ -1647,6 +1667,17 @@ type WorkGraphEdgesResult {
   totalCount: Int!
   pageInfo: PageInfo!
   degradedReason: String
+}
+
+type WorkGraphFlowResult {
+  rows: [WorkGraphFlowRow!]!
+  degradedReason: String
+}
+
+type WorkGraphFlowRow {
+  nodeType: WorkGraphNodeType!
+  inflow: Int!
+  outflow: Int!
 }
 
 enum WorkGraphNodeType {

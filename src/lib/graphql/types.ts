@@ -547,6 +547,14 @@ export interface WorkGraphEdgeFilterInput {
     sourceType?: WorkGraphNodeType;
     targetType?: WorkGraphNodeType;
     edgeType?: WorkGraphEdgeType;
+    /**
+     * Plural edge-type filter (CHAOS-2442). When set, the backend returns only
+     * edges whose type is in this list, applied BEFORE the edge LIMIT — so a
+     * narrow slice (e.g. dependency edges) can't be starved by a capped page
+     * dominated by other edge types. Keep the singular `edgeType` for callers
+     * that only need one type.
+     */
+    edgeTypes?: WorkGraphEdgeType[];
     nodeId?: string;
     theme?: string;
     subcategory?: string;
@@ -568,6 +576,46 @@ export interface WorkGraphEdgesResult {
 
 export interface WorkGraphEdgesQueryResponse {
     workGraphEdges: WorkGraphEdgesResult;
+}
+
+// ==== Work Graph aggregate queries (CHAOS-2442) ====
+//
+// Two true server-side aggregates so the Inflow/Outflow and Artifacts tabs no
+// longer derive counts from a capped page of edges (which, for reference-heavy
+// orgs, was dominated by `references` edges and produced degenerate results).
+
+export interface WorkGraphFlowRow {
+    nodeType: WorkGraphNodeType;
+    inflow: number;
+    outflow: number;
+}
+
+export interface WorkGraphFlowResult {
+    rows: WorkGraphFlowRow[];
+    /** Same fail-safe contract as WorkGraphEdgesResult (CHAOS-2431). */
+    degradedReason?: string | null;
+}
+
+export interface WorkGraphFlowQueryResponse {
+    workGraphFlow: WorkGraphFlowResult;
+}
+
+export interface WorkGraphArtifactRow {
+    nodeType: WorkGraphNodeType;
+    nodeId: string;
+    displayName?: string | null;
+    degree: number;
+    evidence?: string | null;
+}
+
+export interface WorkGraphArtifactsResult {
+    rows: WorkGraphArtifactRow[];
+    /** Same fail-safe contract as WorkGraphEdgesResult (CHAOS-2431). */
+    degradedReason?: string | null;
+}
+
+export interface WorkGraphArtifactsQueryResponse {
+    workGraphArtifacts: WorkGraphArtifactsResult;
 }
 
 export type AIWorkflowRootTypeInput = "ISSUE" | "PR" | "WORK_UNIT";

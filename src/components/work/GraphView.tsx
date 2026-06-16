@@ -6,12 +6,15 @@ import Link from "next/link";
 
 import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
 import { DataState } from "@/components/ui/DataState";
-import { useWorkGraphEdges } from "@/lib/graphql/hooks";
+import { EntityLabel } from "@/components/labels/EntityLabel";
+import { useWorkGraphEdges, useWorkGraphFlow, useWorkGraphArtifacts } from "@/lib/graphql/hooks";
 import type {
     WorkGraphEdge,
     WorkGraphEdgeFilterInput,
     WorkGraphEdgeType,
     WorkGraphNodeType,
+    WorkGraphFlowRow,
+    WorkGraphArtifactRow,
 } from "@/lib/graphql/types";
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -328,19 +331,65 @@ export function GraphView({
     // outside the edge cap and produce a false-empty graph. We therefore pass
     // the active theme/subcategory (when not "all") straight into the query
     // variables instead of filtering the fetched page client-side.
+    // Only the explorer tabs (overview / dependencies) consume the raw edge
+    // page; inflow-outflow / artifacts now fetch their own server-side
+    // aggregates (CHAOS-2442) and review-network uses pre-fetched review edges.
+    const graphTabActive = activeTab === "overview" || activeTab === "dependencies";
     const edgeFilters = useMemo<WorkGraphEdgeFilterInput>(
         () => ({
             repoIds: filters.what?.repos,
             limit: GRAPH_EDGE_QUERY_LIMIT,
             ...(theme !== "all" ? { theme } : {}),
             ...(subcategory !== "all" ? { subcategory } : {}),
+            // Dependencies tab (CHAOS-2442): scope the edge query to dependency
+            // edge types SERVER-SIDE so they arrive pre-filtered before the LIMIT
+            // and can never be starved by a reference-heavy capped page. The
+            // client-side DEPENDENCY_EDGE_TYPES filter below is kept only as a
+            // harmless safety net. The overview tab keeps the broad set.
+            ...(activeTab === "dependencies" ? { edgeTypes: DEPENDENCY_EDGE_TYPES } : {}),
         }),
-        [filters.what?.repos, theme, subcategory],
+        [filters.what?.repos, theme, subcategory, activeTab],
     );
     const { edges, loading, error, totalCount, degradedReason } = useWorkGraphEdges({
         orgId,
         filters: edgeFilters,
-        pause: !orgId,
+        pause: !orgId || !graphTabActive,
+    });
+
+    // Aggregate queries backing the derived table tabs (CHAOS-2442). Both share
+    // the org/repo/theme scope; artifacts additionally caps to the top 50 rows.
+    // Each is paused unless its tab is active so we never issue a needless fetch.
+    const aggregateFilters = useMemo<WorkGraphEdgeFilterInput>(
+        () => ({
+            repoIds: filters.what?.repos,
+            ...(theme !== "all" ? { theme } : {}),
+            ...(subcategory !== "all" ? { subcategory } : {}),
+        }),
+        [filters.what?.repos, theme, subcategory],
+    );
+    const artifactFilters = useMemo<WorkGraphEdgeFilterInput>(
+        () => ({ ...aggregateFilters, limit: 50 }),
+        [aggregateFilters],
+    );
+    const {
+        rows: flowRows,
+        loading: flowLoading,
+        error: flowError,
+        degradedReason: flowDegradedReason,
+    } = useWorkGraphFlow({
+        orgId,
+        filters: aggregateFilters,
+        pause: !orgId || activeTab !== "inflow-outflow",
+    });
+    const {
+        rows: artifactRows,
+        loading: artifactsLoading,
+        error: artifactsError,
+        degradedReason: artifactsDegradedReason,
+    } = useWorkGraphArtifacts({
+        orgId,
+        filters: artifactFilters,
+        pause: !orgId || activeTab !== "artifacts",
     });
 
     // The Overview tab honours the in-explorer connection-type selector; the
@@ -448,7 +497,12 @@ export function GraphView({
     // while the membership index is preparing would have no way to clear the
     // scope — the fail-safe would be a dead-end.
     if (activeTab === "inflow-outflow") {
-        if (!loading && !error && themeDataPreparing) {
+        // Degraded fail-safe now reads the aggregate query's degradedReason
+        // (CHAOS-2442): the inflow/outflow rows come from workGraphFlow, so its
+        // MEMBERSHIP_NOT_MATERIALIZED signal is what surfaces the prepared state.
+        const flowPreparing =
+            themeFilterActive && flowDegradedReason === "MEMBERSHIP_NOT_MATERIALIZED";
+        if (!flowLoading && !flowError && flowPreparing) {
             return (
                 <>
                     {themeScopeChip}
@@ -459,12 +513,14 @@ export function GraphView({
         return (
             <>
                 {themeScopeChip}
-                <InflowOutflowView edges={edges} loading={loading} error={error} />
+                <InflowOutflowView rows={flowRows} loading={flowLoading} error={flowError} />
             </>
         );
     }
     if (activeTab === "artifacts") {
-        if (!loading && !error && themeDataPreparing) {
+        const artifactsPreparing =
+            themeFilterActive && artifactsDegradedReason === "MEMBERSHIP_NOT_MATERIALIZED";
+        if (!artifactsLoading && !artifactsError && artifactsPreparing) {
             return (
                 <>
                     {themeScopeChip}
@@ -475,7 +531,11 @@ export function GraphView({
         return (
             <>
                 {themeScopeChip}
-                <ArtifactsView edges={edges} loading={loading} error={error} />
+                <ArtifactsView
+                    rows={artifactRows}
+                    loading={artifactsLoading}
+                    error={artifactsError}
+                />
             </>
         );
     }
@@ -690,28 +750,23 @@ export function GraphView({
 // Inflow / Outflow tab — relationship direction by entity type
 // ---------------------------------------------------------------------------
 
-type DerivedViewProps = {
-    edges: WorkGraphEdge[];
+type InflowOutflowViewProps = {
+    rows: WorkGraphFlowRow[];
     loading: boolean;
     error: { message: string } | null;
 };
 
-function InflowOutflowView({ edges, loading, error }: DerivedViewProps) {
-    const rows = useMemo(() => {
-        const inflow = new Map<WorkGraphNodeType, number>();
-        const outflow = new Map<WorkGraphNodeType, number>();
-        for (const edge of edges) {
-            outflow.set(edge.sourceType, (outflow.get(edge.sourceType) ?? 0) + 1);
-            inflow.set(edge.targetType, (inflow.get(edge.targetType) ?? 0) + 1);
-        }
-        return NODE_TYPES.map((type) => ({
-            type,
-            inflow: inflow.get(type) ?? 0,
-            outflow: outflow.get(type) ?? 0,
-        }))
-            .filter((row) => row.inflow > 0 || row.outflow > 0)
-            .sort((a, b) => b.inflow + b.outflow - (a.inflow + a.outflow));
-    }, [edges]);
+function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowViewProps) {
+    // Rows now come from the server-side workGraphFlow aggregate (CHAOS-2442),
+    // so they are no longer derived from a capped edge page. We only drop
+    // all-zero rows and rank by total volume for a stable, readable order.
+    const rows = useMemo(
+        () =>
+            serverRows
+                .filter((row) => row.inflow > 0 || row.outflow > 0)
+                .sort((a, b) => b.inflow + b.outflow - (a.inflow + a.outflow)),
+        [serverRows],
+    );
 
     const max = rows.reduce((m, r) => Math.max(m, r.inflow, r.outflow), 1);
 
@@ -755,12 +810,12 @@ function InflowOutflowView({ edges, loading, error }: DerivedViewProps) {
                         <tbody>
                             {rows.map((row) => (
                                 <tr
-                                    key={row.type}
+                                    key={row.nodeType}
                                     data-testid="inflow-outflow-row"
                                     className="border-t border-(--card-stroke)/60"
                                 >
                                     <td className="px-5 py-3 align-middle font-medium">
-                                        {NODE_TYPE_LABELS[row.type]}
+                                        {NODE_TYPE_LABELS[row.nodeType]}
                                     </td>
                                     <td className="px-5 py-3 text-right tabular-nums">
                                         {formatNumber(row.inflow)}
@@ -800,36 +855,13 @@ function InflowOutflowView({ edges, loading, error }: DerivedViewProps) {
 // Artifacts tab — distinct entities in the graph and how connected they are
 // ---------------------------------------------------------------------------
 
-function ArtifactsView({ edges, loading, error }: DerivedViewProps) {
-    const rows = useMemo(() => {
-        const counts = new Map<
-            string,
-            {
-                type: WorkGraphNodeType;
-                id: string;
-                degree: number;
-                evidence: string | null;
-            }
-        >();
-        const bump = (type: WorkGraphNodeType, id: string, evidence: string | null) => {
-            const key = `${type}:${id}`;
-            const existing = counts.get(key);
-            if (existing) {
-                existing.degree += 1;
-                if (!existing.evidence && evidence) existing.evidence = evidence;
-            } else {
-                counts.set(key, { type, id, degree: 1, evidence });
-            }
-        };
-        for (const edge of edges) {
-            bump(edge.sourceType, edge.sourceId, edge.evidence ?? null);
-            bump(edge.targetType, edge.targetId, edge.evidence ?? null);
-        }
-        return Array.from(counts.values())
-            .sort((a, b) => b.degree - a.degree)
-            .slice(0, 50);
-    }, [edges]);
+type ArtifactsViewProps = {
+    rows: WorkGraphArtifactRow[];
+    loading: boolean;
+    error: { message: string } | null;
+};
 
+function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
     return (
         <section
             className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
@@ -870,18 +902,42 @@ function ArtifactsView({ edges, loading, error }: DerivedViewProps) {
                         <tbody>
                             {rows.map((row) => (
                                 <tr
-                                    key={`${row.type}:${row.id}`}
+                                    key={`${row.nodeType}:${row.nodeId}`}
                                     data-testid="artifact-row"
                                     className="border-t border-(--card-stroke)/60"
                                 >
                                     <td className="px-5 py-3 align-middle text-(--ink-muted)">
-                                        {NODE_TYPE_LABELS[row.type]}
+                                        {NODE_TYPE_LABELS[row.nodeType]}
                                     </td>
-                                    <td
-                                        className="px-5 py-3 align-middle font-mono text-[0.82em]"
-                                        title={row.id}
-                                    >
-                                        {row.id}
+                                    <td className="px-5 py-3 align-middle text-[0.82em]">
+                                        {/*
+                                          A7/A8 render-safety (CHAOS-2442 review):
+                                          the backend returns displayName=null for
+                                          unresolvable/opaque node ids precisely so
+                                          the UI never leaks a bare id. Branch on
+                                          that authoritative signal — do NOT fall
+                                          back to nodeId (in text OR title) when
+                                          unresolved. Resolved rows keep nodeId as
+                                          a traceability tooltip via EntityLabel.
+                                          Trim first: a whitespace-only displayName
+                                          is NOT a resolved name (EntityLabel would
+                                          trim it away and normalize the id back in).
+                                        */}
+                                        {row.displayName?.trim() ? (
+                                            <EntityLabel
+                                                id={row.nodeId}
+                                                displayName={row.displayName.trim()}
+                                                className="font-mono"
+                                                data-testid="artifact-entity"
+                                            />
+                                        ) : (
+                                            <EntityLabel
+                                                fallback="Unresolved"
+                                                showUnresolvedBadge={false}
+                                                className="italic text-(--ink-muted)"
+                                                data-testid="artifact-entity"
+                                            />
+                                        )}
                                     </td>
                                     <td className="px-5 py-3 text-right tabular-nums">
                                         {formatNumber(row.degree)}

@@ -1,9 +1,17 @@
 import { useQuery } from "urql";
-import { WORK_GRAPH_EDGES_QUERY } from "../queries";
+import {
+    WORK_GRAPH_EDGES_QUERY,
+    WORK_GRAPH_FLOW_QUERY,
+    WORK_GRAPH_ARTIFACTS_QUERY,
+} from "../queries";
 import type {
     WorkGraphEdge,
     WorkGraphEdgeFilterInput,
     WorkGraphEdgesResult,
+    WorkGraphFlowResult,
+    WorkGraphFlowRow,
+    WorkGraphArtifactsResult,
+    WorkGraphArtifactRow,
     PageInfo,
 } from "../types";
 
@@ -44,6 +52,74 @@ export function useWorkGraphEdges(options: UseWorkGraphEdgesOptions): UseWorkGra
         loading: result.fetching,
         error: result.error ?? null,
         degradedReason: result.data?.workGraphEdges?.degradedReason ?? null,
+        refetch: reexecute,
+    };
+}
+
+// ── Aggregate hooks (CHAOS-2442) ────────────────────────────────────────────
+// The Inflow/Outflow and Artifacts tabs fetch true server-side aggregates
+// instead of deriving from a capped page of edges. Both mirror
+// useWorkGraphEdges: same options (orgId, filters, pause), cache-and-network,
+// and surface rows + loading + error + degradedReason.
+
+interface UseWorkGraphAggregateOptions {
+    orgId: string;
+    filters?: WorkGraphEdgeFilterInput;
+    pause?: boolean;
+}
+
+interface UseWorkGraphFlowResult {
+    rows: WorkGraphFlowRow[];
+    loading: boolean;
+    error: Error | null;
+    degradedReason: string | null;
+    refetch: () => void;
+}
+
+export function useWorkGraphFlow(options: UseWorkGraphAggregateOptions): UseWorkGraphFlowResult {
+    const { orgId, filters, pause = false } = options;
+
+    const [result, reexecute] = useQuery<{ workGraphFlow: WorkGraphFlowResult }>({
+        query: WORK_GRAPH_FLOW_QUERY,
+        variables: { orgId, filters },
+        pause,
+        requestPolicy: "cache-and-network",
+    });
+
+    return {
+        rows: result.data?.workGraphFlow?.rows ?? [],
+        loading: result.fetching,
+        error: result.error ?? null,
+        degradedReason: result.data?.workGraphFlow?.degradedReason ?? null,
+        refetch: reexecute,
+    };
+}
+
+interface UseWorkGraphArtifactsResult {
+    rows: WorkGraphArtifactRow[];
+    loading: boolean;
+    error: Error | null;
+    degradedReason: string | null;
+    refetch: () => void;
+}
+
+export function useWorkGraphArtifacts(
+    options: UseWorkGraphAggregateOptions,
+): UseWorkGraphArtifactsResult {
+    const { orgId, filters, pause = false } = options;
+
+    const [result, reexecute] = useQuery<{ workGraphArtifacts: WorkGraphArtifactsResult }>({
+        query: WORK_GRAPH_ARTIFACTS_QUERY,
+        variables: { orgId, filters },
+        pause,
+        requestPolicy: "cache-and-network",
+    });
+
+    return {
+        rows: result.data?.workGraphArtifacts?.rows ?? [],
+        loading: result.fetching,
+        error: result.error ?? null,
+        degradedReason: result.data?.workGraphArtifacts?.degradedReason ?? null,
         refetch: reexecute,
     };
 }

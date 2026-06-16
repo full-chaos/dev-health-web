@@ -908,6 +908,61 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         });
     }
 
+    // Work graph inflow/outflow aggregate (CHAOS-2442). The Inflow/Outflow tab
+    // now calls workGraphFlow instead of deriving from the capped edge page, so
+    // the mock must serve it directly. nodeType values are UPPERCASE enum names.
+    if (query.includes("workGraphFlow") || query.includes("WorkGraphFlow")) {
+        return HttpResponse.json({
+            data: {
+                workGraphFlow: {
+                    rows: [
+                        { nodeType: "ISSUE", inflow: 18, outflow: 42 },
+                        { nodeType: "PR", inflow: 37, outflow: 21 },
+                        { nodeType: "COMMIT", inflow: 24, outflow: 15 },
+                        { nodeType: "FILE", inflow: 31, outflow: 4 },
+                    ],
+                    degradedReason: null,
+                },
+            },
+        });
+    }
+
+    // Work graph artifact ranking aggregate (CHAOS-2442). The Artifacts tab now
+    // calls workGraphArtifacts (server-side node-degree ranking) instead of
+    // deriving degree from the capped edge page.
+    if (query.includes("workGraphArtifacts") || query.includes("WorkGraphArtifacts")) {
+        return HttpResponse.json({
+            data: {
+                workGraphArtifacts: {
+                    rows: [
+                        {
+                            nodeType: "ISSUE",
+                            nodeId: "PROJ-101",
+                            displayName: "PROJ-101: Launch onboarding",
+                            degree: 7,
+                            evidence: "Fixes #101",
+                        },
+                        {
+                            nodeType: "PR",
+                            nodeId: "PR-201",
+                            displayName: "github:pr:#201",
+                            degree: 5,
+                            evidence: "Merged after review",
+                        },
+                        {
+                            nodeType: "COMMIT",
+                            nodeId: "abc123",
+                            displayName: null,
+                            degree: 3,
+                            evidence: null,
+                        },
+                    ],
+                    degradedReason: null,
+                },
+            },
+        });
+    }
+
     // Capacity forecast.
     if (query.includes("capacityForecast") || query.includes("CapacityForecast")) {
         return HttpResponse.json({

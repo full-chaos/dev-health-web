@@ -5,14 +5,23 @@ import { GraphView } from "@/components/work/GraphView";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-const { mockUseSearchParams, mockUseWorkGraphEdges, mockUseOrgId, mockReplace, mockUsePathname } =
-    vi.hoisted(() => ({
-        mockUseSearchParams: vi.fn(() => new URLSearchParams()),
-        mockUseWorkGraphEdges: vi.fn(),
-        mockUseOrgId: vi.fn(() => "org-1"),
-        mockReplace: vi.fn(),
-        mockUsePathname: vi.fn(() => "/diagnose/work-graph"),
-    }));
+const {
+    mockUseSearchParams,
+    mockUseWorkGraphEdges,
+    mockUseWorkGraphFlow,
+    mockUseWorkGraphArtifacts,
+    mockUseOrgId,
+    mockReplace,
+    mockUsePathname,
+} = vi.hoisted(() => ({
+    mockUseSearchParams: vi.fn(() => new URLSearchParams()),
+    mockUseWorkGraphEdges: vi.fn(),
+    mockUseWorkGraphFlow: vi.fn(),
+    mockUseWorkGraphArtifacts: vi.fn(),
+    mockUseOrgId: vi.fn(() => "org-1"),
+    mockReplace: vi.fn(),
+    mockUsePathname: vi.fn(() => "/diagnose/work-graph"),
+}));
 
 vi.mock("next/navigation", () => ({
     useSearchParams: mockUseSearchParams,
@@ -22,7 +31,18 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/graphql/hooks", () => ({
     useWorkGraphEdges: mockUseWorkGraphEdges,
+    useWorkGraphFlow: mockUseWorkGraphFlow,
+    useWorkGraphArtifacts: mockUseWorkGraphArtifacts,
 }));
+
+/** Default empty return for the aggregate hooks (overridden per-test as needed). */
+const emptyAggregate = () => ({
+    rows: [],
+    loading: false,
+    error: null,
+    degradedReason: null,
+    refetch: vi.fn(),
+});
 
 vi.mock("@/lib/graphql/provider", () => ({
     useOrgId: mockUseOrgId,
@@ -44,6 +64,10 @@ describe("GraphView", () => {
         vi.clearAllMocks();
         mockUseSearchParams.mockReturnValue(new URLSearchParams());
         mockUsePathname.mockReturnValue("/diagnose/work-graph");
+        // Aggregate hooks default to empty; tests that exercise the
+        // inflow-outflow / artifacts tabs override these as needed.
+        mockUseWorkGraphFlow.mockReturnValue(emptyAggregate());
+        mockUseWorkGraphArtifacts.mockReturnValue(emptyAggregate());
     });
 
     it("shows empty state when no edges returned", () => {
@@ -679,60 +703,72 @@ describe("GraphView", () => {
         expect(screen.getByTestId("work-graph-explorer")).toBeInTheDocument();
     });
 
-    it("inflow-outflow tab renders a per-entity-type table instead of the canvas", () => {
+    it("inflow-outflow tab renders rows from the workGraphFlow aggregate instead of the canvas", () => {
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
-                {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1,
-                    evidence: null,
-                },
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        // Rows come from the server-side aggregate (CHAOS-2442), NOT derived edges.
+        mockUseWorkGraphFlow.mockReturnValue({
+            rows: [
+                { nodeType: "ISSUE", inflow: 0, outflow: 1 },
+                { nodeType: "PR", inflow: 1, outflow: 0 },
             ],
             loading: false,
             error: null,
-            totalCount: 1,
+            degradedReason: null,
             refetch: vi.fn(),
         });
 
         render(<GraphView filters={filters} activeTab="inflow-outflow" />);
 
         expect(screen.getByTestId("inflow-outflow-panel")).toBeInTheDocument();
-        // Issue (outflow) + PR (inflow) → 2 rows.
-        expect(screen.getAllByTestId("inflow-outflow-row").length).toBeGreaterThanOrEqual(2);
+        // Two aggregate rows → two table rows.
+        expect(screen.getAllByTestId("inflow-outflow-row").length).toBe(2);
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
-    it("artifacts tab ranks entities by connection count", () => {
+    it("artifacts tab renders rows from the workGraphArtifacts aggregate", () => {
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: [
                 {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1,
+                    nodeType: "ISSUE",
+                    nodeId: "ISS-1",
+                    displayName: "ISS-1: Login bug",
+                    degree: 3,
                     evidence: "Fixes ISS-1",
+                },
+                {
+                    nodeType: "PR",
+                    nodeId: "PR-1",
+                    displayName: "PR-1: Add login form",
+                    degree: 2,
+                    evidence: null,
                 },
             ],
             loading: false,
             error: null,
-            totalCount: 1,
+            degradedReason: null,
             refetch: vi.fn(),
         });
 
         render(<GraphView filters={filters} activeTab="artifacts" />);
 
         expect(screen.getByTestId("artifacts-panel")).toBeInTheDocument();
-        expect(screen.getAllByTestId("artifact-row").length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByTestId("artifact-row").length).toBe(2);
+        // displayName is shown when present (resolved rows).
+        expect(screen.getByText("ISS-1: Login bug")).toBeInTheDocument();
+        expect(screen.getByText("PR-1: Add login form")).toBeInTheDocument();
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
@@ -822,6 +858,13 @@ describe("GraphView", () => {
             loading: false,
             error: null,
             totalCount: 0,
+            refetch: vi.fn(),
+        });
+        // The degraded signal now comes from the workGraphFlow aggregate.
+        mockUseWorkGraphFlow.mockReturnValue({
+            rows: [],
+            loading: false,
+            error: null,
             degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
             refetch: vi.fn(),
         });
@@ -847,6 +890,12 @@ describe("GraphView", () => {
             loading: false,
             error: null,
             totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphFlow.mockReturnValue({
+            rows: [],
+            loading: false,
+            error: null,
             degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
             refetch: vi.fn(),
         });
@@ -866,24 +915,16 @@ describe("GraphView", () => {
     it("inflow-outflow tab renders normally when degradedReason is null", () => {
         mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
-                {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1,
-                    evidence: null,
-                    theme: "quality",
-                    subcategory: "quality.bugfix",
-                },
-            ],
+            edges: [],
             loading: false,
             error: null,
-            totalCount: 1,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphFlow.mockReturnValue({
+            rows: [{ nodeType: "ISSUE", inflow: 0, outflow: 1 }],
+            loading: false,
+            error: null,
             degradedReason: null,
             refetch: vi.fn(),
         });
@@ -901,6 +942,12 @@ describe("GraphView", () => {
             loading: false,
             error: null,
             totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: [],
+            loading: false,
+            error: null,
             degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
             refetch: vi.fn(),
         });
@@ -924,6 +971,12 @@ describe("GraphView", () => {
             loading: false,
             error: null,
             totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: [],
+            loading: false,
+            error: null,
             degradedReason: "MEMBERSHIP_NOT_MATERIALIZED",
             refetch: vi.fn(),
         });
@@ -943,24 +996,24 @@ describe("GraphView", () => {
     it("artifacts tab renders normally when degradedReason is null", () => {
         mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_theme: "quality" }));
         mockUseWorkGraphEdges.mockReturnValue({
-            edges: [
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: [
                 {
-                    edgeId: "e1",
-                    sourceType: "ISSUE",
-                    sourceId: "ISS-1",
-                    targetType: "PR",
-                    targetId: "PR-1",
-                    edgeType: "FIXES",
-                    provenance: "NATIVE",
-                    confidence: 1,
+                    nodeType: "ISSUE",
+                    nodeId: "ISS-1",
+                    displayName: "ISS-1",
+                    degree: 2,
                     evidence: "Fixes ISS-1",
-                    theme: "quality",
-                    subcategory: "quality.bugfix",
                 },
             ],
             loading: false,
             error: null,
-            totalCount: 1,
             degradedReason: null,
             refetch: vi.fn(),
         });
@@ -1141,6 +1194,184 @@ describe("GraphView", () => {
         // We match the description paragraph to avoid ambiguity with the heading.
         expect(screen.getByText("Failed to load review network data")).toBeInTheDocument();
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    // ── CHAOS-2442 regression: tabs no longer starved by the capped edge page ───
+    //
+    // The bug: a single capped page of edges (GRAPH_EDGE_QUERY_LIMIT) fed all
+    // tabs. For reference-heavy orgs the first page was dominated by `references`
+    // edges, so the Dependencies tab client-filtered to ~0, and Inflow/Outflow +
+    // Artifacts derived degenerate counts. The fix scopes Dependencies to
+    // `edgeTypes` server-side and points the two table tabs at true aggregates.
+
+    it("dependencies tab carries edgeTypes in the edge query so dependency edges arrive pre-scoped", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="dependencies" />);
+
+        const filtersArg = lastEdgeFilters();
+        // The dependency edge-type slice is sent to the backend (applied BEFORE
+        // the LIMIT) — the tab no longer relies on the capped global page.
+        expect(Array.isArray(filtersArg.edgeTypes)).toBe(true);
+        expect(filtersArg.edgeTypes).toContain("BLOCKS");
+        expect(filtersArg.edgeTypes).toContain("PARENT_OF");
+        // Non-dependency edge types must not be requested here.
+        expect(filtersArg.edgeTypes).not.toContain("FIXES");
+        expect(filtersArg.edgeTypes).not.toContain("REFERENCES");
+    });
+
+    it("overview tab does NOT carry edgeTypes (keeps the broad fetch)", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="overview" />);
+
+        expect(lastEdgeFilters()).not.toHaveProperty("edgeTypes");
+    });
+
+    it("inflow-outflow renders aggregate rows even when the edge page is empty (cap-immune)", () => {
+        // Simulate a skewed/capped edge page that contains NO usable edges for
+        // this tab — the aggregate query is the sole data source now.
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphFlow.mockReturnValue({
+            rows: [
+                { nodeType: "ISSUE", inflow: 5, outflow: 9 },
+                { nodeType: "COMMIT", inflow: 7, outflow: 2 },
+            ],
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getAllByTestId("inflow-outflow-row").length).toBe(2);
+    });
+
+    it("artifacts renders aggregate rows even when the edge page is empty (cap-immune)", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: [
+                {
+                    nodeType: "ISSUE",
+                    nodeId: "ISS-9",
+                    displayName: "ISS-9: Flaky CI",
+                    degree: 11,
+                    evidence: null,
+                },
+            ],
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        expect(screen.getAllByTestId("artifact-row").length).toBe(1);
+        expect(screen.getByText("ISS-9: Flaky CI")).toBeInTheDocument();
+    });
+
+    // ── Artifacts unresolved-id leak guard (CHAOS-2442 review) ──────────────────
+    //
+    // The backend returns displayName=null for unresolvable/opaque node ids so
+    // the UI can render a controlled "Unresolved" state and NEVER leak a bare id.
+    // Regression for the Codex finding: an unresolved row must not surface its raw
+    // nodeId in visible text OR in a title attribute, and must show the
+    // controlled unresolved label. Resolved rows must still show displayName.
+
+    it("artifacts unresolved rows (null or whitespace-only displayName) never leak the raw nodeId", () => {
+        const opaqueId = "abc123def456deadbeef";
+        const blankNameId = "f00dcafebabe9999feed";
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: [
+                {
+                    nodeType: "ISSUE",
+                    nodeId: "ISS-7",
+                    displayName: "ISS-7: Resolved title",
+                    degree: 4,
+                    evidence: null,
+                },
+                {
+                    nodeType: "COMMIT",
+                    nodeId: opaqueId,
+                    displayName: null,
+                    degree: 2,
+                    evidence: null,
+                },
+                {
+                    // Whitespace-only displayName is NOT a resolved name — must
+                    // degrade to the unresolved state, never the raw id.
+                    nodeType: "COMMIT",
+                    nodeId: blankNameId,
+                    displayName: "   ",
+                    degree: 1,
+                    evidence: null,
+                },
+            ],
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        const rows = screen.getAllByTestId("artifact-row");
+        expect(rows.length).toBe(3);
+
+        // Resolved row still shows its displayName.
+        expect(screen.getByText("ISS-7: Resolved title")).toBeInTheDocument();
+
+        // Neither opaque id may appear anywhere — not in visible text…
+        expect(screen.queryByText(opaqueId)).not.toBeInTheDocument();
+        expect(screen.queryByText(blankNameId)).not.toBeInTheDocument();
+
+        // …and not in any title attribute (hover tooltip) either.
+        const nullRow = rows[1];
+        const blankRow = rows[2];
+        expect(nullRow.innerHTML).not.toContain(opaqueId);
+        expect(blankRow.innerHTML).not.toContain(blankNameId);
+        expect(nullRow.querySelector(`[title*="${opaqueId}"]`)).toBeNull();
+        expect(blankRow.querySelector(`[title*="${blankNameId}"]`)).toBeNull();
+
+        // Both degrade to the controlled unresolved label.
+        for (const row of [nullRow, blankRow]) {
+            const cell = within(row).getByTestId("artifact-entity");
+            expect(cell).toHaveAttribute("data-resolved", "false");
+            expect(cell).toHaveTextContent(/Unresolved/i);
+        }
     });
 
     it("renders a scope-preserving Open evidence linkback in the explorer header", () => {
