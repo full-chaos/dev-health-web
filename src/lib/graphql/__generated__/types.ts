@@ -1227,11 +1227,11 @@ export type Query = {
   securityOverview: SecurityOverview;
   /** Compute throughput-based capacity forecast */
   throughputForecast?: Maybe<ThroughputForecast>;
-  /** Server-side artifact ranking (node degree) for the work graph */
+  /** Top-N work graph nodes ranked by degree over the full graph */
   workGraphArtifacts: WorkGraphArtifactsResult;
   /** Query work graph edges with optional filters */
   workGraphEdges: WorkGraphEdgesResult;
-  /** Server-side inflow/outflow aggregate per node type for the work graph */
+  /** Per-node-type inflow/outflow over the full work graph */
   workGraphFlow: WorkGraphFlowResult;
 };
 

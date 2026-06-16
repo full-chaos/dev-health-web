@@ -1063,10 +1063,10 @@ type Query {
   """Query work graph edges with optional filters"""
   workGraphEdges(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphEdgesResult!
 
-  """Server-side inflow/outflow aggregate per node type for the work graph"""
+  """Per-node-type inflow/outflow over the full work graph"""
   workGraphFlow(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphFlowResult!
 
-  """Server-side artifact ranking (node degree) for the work graph"""
+  """Top-N work graph nodes ranked by degree over the full graph"""
   workGraphArtifacts(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphArtifactsResult!
 
   """Paginated list of security alerts"""
@@ -1569,6 +1569,19 @@ enum WindowUnit {
   CYCLE
 }
 
+type WorkGraphArtifactRow {
+  nodeType: WorkGraphNodeType!
+  nodeId: String!
+  displayName: String
+  degree: Int!
+  evidence: String
+}
+
+type WorkGraphArtifactsResult {
+  rows: [WorkGraphArtifactRow!]!
+  degradedReason: String
+}
+
 input WorkGraphEdgeFilterInput {
   repoIds: [String!] = null
   sourceType: WorkGraphNodeTypeInput = null
@@ -1656,28 +1669,15 @@ type WorkGraphEdgesResult {
   degradedReason: String
 }
 
-type WorkGraphFlowRow {
-  nodeType: WorkGraphNodeType!
-  inflow: Int!
-  outflow: Int!
-}
-
 type WorkGraphFlowResult {
   rows: [WorkGraphFlowRow!]!
   degradedReason: String
 }
 
-type WorkGraphArtifactRow {
+type WorkGraphFlowRow {
   nodeType: WorkGraphNodeType!
-  nodeId: String!
-  displayName: String
-  degree: Int!
-  evidence: String
-}
-
-type WorkGraphArtifactsResult {
-  rows: [WorkGraphArtifactRow!]!
-  degradedReason: String
+  inflow: Int!
+  outflow: Int!
 }
 
 enum WorkGraphNodeType {
