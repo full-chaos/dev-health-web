@@ -10,7 +10,7 @@ const primaryAreas = [
     { label: "Govern", path: "/govern" },
     { label: "AI", path: "/ai" },
     { label: "Reports", path: "/reports" },
-    { label: "Admin", path: "/admin" },
+    { label: "Admin", path: "/org/admin" },
 ] as const;
 
 // Leaf labels that must NOT appear as flat sidebar rows anymore.
@@ -75,7 +75,7 @@ const reachableRoutes = [
     "/incident-correlation",
     "/risk/compounding",
     "/reports",
-    "/admin",
+    "/org/admin",
 ] as const;
 
 /**

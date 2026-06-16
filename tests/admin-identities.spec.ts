@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("identities page renders empty state with add link", async ({ page }) => {
-    await page.goto("/admin/identities");
+    await page.goto("/org/admin/identities");
 
     await expect(page.getByRole("heading", { name: "Identities" })).toBeVisible();
     await expect(
@@ -12,7 +12,7 @@ test("identities page renders empty state with add link", async ({ page }) => {
 });
 
 test("new identity form renders all fields", async ({ page }) => {
-    await page.goto("/admin/identities/new");
+    await page.goto("/org/admin/identities/new");
 
     await expect(page.locator("#canonical_id")).toBeVisible();
     await expect(page.locator("#display_name")).toBeVisible();
@@ -20,7 +20,7 @@ test("new identity form renders all fields", async ({ page }) => {
 });
 
 test("add identity button adds provider identity row", async ({ page }) => {
-    await page.goto("/admin/identities/new");
+    await page.goto("/org/admin/identities/new");
 
     await page.getByRole("button", { name: /\+\s*Add Identity|Add Identity/i }).click();
 
@@ -34,23 +34,23 @@ test("add identity button adds provider identity row", async ({ page }) => {
 });
 
 test("creating identity redirects to list", async ({ page }) => {
-    await page.goto("/admin/identities/new");
+    await page.goto("/org/admin/identities/new");
 
     await page.locator("#canonical_id").fill("test-person");
     await page.locator("#display_name").fill("Test Person");
     await page.locator("#email").fill("test@example.com");
     await page.getByRole("button", { name: /Create Identity|Save/i }).click();
 
-    await expect(page).toHaveURL(/\/admin\/identities/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/org\/admin\/identities/, { timeout: 10_000 });
 });
 
 test("cancel returns to identity list", async ({ page }) => {
-    await page.goto("/admin/identities/new");
+    await page.goto("/org/admin/identities/new");
 
     await page
         .getByRole("button", { name: "Cancel" })
         .or(page.getByRole("link", { name: "Cancel" }))
         .click();
 
-    await expect(page).toHaveURL(/\/admin\/identities/);
+    await expect(page).toHaveURL(/\/org\/admin\/identities/);
 });

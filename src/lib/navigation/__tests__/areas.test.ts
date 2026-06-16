@@ -153,7 +153,7 @@ describe("selectedAreaIdForPathname", () => {
         { pathname: "/risk/compounding", expected: "govern" },
         { pathname: "/feature-flags", expected: "govern" },
         { pathname: "/reports/new", expected: "reports" },
-        { pathname: "/admin/users", expected: "admin" },
+        { pathname: "/org/admin/users", expected: "admin" },
         { pathname: "/settings", expected: "admin" },
     ];
 
@@ -240,8 +240,8 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         { areaId: "govern", pathname: "/testops/tests", childId: "testops" },
         { areaId: "govern", pathname: "/testops/risk", childId: "risk" },
         { areaId: "reports", pathname: "/reports", childId: "report-center" },
-        { areaId: "admin", pathname: "/admin", childId: "organization" },
-        { areaId: "admin", pathname: "/admin/sync", childId: "connections" },
+        { areaId: "admin", pathname: "/org/admin", childId: "organization" },
+        { areaId: "admin", pathname: "/org/admin/sync", childId: "connections" },
         { areaId: "admin", pathname: "/data-health", childId: "data-confidence" },
         { areaId: "admin", pathname: "/settings", childId: "settings" },
     ];
@@ -288,7 +288,7 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
     });
 
     it("returns undefined for an owned area route with no matching child", () => {
-        expect(selectedChildForPathname(areaById("admin"), "/admin/users")).toBeUndefined();
+        expect(selectedChildForPathname(areaById("admin"), "/org/admin/users")).toBeUndefined();
     });
 });
 
@@ -321,7 +321,7 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
     });
 
     it("builds an Area → Child trail whose last crumb label === the child label", () => {
-        const trail = navTrailForPathname("/admin/sync");
+        const trail = navTrailForPathname("/org/admin/sync");
         expect(trail.map((c) => c.label)).toEqual(["Admin", "Connections"]);
         expect(trail[0]?.href).toBe(areaById("admin").href);
         expect(trail[trail.length - 1]?.href).toBeUndefined();

@@ -3,7 +3,7 @@
  *
  * Locks in the render-gate contract: children render when the required feature
  * is present, otherwise the upgrade CTA overlay renders with tier label,
- * description, and link to /admin/settings.
+ * description, and link to /org/admin/settings.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithToaster, screen, cleanup } from "@/test/utils";
@@ -71,7 +71,7 @@ describe("UpgradeGate", () => {
         ).toBeInTheDocument();
     });
 
-    it("renders a link to /admin/settings with the required tier label", () => {
+    it("renders a link to /org/admin/settings with the required tier label", () => {
         renderWithToaster(
             <UpgradeGate feature="sso" requiredTier="enterprise" features={{ sso: false }}>
                 <p>SSO settings</p>
@@ -79,7 +79,7 @@ describe("UpgradeGate", () => {
         );
 
         const link = screen.getByRole("link", { name: /upgrade to enterprise/i });
-        expect(link).toHaveAttribute("href", "/admin/settings");
+        expect(link).toHaveAttribute("href", "/org/admin/settings");
     });
 
     it("falls back to a generic description when the required tier has no TIER_FEATURES entry", () => {

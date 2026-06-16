@@ -159,7 +159,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
             [/^Govern$/i, "/govern"],
             [/^AI$/i, "/ai"],
             [/^Reports$/i, "/reports"],
-            [/^Admin$/i, "/admin"],
+            [/^Admin$/i, "/org/admin"],
         ];
 
         for (const [name, href] of expectations) {
@@ -327,7 +327,7 @@ describe("PrimaryNav — active-area resolution (A10: one selected at a time)", 
             area: /^Reports$/i,
             landing: true,
         },
-        { pathname: "/admin", active: "admin", area: /^Admin$/i, landing: true },
+        { pathname: "/org/admin", active: "admin", area: /^Admin$/i, landing: true },
     ])(
         "resolves route $pathname to its owning area with exactly one selection",
         ({ pathname, active, area, landing, child }) => {
@@ -442,8 +442,8 @@ describe("PrimaryNav — utility-area gate (owner directive)", () => {
         expect(currentPageLinks()).toHaveLength(1);
     });
 
-    it("Admin area renders NO child rows when active at /admin/settings", () => {
-        navigationMock.pathname = "/admin/settings";
+    it("Admin area renders NO child rows when active at /org/admin/settings", () => {
+        navigationMock.pathname = "/org/admin/settings";
         render(<PrimaryNav filters={makeFilter()} active="settings" />);
 
         // Admin row is active (but the child Settings would have been current if expanded).

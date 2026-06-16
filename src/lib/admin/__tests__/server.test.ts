@@ -98,7 +98,7 @@ describe("admin/server credential actions", () => {
                 credentials: { token: "tok" },
             });
             expect(result.data).toBeDefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/integrations", "page");
             fetchSpy.mockRestore();
         });
     });
@@ -116,7 +116,7 @@ describe("admin/server credential actions", () => {
                 credentials: { token: "tok" },
             });
             expect(result.data?.success).toBe(true);
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/integrations", "page");
             fetchSpy.mockRestore();
         });
     });
@@ -130,7 +130,7 @@ describe("admin/server credential actions", () => {
 
             const result = await deleteCredential("github", "default");
             expect(result.error).toBeUndefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/integrations", "page");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/integrations", "page");
             fetchSpy.mockRestore();
         });
     });
@@ -174,7 +174,7 @@ describe("admin/server sync config actions", () => {
                 sync_options: { owner: "myorg" },
             });
             expect(result.data).toBeDefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/sync");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/sync");
             fetchSpy.mockRestore();
         });
     });
@@ -414,7 +414,7 @@ describe("admin/server IP allowlist actions", () => {
                 description: "Office",
             });
             expect(result.data).toBeDefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/ip-allowlist");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/ip-allowlist");
             fetchSpy.mockRestore();
         });
     });
@@ -429,7 +429,7 @@ describe("admin/server IP allowlist actions", () => {
 
             const result = await updateIPAllowlistEntry("ip-1", { is_active: false });
             expect(result.data).toBeDefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/ip-allowlist");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/ip-allowlist");
             fetchSpy.mockRestore();
         });
     });
@@ -443,7 +443,7 @@ describe("admin/server IP allowlist actions", () => {
 
             const result = await deleteIPAllowlistEntry("ip-1");
             expect(result.error).toBeUndefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/ip-allowlist");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/ip-allowlist");
             fetchSpy.mockRestore();
         });
     });
@@ -526,7 +526,7 @@ describe("admin/server retention policy actions", () => {
                 retention_days: 90,
             });
             expect(result.data).toBeDefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/retention");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/retention");
             fetchSpy.mockRestore();
         });
     });
@@ -543,7 +543,7 @@ describe("admin/server retention policy actions", () => {
                 retention_days: 180,
             });
             expect(result.data).toBeDefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/retention");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/retention");
             fetchSpy.mockRestore();
         });
     });
@@ -557,7 +557,7 @@ describe("admin/server retention policy actions", () => {
 
             const result = await deleteRetentionPolicy("rp-1");
             expect(result.error).toBeUndefined();
-            expect(revalidatePath).toHaveBeenCalledWith("/admin/retention");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/retention");
             fetchSpy.mockRestore();
         });
     });

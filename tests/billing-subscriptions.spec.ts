@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("billing settings renders subscription section", async ({ page }) => {
-    await page.goto("/admin/settings");
+    await page.goto("/org/admin/settings");
 
     await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
     await expect(page.getByText("Current Plan")).toBeVisible();
@@ -9,7 +9,7 @@ test("billing settings renders subscription section", async ({ page }) => {
 });
 
 test("change plan modal shows plan cards instead of price ID input", async ({ page }) => {
-    await page.goto("/admin/settings");
+    await page.goto("/org/admin/settings");
 
     // Wait for subscription data to load (button is disabled while loading)
     const changePlanBtn = page.getByRole("button", { name: "Change Plan" });

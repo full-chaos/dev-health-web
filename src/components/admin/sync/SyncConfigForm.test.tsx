@@ -180,7 +180,7 @@ describe("SyncConfigForm", () => {
                 sync_options: {},
             });
             expect(screen.getByText("Config created")).toBeInTheDocument();
-            expect(mockPush).toHaveBeenCalledWith("/admin/sync");
+            expect(mockPush).toHaveBeenCalledWith("/org/admin/sync");
         });
     });
 
