@@ -1304,8 +1304,9 @@ describe("GraphView", () => {
     // nodeId in visible text OR in a title attribute, and must show the
     // controlled unresolved label. Resolved rows must still show displayName.
 
-    it("artifacts unresolved row (displayName null) never leaks the raw nodeId", () => {
+    it("artifacts unresolved rows (null or whitespace-only displayName) never leak the raw nodeId", () => {
         const opaqueId = "abc123def456deadbeef";
+        const blankNameId = "f00dcafebabe9999feed";
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [],
             loading: false,
@@ -1329,6 +1330,15 @@ describe("GraphView", () => {
                     degree: 2,
                     evidence: null,
                 },
+                {
+                    // Whitespace-only displayName is NOT a resolved name — must
+                    // degrade to the unresolved state, never the raw id.
+                    nodeType: "COMMIT",
+                    nodeId: blankNameId,
+                    displayName: "   ",
+                    degree: 1,
+                    evidence: null,
+                },
             ],
             loading: false,
             error: null,
@@ -1339,22 +1349,29 @@ describe("GraphView", () => {
         render(<GraphView filters={filters} activeTab="artifacts" />);
 
         const rows = screen.getAllByTestId("artifact-row");
-        expect(rows.length).toBe(2);
+        expect(rows.length).toBe(3);
 
         // Resolved row still shows its displayName.
         expect(screen.getByText("ISS-7: Resolved title")).toBeInTheDocument();
 
-        // The opaque id must NOT appear anywhere — not in visible text…
+        // Neither opaque id may appear anywhere — not in visible text…
         expect(screen.queryByText(opaqueId)).not.toBeInTheDocument();
-        // …and not in any title attribute (hover tooltip) either.
-        const opaqueRow = rows[1];
-        expect(opaqueRow.innerHTML).not.toContain(opaqueId);
-        expect(opaqueRow.querySelector(`[title*="${opaqueId}"]`)).toBeNull();
+        expect(screen.queryByText(blankNameId)).not.toBeInTheDocument();
 
-        // The controlled unresolved label is shown instead.
-        const unresolvedCell = within(opaqueRow).getByTestId("artifact-entity");
-        expect(unresolvedCell).toHaveAttribute("data-resolved", "false");
-        expect(unresolvedCell).toHaveTextContent(/Unresolved/i);
+        // …and not in any title attribute (hover tooltip) either.
+        const nullRow = rows[1];
+        const blankRow = rows[2];
+        expect(nullRow.innerHTML).not.toContain(opaqueId);
+        expect(blankRow.innerHTML).not.toContain(blankNameId);
+        expect(nullRow.querySelector(`[title*="${opaqueId}"]`)).toBeNull();
+        expect(blankRow.querySelector(`[title*="${blankNameId}"]`)).toBeNull();
+
+        // Both degrade to the controlled unresolved label.
+        for (const row of [nullRow, blankRow]) {
+            const cell = within(row).getByTestId("artifact-entity");
+            expect(cell).toHaveAttribute("data-resolved", "false");
+            expect(cell).toHaveTextContent(/Unresolved/i);
+        }
     });
 
     it("renders a scope-preserving Open evidence linkback in the explorer header", () => {

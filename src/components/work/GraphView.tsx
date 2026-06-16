@@ -919,11 +919,14 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                                           back to nodeId (in text OR title) when
                                           unresolved. Resolved rows keep nodeId as
                                           a traceability tooltip via EntityLabel.
+                                          Trim first: a whitespace-only displayName
+                                          is NOT a resolved name (EntityLabel would
+                                          trim it away and normalize the id back in).
                                         */}
-                                        {row.displayName ? (
+                                        {row.displayName?.trim() ? (
                                             <EntityLabel
                                                 id={row.nodeId}
-                                                displayName={row.displayName}
+                                                displayName={row.displayName.trim()}
                                                 className="font-mono"
                                                 data-testid="artifact-entity"
                                             />
