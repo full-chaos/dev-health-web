@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ProviderCredentialsList } from "@/components/admin/integrations/ProviderCredentialsList";
+import {
+    GitHubAppConnect,
+    type GitHubAppConnectResult,
+} from "@/components/admin/integrations/GitHubAppConnect";
 import { listCredentials, listSyncConfigs } from "@/lib/admin/server";
 import type { Provider } from "@/lib/admin/types";
 
@@ -14,10 +18,15 @@ const PROVIDERS: Record<string, string> = {
 
 export default async function IntegrationPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ provider: string }>;
+    searchParams: Promise<{ github_app?: string | string[] }>;
 }) {
     const { provider } = await params;
+    const { github_app: githubApp } = await searchParams;
+    const githubAppResult: GitHubAppConnectResult | undefined =
+        githubApp === "connected" || githubApp === "error" ? githubApp : undefined;
     const providerName = PROVIDERS[provider];
 
     if (!providerName) {
@@ -44,6 +53,8 @@ export default async function IntegrationPage({
                     Failed to load credentials: {credentialsResult.error}
                 </div>
             )}
+
+            {provider === "github" && <GitHubAppConnect result={githubAppResult} />}
 
             <ProviderCredentialsList
                 provider={provider as Provider}

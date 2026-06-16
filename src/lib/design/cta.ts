@@ -61,6 +61,8 @@ export const CTA_LABELS = {
     closePanel: "Close panel",
     /** Return to the cockpit (home) — the canonical single return path. */
     backToCockpit: "Back to Cockpit",
+    /** Start the frictionless one-click GitHub App install (CHAOS-2235). */
+    connectGitHubApp: "Connect GitHub App",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
