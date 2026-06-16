@@ -67,8 +67,22 @@ const nextConfig = {
         // external/bookmarked links so nothing 404s. Keep these in sync with
         // every page that moves under `src/app/marketing/`.
         return [
-            { source: "/pricing", destination: "/marketing/pricing", permanent: true },
-            { source: "/privacy", destination: "/marketing/privacy", permanent: true },
+            { source: "/admin", destination: "/org/admin", permanent: true },
+            {
+                source: "/admin/:path*",
+                destination: "/org/admin/:path*",
+                permanent: true,
+            },
+            {
+                source: "/pricing",
+                destination: "/marketing/pricing",
+                permanent: true,
+            },
+            {
+                source: "/privacy",
+                destination: "/marketing/privacy",
+                permanent: true,
+            },
             { source: "/terms", destination: "/marketing/terms", permanent: true },
             {
                 source: "/vp-engineering",
