@@ -269,6 +269,7 @@ async function handleRequest(request: NextRequest) {
                 headers: new Headers({
                     ...Object.fromEntries(request.headers),
                     "x-nonce": nonce,
+                    "x-dev-health-path": pathname + request.nextUrl.search,
                 }),
             },
         });

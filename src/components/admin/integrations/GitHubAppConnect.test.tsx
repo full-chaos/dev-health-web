@@ -8,7 +8,7 @@ describe("GitHubAppConnect", () => {
         render(<GitHubAppConnect />);
 
         const cta = screen.getByRole("link", { name: "Connect GitHub App" });
-        expect(cta).toHaveAttribute("href", "/admin/integrations/github-app/install");
+        expect(cta).toHaveAttribute("href", "/org/admin/integrations/github-app/install");
         expect(screen.getByText(/one-click install/i)).toBeInTheDocument();
     });
 

@@ -60,7 +60,7 @@ export function UpgradeGate({
                     </div>
 
                     <Link
-                        href="/admin/settings"
+                        href="/org/admin/settings"
                         className="inline-flex items-center justify-center rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2"
                     >
                         Upgrade to {requiredTierLabel}

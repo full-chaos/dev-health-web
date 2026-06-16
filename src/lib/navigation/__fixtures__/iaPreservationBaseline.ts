@@ -152,13 +152,13 @@ export const iaPreservationBaseline = {
             areaId: "admin",
             childId: "organization",
             label: "Organization",
-            path: "/admin",
+            path: "/org/admin",
         },
         {
             areaId: "admin",
             childId: "connections",
             label: "Connections",
-            path: "/admin/sync",
+            path: "/org/admin/sync",
         },
         {
             areaId: "admin",

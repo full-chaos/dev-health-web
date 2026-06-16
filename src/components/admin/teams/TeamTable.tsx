@@ -24,7 +24,7 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 font-medium text-foreground",
             render: (team) => (
-                <Link href={`/admin/teams/${team.team_id}/edit`} className="hover:underline">
+                <Link href={`/org/admin/teams/${team.team_id}/edit`} className="hover:underline">
                     {team.name}
                 </Link>
             ),
@@ -77,7 +77,7 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
             render: (team) => (
                 <div className="flex justify-end gap-3">
                     <Link
-                        href={`/admin/teams/${team.team_id}/edit`}
+                        href={`/org/admin/teams/${team.team_id}/edit`}
                         className="text-(--accent) hover:underline"
                     >
                         Edit

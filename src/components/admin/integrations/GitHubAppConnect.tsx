@@ -7,7 +7,7 @@ type GitHubAppConnectProps = {
     result?: GitHubAppConnectResult;
 };
 
-const INSTALL_PATH = "/admin/integrations/github-app/install";
+const INSTALL_PATH = "/org/admin/integrations/github-app/install";
 
 /**
  * "Connect GitHub App" call-to-action for the GitHub integration page

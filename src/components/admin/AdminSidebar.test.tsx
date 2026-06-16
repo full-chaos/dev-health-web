@@ -4,7 +4,7 @@ import { render, screen } from "@/test/utils";
 
 import { AdminSidebar } from "./AdminSidebar";
 
-let pathname = "/admin";
+let pathname = "/org/admin";
 
 vi.mock("next/navigation", () => ({
     usePathname: () => pathname,
@@ -32,7 +32,7 @@ vi.mock("@/components/navigation/OrgSwitcher", () => ({
 
 describe("AdminSidebar", () => {
     beforeEach(() => {
-        pathname = "/admin";
+        pathname = "/org/admin";
     });
 
     it("renders without crashing and highlights the current route", () => {

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("integrations page renders provider cards", async ({ page }) => {
-    await page.goto("/admin/integrations");
+    await page.goto("/org/admin/integrations");
 
     await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "GitHub" })).toBeVisible();
@@ -17,7 +17,7 @@ test("integrations page renders provider cards", async ({ page }) => {
 // on form fields. The button is also rendered when no credentials exist (the
 // page just auto-opens the form in that case), so the click is conditional.
 async function openGithubForm(page: import("@playwright/test").Page) {
-    await page.goto("/admin/integrations/github");
+    await page.goto("/org/admin/integrations/github");
     const addConnection = page.getByRole("button", { name: "Add Connection" }).first();
     if (await addConnection.isVisible({ timeout: 2_000 }).catch(() => false)) {
         await addConnection.click();
@@ -53,14 +53,14 @@ test("GitHub test connection updates status", async ({ page }) => {
 });
 
 test("GitLab integration form renders fields", async ({ page }) => {
-    await page.goto("/admin/integrations/gitlab");
+    await page.goto("/org/admin/integrations/gitlab");
 
     await expect(page.locator("#gitlab-token")).toBeVisible();
     await expect(page.locator("#gitlab-group")).toBeVisible();
 });
 
 test("Jira integration form renders fields", async ({ page }) => {
-    await page.goto("/admin/integrations/jira");
+    await page.goto("/org/admin/integrations/jira");
 
     await expect(page.locator("#jira-url")).toBeVisible();
     await expect(page.locator("#jira-email")).toBeVisible();
@@ -69,14 +69,14 @@ test("Jira integration form renders fields", async ({ page }) => {
 });
 
 test("Linear integration form renders fields", async ({ page }) => {
-    await page.goto("/admin/integrations/linear");
+    await page.goto("/org/admin/integrations/linear");
 
     await expect(page.locator("#linear-key")).toBeVisible();
     await expect(page.locator("#linear-teams")).toBeVisible();
 });
 
 test("unknown provider returns 404", async ({ page }) => {
-    await page.goto("/admin/integrations/unknown");
+    await page.goto("/org/admin/integrations/unknown");
 
     await expect(page.getByText(/this page could not be found/i)).toBeVisible();
 });

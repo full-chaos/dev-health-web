@@ -67,10 +67,10 @@ describe("scrubEvent", () => {
         expect(result?.request?.data).toBeUndefined();
     });
 
-    it("drops request.data for /admin/credentials URL", () => {
+    it("drops request.data for /org/admin/credentials URL", () => {
         const event = makeEvent({
             request: {
-                url: "https://example.com/admin/credentials",
+                url: "https://example.com/org/admin/credentials",
                 data: JSON.stringify({ apiKey: "supersecret" }),
             },
         });

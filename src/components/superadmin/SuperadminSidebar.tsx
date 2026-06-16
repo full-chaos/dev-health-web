@@ -98,7 +98,7 @@ export function SuperadminSidebar({ canAccessOrgAdmin = false }: { canAccessOrgA
                     {canAccessOrgAdmin && (
                         <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
                             Return to{" "}
-                            <Link href="/admin" className="underline hover:text-foreground">
+                            <Link href="/org/admin" className="underline hover:text-foreground">
                                 org admin
                             </Link>
                             .

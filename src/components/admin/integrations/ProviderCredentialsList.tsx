@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CredentialCard } from "./CredentialCard";
-import { IntegrationFormWrapper } from "@/app/(app)/admin/integrations/[provider]/IntegrationFormWrapper";
+import { IntegrationFormWrapper } from "@/app/(app)/org/admin/integrations/[provider]/IntegrationFormWrapper";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
 import type { ConnectionStatusType } from "@/components/admin/integrations/ConnectionStatus";
 

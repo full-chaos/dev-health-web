@@ -95,7 +95,7 @@ describe("TeamForm", () => {
 
         expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute(
             "href",
-            "/admin/teams",
+            "/org/admin/teams",
         );
     });
 });

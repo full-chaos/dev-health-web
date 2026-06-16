@@ -160,7 +160,7 @@ describe("requireSession — session guards", () => {
 describe("requireRole — RBAC enforcement", () => {
     const adminRoles = ["admin", "owner"];
 
-    describe("non-admin org users are blocked from /admin", () => {
+    describe("non-admin org users are blocked from /org/admin", () => {
         it.each([
             { role: "member", label: "member" },
             { role: "viewer", label: "viewer" },
@@ -292,11 +292,11 @@ describe("requireSuperuser — platform admin gate", () => {
 describe("admin layout — orgless superuser redirect", () => {
     /**
      * Simulates the admin layout guard logic:
-     *   const session = await requireRole(["admin", "owner"], "/admin");
+     *   const session = await requireRole(["admin", "owner"], "/org/admin");
      *   if (session.user.is_superuser && !session.user.org_id) redirect("/superadmin");
      */
     async function simulateAdminLayout() {
-        const session = await requireRole(["admin", "owner"], "/admin");
+        const session = await requireRole(["admin", "owner"], "/org/admin");
         if (session.user.is_superuser === true && !session.user.org_id) {
             const { redirect } = await import("next/navigation");
             redirect("/superadmin");
@@ -352,46 +352,46 @@ describe("tier feature gating — sidebar and UpgradeGate logic", () => {
     };
 
     const navItems: NavItem[] = [
-        { id: "dashboard", label: "Dashboard", href: "/admin", description: "Overview" },
-        { id: "users", label: "Users", href: "/admin/users", description: "Management" },
+        { id: "dashboard", label: "Dashboard", href: "/org/admin", description: "Overview" },
+        { id: "users", label: "Users", href: "/org/admin/users", description: "Management" },
         {
             id: "organization",
             label: "Organization",
-            href: "/admin/settings",
+            href: "/org/admin/settings",
             description: "Settings",
         },
         {
             id: "integrations",
             label: "Integrations",
-            href: "/admin/integrations",
+            href: "/org/admin/integrations",
             description: "Connectors",
         },
-        { id: "sync", label: "Sync Status", href: "/admin/sync", description: "Jobs" },
-        { id: "teams", label: "Teams", href: "/admin/teams", description: "Identity" },
+        { id: "sync", label: "Sync Status", href: "/org/admin/sync", description: "Jobs" },
+        { id: "teams", label: "Teams", href: "/org/admin/teams", description: "Identity" },
         {
             id: "identities",
             label: "Identities",
-            href: "/admin/identities",
+            href: "/org/admin/identities",
             description: "Mapping",
         },
         {
             id: "audit",
             label: "Audit Logs",
-            href: "/admin/audit-logs",
+            href: "/org/admin/audit-logs",
             description: "Enterprise",
             featureKey: "audit_log",
         },
         {
             id: "ip-allowlist",
             label: "IP Allowlist",
-            href: "/admin/ip-allowlist",
+            href: "/org/admin/ip-allowlist",
             description: "Security",
             featureKey: "ip_allowlist",
         },
         {
             id: "retention",
             label: "Retention",
-            href: "/admin/retention",
+            href: "/org/admin/retention",
             description: "Compliance",
             featureKey: "custom_retention",
         },
@@ -668,7 +668,7 @@ describe("impersonation — RBAC and tier gating under impersonated sessions", (
             mockNextAuthAuth.mockResolvedValueOnce(impersonatedOrglessUser());
 
             async function simulateAdminLayout() {
-                const session = await requireRole(["admin", "owner"], "/admin");
+                const session = await requireRole(["admin", "owner"], "/org/admin");
                 if (session.user.is_superuser === true && !session.user.org_id) {
                     const { redirect } = await import("next/navigation");
                     redirect("/superadmin");

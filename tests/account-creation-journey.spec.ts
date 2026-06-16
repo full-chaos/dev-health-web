@@ -44,7 +44,7 @@ test.describe("Account creation journey", () => {
         await page.getByRole("button", { name: "Sign In" }).click();
         await expect(page).not.toHaveURL(/\/auth\/signin/, { timeout: 10_000 });
 
-        await page.goto("/admin/integrations/github");
+        await page.goto("/org/admin/integrations/github");
         await page.locator("#github-token").fill("ghp_journey_token");
         await page.locator("#github-org").fill("journey-org");
         await page.getByRole("button", { name: "Save Changes" }).click();
@@ -60,7 +60,7 @@ test.describe("Account creation journey", () => {
         await page.getByRole("button", { name: "Sign In" }).click();
         await expect(page).not.toHaveURL(/\/auth\/signin/, { timeout: 10_000 });
 
-        await page.goto("/admin/sync/new");
+        await page.goto("/org/admin/sync/new");
         await page.locator("#name").fill("Journey Sync");
 
         const providerSelect = page.locator("#provider");
@@ -69,7 +69,7 @@ test.describe("Account creation journey", () => {
         }
 
         await page.getByRole("button", { name: /submit|save|create/i }).click();
-        await expect(page).toHaveURL(/\/admin\/sync$/, { timeout: 10_000 });
+        await expect(page).toHaveURL(/\/org\/admin\/sync$/, { timeout: 10_000 });
     });
 
     test("6. user creates a team", async ({ page }) => {
@@ -79,11 +79,11 @@ test.describe("Account creation journey", () => {
         await page.getByRole("button", { name: "Sign In" }).click();
         await expect(page).not.toHaveURL(/\/auth\/signin/, { timeout: 10_000 });
 
-        await page.goto("/admin/teams/new");
+        await page.goto("/org/admin/teams/new");
         await page.locator("#team_id").fill("journey-team");
         await page.locator("#name").fill("Journey Team");
         await page.getByRole("button", { name: "Create Team" }).click();
-        await expect(page).toHaveURL(/\/admin\/teams(?!\/new)/, { timeout: 10_000 });
+        await expect(page).toHaveURL(/\/org\/admin\/teams(?!\/new)/, { timeout: 10_000 });
     });
 
     test("7. user creates an identity", async ({ page }) => {
@@ -93,11 +93,11 @@ test.describe("Account creation journey", () => {
         await page.getByRole("button", { name: "Sign In" }).click();
         await expect(page).not.toHaveURL(/\/auth\/signin/, { timeout: 10_000 });
 
-        await page.goto("/admin/identities/new");
+        await page.goto("/org/admin/identities/new");
         await page.locator("#canonical_id").fill("journey-person");
         await page.locator("#display_name").fill("Journey Person");
         await page.locator("#email").fill("journey@example.com");
         await page.getByRole("button", { name: /create|save/i }).click();
-        await expect(page).toHaveURL(/\/admin\/identities(?!\/new)/, { timeout: 10_000 });
+        await expect(page).toHaveURL(/\/org\/admin\/identities(?!\/new)/, { timeout: 10_000 });
     });
 });

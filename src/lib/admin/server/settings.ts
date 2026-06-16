@@ -98,7 +98,7 @@ export async function createIPAllowlistEntry(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.ipAllowlist.create(data, token, orgId);
-        revalidatePath("/admin/ip-allowlist");
+        revalidatePath("/org/admin/ip-allowlist");
         return result;
     });
 }
@@ -110,7 +110,7 @@ export async function updateIPAllowlistEntry(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.ipAllowlist.update(id, data, token, orgId);
-        revalidatePath("/admin/ip-allowlist");
+        revalidatePath("/org/admin/ip-allowlist");
         return result;
     });
 }
@@ -119,7 +119,7 @@ export async function deleteIPAllowlistEntry(id: string): Promise<ActionResult<v
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.ipAllowlist.delete(id, token, orgId);
-        revalidatePath("/admin/ip-allowlist");
+        revalidatePath("/org/admin/ip-allowlist");
         return result;
     });
 }
@@ -149,7 +149,7 @@ export async function createRetentionPolicy(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.retention.create(data, token, orgId);
-        revalidatePath("/admin/retention");
+        revalidatePath("/org/admin/retention");
         return result;
     });
 }
@@ -161,7 +161,7 @@ export async function updateRetentionPolicy(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.retention.update(id, data, token, orgId);
-        revalidatePath("/admin/retention");
+        revalidatePath("/org/admin/retention");
         return result;
     });
 }
@@ -170,7 +170,7 @@ export async function deleteRetentionPolicy(id: string): Promise<ActionResult<vo
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.retention.delete(id, token, orgId);
-        revalidatePath("/admin/retention");
+        revalidatePath("/org/admin/retention");
         return result;
     });
 }

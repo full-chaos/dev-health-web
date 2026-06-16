@@ -1,4 +1,5 @@
 import { publicEnv } from "@/lib/config";
+import { getReplayRoutePrefixes, shouldLoadReplayForPath } from "@/lib/sentry/replay";
 import { attachBeforeSend } from "@/lib/sentry/scrubber";
 
 import * as Sentry from "@sentry/nextjs";
@@ -18,31 +19,20 @@ import * as Sentry from "@sentry/nextjs";
  * path, nor does it affect `replaysSessionSampleRate` /
  * `replaysOnErrorSampleRate` (those only apply once Replay is loaded).
  *
- * Default gate: `/admin` and `/superadmin` — problem-finding value is highest
- * on operator/administrator surfaces where session context is diagnostic.
+ * Default gate: `/org/admin`, legacy `/admin`, and `/superadmin` — problem-finding
+ * value is highest on operator/administrator surfaces where session context is diagnostic.
  *
  * Override via `NEXT_PUBLIC_SENTRY_REPLAY_ROUTES` (comma-separated path
  * prefixes). Examples:
- *   NEXT_PUBLIC_SENTRY_REPLAY_ROUTES="/admin,/superadmin,/reports"
+ *   NEXT_PUBLIC_SENTRY_REPLAY_ROUTES="/org/admin,/superadmin,/reports"
  *   NEXT_PUBLIC_SENTRY_REPLAY_ROUTES=""       // disables Replay everywhere
  */
-const DEFAULT_REPLAY_ROUTE_PREFIXES = ["/admin", "/superadmin"] as const;
-
-function getReplayRoutePrefixes(): readonly string[] {
-    const raw = process.env.NEXT_PUBLIC_SENTRY_REPLAY_ROUTES;
-    if (raw === undefined) return DEFAULT_REPLAY_ROUTE_PREFIXES;
-    return raw
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-}
-
 function shouldLoadReplay(): boolean {
     if (typeof window === "undefined") return false;
-    const prefixes = getReplayRoutePrefixes();
-    if (prefixes.length === 0) return false;
-    const path = window.location.pathname;
-    return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+    return shouldLoadReplayForPath(
+        window.location.pathname,
+        getReplayRoutePrefixes(process.env.NEXT_PUBLIC_SENTRY_REPLAY_ROUTES),
+    );
 }
 
 Sentry.init(

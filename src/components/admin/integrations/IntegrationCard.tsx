@@ -37,7 +37,7 @@ export function IntegrationCard({ provider }: IntegrationCardProps) {
             </div>
             <div className="mt-auto">
                 <Link
-                    href={`/admin/integrations/${provider.id}`}
+                    href={`/org/admin/integrations/${provider.id}`}
                     className="inline-flex w-full items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 focus:outline-none focus:ring-2 focus:ring-(--surface-inverted) focus:ring-offset-2"
                 >
                     Configure

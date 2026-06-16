@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
             {
                 userAgent: "*",
                 allow: "/",
-                disallow: ["/api/", "/auth/", "/admin/", "/superadmin/"],
+                disallow: ["/api/", "/auth/", "/admin/", "/org/admin/", "/superadmin/"],
             },
         ],
         sitemap: "https://www.fullchaos.dev/sitemap.xml",
