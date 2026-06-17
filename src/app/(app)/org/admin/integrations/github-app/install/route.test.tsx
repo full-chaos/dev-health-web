@@ -12,6 +12,9 @@ vi.mock("@/lib/origin", () => ({
 const mockAuth = vi.mocked(auth);
 
 const ERROR_LOCATION = "http://localhost/org/admin/integrations/github?github_app=error";
+const ORIGINAL_AUTH_URL = process.env.AUTH_URL;
+const ORIGINAL_NEXTAUTH_URL = process.env.NEXTAUTH_URL;
+const ORIGINAL_TRUST_PROXY = process.env.TRUST_PROXY;
 
 function setSession(user: Record<string, unknown>) {
     mockAuth.mockResolvedValue({ access_token: "tok", user } as never);
@@ -25,6 +28,15 @@ function makeRequest() {
     return new NextRequest("http://localhost/org/admin/integrations/github-app/install");
 }
 
+function makeForwardedRequest() {
+    return new NextRequest("http://[::]:3000/org/admin/integrations/github-app/install", {
+        headers: {
+            "x-forwarded-host": "app.example.test",
+            "x-forwarded-proto": "https",
+        },
+    });
+}
+
 function installUrlResponse(installUrl: unknown) {
     return new Response(JSON.stringify({ install_url: installUrl }), {
         status: 200,
@@ -33,10 +45,28 @@ function installUrlResponse(installUrl: unknown) {
 
 describe("GET /org/admin/integrations/github-app/install", () => {
     beforeEach(() => {
+        delete process.env.AUTH_URL;
+        delete process.env.NEXTAUTH_URL;
+        delete process.env.TRUST_PROXY;
         vi.stubGlobal("fetch", vi.fn());
     });
 
     afterEach(() => {
+        if (ORIGINAL_AUTH_URL === undefined) {
+            delete process.env.AUTH_URL;
+        } else {
+            process.env.AUTH_URL = ORIGINAL_AUTH_URL;
+        }
+        if (ORIGINAL_NEXTAUTH_URL === undefined) {
+            delete process.env.NEXTAUTH_URL;
+        } else {
+            process.env.NEXTAUTH_URL = ORIGINAL_NEXTAUTH_URL;
+        }
+        if (ORIGINAL_TRUST_PROXY === undefined) {
+            delete process.env.TRUST_PROXY;
+        } else {
+            process.env.TRUST_PROXY = ORIGINAL_TRUST_PROXY;
+        }
         vi.unstubAllGlobals();
         vi.clearAllMocks();
     });
@@ -81,6 +111,32 @@ describe("GET /org/admin/integrations/github-app/install", () => {
 
         expect(response.status).toBe(307);
         expect(response.headers.get("location")).toBe(ERROR_LOCATION);
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("uses configured public origin for install error redirects", async () => {
+        process.env.AUTH_URL = "https://app.example.test";
+        setSession({ org_id: "org-1", role: "member", is_superuser: false });
+
+        const response = await GET(makeForwardedRequest());
+
+        expect(response.status).toBe(307);
+        expect(response.headers.get("location")).toBe(
+            "https://app.example.test/org/admin/integrations/github?github_app=error",
+        );
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("uses forwarded public origin for install error redirects when proxy trust is enabled", async () => {
+        process.env.TRUST_PROXY = "true";
+        setSession({ org_id: "org-1", role: "member", is_superuser: false });
+
+        const response = await GET(makeForwardedRequest());
+
+        expect(response.status).toBe(307);
+        expect(response.headers.get("location")).toBe(
+            "https://app.example.test/org/admin/integrations/github?github_app=error",
+        );
         expect(fetch).not.toHaveBeenCalled();
     });
 

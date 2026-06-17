@@ -78,6 +78,7 @@ const serverEnvSchema = z.object({
     BACKEND_URL: z.string().optional(),
     BASE_PATH: z.string().optional(),
     AUTH_SECRET: z.string().optional(),
+    AUTH_URL: z.string().optional(),
     NEXTAUTH_SECRET: z.string().optional(),
     NEXTAUTH_URL: z.string().optional(),
     AUTH_GITHUB_ID: z.string().optional(),

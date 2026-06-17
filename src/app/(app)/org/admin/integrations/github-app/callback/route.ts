@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
 
 /**
@@ -17,9 +18,50 @@ import { getBackendUrl } from "@/lib/origin";
 
 const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
 
+function firstHeaderValue(value: string | null) {
+    return value?.split(",")[0]?.trim() || undefined;
+}
+
+function configuredOrigin() {
+    const env = getServerEnv();
+    const publicUrl = env.AUTH_URL ?? env.NEXTAUTH_URL;
+    if (!publicUrl) return undefined;
+
+    try {
+        return new URL(publicUrl).origin;
+    } catch {
+        return undefined;
+    }
+}
+
+function publicOrigin(request: NextRequest) {
+    const configured = configuredOrigin();
+    if (configured) {
+        return configured;
+    }
+
+    const env = getServerEnv();
+    if (env.TRUST_PROXY !== "true" && env.TRUST_PROXY !== "1") {
+        return request.nextUrl.origin;
+    }
+
+    const forwardedHost = firstHeaderValue(request.headers.get("x-forwarded-host"));
+    if (!forwardedHost) {
+        return request.nextUrl.origin;
+    }
+
+    const forwardedProto = firstHeaderValue(request.headers.get("x-forwarded-proto"));
+    const protocol =
+        forwardedProto === "http" || forwardedProto === "https"
+            ? forwardedProto
+            : request.nextUrl.protocol.slice(0, -1);
+
+    return `${protocol}://${forwardedHost}`;
+}
+
 function resultRedirect(request: NextRequest, result: "connected" | "error") {
     return NextResponse.redirect(
-        new URL(`${GITHUB_INTEGRATION_PATH}?github_app=${result}`, request.url),
+        new URL(`${GITHUB_INTEGRATION_PATH}?github_app=${result}`, publicOrigin(request)),
     );
 }
 
