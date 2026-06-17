@@ -261,6 +261,12 @@ const nextAuth = NextAuth({
             const tokenExpired = expiresAt && now > expiresAt - 5 * 60 * 1000;
 
             // Step 1: Refresh expired tokens first (before validation).
+            // On a failed refresh attempt (429/5xx/network), use the same
+            // full-jitter exponential backoff shape as validation so repeated
+            // failures across tabs/instances don't hammer the backend limiter.
+            const REFRESH_BACKOFF_BASE = 60 * 1000; // 60 s
+            const REFRESH_BACKOFF_CAP = 15 * 60 * 1000; // 15 min
+            const REFRESH_BACKOFF_FLOOR = 5 * 1000; // 5 s minimum so next attempt isn't immediate
             if (tokenExpired && token.refresh_token) {
                 try {
                     const backendUrl = getBackendUrl();
@@ -277,11 +283,12 @@ const nextAuth = NextAuth({
                         // an already-rotated refresh_token and receive a 401. The ?? fallback below
                         // preserves the most recently issued token if data.refresh_token is absent,
                         // but a brief window exists between concurrent rotations.
-                        // A backend refresh-idempotency or grace-period mechanism is needed for a
-                        // full fix; this is tracked in a follow-up issue.
+                        // Backend refresh grace shipped in CHAOS-2162 (PR #827); keep the client-side
+                        // fallback so older/mixed backend deployments remain safe during rollouts.
                         token.refresh_token = data.refresh_token ?? token.refresh_token;
                         token.expires_at = now + (data.expires_in || 3600) * 1000;
                         token.last_validated = now;
+                        token.refresh_failures = 0;
                         token.error = undefined;
                         if (data.user) {
                             token.id = data.user.id;
@@ -296,18 +303,39 @@ const nextAuth = NextAuth({
                         token.error = "refresh_failed";
                         return token;
                     } else {
-                        // Transient/5xx error — revoke access_token to prevent exposing an expired
-                        // bearer token, but keep refresh_token so the next JWT callback can retry
-                        // (self-healing). expires_at is left unchanged so tokenExpired stays true.
+                        // 429/5xx/transient error — revoke access_token to prevent exposing an
+                        // expired bearer token, but keep refresh_token so a later JWT callback can
+                        // retry after full jittered exponential backoff (self-healing).
                         token.access_token = undefined;
+                        const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
+                        token.refresh_failures = failures;
+                        const cappedDelay = Math.min(
+                            REFRESH_BACKOFF_CAP,
+                            REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),
+                        );
+                        // Full jitter: spread across [floor, cappedDelay]
+                        const jitteredDelay =
+                            REFRESH_BACKOFF_FLOOR +
+                            Math.random() * (cappedDelay - REFRESH_BACKOFF_FLOOR);
+                        token.expires_at = now + 5 * 60 * 1000 + jitteredDelay;
                         token.error = "refresh_unavailable";
                         return token;
                     }
                 } catch {
                     // Network error — revoke access_token to prevent exposing an expired bearer
-                    // token, but keep refresh_token so the next JWT callback can retry (self-healing).
-                    // expires_at is left unchanged so tokenExpired stays true on the next call.
+                    // token, but keep refresh_token so a later JWT callback can retry after backoff.
                     token.access_token = undefined;
+                    const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
+                    token.refresh_failures = failures;
+                    const cappedDelay = Math.min(
+                        REFRESH_BACKOFF_CAP,
+                        REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),
+                    );
+                    // Full jitter: spread across [floor, cappedDelay]
+                    const jitteredDelay =
+                        REFRESH_BACKOFF_FLOOR +
+                        Math.random() * (cappedDelay - REFRESH_BACKOFF_FLOOR);
+                    token.expires_at = now + 5 * 60 * 1000 + jitteredDelay;
                     token.error = "refresh_unavailable";
                     return token;
                 }
