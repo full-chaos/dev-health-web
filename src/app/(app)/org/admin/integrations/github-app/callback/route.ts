@@ -19,128 +19,116 @@ import { getBackendUrl } from "@/lib/origin";
 const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
 
 function firstHeaderValue(value: string | null) {
-	return value?.split(",")[0]?.trim() || undefined;
+    return value?.split(",")[0]?.trim() || undefined;
 }
 
 function configuredOrigin() {
-	const env = getServerEnv();
-	const publicUrl = env.AUTH_URL ?? env.NEXTAUTH_URL;
-	if (!publicUrl) return undefined;
+    const env = getServerEnv();
+    const publicUrl = env.AUTH_URL ?? env.NEXTAUTH_URL;
+    if (!publicUrl) return undefined;
 
-	try {
-		return new URL(publicUrl).origin;
-	} catch {
-		return undefined;
-	}
+    try {
+        return new URL(publicUrl).origin;
+    } catch {
+        return undefined;
+    }
 }
 
 function publicOrigin(request: NextRequest) {
-	const configured = configuredOrigin();
-	if (configured) {
-		return configured;
-	}
+    const configured = configuredOrigin();
+    if (configured) {
+        return configured;
+    }
 
-	const env = getServerEnv();
-	if (env.TRUST_PROXY !== "true" && env.TRUST_PROXY !== "1") {
-		return request.nextUrl.origin;
-	}
+    const env = getServerEnv();
+    if (env.TRUST_PROXY !== "true" && env.TRUST_PROXY !== "1") {
+        return request.nextUrl.origin;
+    }
 
-	const forwardedHost = firstHeaderValue(
-		request.headers.get("x-forwarded-host"),
-	);
-	if (!forwardedHost) {
-		return request.nextUrl.origin;
-	}
+    const forwardedHost = firstHeaderValue(request.headers.get("x-forwarded-host"));
+    if (!forwardedHost) {
+        return request.nextUrl.origin;
+    }
 
-	const forwardedProto = firstHeaderValue(
-		request.headers.get("x-forwarded-proto"),
-	);
-	const protocol =
-		forwardedProto === "http" || forwardedProto === "https"
-			? forwardedProto
-			: request.nextUrl.protocol.slice(0, -1);
+    const forwardedProto = firstHeaderValue(request.headers.get("x-forwarded-proto"));
+    const protocol =
+        forwardedProto === "http" || forwardedProto === "https"
+            ? forwardedProto
+            : request.nextUrl.protocol.slice(0, -1);
 
-	return `${protocol}://${forwardedHost}`;
+    return `${protocol}://${forwardedHost}`;
 }
 
 function resultRedirect(request: NextRequest, result: "connected" | "error") {
-	return NextResponse.redirect(
-		new URL(
-			`${GITHUB_INTEGRATION_PATH}?github_app=${result}`,
-			publicOrigin(request),
-		),
-	);
+    return NextResponse.redirect(
+        new URL(`${GITHUB_INTEGRATION_PATH}?github_app=${result}`, publicOrigin(request)),
+    );
 }
 
 export async function GET(request: NextRequest) {
-	const params = request.nextUrl.searchParams;
+    const params = request.nextUrl.searchParams;
 
-	const rawInstallationId = params.get("installation_id");
-	const state = params.get("state");
-	const setupAction = params.get("setup_action");
-	const code = params.get("code");
+    const rawInstallationId = params.get("installation_id");
+    const state = params.get("state");
+    const setupAction = params.get("setup_action");
+    const code = params.get("code");
 
-	// Validate the untrusted GitHub-supplied params before doing any work.
-	// Reject values that exceed MAX_SAFE_INTEGER so large IDs don't silently
-	// lose precision before being forwarded to the backend.
-	const installationId =
-		rawInstallationId && /^\d+$/.test(rawInstallationId)
-			? Number(rawInstallationId)
-			: NaN;
-	if (
-		!Number.isInteger(installationId) ||
-		installationId <= 0 ||
-		installationId > Number.MAX_SAFE_INTEGER ||
-		!state
-	) {
-		return resultRedirect(request, "error");
-	}
+    // Validate the untrusted GitHub-supplied params before doing any work.
+    // Reject values that exceed MAX_SAFE_INTEGER so large IDs don't silently
+    // lose precision before being forwarded to the backend.
+    const installationId =
+        rawInstallationId && /^\d+$/.test(rawInstallationId) ? Number(rawInstallationId) : NaN;
+    if (
+        !Number.isInteger(installationId) ||
+        installationId <= 0 ||
+        installationId > Number.MAX_SAFE_INTEGER ||
+        !state
+    ) {
+        return resultRedirect(request, "error");
+    }
 
-	const session = await auth();
-	if (!session?.access_token) {
-		// GET is followed by the browser, so render an error banner rather than
-		// raw JSON.
-		return resultRedirect(request, "error");
-	}
+    const session = await auth();
+    if (!session?.access_token) {
+        // GET is followed by the browser, so render an error banner rather than
+        // raw JSON.
+        return resultRedirect(request, "error");
+    }
 
-	// Defense-in-depth: this route is directly addressable and does not sit
-	// under the admin layout's requireRole guard. Mirror requireRole(["admin",
-	// "owner"]) inline (do NOT call it — it redirects to /dashboard, breaking
-	// this handler's consistent ?github_app=error UX).
-	if (
-		!session.user.is_superuser &&
-		!["admin", "owner"].includes(session.user.role || "")
-	) {
-		return resultRedirect(request, "error");
-	}
+    // Defense-in-depth: this route is directly addressable and does not sit
+    // under the admin layout's requireRole guard. Mirror requireRole(["admin",
+    // "owner"]) inline (do NOT call it — it redirects to /dashboard, breaking
+    // this handler's consistent ?github_app=error UX).
+    if (!session.user.is_superuser && !["admin", "owner"].includes(session.user.role || "")) {
+        return resultRedirect(request, "error");
+    }
 
-	const headers: Record<string, string> = {
-		Authorization: `Bearer ${session.access_token}`,
-		"Content-Type": "application/json",
-	};
-	// Forward the effective org so impersonation/active-org binds the install
-	// to the correct organization (mirrors src/lib/admin/server helpers).
-	if (session.user?.org_id) {
-		headers["X-Org-Id"] = session.user.org_id;
-	}
+    const headers: Record<string, string> = {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+    };
+    // Forward the effective org so impersonation/active-org binds the install
+    // to the correct organization (mirrors src/lib/admin/server helpers).
+    if (session.user?.org_id) {
+        headers["X-Org-Id"] = session.user.org_id;
+    }
 
-	try {
-		const response = await fetch(
-			`${getBackendUrl()}/api/v1/admin/integrations/github/install-callback`,
-			{
-				method: "POST",
-				headers,
-				body: JSON.stringify({
-					installation_id: installationId,
-					setup_action: setupAction,
-					state,
-					code,
-				}),
-			},
-		);
+    try {
+        const response = await fetch(
+            `${getBackendUrl()}/api/v1/admin/integrations/github/install-callback`,
+            {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    installation_id: installationId,
+                    setup_action: setupAction,
+                    state,
+                    code,
+                }),
+            },
+        );
 
-		return resultRedirect(request, response.ok ? "connected" : "error");
-	} catch {
-		return resultRedirect(request, "error");
-	}
+        return resultRedirect(request, response.ok ? "connected" : "error");
+    } catch {
+        return resultRedirect(request, "error");
+    }
 }
