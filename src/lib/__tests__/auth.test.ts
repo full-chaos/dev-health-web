@@ -225,6 +225,9 @@ describe("jwt callback — token lifecycle", () => {
 
     type JwtCallback = (params: JwtCallbackParams) => Promise<Record<string, unknown>>;
 
+    const REFRESH_BACKOFF_BASE = 60 * 1000;
+    const REFRESH_BACKOFF_FLOOR = 5 * 1000;
+
     interface NextAuthCallbacks {
         jwt?: JwtCallback;
     }
@@ -238,6 +241,17 @@ describe("jwt callback — token lifecycle", () => {
         const jwt = config?.callbacks?.jwt;
         if (!jwt) throw new Error("JWT callback not captured from NextAuth config");
         return jwt;
+    }
+
+    function refreshDueToken(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+        return {
+            id: "user-1",
+            access_token: "valid-access",
+            refresh_token: "valid-refresh",
+            expires_at: Date.now() - 1000,
+            last_validated: Date.now(),
+            ...overrides,
+        };
     }
 
     afterEach(() => {
@@ -388,6 +402,84 @@ describe("jwt callback — token lifecycle", () => {
         expect(result.refresh_token).toBe(newRefreshToken);
         expect(result.expires_at as number).toBeGreaterThan(Date.now());
         expect(result.error).toBeUndefined();
+    });
+
+    it("(e1) 429 on /auth/refresh preserves refresh_token and backs off instead of retrying every request", async () => {
+        vi.spyOn(Math, "random").mockReturnValue(1.0);
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 429,
+            json: async () => ({ detail: "rate limited" }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const first = await jwt({
+            token: refreshDueToken(),
+            user: null,
+            account: null,
+        });
+
+        expect(first.access_token).toBeUndefined();
+        expect(first.refresh_token).toBe("valid-refresh");
+        expect(first.error).toBe("refresh_unavailable");
+        expect(first.refresh_failures).toBe(1);
+        const nextRefreshAt = (first.expires_at as number) - 5 * 60 * 1000;
+        expect(nextRefreshAt).toBeGreaterThan(Date.now());
+        expect(nextRefreshAt).toBeLessThanOrEqual(Date.now() + REFRESH_BACKOFF_BASE + 100);
+
+        const second = await jwt({ token: first, user: null, account: null });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(second.refresh_token).toBe("valid-refresh");
+        expect(second.error).toBe("refresh_unavailable");
+    });
+
+    it("(e2) refresh success resets refresh_failures after a transient backoff", async () => {
+        const newAccessToken = "recovered-access-token";
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                access_token: newAccessToken,
+                expires_in: 3600,
+            }),
+        } as unknown as Response);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: refreshDueToken({
+                access_token: undefined,
+                error: "refresh_unavailable",
+                refresh_failures: 3,
+            }),
+            user: null,
+            account: null,
+        });
+
+        expect(result.access_token).toBe(newAccessToken);
+        expect(result.refresh_token).toBe("valid-refresh");
+        expect(result.refresh_failures).toBe(0);
+        expect(result.error).toBeUndefined();
+    });
+
+    it("(e3) network error on /auth/refresh uses the full-jitter floor", async () => {
+        vi.spyOn(Math, "random").mockReturnValue(0.0);
+        const fetchMock = vi.fn().mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const result = await jwt({
+            token: refreshDueToken(),
+            user: null,
+            account: null,
+        });
+
+        const nextRefreshAt = (result.expires_at as number) - 5 * 60 * 1000;
+        const delay = nextRefreshAt - Date.now();
+        expect(result.refresh_failures).toBe(1);
+        expect(delay).toBeGreaterThanOrEqual(REFRESH_BACKOFF_FLOOR - 100);
+        expect(delay).toBeLessThanOrEqual(REFRESH_BACKOFF_FLOOR + 100);
     });
 
     // CHAOS-2232 / CHAOS-2458: periodic /auth/validate backoff — a 429/5xx/network failure must
