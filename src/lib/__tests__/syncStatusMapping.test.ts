@@ -48,16 +48,18 @@ describe("resolveSyncPollTarget", () => {
         });
     });
 
-    it("treats a task_id-only response as a legacy run", () => {
+    it("returns null for a task_id-only response (no run_id) so we never poll an unrelated head job", () => {
+        // Regression (CHAOS-2557a): under backend/frontend version skew a legacy
+        // trigger may return only `task_id` and no `run_id`. Without a run_id we
+        // cannot match our run, so this must NOT be a pollable legacy target —
+        // otherwise an unrelated terminal job at the head of the jobs list would
+        // produce a false "Sync completed/failed". The caller does a single
+        // router.refresh() instead.
         const result: SyncTriggerResult = {
             status: "triggered",
             task_id: "celery-1",
         };
-        expect(resolveSyncPollTarget(result, "cfg-1")).toEqual({
-            kind: "legacy",
-            configId: "cfg-1",
-            runId: null,
-        });
+        expect(resolveSyncPollTarget(result, "cfg-1")).toBeNull();
     });
 
     it("returns null when no pollable id is present", () => {
@@ -154,9 +156,10 @@ describe("resolveLegacyJobStatus", () => {
     it("keeps polling (running) when the jobs array is empty", () => {
         expect(resolveLegacyJobStatus([], "jobrun-xyz")).toBe("running");
     });
-
-    it("falls back to the head of the list when no run id is known", () => {
+    it("never resolves terminal off an unrelated head job (no head-of-list fallback)", () => {
+        // Even if a terminal job leads the list, an unmatched runId stays
+        // "running" — there is deliberately no head-of-list fallback.
         const jobs: SyncJob[] = [job("head", "success"), job("tail", "running")];
-        expect(resolveLegacyJobStatus(jobs, null)).toBe("success");
+        expect(resolveLegacyJobStatus(jobs, "jobrun-xyz")).toBe("running");
     });
 });
