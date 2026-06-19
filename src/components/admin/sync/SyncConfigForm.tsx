@@ -44,6 +44,11 @@ const ALL_SYNC_TARGETS = [
     { id: "feature-flags", label: "Feature Flags" },
 ];
 
+// Providers where work-item / team attribution applies, so auto-importing
+// teams, projects & members is meaningful. Pure feature-flag providers
+// (e.g. launchdarkly) and pure-git/local sources are excluded.
+const AUTO_IMPORT_PROVIDERS = ["github", "gitlab", "jira", "linear"];
+
 function getSyncTargetsForProvider(provider: string) {
     const allowed =
         PROVIDER_SYNC_TARGETS[provider as Provider] ?? Object.values(PROVIDER_SYNC_TARGETS).flat();
@@ -83,6 +88,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         owner: (initialData?.sync_options?.owner as string) || "",
         repos: [] as string[],
         gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
+        auto_import_teams: (initialData?.sync_options?.auto_import_teams as boolean) ?? false,
     });
 
     useEffect(() => {
@@ -154,8 +160,23 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         if (formData.provider === "gitlab" && formData.gitlab_url) {
             opts.gitlab_url = formData.gitlab_url;
         }
+        // Auto-import teams/projects/members is only meaningful for providers
+        // with work-item/team attribution. Persist the explicit boolean for
+        // those, and strip any stale flag when switched to an unsupported
+        // provider so it never rides along inappropriately.
+        if (AUTO_IMPORT_PROVIDERS.includes(formData.provider)) {
+            opts.auto_import_teams = formData.auto_import_teams;
+        } else {
+            delete opts.auto_import_teams;
+        }
         return opts;
-    }, [initialData, formData.owner, formData.provider, formData.gitlab_url]);
+    }, [
+        initialData,
+        formData.owner,
+        formData.provider,
+        formData.gitlab_url,
+        formData.auto_import_teams,
+    ]);
 
     const handleSubmit = useCallback(
         (e: SyntheticEvent<HTMLFormElement>) => {
@@ -484,6 +505,34 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         ))}
                     </div>
                 </div>
+
+                {/* Auto-import teams, projects & members */}
+                {AUTO_IMPORT_PROVIDERS.includes(formData.provider) && (
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="auto_import_teams"
+                                name="auto_import_teams"
+                                checked={formData.auto_import_teams}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        auto_import_teams: e.target.checked,
+                                    }))
+                                }
+                                className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                            />
+                            <label htmlFor="auto_import_teams" className="text-sm font-medium">
+                                Auto-import teams, projects &amp; members
+                            </label>
+                        </div>
+                        <p className="text-xs text-(--ink-muted)">
+                            Discover and import teams, projects, and members from this provider
+                            during sync to populate ownership and attribution.
+                        </p>
+                    </div>
+                )}
 
                 {/* Initial Sync Depth */}
                 <div className="space-y-3">
