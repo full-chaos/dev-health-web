@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { SyncConfig } from "@/lib/admin/types";
-import { triggerSync, toggleSyncActive, deleteSyncConfig } from "@/lib/admin/server";
+import { toggleSyncActive, deleteSyncConfig } from "@/lib/admin/server";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { SyncStatusBadge } from "./SyncStatusBadge";
+import { useSyncTrigger } from "./useSyncTrigger";
 
 interface SyncConfigCardProps {
     config: SyncConfig;
@@ -17,22 +18,9 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const { liveStatus, isSyncing, trigger: handleTrigger } = useSyncTrigger(config.id);
 
-    const handleTrigger = () => {
-        startTransition(async () => {
-            try {
-                const result = await triggerSync(config.id);
-                if (result.error) {
-                    toast.error(result.error);
-                } else {
-                    toast.success("Sync triggered successfully");
-                    router.refresh();
-                }
-            } catch {
-                toast.error("Failed to trigger sync");
-            }
-        });
-    };
+    // Sync trigger + live status polling lives in useSyncTrigger (CHAOS-2557a).
 
     const handleToggleActive = () => {
         startTransition(async () => {
@@ -69,6 +57,9 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
     };
 
     const getStatus = () => {
+        // A live run status (Running/terminal) takes precedence over the
+        // persisted last_sync_* while a manual sync is in flight.
+        if (liveStatus) return liveStatus;
         if (!config.last_sync_at) return "never";
         return config.last_sync_success ? "success" : "failed";
     };
@@ -147,10 +138,10 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                             <button
                                 type="button"
                                 onClick={handleTrigger}
-                                disabled={isPending}
+                                disabled={isPending || isSyncing}
                                 className="cursor-pointer rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white hover:opacity-80 active:opacity-70 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50 transition-opacity"
                             >
-                                {isPending ? "Syncing..." : "Sync Now"}
+                                {isSyncing ? "Syncing..." : "Sync Now"}
                             </button>
                         </>
                     )}

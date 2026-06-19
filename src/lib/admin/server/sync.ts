@@ -13,6 +13,8 @@ import type {
     DiscoveredReposResponse,
     SyncConfigBatchCreate,
     SyncConfigBatchResponse,
+    SyncTriggerResult,
+    SyncRun,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
@@ -105,13 +107,20 @@ export async function deleteSyncConfig(id: string): Promise<ActionResult<void>> 
     });
 }
 
-export async function triggerSync(id: string): Promise<ActionResult<void>> {
+export async function triggerSync(id: string): Promise<ActionResult<SyncTriggerResult>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.syncConfigs.trigger(id, token, orgId);
         revalidatePath("/org/admin/sync");
         revalidatePath(`/org/admin/sync/${id}`);
         return result;
+    });
+}
+
+export async function getSyncRunStatus(runId: string): Promise<ActionResult<SyncRun>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.syncConfigs.getSyncRun(runId, token, orgId);
     });
 }
 

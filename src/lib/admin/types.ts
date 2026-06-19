@@ -139,6 +139,50 @@ export interface SyncJob {
     error?: string;
 }
 
+/**
+ * Response union returned by POST /sync-configs/{id}/trigger.
+ *
+ * The backend routes a manual trigger down one of two paths and the JSON
+ * shape differs by path (see dev-health-ops api/admin/routers/sync.py):
+ *   - planner / fan-out runs return `sync_run_id` (poll GET /sync-runs/{id})
+ *   - legacy ScheduledJob/JobRun runs return `run_id` + `task_id`
+ *       (poll the legacy /sync-configs/{id}/jobs path)
+ * `status` is always present ("triggered"); the id fields are mutually
+ * exclusive depending on the path taken.
+ */
+export interface SyncTriggerResult {
+    status?: string;
+    config_id?: string;
+    // Planner / fan-out branch
+    sync_run_id?: string;
+    total_units?: number;
+    // Legacy ScheduledJob/JobRun branch
+    task_id?: string;
+    run_id?: string;
+}
+
+/**
+ * Planner sync run status, returned by GET /sync-runs/{run_id}.
+ * Mirrors dev-health-ops api/admin/schemas/integrations.py:SyncRunResponse.
+ * `status` is one of planned|dispatching|running|success|failed.
+ */
+export interface SyncRun {
+    id: string;
+    org_id: string;
+    integration_id: string;
+    triggered_by: string;
+    mode: string;
+    status: string;
+    total_units: number;
+    completed_units: number;
+    failed_units: number;
+    started_at: string | null;
+    completed_at: string | null;
+    result: Record<string, unknown> | null;
+    error: string | null;
+    created_at: string;
+}
+
 export interface SyncConfigCreate {
     name: string;
     provider: string;
