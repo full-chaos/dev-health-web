@@ -177,7 +177,7 @@ describe("SyncConfigForm", () => {
                 schedule_cron: null,
                 timezone: null,
                 initial_sync_depth: 30,
-                sync_options: {},
+                sync_options: { auto_import_teams: false },
             });
             expect(screen.getByText("Config created")).toBeInTheDocument();
             expect(mockPush).toHaveBeenCalledWith("/org/admin/sync");
@@ -250,7 +250,7 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "myorg" },
+                    sync_options: { owner: "myorg", auto_import_teams: false },
                 });
             });
         });
@@ -278,6 +278,7 @@ describe("SyncConfigForm", () => {
                     sync_options: {
                         owner: "glorg",
                         gitlab_url: "https://gitlab.example.com",
+                        auto_import_teams: false,
                     },
                 });
             });
@@ -358,7 +359,11 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "neworg", repo: "oldrepo" },
+                    sync_options: {
+                        owner: "neworg",
+                        repo: "oldrepo",
+                        auto_import_teams: false,
+                    },
                 });
             });
         });
@@ -493,7 +498,11 @@ describe("SyncConfigForm", () => {
                     initial_sync_depth: 0,
                     // Stale schedule keys must NOT ride along inside sync_options —
                     // they previously resurrected the old schedule on the backend.
-                    sync_options: { owner: "full-chaos", search: "full-chaos/*" },
+                    sync_options: {
+                        owner: "full-chaos",
+                        search: "full-chaos/*",
+                        auto_import_teams: false,
+                    },
                 });
             });
         });
@@ -558,7 +567,11 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { all_repos: true, owner: "myorg" },
+                    sync_options: {
+                        all_repos: true,
+                        owner: "myorg",
+                        auto_import_teams: false,
+                    },
                 });
             });
             expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
@@ -584,7 +597,7 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { all_repos: true },
+                    sync_options: { all_repos: true, auto_import_teams: false },
                 });
             });
             expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
@@ -645,11 +658,98 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "myorg" },
+                    sync_options: { owner: "myorg", auto_import_teams: false },
                     repos: ["repo-a"],
                 });
             });
             expect(mockCreateSyncConfig).not.toHaveBeenCalled();
+        });
+
+        it("includes auto_import_teams=true in sync_options when toggled on (create)", async () => {
+            mockCreateSyncConfig.mockResolvedValue(undefined);
+            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Team Sync");
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await userEvent.click(screen.getByLabelText("Auto-import teams, projects & members"));
+            await userEvent.click(screen.getByRole("button", { name: "Create Configuration" }));
+
+            await waitFor(() => {
+                expect(mockCreateSyncConfig).toHaveBeenCalledWith({
+                    name: "Team Sync",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: [],
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: { auto_import_teams: true },
+                });
+            });
+        });
+
+        it("round-trips auto_import_teams and preserves other sync_options on update", async () => {
+            mockUpdateSyncConfig.mockResolvedValue(undefined);
+            const initialData: SyncConfig = {
+                id: "cfg-ai",
+                name: "Existing Config",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: {
+                    owner: "myorg",
+                    search: "myorg/*",
+                    auto_import_teams: true,
+                },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                initial_sync_depth: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+
+            renderWithToaster(
+                <SyncConfigForm initialData={initialData} credentials={mockCredentials} />,
+            );
+
+            const toggle = screen.getByLabelText("Auto-import teams, projects & members");
+            expect(toggle).toBeChecked();
+            await userEvent.click(toggle); // turn off
+            await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+
+            await waitFor(() => {
+                expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-ai", {
+                    sync_targets: ["git"],
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: {
+                        owner: "myorg",
+                        search: "myorg/*",
+                        auto_import_teams: false,
+                    },
+                });
+            });
+        });
+
+        it("hides auto-import toggle for launchdarkly provider", async () => {
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            expect(
+                screen.getByLabelText("Auto-import teams, projects & members"),
+            ).toBeInTheDocument();
+
+            await userEvent.selectOptions(screen.getByLabelText("Provider"), "launchdarkly");
+
+            expect(
+                screen.queryByLabelText("Auto-import teams, projects & members"),
+            ).not.toBeInTheDocument();
         });
     });
 });
