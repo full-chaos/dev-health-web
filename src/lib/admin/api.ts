@@ -11,6 +11,7 @@ import { licensingApi } from "./api/billing";
 import { auditApi, platformAuditApi } from "./api/audit";
 import { ipAllowlistApi } from "./api/security";
 import { retentionApi } from "./api/retention";
+import { llmSettingsApi } from "./api/llm-settings";
 import { platformApi, impersonationApi } from "./api/platform";
 
 export const adminApi = {
@@ -25,6 +26,7 @@ export const adminApi = {
     audit: auditApi,
     ipAllowlist: ipAllowlistApi,
     retention: retentionApi,
+    llmSettings: llmSettingsApi,
     impersonation: impersonationApi,
     platform: platformApi,
     platformAudit: platformAuditApi,

@@ -513,6 +513,56 @@ export interface RetentionExecuteResponse {
     error: string | null;
 }
 
+// ---- BYO LLM Settings ----
+
+/** Providers selectable for Bring-Your-Own-LLM. Mirrors the backend-supported set. */
+export type LLMProvider = "openai" | "anthropic" | "gemini" | "qwen";
+
+export const LLM_PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini", "qwen"];
+
+export const LLM_PROVIDER_LABELS: Record<LLMProvider, string> = {
+    openai: "OpenAI",
+    anthropic: "Anthropic",
+    gemini: "Gemini",
+    qwen: "Qwen",
+};
+
+/**
+ * GET /admin/llm-settings response. The api_key is write-only server-side and is
+ * returned masked (never the real key). Null/absent fields are omitted by the
+ * backend (response_model_exclude_none=True).
+ */
+export interface LLMSettingsResponse {
+    provider?: string | null;
+    model?: string | null;
+    api_key?: string | null;
+    base_url?: string | null;
+    concurrency?: number | null;
+}
+
+/**
+ * PUT /admin/llm-settings payload. provider is required; api_key is optional and
+ * only sent when (re)setting the key so a blank field preserves the stored key.
+ */
+export interface LLMSettingsUpsert {
+    provider: string;
+    model?: string | null;
+    api_key?: string | null;
+    base_url?: string | null;
+    concurrency?: number | null;
+}
+
+/**
+ * Result wrapper for the BYO-LLM server actions that preserves the HTTP status
+ * so the UI can distinguish tier/flag gating (402/403) and base_url validation
+ * (400) from generic failures.
+ */
+export interface LLMSettingsActionResult<T> {
+    data?: T;
+    error?: string;
+    status?: number;
+}
+
 // ---- Provider types ----
 
 export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly";

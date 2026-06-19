@@ -66,12 +66,14 @@ describe("AdminSidebar", () => {
                     audit_log: true,
                     ip_allowlist: false,
                     custom_retention: true,
+                    byo_llm: true,
                 }}
             />,
         );
 
         expect(screen.getByRole("link", { name: /audit logsenterprise/i })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /retentioncompliance/i })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /ai setupllm/i })).toBeInTheDocument();
         expect(
             screen.queryByRole("link", { name: /ip allowlistsecurity/i }),
         ).not.toBeInTheDocument();

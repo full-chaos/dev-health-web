@@ -1,6 +1,7 @@
 "use server";
 
 import { adminApi } from "../api";
+import { AdminApiError } from "../api";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/lib/result";
 import type {
@@ -17,6 +18,9 @@ import type {
     RetentionPolicyUpdate,
     RetentionPolicyListResponse,
     RetentionExecuteResponse,
+    LLMSettingsResponse,
+    LLMSettingsUpsert,
+    LLMSettingsActionResult,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
@@ -189,5 +193,54 @@ export async function listRetentionResourceTypes(): Promise<ActionResult<string[
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.retention.resourceTypes(token, orgId);
+    });
+}
+
+// ---- BYO LLM Settings ----
+// These actions preserve the HTTP status so the page can render a locked/upsell
+// state for tier/flag gating (402/403) and an inline field error for base_url
+// validation (400), rather than collapsing everything into a generic message.
+
+async function withStatusErrorHandling<T>(
+    fn: () => Promise<T>,
+): Promise<LLMSettingsActionResult<T>> {
+    try {
+        return { data: await fn() };
+    } catch (err) {
+        if (err instanceof AdminApiError) {
+            const detail = err.detail || err.message;
+            return {
+                error: typeof detail === "string" ? detail : JSON.stringify(detail),
+                status: err.status,
+            };
+        }
+        return { error: err instanceof Error ? err.message : "Unknown error" };
+    }
+}
+
+export async function getLLMSettings(): Promise<LLMSettingsActionResult<LLMSettingsResponse>> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.llmSettings.get(token, orgId);
+    });
+}
+
+export async function upsertLLMSettings(
+    data: LLMSettingsUpsert,
+): Promise<LLMSettingsActionResult<LLMSettingsResponse>> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const result = await adminApi.llmSettings.upsert(data, token, orgId);
+        revalidatePath("/org/admin/ai");
+        return result;
+    });
+}
+
+export async function deleteLLMSettings(): Promise<LLMSettingsActionResult<{ deleted: boolean }>> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const result = await adminApi.llmSettings.remove(token, orgId);
+        revalidatePath("/org/admin/ai");
+        return result;
     });
 }
