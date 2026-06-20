@@ -15,14 +15,18 @@ function formatErrorDetail(raw: unknown): string | undefined {
     if (typeof raw === "string") return raw;
     if (raw == null) return undefined;
     if (typeof raw === "object" && "error" in raw) {
-        const obj = raw as Record<string, string>;
+        const obj = raw as Record<string, unknown>;
         if (obj.error === "feature_not_licensed") {
-            const tier = obj.required_tier || "a higher";
-            return `This feature requires the ${tier} plan (current plan: ${obj.current_tier || "community"}).`;
+            const tier = typeof obj.required_tier === "string" ? obj.required_tier : "a higher";
+            const currentTier =
+                typeof obj.current_tier === "string" ? obj.current_tier : "community";
+            return `This feature requires the ${tier} plan (current plan: ${currentTier}).`;
         }
         if (obj.error === "limit_exceeded") {
-            return `Plan limit reached: ${obj.limit || "resource"} (${obj.current}/${obj.maximum}).`;
+            const limit = typeof obj.limit === "string" ? obj.limit : "resource";
+            return `Plan limit reached: ${limit} (${obj.current}/${obj.maximum}).`;
         }
+        if (typeof obj.message === "string") return obj.message;
     }
     return JSON.stringify(raw);
 }

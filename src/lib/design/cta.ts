@@ -27,9 +27,13 @@ export const CTA_LABELS = {
     resetFilters: "Reset filters",
     /** Copy the current selection / link to the clipboard. */
     copy: "Copy",
+    save: "Save",
+    delete: "Delete",
+    confirmDelete: "Confirm delete?",
     monteCarloView: "Monte Carlo view",
     viewGuide: "View guide",
     reset: "Reset",
+    retry: "Retry",
     clearContext: "Clear context",
     clearTheme: "Clear theme",
     allThemes: "All themes",

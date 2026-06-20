@@ -1,0 +1,18 @@
+import { ByoLlmSettings } from "@/components/admin/llm/ByoLlmSettings";
+import { getLLMSettings, upsertLLMSettings, deleteLLMSettings } from "@/lib/admin/server";
+
+// Bring Your Own LLM (BYO-LLM) org-admin settings page. Sits inside
+// (app)/org/admin so it inherits the AdminSidebar + AdminTierProvider and the
+// requireRole(["admin","owner"]) guard from the admin layout. The page is a thin
+// server component that injects the real server actions into the client form;
+// tier/flag gating (402/403) is enforced server-side and surfaced as a locked
+// state by the form itself.
+export default function ByoLlmAdminPage() {
+    return (
+        <ByoLlmSettings
+            loadSettingsAction={getLLMSettings}
+            saveSettingsAction={upsertLLMSettings}
+            removeSettingsAction={deleteLLMSettings}
+        />
+    );
+}

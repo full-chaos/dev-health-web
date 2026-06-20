@@ -13,8 +13,18 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-    { id: "dashboard", label: "Dashboard", href: "/org/admin", description: "Overview" },
-    { id: "users", label: "Users", href: "/org/admin/users", description: "Management" },
+    {
+        id: "dashboard",
+        label: "Dashboard",
+        href: "/org/admin",
+        description: "Overview",
+    },
+    {
+        id: "users",
+        label: "Users",
+        href: "/org/admin/users",
+        description: "Management",
+    },
     {
         id: "organization",
         label: "Organization",
@@ -27,8 +37,18 @@ const navItems: NavItem[] = [
         href: "/org/admin/integrations",
         description: "Connectors",
     },
-    { id: "sync", label: "Sync Status", href: "/org/admin/sync", description: "Jobs" },
-    { id: "teams", label: "Teams", href: "/org/admin/teams", description: "Identity" },
+    {
+        id: "sync",
+        label: "Sync Status",
+        href: "/org/admin/sync",
+        description: "Jobs",
+    },
+    {
+        id: "teams",
+        label: "Teams",
+        href: "/org/admin/teams",
+        description: "Identity",
+    },
     {
         id: "identities",
         label: "Identities",
@@ -56,6 +76,13 @@ const navItems: NavItem[] = [
         description: "Compliance",
         featureKey: "custom_retention",
     },
+    {
+        id: "byo-llm",
+        label: "AI Setup",
+        href: "/org/admin/ai",
+        description: "LLM",
+        featureKey: "byo_llm",
+    },
 ];
 
 type AdminSidebarProps = {
@@ -77,7 +104,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
     });
 
     return (
-        <aside className="w-full md:max-w-[220px] md:shrink-0">
+        <aside className="w-full md:max-w-56 md:shrink-0">
             <div className="md:sticky md:top-6">
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <div>
@@ -86,7 +113,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                         </p>
                         <p className="mt-3 font-(--font-display) text-lg">Admin</p>
                         {isSuperuser && (
-                            <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-purple-500">
+                            <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-label-caps font-medium uppercase text-purple-500">
                                 Platform Admin
                             </span>
                         )}
@@ -112,7 +139,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                                 >
                                     <span className="font-medium">{item.label}</span>
                                     <span
-                                        className={`text-[10px] uppercase tracking-widest ${
+                                        className={`text-label-caps uppercase ${
                                             isActive ? "text-(--accent)" : "text-(--ink-muted)"
                                         }`}
                                     >
@@ -127,9 +154,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                                 className="group flex items-center justify-between rounded-2xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-purple-400 hover:bg-purple-500/20 transition"
                             >
                                 <span className="font-medium">Platform Admin</span>
-                                <span className="text-[10px] uppercase tracking-widest">
-                                    Global
-                                </span>
+                                <span className="text-label-caps uppercase">Global</span>
                             </Link>
                         )}
                     </nav>
