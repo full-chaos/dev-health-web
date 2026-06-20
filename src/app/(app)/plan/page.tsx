@@ -3,6 +3,7 @@ import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { InsufficientHistoryNotice } from "@/components/capacity/InsufficientHistoryNotice";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
@@ -144,6 +145,11 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                 </div>
                             </section>
 
+                            <InsufficientHistoryNotice
+                                insufficientHistory={forecast.insufficientHistory}
+                                rollingWindows={forecast.rollingWindows}
+                            />
+
                             <section className="grid gap-4 md:grid-cols-3">
                                 {[
                                     ["P50", forecast.p50Weeks],
@@ -152,11 +158,20 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                 ].map(([label, weeks]) => (
                                     <div
                                         key={label as string}
-                                        className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
+                                        className={`rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 ${
+                                            forecast.insufficientHistory ? "opacity-60" : ""
+                                        }`}
                                     >
-                                        <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
-                                            {label}
-                                        </p>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                                                {label}
+                                            </p>
+                                            {forecast.insufficientHistory ? (
+                                                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs uppercase tracking-[0.16em] text-amber-200">
+                                                    Limited history
+                                                </span>
+                                            ) : null}
+                                        </div>
                                         <p className="mt-3 text-3xl font-semibold">
                                             {formatWeeks(weeks as number | null)}
                                         </p>
