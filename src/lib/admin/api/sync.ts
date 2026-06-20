@@ -8,6 +8,8 @@ import type {
     BackfillJob,
     SyncConfigBatchCreate,
     SyncConfigBatchResponse,
+    SyncTriggerResult,
+    SyncRun,
 } from "../types";
 
 export const syncConfigsApi = {
@@ -37,7 +39,10 @@ export const syncConfigsApi = {
         request<void>(`/sync-configs/${id}`, { method: "DELETE" }, token, orgId),
 
     trigger: (id: string, token?: string, orgId?: string) =>
-        request<void>(`/sync-configs/${id}/trigger`, { method: "POST" }, token, orgId),
+        request<SyncTriggerResult>(`/sync-configs/${id}/trigger`, { method: "POST" }, token, orgId),
+
+    getSyncRun: (runId: string, token?: string, orgId?: string) =>
+        request<SyncRun>(`/sync-runs/${runId}`, { method: "GET" }, token, orgId),
 
     backfill: (
         id: string,
