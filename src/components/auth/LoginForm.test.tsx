@@ -33,8 +33,15 @@ describe("LoginForm", () => {
 
     test("renders email and password fields", () => {
         renderWithToaster(<LoginForm />);
-        expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+        const email = screen.getByLabelText(/email/i);
+        const password = screen.getByLabelText(/password/i);
+
+        expect(email).toBeInTheDocument();
+        expect(email).toHaveAttribute("name", "email");
+        expect(email).toHaveAttribute("autocomplete", "email");
+        expect(password).toBeInTheDocument();
+        expect(password).toHaveAttribute("name", "password");
+        expect(password).toHaveAttribute("autocomplete", "current-password");
     });
 
     test("renders submit button", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { signIn, getSession } from "next-auth/react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -9,6 +9,9 @@ type LoginFormProps = {
     plan?: string;
     trialIntent?: boolean;
 };
+
+type FormSubmitEvent = Parameters<NonNullable<ComponentProps<"form">["onSubmit"]>>[0];
+type TextInputKeyEvent = Parameters<NonNullable<ComponentProps<"input">["onKeyDown"]>>[0];
 
 async function getSessionWithRetry(attempts = 2, delayMs = 150) {
     for (let i = 0; i < attempts; i++) {
@@ -26,7 +29,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
     const [verifyEmail, setVerifyEmail] = useState(false);
     const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team";
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormSubmitEvent) => {
         e.preventDefault();
         setLoading(true);
 
@@ -71,7 +74,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
         }
     };
 
-    const submitOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const submitOnEnter = (e: TextInputKeyEvent) => {
         if (e.key !== "Enter" || e.nativeEvent.isComposing || loading) return;
 
         const form = e.currentTarget.form;
@@ -94,7 +97,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
                     </p>
                 </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
                 <div className="space-y-2">
                     <label
                         htmlFor="email"
@@ -104,7 +107,9 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
                     </label>
                     <input
                         id="email"
+                        name="email"
                         type="email"
+                        autoComplete="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         onKeyDown={submitOnEnter}
@@ -123,7 +128,9 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
                     </label>
                     <input
                         id="password"
+                        name="password"
                         type="password"
+                        autoComplete="current-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         onKeyDown={submitOnEnter}
