@@ -19,7 +19,7 @@ type InvestmentGatedBodyProps = {
  * Entitlement boundary for the Investment view (CHAOS-2608 / CS7).
  *
  * `InvestmentView` mounts data hooks (`useInvestmentData`,
- * `useWorkItemTeamAttributions`) the moment it renders. `UpgradeGate` renders
+ * `useWorkUnitTeamAttributions`) the moment it renders. `UpgradeGate` renders
  * its children in a hidden, blurred preview when the feature is locked — so
  * mounting `InvestmentView` unconditionally would fire those org-scoped queries
  * for orgs that lack the `investment_view` entitlement. The backend enforces

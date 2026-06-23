@@ -3,7 +3,7 @@
  *
  * Guards the feature-entitlement boundary: when `investment_view` is disabled
  * the data-fetching `InvestmentView` subtree (which mounts `useInvestmentData`
- * and `useWorkItemTeamAttributions`) must NOT mount, so no org-scoped investment
+ * and `useWorkUnitTeamAttributions`) must NOT mount, so no org-scoped investment
  * queries fire from the locked UpgradeGate preview.
  */
 import { describe, expect, it, vi } from "vitest";

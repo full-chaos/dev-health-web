@@ -794,45 +794,59 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         dimension?: { dimension?: string } | string;
     };
 
-    // Work-item team-attribution provenance (CHAOS-2608 / CS7). Render-only:
-    // includes a manual_fallback row so the distinct low-confidence badge is
-    // exercised. Keyed to the work-unit ids in workUnitInvestmentsSample.
-    if (query.includes("WorkItemTeamAttributions")) {
-        return HttpResponse.json({
-            data: {
-                workItemTeamAttributions: [
-                    {
-                        workItemId: "wu-41c2a",
-                        provider: "github",
-                        teamId: "team-platform",
-                        teamName: "Platform",
-                        source: "NATIVE_TEAM",
-                        confidence: "HIGH",
-                        isPrimary: true,
-                        evidence: '{"native_team_key":"platform"}',
-                    },
-                    {
-                        workItemId: "wu-53a17",
-                        provider: "github",
-                        teamId: "team-payments",
-                        teamName: "Payments",
-                        source: "REPO_OWNERSHIP",
-                        confidence: "MEDIUM",
-                        isPrimary: true,
-                        evidence: '{"repo_full_name":"meridian/payments"}',
-                    },
-                    {
-                        workItemId: "wu-7ed90",
-                        provider: "github",
-                        teamId: "team-platform",
-                        teamName: "Platform",
-                        source: "MANUAL_FALLBACK",
-                        confidence: "MANUAL",
-                        isPrimary: true,
-                        evidence: '{"scope_type":"repo","reason":"manual backstop"}',
-                    },
-                ],
+    // Work-UNIT team attribution (CHAOS-2608 / CS7). Render-only: one row per
+    // unit (the backend already collapsed member items to the owning team).
+    // Keyed by workUnitId — the SAME ids as workUnitInvestmentsSample — so the
+    // badge actually renders (the original bug keyed by work_item_id, a disjoint
+    // id space, so the lookup always missed). Includes a manual_fallback row so
+    // the distinct low-confidence badge is exercised.
+    if (query.includes("WorkUnitTeamAttributions")) {
+        const attrVars = variables as {
+            workUnitIds?: string[] | null;
+            teamId?: string | null;
+        };
+        const rows = [
+            {
+                workUnitId: "wu-41c2a",
+                teamId: "team-platform",
+                teamName: "Platform",
+                source: "NATIVE_TEAM",
+                confidence: "HIGH",
+                isPrimary: true,
+                memberCount: 4,
+                evidence: "4 member work item(s) attributed to Platform via native_team",
             },
+            {
+                workUnitId: "wu-53a17",
+                teamId: "team-payments",
+                teamName: "Payments",
+                source: "REPO_OWNERSHIP",
+                confidence: "MEDIUM",
+                isPrimary: true,
+                memberCount: 2,
+                evidence: "2 member work item(s) attributed to Payments via repo_ownership",
+            },
+            {
+                workUnitId: "wu-7ed90",
+                teamId: "team-platform",
+                teamName: "Platform",
+                source: "MANUAL_FALLBACK",
+                confidence: "MANUAL",
+                isPrimary: true,
+                memberCount: 1,
+                evidence: "1 member work item(s) attributed to Platform via manual_fallback",
+            },
+        ];
+        // Mirror the backend's filtering so a test can assert the client queries
+        // by work_unit_id: only return rows whose workUnitId was requested (the
+        // old bug passed work_item_ids, which match nothing here). teamId narrows
+        // to one team's units when supplied.
+        const requested = attrVars.workUnitIds ?? null;
+        const filtered = rows
+            .filter((r) => requested === null || requested.includes(r.workUnitId))
+            .filter((r) => !attrVars.teamId || r.teamId === attrVars.teamId);
+        return HttpResponse.json({
+            data: { workUnitTeamAttributions: filtered },
         });
     }
 

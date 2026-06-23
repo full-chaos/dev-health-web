@@ -1235,6 +1235,8 @@ export type Query = {
   workGraphFlow: WorkGraphFlowResult;
   /** Team-attribution provenance per work item (source/confidence/evidence/is_primary) — CHAOS-2600 */
   workItemTeamAttributions: Array<WorkItemTeamAttribution>;
+  /** The owning team per work UNIT (investment cluster), collapsed from its member work-item attributions by source precedence — CHAOS-2600 */
+  workUnitTeamAttributions: Array<WorkUnitTeamAttribution>;
 };
 
 
@@ -1465,6 +1467,13 @@ export type QueryWorkItemTeamAttributionsArgs = {
   orgId: Scalars['String']['input'];
   teamId?: InputMaybe<Scalars['String']['input']>;
   workItemIds?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
+export type QueryWorkUnitTeamAttributionsArgs = {
+  orgId: Scalars['String']['input'];
+  teamId?: InputMaybe<Scalars['String']['input']>;
+  workUnitIds?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 export type Recommendation = {
@@ -2076,4 +2085,16 @@ export type WorkItemTeamAttribution = {
   teamId?: Maybe<Scalars['String']['output']>;
   teamName?: Maybe<Scalars['String']['output']>;
   workItemId: Scalars['String']['output'];
+};
+
+export type WorkUnitTeamAttribution = {
+  __typename?: 'WorkUnitTeamAttribution';
+  confidence: TeamAttributionConfidence;
+  evidence: Scalars['String']['output'];
+  isPrimary: Scalars['Boolean']['output'];
+  memberCount: Scalars['Int']['output'];
+  source: TeamAttributionSource;
+  teamId?: Maybe<Scalars['String']['output']>;
+  teamName?: Maybe<Scalars['String']['output']>;
+  workUnitId: Scalars['String']['output'];
 };

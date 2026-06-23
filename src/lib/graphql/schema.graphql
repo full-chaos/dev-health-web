@@ -1074,6 +1074,11 @@ type Query {
   """
   workItemTeamAttributions(orgId: String!, workItemIds: [String!] = null, teamId: String = null): [WorkItemTeamAttribution!]!
 
+  """
+  The owning team per work UNIT (investment cluster), collapsed from its member work-item attributions by source precedence — CHAOS-2600
+  """
+  workUnitTeamAttributions(orgId: String!, workUnitIds: [String!] = null, teamId: String = null): [WorkUnitTeamAttribution!]!
+
   """Paginated list of security alerts"""
   securityAlerts(orgId: String!, filters: SecurityAlertFilterInput = null, pagination: SecurityPaginationInput = null): SecurityAlertConnection!
 
@@ -1746,5 +1751,16 @@ type WorkItemTeamAttribution {
   source: TeamAttributionSource!
   confidence: TeamAttributionConfidence!
   isPrimary: Boolean!
+  evidence: String!
+}
+
+type WorkUnitTeamAttribution {
+  workUnitId: String!
+  teamId: String
+  teamName: String
+  source: TeamAttributionSource!
+  confidence: TeamAttributionConfidence!
+  isPrimary: Boolean!
+  memberCount: Int!
   evidence: String!
 }

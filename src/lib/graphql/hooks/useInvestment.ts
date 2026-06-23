@@ -4,10 +4,9 @@ import { AuthErrors } from "@/lib/constants/errors";
 import {
     INVESTMENT_BREAKDOWN_QUERY,
     INVESTMENT_FULL_QUERY,
-    WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY,
+    WORK_UNIT_TEAM_ATTRIBUTIONS_QUERY,
 } from "../queries";
-import { selectPrimaryAttribution } from "@/lib/investment/teamAttribution";
-import type { WorkItemTeamAttribution } from "../__generated__/types";
+import type { WorkUnitTeamAttribution } from "../__generated__/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse } from "@/lib/types";
 import {
@@ -300,36 +299,42 @@ export function useInvestmentRepoTeamFlow(
     };
 }
 
-interface UseWorkItemTeamAttributionsOptions {
+interface UseWorkUnitTeamAttributionsOptions {
     filters: MetricFilter;
-    /** Work item IDs to fetch backend attribution provenance for. */
-    workItemIds: string[];
+    /** Work UNIT IDs (the 64-char content hashes) to fetch owning teams for. */
+    workUnitIds: string[];
     /** Optional team filter passed straight through to the backend. */
     teamId?: string | null;
     pause?: boolean;
 }
 
-interface UseWorkItemTeamAttributionsResult {
-    /** workItemId -> primary backend attribution. Render-only; never recomputed. */
-    byWorkItemId: Map<string, WorkItemTeamAttribution>;
+interface UseWorkUnitTeamAttributionsResult {
+    /** workUnitId -> the unit's owning team. Render-only; never recomputed. */
+    byWorkUnitId: Map<string, WorkUnitTeamAttribution>;
     loading: boolean;
     error: Error | null;
     refetch: () => void;
 }
 
-interface WorkItemTeamAttributionsResponse {
-    workItemTeamAttributions: WorkItemTeamAttribution[];
+interface WorkUnitTeamAttributionsResponse {
+    workUnitTeamAttributions: WorkUnitTeamAttribution[];
 }
 
 /**
- * Fetch backend-computed team-attribution provenance for a set of work items
- * (CHAOS-2608 / CS7). Attribution is resolved BACKEND-ONLY; this hook only
- * surfaces the `source`/`confidence` the system-of-record returned.
+ * Fetch the backend-computed owning team per work UNIT (CHAOS-2608 / CS7).
+ *
+ * A work unit (investment cluster) is keyed by a 64-char content hash, a
+ * DISJOINT id space from the `work_item_id` (`linear:CHAOS-xxxx`) that
+ * `workItemTeamAttributions` is keyed by — so a unit id can never be looked up
+ * there (the original bug: the badge silently never rendered). The backend joins
+ * the unit to its member work items via `work_unit_membership` and collapses
+ * their attributions to ONE team by source precedence; this hook only surfaces
+ * that result. Attribution stays BACKEND-ONLY: the web recomputes nothing.
  */
-export function useWorkItemTeamAttributions(
-    options: UseWorkItemTeamAttributionsOptions,
-): UseWorkItemTeamAttributionsResult {
-    const { filters, workItemIds, teamId = null, pause = false } = options;
+export function useWorkUnitTeamAttributions(
+    options: UseWorkUnitTeamAttributionsOptions,
+): UseWorkUnitTeamAttributionsResult {
+    const { filters, workUnitIds, teamId = null, pause = false } = options;
     const contextOrgId = useOrgId();
 
     const variables = useMemo(() => {
@@ -342,35 +347,30 @@ export function useWorkItemTeamAttributions(
             orgId = "";
         }
         // Stable, de-duplicated ID list so urql can cache identical requests.
-        const ids = Array.from(new Set(workItemIds)).sort();
-        return { orgId, workItemIds: ids, teamId };
-    }, [filters, workItemIds, teamId, contextOrgId]);
+        const ids = Array.from(new Set(workUnitIds)).sort();
+        return { orgId, workUnitIds: ids, teamId };
+    }, [filters, workUnitIds, teamId, contextOrgId]);
 
-    const [result, reexecute] = useQuery<WorkItemTeamAttributionsResponse>({
-        query: WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY,
+    const [result, reexecute] = useQuery<WorkUnitTeamAttributionsResponse>({
+        query: WORK_UNIT_TEAM_ATTRIBUTIONS_QUERY,
         variables,
-        pause: pause || !variables.orgId || variables.workItemIds.length === 0,
+        pause: pause || !variables.orgId || variables.workUnitIds.length === 0,
         requestPolicy: "cache-and-network",
     });
 
-    const byWorkItemId = useMemo(() => {
-        const map = new Map<string, WorkItemTeamAttribution>();
-        const rows = result.data?.workItemTeamAttributions ?? [];
-        const grouped = new Map<string, WorkItemTeamAttribution[]>();
+    const byWorkUnitId = useMemo(() => {
+        // One row per unit (the backend already picked the owning team), so this
+        // is a direct index — no client-side primary selection.
+        const map = new Map<string, WorkUnitTeamAttribution>();
+        const rows = result.data?.workUnitTeamAttributions ?? [];
         for (const row of rows) {
-            const bucket = grouped.get(row.workItemId);
-            if (bucket) bucket.push(row);
-            else grouped.set(row.workItemId, [row]);
-        }
-        for (const [workItemId, bucket] of grouped) {
-            const primary = selectPrimaryAttribution(bucket);
-            if (primary) map.set(workItemId, primary);
+            map.set(row.workUnitId, row);
         }
         return map;
     }, [result.data]);
 
     return {
-        byWorkItemId,
+        byWorkUnitId,
         loading: result.fetching,
         error: result.error ?? null,
         refetch: reexecute,

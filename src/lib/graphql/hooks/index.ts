@@ -12,7 +12,7 @@ export {
     useInvestmentMix,
     useInvestmentFlow,
     useInvestmentRepoTeamFlow,
-    useWorkItemTeamAttributions,
+    useWorkUnitTeamAttributions,
 } from "./useInvestment";
 export {
     useMetricsUpdated,

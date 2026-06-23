@@ -21,8 +21,11 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
 import type { UseInvestmentDataResult } from "./useInvestmentData";
 
-const { useInvestmentDataMock } = vi.hoisted(() => ({
+const { useInvestmentDataMock, workUnitAttributionRef } = vi.hoisted(() => ({
     useInvestmentDataMock: vi.fn(),
+    // Holds the workUnitTeamAttributions rows the urql mock should return for the
+    // attribution query (CHAOS-2608). Tests set `.rows`; default empty.
+    workUnitAttributionRef: { rows: [] as unknown[] },
 }));
 
 vi.mock("./useInvestmentData", () => ({
@@ -37,7 +40,21 @@ vi.mock("@/lib/graphql/provider", () => ({
     useSsr: () => null,
 }));
 vi.mock("urql", () => ({
-    useQuery: () => [{ data: undefined, fetching: false, error: undefined }, vi.fn()],
+    useQuery: (args: { query?: string }) => {
+        // Return attribution rows ONLY for the work-unit attribution query so the
+        // evidence-tab badge can render; every other query stays undefined.
+        if (typeof args?.query === "string" && args.query.includes("WorkUnitTeamAttributions")) {
+            return [
+                {
+                    data: { workUnitTeamAttributions: workUnitAttributionRef.rows },
+                    fetching: false,
+                    error: undefined,
+                },
+                vi.fn(),
+            ];
+        }
+        return [{ data: undefined, fetching: false, error: undefined }, vi.fn()];
+    },
 }));
 
 // Avoid ECharts in jsdom; MetricCard renders a sparkline when spark.length > 1.
@@ -349,5 +366,63 @@ describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
         expect(
             screen.getByText(/No work units available for the selected window/i),
         ).toBeInTheDocument();
+    });
+});
+
+describe("InvestmentView — Evidence tab team-attribution badge (CHAOS-2608)", () => {
+    afterEach(() => {
+        cleanup();
+        useInvestmentDataMock.mockReset();
+        workUnitAttributionRef.rows = [];
+    });
+
+    it("renders the owning-team badge for a unit keyed by work_unit_id", () => {
+        useInvestmentDataMock.mockReturnValue(makeData({ workUnits: [makeUnit("wu-7d3f", 10)] }));
+        // Attribution keyed by the SAME work_unit_id the unit carries.
+        workUnitAttributionRef.rows = [
+            {
+                workUnitId: "wu-7d3f",
+                teamId: "team-platform",
+                teamName: "Platform",
+                source: "NATIVE_TEAM",
+                confidence: "HIGH",
+                isPrimary: true,
+                memberCount: 3,
+                evidence: "3 member work item(s) attributed to Platform via native_team",
+            },
+        ];
+
+        render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
+        // Expand the theme group so the unit row (and its badge) renders.
+        fireEvent.click(screen.getByRole("button", { name: /Feature Delivery/ }));
+
+        const badge = screen.getByTestId("team-attribution-badge");
+        expect(badge).toHaveTextContent(/native team/i);
+        expect(badge.getAttribute("title")).toMatch(/Platform/);
+    });
+
+    it("renders NO badge when attribution is keyed by work_item_id (pins the CS7 bug)", () => {
+        useInvestmentDataMock.mockReturnValue(makeData({ workUnits: [makeUnit("wu-7d3f", 10)] }));
+        // The original bug: attribution keyed by a provider work_item_id — a
+        // DISJOINT id space from the unit's work_unit_id — so the lookup misses
+        // and the badge silently never renders. This test fails if the view ever
+        // reverts to keying the map by work_item_id.
+        workUnitAttributionRef.rows = [
+            {
+                workUnitId: "linear:CHAOS-1053",
+                teamId: "team-platform",
+                teamName: "Platform",
+                source: "NATIVE_TEAM",
+                confidence: "HIGH",
+                isPrimary: true,
+                memberCount: 3,
+                evidence: "irrelevant",
+            },
+        ];
+
+        render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
+        fireEvent.click(screen.getByRole("button", { name: /Feature Delivery/ }));
+
+        expect(screen.queryByTestId("team-attribution-badge")).not.toBeInTheDocument();
     });
 });

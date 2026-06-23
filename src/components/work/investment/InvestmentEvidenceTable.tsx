@@ -16,7 +16,7 @@ import {
     type WorkUnitListEntry,
 } from "@/lib/investment";
 import type { WorkUnitInvestment } from "@/lib/types";
-import type { WorkItemTeamAttribution } from "@/lib/graphql/__generated__/types";
+import type { WorkUnitTeamAttribution } from "@/lib/graphql/__generated__/types";
 import { EvidenceEntryCard } from "./EvidenceEntryCard";
 import { TeamAttributionBadge } from "./TeamAttributionBadge";
 
@@ -35,11 +35,12 @@ type InvestmentEvidenceTableProps = {
     effortUnit: string;
     onSelectWorkUnit: (workUnitId: string) => void;
     /**
-     * Render-only backend team-attribution provenance, keyed by work item id
-     * (CHAOS-2608 / CS7). Attribution is computed BACKEND-ONLY; this table never
-     * recomputes a repo->team or item->team mapping.
+     * Render-only backend team attribution, keyed by work UNIT id (CHAOS-2608 /
+     * CS7). The owning team is computed BACKEND-ONLY (the unit→team collapse
+     * happens server-side); this table never recomputes a repo->team or
+     * item->team mapping.
      */
-    attributionByWorkItem?: Map<string, WorkItemTeamAttribution>;
+    attributionByWorkUnit?: Map<string, WorkUnitTeamAttribution>;
 };
 
 const GROUP_OPTIONS: ReadonlyArray<{ id: GroupDimension; label: string }> = [
@@ -83,7 +84,7 @@ export function InvestmentEvidenceTable({
     workUnits,
     effortUnit,
     onSelectWorkUnit,
-    attributionByWorkItem,
+    attributionByWorkUnit,
 }: InvestmentEvidenceTableProps) {
     const [groupBy, setGroupBy] = useState<GroupDimension>("theme");
     const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -149,7 +150,10 @@ export function InvestmentEvidenceTable({
     };
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div
+            data-testid="investment-evidence-table"
+            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+        >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 className="font-(--font-display) text-lg">Evidence drilldown</h3>
@@ -243,7 +247,7 @@ export function InvestmentEvidenceTable({
                                         {group.entries.map((entry) => {
                                             const unit = entry.unit;
                                             const unitOpen = openUnits.has(unit.work_unit_id);
-                                            const attribution = attributionByWorkItem?.get(
+                                            const attribution = attributionByWorkUnit?.get(
                                                 unit.work_unit_id,
                                             );
                                             const textual = unit.evidence?.textual ?? [];
