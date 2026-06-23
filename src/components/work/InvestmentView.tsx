@@ -12,6 +12,7 @@ import {
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, ReworkThemeAllocation } from "@/lib/types";
+import { useWorkUnitTeamAttributions } from "@/lib/graphql/hooks";
 import { type InvestmentTab } from "./investment/types";
 import { useInvestmentData } from "./investment/useInvestmentData";
 import { InvestmentExplainer } from "./investment/InvestmentExplainer";
@@ -122,6 +123,22 @@ export function InvestmentView({
     // Evidence-block dropdown lists every work unit in the window; the table
     // above it drives grouped navigation.
     const selectableUnits = data.workUnits;
+
+    // Backend-computed owning team per visible work UNIT (CHAOS-2608 / CS7).
+    // Render-only: surfaced as badges in the evidence table; never recomputed
+    // client-side. Keyed by work_unit_id — the backend resolves the unit→team
+    // collapse (work_item_id is a disjoint id space the client can't join).
+    const workUnitIds = useMemo(
+        () => data.workUnits.map((unit) => unit.work_unit_id),
+        [data.workUnits],
+    );
+    // Only the Evidence tab renders the badges, so don't fetch attribution on the
+    // other tabs (matches how the sibling investment hooks scope their fetches).
+    const teamAttributions = useWorkUnitTeamAttributions({
+        filters,
+        workUnitIds,
+        pause: activeTab !== "evidence",
+    });
 
     const selectedUnitId = useMemo(() => {
         if (!data.selectedUnit) return "";
@@ -442,6 +459,7 @@ export function InvestmentView({
                     workUnits={data.workUnits}
                     effortUnit={effortUnit}
                     onSelectWorkUnit={data.handleSelect}
+                    attributionByWorkUnit={teamAttributions.byWorkUnitId}
                 />
                 {evidenceBlock}
             </section>

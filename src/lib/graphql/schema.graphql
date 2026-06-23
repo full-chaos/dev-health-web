@@ -1069,6 +1069,16 @@ type Query {
   """Top-N work graph nodes ranked by degree over the full graph"""
   workGraphArtifacts(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphArtifactsResult!
 
+  """
+  Team-attribution provenance per work item (source/confidence/evidence/is_primary) — CHAOS-2600
+  """
+  workItemTeamAttributions(orgId: String!, workItemIds: [String!] = null, teamId: String = null): [WorkItemTeamAttribution!]!
+
+  """
+  The owning team per work UNIT (investment cluster), collapsed from its member work-item attributions by source precedence — CHAOS-2600
+  """
+  workUnitTeamAttributions(orgId: String!, workUnitIds: [String!] = null, teamId: String = null): [WorkUnitTeamAttribution!]!
+
   """Paginated list of security alerts"""
   securityAlerts(orgId: String!, filters: SecurityAlertFilterInput = null, pagination: SecurityPaginationInput = null): SecurityAlertConnection!
 
@@ -1449,6 +1459,25 @@ type TaskStatus {
   updatedAt: DateTime!
 }
 
+enum TeamAttributionConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  MANUAL
+  NONE
+}
+
+enum TeamAttributionSource {
+  NATIVE_TEAM
+  ISSUE_PROJECT
+  PROJECT_OWNERSHIP
+  REPO_OWNERSHIP
+  ASSIGNEE_MEMBERSHIP
+  LINKED_ISSUE
+  MANUAL_FALLBACK
+  UNASSIGNED
+}
+
 type ThroughputForecast {
   forecastId: String!
   computedAt: String!
@@ -1712,4 +1741,26 @@ enum WorkGraphProvenance {
   NATIVE
   EXPLICIT_TEXT
   HEURISTIC
+}
+
+type WorkItemTeamAttribution {
+  workItemId: String!
+  provider: String!
+  teamId: String
+  teamName: String
+  source: TeamAttributionSource!
+  confidence: TeamAttributionConfidence!
+  isPrimary: Boolean!
+  evidence: String!
+}
+
+type WorkUnitTeamAttribution {
+  workUnitId: String!
+  teamId: String
+  teamName: String
+  source: TeamAttributionSource!
+  confidence: TeamAttributionConfidence!
+  isPrimary: Boolean!
+  memberCount: Int!
+  evidence: String!
 }
