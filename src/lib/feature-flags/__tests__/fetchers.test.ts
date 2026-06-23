@@ -1,11 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { WorkGraphEdge } from "@/lib/graphql/types";
-import { getDistinctSourceIds, getRegistryEdges, parseToggleEvidence } from "../graph";
+import { getDistinctSourceIds } from "../graph";
 import {
     latestFromSpark,
     deltaFromSpark,
     classifySeverity,
     fetchFeatureFlagsData,
+    fetchFeatureFlagEvents,
+    fetchFeatureFlagList,
 } from "../fetchers";
 
 // ── Module mocks ────────────────────────────────────────────────────────────
@@ -67,6 +69,20 @@ function mockSuccessfulFetch(timeseriesBuckets: {
         })),
     });
 
+    const emptyRegistryResponse = {
+        featureFlags: {
+            flags: [],
+            totalCount: 0,
+            degradedReason: null,
+        },
+    };
+    const emptyEventsResponse = {
+        featureFlagEvents: {
+            events: [],
+            totalCount: 0,
+            degradedReason: null,
+        },
+    };
     const emptyEdgesResponse = {
         workGraphEdges: {
             edges: [],
@@ -102,7 +118,12 @@ function mockSuccessfulFetch(timeseriesBuckets: {
                 },
             });
         }
-        // FeatureFlagRegistry and ReleaseImpact both return empty edge sets.
+        if (qs.includes("FeatureFlagRegistry")) {
+            return Promise.resolve(emptyRegistryResponse);
+        }
+        if (qs.includes("FeatureFlagEvents")) {
+            return Promise.resolve(emptyEventsResponse);
+        }
         return Promise.resolve(emptyEdgesResponse);
     });
 }
@@ -110,34 +131,6 @@ function mockSuccessfulFetch(timeseriesBuckets: {
 // ── Graph helper tests (unchanged from prior suite) ─────────────────────────
 
 describe("feature flag fetcher helpers", () => {
-    it("keeps one registry edge per flag identity", () => {
-        const registryEdges = getRegistryEdges([
-            makeEdge({ edgeId: "registry-1", sourceId: "flag-a" }),
-            makeEdge({ edgeId: "registry-2", sourceId: "flag-a" }),
-            makeEdge({
-                edgeId: "pr-link",
-                sourceId: "flag-a",
-                targetType: "PR",
-                targetId: "repo#pr1",
-                edgeType: "REFERENCES",
-            }),
-            makeEdge({ edgeId: "registry-3", sourceId: "flag-b", targetId: "flag-b" }),
-        ]);
-
-        expect(registryEdges.map((edge) => edge.sourceId)).toEqual(["flag-a", "flag-b"]);
-    });
-
-    it("parses toggle evidence into timestamp and active state", () => {
-        expect(parseToggleEvidence("2026-04-15T10:15:00Z|toggle|on")).toEqual({
-            ts: "2026-04-15T10:15:00Z",
-            active: true,
-        });
-        expect(parseToggleEvidence("2026-04-16T08:00:00Z|toggle|off")).toEqual({
-            ts: "2026-04-16T08:00:00Z",
-            active: false,
-        });
-    });
-
     it("counts distinct release sources for impact coverage", () => {
         const edges = [
             makeEdge({
@@ -175,6 +168,217 @@ describe("feature flag fetcher helpers", () => {
 
         expect(getDistinctSourceIds(edges).size).toBe(2);
         expect(getDistinctSourceIds(edges, "IMPACTS").size).toBe(1);
+    });
+});
+
+describe("feature flag direct-read fetchers", () => {
+    beforeEach(() => {
+        mockGraphql.mockReset();
+        mockAuth.mockResolvedValue({ user: { org_id: "org-test" } } as never);
+    });
+
+    it("maps the full ordered event timeline and passes the plain flag key", async () => {
+        mockGraphql.mockResolvedValueOnce({
+            featureFlagEvents: {
+                events: [
+                    {
+                        flagKey: "checkout-redesign",
+                        eventType: "created",
+                        prevState: "",
+                        nextState: "off",
+                        actorType: "system",
+                        environment: "prod",
+                        eventTs: "2026-04-15T09:00:00Z",
+                    },
+                    {
+                        flagKey: "checkout-redesign",
+                        eventType: "toggled",
+                        prevState: "off",
+                        nextState: "on",
+                        actorType: "user",
+                        environment: "prod",
+                        eventTs: "2026-04-15T10:15:00Z",
+                    },
+                    {
+                        flagKey: "checkout-redesign",
+                        eventType: "toggled",
+                        prevState: "on",
+                        nextState: "disabled",
+                        actorType: "user",
+                        environment: "prod",
+                        eventTs: "2026-04-16T08:00:00Z",
+                    },
+                ],
+                totalCount: 3,
+                degradedReason: null,
+            },
+        });
+
+        const result = await fetchFeatureFlagEvents("checkout-redesign", "org-test", 50);
+
+        expect(mockGraphql).toHaveBeenCalledWith(expect.any(String), {
+            orgId: "org-test",
+            flagKey: "checkout-redesign",
+            environment: null,
+            limit: 50,
+        });
+        expect(result.events.map((event) => event.eventTs)).toEqual([
+            "2026-04-15T09:00:00Z",
+            "2026-04-15T10:15:00Z",
+            "2026-04-16T08:00:00Z",
+        ]);
+        expect(result.totalCount).toBe(3);
+    });
+
+    it("renders registry list rows from featureFlags joined to latest featureFlagEvents by flagKey", async () => {
+        mockGraphql.mockImplementation((query, variables) => {
+            const qs = typeof query === "string" ? query : "";
+            if (qs.includes("FeatureFlagRegistry")) {
+                return Promise.resolve({
+                    featureFlags: {
+                        flags: [
+                            {
+                                flagId: "hashed-flag-a",
+                                flagKey: "checkout-redesign",
+                                provider: "launchdarkly",
+                                projectKey: "web",
+                                environment: "prod",
+                                flagType: "boolean",
+                                createdAt: "2026-04-01T00:00:00Z",
+                                archivedAt: null,
+                            },
+                            {
+                                flagId: "hashed-flag-b",
+                                flagKey: "search-v2",
+                                provider: "launchdarkly",
+                                projectKey: "web",
+                                environment: "prod",
+                                flagType: "boolean",
+                                createdAt: "2026-04-02T00:00:00Z",
+                                archivedAt: null,
+                            },
+                        ],
+                        totalCount: 2,
+                        degradedReason: null,
+                    },
+                });
+            }
+            // featureFlagEvents is now fetched per-flag (scoped by flagKey);
+            // return only the events matching the requested flag.
+            const allEvents = [
+                {
+                    flagKey: "checkout-redesign",
+                    eventType: "toggled",
+                    prevState: "off",
+                    nextState: "on",
+                    actorType: "user",
+                    environment: "prod",
+                    eventTs: "2026-04-15T10:15:00Z",
+                },
+                {
+                    flagKey: "checkout-redesign",
+                    eventType: "toggled",
+                    prevState: "on",
+                    nextState: "disabled",
+                    actorType: "user",
+                    environment: "prod",
+                    eventTs: "2026-04-16T08:00:00Z",
+                },
+                {
+                    flagKey: "search-v2",
+                    eventType: "toggled",
+                    prevState: "off",
+                    nextState: "enabled",
+                    actorType: "system",
+                    environment: "prod",
+                    eventTs: "2026-04-17T11:00:00Z",
+                },
+            ];
+            const flagKey = (variables as { flagKey?: string | null } | undefined)?.flagKey ?? null;
+            const events = flagKey
+                ? allEvents.filter((event) => event.flagKey === flagKey)
+                : allEvents;
+            return Promise.resolve({
+                featureFlagEvents: {
+                    events,
+                    totalCount: events.length,
+                    degradedReason: null,
+                },
+            });
+        });
+
+        const result = await fetchFeatureFlagList(0, 20, "org-test");
+
+        expect(result.items).toEqual([
+            {
+                flagId: "hashed-flag-a",
+                flagKey: "checkout-redesign",
+                provider: "launchdarkly",
+                projectKey: "web",
+                createdAt: "2026-04-01T00:00:00Z",
+                lastToggledAt: "2026-04-16T08:00:00Z",
+                isActive: false,
+            },
+            {
+                flagId: "hashed-flag-b",
+                flagKey: "search-v2",
+                provider: "launchdarkly",
+                projectKey: "web",
+                createdAt: "2026-04-02T00:00:00Z",
+                lastToggledAt: "2026-04-17T11:00:00Z",
+                isActive: true,
+            },
+        ]);
+        expect(result.totalCount).toBe(2);
+        expect(result.hasNextPage).toBe(false);
+    });
+
+    it("reports isActive null when the latest event state is empty/unknown", async () => {
+        mockGraphql.mockImplementation((query, variables) => {
+            const qs = typeof query === "string" ? query : "";
+            if (qs.includes("FeatureFlagRegistry")) {
+                return Promise.resolve({
+                    featureFlags: {
+                        flags: [
+                            {
+                                flagId: "hashed-flag-c",
+                                flagKey: "unknown-state",
+                                provider: "gitlab",
+                                projectKey: "infra",
+                                environment: "prod",
+                                flagType: "boolean",
+                                createdAt: "2026-04-03T00:00:00Z",
+                                archivedAt: null,
+                            },
+                        ],
+                        totalCount: 1,
+                        degradedReason: null,
+                    },
+                });
+            }
+            void variables;
+            return Promise.resolve({
+                featureFlagEvents: {
+                    events: [
+                        {
+                            flagKey: "unknown-state",
+                            eventType: "created",
+                            prevState: "",
+                            nextState: "",
+                            actorType: "system",
+                            environment: "prod",
+                            eventTs: "2026-04-10T00:00:00Z",
+                        },
+                    ],
+                    totalCount: 1,
+                    degradedReason: null,
+                },
+            });
+        });
+
+        const result = await fetchFeatureFlagList(0, 20, "org-test");
+        expect(result.items[0].isActive).toBeNull();
+        expect(result.items[0].lastToggledAt).toBe("2026-04-10T00:00:00Z");
     });
 });
 

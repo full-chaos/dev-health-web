@@ -784,6 +784,43 @@ export type ExperimentsResult = {
   items: Array<Experiment>;
 };
 
+export type FeatureFlagEventItem = {
+  __typename?: 'FeatureFlagEventItem';
+  actorType: Scalars['String']['output'];
+  environment: Scalars['String']['output'];
+  eventTs: Scalars['String']['output'];
+  eventType: Scalars['String']['output'];
+  flagKey: Scalars['String']['output'];
+  nextState: Scalars['String']['output'];
+  prevState: Scalars['String']['output'];
+};
+
+export type FeatureFlagEventsResult = {
+  __typename?: 'FeatureFlagEventsResult';
+  degradedReason?: Maybe<Scalars['String']['output']>;
+  events: Array<FeatureFlagEventItem>;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type FeatureFlagItem = {
+  __typename?: 'FeatureFlagItem';
+  archivedAt?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['String']['output'];
+  environment: Scalars['String']['output'];
+  flagId: Scalars['String']['output'];
+  flagKey: Scalars['String']['output'];
+  flagType: Scalars['String']['output'];
+  projectKey: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
+};
+
+export type FeatureFlagRegistryResult = {
+  __typename?: 'FeatureFlagRegistryResult';
+  degradedReason?: Maybe<Scalars['String']['output']>;
+  flags: Array<FeatureFlagItem>;
+  totalCount: Scalars['Int']['output'];
+};
+
 export type FilterInput = {
   how?: InputMaybe<HowFilterInput>;
   scope?: InputMaybe<ScopeFilterInput>;
@@ -1199,6 +1236,10 @@ export type Query = {
   dataHealth: DataHealth;
   /** Experiments derived from opportunity suggested_experiments (CHAOS-2219). v1: computed at query-time — no persistence table. Each experiment is a typed promotion of a suggestion string with hypothesis / metric / owner / stop_condition. ``derived_from_opportunities`` is False when the opportunities service was unavailable; items will be empty in that case. */
   experiments: ExperimentsResult;
+  /** List feature flag state-change events */
+  featureFlagEvents: FeatureFlagEventsResult;
+  /** List feature flags from the ClickHouse registry */
+  featureFlags: FeatureFlagRegistryResult;
   /** Get home dashboard metrics */
   home: HomeResult;
   /** Top file hotspots ranked by risk_score (churn x complexity x ownership concentration). Reads from the append-only ``file_hotspot_daily`` table. */
@@ -1356,6 +1397,23 @@ export type QueryDataHealthArgs = {
 export type QueryExperimentsArgs = {
   filters?: InputMaybe<FilterInput>;
   orgId: Scalars['String']['input'];
+};
+
+
+export type QueryFeatureFlagEventsArgs = {
+  environment?: InputMaybe<Scalars['String']['input']>;
+  flagKey?: InputMaybe<Scalars['String']['input']>;
+  limit?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryFeatureFlagsArgs = {
+  includeArchived?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: Scalars['Int']['input'];
+  orgId: Scalars['String']['input'];
+  project?: InputMaybe<Scalars['String']['input']>;
+  provider?: InputMaybe<Scalars['String']['input']>;
 };
 
 

@@ -18,8 +18,10 @@ import type {
     ReleaseImpactResult,
     FeatureFlagData,
     FeatureFlagsData,
+    FeatureFlag,
+    FeatureFlagEvent,
 } from "./types";
-import { getDistinctSourceIds, getRegistryEdges, parseToggleEvidence } from "./graph";
+import { getDistinctSourceIds } from "./graph";
 
 const EMPTY_RESULT: WorkGraphEdgesResult = {
     edges: [],
@@ -40,61 +42,78 @@ export async function fetchFeatureFlagRegistry(
     const orgId = await resolveOrgId(orgIdOverride);
 
     try {
-        const res = await graphqlFetch<{ workGraphEdges: WorkGraphEdgesResult }>(
+        const res = await graphqlFetch<{ featureFlags: FeatureFlagRegistryResult }>(
             FEATURE_FLAG_REGISTRY_QUERY,
             {
                 orgId,
-                filters: {
-                    sourceType: "FEATURE_FLAG",
-                    targetType: "FEATURE_FLAG",
-                    edgeType: "RELATES",
-                    limit,
-                },
+                provider: null,
+                project: null,
+                includeArchived: false,
+                limit,
             },
         );
 
-        const flags = getRegistryEdges(res.workGraphEdges.edges);
-
         return {
-            flags,
-            totalCount: flags.length,
-            pageInfo: res.workGraphEdges.pageInfo,
+            flags: res.featureFlags.flags,
+            totalCount: res.featureFlags.totalCount,
+            degradedReason: res.featureFlags.degradedReason,
         };
     } catch (error) {
         logger.error({ err: error }, "Failed to fetch feature flag registry");
-        return { flags: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo };
+        return { flags: [], totalCount: 0, degradedReason: null };
     }
 }
 
 export async function fetchFeatureFlagEvents(
-    flagId: string,
+    flagKey?: string,
     orgIdOverride?: string,
     limit: number = 200,
+    environment?: string,
 ): Promise<FeatureFlagEventsResult> {
     const orgId = await resolveOrgId(orgIdOverride);
 
     try {
-        const res = await graphqlFetch<{ workGraphEdges: WorkGraphEdgesResult }>(
+        const res = await graphqlFetch<{ featureFlagEvents: FeatureFlagEventsResult }>(
             FEATURE_FLAG_EVENTS_QUERY,
             {
                 orgId,
-                filters: {
-                    nodeId: flagId,
-                    edgeType: "CONFIG_CHANGED_BY",
-                    limit,
-                },
+                flagKey: flagKey || null,
+                environment: environment || null,
+                limit,
             },
         );
 
         return {
-            events: res.workGraphEdges.edges,
-            totalCount: res.workGraphEdges.totalCount,
-            pageInfo: res.workGraphEdges.pageInfo,
+            events: res.featureFlagEvents.events,
+            totalCount: res.featureFlagEvents.totalCount,
+            degradedReason: res.featureFlagEvents.degradedReason,
         };
     } catch (error) {
         logger.error({ err: error }, "Failed to fetch feature flag events");
-        return { events: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo };
+        return { events: [], totalCount: 0, degradedReason: null };
     }
+}
+
+function eventStateIsActive(nextState: string): boolean | null {
+    const normalized = nextState.trim().toLowerCase();
+    if (!normalized) return null;
+    if (["on", "enabled", "active", "true"].includes(normalized)) return true;
+    if (["off", "disabled", "inactive", "false"].includes(normalized)) return false;
+    // Unknown/unrecognized state (incl. empty next_state from LD audit events):
+    // report unknown rather than defaulting to active.
+    return null;
+}
+
+function mapFlagToListItem(flag: FeatureFlag, latestEvent?: FeatureFlagEvent): FeatureFlagListItem {
+    return {
+        flagId: flag.flagId,
+        flagKey: flag.flagKey,
+        provider: flag.provider,
+        projectKey: flag.projectKey,
+        createdAt: flag.createdAt,
+        lastToggledAt: latestEvent?.eventTs ?? null,
+        isActive: latestEvent ? eventStateIsActive(latestEvent.nextState) : null,
+    };
 }
 
 export async function fetchReleaseImpact(
@@ -297,47 +316,27 @@ export async function fetchFeatureFlagList(
     const orgId = await resolveOrgId(orgIdOverride);
 
     try {
-        const [registry, events] = await Promise.all([
-            fetchFeatureFlagRegistry(orgId, 500),
-            fetchFeatureFlagEvents("", orgId, 500),
-        ]);
+        const registry = await fetchFeatureFlagRegistry(orgId, 500);
+        const pagedFlags = registry.flags.slice(offset, offset + limit);
 
-        const togglesByFlag = new Map<string, { ts: string; active: boolean }>();
-        for (const evt of events.events) {
-            const existing = togglesByFlag.get(evt.sourceId);
-            const parsedToggle = parseToggleEvidence(evt.evidence);
-            const isToggle = evt.edgeType === "CONFIG_CHANGED_BY";
-            if (isToggle && (!existing || parsedToggle.ts > existing.ts)) {
-                togglesByFlag.set(evt.sourceId, {
-                    ts: parsedToggle.ts,
-                    active: parsedToggle.active,
-                });
-            }
-        }
+        // Resolve the latest event per VISIBLE flag, scoped by flagKey. A single
+        // global event fetch ordered event_ts ASC only surfaces the OLDEST N
+        // events org-wide, yielding stale lastToggledAt/isActive on busy orgs
+        // (CHAOS-2629 review). Per-flag fetches keep each pool to one flag's
+        // history, so the last (newest) entry is the true latest.
+        const items: FeatureFlagListItem[] = await Promise.all(
+            pagedFlags.map(async (flag) => {
+                const flagEvents = await fetchFeatureFlagEvents(flag.flagKey, orgId, 1000);
+                const evs = flagEvents.events;
+                const latest = evs.length > 0 ? evs[evs.length - 1] : undefined;
+                return mapFlagToListItem(flag, latest);
+            }),
+        );
 
-        const items: FeatureFlagListItem[] = registry.flags.map((edge) => {
-            const parts = edge.evidence?.replace("flag:", "").split("/") ?? [];
-            const provider = parts[0] ?? edge.provider ?? "";
-            const projectKey = parts[1] ?? "";
-            const flagKey = parts[2] ?? edge.sourceId;
-            const toggle = togglesByFlag.get(edge.sourceId);
-
-            return {
-                flagId: edge.sourceId,
-                flagKey,
-                provider,
-                projectKey,
-                createdAt: null,
-                lastToggledAt: toggle?.ts ?? null,
-                isActive: toggle?.active ?? null,
-            };
-        });
-
-        const page = items.slice(offset, offset + limit);
         return {
-            items: page,
-            totalCount: items.length,
-            hasNextPage: offset + limit < items.length,
+            items,
+            totalCount: registry.flags.length,
+            hasNextPage: offset + limit < registry.flags.length,
         };
     } catch (error) {
         logger.error({ err: error }, "Failed to fetch feature flag list");
@@ -359,8 +358,8 @@ export async function fetchFeatureFlagData(orgIdOverride?: string): Promise<Feat
     } catch (error) {
         logger.error({ err: error }, "Failed to fetch feature flag data");
         return {
-            registry: { flags: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo },
-            events: { events: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo },
+            registry: { flags: [], totalCount: 0, degradedReason: null },
+            events: { events: [], totalCount: 0, degradedReason: null },
             releaseImpact: { edges: [], totalCount: 0, pageInfo: EMPTY_RESULT.pageInfo },
         };
     }

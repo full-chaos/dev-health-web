@@ -716,6 +716,39 @@ type ExperimentsResult {
   derivedFromOpportunities: Boolean!
 }
 
+type FeatureFlagEventItem {
+  flagKey: String!
+  eventType: String!
+  prevState: String!
+  nextState: String!
+  actorType: String!
+  environment: String!
+  eventTs: String!
+}
+
+type FeatureFlagEventsResult {
+  events: [FeatureFlagEventItem!]!
+  totalCount: Int!
+  degradedReason: String
+}
+
+type FeatureFlagItem {
+  flagId: String!
+  flagKey: String!
+  provider: String!
+  projectKey: String!
+  environment: String!
+  flagType: String!
+  createdAt: String!
+  archivedAt: String
+}
+
+type FeatureFlagRegistryResult {
+  flags: [FeatureFlagItem!]!
+  totalCount: Int!
+  degradedReason: String
+}
+
 input FilterInput {
   scope: ScopeFilterInput = null
   who: WhoFilterInput = null
@@ -1068,6 +1101,12 @@ type Query {
 
   """Top-N work graph nodes ranked by degree over the full graph"""
   workGraphArtifacts(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphArtifactsResult!
+
+  """List feature flags from the ClickHouse registry"""
+  featureFlags(orgId: String!, provider: String = null, project: String = null, includeArchived: Boolean = false, limit: Int! = 1000): FeatureFlagRegistryResult!
+
+  """List feature flag state-change events"""
+  featureFlagEvents(orgId: String!, flagKey: String = null, environment: String = null, limit: Int! = 1000): FeatureFlagEventsResult!
 
   """
   Team-attribution provenance per work item (source/confidence/evidence/is_primary) — CHAOS-2600
