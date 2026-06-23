@@ -16,7 +16,9 @@ import {
     type WorkUnitListEntry,
 } from "@/lib/investment";
 import type { WorkUnitInvestment } from "@/lib/types";
+import type { WorkItemTeamAttribution } from "@/lib/graphql/__generated__/types";
 import { EvidenceEntryCard } from "./EvidenceEntryCard";
+import { TeamAttributionBadge } from "./TeamAttributionBadge";
 
 type GroupDimension = "theme" | "subcategory" | "type";
 
@@ -32,6 +34,12 @@ type InvestmentEvidenceTableProps = {
     workUnits: WorkUnitInvestment[];
     effortUnit: string;
     onSelectWorkUnit: (workUnitId: string) => void;
+    /**
+     * Render-only backend team-attribution provenance, keyed by work item id
+     * (CHAOS-2608 / CS7). Attribution is computed BACKEND-ONLY; this table never
+     * recomputes a repo->team or item->team mapping.
+     */
+    attributionByWorkItem?: Map<string, WorkItemTeamAttribution>;
 };
 
 const GROUP_OPTIONS: ReadonlyArray<{ id: GroupDimension; label: string }> = [
@@ -75,6 +83,7 @@ export function InvestmentEvidenceTable({
     workUnits,
     effortUnit,
     onSelectWorkUnit,
+    attributionByWorkItem,
 }: InvestmentEvidenceTableProps) {
     const [groupBy, setGroupBy] = useState<GroupDimension>("theme");
     const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -234,6 +243,9 @@ export function InvestmentEvidenceTable({
                                         {group.entries.map((entry) => {
                                             const unit = entry.unit;
                                             const unitOpen = openUnits.has(unit.work_unit_id);
+                                            const attribution = attributionByWorkItem?.get(
+                                                unit.work_unit_id,
+                                            );
                                             const textual = unit.evidence?.textual ?? [];
                                             const metadata = [
                                                 ...(unit.evidence?.structural ?? []),
@@ -266,6 +278,15 @@ export function InvestmentEvidenceTable({
                                                                 <span className="shrink-0 rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                                                                     {formatWorkUnitTypeLabel(unit)}
                                                                 </span>
+                                                            ) : null}
+                                                            {attribution ? (
+                                                                <TeamAttributionBadge
+                                                                    source={attribution.source}
+                                                                    confidence={
+                                                                        attribution.confidence
+                                                                    }
+                                                                    teamName={attribution.teamName}
+                                                                />
                                                             ) : null}
                                                         </span>
                                                         <span className="flex items-center gap-3 text-xs text-(--ink-muted)">
@@ -303,6 +324,29 @@ export function InvestmentEvidenceTable({
                                                                         ? `${formatQuality(unit.evidence_quality.value)} (${formatBandLabel(unit.evidence_quality.band ?? "unknown")})`
                                                                         : "Unknown"}
                                                                 </span>
+                                                                {attribution ? (
+                                                                    <span className="flex items-center gap-2">
+                                                                        Team attribution:
+                                                                        <TeamAttributionBadge
+                                                                            source={
+                                                                                attribution.source
+                                                                            }
+                                                                            confidence={
+                                                                                attribution.confidence
+                                                                            }
+                                                                            teamName={
+                                                                                attribution.teamName
+                                                                            }
+                                                                        />
+                                                                        {attribution.teamName ? (
+                                                                            <span className="tracking-normal text-(--ink)">
+                                                                                {
+                                                                                    attribution.teamName
+                                                                                }
+                                                                            </span>
+                                                                        ) : null}
+                                                                    </span>
+                                                                ) : null}
                                                             </div>
 
                                                             <div>

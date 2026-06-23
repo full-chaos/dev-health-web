@@ -12,6 +12,7 @@ import {
 } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, ReworkThemeAllocation } from "@/lib/types";
+import { useWorkItemTeamAttributions } from "@/lib/graphql/hooks";
 import { type InvestmentTab } from "./investment/types";
 import { useInvestmentData } from "./investment/useInvestmentData";
 import { InvestmentExplainer } from "./investment/InvestmentExplainer";
@@ -122,6 +123,15 @@ export function InvestmentView({
     // Evidence-block dropdown lists every work unit in the window; the table
     // above it drives grouped navigation.
     const selectableUnits = data.workUnits;
+
+    // Backend-computed team-attribution provenance for the visible work units
+    // (CHAOS-2608 / CS7). Render-only: surfaced as badges in the evidence table;
+    // never recomputed client-side.
+    const workItemIds = useMemo(
+        () => data.workUnits.map((unit) => unit.work_unit_id),
+        [data.workUnits],
+    );
+    const teamAttributions = useWorkItemTeamAttributions({ filters, workItemIds });
 
     const selectedUnitId = useMemo(() => {
         if (!data.selectedUnit) return "";
@@ -442,6 +452,7 @@ export function InvestmentView({
                     workUnits={data.workUnits}
                     effortUnit={effortUnit}
                     onSelectWorkUnit={data.handleSelect}
+                    attributionByWorkItem={teamAttributions.byWorkItemId}
                 />
                 {evidenceBlock}
             </section>

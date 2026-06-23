@@ -1,7 +1,13 @@
 import { useQuery } from "urql";
 import { useMemo } from "react";
 import { AuthErrors } from "@/lib/constants/errors";
-import { INVESTMENT_BREAKDOWN_QUERY, INVESTMENT_FULL_QUERY } from "../queries";
+import {
+    INVESTMENT_BREAKDOWN_QUERY,
+    INVESTMENT_FULL_QUERY,
+    WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY,
+} from "../queries";
+import { selectPrimaryAttribution } from "@/lib/investment/teamAttribution";
+import type { WorkItemTeamAttribution } from "../__generated__/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse } from "@/lib/types";
 import {
@@ -288,6 +294,83 @@ export function useInvestmentRepoTeamFlow(
 
     return {
         data,
+        loading: result.fetching,
+        error: result.error ?? null,
+        refetch: reexecute,
+    };
+}
+
+interface UseWorkItemTeamAttributionsOptions {
+    filters: MetricFilter;
+    /** Work item IDs to fetch backend attribution provenance for. */
+    workItemIds: string[];
+    /** Optional team filter passed straight through to the backend. */
+    teamId?: string | null;
+    pause?: boolean;
+}
+
+interface UseWorkItemTeamAttributionsResult {
+    /** workItemId -> primary backend attribution. Render-only; never recomputed. */
+    byWorkItemId: Map<string, WorkItemTeamAttribution>;
+    loading: boolean;
+    error: Error | null;
+    refetch: () => void;
+}
+
+interface WorkItemTeamAttributionsResponse {
+    workItemTeamAttributions: WorkItemTeamAttribution[];
+}
+
+/**
+ * Fetch backend-computed team-attribution provenance for a set of work items
+ * (CHAOS-2608 / CS7). Attribution is resolved BACKEND-ONLY; this hook only
+ * surfaces the `source`/`confidence` the system-of-record returned.
+ */
+export function useWorkItemTeamAttributions(
+    options: UseWorkItemTeamAttributionsOptions,
+): UseWorkItemTeamAttributionsResult {
+    const { filters, workItemIds, teamId = null, pause = false } = options;
+    const contextOrgId = useOrgId();
+
+    const variables = useMemo(() => {
+        // Provenance is render-only — a missing org context must NOT crash the
+        // view. Resolve the org id defensively and pause instead of throwing.
+        let orgId = "";
+        try {
+            orgId = getOrgId(filters, contextOrgId);
+        } catch {
+            orgId = "";
+        }
+        // Stable, de-duplicated ID list so urql can cache identical requests.
+        const ids = Array.from(new Set(workItemIds)).sort();
+        return { orgId, workItemIds: ids, teamId };
+    }, [filters, workItemIds, teamId, contextOrgId]);
+
+    const [result, reexecute] = useQuery<WorkItemTeamAttributionsResponse>({
+        query: WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY,
+        variables,
+        pause: pause || !variables.orgId || variables.workItemIds.length === 0,
+        requestPolicy: "cache-and-network",
+    });
+
+    const byWorkItemId = useMemo(() => {
+        const map = new Map<string, WorkItemTeamAttribution>();
+        const rows = result.data?.workItemTeamAttributions ?? [];
+        const grouped = new Map<string, WorkItemTeamAttribution[]>();
+        for (const row of rows) {
+            const bucket = grouped.get(row.workItemId);
+            if (bucket) bucket.push(row);
+            else grouped.set(row.workItemId, [row]);
+        }
+        for (const [workItemId, bucket] of grouped) {
+            const primary = selectPrimaryAttribution(bucket);
+            if (primary) map.set(workItemId, primary);
+        }
+        return map;
+    }, [result.data]);
+
+    return {
+        byWorkItemId,
         loading: result.fetching,
         error: result.error ?? null,
         refetch: reexecute,

@@ -996,3 +996,22 @@ query Experiments($orgId: String!, $filters: FilterInput) {
   }
 }
 `;
+
+// Backend-computed team attribution provenance for work items (CHAOS-2608 / CS7).
+// Team attribution is derived BACKEND-ONLY (ClickHouse system-of-record). The web
+// layer is render-only — it surfaces `source`/`confidence` provenance and NEVER
+// recomputes a repo->team or item->team mapping client-side.
+export const WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY = `
+query WorkItemTeamAttributions($orgId: String!, $workItemIds: [String!], $teamId: String) {
+  workItemTeamAttributions(orgId: $orgId, workItemIds: $workItemIds, teamId: $teamId) {
+    workItemId
+    provider
+    teamId
+    teamName
+    source
+    confidence
+    isPrimary
+    evidence
+  }
+}
+`;

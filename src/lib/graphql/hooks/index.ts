@@ -8,7 +8,12 @@
 export { useAnalytics, useBreakdown, useSankey } from "./useAnalytics";
 export { useCatalog, useDimensionValues } from "./useCatalog";
 export { useCapacityForecast } from "./useCapacityForecast";
-export { useInvestmentMix, useInvestmentFlow, useInvestmentRepoTeamFlow } from "./useInvestment";
+export {
+    useInvestmentMix,
+    useInvestmentFlow,
+    useInvestmentRepoTeamFlow,
+    useWorkItemTeamAttributions,
+} from "./useInvestment";
 export {
     useMetricsUpdated,
     useTaskStatus,

@@ -794,6 +794,48 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         dimension?: { dimension?: string } | string;
     };
 
+    // Work-item team-attribution provenance (CHAOS-2608 / CS7). Render-only:
+    // includes a manual_fallback row so the distinct low-confidence badge is
+    // exercised. Keyed to the work-unit ids in workUnitInvestmentsSample.
+    if (query.includes("WorkItemTeamAttributions")) {
+        return HttpResponse.json({
+            data: {
+                workItemTeamAttributions: [
+                    {
+                        workItemId: "wu-41c2a",
+                        provider: "github",
+                        teamId: "team-platform",
+                        teamName: "Platform",
+                        source: "NATIVE_TEAM",
+                        confidence: "HIGH",
+                        isPrimary: true,
+                        evidence: '{"native_team_key":"platform"}',
+                    },
+                    {
+                        workItemId: "wu-53a17",
+                        provider: "github",
+                        teamId: "team-payments",
+                        teamName: "Payments",
+                        source: "REPO_OWNERSHIP",
+                        confidence: "MEDIUM",
+                        isPrimary: true,
+                        evidence: '{"repo_full_name":"acme/payments"}',
+                    },
+                    {
+                        workItemId: "wu-7ed90",
+                        provider: "github",
+                        teamId: "team-platform",
+                        teamName: "Platform",
+                        source: "MANUAL_FALLBACK",
+                        confidence: "MANUAL",
+                        isPrimary: true,
+                        evidence: '{"scope_type":"repo","reason":"manual backstop"}',
+                    },
+                ],
+            },
+        });
+    }
+
     // Investment breakdown query (analytics).
     if (query.includes("InvestmentBreakdown") || query.includes("analytics")) {
         return HttpResponse.json({

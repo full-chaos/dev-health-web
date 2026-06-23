@@ -4,28 +4,29 @@ Frontend: Next.js 16 + React Server Components, TypeScript, Tailwind v4, **pnpm*
 
 ## Read-first
 
-| Need | Source |
-| --- | --- |
-| Architecture | [`docs/architecture.md`](docs/architecture.md) |
-| Auth (NextAuth v5 beta) | [`docs/auth-system.md`](docs/auth-system.md) |
-| Design & Style Framework | [`docs/design-system.md`](docs/design-system.md), [`docs/design-lint.md`](docs/design-lint.md) |
-| GraphQL client / investment | [`docs/graphql-client.md`](docs/graphql-client.md), [`docs/graphql-investment.md`](docs/graphql-investment.md) |
-| Visualizations | [`docs/visualizations.md`](docs/visualizations.md) |
-| Testing tiers & governance | [`README.md`](README.md), [`ci/run_tests.sh`](ci/run_tests.sh), [`docs/testing-governance.md`](docs/testing-governance.md) |
-| Visual-evidence runbook | [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md) |
+| Need                                    | Source                                                                                                                     |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Architecture                            | [`docs/architecture.md`](docs/architecture.md)                                                                             |
+| Auth (NextAuth v5 beta)                 | [`docs/auth-system.md`](docs/auth-system.md)                                                                               |
+| Design & Style Framework                | [`docs/design-system.md`](docs/design-system.md), [`docs/design-lint.md`](docs/design-lint.md)                             |
+| GraphQL client / investment             | [`docs/graphql-client.md`](docs/graphql-client.md), [`docs/graphql-investment.md`](docs/graphql-investment.md)             |
+| Team attribution (render-only boundary) | [`docs/architecture/team-attribution-boundary.md`](docs/architecture/team-attribution-boundary.md)                         |
+| Visualizations                          | [`docs/visualizations.md`](docs/visualizations.md)                                                                         |
+| Testing tiers & governance              | [`README.md`](README.md), [`ci/run_tests.sh`](ci/run_tests.sh), [`docs/testing-governance.md`](docs/testing-governance.md) |
+| Visual-evidence runbook                 | [`docs/agent-visual-testing.md`](docs/agent-visual-testing.md)                                                             |
 
 ## Layout (`src/`)
 
-| Path | Role |
-| --- | --- |
-| `app/(app)` / `(auth)` / `(marketing)` | Route groups: authenticated · public auth · public marketing. |
-| `app/api`, `app/health` | Route handlers + health check. |
-| `proxy.ts` | **Central middleware lives here, NOT `middleware.ts`.** |
-| `lib/auth.ts`, `lib/guards/` | Auth config + route guards. |
-| `lib/graphql/` | Client, generated types, `schema.graphql` (drift-checked vs ops). |
-| `lib/` | Transforms, mappers, formatters (charting, investment, metrics, filters). |
-| `components/` | UI; charts/filters/navigation. Tests colocated `*.test.tsx`. |
-| `data/` | Sample/demo data for test-mode + unit tests. |
+| Path                                   | Role                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------- |
+| `app/(app)` / `(auth)` / `(marketing)` | Route groups: authenticated · public auth · public marketing.             |
+| `app/api`, `app/health`                | Route handlers + health check.                                            |
+| `proxy.ts`                             | **Central middleware lives here, NOT `middleware.ts`.**                   |
+| `lib/auth.ts`, `lib/guards/`           | Auth config + route guards.                                               |
+| `lib/graphql/`                         | Client, generated types, `schema.graphql` (drift-checked vs ops).         |
+| `lib/`                                 | Transforms, mappers, formatters (charting, investment, metrics, filters). |
+| `components/`                          | UI; charts/filters/navigation. Tests colocated `*.test.tsx`.              |
+| `data/`                                | Sample/demo data for test-mode + unit tests.                              |
 
 ## Key scripts (`pnpm <script>`)
 

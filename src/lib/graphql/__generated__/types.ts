@@ -1233,6 +1233,8 @@ export type Query = {
   workGraphEdges: WorkGraphEdgesResult;
   /** Per-node-type inflow/outflow over the full work graph */
   workGraphFlow: WorkGraphFlowResult;
+  /** Team-attribution provenance per work item (source/confidence/evidence/is_primary) — CHAOS-2600 */
+  workItemTeamAttributions: Array<WorkItemTeamAttribution>;
 };
 
 
@@ -1456,6 +1458,13 @@ export type QueryWorkGraphEdgesArgs = {
 export type QueryWorkGraphFlowArgs = {
   filters?: InputMaybe<WorkGraphEdgeFilterInput>;
   orgId: Scalars['String']['input'];
+};
+
+
+export type QueryWorkItemTeamAttributionsArgs = {
+  orgId: Scalars['String']['input'];
+  teamId?: InputMaybe<Scalars['String']['input']>;
+  workItemIds?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 export type Recommendation = {
@@ -1768,6 +1777,23 @@ export type TaskStatus = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type TeamAttributionConfidence =
+  | 'HIGH'
+  | 'LOW'
+  | 'MANUAL'
+  | 'MEDIUM'
+  | 'NONE';
+
+export type TeamAttributionSource =
+  | 'ASSIGNEE_MEMBERSHIP'
+  | 'ISSUE_PROJECT'
+  | 'LINKED_ISSUE'
+  | 'MANUAL_FALLBACK'
+  | 'NATIVE_TEAM'
+  | 'PROJECT_OWNERSHIP'
+  | 'REPO_OWNERSHIP'
+  | 'UNASSIGNED';
+
 export type ThroughputForecast = {
   __typename?: 'ThroughputForecast';
   backlogSize: Scalars['Int']['output'];
@@ -2039,3 +2065,15 @@ export type WorkGraphProvenance =
   | 'EXPLICIT_TEXT'
   | 'HEURISTIC'
   | 'NATIVE';
+
+export type WorkItemTeamAttribution = {
+  __typename?: 'WorkItemTeamAttribution';
+  confidence: TeamAttributionConfidence;
+  evidence: Scalars['String']['output'];
+  isPrimary: Scalars['Boolean']['output'];
+  provider: Scalars['String']['output'];
+  source: TeamAttributionSource;
+  teamId?: Maybe<Scalars['String']['output']>;
+  teamName?: Maybe<Scalars['String']['output']>;
+  workItemId: Scalars['String']['output'];
+};

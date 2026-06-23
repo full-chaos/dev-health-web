@@ -12,6 +12,10 @@ to interpreting the **confidence** of what you are looking at.
 > [Investment View (dev-health-ops)](https://github.com/full-chaos/dev-health-ops/blob/main/docs/user-guide/investment-view.md)
 > and the shared
 > [Investment Taxonomy](https://github.com/full-chaos/dev-health-ops/blob/main/docs/product/investment-taxonomy.md).
+>
+> The **team** behind each work item (and its `manual · low confidence` provenance
+> badge on the Evidence tab) is computed backend-only and rendered as-is — see
+> [Team-Attribution Boundary](../architecture/team-attribution-boundary.md).
 
 ---
 
