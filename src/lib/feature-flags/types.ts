@@ -3,16 +3,37 @@ import type { SparkPoint } from "@/lib/types";
 
 export type FeatureFlagEdgeType = "INTRODUCED_BY" | "CONFIG_CHANGED_BY" | "GUARDS" | "IMPACTS";
 
+export interface FeatureFlag {
+    flagId: string;
+    flagKey: string;
+    provider: string;
+    projectKey: string;
+    environment: string;
+    flagType: string;
+    createdAt: string;
+    archivedAt: string | null;
+}
+
+export interface FeatureFlagEvent {
+    flagKey: string;
+    eventType: string;
+    prevState: string;
+    nextState: string;
+    actorType: string;
+    environment: string;
+    eventTs: string;
+}
+
 export interface FeatureFlagRegistryResult {
-    flags: WorkGraphEdge[];
+    flags: FeatureFlag[];
     totalCount: number;
-    pageInfo: PageInfo;
+    degradedReason?: string | null;
 }
 
 export interface FeatureFlagEventsResult {
-    events: WorkGraphEdge[];
+    events: FeatureFlagEvent[];
     totalCount: number;
-    pageInfo: PageInfo;
+    degradedReason?: string | null;
 }
 
 export interface ReleaseImpactResult {

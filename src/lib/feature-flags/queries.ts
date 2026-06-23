@@ -1,53 +1,36 @@
 export const FEATURE_FLAG_REGISTRY_QUERY = `
-query FeatureFlagRegistry($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
-  workGraphEdges(orgId: $orgId, filters: $filters) {
-    edges {
-      edgeId
-      sourceType
-      sourceId
-      targetType
-      targetId
-      edgeType
-      provenance
-      confidence
-      evidence
-      repoId
+query FeatureFlagRegistry($orgId: String!, $provider: String, $project: String, $includeArchived: Boolean, $limit: Int!) {
+  featureFlags(orgId: $orgId, provider: $provider, project: $project, includeArchived: $includeArchived, limit: $limit) {
+    flags {
+      flagId
+      flagKey
       provider
+      projectKey
+      environment
+      flagType
+      createdAt
+      archivedAt
     }
     totalCount
-    pageInfo {
-      hasNextPage
-      hasPreviousPage
-      startCursor
-      endCursor
-    }
+    degradedReason
   }
 }
 `;
 
 export const FEATURE_FLAG_EVENTS_QUERY = `
-query FeatureFlagEvents($orgId: String!, $filters: WorkGraphEdgeFilterInput) {
-  workGraphEdges(orgId: $orgId, filters: $filters) {
-    edges {
-      edgeId
-      sourceType
-      sourceId
-      targetType
-      targetId
-      edgeType
-      provenance
-      confidence
-      evidence
-      repoId
-      provider
+query FeatureFlagEvents($orgId: String!, $flagKey: String, $environment: String, $limit: Int!) {
+  featureFlagEvents(orgId: $orgId, flagKey: $flagKey, environment: $environment, limit: $limit) {
+    events {
+      flagKey
+      eventType
+      prevState
+      nextState
+      actorType
+      environment
+      eventTs
     }
     totalCount
-    pageInfo {
-      hasNextPage
-      hasPreviousPage
-      startCursor
-      endCursor
-    }
+    degradedReason
   }
 }
 `;
