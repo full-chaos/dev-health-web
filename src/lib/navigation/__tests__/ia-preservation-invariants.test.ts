@@ -37,6 +37,12 @@ const investmentViewSource = readFileSync(
     join(process.cwd(), "src/components/work/InvestmentView.tsx"),
     "utf8",
 );
+// CHAOS-2608/CS7: the page mounts InvestmentView via this entitlement gate so
+// the data-fetching subtree never mounts inside a locked UpgradeGate preview.
+const investmentGatedBodySource = readFileSync(
+    join(appRoot, "investment/_components/InvestmentGatedBody.tsx"),
+    "utf8",
+);
 const investmentChartsSource = readFileSync(
     join(process.cwd(), "src/components/work/investment/InvestmentCharts.tsx"),
     "utf8",
@@ -248,7 +254,7 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
 
     it.each([
         ["flow", "/metrics?tab=flow", "flow"],
-        ["investment", "/investment", "InvestmentView"],
+        ["investment", "/investment", "InvestmentGatedBody"],
         ["landscape", "/landscape", "Cycle Time × Throughput"],
         ["capacity", "/plan/capacity", "Capacity"],
         ["heatmap", "/cognitive-load?tab=heatmap", "Focus fragmentation"],
@@ -300,7 +306,11 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
     });
 
     it("mounts the full Investment chart workbench on /investment", () => {
-        expect(investmentPageSource).toContain("<InvestmentView");
+        // The page mounts InvestmentView through the entitlement gate, which
+        // mounts the real InvestmentView when the org is entitled (and a static
+        // placeholder otherwise) — the workbench is still the real content.
+        expect(investmentPageSource).toContain("<InvestmentGatedBody");
+        expect(investmentGatedBodySource).toContain("<InvestmentView");
         expect(investmentViewSource).toContain("<InvestmentCharts");
         for (const chart of [
             "InvestmentMixSection",

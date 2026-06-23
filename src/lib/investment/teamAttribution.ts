@@ -108,19 +108,18 @@ export function describeAttributionProvenance(attribution: {
 }
 
 /**
- * Pick the attribution to display for a work item: the primary one if present,
- * otherwise the highest-precedence source. Render-only tie-break — does not
- * alter or recompute the backend result.
+ * Return the backend-designated primary (`is_primary`) attribution for a work
+ * item, or `null` when none is flagged.
+ *
+ * The winner is decided BACKEND-ONLY: `is_primary` is the resolver's
+ * highest-precedence candidate. The web layer must NOT pick a winner itself —
+ * doing so (e.g. by sorting candidates on a client-side precedence list) would
+ * recompute attribution, the exact boundary violation CS7 removes. If the
+ * backend flags no primary, we surface no primary (the caller shows nothing /
+ * an unassigned state) rather than inventing one.
  */
 export function selectPrimaryAttribution(
     attributions: readonly WorkItemTeamAttribution[],
 ): WorkItemTeamAttribution | null {
-    if (attributions.length === 0) return null;
-    const primary = attributions.find((a) => a.isPrimary);
-    if (primary) return primary;
-    return [...attributions].sort(
-        (a, b) =>
-            ATTRIBUTION_SOURCE_PRECEDENCE.indexOf(a.source) -
-            ATTRIBUTION_SOURCE_PRECEDENCE.indexOf(b.source),
-    )[0];
+    return attributions.find((a) => a.isPrimary) ?? null;
 }

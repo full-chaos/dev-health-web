@@ -13,7 +13,7 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { InvestmentView } from "@/components/work/InvestmentView";
+import { InvestmentGatedBody } from "./_components/InvestmentGatedBody";
 import { INVESTMENT_TABS, type InvestmentTab } from "@/components/work/investment/types";
 import { getHomeData } from "@/lib/api/home";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
@@ -63,6 +63,9 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
         ? await fetchOrNull(getOrgEntitlements(org.id), "investment/entitlements")
         : null;
     const features = entitlements?.data?.features ?? {};
+    // Mirror UpgradeGate's gate decision so the data-fetching subtree
+    // (InvestmentView + its hooks) mounts ONLY when the org is entitled.
+    const investmentEnabled = features["investment_view"] === true;
 
     const reworkMetric = getMetric(home?.deltas ?? [], "pr_rework_ratio");
     const reworkThemeAllocation = home?.rework_theme_allocation ?? [];
@@ -142,7 +145,8 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                             ariaLabel="Investment views"
                         />
 
-                        <InvestmentView
+                        <InvestmentGatedBody
+                            enabled={investmentEnabled}
                             filters={filters}
                             activeRole={activeRole}
                             activeTab={activeTab}

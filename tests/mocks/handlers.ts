@@ -819,7 +819,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                         source: "REPO_OWNERSHIP",
                         confidence: "MEDIUM",
                         isPrimary: true,
-                        evidence: '{"repo_full_name":"acme/payments"}',
+                        evidence: '{"repo_full_name":"meridian/payments"}',
                     },
                     {
                         workItemId: "wu-7ed90",

@@ -54,7 +54,7 @@ describe("selectPrimaryAttribution", () => {
         expect(selectPrimaryAttribution([])).toBeNull();
     });
 
-    it("prefers the is_primary candidate", () => {
+    it("returns the backend-designated is_primary candidate", () => {
         const picked = selectPrimaryAttribution([
             row({ source: "MANUAL_FALLBACK", isPrimary: false }),
             row({ source: "REPO_OWNERSHIP", isPrimary: true }),
@@ -62,12 +62,13 @@ describe("selectPrimaryAttribution", () => {
         expect(picked?.source).toBe("REPO_OWNERSHIP");
     });
 
-    it("falls back to highest precedence when no primary flagged", () => {
+    it("returns null when NO row is flagged primary — never picks a client-side winner", () => {
         const picked = selectPrimaryAttribution([
             row({ source: "MANUAL_FALLBACK", isPrimary: false }),
             row({ source: "ASSIGNEE_MEMBERSHIP", isPrimary: false }),
             row({ source: "ISSUE_PROJECT", isPrimary: false }),
         ]);
-        expect(picked?.source).toBe("ISSUE_PROJECT");
+        // The web layer must NOT recompute a precedence winner client-side.
+        expect(picked).toBeNull();
     });
 });
