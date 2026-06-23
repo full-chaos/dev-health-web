@@ -294,8 +294,7 @@ describe("feature flag direct-read fetchers", () => {
                     eventTs: "2026-04-17T11:00:00Z",
                 },
             ];
-            const flagKey =
-                (variables as { flagKey?: string | null } | undefined)?.flagKey ?? null;
+            const flagKey = (variables as { flagKey?: string | null } | undefined)?.flagKey ?? null;
             const events = flagKey
                 ? allEvents.filter((event) => event.flagKey === flagKey)
                 : allEvents;
