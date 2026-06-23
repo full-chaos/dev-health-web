@@ -242,7 +242,6 @@ describe("feature flag direct-read fetchers", () => {
                                 flagKey: "checkout-redesign",
                                 provider: "launchdarkly",
                                 projectKey: "web",
-                                environment: "prod",
                                 flagType: "boolean",
                                 createdAt: "2026-04-01T00:00:00Z",
                                 archivedAt: null,
@@ -252,7 +251,6 @@ describe("feature flag direct-read fetchers", () => {
                                 flagKey: "search-v2",
                                 provider: "launchdarkly",
                                 projectKey: "web",
-                                environment: "prod",
                                 flagType: "boolean",
                                 createdAt: "2026-04-02T00:00:00Z",
                                 archivedAt: null,
@@ -333,6 +331,45 @@ describe("feature flag direct-read fetchers", () => {
         expect(result.hasNextPage).toBe(false);
     });
 
+    it("surfaces the backend totalCount even when it exceeds the fetched page (CHAOS-2632)", async () => {
+        mockGraphql.mockImplementation((query, variables) => {
+            const qs = typeof query === "string" ? query : "";
+            if (qs.includes("FeatureFlagRegistry")) {
+                return Promise.resolve({
+                    featureFlags: {
+                        flags: [
+                            {
+                                flagId: "hashed-flag-a",
+                                flagKey: "checkout-redesign",
+                                provider: "launchdarkly",
+                                projectKey: "web",
+                                flagType: "boolean",
+                                createdAt: "2026-04-01T00:00:00Z",
+                                archivedAt: null,
+                            },
+                        ],
+                        // count() reports the full population, larger than the
+                        // single flag returned in this limited page.
+                        totalCount: 50,
+                        degradedReason: null,
+                    },
+                });
+            }
+            void variables;
+            return Promise.resolve({
+                featureFlagEvents: {
+                    events: [],
+                    totalCount: 0,
+                    degradedReason: null,
+                },
+            });
+        });
+
+        const result = await fetchFeatureFlagList(0, 20, "org-test");
+        expect(result.totalCount).toBe(50);
+        expect(result.items).toHaveLength(1);
+    });
+
     it("reports isActive null when the latest event state is empty/unknown", async () => {
         mockGraphql.mockImplementation((query, variables) => {
             const qs = typeof query === "string" ? query : "";
@@ -345,7 +382,6 @@ describe("feature flag direct-read fetchers", () => {
                                 flagKey: "unknown-state",
                                 provider: "gitlab",
                                 projectKey: "infra",
-                                environment: "prod",
                                 flagType: "boolean",
                                 createdAt: "2026-04-03T00:00:00Z",
                                 archivedAt: null,

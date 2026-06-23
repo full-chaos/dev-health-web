@@ -737,7 +737,6 @@ type FeatureFlagItem {
   flagKey: String!
   provider: String!
   projectKey: String!
-  environment: String!
   flagType: String!
   createdAt: String!
   archivedAt: String
