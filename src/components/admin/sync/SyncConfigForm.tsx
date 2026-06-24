@@ -128,6 +128,12 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                     gitlab_url: "",
                 }));
                 setSyncAllRepos(false);
+            } else if (name === "owner" || name === "credential_id") {
+                setFormData((prev) => ({
+                    ...prev,
+                    [name]: value,
+                    repos: [],
+                }));
             } else {
                 handleBaseChange(e);
             }
