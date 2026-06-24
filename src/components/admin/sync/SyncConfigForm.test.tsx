@@ -659,10 +659,62 @@ describe("SyncConfigForm", () => {
                     timezone: null,
                     initial_sync_depth: 30,
                     sync_options: { owner: "myorg", auto_import_teams: false },
-                    repos: ["repo-a"],
+                    repos: ["myorg/repo-a"],
                 });
             });
             expect(mockCreateSyncConfig).not.toHaveBeenCalled();
+        });
+
+        it("clears selected repos when owner changes", async () => {
+            mockCreateSyncConfig.mockResolvedValue(undefined);
+            mockListReposForCredential.mockResolvedValue({
+                data: {
+                    provider: "github",
+                    owner: "myorg",
+                    repos: [
+                        {
+                            name: "repo-a",
+                            full_name: "myorg/repo-a",
+                            description: null,
+                            is_private: false,
+                            is_archived: false,
+                            default_branch: "main",
+                            language: null,
+                            stargazers_count: null,
+                            forks_count: null,
+                            updated_at: null,
+                        },
+                    ],
+                    total: 1,
+                },
+            });
+            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Repo Sync");
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await userEvent.type(screen.getByLabelText("Owner / Organization"), "myorg");
+
+            const repoCheckbox = await screen.findByLabelText("repo-a");
+            await userEvent.click(repoCheckbox);
+
+            const ownerInput = screen.getByLabelText("Owner / Organization");
+            await userEvent.clear(ownerInput);
+            await userEvent.type(ownerInput, "otherorg");
+            await userEvent.click(screen.getByRole("button", { name: "Create Configuration" }));
+
+            await waitFor(() => {
+                expect(mockCreateSyncConfig).toHaveBeenCalledWith({
+                    name: "Repo Sync",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: [],
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: { owner: "otherorg", auto_import_teams: false },
+                });
+            });
+            expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
         });
 
         it("includes auto_import_teams=true in sync_options when toggled on (create)", async () => {

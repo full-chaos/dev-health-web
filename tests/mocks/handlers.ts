@@ -2370,6 +2370,37 @@ export const handlers = [
         HttpResponse.json<MockCredential[]>(MOCK_CREDENTIALS),
     ),
 
+    http.get("*/api/v1/admin/credentials/:id/repos", ({ request }) => {
+        const owner = new URL(request.url).searchParams.get("owner") ?? "myorg";
+        const repos = [
+            {
+                name: "repo-alpha",
+                full_name: `${owner}/repo-alpha`,
+                description: "Alpha service",
+                is_private: false,
+                is_archived: false,
+                default_branch: "main",
+                language: "TypeScript",
+                stargazers_count: 0,
+                forks_count: 0,
+                updated_at: "2026-01-15T00:00:00.000Z",
+            },
+            {
+                name: "repo-beta",
+                full_name: `${owner}/repo-beta`,
+                description: "Beta service",
+                is_private: true,
+                is_archived: false,
+                default_branch: "main",
+                language: "Python",
+                stargazers_count: 0,
+                forks_count: 0,
+                updated_at: "2026-01-15T00:00:00.000Z",
+            },
+        ];
+        return HttpResponse.json({ provider: "github", owner, repos, total: repos.length });
+    }),
+
     http.post("*/api/v1/admin/credentials", async ({ request }) => {
         const body = (await request.json()) as Partial<MockCredential> | null;
         const created: MockCredential = {
@@ -2409,6 +2440,30 @@ export const handlers = [
         };
         MOCK_SYNC_CONFIGS.push(created);
         return HttpResponse.json<MockSyncConfig>(created);
+    }),
+
+    http.post("*/api/v1/admin/sync-configs/batch", async ({ request }) => {
+        const body = (await request.json()) as { repos?: string[]; provider?: string } | null;
+        const repos = body?.repos ?? [];
+        if (repos.length === 0 || repos.some((repo) => !repo.includes("/"))) {
+            return HttpResponse.json(
+                { detail: "Batch sync repo selections must use full names." },
+                { status: 400 },
+            );
+        }
+        const created = repos.map((repo, index) => ({
+            id: `sync-config-batch-${index}`,
+            provider: body?.provider ?? "github",
+            name: repo,
+            enabled: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }));
+        return HttpResponse.json({
+            created,
+            parent: created[0] ?? null,
+            count: created.length,
+        });
     }),
 
     http.patch("*/api/v1/admin/sync-configs/:id", async ({ params, request }) => {

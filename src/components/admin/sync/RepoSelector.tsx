@@ -4,12 +4,13 @@ import { useCallback, useEffect, useReducer, useState } from "react";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import { listReposForCredential } from "@/lib/admin/server";
 import type { DiscoveredRepo } from "@/lib/admin/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export type RepoSelectorProps = {
     credentialId: string;
     owner: string;
     selectedRepos: string[];
-    onSelectionChange: (repos: string[]) => void;
+    onSelectionChangeAction: (repos: string[]) => void;
     maxRepos?: number;
 };
 
@@ -42,7 +43,7 @@ export function RepoSelector({
     credentialId,
     owner,
     selectedRepos,
-    onSelectionChange,
+    onSelectionChangeAction,
     maxRepos,
 }: RepoSelectorProps) {
     const [state, dispatch] = useReducer(fetchReducer, {
@@ -77,29 +78,34 @@ export function RepoSelector({
 
     const { repos, loading, error } = state;
 
-    const filteredRepos = repos.filter((r) => r.name.toLowerCase().includes(search.toLowerCase()));
+    const filteredRepos = repos.filter((repo) => {
+        const query = search.toLowerCase();
+        return (
+            repo.name.toLowerCase().includes(query) || repo.full_name.toLowerCase().includes(query)
+        );
+    });
 
     const handleToggle = useCallback(
-        (repoName: string, checked: boolean) => {
+        (repoFullName: string, checked: boolean) => {
             if (checked) {
                 if (maxRepos !== undefined && selectedRepos.length >= maxRepos) return;
-                onSelectionChange([...selectedRepos, repoName]);
+                onSelectionChangeAction([...selectedRepos, repoFullName]);
             } else {
-                onSelectionChange(selectedRepos.filter((r) => r !== repoName));
+                onSelectionChangeAction(selectedRepos.filter((r) => r !== repoFullName));
             }
         },
-        [selectedRepos, onSelectionChange, maxRepos],
+        [selectedRepos, onSelectionChangeAction, maxRepos],
     );
 
     const handleSelectAll = useCallback(() => {
-        const names = filteredRepos.map((r) => r.name);
-        const next = maxRepos !== undefined ? names.slice(0, maxRepos) : names;
-        onSelectionChange(next);
-    }, [filteredRepos, maxRepos, onSelectionChange]);
+        const fullNames = filteredRepos.map((repo) => repo.full_name);
+        const next = maxRepos !== undefined ? fullNames.slice(0, maxRepos) : fullNames;
+        onSelectionChangeAction(next);
+    }, [filteredRepos, maxRepos, onSelectionChangeAction]);
 
     const handleClear = useCallback(() => {
-        onSelectionChange([]);
-    }, [onSelectionChange]);
+        onSelectionChangeAction([]);
+    }, [onSelectionChangeAction]);
 
     // Not ready to show — need both inputs
     if (!credentialId || !owner) {
@@ -152,14 +158,14 @@ export function RepoSelector({
                         onClick={handleSelectAll}
                         className="rounded-md border border-(--card-stroke) px-2 py-1 text-xs font-medium text-(--foreground) hover:bg-(--card-70)"
                     >
-                        Select All
+                        {CTA_LABELS.selectAll}
                     </button>
                     <button
                         type="button"
                         onClick={handleClear}
                         className="rounded-md border border-(--card-stroke) px-2 py-1 text-xs font-medium text-(--foreground) hover:bg-(--card-70)"
                     >
-                        Clear
+                        {CTA_LABELS.clear}
                     </button>
                 </div>
             </div>
@@ -179,11 +185,11 @@ export function RepoSelector({
                     <p className="text-xs text-(--ink-muted)">No repositories match your search.</p>
                 ) : (
                     filteredRepos.map((repo) => {
-                        const isChecked = selectedRepos.includes(repo.name);
+                        const isChecked = selectedRepos.includes(repo.full_name);
                         const isDisabled = !isChecked && atLimit;
                         return (
                             <label
-                                key={repo.name}
+                                key={repo.full_name}
                                 className={`flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 hover:bg-(--card-60) ${
                                     isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
                                 }`}
@@ -192,7 +198,7 @@ export function RepoSelector({
                                     type="checkbox"
                                     checked={isChecked}
                                     disabled={isDisabled}
-                                    onChange={(e) => handleToggle(repo.name, e.target.checked)}
+                                    onChange={(e) => handleToggle(repo.full_name, e.target.checked)}
                                     className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
                                 />
                                 <div className="min-w-0 flex-1">
@@ -208,7 +214,7 @@ export function RepoSelector({
                                 <div className="flex shrink-0 items-center gap-2 text-xs text-(--ink-muted)">
                                     {repo.language && <span>{repo.language}</span>}
                                     {repo.is_private && (
-                                        <span className="rounded-full border border-(--card-stroke) px-1.5 py-0.5 text-[10px]">
+                                        <span className="rounded-full border border-(--card-stroke) px-1.5 py-0.5 text-label-caps">
                                             private
                                         </span>
                                     )}
