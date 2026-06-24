@@ -659,7 +659,7 @@ describe("SyncConfigForm", () => {
                     timezone: null,
                     initial_sync_depth: 30,
                     sync_options: { owner: "myorg", auto_import_teams: false },
-                    repos: ["repo-a"],
+                    repos: ["myorg/repo-a"],
                 });
             });
             expect(mockCreateSyncConfig).not.toHaveBeenCalled();

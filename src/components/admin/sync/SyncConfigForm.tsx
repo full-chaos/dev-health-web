@@ -24,6 +24,7 @@ import { batchCreateSyncConfigs, createSyncConfig, updateSyncConfig } from "@/li
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { CreateCredentialModal } from "./CreateCredentialModal";
 import { RepoSelector } from "./RepoSelector";
 import { SchedulePicker } from "./SchedulePicker";
@@ -301,7 +302,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         href="/org/admin/sync"
                         className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
                     >
-                        Cancel
+                        {CTA_LABELS.cancel}
                     </Link>
                 }
             >
@@ -377,7 +378,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         <div className="mt-1 flex items-center gap-1 text-xs text-amber-500">
                             <span>No credentials found for this provider.</span>
                             <Link href="/org/admin/integrations" className="underline">
-                                Add one first
+                                {CTA_LABELS.addOneFirst}
                             </Link>
                             <span>or</span>
                             <button
@@ -385,7 +386,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                 onClick={() => setShowCredentialModal(true)}
                                 className="underline"
                             >
-                                Create One Now
+                                {CTA_LABELS.createOneNow}
                             </button>
                             <span>.</span>
                         </div>
@@ -466,7 +467,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                     credentialId={formData.credential_id}
                                     owner={formData.owner}
                                     selectedRepos={formData.repos}
-                                    onSelectionChange={(repos) =>
+                                    onSelectionChangeAction={(repos) =>
                                         setFormData((prev) => ({ ...prev, repos }))
                                     }
                                     maxRepos={maxRepos}
@@ -572,7 +573,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                     }`}
                                 >
                                     {opt.label}
-                                    {isGated && <span className="ml-1 text-[10px]">🔒</span>}
+                                    {isGated && <span className="ml-1 text-label-caps">🔒</span>}
                                 </button>
                             );
                         })}

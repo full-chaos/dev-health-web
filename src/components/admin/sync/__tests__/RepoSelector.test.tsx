@@ -51,17 +51,17 @@ const MOCK_REPOS = [
 ];
 
 function renderSelector(overrides: Partial<React.ComponentProps<typeof RepoSelector>> = {}) {
-    const onSelectionChange = vi.fn();
+    const onSelectionChangeAction = vi.fn();
     render(
         <RepoSelector
             credentialId="cred-123"
             owner="myorg"
             selectedRepos={[]}
-            onSelectionChange={onSelectionChange}
+            onSelectionChangeAction={onSelectionChangeAction}
             {...overrides}
         />,
     );
-    return { onSelectionChange };
+    return { onSelectionChangeAction };
 }
 
 describe("RepoSelector", () => {
@@ -76,7 +76,7 @@ describe("RepoSelector", () => {
                     credentialId=""
                     owner="myorg"
                     selectedRepos={[]}
-                    onSelectionChange={vi.fn()}
+                    onSelectionChangeAction={vi.fn()}
                 />,
             );
             expect(screen.getByText(/Select a credential and enter an owner/i)).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("RepoSelector", () => {
                     credentialId="cred-123"
                     owner=""
                     selectedRepos={[]}
-                    onSelectionChange={vi.fn()}
+                    onSelectionChangeAction={vi.fn()}
                 />,
             );
             expect(screen.getByText(/Select a credential and enter an owner/i)).toBeInTheDocument();
@@ -189,60 +189,63 @@ describe("RepoSelector", () => {
         });
 
         it("calls onSelectionChange when a repo is checked", async () => {
-            const { onSelectionChange } = renderSelector();
+            const { onSelectionChangeAction } = renderSelector();
             await waitFor(() => screen.getByText("repo-alpha"));
 
             const checkboxes = screen.getAllByRole("checkbox");
             await userEvent.click(checkboxes[0]);
 
-            expect(onSelectionChange).toHaveBeenCalledWith(["repo-alpha"]);
+            expect(onSelectionChangeAction).toHaveBeenCalledWith(["myorg/repo-alpha"]);
         });
 
         it("calls onSelectionChange to remove a repo when unchecked", async () => {
-            const { onSelectionChange } = renderSelector({ selectedRepos: ["repo-alpha"] });
+            const { onSelectionChangeAction } = renderSelector({ selectedRepos: ["myorg/repo-alpha"] });
             await waitFor(() => screen.getByText("repo-alpha"));
 
             const checkboxes = screen.getAllByRole("checkbox");
             await userEvent.click(checkboxes[0]);
 
-            expect(onSelectionChange).toHaveBeenCalledWith([]);
+            expect(onSelectionChangeAction).toHaveBeenCalledWith([]);
         });
 
         it("Select All selects all repos", async () => {
-            const { onSelectionChange } = renderSelector();
+            const { onSelectionChangeAction } = renderSelector();
             await waitFor(() => screen.getByRole("button", { name: "Select All" }));
 
             await userEvent.click(screen.getByRole("button", { name: "Select All" }));
 
-            expect(onSelectionChange).toHaveBeenCalledWith([
-                "repo-alpha",
-                "repo-beta",
-                "repo-gamma",
+            expect(onSelectionChangeAction).toHaveBeenCalledWith([
+                "myorg/repo-alpha",
+                "myorg/repo-beta",
+                "myorg/repo-gamma",
             ]);
         });
 
         it("Select All respects maxRepos limit", async () => {
-            const { onSelectionChange } = renderSelector({ maxRepos: 2 });
+            const { onSelectionChangeAction } = renderSelector({ maxRepos: 2 });
             await waitFor(() => screen.getByRole("button", { name: "Select All" }));
 
             await userEvent.click(screen.getByRole("button", { name: "Select All" }));
 
-            expect(onSelectionChange).toHaveBeenCalledWith(["repo-alpha", "repo-beta"]);
+            expect(onSelectionChangeAction).toHaveBeenCalledWith([
+                "myorg/repo-alpha",
+                "myorg/repo-beta",
+            ]);
         });
 
         it("Clear clears all selected repos", async () => {
-            const { onSelectionChange } = renderSelector({
-                selectedRepos: ["repo-alpha", "repo-beta"],
+            const { onSelectionChangeAction } = renderSelector({
+                selectedRepos: ["myorg/repo-alpha", "myorg/repo-beta"],
             });
             await waitFor(() => screen.getByRole("button", { name: "Clear" }));
 
             await userEvent.click(screen.getByRole("button", { name: "Clear" }));
 
-            expect(onSelectionChange).toHaveBeenCalledWith([]);
+            expect(onSelectionChangeAction).toHaveBeenCalledWith([]);
         });
 
         it("disables unchecked repos when at maxRepos", async () => {
-            renderSelector({ selectedRepos: ["repo-alpha"], maxRepos: 1 });
+            renderSelector({ selectedRepos: ["myorg/repo-alpha"], maxRepos: 1 });
             await waitFor(() => screen.getByText("repo-beta"));
 
             const checkboxes = screen.getAllByRole("checkbox");
@@ -262,6 +265,17 @@ describe("RepoSelector", () => {
 
             expect(screen.getByText("repo-alpha")).toBeInTheDocument();
             expect(screen.queryByText("repo-beta")).not.toBeInTheDocument();
+        });
+
+        it("filters repos by full name", async () => {
+            renderSelector();
+            await waitFor(() => screen.getByText("repo-alpha"));
+
+            const searchInput = screen.getByPlaceholderText("Search repositories...");
+            await userEvent.type(searchInput, "myorg/repo-beta");
+
+            expect(screen.getByText("repo-beta")).toBeInTheDocument();
+            expect(screen.queryByText("repo-alpha")).not.toBeInTheDocument();
         });
 
         it("shows empty search message when no repos match", async () => {
@@ -291,7 +305,7 @@ describe("RepoSelector", () => {
                     credentialId="cred-123"
                     owner="myorg"
                     selectedRepos={[]}
-                    onSelectionChange={vi.fn()}
+                    onSelectionChangeAction={vi.fn()}
                 />,
             );
 
@@ -307,7 +321,7 @@ describe("RepoSelector", () => {
                     credentialId="cred-123"
                     owner="otherorg"
                     selectedRepos={[]}
-                    onSelectionChange={vi.fn()}
+                    onSelectionChangeAction={vi.fn()}
                 />,
             );
 
