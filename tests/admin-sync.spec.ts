@@ -27,6 +27,28 @@ test("creating sync config navigates back to list", async ({ page }) => {
     await expect(page).toHaveURL(/\/org\/admin\/sync$/);
 });
 
+test("selecting discovered repos submits full names", async ({ page }) => {
+    await page.goto("/org/admin/sync/new");
+
+    await page.locator("#name").fill("Selected Repos");
+    await page.locator("#provider").selectOption("github");
+    await page.locator("#credential_id").selectOption("cred-github-1");
+    await page.locator("#owner").fill("myorg");
+
+    await expect(page.getByText("repo-alpha")).toBeVisible();
+    await expect(page.getByText("myorg/repo-alpha")).toHaveCount(0);
+
+    await page.getByPlaceholder("Search repositories...").fill("myorg/repo-beta");
+    await expect(page.getByText("repo-beta")).toBeVisible();
+    await expect(page.getByText("repo-alpha")).toHaveCount(0);
+
+    await page.getByRole("checkbox", { name: /repo-beta/i }).check();
+    await expect(page.getByText("1 of 2 selected")).toBeVisible();
+    await page.getByRole("button", { name: /submit|save|create/i }).click();
+
+    await expect(page).toHaveURL(/\/org\/admin\/sync$/);
+});
+
 test("provider selection filters sync targets", async ({ page }) => {
     await page.goto("/org/admin/sync/new");
 
