@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncConfigForm } from "@/components/admin/sync/SyncConfigForm";
-import { getSyncConfig, listCredentials } from "@/lib/admin/server";
+import { getSyncConfig, getSyncConfigRepositories, listCredentials } from "@/lib/admin/server";
 import { RunBackfill } from "@/components/admin/sync/RunBackfill";
 
 interface EditSyncConfigPageProps {
@@ -10,9 +10,10 @@ interface EditSyncConfigPageProps {
 
 export default async function EditSyncConfigPage({ params }: EditSyncConfigPageProps) {
     const { configId } = await params;
-    const [configResult, credentialsResult] = await Promise.all([
+    const [configResult, credentialsResult, repositorySelectionResult] = await Promise.all([
         getSyncConfig(configId),
         listCredentials(),
+        getSyncConfigRepositories(configId),
     ]);
 
     if (configResult.error || !configResult.data) {
@@ -29,7 +30,11 @@ export default async function EditSyncConfigPage({ params }: EditSyncConfigPageP
                 description="Update sync configuration settings."
             />
 
-            <SyncConfigForm initialData={config} credentials={credentials} />
+            <SyncConfigForm
+                initialData={config}
+                initialRepositorySelection={repositorySelectionResult.data}
+                credentials={credentials}
+            />
 
             <div className="max-w-2xl">
                 <RunBackfill configId={configId} />

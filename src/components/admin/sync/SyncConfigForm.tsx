@@ -19,8 +19,14 @@ import {
     PROVIDERS,
     PROVIDER_LABELS,
     PROVIDER_SYNC_TARGETS,
+    SyncConfigRepositorySelection,
 } from "@/lib/admin/types";
-import { batchCreateSyncConfigs, createSyncConfig, updateSyncConfig } from "@/lib/admin/server";
+import {
+    batchCreateSyncConfigs,
+    createSyncConfig,
+    updateSyncConfig,
+    updateSyncConfigRepositories,
+} from "@/lib/admin/server";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
@@ -31,6 +37,7 @@ import { SchedulePicker } from "./SchedulePicker";
 
 type SyncConfigFormProps = {
     initialData?: SyncConfig;
+    initialRepositorySelection?: SyncConfigRepositorySelection;
     credentials: IntegrationCredential[];
     onSuccessAction?: () => void;
 };
@@ -56,14 +63,28 @@ function getSyncTargetsForProvider(provider: string) {
     return ALL_SYNC_TARGETS.filter((t) => allowed.includes(t.id));
 }
 
-export function SyncConfigForm({ initialData, credentials, onSuccessAction }: SyncConfigFormProps) {
+function sameRepoSelection(left: string[], right: string[]) {
+    if (left.length !== right.length) return false;
+    const rightSet = new Set(right);
+    return left.every((repo) => rightSet.has(repo));
+}
+
+export function SyncConfigForm({
+    initialData,
+    initialRepositorySelection,
+    credentials,
+    onSuccessAction,
+}: SyncConfigFormProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [showCredentialModal, setShowCredentialModal] = useState(false);
     const [localCredentials, setLocalCredentials] = useState(credentials);
     const { features, minSyncIntervalHours, limits } = useAdminTier();
     const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
-    const [syncAllRepos, setSyncAllRepos] = useState(false);
+    const [syncAllRepos, setSyncAllRepos] = useState(
+        initialRepositorySelection?.sync_all_repos ??
+            ((initialData?.sync_options?.all_repos as boolean | undefined) || false),
+    );
 
     const {
         formData,
@@ -86,8 +107,9 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         initial_sync_depth: (initialData?.initial_sync_depth ??
             (initialData?.sync_options?.initial_sync_depth as number | null | undefined) ??
             30) as number | null,
-        owner: (initialData?.sync_options?.owner as string) || "",
-        repos: [] as string[],
+        owner:
+            initialRepositorySelection?.owner || (initialData?.sync_options?.owner as string) || "",
+        repos: initialRepositorySelection?.repos || ([] as string[]),
         gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
         auto_import_teams: (initialData?.sync_options?.auto_import_teams as boolean) ?? false,
     });
@@ -106,6 +128,7 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
         () => getSyncTargetsForProvider(formData.provider),
         [formData.provider],
     );
+    const canBrowseRepos = !initialData || !!initialRepositorySelection;
 
     const handleChange = useCallback(
         (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -205,6 +228,30 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                         if (result?.error) {
                             toast.error(result.error);
                         } else {
+                            const shouldUpdateRepos = Boolean(
+                                (formData.provider === "github" ||
+                                    formData.provider === "gitlab") &&
+                                !syncAllRepos &&
+                                formData.owner &&
+                                (!sameRepoSelection(
+                                    initialRepositorySelection?.repos ?? [],
+                                    formData.repos,
+                                ) ||
+                                    (initialRepositorySelection?.owner ?? "") !== formData.owner),
+                            );
+                            if (shouldUpdateRepos) {
+                                const repoResult = await updateSyncConfigRepositories(
+                                    initialData.id,
+                                    {
+                                        owner: formData.owner,
+                                        repos: formData.repos,
+                                    },
+                                );
+                                if (repoResult?.error) {
+                                    toast.error(repoResult.error);
+                                    return;
+                                }
+                            }
                             toast.success("Config updated");
                             if (onSuccessAction) {
                                 onSuccessAction();
@@ -285,7 +332,15 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                 }
             });
         },
-        [initialData, formData, syncAllRepos, buildSyncOptions, onSuccessAction, router],
+        [
+            initialData,
+            initialRepositorySelection,
+            formData,
+            syncAllRepos,
+            buildSyncOptions,
+            onSuccessAction,
+            router,
+        ],
     );
 
     return (
@@ -454,15 +509,15 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                 </label>
                             </div>
                         )}
-                        {!initialData && syncAllRepos && (
+                        {syncAllRepos && (
                             <p className="text-xs text-(--ink-muted)">
                                 Every repository the selected credential can reach will be synced.
                                 Enter an owner above to narrow this to a single organization
                                 (optional).
                             </p>
                         )}
-                        {!initialData &&
-                        !syncAllRepos &&
+                        {!syncAllRepos &&
+                        canBrowseRepos &&
                         formData.credential_id &&
                         formData.owner ? (
                             <div>
@@ -480,7 +535,8 @@ export function SyncConfigForm({ initialData, credentials, onSuccessAction }: Sy
                                 />
                             </div>
                         ) : (
-                            !initialData && (
+                            !syncAllRepos &&
+                            canBrowseRepos && (
                                 <p className="text-xs text-(--ink-muted)">
                                     Select a credential and enter an owner above to browse and
                                     select repositories.
