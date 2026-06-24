@@ -732,7 +732,30 @@ const MOCK_CREDENTIALS: MockCredential[] = [
     },
 ];
 
-const MOCK_SYNC_CONFIGS: MockSyncConfig[] = [];
+const MOCK_SYNC_CONFIGS: MockSyncConfig[] = [
+    {
+        id: "sync-config-edit-repos",
+        provider: "github",
+        name: "Editable Repos",
+        enabled: true,
+        credential_id: "cred-github-1",
+        sync_targets: ["git"],
+        sync_options: { owner: "myorg" },
+        is_active: true,
+        schedule_cron: null,
+        timezone: null,
+        initial_sync_depth: 30,
+        last_sync_at: null,
+        last_sync_success: null,
+        last_sync_error: null,
+        parent_id: null,
+        created_at: "2026-01-15T00:00:00.000Z",
+        updated_at: "2026-01-15T00:00:00.000Z",
+    },
+];
+const MOCK_REPOSITORY_SELECTIONS = new Map<string, { owner: string; repos: string[] }>([
+    ["sync-config-edit-repos", { owner: "myorg", repos: ["myorg/repo-alpha"] }],
+]);
 const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
 
@@ -2428,6 +2451,28 @@ export const handlers = [
         HttpResponse.json<MockSyncConfig[]>(MOCK_SYNC_CONFIGS),
     ),
 
+    http.get("*/api/v1/admin/sync-configs/:id", ({ params }) => {
+        const syncConfigId = params.id as string;
+        const syncConfig = MOCK_SYNC_CONFIGS.find((item) => item.id === syncConfigId);
+        if (!syncConfig) {
+            return HttpResponse.json({ detail: "Sync config not found" }, { status: 404 });
+        }
+        return HttpResponse.json<MockSyncConfig>(syncConfig);
+    }),
+
+    http.get("*/api/v1/admin/sync-configs/:id/repositories", ({ params }) => {
+        const syncConfigId = params.id as string;
+        const syncConfig = MOCK_SYNC_CONFIGS.find((item) => item.id === syncConfigId);
+        if (!syncConfig) {
+            return HttpResponse.json({ detail: "Sync config not found" }, { status: 404 });
+        }
+        const selection = MOCK_REPOSITORY_SELECTIONS.get(syncConfigId) ?? {
+            owner: String(syncConfig.sync_options?.owner ?? ""),
+            repos: [],
+        };
+        return HttpResponse.json({ ...selection, sync_all_repos: false });
+    }),
+
     http.post("*/api/v1/admin/sync-configs", async ({ request }) => {
         const body = (await request.json()) as Partial<MockSyncConfig> | null;
         const created: MockSyncConfig = {
@@ -2435,6 +2480,19 @@ export const handlers = [
             provider: body?.provider ?? "github",
             name: body?.name ?? "Sync Config",
             enabled: body?.enabled ?? true,
+            credential_id:
+                (body as { credential_id?: string | null } | null)?.credential_id ?? null,
+            sync_targets: (body as { sync_targets?: string[] } | null)?.sync_targets ?? [],
+            sync_options:
+                (body as { sync_options?: Record<string, unknown> } | null)?.sync_options ?? {},
+            is_active: true,
+            schedule_cron: null,
+            timezone: null,
+            initial_sync_depth: 30,
+            last_sync_at: null,
+            last_sync_success: null,
+            last_sync_error: null,
+            parent_id: null,
             created_at: body?.created_at ?? new Date().toISOString(),
             updated_at: body?.updated_at ?? new Date().toISOString(),
         };
@@ -2451,19 +2509,50 @@ export const handlers = [
                 { status: 400 },
             );
         }
-        const created = repos.map((repo, index) => ({
-            id: `sync-config-batch-${index}`,
+        const parentId = `sync-config-batch-${Date.now()}`;
+        const owner = repos[0]?.split("/")[0] ?? "myorg";
+        const parent: MockSyncConfig = {
+            id: parentId,
             provider: body?.provider ?? "github",
-            name: repo,
+            name: "Selected Repos",
             enabled: true,
+            credential_id:
+                (body as { credential_id?: string | null } | null)?.credential_id ?? null,
+            sync_targets: (body as { sync_targets?: string[] } | null)?.sync_targets ?? [],
+            sync_options: { owner },
+            is_active: true,
+            schedule_cron: null,
+            timezone: null,
+            initial_sync_depth: 30,
+            last_sync_at: null,
+            last_sync_success: null,
+            last_sync_error: null,
+            parent_id: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-        }));
+        };
+        MOCK_SYNC_CONFIGS.push(parent);
+        MOCK_REPOSITORY_SELECTIONS.set(parentId, { owner, repos });
         return HttpResponse.json({
-            created,
-            parent: created[0] ?? null,
-            count: created.length,
+            created: [],
+            parent,
+            count: repos.length,
         });
+    }),
+
+    http.put("*/api/v1/admin/sync-configs/:id/repositories", async ({ params, request }) => {
+        const syncConfigId = params.id as string;
+        const body = (await request.json()) as { owner?: string; repos?: string[] } | null;
+        const syncConfig = MOCK_SYNC_CONFIGS.find((item) => item.id === syncConfigId);
+        if (!syncConfig) {
+            return HttpResponse.json({ detail: "Sync config not found" }, { status: 404 });
+        }
+        const owner = body?.owner ?? "myorg";
+        const repos = body?.repos ?? [];
+        MOCK_REPOSITORY_SELECTIONS.set(syncConfigId, { owner, repos });
+        syncConfig.sync_options = { ...(syncConfig.sync_options ?? {}), owner };
+        syncConfig.updated_at = new Date().toISOString();
+        return HttpResponse.json({ owner, repos, sync_all_repos: false });
     }),
 
     http.patch("*/api/v1/admin/sync-configs/:id", async ({ params, request }) => {

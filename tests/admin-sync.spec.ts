@@ -49,6 +49,20 @@ test("selecting discovered repos submits full names", async ({ page }) => {
     await expect(page).toHaveURL(/\/org\/admin\/sync$/);
 });
 
+test("editing sync config repositories updates selected repos", async ({ page }) => {
+    await page.goto("/org/admin/sync/sync-config-edit-repos/edit");
+
+    await expect(page.getByRole("heading", { name: /edit editable repos/i })).toBeVisible();
+    await expect(page.getByText("Select Repositories")).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: /repo-alpha/i })).toBeChecked();
+
+    await page.getByRole("checkbox", { name: /repo-beta/i }).check();
+    await expect(page.getByText("2 of 2 selected")).toBeVisible();
+    await page.getByRole("button", { name: /update configuration/i }).click();
+
+    await expect(page).toHaveURL(/\/org\/admin\/sync$/);
+});
+
 test("provider selection filters sync targets", async ({ page }) => {
     await page.goto("/org/admin/sync/new");
 

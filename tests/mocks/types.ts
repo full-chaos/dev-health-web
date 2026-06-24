@@ -111,6 +111,17 @@ export interface MockSyncConfig {
     provider: string;
     name: string;
     enabled: boolean;
+    credential_id?: string | null;
+    sync_targets?: string[];
+    sync_options?: Record<string, unknown>;
+    is_active?: boolean;
+    schedule_cron?: string | null;
+    timezone?: string | null;
+    initial_sync_depth?: number | null;
+    last_sync_at?: string | null;
+    last_sync_success?: boolean | null;
+    last_sync_error?: string | null;
+    parent_id?: string | null;
     created_at: string;
     updated_at: string;
 }
