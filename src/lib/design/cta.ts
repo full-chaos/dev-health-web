@@ -25,6 +25,11 @@ export const CTA_LABELS = {
     applyFilters: "Apply filters",
     /** Reset filters back to defaults. */
     resetFilters: "Reset filters",
+    selectAll: "Select All",
+    clear: "Clear",
+    cancel: "Cancel",
+    addOneFirst: "Add one first",
+    createOneNow: "Create One Now",
     /** Copy the current selection / link to the clipboard. */
     copy: "Copy",
     save: "Save",
