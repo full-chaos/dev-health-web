@@ -81,8 +81,7 @@ export function RepoSelector({
     const filteredRepos = repos.filter((repo) => {
         const query = search.toLowerCase();
         return (
-            repo.name.toLowerCase().includes(query) ||
-            repo.full_name.toLowerCase().includes(query)
+            repo.name.toLowerCase().includes(query) || repo.full_name.toLowerCase().includes(query)
         );
     });
 
@@ -199,9 +198,7 @@ export function RepoSelector({
                                     type="checkbox"
                                     checked={isChecked}
                                     disabled={isDisabled}
-                                    onChange={(e) =>
-                                        handleToggle(repo.full_name, e.target.checked)
-                                    }
+                                    onChange={(e) => handleToggle(repo.full_name, e.target.checked)}
                                     className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
                                 />
                                 <div className="min-w-0 flex-1">

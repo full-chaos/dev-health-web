@@ -199,7 +199,9 @@ describe("RepoSelector", () => {
         });
 
         it("calls onSelectionChange to remove a repo when unchecked", async () => {
-            const { onSelectionChangeAction } = renderSelector({ selectedRepos: ["myorg/repo-alpha"] });
+            const { onSelectionChangeAction } = renderSelector({
+                selectedRepos: ["myorg/repo-alpha"],
+            });
             await waitFor(() => screen.getByText("repo-alpha"));
 
             const checkboxes = screen.getAllByRole("checkbox");
