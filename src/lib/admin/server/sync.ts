@@ -13,6 +13,8 @@ import type {
     DiscoveredReposResponse,
     SyncConfigBatchCreate,
     SyncConfigBatchResponse,
+    SyncConfigRepositorySelection,
+    SyncConfigRepositorySelectionUpdate,
     SyncTriggerResult,
     SyncRun,
 } from "../types";
@@ -74,6 +76,29 @@ export async function updateSyncConfig(
         const result = await adminApi.syncConfigs.update(id, data, token, orgId);
         revalidatePath("/org/admin/sync");
         revalidatePath(`/org/admin/sync/${id}`);
+        return result;
+    });
+}
+
+export async function getSyncConfigRepositories(
+    id: string,
+): Promise<ActionResult<SyncConfigRepositorySelection>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.syncConfigs.getRepositories(id, token, orgId);
+    });
+}
+
+export async function updateSyncConfigRepositories(
+    id: string,
+    data: SyncConfigRepositorySelectionUpdate,
+): Promise<ActionResult<SyncConfigRepositorySelection>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const result = await adminApi.syncConfigs.updateRepositories(id, data, token, orgId);
+        revalidatePath("/org/admin/sync");
+        revalidatePath(`/org/admin/sync/${id}`);
+        revalidatePath(`/org/admin/sync/${id}/edit`);
         return result;
     });
 }

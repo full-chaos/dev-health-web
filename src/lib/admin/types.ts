@@ -128,6 +128,17 @@ export interface SyncConfigBatchResponse {
     count: number;
 }
 
+export interface SyncConfigRepositorySelection {
+    owner: string;
+    repos: string[];
+    sync_all_repos: boolean;
+}
+
+export interface SyncConfigRepositorySelectionUpdate {
+    owner: string;
+    repos: string[];
+}
+
 export interface SyncJob {
     id: string;
     config_id: string;

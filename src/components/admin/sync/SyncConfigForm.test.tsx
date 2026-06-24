@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 
 const mockCreateSyncConfig = vi.fn();
 const mockUpdateSyncConfig = vi.fn();
+const mockUpdateSyncConfigRepositories = vi.fn();
 const mockBatchCreateSyncConfigs = vi.fn();
 const mockListReposForCredential = vi.fn();
 const mockTestConnection = vi.fn();
@@ -18,6 +19,7 @@ const mockCreateCredential = vi.fn();
 vi.mock("@/lib/admin/server", () => ({
     createSyncConfig: (...args: unknown[]) => mockCreateSyncConfig(...args),
     updateSyncConfig: (...args: unknown[]) => mockUpdateSyncConfig(...args),
+    updateSyncConfigRepositories: (...args: unknown[]) => mockUpdateSyncConfigRepositories(...args),
     batchCreateSyncConfigs: (...args: unknown[]) => mockBatchCreateSyncConfigs(...args),
     listReposForCredential: (...args: unknown[]) => mockListReposForCredential(...args),
     testConnection: (...args: unknown[]) => mockTestConnection(...args),
@@ -84,6 +86,7 @@ describe("SyncConfigForm", () => {
         mockPush.mockReset();
         mockCreateSyncConfig.mockReset();
         mockUpdateSyncConfig.mockReset();
+        mockUpdateSyncConfigRepositories.mockReset();
         mockBatchCreateSyncConfigs.mockReset();
         mockListReposForCredential.mockReset();
         mockListReposForCredential.mockResolvedValue({
@@ -365,6 +368,141 @@ describe("SyncConfigForm", () => {
                         auto_import_teams: false,
                     },
                 });
+            });
+        });
+
+        it("shows selected repositories in edit mode", async () => {
+            mockListReposForCredential.mockResolvedValue({
+                data: {
+                    provider: "github",
+                    owner: "myorg",
+                    repos: [
+                        {
+                            name: "repo-a",
+                            full_name: "myorg/repo-a",
+                            description: null,
+                            is_private: false,
+                            is_archived: false,
+                            default_branch: "main",
+                            language: null,
+                            stargazers_count: null,
+                            forks_count: null,
+                            updated_at: null,
+                        },
+                    ],
+                    total: 1,
+                },
+            });
+            const initialData: SyncConfig = {
+                id: "cfg-repos",
+                name: "Existing Config",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: { owner: "myorg" },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+
+            render(
+                <SyncConfigForm
+                    initialData={initialData}
+                    initialRepositorySelection={{
+                        owner: "myorg",
+                        repos: ["myorg/repo-a"],
+                        sync_all_repos: false,
+                    }}
+                    credentials={mockCredentials}
+                />,
+            );
+
+            expect(screen.getByText("Select Repositories")).toBeInTheDocument();
+            const repoCheckbox = await screen.findByLabelText("repo-a");
+            expect(repoCheckbox).toBeChecked();
+        });
+
+        it("updates repository selection after scalar config update in edit mode", async () => {
+            mockUpdateSyncConfig.mockResolvedValue(undefined);
+            mockUpdateSyncConfigRepositories.mockResolvedValue(undefined);
+            mockListReposForCredential.mockResolvedValue({
+                data: {
+                    provider: "github",
+                    owner: "myorg",
+                    repos: [
+                        {
+                            name: "repo-a",
+                            full_name: "myorg/repo-a",
+                            description: null,
+                            is_private: false,
+                            is_archived: false,
+                            default_branch: "main",
+                            language: null,
+                            stargazers_count: null,
+                            forks_count: null,
+                            updated_at: null,
+                        },
+                        {
+                            name: "repo-b",
+                            full_name: "myorg/repo-b",
+                            description: null,
+                            is_private: false,
+                            is_archived: false,
+                            default_branch: "main",
+                            language: null,
+                            stargazers_count: null,
+                            forks_count: null,
+                            updated_at: null,
+                        },
+                    ],
+                    total: 2,
+                },
+            });
+            const initialData: SyncConfig = {
+                id: "cfg-repos-save",
+                name: "Existing Config",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: { owner: "myorg" },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+
+            renderWithToaster(
+                <SyncConfigForm
+                    initialData={initialData}
+                    initialRepositorySelection={{
+                        owner: "myorg",
+                        repos: ["myorg/repo-a"],
+                        sync_all_repos: false,
+                    }}
+                    credentials={mockCredentials}
+                />,
+            );
+
+            await userEvent.click(await screen.findByLabelText("repo-b"));
+            await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+
+            await waitFor(() => {
+                expect(mockUpdateSyncConfigRepositories).toHaveBeenCalledWith("cfg-repos-save", {
+                    owner: "myorg",
+                    repos: ["myorg/repo-a", "myorg/repo-b"],
+                });
+                expect(screen.getByText("Config updated")).toBeInTheDocument();
             });
         });
 
