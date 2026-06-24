@@ -8,6 +8,8 @@ import type {
     BackfillJob,
     SyncConfigBatchCreate,
     SyncConfigBatchResponse,
+    SyncConfigRepositorySelection,
+    SyncConfigRepositorySelectionUpdate,
     SyncTriggerResult,
     SyncRun,
 } from "../types";
@@ -31,6 +33,27 @@ export const syncConfigsApi = {
         request<SyncConfig>(
             `/sync-configs/${id}`,
             { method: "PATCH", body: JSON.stringify(data) },
+            token,
+            orgId,
+        ),
+
+    getRepositories: (id: string, token?: string, orgId?: string) =>
+        request<SyncConfigRepositorySelection>(
+            `/sync-configs/${id}/repositories`,
+            {},
+            token,
+            orgId,
+        ),
+
+    updateRepositories: (
+        id: string,
+        data: SyncConfigRepositorySelectionUpdate,
+        token?: string,
+        orgId?: string,
+    ) =>
+        request<SyncConfigRepositorySelection>(
+            `/sync-configs/${id}/repositories`,
+            { method: "PUT", body: JSON.stringify(data) },
             token,
             orgId,
         ),
