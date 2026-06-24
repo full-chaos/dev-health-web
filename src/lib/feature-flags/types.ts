@@ -8,7 +8,6 @@ export interface FeatureFlag {
     flagKey: string;
     provider: string;
     projectKey: string;
-    environment: string;
     flagType: string;
     createdAt: string;
     archivedAt: string | null;

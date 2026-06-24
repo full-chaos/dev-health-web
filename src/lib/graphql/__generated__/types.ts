@@ -806,7 +806,6 @@ export type FeatureFlagItem = {
   __typename?: 'FeatureFlagItem';
   archivedAt?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['String']['output'];
-  environment: Scalars['String']['output'];
   flagId: Scalars['String']['output'];
   flagKey: Scalars['String']['output'];
   flagType: Scalars['String']['output'];

@@ -335,7 +335,10 @@ export async function fetchFeatureFlagList(
 
         return {
             items,
-            totalCount: registry.flags.length,
+            // totalCount is the true backend population (CHAOS-2632: the resolver
+            // now issues a dedicated count() rather than count-after-limit), while
+            // hasNextPage governs the in-memory window over the fetched (≤500) page.
+            totalCount: registry.totalCount,
             hasNextPage: offset + limit < registry.flags.length,
         };
     } catch (error) {

@@ -6,7 +6,6 @@ query FeatureFlagRegistry($orgId: String!, $provider: String, $project: String, 
       flagKey
       provider
       projectKey
-      environment
       flagType
       createdAt
       archivedAt
