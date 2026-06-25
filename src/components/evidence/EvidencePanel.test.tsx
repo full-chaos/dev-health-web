@@ -139,6 +139,40 @@ describe("EvidencePanel", () => {
         expect(fetchSpy).not.toHaveBeenCalled();
     });
 
+    it.each([
+        [
+            "/api/v1/investment",
+            { theme_distribution: { feature_delivery: 0.7 }, subcategory_distribution: {} },
+            "/investment?f=",
+        ],
+        ["/api/v1/opportunities", { items: [] }, "/opportunities?f="],
+    ])(
+        "links non-Explore evidence API %s to its matching product route",
+        async (apiUrl, payload, expectedHref) => {
+            vi.spyOn(globalThis, "fetch").mockResolvedValue(
+                new Response(JSON.stringify(payload), { status: 200 }),
+            );
+
+            render(
+                <EvidencePanel
+                    isOpen
+                    onCloseAction={() => undefined}
+                    title="Thread"
+                    apiUrl={apiUrl}
+                    filters={filters}
+                />,
+            );
+
+            await waitFor(() =>
+                expect(screen.getByText("Quality + provenance")).toBeInTheDocument(),
+            );
+            expect(screen.getByRole("link", { name: /Open in Explore View/i })).toHaveAttribute(
+                "href",
+                expect.stringContaining(expectedHref),
+            );
+        },
+    );
+
     afterEach(() => {
         mockGetExplainData.mockReset();
         mockLoggerError.mockReset();

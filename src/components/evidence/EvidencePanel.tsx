@@ -5,13 +5,13 @@ import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";
-import { Contributor } from "@/lib/types";
+import { Contributor, HomeResponse, InvestmentResponse, OpportunitiesResponse } from "@/lib/types";
 import { EvidenceContext } from "./EvidenceContext";
 import { EvidenceItems } from "./EvidenceItems";
 import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { buildExploreUrl } from "@/lib/filters/url";
+import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
 import Link from "next/link";
@@ -61,6 +61,200 @@ type EvidencePanelResult = Partial<EvidencePanelData> & {
     identity_confidence?: number | null;
 };
 
+const formatPercent = (value?: number | null) =>
+    typeof value === "number" ? `${Math.round(value)}%` : "not available";
+
+const humanizeKey = (value: string) =>
+    value
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+
+const threadFromApiUrl = (apiUrl?: string) => {
+    if (!apiUrl) return undefined;
+    try {
+        const url = new URL(
+            apiUrl,
+            typeof window === "undefined" ? "http://localhost" : window.location.origin,
+        );
+        return url.searchParams.get("thread") ?? undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+type FetchableEvidenceResult =
+    | EvidencePanelResult
+    | HomeResponse
+    | InvestmentResponse
+    | OpportunitiesResponse;
+
+const isHomeResponse = (result: FetchableEvidenceResult): result is HomeResponse =>
+    "freshness" in result && "tiles" in result && "constraint" in result;
+
+const isInvestmentResponse = (result: FetchableEvidenceResult): result is InvestmentResponse =>
+    "theme_distribution" in result && "subcategory_distribution" in result;
+
+const isOpportunitiesResponse = (
+    result: FetchableEvidenceResult,
+): result is OpportunitiesResponse => "items" in result && Array.isArray(result.items);
+
+const normalizeHomeEvidence = (
+    result: HomeResponse,
+    apiUrl: string | undefined,
+    title: string,
+): EvidencePanelResult => {
+    const thread = threadFromApiUrl(apiUrl);
+    const coverage = result.freshness.coverage;
+    const coverageSummary = `Repository coverage ${formatPercent(coverage.repos_covered_pct)}, linked PR coverage ${formatPercent(coverage.prs_linked_to_issues_pct)}, cycle-state coverage ${formatPercent(coverage.issues_with_cycle_states_pct)}.`;
+    const summaryText = result.summary.map((sentence) => sentence.text).join(" ");
+    const evidence: EvidenceItem[] = [
+        ...result.summary.map((sentence) => ({
+            id: sentence.id,
+            title: sentence.text,
+            url: sentence.evidence_link,
+            type: "other" as const,
+            meta: "Cockpit summary",
+        })),
+        ...result.constraint.evidence.map((item, index) => ({
+            id: `constraint-${index}`,
+            title: item.label,
+            url: item.link,
+            type: "other" as const,
+            meta: result.constraint.title,
+        })),
+        ...result.events.map((event, index) => ({
+            id: `event-${index}`,
+            title: event.text,
+            url: event.link,
+            type: "other" as const,
+            meta: event.type,
+        })),
+    ];
+
+    return {
+        label: title,
+        value: result.data_confidence?.coverage_pct ?? coverage.repos_covered_pct,
+        delta_pct: 0,
+        summary:
+            thread === "measure"
+                ? coverageSummary
+                : result.health_state?.summary ||
+                  summaryText ||
+                  result.constraint.claim ||
+                  coverageSummary,
+        why_it_matters:
+            thread === "measure"
+                ? result.data_confidence?.caveats.join(" ") ||
+                  "Coverage and freshness determine how much context the cockpit can safely explain."
+                : result.constraint.claim ||
+                  "This context comes from the same cockpit payload that ranks current operating signals.",
+        evidence,
+        actions: result.constraint.experiments.map((experiment, index) => ({
+            id: `experiment-${index}`,
+            label: experiment,
+            type: "experiment" as const,
+        })),
+        provenance: {
+            last_sync: result.freshness.last_ingested_at,
+            source: "home API",
+            quality: result.data_confidence?.level ?? "partial",
+            partial: evidence.length === 0,
+        },
+    };
+};
+
+const normalizeInvestmentEvidence = (
+    result: InvestmentResponse,
+    title: string,
+): EvidencePanelResult => {
+    const themes = Object.entries(result.theme_distribution).sort(([, a], [, b]) => b - a);
+    const topTheme = themes[0];
+    const evidence = themes.slice(0, 6).map(([theme, share], index) => ({
+        id: `theme-${theme}`,
+        title: `${humanizeKey(theme)}: ${formatPercent(share * 100)}`,
+        url: "/investment",
+        type: "other" as const,
+        meta: index === 0 ? "Largest investment theme" : "Investment theme",
+    }));
+
+    return {
+        label: title,
+        value: topTheme ? topTheme[1] * 100 : 0,
+        delta_pct: 0,
+        summary: topTheme
+            ? `${humanizeKey(topTheme[0])} is the largest persisted investment theme in this scope.`
+            : "No investment mix has been persisted for this scope yet.",
+        why_it_matters:
+            "Investment mix context explains where effort is actually being spent, using persisted WorkUnit distributions.",
+        evidence,
+        actions: [
+            {
+                id: "inspect-investment-mix",
+                label: "Inspect the investment mix and compare it with current priorities.",
+                type: "process",
+            },
+        ],
+        provenance: {
+            source: "investment API",
+            quality: result.evidence_quality_stats ? "moderate" : "partial",
+            partial: evidence.length === 0,
+        },
+    };
+};
+
+const normalizeOpportunitiesEvidence = (
+    result: OpportunitiesResponse,
+    title: string,
+): EvidencePanelResult => {
+    const evidence = result.items.flatMap((item) =>
+        item.evidence_links.map((link, index) => ({
+            id: `${item.id}-${index}`,
+            title: item.title,
+            url: link,
+            type: "other" as const,
+            meta: item.rationale,
+        })),
+    );
+    const actions = result.items.flatMap((item) =>
+        item.suggested_experiments.map((experiment, index) => ({
+            id: `${item.id}-experiment-${index}`,
+            label: experiment,
+            type: "experiment" as const,
+        })),
+    );
+
+    return {
+        label: title,
+        value: result.items.length,
+        delta_pct: 0,
+        summary: result.items.length
+            ? `${result.items.length} opportunity${result.items.length === 1 ? "" : "ies"} matched the selected context.`
+            : "No opportunities matched the selected context yet.",
+        why_it_matters:
+            "Opportunity context connects the investigation thread to the next reversible operating experiment.",
+        evidence,
+        actions,
+        provenance: {
+            source: "opportunities API",
+            quality: evidence.length > 0 ? "moderate" : "partial",
+            partial: evidence.length === 0,
+        },
+    };
+};
+
+const normalizeFetchedEvidence = (
+    result: FetchableEvidenceResult | null,
+    apiUrl: string | undefined,
+    title: string,
+): EvidencePanelResult | null => {
+    if (!result) return null;
+    if (isHomeResponse(result)) return normalizeHomeEvidence(result, apiUrl, title);
+    if (isInvestmentResponse(result)) return normalizeInvestmentEvidence(result, title);
+    if (isOpportunitiesResponse(result)) return normalizeOpportunitiesEvidence(result, title);
+    return result;
+};
+
 const isEvidenceDebugEnabled = () =>
     process.env.NODE_ENV !== "production" &&
     process.env.NEXT_PUBLIC_DEV_HEALTH_EVIDENCE_DEBUG === "true";
@@ -77,6 +271,32 @@ const explainMetricFromApiUrl = (apiUrl?: string) => {
     } catch {
         return undefined;
     }
+};
+
+const evidenceDestination = (params: {
+    apiUrl?: string;
+    metric?: string;
+    filters: MetricFilter;
+}) => {
+    if (params.metric) return buildExploreUrl({ metric: params.metric, filters: params.filters });
+    if (!params.apiUrl) return "#";
+
+    try {
+        const url = new URL(
+            params.apiUrl,
+            typeof window === "undefined" ? "http://localhost" : window.location.origin,
+        );
+        if (url.pathname === "/api/v1/investment") {
+            return withFilterParam("/investment", params.filters);
+        }
+        if (url.pathname === "/api/v1/opportunities") {
+            return withFilterParam("/opportunities", params.filters);
+        }
+    } catch {
+        return buildExploreUrl({ api: params.apiUrl, filters: params.filters });
+    }
+
+    return buildExploreUrl({ api: params.apiUrl, filters: params.filters });
 };
 
 const readJsonOrEmpty = async <T,>(response: Response): Promise<T | null> => {
@@ -145,7 +365,8 @@ export function EvidencePanel({
                         } else {
                             const res = await fetch(apiUrl);
                             if (!res.ok) throw new Error(ValidationErrors.FailedToFetchEvidence);
-                            result = await readJsonOrEmpty<EvidencePanelResult>(res);
+                            const fetched = await readJsonOrEmpty<FetchableEvidenceResult>(res);
+                            result = normalizeFetchedEvidence(fetched, apiUrl, title);
                         }
                     } else if (metric) {
                         requestPath = "/api/v1/explain";
@@ -231,11 +452,7 @@ export function EvidencePanel({
 
     const showDevDiagnostics = isEvidenceDebugEnabled();
 
-    const exploreUrl = metric
-        ? buildExploreUrl({ metric, filters })
-        : apiUrl
-          ? buildExploreUrl({ api: apiUrl, filters })
-          : "#";
+    const exploreUrl = evidenceDestination({ apiUrl, metric, filters });
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
