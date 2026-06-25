@@ -63,6 +63,17 @@ test("editing sync config repositories updates selected repos", async ({ page })
     await expect(page).toHaveURL(/\/org\/admin\/sync$/);
 });
 
+test("sync config history exposes completion and failure context", async ({ page }) => {
+    await page.goto("/org/admin/sync/sync-config-edit-repos");
+
+    await expect(page.getByRole("heading", { name: /editable repos/i })).toBeVisible();
+    await expect(page.getByText("Completed / Last Activity")).toBeVisible();
+    await expect(page.getByText("Sync run completed with failed units")).toBeVisible();
+    await expect(page.getByText(/Part: work-items · Category: rate_limit/)).toBeVisible();
+    await expect(page.getByText(/Failed units: 2 of 6/)).toBeVisible();
+    await expect(page.getByText("Still running").first()).toBeVisible();
+});
+
 test("provider selection filters sync targets", async ({ page }) => {
     await page.goto("/org/admin/sync/new");
 
