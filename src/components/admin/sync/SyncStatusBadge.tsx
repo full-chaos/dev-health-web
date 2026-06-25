@@ -3,9 +3,10 @@ import { SyncStatus } from "@/lib/sync-types";
 interface SyncStatusBadgeProps {
     status: SyncStatus;
     className?: string;
+    label?: string;
 }
 
-export function SyncStatusBadge({ status, className = "" }: SyncStatusBadgeProps) {
+export function SyncStatusBadge({ status, className = "", label }: SyncStatusBadgeProps) {
     const variants = {
         success: "bg-green-100 text-green-700 border-green-200",
         failed: "bg-red-100 text-red-700 border-red-200",
@@ -26,7 +27,7 @@ export function SyncStatusBadge({ status, className = "" }: SyncStatusBadgeProps
         <span
             className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variants[status]} ${className}`}
         >
-            {labels[status]}
+            {label ?? labels[status]}
         </span>
     );
 }
