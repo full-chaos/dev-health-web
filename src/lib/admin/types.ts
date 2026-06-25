@@ -141,13 +141,17 @@ export interface SyncConfigRepositorySelectionUpdate {
 
 export interface SyncJob {
     id: string;
-    config_id: string;
-    status: "pending" | "running" | "success" | "failed";
+    config_id?: string;
+    job_id?: string;
+    status: "pending" | "running" | "success" | "failed" | "cancelled";
     started_at: string | null;
     completed_at: string | null;
     duration_seconds: number | null;
     items_synced: number;
-    error?: string;
+    result?: Record<string, unknown> | null;
+    error?: string | null;
+    triggered_by?: string;
+    created_at?: string;
 }
 
 /**

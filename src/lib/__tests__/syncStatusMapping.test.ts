@@ -101,8 +101,8 @@ describe("mapLegacyJobStatus", () => {
         expect(mapLegacyJobStatus("success")).toBe("success");
     });
 
-    it("maps failed to failed", () => {
-        expect(mapLegacyJobStatus("failed")).toBe("failed");
+    it.each(["failed", "cancelled"])("maps terminal legacy status %s to failed", (status) => {
+        expect(mapLegacyJobStatus(status)).toBe("failed");
     });
 
     it("keeps the spinner up for unknown statuses", () => {
