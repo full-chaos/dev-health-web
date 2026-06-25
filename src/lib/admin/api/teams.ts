@@ -50,7 +50,7 @@ export const teamsApi = {
 
     approveChanges: (
         teamId: string,
-        changeIndices?: number[],
+        changeIds?: string[],
         approveAll = false,
         token?: string,
         orgId?: string,
@@ -60,7 +60,7 @@ export const teamsApi = {
             {
                 method: "POST",
                 body: JSON.stringify({
-                    change_indices: changeIndices,
+                    change_ids: changeIds,
                     approve_all: approveAll,
                 }),
             },
@@ -70,7 +70,7 @@ export const teamsApi = {
 
     dismissChanges: (
         teamId: string,
-        changeIndices?: number[],
+        changeIds?: string[],
         dismissAll = false,
         token?: string,
         orgId?: string,
@@ -80,7 +80,7 @@ export const teamsApi = {
             {
                 method: "POST",
                 body: JSON.stringify({
-                    change_indices: changeIndices,
+                    change_ids: changeIds,
                     dismiss_all: dismissAll,
                 }),
             },

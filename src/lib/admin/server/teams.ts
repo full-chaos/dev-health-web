@@ -78,14 +78,14 @@ export async function getPendingTeamChanges(): Promise<ActionResult<PendingChang
 
 export async function approveTeamChanges(
     teamId: string,
-    changeIndices?: number[],
+    changeIds?: string[],
     approveAll = false,
 ): Promise<ActionResult<{ approved: number }>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.teams.approveChanges(
             teamId,
-            changeIndices,
+            changeIds,
             approveAll,
             token,
             orgId,
@@ -97,14 +97,14 @@ export async function approveTeamChanges(
 
 export async function dismissTeamChanges(
     teamId: string,
-    changeIndices?: number[],
+    changeIds?: string[],
     dismissAll = false,
 ): Promise<ActionResult<{ dismissed: number }>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.teams.dismissChanges(
             teamId,
-            changeIndices,
+            changeIds,
             dismissAll,
             token,
             orgId,
