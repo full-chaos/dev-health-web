@@ -196,9 +196,7 @@ export function PendingChangesPanel() {
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        handleApprove(change.team_id, change.change_id)
-                                    }
+                                    onClick={() => handleApprove(change.team_id, change.change_id)}
                                     disabled={isPending}
                                     className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-500/10 disabled:opacity-50"
                                 >
@@ -206,9 +204,7 @@ export function PendingChangesPanel() {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        handleDismiss(change.team_id, change.change_id)
-                                    }
+                                    onClick={() => handleDismiss(change.team_id, change.change_id)}
                                     disabled={isPending}
                                     className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50"
                                 >
