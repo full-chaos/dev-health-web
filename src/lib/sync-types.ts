@@ -98,7 +98,7 @@ export function mapPlannerRunStatus(status: string): SyncStatus {
 }
 
 /**
- * Map a legacy SyncJob.status (pending|running|success|failed) onto the shared
+ * Map a legacy SyncJob.status (pending|running|success|failed|cancelled) onto the shared
  * UI status union. Unknown / not-yet-terminal values keep "running".
  */
 export function mapLegacyJobStatus(status: string): SyncStatus {
@@ -109,6 +109,7 @@ export function mapLegacyJobStatus(status: string): SyncStatus {
         case "success":
             return "success";
         case "failed":
+        case "cancelled":
             return "failed";
         default:
             return "running";

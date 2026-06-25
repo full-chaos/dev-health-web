@@ -753,6 +753,40 @@ const MOCK_SYNC_CONFIGS: MockSyncConfig[] = [
         updated_at: "2026-01-15T00:00:00.000Z",
     },
 ];
+const MOCK_SYNC_JOBS = [
+    {
+        id: "sync-job-failed-units",
+        job_id: "scheduled-job-github",
+        status: "failed",
+        started_at: "2026-06-25T08:48:36.000Z",
+        completed_at: "2026-06-25T12:12:40.000Z",
+        duration_seconds: null,
+        items_synced: 32,
+        error: "Sync run completed with failed units",
+        result: {
+            dataset_key: "work-items",
+            error_category: "rate_limit",
+            failed_unit_count: 2,
+            total_units: 6,
+            failed_unit_ids: ["unit-work-items", "unit-prs"],
+        },
+        triggered_by: "manual",
+        created_at: "2026-06-25T08:48:35.000Z",
+    },
+    {
+        id: "sync-job-running",
+        job_id: "scheduled-job-github",
+        status: "running",
+        started_at: "2026-06-25T12:15:00.000Z",
+        completed_at: null,
+        duration_seconds: null,
+        items_synced: 4,
+        error: null,
+        result: null,
+        triggered_by: "manual",
+        created_at: "2026-06-25T12:15:00.000Z",
+    },
+];
 const MOCK_REPOSITORY_SELECTIONS = new Map<string, { owner: string; repos: string[] }>([
     ["sync-config-edit-repos", { owner: "myorg", repos: ["myorg/repo-alpha"] }],
 ]);
@@ -2586,7 +2620,12 @@ export const handlers = [
         HttpResponse.json({ status: "triggered" }),
     ),
 
-    http.get("*/api/v1/admin/sync-configs/:id/jobs", () => HttpResponse.json([])),
+    http.get("*/api/v1/admin/sync-configs/:id/jobs", ({ params }) => {
+        if (params.id === "sync-config-edit-repos") {
+            return HttpResponse.json(MOCK_SYNC_JOBS);
+        }
+        return HttpResponse.json([]);
+    }),
 
     http.get("*/api/v1/admin/teams", () => HttpResponse.json(MOCK_TEAMS)),
 

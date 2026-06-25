@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { triggerSync, getSyncRunStatus, getSyncJobs } from "@/lib/admin/server";
+import { logger } from "@/lib/logger";
 import {
     type SyncStatus,
     type SyncPollTarget,
@@ -17,6 +18,12 @@ import {
 const POLL_INTERVAL_MS = 3500;
 /** Safety cap so a stuck/abandoned run never spins forever (~5 min). */
 const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
+
+const syncLogger = logger.child({ component: "useSyncTrigger" });
+
+function errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : "Unknown error";
+}
 
 interface UseSyncTriggerResult {
     /**
@@ -68,13 +75,17 @@ export function useSyncTrigger(configId: string): UseSyncTriggerResult {
         if (target.kind === "planner") {
             const res = await getSyncRunStatus(target.runId);
             if (res.error || !res.data) {
-                throw new Error(res.error || "Failed to read sync run status");
+                throw new Error(
+                    `Unable to read planner sync run status: ${res.error || "empty response"}`,
+                );
             }
             return mapPlannerRunStatus(res.data.status);
         }
         const res = await getSyncJobs(target.configId);
         if (res.error || !res.data) {
-            throw new Error(res.error || "Failed to read sync job status");
+            throw new Error(
+                `Unable to read legacy sync job status: ${res.error || "empty response"}`,
+            );
         }
         // Track the specific run we triggered rather than blindly trusting the
         // head of the list — scheduled retries, concurrent admin clicks, or
@@ -109,13 +120,17 @@ export function useSyncTrigger(configId: string): UseSyncTriggerResult {
                     } else {
                         setLiveStatus(status);
                     }
-                } catch {
+                } catch (error) {
                     // Stop on poll error, drop back to the persisted status, and
                     // let the user retry rather than leave an infinite spinner.
                     stopPolling();
                     setLiveStatus(null);
                     setIsSyncing(false);
-                    toast.error("Lost track of sync status — refresh to check");
+                    syncLogger.error(
+                        { err: error, configId, pollTargetKind: target.kind },
+                        "Sync status polling failed",
+                    );
+                    toast.error(`Lost track of sync status: ${errorMessage(error)}`);
                 }
             }, POLL_INTERVAL_MS);
 
@@ -125,10 +140,11 @@ export function useSyncTrigger(configId: string): UseSyncTriggerResult {
                 stopPolling();
                 setLiveStatus(null);
                 setIsSyncing(false);
+                toast("Sync is still running; refreshing persisted status");
                 router.refresh();
             }, MAX_POLL_DURATION_MS);
         },
-        [fetchStatus, router, stopPolling],
+        [configId, fetchStatus, router, stopPolling],
     );
 
     const trigger = useCallback(() => {
@@ -140,7 +156,7 @@ export function useSyncTrigger(configId: string): UseSyncTriggerResult {
                 if (result.error || !result.data) {
                     setLiveStatus(null);
                     setIsSyncing(false);
-                    toast.error(result.error || "Failed to trigger sync");
+                    toast.error(`Unable to start sync: ${result.error || "empty response"}`);
                     return;
                 }
                 toast.success("Sync triggered");
@@ -153,10 +169,11 @@ export function useSyncTrigger(configId: string): UseSyncTriggerResult {
                     return;
                 }
                 startPolling(target);
-            } catch {
+            } catch (error) {
                 setLiveStatus(null);
                 setIsSyncing(false);
-                toast.error("Failed to trigger sync");
+                syncLogger.error({ err: error, configId }, "Sync trigger failed");
+                toast.error(`Unable to start sync: ${errorMessage(error)}`);
             }
         })();
     }, [configId, router, startPolling]);
