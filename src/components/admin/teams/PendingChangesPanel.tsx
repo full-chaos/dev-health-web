@@ -40,9 +40,9 @@ export function PendingChangesPanel() {
         loadChanges();
     }, [loadChanges]);
 
-    const handleApprove = (teamId: string, changeIndex: number) => {
+    const handleApprove = (teamId: string, changeId: string) => {
         startTransition(async () => {
-            const result = await approveTeamChanges(teamId, [changeIndex]);
+            const result = await approveTeamChanges(teamId, [changeId]);
             if (result.error) {
                 toast.error("Failed to approve change: " + result.error);
             } else {
@@ -53,9 +53,9 @@ export function PendingChangesPanel() {
         });
     };
 
-    const handleDismiss = (teamId: string, changeIndex: number) => {
+    const handleDismiss = (teamId: string, changeId: string) => {
         startTransition(async () => {
-            const result = await dismissTeamChanges(teamId, [changeIndex]);
+            const result = await dismissTeamChanges(teamId, [changeId]);
             if (result.error) {
                 toast.error("Failed to dismiss change: " + result.error);
             } else {
@@ -143,7 +143,7 @@ export function PendingChangesPanel() {
 
                     {changes.map((change) => (
                         <div
-                            key={`${change.team_id}-${change.change_type}-${change.field ?? "all"}-${change.change_index}`}
+                            key={change.change_id}
                             className="flex items-center justify-between border-b border-(--card-stroke) px-4 py-3 last:border-0 hover:bg-(--card-70)"
                         >
                             <div className="flex flex-col gap-1">
@@ -197,7 +197,7 @@ export function PendingChangesPanel() {
                                 <button
                                     type="button"
                                     onClick={() =>
-                                        handleApprove(change.team_id, change.change_index)
+                                        handleApprove(change.team_id, change.change_id)
                                     }
                                     disabled={isPending}
                                     className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-500/10 disabled:opacity-50"
@@ -207,7 +207,7 @@ export function PendingChangesPanel() {
                                 <button
                                     type="button"
                                     onClick={() =>
-                                        handleDismiss(change.team_id, change.change_index)
+                                        handleDismiss(change.team_id, change.change_id)
                                     }
                                     disabled={isPending}
                                     className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50"

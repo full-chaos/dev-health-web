@@ -338,6 +338,7 @@ export interface TeamImportResponse {
 }
 
 export interface FlaggedChange {
+    change_id: string;
     team_id: string;
     team_name: string;
     change_type: "field_changed" | "provider_removed" | "new_team_available";
