@@ -19,6 +19,47 @@ type CockpitClientProps = {
     activeRole: string;
 };
 
+const THREAD_API_TARGETS: Record<string, string> = {
+    understand: "/api/v1/home",
+    measure: "/api/v1/home",
+    align: "/api/v1/investment",
+    execute: "/api/v1/opportunities",
+};
+
+const buildThreadApiUrl = (path: string, filters: MetricFilter, thread: string) => {
+    const params = new URLSearchParams({
+        scope_type: filters.scope.level,
+        range_days: String(filters.time.range_days),
+        compare_days: String(filters.time.compare_days),
+        thread,
+    });
+
+    const [scopeId] = filters.scope.ids;
+    if (scopeId) params.set("scope_id", scopeId);
+    if (filters.time.start_date) params.set("start_date", filters.time.start_date);
+    if (filters.time.end_date) params.set("end_date", filters.time.end_date);
+
+    return `${path}?${params.toString()}`;
+};
+
+const getThreadEvidenceTarget = (
+    key: string,
+    tile: HomeResponse["tiles"][string],
+    filters: MetricFilter,
+) => {
+    const thread = key.toLowerCase();
+    const apiPath = THREAD_API_TARGETS[thread];
+    if (apiPath) {
+        return { apiUrl: buildThreadApiUrl(apiPath, filters, thread) };
+    }
+
+    return {
+        apiUrl: tile.link.startsWith("/api/")
+            ? tile.link
+            : buildThreadApiUrl("/api/v1/home", filters, thread),
+    };
+};
+
 export function CockpitClient({ home, filters, activeRole }: CockpitClientProps) {
     const [panelState, setPanelState] = useState<{
         isOpen: boolean;
@@ -152,7 +193,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                     <div className="flex items-center justify-between">
                         <h3 className="font-(--font-display) text-xl">Investigation threads</h3>
                         <Link
-                            href={withFilterParam("/opportunities", filters)}
+                            href={withFilterParam("/opportunities", filters, activeRole)}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
                             View all
@@ -164,7 +205,12 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                   <button
                                       type="button"
                                       key={key}
-                                      onClick={() => openPanel(tile.title, { apiUrl: tile.link })}
+                                      onClick={() =>
+                                          openPanel(
+                                              tile.title,
+                                              getThreadEvidenceTarget(key, tile, filters),
+                                          )
+                                      }
                                       className="group w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
                                   >
                                       <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">

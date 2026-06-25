@@ -1,5 +1,5 @@
-import { render, screen } from "@/test/utils";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@/test/utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MetricFilter } from "@/lib/filters/types";
 import type { HomeResponse } from "@/lib/types";
@@ -11,6 +11,10 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: vi.fn() }),
     usePathname: () => "/",
 }));
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
 
 const filters: MetricFilter = {
     scope: { level: "org", ids: ["org-1"] },
@@ -129,5 +133,94 @@ describe("CockpitClient — Key Shifts row", () => {
         expect(firstCard).toHaveAttribute("href", expect.stringContaining("role=em"));
         // f= must be present — dropping it loses the user's scope/time filter context.
         expect(firstCard).toHaveAttribute("href", expect.stringContaining("f="));
+    });
+
+    it("opens investigation thread tiles in the evidence panel with existing API targets", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+            const url = String(input);
+            if (url.includes("/api/v1/opportunities")) {
+                return new Response(JSON.stringify({ items: [] }), { status: 200 });
+            }
+            return new Response(
+                JSON.stringify({
+                    freshness: {
+                        last_ingested_at: "2026-06-01T00:00:00Z",
+                        sources: { github: "ok" },
+                        coverage: {
+                            repos_covered_pct: 80,
+                            prs_linked_to_issues_pct: 70,
+                            issues_with_cycle_states_pct: 60,
+                        },
+                    },
+                    deltas: [],
+                    summary: [
+                        {
+                            id: "s1",
+                            text: "Cycle time moved in the selected window.",
+                            evidence_link: "/api/v1/explain?metric=cycle_time",
+                        },
+                    ],
+                    tiles: {},
+                    constraint: {
+                        title: "Constraint",
+                        claim: "Review queues are the current constraint.",
+                        evidence: [],
+                        experiments: ["Rebalance review rotation."],
+                    },
+                    events: [],
+                    data_confidence: {
+                        level: "medium",
+                        coverage_pct: 70,
+                        connected_sources: ["github"],
+                        missing_sources: [],
+                        caveats: [],
+                    },
+                }),
+                { status: 200 },
+            );
+        });
+
+        render(
+            <CockpitClient
+                home={makeHome({
+                    tiles: {
+                        understand: {
+                            title: "Understand",
+                            subtitle: "Flow stages",
+                            link: "/explore?view=understand",
+                        },
+                        execute: {
+                            title: "Execute",
+                            subtitle: "Top opportunities",
+                            link: "/opportunities",
+                        },
+                    },
+                })}
+                filters={filters}
+                activeRole="em"
+            />,
+        );
+
+        const understand = screen.getByRole("button", { name: /Understand Flow stages/i });
+        expect(
+            screen.queryByRole("link", { name: /Understand Flow stages/i }),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(understand);
+        await waitFor(() =>
+            expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining("/api/v1/home?")),
+        );
+        expect(String(fetchSpy.mock.calls[0][0])).toContain("thread=understand");
+        expect(
+            await screen.findAllByText("Cycle time moved in the selected window."),
+        ).not.toHaveLength(0);
+
+        fireEvent.click(screen.getByRole("button", { name: /Execute Top opportunities/i }));
+        await waitFor(() =>
+            expect(fetchSpy).toHaveBeenCalledWith(
+                expect.stringContaining("/api/v1/opportunities?"),
+            ),
+        );
+        expect(String(fetchSpy.mock.calls.at(-1)?.[0])).toContain("thread=execute");
     });
 });
