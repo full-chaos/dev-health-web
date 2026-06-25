@@ -28,6 +28,8 @@ import {
     listRetentionResourceTypes,
     getOrgEntitlements,
     createSyncConfig,
+    approveTeamChanges,
+    dismissTeamChanges,
 } from "../server";
 
 function mockSession() {
@@ -590,5 +592,62 @@ describe("admin/server retention policy actions", () => {
             expect(result.data).toHaveLength(3);
             fetchSpy.mockRestore();
         });
+    });
+});
+
+
+describe("admin/server team drift-review actions", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        vi.stubEnv("BACKEND_URL", "http://test-ops:8000");
+    });
+
+    it("approveTeamChanges posts change_ids (not change_indices)", async () => {
+        mockSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(
+                new Response(JSON.stringify({ approved: 2 }), { status: 200 }),
+            );
+
+        const result = await approveTeamChanges("team-1", ["chg-1", "chg-2"]);
+
+        expect(result.error).toBeUndefined();
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        const [url, options] = fetchSpy.mock.calls[0] as [
+            string,
+            RequestInit | undefined,
+        ];
+        expect(url).toContain("/api/v1/admin/teams/team-1/approve-changes");
+        const body = JSON.parse(String(options?.body ?? "{}"));
+        expect(body).toMatchObject({
+            change_ids: ["chg-1", "chg-2"],
+            approve_all: false,
+        });
+        expect(body).not.toHaveProperty("change_indices");
+        fetchSpy.mockRestore();
+    });
+
+    it("dismissTeamChanges posts change_ids (not change_indices)", async () => {
+        mockSession();
+        const fetchSpy = vi
+            .spyOn(global, "fetch")
+            .mockResolvedValue(
+                new Response(JSON.stringify({ dismissed: 1 }), { status: 200 }),
+            );
+
+        const result = await dismissTeamChanges("team-1", ["chg-9"]);
+
+        expect(result.error).toBeUndefined();
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        const [url, options] = fetchSpy.mock.calls[0] as [
+            string,
+            RequestInit | undefined,
+        ];
+        expect(url).toContain("/api/v1/admin/teams/team-1/dismiss-changes");
+        const body = JSON.parse(String(options?.body ?? "{}"));
+        expect(body).toMatchObject({ change_ids: ["chg-9"], dismiss_all: false });
+        expect(body).not.toHaveProperty("change_indices");
+        fetchSpy.mockRestore();
     });
 });
