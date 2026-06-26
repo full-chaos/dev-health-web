@@ -26,13 +26,7 @@ export interface OnboardingState {
 }
 
 /** C2: `GET /api/v1/admin/setup/status` sync lifecycle state. */
-export type SetupSyncStatus =
-    | "none"
-    | "pending"
-    | "running"
-    | "partial"
-    | "complete"
-    | "failed";
+export type SetupSyncStatus = "none" | "pending" | "running" | "partial" | "complete" | "failed";
 
 /** C2: next setup action the dashboard/onboarding should drive the user toward. */
 export type SetupNextAction =

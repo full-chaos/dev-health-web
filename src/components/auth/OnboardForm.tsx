@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
-import { trackOnboardingEvent } from "@/lib/onboarding/track";
+import { trackOnboardingEvent, trackOnboardingEventOnce } from "@/lib/onboarding/track";
 
 type OnboardFormProps = {
     plan?: string;
@@ -27,7 +27,7 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
 
     useEffect(() => {
         if (guided) {
-            trackOnboardingEvent("workspace_setup_started");
+            trackOnboardingEventOnce("workspace_setup_started");
         }
     }, [guided]);
 
@@ -94,11 +94,20 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
                 }
             }
 
-            const destination = isTeamTrialIntent
-                ? "/auth/trial-checkout?plan=team&trial=true"
-                : guided
-                  ? "/auth/onboard/integration"
-                  : "/dashboard";
+            // Guided onboarding ALWAYS routes through the integration step (the
+            // team-trial intent is preserved as query params and resolved at the
+            // completion step). Only the legacy single-page flow keeps the direct
+            // trial-checkout redirect.
+            let destination: string;
+            if (guided) {
+                destination = isTeamTrialIntent
+                    ? "/auth/onboard/integration?plan=team&trial=true"
+                    : "/auth/onboard/integration";
+            } else if (isTeamTrialIntent) {
+                destination = "/auth/trial-checkout?plan=team&trial=true";
+            } else {
+                destination = "/dashboard";
+            }
 
             if (!sessionReady) {
                 window.location.href = destination;

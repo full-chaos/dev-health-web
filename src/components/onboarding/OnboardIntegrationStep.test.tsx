@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 import { render, screen, userEvent, waitFor } from "@/test/utils";
 
 const mockTrack = vi.fn();
@@ -31,22 +32,49 @@ vi.mock("@/lib/origin", () => ({
     resolveOrigin: () => "http://localhost:8000",
 }));
 
-vi.mock("@/lib/onboarding/track", () => ({
-    trackOnboardingEvent: (...args: unknown[]) => mockTrack(...args),
-}));
+vi.mock("@/lib/onboarding/track", () => {
+    const emitted = new Set<string>();
+    return {
+        trackOnboardingEvent: (...args: unknown[]) => mockTrack(...args),
+        trackOnboardingEventOnce: (name: string, payload?: { orgId?: string | null }) => {
+            const key = `${name}:${payload?.orgId ?? ""}`;
+            if (emitted.has(key)) return;
+            emitted.add(key);
+            if (payload === undefined) {
+                mockTrack(name);
+            } else {
+                mockTrack(name, payload);
+            }
+        },
+        resetOnboardingOnceTracking: () => emitted.clear(),
+    };
+});
 
+import { resetOnboardingOnceTracking } from "@/lib/onboarding/track";
 import { OnboardIntegrationStep } from "./OnboardIntegrationStep";
 
 describe("OnboardIntegrationStep", () => {
     afterEach(() => {
         vi.restoreAllMocks();
         mockTrack.mockReset();
+        resetOnboardingOnceTracking();
     });
 
     it("emits integration_step_viewed on mount with the org id", () => {
         render(<OnboardIntegrationStep orgId="org-123" />);
 
         expect(mockTrack).toHaveBeenCalledWith("integration_step_viewed", { orgId: "org-123" });
+    });
+
+    it("emits integration_step_viewed exactly once under React StrictMode (no double-send)", () => {
+        render(
+            <StrictMode>
+                <OnboardIntegrationStep orgId="org-123" />
+            </StrictMode>,
+        );
+
+        const views = mockTrack.mock.calls.filter(([name]) => name === "integration_step_viewed");
+        expect(views).toHaveLength(1);
     });
 
     it("leads with the GitHub App CTA carrying a return_to back to this step", () => {
@@ -119,6 +147,8 @@ describe("OnboardIntegrationStep", () => {
             expect(screen.getByRole("alert")).toHaveTextContent(/couldn't skip/i);
         });
         expect(locationHref).toBe("");
+        // The skip event must NOT fire when the persist POST fails — no false skip.
+        expect(mockTrack).not.toHaveBeenCalledWith("integration_skipped", expect.anything());
     });
 
     it("renders the connected state with a continue action and no skip", () => {

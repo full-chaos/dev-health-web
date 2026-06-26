@@ -32,7 +32,12 @@ function stepStatus(stepIndex: number, currentIndex: number): StepStatus {
  * consistent centered card with an accessible step progress indicator so the
  * workspace, integration, and completion screens read as one coherent flow.
  */
-export function OnboardStepShell({ currentStep, title, subtitle, children }: OnboardStepShellProps) {
+export function OnboardStepShell({
+    currentStep,
+    title,
+    subtitle,
+    children,
+}: OnboardStepShellProps) {
     const currentIndex = STEPS.findIndex((step) => step.key === currentStep);
 
     return (

@@ -33,10 +33,25 @@ vi.mock("@/lib/origin", () => ({
 }));
 
 const mockTrack = vi.fn();
-vi.mock("@/lib/onboarding/track", () => ({
-    trackOnboardingEvent: (...args: unknown[]) => mockTrack(...args),
-}));
+vi.mock("@/lib/onboarding/track", () => {
+    const emitted = new Set<string>();
+    return {
+        trackOnboardingEvent: (...args: unknown[]) => mockTrack(...args),
+        trackOnboardingEventOnce: (name: string, payload?: { orgId?: string | null }) => {
+            const key = `${name}:${payload?.orgId ?? ""}`;
+            if (emitted.has(key)) return;
+            emitted.add(key);
+            if (payload === undefined) {
+                mockTrack(name);
+            } else {
+                mockTrack(name, payload);
+            }
+        },
+        resetOnboardingOnceTracking: () => emitted.clear(),
+    };
+});
 
+import { resetOnboardingOnceTracking } from "@/lib/onboarding/track";
 import { OnboardForm } from "./OnboardForm";
 
 describe("OnboardForm", () => {
@@ -44,6 +59,7 @@ describe("OnboardForm", () => {
         vi.restoreAllMocks();
         mockUpdate.mockReset();
         mockTrack.mockReset();
+        resetOnboardingOnceTracking();
     });
 
     it("renders org name field and submit button", () => {
@@ -281,7 +297,7 @@ describe("OnboardForm", () => {
         });
     });
 
-    it("preserves trial-checkout intent over the integration step in guided mode", async () => {
+    it("routes guided team trials through the integration step (trial intent preserved)", async () => {
         mockUpdate.mockResolvedValue({ user: { org_id: "org-123" } });
         const fetchSpy = vi.spyOn(global, "fetch");
         fetchSpy.mockResolvedValue(
@@ -305,7 +321,9 @@ describe("OnboardForm", () => {
         await user.click(screen.getByRole("button", { name: "Create Workspace" }));
 
         await waitFor(() => {
-            expect(locationHref).toBe("/auth/trial-checkout?plan=team&trial=true");
+            // Guided onboarding must NOT bypass the integration step: the trial
+            // intent rides along as query params and is resolved at completion.
+            expect(locationHref).toBe("/auth/onboard/integration?plan=team&trial=true");
         });
     });
 });

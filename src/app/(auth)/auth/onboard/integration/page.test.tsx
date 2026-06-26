@@ -111,4 +111,18 @@ describe("OnboardIntegrationPage", () => {
 
         expect(stepProps).toHaveBeenCalledWith(expect.objectContaining({ trialIntent: true }));
     });
+
+    it("redirects to the aligned step when C1 says the user is on a different step", async () => {
+        getJsonMock.mockResolvedValue(state({ next_step: "complete" }));
+
+        await expect(renderPage()).rejects.toThrow("NEXT_REDIRECT:/auth/onboard/complete");
+        expect(getJsonMock).toHaveBeenCalledWith("/api/v1/auth/onboarding/state");
+    });
+
+    it("sends an already-onboarded user to the dashboard when C1 fails", async () => {
+        authMock.mockResolvedValue({ user: { org_id: "org-1", needs_onboarding: false } });
+        getJsonMock.mockRejectedValue(new Error("backend down"));
+
+        await expect(renderPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    });
 });

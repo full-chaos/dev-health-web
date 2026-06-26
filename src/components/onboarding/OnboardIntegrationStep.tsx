@@ -9,7 +9,7 @@ import {
 } from "@/components/admin/integrations/GitHubAppConnect";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { resolveOrigin } from "@/lib/origin";
-import { trackOnboardingEvent } from "@/lib/onboarding/track";
+import { trackOnboardingEvent, trackOnboardingEventOnce } from "@/lib/onboarding/track";
 
 type OnboardIntegrationStepProps = {
     /** Provider the backend recommends connecting first (C1). Defaults to GitHub. */
@@ -60,7 +60,7 @@ export function OnboardIntegrationStep({
     const [skipError, setSkipError] = useState<string | null>(null);
 
     useEffect(() => {
-        trackOnboardingEvent("integration_step_viewed", { orgId });
+        trackOnboardingEventOnce("integration_step_viewed", { orgId });
     }, [orgId]);
 
     const completeHref = trialIntent
@@ -75,7 +75,6 @@ export function OnboardIntegrationStep({
     const handleSkip = async () => {
         setSkipError(null);
         setSkipping(true);
-        trackOnboardingEvent("integration_skipped", { orgId });
         try {
             const res = await fetch(`${resolveOrigin()}/api/v1/auth/onboarding/skip-integration`, {
                 method: "POST",
@@ -89,6 +88,9 @@ export function OnboardIntegrationStep({
                 setSkipping(false);
                 return;
             }
+            // Emit only after the skip is durably persisted, so a failed/retried
+            // POST never records a false or duplicate skip.
+            trackOnboardingEvent("integration_skipped", { orgId });
             window.location.href = completeHref;
         } catch {
             setSkipError("We couldn't skip this step. Please try again.");

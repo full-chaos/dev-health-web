@@ -6,7 +6,11 @@ import { OnboardStepShell } from "./OnboardStepShell";
 describe("OnboardStepShell", () => {
     it("renders the title, subtitle, and children", () => {
         render(
-            <OnboardStepShell currentStep="workspace" title="Set up your workspace" subtitle="Step one">
+            <OnboardStepShell
+                currentStep="workspace"
+                title="Set up your workspace"
+                subtitle="Step one"
+            >
                 <p>Body content</p>
             </OnboardStepShell>,
         );

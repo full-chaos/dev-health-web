@@ -99,10 +99,34 @@ describe("OnboardPage (guided routing — CHAOS-2674)", () => {
         );
     });
 
-    it("falls back to the workspace step when the state call fails", async () => {
+    it("surfaces a retry instead of defaulting to workspace when C1 fails for a non-onboarded user", async () => {
         getJsonMock.mockRejectedValue(new Error("backend down"));
 
-        await expect(renderPage()).rejects.toThrow("NEXT_REDIRECT:/auth/onboard/workspace");
+        const ui = await renderPage();
+        render(ui as React.ReactElement);
+
+        expect(screen.getByRole("alert")).toHaveTextContent(/couldn't load your onboarding/i);
+        expect(screen.getByRole("link", { name: "Retry" })).toHaveAttribute(
+            "href",
+            "/auth/onboard",
+        );
+        expect(redirectMock).not.toHaveBeenCalled();
+    });
+
+    it("sends an already-onboarded user to the dashboard when C1 fails (never strands on workspace)", async () => {
+        authMock.mockResolvedValue({ user: { org_id: "org-1", needs_onboarding: false } });
+        getJsonMock.mockRejectedValue(new Error("backend down"));
+
+        await expect(renderPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    });
+
+    it("preserves team-trial intent for an onboarded user when C1 fails", async () => {
+        authMock.mockResolvedValue({ user: { org_id: "org-1", needs_onboarding: false } });
+        getJsonMock.mockRejectedValue(new Error("backend down"));
+
+        await expect(renderPage({ plan: "team", trial: "true" })).rejects.toThrow(
+            "NEXT_REDIRECT:/auth/trial-checkout?plan=team&trial=true",
+        );
     });
 
     it("renders the legacy single page (no state read) when the flag is off", async () => {
