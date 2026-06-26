@@ -44,5 +44,16 @@ export const runtimeConfig = {
         // Default to true unless explicitly set to "false"
         return raw !== "false";
     },
+    /**
+     * Whether the guided first-run onboarding flow (CHAOS-2670) is enabled.
+     *
+     * Defaults to FALSE (preserve current single-page onboarding) unless
+     * explicitly enabled. Set NEXT_PUBLIC_GUIDED_ONBOARDING=true (or 1) to
+     * activate the guided workspace -> integration -> complete route flow.
+     */
+    guidedOnboarding: (): boolean => {
+        const value = getPublicEnvValue("NEXT_PUBLIC_GUIDED_ONBOARDING");
+        return value === "true" || value === "1";
+    },
     docsUrl: (): string => getPublicEnvValue("NEXT_PUBLIC_DOCS_URL") || "/docs",
 };

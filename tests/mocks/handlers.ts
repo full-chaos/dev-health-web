@@ -1573,6 +1573,54 @@ export const handlers = [
         }),
     ),
 
+    // CHAOS-2670 C1: onboarding state. Default mock = orgless user at the
+    // workspace step; override per-test as needed.
+    http.get("*/api/v1/auth/onboarding/state", () =>
+        HttpResponse.json({
+            needs_onboarding: true,
+            org_created: false,
+            org_id: null,
+            org_name: null,
+            first_integration_connected: false,
+            integration_skipped: false,
+            recommended_provider: "github",
+            next_step: "workspace",
+            blocker: null,
+        }),
+    ),
+
+    // CHAOS-2670 C6: persist integration skip; returns updated C1 state.
+    http.post("*/api/v1/auth/onboarding/skip-integration", () =>
+        HttpResponse.json({
+            needs_onboarding: false,
+            org_created: true,
+            org_id: "org-e2e",
+            org_name: "E2E Organization",
+            first_integration_connected: false,
+            integration_skipped: true,
+            recommended_provider: "github",
+            next_step: "complete",
+            blocker: null,
+        }),
+    ),
+
+    // CHAOS-2670 C2: admin setup status. Default mock = no integration yet.
+    http.get("*/api/v1/admin/setup/status", () =>
+        HttpResponse.json({
+            has_integration: false,
+            providers: [],
+            has_sync_config: false,
+            sync_config_id: null,
+            first_sync_started: false,
+            sync_status: "none",
+            selected_repositories_count: 0,
+            last_sync_error: null,
+            can_start_sync: false,
+            next_action: "connect_integration",
+            blocker: null,
+        }),
+    ),
+
     http.get("*/api/v1/billing/invoices", ({ request }) => {
         const url = new URL(request.url);
         const status = url.searchParams.get("status");
