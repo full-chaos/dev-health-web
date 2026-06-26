@@ -198,6 +198,68 @@ export interface SyncRun {
     created_at: string;
 }
 
+/**
+ * A single unit of work within a planner sync run, returned inside
+ * SyncRunUnitSummary by GET /sync-runs/{run_id}/units. Mirrors
+ * dev-health-ops api/admin/schemas/integrations.py:SyncRunUnitResponse.
+ *
+ * Render-only: `source_full_name` / `source_name` are the resolved labels;
+ * never surface the raw `source_id` when a name exists.
+ */
+export interface SyncRunUnit {
+    id: string;
+    org_id: string;
+    sync_run_id: string;
+    integration_id: string;
+    source_id: string;
+    /** Resolved short source/repo name, or null when unresolved. */
+    source_name: string | null;
+    /** Resolved fully-qualified source name (e.g. org/repo), or null. */
+    source_full_name: string | null;
+    provider: string;
+    dataset_key: string;
+    cost_class: string;
+    mode: string;
+    since_at: string | null;
+    before_at: string | null;
+    status: string;
+    attempts: number;
+    /** Earliest retry timestamp for a retrying unit, else null. */
+    available_at: string | null;
+    rate_limit_deferrals: number;
+    duration_seconds: number | null;
+    error: string | null;
+    /** Extracted failure category (e.g. rate_limit), or null. */
+    error_category: string | null;
+    last_heartbeat_at: string | null;
+    result: Record<string, unknown> | null;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Aggregate unit-level progress for a planner sync run, returned by
+ * GET /sync-runs/{run_id}/units. Mirrors
+ * dev-health-ops api/admin/schemas/integrations.py:SyncRunUnitSummary.
+ *
+ * Rollups are persisted backend state; the UI groups/displays them but never
+ * recomputes categories or source-of-truth.
+ */
+export interface SyncRunUnitSummary {
+    by_status: Record<string, number>;
+    by_source: Record<string, Record<string, number>>;
+    by_dataset: Record<string, Record<string, number>>;
+    by_cost_class: Record<string, number>;
+    slowest_unit_ids: string[];
+    failed_unit_ids: string[];
+    failed_unit_count: number;
+    unit_count: number;
+    partial_failure_summary: Record<string, unknown> | null;
+    /** Earliest available_at among retrying units, else null. */
+    next_retry_at: string | null;
+    units: SyncRunUnit[];
+}
+
 export interface SyncConfigCreate {
     name: string;
     provider: string;
