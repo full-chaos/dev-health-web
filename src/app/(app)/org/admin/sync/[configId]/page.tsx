@@ -111,7 +111,7 @@ export default async function SyncConfigDetailPage({ params }: PageProps) {
 
             <div className="space-y-4">
                 <h2 className="text-lg font-medium text-foreground">Job History</h2>
-                <SyncJobHistory jobs={jobs} />
+                <SyncJobHistory jobs={jobs} configId={config.id} />
             </div>
         </div>
     );

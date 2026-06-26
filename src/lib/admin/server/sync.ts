@@ -17,6 +17,7 @@ import type {
     SyncConfigRepositorySelectionUpdate,
     SyncTriggerResult,
     SyncRun,
+    SyncRunUnitSummary,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
@@ -146,6 +147,13 @@ export async function getSyncRunStatus(runId: string): Promise<ActionResult<Sync
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.syncConfigs.getSyncRun(runId, token, orgId);
+    });
+}
+
+export async function getSyncRunUnits(runId: string): Promise<ActionResult<SyncRunUnitSummary>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.syncConfigs.getSyncRunUnits(runId, token, orgId);
     });
 }
 

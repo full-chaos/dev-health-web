@@ -12,6 +12,7 @@ import type {
     SyncConfigRepositorySelectionUpdate,
     SyncTriggerResult,
     SyncRun,
+    SyncRunUnitSummary,
 } from "../types";
 
 export const syncConfigsApi = {
@@ -66,6 +67,9 @@ export const syncConfigsApi = {
 
     getSyncRun: (runId: string, token?: string, orgId?: string) =>
         request<SyncRun>(`/sync-runs/${runId}`, { method: "GET" }, token, orgId),
+
+    getSyncRunUnits: (runId: string, token?: string, orgId?: string) =>
+        request<SyncRunUnitSummary>(`/sync-runs/${runId}/units`, { method: "GET" }, token, orgId),
 
     backfill: (
         id: string,

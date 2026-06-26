@@ -1,16 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SyncJob } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 
 interface SyncJobHistoryProps {
     jobs: SyncJob[];
+    configId: string;
     totalJobs?: number;
 }
 
-export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
+export function SyncJobHistory({ jobs, configId, totalJobs }: SyncJobHistoryProps) {
+    const router = useRouter();
     const [offset, setOffset] = useState(0);
     const limit = 10;
     const total = totalJobs ?? jobs.length;
@@ -217,14 +221,42 @@ export function SyncJobHistory({ jobs, totalJobs }: SyncJobHistoryProps) {
                         const duration = getDuration(job);
                         const activityTimestamp = getActivityTimestamp(job);
                         const details = getJobDetails(job);
+                        const runId =
+                            isRecord(job.result) && typeof job.result.sync_run_id === "string"
+                                ? job.result.sync_run_id
+                                : null;
+                        const href = runId ? `/org/admin/sync/${configId}/runs/${runId}` : null;
 
                         return (
-                            <tr key={job.id}>
+                            <tr
+                                key={job.id}
+                                onClick={href ? () => router.push(href) : undefined}
+                                className={
+                                    href
+                                        ? "cursor-pointer transition-colors hover:bg-(--card-70)"
+                                        : undefined
+                                }
+                            >
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <SyncStatusBadge
-                                        status={getBadgeStatus(job.status)}
-                                        label={getBadgeLabel(job.status)}
-                                    />
+                                    {href ? (
+                                        <Link
+                                            href={href}
+                                            aria-label={`View run details for sync run started ${formatTimestamp(
+                                                job.started_at,
+                                            )}`}
+                                            className="inline-flex rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
+                                        >
+                                            <SyncStatusBadge
+                                                status={getBadgeStatus(job.status)}
+                                                label={getBadgeLabel(job.status)}
+                                            />
+                                        </Link>
+                                    ) : (
+                                        <SyncStatusBadge
+                                            status={getBadgeStatus(job.status)}
+                                            label={getBadgeLabel(job.status)}
+                                        />
+                                    )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                                     {formatTimestamp(job.started_at)}
