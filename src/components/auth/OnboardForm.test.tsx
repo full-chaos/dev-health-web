@@ -32,12 +32,18 @@ vi.mock("@/lib/origin", () => ({
     resolveOrigin: () => "http://localhost:8000",
 }));
 
+const mockTrack = vi.fn();
+vi.mock("@/lib/onboarding/track", () => ({
+    trackOnboardingEvent: (...args: unknown[]) => mockTrack(...args),
+}));
+
 import { OnboardForm } from "./OnboardForm";
 
 describe("OnboardForm", () => {
     afterEach(() => {
         vi.restoreAllMocks();
         mockUpdate.mockReset();
+        mockTrack.mockReset();
     });
 
     it("renders org name field and submit button", () => {
@@ -47,11 +53,17 @@ describe("OnboardForm", () => {
         expect(screen.getByRole("button", { name: "Create Workspace" })).toBeInTheDocument();
     });
 
-    it("renders placeholder text", () => {
+    it("renders placeholder text without the removed default-name hint", () => {
         renderWithToaster(<OnboardForm />);
 
         expect(screen.getByPlaceholderText("My Company")).toBeInTheDocument();
-        expect(screen.getByText('Leave blank to use "My Organization"')).toBeInTheDocument();
+        expect(screen.queryByText(/Leave blank to use/i)).not.toBeInTheDocument();
+    });
+
+    it("does not emit funnel events in legacy (non-guided) mode", () => {
+        renderWithToaster(<OnboardForm />);
+
+        expect(mockTrack).not.toHaveBeenCalled();
     });
 
     it("submits with org name and redirects", async () => {
@@ -231,6 +243,69 @@ describe("OnboardForm", () => {
 
         await waitFor(() => {
             expect(screen.getByText("Failed to create workspace")).toBeInTheDocument();
+        });
+    });
+
+    it("emits workspace_setup_started on mount in guided mode", () => {
+        renderWithToaster(<OnboardForm guided />);
+
+        expect(mockTrack).toHaveBeenCalledWith("workspace_setup_started");
+    });
+
+    it("emits workspace_created and routes to the integration step in guided mode", async () => {
+        mockUpdate.mockResolvedValue({ user: { org_id: "org-123" } });
+        const fetchSpy = vi.spyOn(global, "fetch");
+        fetchSpy.mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    access_token: "new-access-token",
+                    refresh_token: "new-refresh-token",
+                    org_id: "org-123",
+                    role: "owner",
+                    expires_in: 3600,
+                }),
+                {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                },
+            ),
+        );
+
+        renderWithToaster(<OnboardForm guided />);
+        const user = userEvent.setup();
+        await user.click(screen.getByRole("button", { name: "Create Workspace" }));
+
+        await waitFor(() => {
+            expect(mockTrack).toHaveBeenCalledWith("workspace_created", { orgId: "org-123" });
+            expect(locationHref).toBe("/auth/onboard/integration");
+        });
+    });
+
+    it("preserves trial-checkout intent over the integration step in guided mode", async () => {
+        mockUpdate.mockResolvedValue({ user: { org_id: "org-123" } });
+        const fetchSpy = vi.spyOn(global, "fetch");
+        fetchSpy.mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    access_token: "new-access-token",
+                    refresh_token: "new-refresh-token",
+                    org_id: "org-123",
+                    role: "owner",
+                    expires_in: 3600,
+                }),
+                {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                },
+            ),
+        );
+
+        renderWithToaster(<OnboardForm plan="team" trialIntent guided />);
+        const user = userEvent.setup();
+        await user.click(screen.getByRole("button", { name: "Create Workspace" }));
+
+        await waitFor(() => {
+            expect(locationHref).toBe("/auth/trial-checkout?plan=team&trial=true");
         });
     });
 });

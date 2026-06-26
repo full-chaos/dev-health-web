@@ -72,6 +72,8 @@ export const CTA_LABELS = {
     backToCockpit: "Back to Cockpit",
     /** Start the frictionless one-click GitHub App install (CHAOS-2235). */
     connectGitHubApp: "Connect GitHub App",
+    /** Advance to the next step of the guided onboarding flow (CHAOS-2675). */
+    continueStep: "Continue",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
