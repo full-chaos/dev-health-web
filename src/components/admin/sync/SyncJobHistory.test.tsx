@@ -1,7 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent } from "@/test/utils";
 import type { SyncJob } from "@/lib/admin/types";
 import { SyncJobHistory } from "./SyncJobHistory";
+
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({ push: mockPush }),
+}));
+
+beforeEach(() => {
+    mockPush.mockClear();
+});
 
 function buildJobs(count: number): SyncJob[] {
     return Array.from({ length: count }, (_, index) => ({
@@ -18,7 +27,7 @@ function buildJobs(count: number): SyncJob[] {
 
 describe("SyncJobHistory", () => {
     it("renders first page with 10 jobs", () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} />);
+        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
 
         expect(screen.getByText("Completed / Last Activity")).toBeInTheDocument();
         expect(screen.getByText("error-1")).toBeInTheDocument();
@@ -28,13 +37,13 @@ describe("SyncJobHistory", () => {
     });
 
     it("disables Previous on first page", () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} />);
+        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
 
         expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
     });
 
     it("disables Next on last page", async () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} />);
+        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
 
         await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
@@ -43,7 +52,7 @@ describe("SyncJobHistory", () => {
     });
 
     it("clicking Next shows next page", async () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} />);
+        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
 
         await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
@@ -53,7 +62,7 @@ describe("SyncJobHistory", () => {
     });
 
     it("clicking Previous returns to previous page", async () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} />);
+        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
 
         await userEvent.click(screen.getByRole("button", { name: "Next" }));
         await userEvent.click(screen.getByRole("button", { name: "Previous" }));
@@ -73,7 +82,7 @@ describe("SyncJobHistory", () => {
             duration_seconds: null,
             items_synced: 0,
         };
-        render(<SyncJobHistory jobs={[pendingJob]} />);
+        render(<SyncJobHistory jobs={[pendingJob]} configId="cfg-1" />);
 
         expect(screen.getAllByText("Queued").length).toBeGreaterThan(0);
         expect(screen.getAllByText("—").length).toBeGreaterThan(0);
@@ -100,7 +109,7 @@ describe("SyncJobHistory", () => {
             },
         };
 
-        render(<SyncJobHistory jobs={[failedJob]} />);
+        render(<SyncJobHistory jobs={[failedJob]} configId="cfg-1" />);
 
         expect(screen.getByText("Completed")).toBeInTheDocument();
         expect(screen.getByText("45s")).toBeInTheDocument();
@@ -121,7 +130,7 @@ describe("SyncJobHistory", () => {
             items_synced: 3,
         };
 
-        render(<SyncJobHistory jobs={[runningJob]} />);
+        render(<SyncJobHistory jobs={[runningJob]} configId="cfg-1" />);
 
         expect(screen.getAllByText("Still running").length).toBeGreaterThan(0);
         expect(screen.getAllByText(/Started /).length).toBeGreaterThan(0);
@@ -144,7 +153,7 @@ describe("SyncJobHistory", () => {
             },
         };
 
-        render(<SyncJobHistory jobs={[cancelledJob]} />);
+        render(<SyncJobHistory jobs={[cancelledJob]} configId="cfg-1" />);
 
         expect(screen.getAllByText("Cancelled")).toHaveLength(2);
         expect(
@@ -153,9 +162,70 @@ describe("SyncJobHistory", () => {
     });
 
     it("shows empty state when there are no jobs", () => {
-        render(<SyncJobHistory jobs={[]} />);
+        render(<SyncJobHistory jobs={[]} configId="cfg-1" />);
 
         expect(screen.getByText("No sync history available.")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
+    });
+
+    it("links planner-backed rows to the run detail page", () => {
+        const plannerJob: SyncJob = {
+            id: "job-planner",
+            config_id: "cfg-1",
+            status: "success",
+            started_at: "2024-01-01T00:00:00.000Z",
+            completed_at: "2024-01-01T00:00:30.000Z",
+            duration_seconds: 30,
+            items_synced: 5,
+            result: {
+                sync_run_id: "run-123",
+            },
+        };
+
+        render(<SyncJobHistory jobs={[plannerJob]} configId="cfg-1" />);
+
+        const link = screen.getByRole("link", { name: /View run details/ });
+        expect(link).toHaveAttribute("href", "/org/admin/sync/cfg-1/runs/run-123");
+    });
+
+    it("navigates to the run detail page when a planner-backed row is clicked", async () => {
+        const plannerJob: SyncJob = {
+            id: "job-planner",
+            config_id: "cfg-1",
+            status: "success",
+            started_at: "2024-01-01T00:00:00.000Z",
+            completed_at: "2024-01-01T00:00:30.000Z",
+            duration_seconds: 30,
+            items_synced: 5,
+            result: {
+                sync_run_id: "run-123",
+            },
+        };
+
+        render(<SyncJobHistory jobs={[plannerJob]} configId="cfg-1" />);
+
+        // Click a NON-link cell (duration) to prove whole-row navigation, not link bubbling.
+        await userEvent.click(screen.getByText("30s"));
+
+        expect(mockPush).toHaveBeenCalledWith("/org/admin/sync/cfg-1/runs/run-123");
+    });
+
+    it("does not link legacy rows without a sync_run_id", () => {
+        const legacyJob: SyncJob = {
+            id: "job-legacy",
+            config_id: "cfg-1",
+            status: "success",
+            started_at: "2024-01-01T00:00:00.000Z",
+            completed_at: "2024-01-01T00:00:30.000Z",
+            duration_seconds: 30,
+            items_synced: 5,
+            result: {
+                dataset_key: "work-items",
+            },
+        };
+
+        render(<SyncJobHistory jobs={[legacyJob]} configId="cfg-1" />);
+
+        expect(screen.queryByRole("link", { name: "View run details" })).not.toBeInTheDocument();
     });
 });
