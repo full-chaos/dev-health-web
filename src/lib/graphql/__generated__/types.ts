@@ -1998,10 +1998,14 @@ export type WorkGraphArtifactRow = {
 export type WorkGraphArtifactsResult = {
   __typename?: 'WorkGraphArtifactsResult';
   degradedReason?: Maybe<Scalars['String']['output']>;
+  isPartial: Scalars['Boolean']['output'];
+  partialRepoIds: Array<Scalars['String']['output']>;
+  partialScope?: Maybe<Scalars['String']['output']>;
   rows: Array<WorkGraphArtifactRow>;
 };
 
 export type WorkGraphEdgeFilterInput = {
+  allowScopedPartial?: Scalars['Boolean']['input'];
   edgeType?: InputMaybe<WorkGraphEdgeTypeInput>;
   edgeTypes?: InputMaybe<Array<WorkGraphEdgeTypeInput>>;
   limit?: Scalars['Int']['input'];
@@ -2084,13 +2088,19 @@ export type WorkGraphEdgesResult = {
   __typename?: 'WorkGraphEdgesResult';
   degradedReason?: Maybe<Scalars['String']['output']>;
   edges: Array<WorkGraphEdgeResult>;
+  isPartial: Scalars['Boolean']['output'];
   pageInfo: PageInfo;
+  partialRepoIds: Array<Scalars['String']['output']>;
+  partialScope?: Maybe<Scalars['String']['output']>;
   totalCount: Scalars['Int']['output'];
 };
 
 export type WorkGraphFlowResult = {
   __typename?: 'WorkGraphFlowResult';
   degradedReason?: Maybe<Scalars['String']['output']>;
+  isPartial: Scalars['Boolean']['output'];
+  partialRepoIds: Array<Scalars['String']['output']>;
+  partialScope?: Maybe<Scalars['String']['output']>;
   rows: Array<WorkGraphFlowRow>;
 };
 

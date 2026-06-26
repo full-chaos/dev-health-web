@@ -1647,6 +1647,9 @@ type WorkGraphArtifactRow {
 type WorkGraphArtifactsResult {
   rows: [WorkGraphArtifactRow!]!
   degradedReason: String
+  isPartial: Boolean!
+  partialScope: String
+  partialRepoIds: [String!]!
 }
 
 input WorkGraphEdgeFilterInput {
@@ -1658,6 +1661,7 @@ input WorkGraphEdgeFilterInput {
   nodeId: String = null
   theme: String = null
   subcategory: String = null
+  allowScopedPartial: Boolean! = false
   limit: Int! = 1000
 }
 
@@ -1734,11 +1738,17 @@ type WorkGraphEdgesResult {
   totalCount: Int!
   pageInfo: PageInfo!
   degradedReason: String
+  isPartial: Boolean!
+  partialScope: String
+  partialRepoIds: [String!]!
 }
 
 type WorkGraphFlowResult {
   rows: [WorkGraphFlowRow!]!
   degradedReason: String
+  isPartial: Boolean!
+  partialScope: String
+  partialRepoIds: [String!]!
 }
 
 type WorkGraphFlowRow {
