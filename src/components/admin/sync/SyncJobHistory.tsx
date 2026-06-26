@@ -225,9 +225,7 @@ export function SyncJobHistory({ jobs, configId, totalJobs }: SyncJobHistoryProp
                             isRecord(job.result) && typeof job.result.sync_run_id === "string"
                                 ? job.result.sync_run_id
                                 : null;
-                        const href = runId
-                            ? `/org/admin/sync/${configId}/runs/${runId}`
-                            : null;
+                        const href = runId ? `/org/admin/sync/${configId}/runs/${runId}` : null;
 
                         return (
                             <tr

@@ -69,12 +69,7 @@ export const syncConfigsApi = {
         request<SyncRun>(`/sync-runs/${runId}`, { method: "GET" }, token, orgId),
 
     getSyncRunUnits: (runId: string, token?: string, orgId?: string) =>
-        request<SyncRunUnitSummary>(
-            `/sync-runs/${runId}/units`,
-            { method: "GET" },
-            token,
-            orgId,
-        ),
+        request<SyncRunUnitSummary>(`/sync-runs/${runId}/units`, { method: "GET" }, token, orgId),
 
     backfill: (
         id: string,

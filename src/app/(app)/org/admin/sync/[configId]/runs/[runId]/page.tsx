@@ -5,10 +5,7 @@ import { SyncRunDetailLive } from "@/components/admin/sync/SyncRunDetailLive";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 import { getServerEnv } from "@/lib/config";
 import { backToArea } from "@/lib/design/cta";
-import {
-    SAMPLE_SYNC_RUN,
-    SAMPLE_SYNC_RUN_UNIT_SUMMARY,
-} from "@/data/syncRunDetailSample";
+import { SAMPLE_SYNC_RUN, SAMPLE_SYNC_RUN_UNIT_SUMMARY } from "@/data/syncRunDetailSample";
 import type { SyncRun, SyncRunUnitSummary } from "@/lib/admin/types";
 
 interface PageProps {

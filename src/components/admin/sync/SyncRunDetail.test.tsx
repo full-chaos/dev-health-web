@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@/test/utils";
 import { SyncRunDetailLive } from "./SyncRunDetailLive";
-import {
-    SAMPLE_SYNC_RUN,
-    SAMPLE_SYNC_RUN_UNIT_SUMMARY,
-} from "@/data/syncRunDetailSample";
+import { SAMPLE_SYNC_RUN, SAMPLE_SYNC_RUN_UNIT_SUMMARY } from "@/data/syncRunDetailSample";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 
 // The detail component imports the admin server actions for live polling. The
@@ -63,9 +60,9 @@ describe("SyncRunDetailLive", () => {
         expect(
             screen.getAllByText("Upstream returned 500 while paginating pull requests").length,
         ).toBeGreaterThan(0);
-        expect(
-            screen.getAllByText("Secondary rate limit hit; backing off").length,
-        ).toBeGreaterThan(0);
+        expect(screen.getAllByText("Secondary rate limit hit; backing off").length).toBeGreaterThan(
+            0,
+        );
     });
 
     it("renders a row per unit in the unit table", () => {
