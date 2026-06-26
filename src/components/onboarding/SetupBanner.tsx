@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { CockpitEmptyState } from "@/components/home/CockpitEmptyState";
 import { DataState } from "@/components/ui/DataState";
@@ -10,7 +10,7 @@ import {
     setupSurfaceCta,
     type SetupSurfaceVariant,
 } from "@/lib/onboarding/setupSurface";
-import { emitOnboardingEvent } from "@/lib/onboarding/telemetry";
+import { emitOnboardingEventOnce } from "@/lib/onboarding/telemetry";
 import type { SetupNextAction, SetupStatus } from "@/lib/onboarding/types";
 
 type SetupBannerProps = {
@@ -41,14 +41,17 @@ const CTA_CLASS =
 export function SetupBanner({ status, orgId }: SetupBannerProps) {
     const variant: SetupSurfaceVariant = deriveSetupSurface(status);
     const cta = setupSurfaceCta(status);
-    const emitted = useRef(false);
+    const orgKey = orgId ?? "none";
 
     useEffect(() => {
-        if (variant === "no-integration" && !emitted.current) {
-            emitted.current = true;
-            emitOnboardingEvent("dashboard_viewed_without_integration", { orgId: orgId ?? null });
+        if (variant === "no-integration") {
+            emitOnboardingEventOnce(
+                `dashboard_viewed_without_integration:${orgKey}`,
+                "dashboard_viewed_without_integration",
+                { orgId: orgId ?? null },
+            );
         }
-    }, [variant, orgId]);
+    }, [variant, orgId, orgKey]);
 
     if (variant === "ready") {
         return null;

@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
+import { safeReturnTo } from "@/lib/onboarding/returnTo";
 
 /**
  * Initiation route for the frictionless GitHub App install (CHAOS-2235).
@@ -22,18 +23,7 @@ import { getBackendUrl } from "@/lib/origin";
 
 const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
 
-/**
- * Accept only same-origin, absolute-path return targets (e.g. `/org/...`).
- * Rejects protocol-relative (`//host`) and absolute URLs so a crafted
- * `return_to` can never become an open redirect. The backend re-validates.
- */
-function safeReturnTo(value: string | null): string | undefined {
-    if (!value || !value.startsWith("/") || value.startsWith("//")) {
-        return undefined;
-    }
-    return value;
-}
-
+// `safeReturnTo` (shared, hardened) lives in `@/lib/onboarding/returnTo`.
 function firstHeaderValue(value: string | null) {
     return value?.split(",")[0]?.trim() || undefined;
 }

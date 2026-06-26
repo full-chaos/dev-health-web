@@ -5,7 +5,9 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import {
     FIRST_RUN_SYNC_PATH,
     GITHUB_APP_INSTALL_PATH,
+    SYNC_CONFIG_NEW_PATH,
     connectGitHubHref,
+    repoSelectionHref,
     deriveSetupSurface,
     setupSurfaceCta,
 } from "../setupSurface";
@@ -59,9 +61,9 @@ describe("deriveSetupSurface (CHAOS-2678, C2)", () => {
     it.each(["none", "pending", "running", "partial"] as const)(
         "treats connected + %s sync as sync-pending",
         (sync_status) => {
-            expect(
-                deriveSetupSurface(status({ has_integration: true, sync_status })),
-            ).toBe("sync-pending");
+            expect(deriveSetupSurface(status({ has_integration: true, sync_status }))).toBe(
+                "sync-pending",
+            );
         },
     );
 
@@ -136,14 +138,26 @@ describe("setupSurfaceCta (CTA hrefs)", () => {
     });
 
     it("sync-failed → Retry on the sync surface", () => {
-        expect(
-            setupSurfaceCta(status({ has_integration: true, sync_status: "failed" })),
-        ).toEqual({ label: CTA_LABELS.retry, href: FIRST_RUN_SYNC_PATH });
+        expect(setupSurfaceCta(status({ has_integration: true, sync_status: "failed" }))).toEqual({
+            label: CTA_LABELS.retry,
+            href: FIRST_RUN_SYNC_PATH,
+        });
     });
 
     it("ready → no CTA", () => {
         expect(
             setupSurfaceCta(status({ has_integration: true, sync_status: "complete" })),
         ).toBeNull();
+    });
+});
+
+describe("repoSelectionHref (CHAOS-2681)", () => {
+    it("edits the existing sync config when one is present", () => {
+        expect(repoSelectionHref("sync-1")).toBe("/org/admin/sync/sync-1/edit");
+    });
+
+    it("starts the new-config wizard when there is no sync config", () => {
+        expect(repoSelectionHref(null)).toBe(SYNC_CONFIG_NEW_PATH);
+        expect(SYNC_CONFIG_NEW_PATH).toBe("/org/admin/sync/new");
     });
 });

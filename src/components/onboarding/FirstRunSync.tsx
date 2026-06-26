@@ -1,15 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { DataState } from "@/components/ui/DataState";
+import { triggerSync } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
-import {
-    GITHUB_INTEGRATION_PATH,
-    connectGitHubHref,
-} from "@/lib/onboarding/setupSurface";
-import { emitOnboardingEvent } from "@/lib/onboarding/telemetry";
+import { connectGitHubHref, repoSelectionHref } from "@/lib/onboarding/setupSurface";
+import { emitOnboardingEvent, emitOnboardingEventOnce } from "@/lib/onboarding/telemetry";
 import type { SetupStatus } from "@/lib/onboarding/types";
 
 /** Result of a returning install callback, surfaced on the sync surface. */
@@ -24,13 +22,7 @@ type FirstRunSyncProps = {
     orgId?: string | null;
 };
 
-type SyncPhase =
-    | "connect"
-    | "select-repos"
-    | "ready-to-sync"
-    | "syncing"
-    | "failed"
-    | "complete";
+type SyncPhase = "connect" | "select-repos" | "ready-to-sync" | "syncing" | "failed" | "complete";
 
 function derivePhase(status: SetupStatus, locallyStarted: boolean): SyncPhase {
     if (status.sync_status === "failed") return "failed";
@@ -53,41 +45,73 @@ const SECONDARY_CTA_CLASS =
  * CHAOS-2681 first-run sync surface. After the GitHub App connects, this routes
  * the user toward an actual sync (repo selection → start sync) instead of a
  * dead credential page, and reflects the C2 sync lifecycle (pending → running →
- * complete, or a recoverable failure). The first sync only starts after an
- * explicit confirmation click. Owns the dashboard-adjacent funnel emits:
- * `github_app_connected` (on arrival), `first_sync_started` (on confirm), and
- * `onboarding_completed` (on completion).
+ * complete, or a recoverable failure). The first sync is only kicked off after
+ * an explicit confirmation click that successfully submits the backend trigger,
+ * and `first_sync_started` is emitted only on that success. Owns the
+ * dashboard-adjacent funnel emits: `github_app_connected` (on arrival),
+ * `first_sync_started` (on confirmed start), and `onboarding_completed` (on
+ * completion). Effect-based emits are deduped at module scope so React
+ * StrictMode remounts don't double-fire.
  */
 export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
     const [started, setStarted] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const phase = derivePhase(status, started);
-    const identity = { orgId: orgId ?? null };
+    const orgKey = orgId ?? "none";
 
-    const arrivalEmitted = useRef(false);
     useEffect(() => {
-        if (arrival === "connected" && !arrivalEmitted.current) {
-            arrivalEmitted.current = true;
-            emitOnboardingEvent("github_app_connected", identity);
+        if (arrival === "connected") {
+            emitOnboardingEventOnce(`github_app_connected:${orgKey}`, "github_app_connected", {
+                orgId: orgId ?? null,
+            });
         }
-        // identity is derived from the stable orgId prop.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [arrival, orgId]);
+    }, [arrival, orgId, orgKey]);
 
-    const completeEmitted = useRef(false);
     useEffect(() => {
-        if (phase === "complete" && !completeEmitted.current) {
-            completeEmitted.current = true;
-            emitOnboardingEvent("onboarding_completed", identity);
+        if (phase === "complete") {
+            emitOnboardingEventOnce(`onboarding_completed:${orgKey}`, "onboarding_completed", {
+                orgId: orgId ?? null,
+            });
         }
-        // identity is derived from the stable orgId prop.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [phase, orgId]);
+    }, [phase, orgId, orgKey]);
 
-    const handleStartSync = useCallback(() => {
-        // Explicit user confirmation is the only trigger for first_sync_started.
+    const handleStartSync = useCallback(async () => {
+        if (submitting) return;
+        // A real sync needs a configured target the backend says is startable.
+        if (!status.can_start_sync || !status.sync_config_id) {
+            setSubmitError(
+                "This sync isn't ready to start yet. Choose repositories first, then try again.",
+            );
+            return;
+        }
+        setSubmitting(true);
+        setSubmitError(null);
+        const result = await triggerSync(status.sync_config_id);
+        setSubmitting(false);
+        if (result.error) {
+            setSubmitError(result.error);
+            return;
+        }
+        // Explicit confirmation that successfully submitted the backend trigger
+        // is the only path that emits first_sync_started.
         emitOnboardingEvent("first_sync_started", { orgId: orgId ?? null });
         setStarted(true);
-    }, [orgId]);
+    }, [submitting, status.can_start_sync, status.sync_config_id, orgId]);
+
+    const onStartSyncClick = useCallback(() => {
+        void handleStartSync();
+    }, [handleStartSync]);
+
+    const submitErrorNode = submitError ? (
+        <p
+            role="alert"
+            data-testid="first-run-sync-submit-error"
+            className="text-sm text-(--accent-negative)"
+        >
+            {submitError}
+        </p>
+    ) : null;
 
     if (arrival === "error") {
         return (
@@ -131,7 +155,10 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
                     description="Pick the repositories Dev Health should analyze. You can change this later."
                 />
                 <div>
-                    <Link href={GITHUB_INTEGRATION_PATH} className={PRIMARY_CTA_CLASS}>
+                    <Link
+                        href={repoSelectionHref(status.sync_config_id)}
+                        className={PRIMARY_CTA_CLASS}
+                    >
                         {CTA_LABELS.selectRepositories}
                     </Link>
                 </div>
@@ -153,16 +180,22 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
                 <div className="flex flex-wrap gap-3">
                     <button
                         type="button"
-                        onClick={handleStartSync}
+                        onClick={onStartSyncClick}
+                        disabled={submitting}
+                        aria-busy={submitting}
                         className={PRIMARY_CTA_CLASS}
                         data-testid="first-run-sync-start"
                     >
                         {CTA_LABELS.startSync}
                     </button>
-                    <Link href={GITHUB_INTEGRATION_PATH} className={SECONDARY_CTA_CLASS}>
+                    <Link
+                        href={repoSelectionHref(status.sync_config_id)}
+                        className={SECONDARY_CTA_CLASS}
+                    >
                         {CTA_LABELS.selectRepositories}
                     </Link>
                 </div>
+                {submitErrorNode}
             </div>
         );
     }
@@ -201,7 +234,9 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
                     action={
                         <button
                             type="button"
-                            onClick={handleStartSync}
+                            onClick={onStartSyncClick}
+                            disabled={submitting}
+                            aria-busy={submitting}
                             className={PRIMARY_CTA_CLASS}
                             data-testid="first-run-sync-retry"
                         >
@@ -210,6 +245,7 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
                     }
                     data-testid="first-run-sync-error"
                 />
+                {submitErrorNode}
             </div>
         );
     }
@@ -231,7 +267,9 @@ export function FirstRunSync({ status, arrival, orgId }: FirstRunSyncProps) {
 function Header({ title, description }: { title: string; description: string }) {
     return (
         <div>
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">First-run setup</p>
+            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                First-run setup
+            </p>
             <h2 className="mt-1 font-(--font-display) text-xl font-semibold text-foreground">
                 {title}
             </h2>

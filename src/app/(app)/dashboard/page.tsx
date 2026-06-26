@@ -151,9 +151,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                         </div>
                     </header>
 
-                    {setupStatus ? (
-                        <SetupBanner status={setupStatus} orgId={setupOrgId} />
-                    ) : null}
+                    {setupStatus ? <SetupBanner status={setupStatus} orgId={setupOrgId} /> : null}
 
                     <GlobalContextBar filters={filters} />
                     <FilterBar view="home" />

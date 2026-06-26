@@ -49,3 +49,36 @@ export function emitOnboardingEvent(
     );
     return true;
 }
+
+/**
+ * Module-level dedup of funnel events emitted from effects.
+ *
+ * Component-local refs reset when React StrictMode remounts a component in
+ * development, which double-fires effect-based emits. A key that lives outside
+ * the component lifetime (this module-level set) guarantees a single emit per
+ * logical step regardless of remount.
+ */
+const emittedOnceKeys = new Set<string>();
+
+/**
+ * Emit an onboarding funnel event at most once per `dedupeKey` for the lifetime
+ * of the page (StrictMode-safe). The key SHOULD encode the event plus any
+ * disambiguating context (e.g. `"github_app_connected:org-1"`). Returns `true`
+ * only on the first dispatch for that key.
+ */
+export function emitOnboardingEventOnce(
+    dedupeKey: string,
+    name: OnboardingEventName,
+    payload: OnboardingEventPayload = {},
+): boolean {
+    if (emittedOnceKeys.has(dedupeKey)) {
+        return false;
+    }
+    emittedOnceKeys.add(dedupeKey);
+    return emitOnboardingEvent(name, payload);
+}
+
+/** Test-only: clear the once-dedup set so cases don't leak across tests. */
+export function resetOnboardingTelemetryDedup(): void {
+    emittedOnceKeys.clear();
+}

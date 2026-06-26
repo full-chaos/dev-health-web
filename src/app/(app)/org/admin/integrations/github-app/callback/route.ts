@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
+import { safeReturnTo } from "@/lib/onboarding/returnTo";
 
 /**
  * Setup-URL callback for the frictionless GitHub App install (CHAOS-2235).
@@ -25,17 +26,7 @@ import { getBackendUrl } from "@/lib/origin";
 
 const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
 
-/**
- * Accept only same-origin, absolute-path return targets (e.g. `/org/...`).
- * Rejects protocol-relative (`//host`) and absolute URLs as defense-in-depth on
- * top of the backend's own `return_to` validation.
- */
-function safeReturnTo(value: string | null): string | undefined {
-    if (!value || !value.startsWith("/") || value.startsWith("//")) {
-        return undefined;
-    }
-    return value;
-}
+// `safeReturnTo` (shared, hardened) lives in `@/lib/onboarding/returnTo`.
 
 function firstHeaderValue(value: string | null) {
     return value?.split(",")[0]?.trim() || undefined;
@@ -78,12 +69,15 @@ function publicOrigin(request: NextRequest) {
     return `${protocol}://${forwardedHost}`;
 }
 
-function resultRedirect(
-    request: NextRequest,
-    result: "connected" | "error",
-    returnTo?: string,
-) {
-    const url = new URL(returnTo ?? GITHUB_INTEGRATION_PATH, publicOrigin(request));
+function resultRedirect(request: NextRequest, result: "connected" | "error", returnTo?: string) {
+    const origin = publicOrigin(request);
+    let url = new URL(returnTo ?? GITHUB_INTEGRATION_PATH, origin);
+    // Post-construction guard: never emit a cross-origin redirect, even if a
+    // crafted return_to somehow slipped past safeReturnTo. Fall back to the
+    // integration page when the resolved origin is not our own.
+    if (url.origin !== new URL(origin).origin) {
+        url = new URL(GITHUB_INTEGRATION_PATH, origin);
+    }
     url.searchParams.set("github_app", result);
     return NextResponse.redirect(url);
 }

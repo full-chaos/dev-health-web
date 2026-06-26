@@ -252,10 +252,9 @@ describe("GET /org/admin/integrations/github-app/callback", () => {
     it("honors the backend return_to on an error result", async () => {
         authedSession();
         vi.mocked(fetch).mockResolvedValue(
-            new Response(
-                JSON.stringify({ return_to: "/org/admin/integrations/github/sync" }),
-                { status: 422 },
-            ),
+            new Response(JSON.stringify({ return_to: "/org/admin/integrations/github/sync" }), {
+                status: 422,
+            }),
         );
 
         const response = await GET(makeRequest("?installation_id=123&state=jwt"));
@@ -296,4 +295,31 @@ describe("GET /org/admin/integrations/github-app/callback", () => {
             "http://localhost/org/admin/integrations/github?github_app=connected",
         );
     });
+
+    // CHAOS-2676 security: a backend-supplied return_to that is unsafe (would
+    // resolve cross-origin) must be ignored and fall back to the admin path.
+    it.each([
+        ["backslash", "/\\evil.example/phish"],
+        ["backslash-slash", "/\\/evil.example"],
+        ["protocol-relative", "//evil.example"],
+        ["raw CRLF", "/\r\nevil.example"],
+        ["raw newline", "/\nevil.example"],
+    ])(
+        "ignores an unsafe return_to (%s) and falls back to the admin path",
+        async (_label, value) => {
+            authedSession();
+            vi.mocked(fetch).mockResolvedValue(
+                new Response(JSON.stringify({ connected: true, return_to: value }), {
+                    status: 200,
+                }),
+            );
+
+            const response = await GET(makeRequest("?installation_id=123&state=jwt"));
+
+            expect(response.status).toBe(307);
+            expect(response.headers.get("location")).toBe(
+                "http://localhost/org/admin/integrations/github?github_app=connected",
+            );
+        },
+    );
 });

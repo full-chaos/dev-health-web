@@ -22,6 +22,7 @@ export type SetupSurfaceVariant =
 export const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
 export const FIRST_RUN_SYNC_PATH = "/org/admin/integrations/github/sync";
 export const GITHUB_APP_INSTALL_PATH = "/org/admin/integrations/github-app/install";
+export const SYNC_CONFIG_NEW_PATH = "/org/admin/sync/new";
 
 /**
  * Build the return-aware GitHub App install href. The browser hits the Next
@@ -30,6 +31,15 @@ export const GITHUB_APP_INSTALL_PATH = "/org/admin/integrations/github-app/insta
  */
 export function connectGitHubHref(returnTo: string = FIRST_RUN_SYNC_PATH): string {
     return `${GITHUB_APP_INSTALL_PATH}?return_to=${encodeURIComponent(returnTo)}`;
+}
+
+/**
+ * Route to the actual repository/sync-config selection flow (CHAOS-2681).
+ * Edits the existing sync config when one is present, otherwise starts the
+ * new-config wizard — never the generic credential page.
+ */
+export function repoSelectionHref(syncConfigId: string | null): string {
+    return syncConfigId ? `/org/admin/sync/${syncConfigId}/edit` : SYNC_CONFIG_NEW_PATH;
 }
 
 /**

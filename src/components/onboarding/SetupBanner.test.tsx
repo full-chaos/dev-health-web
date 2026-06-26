@@ -2,15 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen } from "@/test/utils";
 import { CTA_LABELS } from "@/lib/design/cta";
-import {
-    FIRST_RUN_SYNC_PATH,
-    connectGitHubHref,
-} from "@/lib/onboarding/setupSurface";
+import { FIRST_RUN_SYNC_PATH, connectGitHubHref } from "@/lib/onboarding/setupSurface";
 import type { SetupStatus } from "@/lib/onboarding/types";
 
 const emitOnboardingEvent = vi.fn();
+const emitOnboardingEventOnce = vi.fn();
 vi.mock("@/lib/onboarding/telemetry", () => ({
     emitOnboardingEvent: (...args: unknown[]) => emitOnboardingEvent(...args),
+    emitOnboardingEventOnce: (...args: unknown[]) => emitOnboardingEventOnce(...args),
 }));
 
 import { SetupBanner } from "./SetupBanner";
@@ -36,11 +35,14 @@ const status = (overrides: Partial<SetupStatus>): SetupStatus => ({
 
 afterEach(() => {
     emitOnboardingEvent.mockClear();
+    emitOnboardingEventOnce.mockClear();
 });
 
 describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
     it("no integration → setup empty state, connect CTA, emits dashboard_viewed_without_integration", () => {
-        render(<SetupBanner status={status({ next_action: "connect_integration" })} orgId="org-1" />);
+        render(
+            <SetupBanner status={status({ next_action: "connect_integration" })} orgId="org-1" />,
+        );
 
         const banner = screen.getByTestId("setup-banner");
         expect(banner).toHaveAttribute("data-variant", "no-integration");
@@ -49,9 +51,11 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
         expect(cta).toHaveTextContent(CTA_LABELS.connectGitHubApp);
         expect(cta).toHaveAttribute("href", connectGitHubHref());
 
-        expect(emitOnboardingEvent).toHaveBeenCalledWith("dashboard_viewed_without_integration", {
-            orgId: "org-1",
-        });
+        expect(emitOnboardingEventOnce).toHaveBeenCalledWith(
+            "dashboard_viewed_without_integration:org-1",
+            "dashboard_viewed_without_integration",
+            { orgId: "org-1" },
+        );
     });
 
     it("skipped → non-blocking banner with connect CTA, no funnel emit", () => {
@@ -66,7 +70,7 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
         expect(cta).toHaveTextContent(CTA_LABELS.connectGitHubApp);
         expect(cta).toHaveAttribute("href", connectGitHubHref());
 
-        expect(emitOnboardingEvent).not.toHaveBeenCalled();
+        expect(emitOnboardingEventOnce).not.toHaveBeenCalled();
     });
 
     it("connected but unsynced → distinct sync-pending banner with continue CTA to the sync surface", () => {
@@ -89,7 +93,7 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
         expect(cta).toHaveTextContent(CTA_LABELS.continueSetup);
         expect(cta).toHaveAttribute("href", FIRST_RUN_SYNC_PATH);
 
-        expect(emitOnboardingEvent).not.toHaveBeenCalled();
+        expect(emitOnboardingEventOnce).not.toHaveBeenCalled();
     });
 
     it("failed → precise blocker from C2 with retry CTA to the sync surface", () => {
