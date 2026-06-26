@@ -14,6 +14,9 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getHomeData } from "@/lib/api/home";
+import { getSetupStatus } from "@/lib/admin/server";
+import { SetupBanner } from "@/components/onboarding/SetupBanner";
+import { auth } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
@@ -78,11 +81,17 @@ export default async function Home({ searchParams }: HomePageProps) {
     const activeRole = activeLensId === "neutral" ? DEFAULT_ROLE : activeLensId;
 
     // Run health check in parallel with data fetches to eliminate the waterfall.
-    const [health, home, meta] = await Promise.all([
+    const [health, home, meta, setupResult, session] = await Promise.all([
         checkApiHealth(),
         loadHome(filters),
         getApiMeta(),
+        getSetupStatus(),
+        auth(),
     ]);
+    // CHAOS-2678: setup-aware surface. Degrade to no banner if the C2 status
+    // call fails rather than blocking the cockpit.
+    const setupStatus = setupResult.data ?? null;
+    const setupOrgId = session?.user?.org_id ?? null;
 
     if (!health.ok) {
         return <ServiceUnavailable />;
@@ -141,6 +150,10 @@ export default async function Home({ searchParams }: HomePageProps) {
                             </div>
                         </div>
                     </header>
+
+                    {setupStatus ? (
+                        <SetupBanner status={setupStatus} orgId={setupOrgId} />
+                    ) : null}
 
                     <GlobalContextBar filters={filters} />
                     <FilterBar view="home" />

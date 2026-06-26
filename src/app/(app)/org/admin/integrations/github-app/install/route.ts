@@ -7,6 +7,12 @@ import { getBackendUrl } from "@/lib/origin";
 /**
  * Initiation route for the frictionless GitHub App install (CHAOS-2235).
  *
+ * CHAOS-2676 (C4): an optional `return_to` query param is forwarded to the
+ * backend so the post-install callback can land the user on a validated
+ * destination (e.g. the first-run sync surface). Only same-origin relative
+ * paths are forwarded; the backend re-validates and bakes it into the state
+ * JWT.
+ *
  * The browser navigates here from the "Connect GitHub App" CTA on the GitHub
  * integration page. We ask the backend to mint a signed install URL (the state
  * JWT is created server-side) and redirect the browser to GitHub. On any
@@ -15,6 +21,18 @@ import { getBackendUrl } from "@/lib/origin";
  */
 
 const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
+
+/**
+ * Accept only same-origin, absolute-path return targets (e.g. `/org/...`).
+ * Rejects protocol-relative (`//host`) and absolute URLs so a crafted
+ * `return_to` can never become an open redirect. The backend re-validates.
+ */
+function safeReturnTo(value: string | null): string | undefined {
+    if (!value || !value.startsWith("/") || value.startsWith("//")) {
+        return undefined;
+    }
+    return value;
+}
 
 function firstHeaderValue(value: string | null) {
     return value?.split(",")[0]?.trim() || undefined;
@@ -89,6 +107,7 @@ export async function GET(request: NextRequest) {
         headers["X-Org-Id"] = session.user.org_id;
     }
 
+    const returnTo = safeReturnTo(request.nextUrl.searchParams.get("return_to"));
     let installUrl: string | undefined;
     try {
         const response = await fetch(
@@ -96,6 +115,7 @@ export async function GET(request: NextRequest) {
             {
                 method: "POST",
                 headers,
+                ...(returnTo ? { body: JSON.stringify({ return_to: returnTo }) } : {}),
             },
         );
 

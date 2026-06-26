@@ -14,9 +14,28 @@ import { getBackendUrl } from "@/lib/origin";
  * installation, and the org binding. We then redirect back to the integration
  * page with a fixed success/error indicator and never surface the raw access
  * token or backend error internals to the client.
+ *
+ * CHAOS-2676 (C4): the backend response echoes a validated `return_to`. We
+ * redirect the browser to that destination (with `?github_app=connected|error`)
+ * so the install can return the user to where they started — e.g. the first-run
+ * sync surface — defaulting to the integration page when absent or invalid. The
+ * redirect is always built relative to our own origin, so it can never become an
+ * open redirect.
  */
 
 const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
+
+/**
+ * Accept only same-origin, absolute-path return targets (e.g. `/org/...`).
+ * Rejects protocol-relative (`//host`) and absolute URLs as defense-in-depth on
+ * top of the backend's own `return_to` validation.
+ */
+function safeReturnTo(value: string | null): string | undefined {
+    if (!value || !value.startsWith("/") || value.startsWith("//")) {
+        return undefined;
+    }
+    return value;
+}
 
 function firstHeaderValue(value: string | null) {
     return value?.split(",")[0]?.trim() || undefined;
@@ -59,10 +78,14 @@ function publicOrigin(request: NextRequest) {
     return `${protocol}://${forwardedHost}`;
 }
 
-function resultRedirect(request: NextRequest, result: "connected" | "error") {
-    return NextResponse.redirect(
-        new URL(`${GITHUB_INTEGRATION_PATH}?github_app=${result}`, publicOrigin(request)),
-    );
+function resultRedirect(
+    request: NextRequest,
+    result: "connected" | "error",
+    returnTo?: string,
+) {
+    const url = new URL(returnTo ?? GITHUB_INTEGRATION_PATH, publicOrigin(request));
+    url.searchParams.set("github_app", result);
+    return NextResponse.redirect(url);
 }
 
 export async function GET(request: NextRequest) {
@@ -127,7 +150,19 @@ export async function GET(request: NextRequest) {
             },
         );
 
-        return resultRedirect(request, response.ok ? "connected" : "error");
+        // The backend validates `return_to` against an allowlist and echoes it
+        // back; only a same-origin relative path is honored, otherwise we fall
+        // back to the GitHub integration page.
+        let returnTo: string | undefined;
+        try {
+            const data = (await response.json()) as { return_to?: unknown };
+            returnTo =
+                typeof data.return_to === "string" ? safeReturnTo(data.return_to) : undefined;
+        } catch {
+            returnTo = undefined;
+        }
+
+        return resultRedirect(request, response.ok ? "connected" : "error", returnTo);
     } catch {
         return resultRedirect(request, "error");
     }

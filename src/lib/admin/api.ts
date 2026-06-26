@@ -13,6 +13,7 @@ import { ipAllowlistApi } from "./api/security";
 import { retentionApi } from "./api/retention";
 import { llmSettingsApi } from "./api/llm-settings";
 import { platformApi, impersonationApi } from "./api/platform";
+import { setupApi } from "./api/setup";
 
 export const adminApi = {
     settings: settingsApi,
@@ -30,6 +31,7 @@ export const adminApi = {
     impersonation: impersonationApi,
     platform: platformApi,
     platformAudit: platformAuditApi,
+    setup: setupApi,
 };
 
 export type AdminApi = typeof adminApi;

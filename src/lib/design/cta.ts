@@ -72,6 +72,12 @@ export const CTA_LABELS = {
     backToCockpit: "Back to Cockpit",
     /** Start the frictionless one-click GitHub App install (CHAOS-2235). */
     connectGitHubApp: "Connect GitHub App",
+    /** Continue the guided first-run setup from the dashboard (CHAOS-2678). */
+    continueSetup: "Continue setup",
+    /** Choose which repositories to sync during first-run setup (CHAOS-2681). */
+    selectRepositories: "Select repositories",
+    /** Begin the first repository sync after explicit confirmation (CHAOS-2681). */
+    startSync: "Start sync",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
