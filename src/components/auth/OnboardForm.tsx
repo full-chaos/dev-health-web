@@ -1,21 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
+import { trackOnboardingEvent, trackOnboardingEventOnce } from "@/lib/onboarding/track";
 
 type OnboardFormProps = {
     plan?: string;
     trialIntent?: boolean;
+    /**
+     * When true the form is the workspace step of the guided first-run flow
+     * (CHAOS-2674): it emits the workspace funnel events and routes onward to
+     * the integration step instead of the dashboard. Off preserves the legacy
+     * single-page behaviour.
+     */
+    guided?: boolean;
 };
 
-export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
+export function OnboardForm({ plan, trialIntent = false, guided = false }: OnboardFormProps) {
     const { data: session, update, status } = useSession();
     const [orgName, setOrgName] = useState("");
     const [loading, setLoading] = useState(false);
     const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team";
+
+    useEffect(() => {
+        if (guided) {
+            trackOnboardingEventOnce("workspace_setup_started");
+        }
+    }, [guided]);
 
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -53,6 +67,10 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
 
             const data = await res.json();
 
+            if (guided) {
+                trackOnboardingEvent("workspace_created", { orgId: data.org_id ?? null });
+            }
+
             const onboardingSession = {
                 access_token: data.access_token,
                 refresh_token: data.refresh_token,
@@ -76,9 +94,20 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
                 }
             }
 
-            const destination = isTeamTrialIntent
-                ? "/auth/trial-checkout?plan=team&trial=true"
-                : "/dashboard";
+            // Guided onboarding ALWAYS routes through the integration step (the
+            // team-trial intent is preserved as query params and resolved at the
+            // completion step). Only the legacy single-page flow keeps the direct
+            // trial-checkout redirect.
+            let destination: string;
+            if (guided) {
+                destination = isTeamTrialIntent
+                    ? "/auth/onboard/integration?plan=team&trial=true"
+                    : "/auth/onboard/integration";
+            } else if (isTeamTrialIntent) {
+                destination = "/auth/trial-checkout?plan=team&trial=true";
+            } else {
+                destination = "/dashboard";
+            }
 
             if (!sessionReady) {
                 window.location.href = destination;
@@ -113,9 +142,6 @@ export function OnboardForm({ plan, trialIntent = false }: OnboardFormProps) {
                     className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                     placeholder="My Company"
                 />
-                <p className="text-xs text-[var(--ink-muted)]">
-                    Leave blank to use &quot;My Organization&quot;
-                </p>
             </div>
 
             <button

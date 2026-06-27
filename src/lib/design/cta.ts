@@ -72,6 +72,8 @@ export const CTA_LABELS = {
     backToCockpit: "Back to Cockpit",
     /** Start the frictionless one-click GitHub App install (CHAOS-2235). */
     connectGitHubApp: "Connect GitHub App",
+    /** Advance to the next step of the guided onboarding flow (CHAOS-2675). */
+    continueStep: "Continue",
     /** Continue the guided first-run setup from the dashboard (CHAOS-2678). */
     continueSetup: "Continue setup",
     /** Choose which repositories to sync during first-run setup (CHAOS-2681). */

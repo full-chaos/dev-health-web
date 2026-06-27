@@ -1,3 +1,5 @@
+"use client";
+
 import { CTA_LABELS } from "@/lib/design/cta";
 import { connectGitHubHref } from "@/lib/onboarding/setupSurface";
 
@@ -6,11 +8,28 @@ export type GitHubAppConnectResult = "connected" | "error";
 type GitHubAppConnectProps = {
     /** Result of a returning install callback, surfaced as a banner. */
     result?: GitHubAppConnectResult;
+    /**
+     * Where the install callback should send the browser back to. When set,
+     * it is forwarded to the server-side initiation route as `return_to` so
+     * the post-install redirect lands on the originating surface (e.g. the
+     * guided-onboarding integration step) instead of the admin default.
+     */
+    returnTo?: string;
+    /**
+     * Fired when the user activates the install CTA, before the browser
+     * navigates away. Lets a host surface emit funnel telemetry without this
+     * shared component knowing about any specific analytics vocabulary.
+     */
+    onInstallClick?: () => void;
 };
 
-// Route the post-install callback toward the first-run sync surface (CHAOS-2681)
-// so a fresh connect lands on "start your sync", not a dead credential page.
-const INSTALL_HREF = connectGitHubHref();
+// Build the install href. A bare connect routes toward the first-run sync
+// surface (CHAOS-2681) so it lands on "start your sync", not a dead credential
+// page; a caller-provided returnTo (e.g. the guided-onboarding integration step,
+// CHAOS-2675) overrides that destination.
+function buildInstallHref(returnTo?: string): string {
+    return returnTo ? connectGitHubHref(returnTo) : connectGitHubHref();
+}
 
 /**
  * "Connect GitHub App" call-to-action for the GitHub integration page
@@ -22,7 +41,7 @@ const INSTALL_HREF = connectGitHubHref();
  * When the user returns from the install callback, `result` drives a
  * success/error banner so the outcome is visible without a toast.
  */
-export function GitHubAppConnect({ result }: GitHubAppConnectProps) {
+export function GitHubAppConnect({ result, returnTo, onInstallClick }: GitHubAppConnectProps) {
     return (
         <div className="mb-6 space-y-4">
             {result === "connected" && (
@@ -56,7 +75,8 @@ export function GitHubAppConnect({ result }: GitHubAppConnectProps) {
                         </p>
                     </div>
                     <a
-                        href={INSTALL_HREF}
+                        href={buildInstallHref(returnTo)}
+                        onClick={onInstallClick}
                         className="inline-flex shrink-0 items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 focus:outline-none focus:ring-2 focus:ring-(--surface-inverted) focus:ring-offset-2"
                     >
                         {CTA_LABELS.connectGitHubApp}
