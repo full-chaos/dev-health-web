@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
+import { safeReturnTo } from "@/lib/onboarding/returnTo";
 
 /**
  * Setup-URL callback for the frictionless GitHub App install (CHAOS-2235).
@@ -14,9 +15,18 @@ import { getBackendUrl } from "@/lib/origin";
  * installation, and the org binding. We then redirect back to the integration
  * page with a fixed success/error indicator and never surface the raw access
  * token or backend error internals to the client.
+ *
+ * CHAOS-2676 (C4): the backend response echoes a validated `return_to`. We
+ * redirect the browser to that destination (with `?github_app=connected|error`)
+ * so the install can return the user to where they started — e.g. the first-run
+ * sync surface — defaulting to the integration page when absent or invalid. The
+ * redirect is always built relative to our own origin, so it can never become an
+ * open redirect.
  */
 
 const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
+
+// `safeReturnTo` (shared, hardened) lives in `@/lib/onboarding/returnTo`.
 
 function firstHeaderValue(value: string | null) {
     return value?.split(",")[0]?.trim() || undefined;
@@ -59,10 +69,17 @@ function publicOrigin(request: NextRequest) {
     return `${protocol}://${forwardedHost}`;
 }
 
-function resultRedirect(request: NextRequest, result: "connected" | "error") {
-    return NextResponse.redirect(
-        new URL(`${GITHUB_INTEGRATION_PATH}?github_app=${result}`, publicOrigin(request)),
-    );
+function resultRedirect(request: NextRequest, result: "connected" | "error", returnTo?: string) {
+    const origin = publicOrigin(request);
+    let url = new URL(returnTo ?? GITHUB_INTEGRATION_PATH, origin);
+    // Post-construction guard: never emit a cross-origin redirect, even if a
+    // crafted return_to somehow slipped past safeReturnTo. Fall back to the
+    // integration page when the resolved origin is not our own.
+    if (url.origin !== new URL(origin).origin) {
+        url = new URL(GITHUB_INTEGRATION_PATH, origin);
+    }
+    url.searchParams.set("github_app", result);
+    return NextResponse.redirect(url);
 }
 
 export async function GET(request: NextRequest) {
@@ -127,7 +144,19 @@ export async function GET(request: NextRequest) {
             },
         );
 
-        return resultRedirect(request, response.ok ? "connected" : "error");
+        // The backend validates `return_to` against an allowlist and echoes it
+        // back; only a same-origin relative path is honored, otherwise we fall
+        // back to the GitHub integration page.
+        let returnTo: string | undefined;
+        try {
+            const data = (await response.json()) as { return_to?: unknown };
+            returnTo =
+                typeof data.return_to === "string" ? safeReturnTo(data.return_to) : undefined;
+        } catch {
+            returnTo = undefined;
+        }
+
+        return resultRedirect(request, response.ok ? "connected" : "error", returnTo);
     } catch {
         return resultRedirect(request, "error");
     }

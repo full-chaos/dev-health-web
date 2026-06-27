@@ -90,6 +90,53 @@ describe("GET /org/admin/integrations/github-app/install", () => {
         expect(headers["X-Org-Id"]).toBe("org-1");
     });
 
+    it("forwards a safe return_to to the backend install-url request (CHAOS-2676)", async () => {
+        setAdminSession();
+        vi.mocked(fetch).mockResolvedValue(
+            installUrlResponse("https://github.com/apps/dev-health/installations/new"),
+        );
+
+        const response = await GET(
+            new NextRequest(
+                "http://localhost/org/admin/integrations/github-app/install?return_to=%2Forg%2Fadmin%2Fintegrations%2Fgithub%2Fsync",
+            ),
+        );
+
+        expect(response.status).toBe(307);
+        const [, init] = vi.mocked(fetch).mock.calls[0];
+        expect(JSON.parse(init?.body as string)).toEqual({
+            return_to: "/org/admin/integrations/github/sync",
+        });
+    });
+
+    it("omits return_to from the backend request when it is absent", async () => {
+        setAdminSession();
+        vi.mocked(fetch).mockResolvedValue(
+            installUrlResponse("https://github.com/apps/dev-health/installations/new"),
+        );
+
+        await GET(makeRequest());
+
+        const [, init] = vi.mocked(fetch).mock.calls[0];
+        expect(init?.body).toBeUndefined();
+    });
+
+    it("ignores an unsafe (protocol-relative) return_to", async () => {
+        setAdminSession();
+        vi.mocked(fetch).mockResolvedValue(
+            installUrlResponse("https://github.com/apps/dev-health/installations/new"),
+        );
+
+        await GET(
+            new NextRequest(
+                "http://localhost/org/admin/integrations/github-app/install?return_to=%2F%2Fevil.example",
+            ),
+        );
+
+        const [, init] = vi.mocked(fetch).mock.calls[0];
+        expect(init?.body).toBeUndefined();
+    });
+
     it("proceeds for a superuser session without an org role", async () => {
         setSession({ is_superuser: true });
         vi.mocked(fetch).mockResolvedValue(
@@ -214,5 +261,31 @@ describe("GET /org/admin/integrations/github-app/install", () => {
 
         expect(response.status).toBe(307);
         expect(response.headers.get("location")).toBe(ERROR_LOCATION);
+    });
+
+    // CHAOS-2676 security: an unsafe return_to must never be forwarded to the
+    // backend. searchParams.get() decodes once, so percent-encoded payloads are
+    // evaluated in their decoded form.
+    it.each([
+        ["backslash", "%2F%5Cevil.example"], // "/\\evil.example"
+        ["backslash-slash", "%2F%5C%2Fevil.example"], // "/\\/evil.example"
+        ["protocol-relative", "%2F%2Fevil.example"], // "//evil.example"
+        ["raw CRLF", "%2F%0D%0Aevil.example"], // "/\r\nevil.example"
+        ["raw newline", "%2F%0Aevil.example"], // "/\nevil.example"
+    ])("omits an unsafe return_to (%s) from the backend request", async (_label, encoded) => {
+        setAdminSession();
+        vi.mocked(fetch).mockResolvedValue(
+            installUrlResponse("https://github.com/apps/dev-health/installations/new"),
+        );
+
+        await GET(
+            new NextRequest(
+                `http://localhost/org/admin/integrations/github-app/install?return_to=${encoded}`,
+            ),
+        );
+
+        expect(fetch).toHaveBeenCalledTimes(1);
+        const [, init] = vi.mocked(fetch).mock.calls[0];
+        expect(init?.body).toBeUndefined();
     });
 });

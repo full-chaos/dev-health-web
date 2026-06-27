@@ -1,4 +1,5 @@
 import { CTA_LABELS } from "@/lib/design/cta";
+import { connectGitHubHref } from "@/lib/onboarding/setupSurface";
 
 export type GitHubAppConnectResult = "connected" | "error";
 
@@ -7,7 +8,9 @@ type GitHubAppConnectProps = {
     result?: GitHubAppConnectResult;
 };
 
-const INSTALL_PATH = "/org/admin/integrations/github-app/install";
+// Route the post-install callback toward the first-run sync surface (CHAOS-2681)
+// so a fresh connect lands on "start your sync", not a dead credential page.
+const INSTALL_HREF = connectGitHubHref();
 
 /**
  * "Connect GitHub App" call-to-action for the GitHub integration page
@@ -53,7 +56,7 @@ export function GitHubAppConnect({ result }: GitHubAppConnectProps) {
                         </p>
                     </div>
                     <a
-                        href={INSTALL_PATH}
+                        href={INSTALL_HREF}
                         className="inline-flex shrink-0 items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 focus:outline-none focus:ring-2 focus:ring-(--surface-inverted) focus:ring-offset-2"
                     >
                         {CTA_LABELS.connectGitHubApp}
