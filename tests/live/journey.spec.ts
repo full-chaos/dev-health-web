@@ -1,12 +1,15 @@
 /**
  * Live API journey tests — CHAOS-709
  *
- * Each describe group creates its own ORGLESS user via POST /register
- * (self-bootstrapping; no SQL seeding). A fresh user has needs_onboarding=true
- * and only becomes ONBOARDED after an explicit POST /onboard (create_org) — the
- * journey never relies on a workspace being created implicitly at registration.
- * The seeded superuser admin (see helpers.ts) is used solely to verify emails
- * and stays distinct from these per-test users. Run with playwright.live.config.ts.
+ * Each describe group creates its own user via POST /register (self-bootstrapping;
+ * no SQL seeding). The orgless first-run assertions (a fresh user has
+ * needs_onboarding=true and only becomes onboarded after an explicit POST
+ * /onboard) only hold when the backend runs with
+ * AUTH_AUTO_CREATE_ORG_ON_REGISTER=false; the default live-e2e backend keeps
+ * auto-org ON, so those checks are gated behind LIVE_GUIDED_ONBOARDING=1. The
+ * credentials/sync journeys are flag-agnostic (POST /onboard is best-effort).
+ * The seeded superuser admin (see helpers.ts) verifies emails and stays distinct
+ * from these per-test users. Run with playwright.live.config.ts.
  */
 import { expect, test } from "@playwright/test";
 import {
@@ -17,6 +20,15 @@ import {
     testEmail,
     verifyUser,
 } from "./helpers";
+
+// The orgless first-run assertions below only hold when the live backend runs
+// with AUTH_AUTO_CREATE_ORG_ON_REGISTER=false. The default live-e2e backend keeps
+// auto-org ON (production-preserving default), so a fresh signup already has an
+// org and needs_onboarding=false. Gate those assertions behind an opt-in env so
+// the default suite is green; the guided flow is covered flag-on by
+// playwright.onboarding.config.ts (tests/auth-onboard.spec.ts).
+const liveGuidedOnboarding =
+    process.env.LIVE_GUIDED_ONBOARDING === "true" || process.env.LIVE_GUIDED_ONBOARDING === "1";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Registration & Login (2 tests — independent, no serial needed)
@@ -39,6 +51,10 @@ test("POST /register \u2192 201 with user_id and org_id", async ({ request }) =>
 });
 
 test("POST /login after fresh registration \u2192 needs_onboarding true", async ({ request }) => {
+    test.skip(
+        !liveGuidedOnboarding,
+        "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the orgless needs_onboarding assertion",
+    );
     const email = testEmail("login");
     const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
         data: { email, password: "TestPass123!", full_name: "Login User" },
@@ -73,6 +89,10 @@ test("POST /login after fresh registration \u2192 needs_onboarding true", async 
 
 test.describe("onboarding journey", () => {
     test.describe.configure({ mode: "serial" });
+    test.skip(
+        !liveGuidedOnboarding,
+        "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) for the create_org-from-orgless journey",
+    );
 
     const email = testEmail("onboard");
     const password = "TestPass123!";
