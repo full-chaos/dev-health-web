@@ -21,6 +21,8 @@ import {
     verifyUser,
 } from "./helpers";
 
+declare const process: { env: Record<string, string | undefined> };
+
 // The orgless first-run assertions below only hold when the live backend runs
 // with AUTH_AUTO_CREATE_ORG_ON_REGISTER=false. The default live-e2e backend keeps
 // auto-org ON (production-preserving default), so a fresh signup already has an
@@ -211,8 +213,8 @@ test.describe("credentials journey", () => {
             headers: authHeaders(token),
             data: {
                 provider: "github",
-                token: "fake-token-for-testing",
-                org_name: "test-org",
+                credentials: { token: "fake-token-for-testing" },
+                config: { org: "test-org" },
             },
         });
         expect([200, 201]).toContain(res.status());
@@ -228,10 +230,10 @@ test.describe("credentials journey", () => {
             return;
         }
 
-        const res = await request.post(
-            `${liveBackendUrl}/api/v1/admin/credentials/${credentialId}/test`,
-            { headers: authHeaders(token) },
-        );
+        const res = await request.post(`${liveBackendUrl}/api/v1/admin/credentials/test`, {
+            headers: authHeaders(token),
+            data: { provider: "github", credential_id: credentialId },
+        });
         // Endpoint may return 200 with success:false or 422 for invalid creds
         expect([200, 422]).toContain(res.status());
 
@@ -262,7 +264,7 @@ test.describe("credentials journey", () => {
     test.afterAll(async ({ request }) => {
         if (!token || !credentialId) return;
         try {
-            await request.delete(`${liveBackendUrl}/api/v1/admin/credentials/${credentialId}`, {
+            await request.delete(`${liveBackendUrl}/api/v1/admin/credentials/github/default`, {
                 headers: authHeaders(token),
             });
         } catch {
@@ -324,10 +326,11 @@ test.describe("sync journey", () => {
             headers: authHeaders(token),
             data: {
                 provider: "github",
-                token: "fake-sync-token",
-                org_name: "sync-test-org",
+                credentials: { token: "fake-sync-token" },
+                config: { org: "sync-test-org" },
             },
         });
+        expect([200, 201]).toContain(credRes.status());
         const credData = (await credRes.json()) as Record<string, unknown>;
         const credId = (credData.id ?? credData.credential_id ?? "") as string;
 
@@ -337,6 +340,7 @@ test.describe("sync journey", () => {
                 name: "Journey Sync Config",
                 provider: "github",
                 credential_id: credId || undefined,
+                sync_options: { all_repos: true },
             },
         });
         expect([200, 201]).toContain(createRes.status());
