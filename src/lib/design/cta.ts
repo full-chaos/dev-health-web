@@ -80,6 +80,10 @@ export const CTA_LABELS = {
     selectRepositories: "Select repositories",
     /** Begin the first repository sync after explicit confirmation (CHAOS-2681). */
     startSync: "Start sync",
+    lightTheme: "Light",
+    darkTheme: "Dark",
+    enabled: "Enabled",
+    disabled: "Disabled",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;

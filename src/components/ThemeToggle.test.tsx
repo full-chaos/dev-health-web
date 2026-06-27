@@ -42,6 +42,15 @@ describe("ThemeToggle", () => {
         expect(screen.getByRole("option", { name: "Fullchaos Infinity Knot" })).toBeInTheDocument();
     });
 
+    it("renders the cosmic nebula palette option when expanded", async () => {
+        const user = userEvent.setup();
+        render(<ThemeToggle />);
+
+        await user.click(screen.getByRole("button", { name: /expand settings/i }));
+
+        expect(screen.getByRole("option", { name: "Fullchaos Cosmic Nebula" })).toBeInTheDocument();
+    });
+
     it("persists the infinity knot palette selection", async () => {
         const user = userEvent.setup();
         render(<ThemeToggle />);
@@ -54,5 +63,19 @@ describe("ThemeToggle", () => {
 
         expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot");
         expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot");
+    });
+
+    it("persists the cosmic nebula palette selection", async () => {
+        const user = userEvent.setup();
+        render(<ThemeToggle />);
+
+        await user.click(screen.getByRole("button", { name: /expand settings/i }));
+        await user.selectOptions(
+            screen.getByLabelText(/theme palette/i),
+            "fullchaos-cosmic-nebula",
+        );
+
+        expect(document.documentElement.dataset.palette).toBe("fullchaos-cosmic-nebula");
+        expect(localStorage.getItem("palette")).toBe("fullchaos-cosmic-nebula");
     });
 });

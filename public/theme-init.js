@@ -11,6 +11,7 @@
       normalizedPalette === "echarts" ||
       normalizedPalette === "fullchaos" ||
       normalizedPalette === "fullchaos-cosmic-train" ||
+      normalizedPalette === "fullchaos-cosmic-nebula" ||
       normalizedPalette === "fullchaos-infinity-knot" ||
       normalizedPalette === "fullchaos-infinity-knot-redux" ||
       normalizedPalette === "flat"

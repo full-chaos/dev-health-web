@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { SettingsSection } from "./SettingsSection";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { isServer, getLocalStorage, getWindow } from "@/lib/env";
 import { isTelemetryOptedOut, setTelemetryOptOut } from "@/lib/telemetry/config";
 
@@ -11,6 +12,7 @@ type Palette =
     | "echarts"
     | "fullchaos"
     | "fullchaos-cosmic-train"
+    | "fullchaos-cosmic-nebula"
     | "fullchaos-infinity-knot"
     | "fullchaos-infinity-knot-redux"
     | "flat";
@@ -41,6 +43,7 @@ const normalizePalette = (value: string | null): Palette | null => {
         "echarts",
         "fullchaos",
         "fullchaos-cosmic-train",
+        "fullchaos-cosmic-nebula",
         "fullchaos-infinity-knot",
         "fullchaos-infinity-knot-redux",
         "flat",
@@ -98,6 +101,7 @@ const getTelemetryServerSnapshot = (): boolean => false;
 const PALETTES: { value: Palette; label: string }[] = [
     { value: "fullchaos", label: "Full Chaos" },
     { value: "fullchaos-cosmic-train", label: "Cosmic Train" },
+    { value: "fullchaos-cosmic-nebula", label: "Cosmic Nebula" },
     { value: "fullchaos-infinity-knot", label: "Infinity Knot" },
     { value: "fullchaos-infinity-knot-redux", label: "Infinity Knot Redux" },
     { value: "material", label: "Material" },
@@ -138,7 +142,7 @@ export function PreferencesSettings() {
                             }`}
                         >
                             <span className="block text-lg mb-1">☀️</span>
-                            Light
+                            {CTA_LABELS.lightTheme}
                         </button>
                         <button
                             type="button"
@@ -150,7 +154,7 @@ export function PreferencesSettings() {
                             }`}
                         >
                             <span className="block text-lg mb-1">🌙</span>
-                            Dark
+                            {CTA_LABELS.darkTheme}
                         </button>
                     </div>
                 </div>
@@ -198,7 +202,7 @@ export function PreferencesSettings() {
                                     : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
-                            Enabled
+                            {CTA_LABELS.enabled}
                         </button>
                         <button
                             type="button"
@@ -210,7 +214,7 @@ export function PreferencesSettings() {
                                     : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
-                            Disabled
+                            {CTA_LABELS.disabled}
                         </button>
                     </div>
                 </div>
