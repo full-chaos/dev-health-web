@@ -94,14 +94,14 @@ The platform uses **Tailwind CSS v4** via `@tailwindcss/postcss`.
 Appearance is controlled by two HTML attributes on the `<html>` element:
 
 1. **`data-theme`**: Controls the color mode (`light` or `dark`).
-2. **`data-palette`**: Controls the color scheme (`fullchaos`, `material`, `echarts`, `fullchaos-cosmic-train`, `fullchaos-infinity-knot`, `flat`).
+2. **`data-palette`**: Controls the color scheme (`fullchaos`, `material`, `echarts`, `fullchaos-cosmic-train`, `fullchaos-cosmic-nebula`, `fullchaos-infinity-knot`, `fullchaos-infinity-knot-redux`, `flat`).
 
 #### Default State
 
 The default configuration is:
 
 - `data-theme="dark"`
-- `data-palette="fullchaos"`
+- `data-palette="fullchaos-infinity-knot-redux"`
 
 #### Initialization
 

@@ -518,6 +518,89 @@
 }
 
 /* ============================================================
+ * PALETTE: fullchaos-cosmic-nebula
+ *
+ * Built from the supplied Cosmic palette: deep navy and ink
+ * surfaces, plum/wine depth, coral-red action, and cyan signal.
+ * ============================================================ */
+:root[data-palette="fullchaos-cosmic-nebula"][data-theme="light"] {
+    color-scheme: light;
+    --background: #e5d6c8;
+    --foreground: #111722;
+    --ink-muted: #543559;
+    --accent: #812645;
+    --accent-2: #345e7d;
+    --accent-3: #ae5079;
+    --accent-negative: #c23041;
+    --accent-highlight: #e16068;
+    --card: color-mix(in srgb, #e5d6c8 76%, white);
+    --card-stroke: color-mix(in srgb, #df9399 58%, #543559);
+    --chart-muted: #55213f;
+    --chart-color-1: #812645;
+    --chart-color-2: #345e7d;
+    --chart-color-3: #c23041;
+    --chart-color-4: #50a1ad;
+    --chart-color-5: #804770;
+    --chart-color-6: #272e4b;
+    --chart-color-7: #ae5079;
+    --chart-color-8: #371e37;
+    --chart-color-9: #e16068;
+    --chart-color-10: #111722;
+    --hero-gradient: radial-gradient(
+        circle_at_top,
+        #e5d6c8 0%,
+        #df9399 24%,
+        #ae5079 42%,
+        #50a1ad 68%,
+        #111722 100%
+    );
+    --app-gradient: radial-gradient(
+        ellipse at 14% 0%,
+        color-mix(in srgb, var(--accent-highlight) 12%, var(--background)) 0%,
+        color-mix(in srgb, var(--accent-2) 8%, var(--background)) 36%,
+        var(--background) 74%
+    );
+}
+
+:root[data-palette="fullchaos-cosmic-nebula"][data-theme="dark"] {
+    color-scheme: dark;
+    --background: #111722;
+    --foreground: #e5d6c8;
+    --ink-muted: #df9399;
+    --accent: #e16068;
+    --accent-2: #70dbd6;
+    --accent-3: #ae5079;
+    --accent-negative: #c23041;
+    --accent-highlight: #50a1ad;
+    --card: #1d1d2f;
+    --card-stroke: #272e4b;
+    --chart-color-1: #e16068;
+    --chart-color-2: #70dbd6;
+    --chart-color-3: #ae5079;
+    --chart-color-4: #50a1ad;
+    --chart-color-5: #c23041;
+    --chart-color-6: #804770;
+    --chart-color-7: #df9399;
+    --chart-color-8: #345e7d;
+    --chart-color-9: #55213f;
+    --chart-color-10: #e5d6c8;
+    --hero-gradient: radial-gradient(
+        circle_at_top,
+        #371e37 0%,
+        #812645 22%,
+        #e16068 42%,
+        #70dbd6 68%,
+        #111722 100%
+    );
+    --app-gradient: radial-gradient(
+        ellipse at 50% -10%,
+        color-mix(in srgb, var(--accent) 10%, var(--background)) 0%,
+        color-mix(in srgb, var(--accent-2) 7%, var(--background)) 38%,
+        var(--background) 70%
+    );
+}
+
+/* ============================================================
  * PALETTE: flat
  * ============================================================ */
 :root[data-palette="flat"][data-theme="light"] {

@@ -10,6 +10,7 @@ type Palette =
     | "echarts"
     | "fullchaos"
     | "fullchaos-cosmic-train"
+    | "fullchaos-cosmic-nebula"
     | "fullchaos-infinity-knot"
     | "fullchaos-infinity-knot-redux"
     | "flat";
@@ -39,6 +40,7 @@ const normalizePalette = (value: string | null): Palette | null => {
         value === "echarts" ||
         value === "fullchaos" ||
         value === "fullchaos-cosmic-train" ||
+        value === "fullchaos-cosmic-nebula" ||
         value === "fullchaos-infinity-knot" ||
         value === "fullchaos-infinity-knot-redux" ||
         value === "flat"
@@ -141,7 +143,7 @@ export function ThemeToggle() {
 
     return (
         <div
-            className={`group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) p-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${
+            className={`group inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) p-1 text-label-caps font-semibold uppercase tracking-[0.2em] text-(--ink-muted) shadow-[0_12px_30px_-20px_rgba(0,0,0,0.45)] transition-all duration-300 ${
                 isCollapsed ? "w-10 overflow-hidden" : "px-3 py-2"
             }`}
         >
@@ -152,12 +154,13 @@ export function ThemeToggle() {
                         aria-label="Theme palette"
                         value={palette}
                         onChange={handlePaletteChange}
-                        className="bg-transparent text-[11px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted) focus:text-foreground focus:outline-none"
+                        className="bg-transparent text-label-caps font-semibold uppercase tracking-[0.2em] text-(--ink-muted) focus:text-foreground focus:outline-none"
                     >
                         <option value="material">Material</option>
                         <option value="echarts">ECharts</option>
                         <option value="fullchaos">Full Chaos</option>
                         <option value="fullchaos-cosmic-train">Fullchaos Cosmic Train</option>
+                        <option value="fullchaos-cosmic-nebula">Fullchaos Cosmic Nebula</option>
                         <option value="fullchaos-infinity-knot">Fullchaos Infinity Knot</option>
                         <option value="fullchaos-infinity-knot-redux">Infinity Knot Redux</option>
                         <option value="flat">Flat UI</option>
@@ -166,7 +169,7 @@ export function ThemeToggle() {
                         type="button"
                         onClick={handleToggle}
                         aria-label="Toggle light/dark"
-                        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:-translate-y-0.5"
+                        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 text-label-caps font-semibold uppercase tracking-[0.2em] text-foreground transition hover:-translate-y-0.5"
                     >
                         {theme === "dark" ? "Dark" : "Light"}
                     </button>

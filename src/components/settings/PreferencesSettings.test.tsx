@@ -45,6 +45,12 @@ describe("PreferencesSettings", () => {
         expect(screen.getByRole("button", { name: "Infinity Knot Redux" })).toBeInTheDocument();
     });
 
+    it("shows the cosmic nebula palette in preferences", () => {
+        render(<PreferencesSettings />);
+
+        expect(screen.getByRole("button", { name: "Cosmic Nebula" })).toBeInTheDocument();
+    });
+
     it("applies the infinity knot palette from preferences", async () => {
         const user = userEvent.setup();
         render(<PreferencesSettings />);
@@ -63,6 +69,16 @@ describe("PreferencesSettings", () => {
 
         expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot-redux");
         expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot-redux");
+    });
+
+    it("applies the cosmic nebula palette from preferences", async () => {
+        const user = userEvent.setup();
+        render(<PreferencesSettings />);
+
+        await user.click(screen.getByRole("button", { name: "Cosmic Nebula" }));
+
+        expect(document.documentElement.dataset.palette).toBe("fullchaos-cosmic-nebula");
+        expect(localStorage.getItem("palette")).toBe("fullchaos-cosmic-nebula");
     });
 
     it("persists the product telemetry opt-out preference", async () => {
