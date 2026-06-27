@@ -7,6 +7,13 @@ const isDemoExportBuild =
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+    // Allow an isolated build/output directory per process. The Playwright e2e
+    // suite runs two `next dev` servers against the same source tree (default
+    // single-page onboarding on one port, guided first-run flow on another);
+    // giving each its own `.next` directory via NEXT_DIST_DIR prevents the two
+    // dev compilers from racing on shared build artifacts. Unset in normal
+    // builds, so production output is unaffected.
+    ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
     ...(isDemoExportBuild
         ? {
               output: "export",

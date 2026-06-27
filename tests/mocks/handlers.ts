@@ -1467,6 +1467,99 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
 }
 
 // ---------------------------------------------------------------------------
+// Stateful first-run onboarding fixture (CHAOS-2670 / CHAOS-2684)
+//
+// The guided journey reads its routing target server-side from C1
+// (`/auth/onboarding/state`) and its dashboard surface from C2
+// (`/admin/setup/status`). To let one orgless user walk workspace ->
+// integration -> complete -> dashboard deterministically, these endpoints
+// share a small progress object that advances as the user creates a
+// workspace, skips, or connects an integration. A test-only reset endpoint
+// restores the initial orgless state between specs. This module-level state
+// is per mock-server process; the guided Playwright suite runs against a
+// dedicated mock backend so it never contaminates the flag-off suite.
+// ---------------------------------------------------------------------------
+
+type OnboardingProgress = {
+    orgCreated: boolean;
+    orgId: string | null;
+    orgName: string | null;
+    integrationConnected: boolean;
+    integrationSkipped: boolean;
+};
+
+const INITIAL_ONBOARDING_PROGRESS: OnboardingProgress = {
+    orgCreated: false,
+    orgId: null,
+    orgName: null,
+    integrationConnected: false,
+    integrationSkipped: false,
+};
+
+const onboardingProgress: OnboardingProgress = { ...INITIAL_ONBOARDING_PROGRESS };
+
+// CHAOS-2670 / CHAOS-2684: stateful register store. The signup form POSTs to
+// /api/v1/auth/register; recording the email here lets the login handler
+// recognize the SAME fresh signup as an ORGLESS needs_onboarding user, so a
+// single email can drive signup -> signin -> guided onboarding (rather than the
+// register handler returning a bare { registered: true } and the journey having
+// to fall back to a different canned login user). Cleared on reset.
+const registeredOrglessUsers = new Map<string, { password: string; fullName: string | null }>();
+
+function resetOnboardingProgress(overrides?: Partial<OnboardingProgress>) {
+    Object.assign(onboardingProgress, INITIAL_ONBOARDING_PROGRESS, overrides ?? {});
+    registeredOrglessUsers.clear();
+}
+
+/** C1 next_step derived from progress (deterministic, mirrors the backend). */
+function onboardingNextStep(): "workspace" | "integration" | "complete" {
+    if (!onboardingProgress.orgCreated) return "workspace";
+    if (!onboardingProgress.integrationConnected && !onboardingProgress.integrationSkipped) {
+        return "integration";
+    }
+    return "complete";
+}
+
+/** Build the C1 `/auth/onboarding/state` body from the shared progress. */
+function buildOnboardingState() {
+    const integrationResolved =
+        onboardingProgress.integrationConnected || onboardingProgress.integrationSkipped;
+    return {
+        needs_onboarding: !(onboardingProgress.orgCreated && integrationResolved),
+        org_created: onboardingProgress.orgCreated,
+        org_id: onboardingProgress.orgId,
+        org_name: onboardingProgress.orgName,
+        first_integration_connected: onboardingProgress.integrationConnected,
+        integration_skipped: onboardingProgress.integrationSkipped,
+        recommended_provider: "github",
+        next_step: onboardingNextStep(),
+        blocker: null,
+    };
+}
+
+/** Build the C2 `/admin/setup/status` body from the shared progress. */
+function buildSetupStatus() {
+    const nextAction = onboardingProgress.integrationConnected
+        ? "select_repositories"
+        : onboardingProgress.integrationSkipped
+          ? "complete"
+          : "connect_integration";
+    return {
+        has_integration: onboardingProgress.integrationConnected,
+        providers: onboardingProgress.integrationConnected ? ["github"] : [],
+        has_sync_config: false,
+        sync_config_id: null,
+        first_sync_started: false,
+        sync_status: "none",
+        selected_repositories_count: 0,
+        last_sync_error: null,
+        can_start_sync: false,
+        next_action: nextAction,
+        blocker: null,
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
@@ -1480,11 +1573,38 @@ export const handlers = [
         if (!body?.email || !body?.password) {
             return HttpResponse.json({ detail: "Missing credentials" }, { status: 400 });
         }
+        // Two canonical e2e users with DELIBERATELY distinct purposes:
+        //   newuser@example.com — ORGLESS new signup (org_id null,
+        //     needs_onboarding true). Drives the first-run onboarding journey.
+        //   test@example.com    — already ONBOARDED owner (org_id org-e2e,
+        //     needs_onboarding false). Drives the authenticated product suite.
         if (body.email === "newuser@example.com" && body.password === "password123") {
             return HttpResponse.json<LoginResponseBody>({
                 user: {
                     id: "e2e-user-new",
                     email: "newuser@example.com",
+                    org_id: null,
+                    role: "member",
+                    is_superuser: false,
+                    permissions: ["read", "write"],
+                },
+                access_token: "mock-access-token-e2e",
+                refresh_token: "mock-refresh-token-e2e",
+                token_type: "bearer",
+                expires_in: 86400,
+                needs_onboarding: true,
+            });
+        }
+        // Dynamically registered ORGLESS users (stateful register handler). A
+        // fresh signup recorded by /api/v1/auth/register signs in HERE with its
+        // OWN email as a needs_onboarding user, so the guided journey is a
+        // genuine same-user signup -> signin -> onboarding flow (CHAOS-2670).
+        const registered = registeredOrglessUsers.get(body.email);
+        if (registered && body.password === registered.password) {
+            return HttpResponse.json<LoginResponseBody>({
+                user: {
+                    id: `e2e-user-${body.email}`,
+                    email: body.email,
                     org_id: null,
                     role: "member",
                     is_superuser: false,
@@ -1573,53 +1693,50 @@ export const handlers = [
         }),
     ),
 
-    // CHAOS-2670 C1: onboarding state. Default mock = orgless user at the
-    // workspace step; override per-test as needed.
-    http.get("*/api/v1/auth/onboarding/state", () =>
-        HttpResponse.json({
-            needs_onboarding: true,
-            org_created: false,
-            org_id: null,
-            org_name: null,
-            first_integration_connected: false,
-            integration_skipped: false,
-            recommended_provider: "github",
-            next_step: "workspace",
-            blocker: null,
-        }),
-    ),
+    // CHAOS-2670 C1: onboarding state, derived from the shared progress object
+    // so the guided journey advances deterministically as the user creates a
+    // workspace / skips / connects. Fresh state = orgless user at the workspace
+    // step (next_step "workspace").
+    http.get("*/api/v1/auth/onboarding/state", () => HttpResponse.json(buildOnboardingState())),
 
-    // CHAOS-2670 C6: persist integration skip; returns updated C1 state.
-    http.post("*/api/v1/auth/onboarding/skip-integration", () =>
-        HttpResponse.json({
-            needs_onboarding: false,
-            org_created: true,
-            org_id: "org-e2e",
-            org_name: "E2E Organization",
-            first_integration_connected: false,
-            integration_skipped: true,
-            recommended_provider: "github",
-            next_step: "complete",
-            blocker: null,
-        }),
-    ),
+    // Test-only: reset the guided onboarding progress between specs. Lives under
+    // the public, proxied /api/v1/auth prefix so it can be called before
+    // sign-in. Optional body { step: "workspace" | "integration" | "complete",
+    // connected?: boolean } seeds a specific starting point.
+    http.post("*/api/v1/auth/onboarding/reset", async ({ request }) => {
+        let body: { step?: string; connected?: boolean } | null = null;
+        try {
+            body = (await request.json()) as { step?: string; connected?: boolean };
+        } catch {
+            body = null;
+        }
+        const overrides: Partial<OnboardingProgress> = {};
+        if (body?.step === "integration" || body?.step === "complete" || body?.connected) {
+            overrides.orgCreated = true;
+            overrides.orgId = "org-new";
+            overrides.orgName = "Acme Inc";
+        }
+        if (body?.step === "complete") {
+            overrides.integrationSkipped = true;
+        }
+        if (body?.connected) {
+            overrides.integrationConnected = true;
+        }
+        resetOnboardingProgress(overrides);
+        return HttpResponse.json(buildOnboardingState());
+    }),
 
-    // CHAOS-2670 C2: admin setup status. Default mock = no integration yet.
-    http.get("*/api/v1/admin/setup/status", () =>
-        HttpResponse.json({
-            has_integration: false,
-            providers: [],
-            has_sync_config: false,
-            sync_config_id: null,
-            first_sync_started: false,
-            sync_status: "none",
-            selected_repositories_count: 0,
-            last_sync_error: null,
-            can_start_sync: false,
-            next_action: "connect_integration",
-            blocker: null,
-        }),
-    ),
+    // CHAOS-2670 C6: persist integration skip, advancing the shared progress to
+    // the completion step; returns the updated C1 state.
+    http.post("*/api/v1/auth/onboarding/skip-integration", () => {
+        onboardingProgress.integrationSkipped = true;
+        return HttpResponse.json(buildOnboardingState());
+    }),
+
+    // CHAOS-2670 C2: admin setup status, derived from the shared progress so the
+    // dashboard setup banner reflects the path taken (skipped vs sync-pending vs
+    // no-integration). Fresh state = no integration yet.
+    http.get("*/api/v1/admin/setup/status", () => HttpResponse.json(buildSetupStatus())),
 
     http.get("*/api/v1/billing/invoices", ({ request }) => {
         const url = new URL(request.url);
@@ -2421,9 +2538,22 @@ export const handlers = [
     }),
 
     http.post("*/api/v1/auth/register", async ({ request }) => {
-        const body = (await request.json()) as { email?: string } | null;
+        const body = (await request.json()) as {
+            email?: string;
+            password?: string;
+            full_name?: string;
+        } | null;
         if (body?.email === "existing@example.com") {
             return HttpResponse.json({ detail: "Email already registered" }, { status: 409 });
+        }
+        // Stateful: record the fresh signup as an orgless needs_onboarding user so
+        // the login handler recognizes the SAME email and drives it through the
+        // guided journey (CHAOS-2670 / CHAOS-2684).
+        if (body?.email) {
+            registeredOrglessUsers.set(body.email, {
+                password: typeof body.password === "string" ? body.password : "password123",
+                fullName: typeof body.full_name === "string" ? body.full_name : null,
+            });
         }
         return HttpResponse.json({ registered: true }, { status: 201 });
     }),
@@ -2449,17 +2579,31 @@ export const handlers = [
         );
     }),
 
-    http.post("*/api/v1/auth/onboard", () =>
-        HttpResponse.json<OnboardResponseBody>({
+    // CHAOS-2670: workspace creation. Rejects a blank/whitespace org name (the
+    // guided workspace step must not silently create an unnamed workspace) and,
+    // on success, advances the shared progress to the integration step.
+    http.post("*/api/v1/auth/onboard", async ({ request }) => {
+        const body = (await request.json().catch(() => null)) as {
+            action?: string;
+            org_name?: string;
+        } | null;
+        const orgName = typeof body?.org_name === "string" ? body.org_name.trim() : "";
+        if (!orgName) {
+            return HttpResponse.json({ detail: "Organization name is required" }, { status: 400 });
+        }
+        onboardingProgress.orgCreated = true;
+        onboardingProgress.orgId = "org-new";
+        onboardingProgress.orgName = orgName;
+        return HttpResponse.json<OnboardResponseBody>({
             access_token: "mock-onboard-token",
             refresh_token: "mock-onboard-refresh",
             token_type: "bearer",
             org_id: "org-new",
-            org_name: "New Organization",
+            org_name: orgName,
             role: "owner",
             expires_in: 86400,
-        }),
-    ),
+        });
+    }),
 
     http.get("*/api/v1/orgs/me", () =>
         HttpResponse.json({

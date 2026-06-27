@@ -1,11 +1,74 @@
 # E2E Spec: Onboarding Journeys
 
+## Guided First-Run Onboarding (CHAOS-2670)
+
+Purpose
+
+- Encodes the guided first-run journey an ORGLESS new user walks before reaching the product.
+- Gated by `NEXT_PUBLIC_GUIDED_ONBOARDING` (default off). When on, `/auth/onboard` reads the onboarding state server-side and redirects to the matching step route.
+
+Primary test files
+
+- `tests/auth-onboard.spec.ts` — guided 6-step journey against the mock backend. Runs in the `onboarding-user` project of the flag-on config (`playwright.onboarding.config.ts`), started via `pnpm test:e2e:onboarding`. **Not** in the default suite.
+- `tests/auth-onboard-legacy.spec.ts` — legacy flag-off coverage. Runs in the **default** suite (`playwright.config.ts`, `pnpm test:e2e`), asserting the single-page `/auth/onboard` → create workspace → `/dashboard` path that still ships when `NEXT_PUBLIC_GUIDED_ONBOARDING` is off.
+- `tests/live/onboarding-ui.spec.ts`, `tests/live/journey.spec.ts` — live-backend coverage of the orgless → onboarded transition.
+
+Route sequence
+
+- `/auth/signup`
+- `/auth/signin?registered=true`
+- `/auth/onboard/workspace`
+- `/auth/onboard/integration`
+- `/auth/onboard/complete`
+- `/dashboard`
+
+Step behavior
+
+- Workspace: creating a workspace routes to the **integration** step (never straight to the dashboard). A blank or whitespace-only organization name is **rejected** and the user stays on the workspace step.
+- Integration: leads with a **return-aware GitHub App install** — the install callback returns to `/auth/onboard/integration` so the guided flow resumes there. The user can also connect a secondary provider, paste a personal access token, or skip.
+- Skip: persists the skip and advances to the completion step; the dashboard then shows the persistent "Integration setup skipped" setup banner.
+- Complete: confirms setup and continues into `/dashboard`.
+
+Flag-off behavior
+
+- With `NEXT_PUBLIC_GUIDED_ONBOARDING` unset, `/auth/onboard` renders the legacy single-page workspace form and creating a workspace lands directly on the dashboard (see Full Account Setup below). The **default** Playwright suite asserts this legacy path via `tests/auth-onboard-legacy.spec.ts`; the guided journey runs separately on a dedicated flag-on dev server (`pnpm test:e2e:onboarding`).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant A as Auth UI
+    participant W as Workspace step
+    participant I as Integration step
+    participant C as Complete step
+    participant D as Dashboard
+    U->>A: Open /auth/signup and submit
+    A-->>U: Redirect to /auth/signin?registered=true
+    U->>A: Sign in (orgless new user)
+    A-->>U: Redirect to /auth/onboard/workspace
+    U->>W: Create workspace (named)
+    W-->>U: Advance to /auth/onboard/integration
+    U->>I: Connect GitHub App or Skip for now
+    I-->>U: Advance to /auth/onboard/complete
+    U->>C: Continue
+    C-->>D: Land on /dashboard (skipped → setup banner)
+```
+
+Test coverage
+
+| Layer                            | Coverage | Tests                                                            | Notes                                                                                                    |
+| -------------------------------- | -------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Frontend E2E (default, flag off) | ✅       | `tests/auth-onboard-legacy.spec.ts`                              | Legacy single-page `/auth/onboard` → create workspace → `/dashboard` (`pnpm test:e2e`).                  |
+| Frontend E2E (guided, flag on)   | ✅       | `tests/auth-onboard.spec.ts`                                     | Guided journey + blank-name rejection + GitHub App return path + skip path (`pnpm test:e2e:onboarding`). |
+| Live E2E                         | ✅       | `tests/live/onboarding-ui.spec.ts`, `tests/live/journey.spec.ts` | Orgless → onboarded transition against the live backend; no hidden auto-org.                             |
+
 ## Full Account Setup (7-Step Journey)
 
 Purpose
 
 - Covers the full initial setup progression from signup through identity mapping.
 - Validates route transitions, post-registration signin, and required admin setup pages.
+- Documents the **legacy / flag-off** admin-setup progression. When `NEXT_PUBLIC_GUIDED_ONBOARDING` is on, the onboard step is replaced by the [Guided First-Run Onboarding](#guided-first-run-onboarding-chaos-2670) route sequence above.
 
 Primary test file
 
