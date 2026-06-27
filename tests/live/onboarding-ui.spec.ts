@@ -10,6 +10,18 @@
 import { expect, test } from "@playwright/test";
 import { getSuperuserToken, liveBackendUrl, testEmail, verifyUser } from "./helpers";
 
+// The orgless guided journey (registration creates an identity only, then
+// routes into /auth/onboard) only holds when the live backend runs with
+// AUTH_AUTO_CREATE_ORG_ON_REGISTER=false AND the web app with
+// NEXT_PUBLIC_GUIDED_ONBOARDING=true (CHAOS-2670 rollout flags). The default
+// live-e2e backend keeps auto-org ON (the production-preserving default), so a
+// fresh signup still gets an org and lands on the dashboard. These two
+// orgless-behavior assertions are therefore opt-in: set LIVE_GUIDED_ONBOARDING=1
+// (with a flag-flipped backend) to run them. The guided flow itself is covered
+// flag-on by playwright.onboarding.config.ts (tests/auth-onboard.spec.ts).
+const liveGuidedOnboarding =
+    process.env.LIVE_GUIDED_ONBOARDING === "true" || process.env.LIVE_GUIDED_ONBOARDING === "1";
+
 // ──────────────────────────────────────────────────────────────────────────────
 // 1. Signup form submits successfully
 // ──────────────────────────────────────────────────────────────────────────────
@@ -56,6 +68,10 @@ test("signup form submits successfully and redirects with registered banner", as
 // ──────────────────────────────────────────────────────────────────────────────
 
 test("fresh verified user lands on onboarding, not the dashboard", async ({ page, request }) => {
+    test.skip(
+        !liveGuidedOnboarding,
+        "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) to run the orgless onboarding journey",
+    );
     const email = testEmail("ui-onboard");
     const password = "TestPass123!";
 
@@ -104,6 +120,10 @@ test("full signup then explicit workspace creation reaches dashboard", async ({
     page,
     request,
 }) => {
+    test.skip(
+        !liveGuidedOnboarding,
+        "Set LIVE_GUIDED_ONBOARDING=1 (backend AUTH_AUTO_CREATE_ORG_ON_REGISTER=false) to run the orgless onboarding journey",
+    );
     const email = testEmail("ui-journey");
     const password = "TestPass123!";
 
