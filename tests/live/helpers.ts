@@ -1,3 +1,16 @@
+/**
+ * Live E2E helpers (CHAOS-709 / CHAOS-2684).
+ *
+ * Two DELIBERATELY distinct actor types back the live onboarding journey:
+ *   - Per-test ORGLESS new users: created fresh via {@link registerUser} with a
+ *     unique {@link testEmail}. After verification they have needs_onboarding
+ *     true and must walk onboarding (explicit workspace creation) before any
+ *     org-scoped endpoint is reachable. New-signup specs must NOT assume a
+ *     workspace exists implicitly — they call {@link onboardOrg}.
+ *   - The seeded SUPERUSER admin ({@link getSuperuserToken}): a pre-provisioned
+ *     platform admin used only to verify those new users. It is never conflated
+ *     with the orgless test users.
+ */
 import type { APIRequestContext } from "@playwright/test";
 
 // Backend URL resolution — mirrors impersonation.spec.ts convention
@@ -31,6 +44,23 @@ export async function loginUser(
 ): Promise<Record<string, unknown>> {
     const res = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
         data: { email, password },
+    });
+    return (await res.json()) as Record<string, unknown>;
+}
+
+/**
+ * Explicitly create the org/workspace for a freshly-registered user (the
+ * onboarding action). New-signup specs use this so workspace creation is an
+ * explicit, asserted step rather than a hidden side effect of registration.
+ */
+export async function onboardOrg(
+    request: APIRequestContext,
+    token: string,
+    orgName: string,
+): Promise<Record<string, unknown>> {
+    const res = await request.post(`${liveBackendUrl}/api/v1/auth/onboard`, {
+        headers: authHeaders(token),
+        data: { action: "create_org", org_name: orgName },
     });
     return (await res.json()) as Record<string, unknown>;
 }

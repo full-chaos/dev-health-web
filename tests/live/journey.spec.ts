@@ -1,8 +1,12 @@
 /**
  * Live API journey tests — CHAOS-709
  *
- * Each describe group creates its own user via POST /register (self-bootstrapping).
- * No SQL seeding required. Run with playwright.live.config.ts.
+ * Each describe group creates its own ORGLESS user via POST /register
+ * (self-bootstrapping; no SQL seeding). A fresh user has needs_onboarding=true
+ * and only becomes ONBOARDED after an explicit POST /onboard (create_org) — the
+ * journey never relies on a workspace being created implicitly at registration.
+ * The seeded superuser admin (see helpers.ts) is used solely to verify emails
+ * and stays distinct from these per-test users. Run with playwright.live.config.ts.
  */
 import { expect, test } from "@playwright/test";
 import {

@@ -121,6 +121,13 @@ run_e2e() {
     print_playwright_artifact_summary
     return 1
   fi
+  # Guided first-run onboarding runs in its own config so its flag-on dev server
+  # never overlaps the default flag-off one (CHAOS-2670).
+  if ! run_pnpm_script test:e2e:onboarding; then
+    echo "Onboarding E2E tests failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return 1
+  fi
   print_playwright_artifact_summary
 }
 

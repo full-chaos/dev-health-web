@@ -22,6 +22,7 @@
         "codegen": "graphql-codegen --config codegen.ts",
         "codegen:check": "graphql-codegen --config codegen.ts --check",
         "test:e2e": "playwright test",
+        "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",
         "test:integration": "node -e \"console.log('Integration tests are not implemented yet (placeholder).')\"",

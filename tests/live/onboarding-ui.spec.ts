@@ -51,17 +51,17 @@ test("signup form submits successfully and redirects with registered banner", as
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 2. Login with verified user redirects to dashboard
-//    (Registration auto-creates an org + membership, so needs_onboarding=false)
+// 2. A fresh verified user is ORGLESS and lands on onboarding, not the dashboard
+//    (registration does NOT silently create a workspace — needs_onboarding=true)
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("login with verified user redirects to dashboard", async ({ page, request }) => {
-    const email = testEmail("ui-login");
+test("fresh verified user lands on onboarding, not the dashboard", async ({ page, request }) => {
+    const email = testEmail("ui-onboard");
     const password = "TestPass123!";
 
-    // Register via API so we start fresh
+    // Register via API so we start fresh.
     const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
-        data: { email, password, full_name: "UI Login User" },
+        data: { email, password, full_name: "UI Onboard User" },
         headers: { Origin: liveBackendUrl },
     });
     if (!regRes.ok()) {
@@ -69,49 +69,45 @@ test("login with verified user redirects to dashboard", async ({ page, request }
         return;
     }
 
-    // Verify the user's email so login succeeds. This REQUIRES a working
-    // superuser account. Without verification, the login form surfaces
-    // "Please verify your email" and never navigates away from /auth/signin,
-    // so we skip rather than assert a dashboard URL we provably can't reach.
+    // Verify the email so login succeeds. Requires the seeded superuser admin,
+    // which is kept distinct from this orgless test user.
     const regData = (await regRes.json()) as Record<string, unknown>;
     const userId = (regData.user_id ?? regData.id ?? "") as string;
     const suToken = await getSuperuserToken(request);
     if (!suToken || !userId) {
-        test.skip(
-            true,
-            "Superuser credentials not usable against this backend \u2014 cannot verify the test user. " +
-                "The workflow seeds a superuser; check the 'Seed test superuser' step logs.",
-        );
+        test.skip(true, "Superuser credentials not usable \u2014 cannot verify the test user");
         return;
     }
     const verified = await verifyUser(request, userId, suToken);
     if (!verified) {
-        test.skip(
-            true,
-            "verifyUser() returned non-OK \u2014 admin API rejected the PATCH; skipping login test.",
-        );
+        test.skip(true, "verifyUser() returned non-OK \u2014 skipping onboarding redirect test");
         return;
     }
 
-    // Now sign in through the browser
+    // Sign in through the browser. An orgless user must be routed into the
+    // onboarding flow — never straight to the dashboard.
     await page.goto("/auth/signin");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign In" }).click();
 
-    // Registration auto-creates an org, so the user lands on the dashboard
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/auth\/onboard/, { timeout: 15_000 });
+    await expect(page).not.toHaveURL(/\/dashboard/);
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 3. Full browser signup → login → dashboard journey
+// 3. Full browser journey: signup → login → explicit workspace creation → dashboard
+//    Workspace creation is an explicit, asserted step (no hidden auto-org).
 // ──────────────────────────────────────────────────────────────────────────────
 
-test("full signup then login reaches dashboard", async ({ page, request }) => {
+test("full signup then explicit workspace creation reaches dashboard", async ({
+    page,
+    request,
+}) => {
     const email = testEmail("ui-journey");
     const password = "TestPass123!";
 
-    // Register via API (browser signup already covered by test 1)
+    // Register via API (browser signup already covered by test 1).
     const regRes = await request.post(`${liveBackendUrl}/api/v1/auth/register`, {
         data: { email, password, full_name: "UI Journey User" },
         headers: { Origin: liveBackendUrl },
@@ -121,38 +117,35 @@ test("full signup then login reaches dashboard", async ({ page, request }) => {
         return;
     }
 
-    // Verify the user's email so login succeeds. See the sibling test above
-    // for the full rationale on why we skip instead of pushing through without
-    // verification.
+    // Verify the email via the seeded superuser admin so login succeeds.
     const regData = (await regRes.json()) as Record<string, unknown>;
     const userId = (regData.user_id ?? regData.id ?? "") as string;
     const suToken = await getSuperuserToken(request);
     if (!suToken || !userId) {
-        test.skip(
-            true,
-            "Superuser credentials not usable against this backend \u2014 cannot verify the test user. " +
-                "The workflow seeds a superuser; check the 'Seed test superuser' step logs.",
-        );
+        test.skip(true, "Superuser credentials not usable \u2014 cannot verify the test user");
         return;
     }
     const verified = await verifyUser(request, userId, suToken);
     if (!verified) {
-        test.skip(
-            true,
-            "verifyUser() returned non-OK \u2014 admin API rejected the PATCH; skipping login test.",
-        );
+        test.skip(true, "verifyUser() returned non-OK \u2014 skipping journey test");
         return;
     }
 
-    // Sign in through the browser
+    // Sign in → the orgless user is routed into onboarding.
     await page.goto("/auth/signin");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign In" }).click();
+    await expect(page).toHaveURL(/\/auth\/onboard/, { timeout: 15_000 });
 
-    // Should reach dashboard and see main navigation
+    // Explicitly create the workspace, then land on the dashboard.
+    await expect(page.getByRole("button", { name: "Create Workspace" })).toBeEnabled({
+        timeout: 10_000,
+    });
+    await page.getByLabel("Organization Name").fill("UI Journey Org");
+    await page.getByRole("button", { name: "Create Workspace" }).click();
+
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
-    // Verify the page has rendered (not just a redirect)
     await expect(page.getByRole("heading", { name: "Developer Health Ops Cockpit" })).toBeVisible({
         timeout: 10_000,
     });

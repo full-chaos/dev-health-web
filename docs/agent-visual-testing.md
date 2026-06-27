@@ -141,7 +141,7 @@ playwright_click((element = "Sign in button"), (ref = "<ref-from-snapshot>"));
 playwright_wait_for((text = "<some text known to be on /dashboard>"));
 ```
 
-**Expected after click:** URL becomes `http://localhost:3000/dashboard` and the dashboard renders. If you land on `/onboarding` instead, the seed step did not create the membership correctly — re-run step 3.
+**Expected after click:** URL becomes `http://localhost:3000/dashboard` and the dashboard renders. If you land on `/auth/onboard` instead, the seed step did not create the membership correctly — re-run step 3.
 
 ---
 
@@ -207,7 +207,7 @@ Do **not** run `docker compose down -v` — that wipes the seeded account and fo
 | --------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `curl http://localhost:3000/auth/signin` returns 502/504  | `api` not healthy yet                 | `docker compose ps`, wait for healthy                                                       |
 | Login form rejects credentials                            | Account not seeded, or wrong password | Re-run step 3; password is `devhealth123` (no quotes, no spaces)                            |
-| Login succeeds but redirects to `/onboarding`             | Membership row missing                | Re-run step 3 — fixtures path seeds membership idempotently                                 |
+| Login succeeds but redirects to `/auth/onboard`           | Membership row missing                | Re-run step 3 — fixtures path seeds membership idempotently                                 |
 | Login redirects to `/auth/signin` again with error banner | Rate-limited or stale session         | Wait 60s; clear cookies in Playwright context (`playwright_close_browser` then re-navigate) |
 | Dashboard renders but charts are empty                    | Analytics fixtures not seeded         | Step 3 with both `POSTGRES_URI` **and** `CLICKHOUSE_URI` set — both are required            |
 | Dashboard data looks different between runs               | Non-deterministic fixtures            | Pass `--seed 42` to `fixtures generate`                                                     |

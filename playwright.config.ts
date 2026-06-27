@@ -6,11 +6,17 @@ const junitOutputFile =
     process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? "test-results/playwright/junit.xml";
 
 const AUTH_FILE = "test-results/.auth/state.json";
-const ONBOARDING_AUTH_FILE = "test-results/.auth/onboarding-state.json";
 
+// The guided first-run onboarding journey (auth-onboard.spec.ts) runs with
+// NEXT_PUBLIC_GUIDED_ONBOARDING enabled and therefore lives in its own config
+// (playwright.onboarding.config.ts). Running a second flag-on `next dev` server
+// alongside this flag-off one corrupts Turbopack's shared CSS cache, so the two
+// suites must not start their dev servers at the same time. This default suite
+// keeps the flag off (legacy single-page behaviour) and ignores the guided
+// spec; `pnpm test:e2e:onboarding` (and CI) runs the guided config separately.
 export default defineConfig({
     testDir: "./tests",
-    testIgnore: ["live/**"],
+    testIgnore: ["live/**", "auth-onboard.spec.ts", "onboarding.setup.ts"],
     outputDir: "test-results/playwright",
     reporter: [
         ["list"],
@@ -23,18 +29,6 @@ export default defineConfig({
         {
             name: "auth-setup",
             testMatch: /auth\.setup\.ts/,
-        },
-        {
-            name: "onboarding-setup",
-            testMatch: /onboarding\.setup\.ts/,
-        },
-        {
-            name: "onboarding-user",
-            testMatch: [/auth-onboard\.spec\.ts/],
-            dependencies: ["onboarding-setup"],
-            use: {
-                storageState: ONBOARDING_AUTH_FILE,
-            },
         },
         {
             name: "authenticated",
