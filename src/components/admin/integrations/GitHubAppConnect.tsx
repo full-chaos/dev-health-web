@@ -1,6 +1,7 @@
 "use client";
 
 import { CTA_LABELS } from "@/lib/design/cta";
+import { connectGitHubHref } from "@/lib/onboarding/setupSurface";
 
 export type GitHubAppConnectResult = "connected" | "error";
 
@@ -22,13 +23,12 @@ type GitHubAppConnectProps = {
     onInstallClick?: () => void;
 };
 
-const INSTALL_PATH = "/org/admin/integrations/github-app/install";
-
+// Build the install href. A bare connect routes toward the first-run sync
+// surface (CHAOS-2681) so it lands on "start your sync", not a dead credential
+// page; a caller-provided returnTo (e.g. the guided-onboarding integration step,
+// CHAOS-2675) overrides that destination.
 function buildInstallHref(returnTo?: string): string {
-    if (!returnTo) {
-        return INSTALL_PATH;
-    }
-    return `${INSTALL_PATH}?return_to=${encodeURIComponent(returnTo)}`;
+    return returnTo ? connectGitHubHref(returnTo) : connectGitHubHref();
 }
 
 /**

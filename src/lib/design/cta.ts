@@ -74,6 +74,12 @@ export const CTA_LABELS = {
     connectGitHubApp: "Connect GitHub App",
     /** Advance to the next step of the guided onboarding flow (CHAOS-2675). */
     continueStep: "Continue",
+    /** Continue the guided first-run setup from the dashboard (CHAOS-2678). */
+    continueSetup: "Continue setup",
+    /** Choose which repositories to sync during first-run setup (CHAOS-2681). */
+    selectRepositories: "Select repositories",
+    /** Begin the first repository sync after explicit confirmation (CHAOS-2681). */
+    startSync: "Start sync",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
