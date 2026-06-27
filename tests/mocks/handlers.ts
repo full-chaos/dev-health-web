@@ -1498,8 +1498,17 @@ const INITIAL_ONBOARDING_PROGRESS: OnboardingProgress = {
 
 const onboardingProgress: OnboardingProgress = { ...INITIAL_ONBOARDING_PROGRESS };
 
+// CHAOS-2670 / CHAOS-2684: stateful register store. The signup form POSTs to
+// /api/v1/auth/register; recording the email here lets the login handler
+// recognize the SAME fresh signup as an ORGLESS needs_onboarding user, so a
+// single email can drive signup -> signin -> guided onboarding (rather than the
+// register handler returning a bare { registered: true } and the journey having
+// to fall back to a different canned login user). Cleared on reset.
+const registeredOrglessUsers = new Map<string, { password: string; fullName: string | null }>();
+
 function resetOnboardingProgress(overrides?: Partial<OnboardingProgress>) {
     Object.assign(onboardingProgress, INITIAL_ONBOARDING_PROGRESS, overrides ?? {});
+    registeredOrglessUsers.clear();
 }
 
 /** C1 next_step derived from progress (deterministic, mirrors the backend). */
@@ -1574,6 +1583,28 @@ export const handlers = [
                 user: {
                     id: "e2e-user-new",
                     email: "newuser@example.com",
+                    org_id: null,
+                    role: "member",
+                    is_superuser: false,
+                    permissions: ["read", "write"],
+                },
+                access_token: "mock-access-token-e2e",
+                refresh_token: "mock-refresh-token-e2e",
+                token_type: "bearer",
+                expires_in: 86400,
+                needs_onboarding: true,
+            });
+        }
+        // Dynamically registered ORGLESS users (stateful register handler). A
+        // fresh signup recorded by /api/v1/auth/register signs in HERE with its
+        // OWN email as a needs_onboarding user, so the guided journey is a
+        // genuine same-user signup -> signin -> onboarding flow (CHAOS-2670).
+        const registered = registeredOrglessUsers.get(body.email);
+        if (registered && body.password === registered.password) {
+            return HttpResponse.json<LoginResponseBody>({
+                user: {
+                    id: `e2e-user-${body.email}`,
+                    email: body.email,
                     org_id: null,
                     role: "member",
                     is_superuser: false,
@@ -2507,9 +2538,22 @@ export const handlers = [
     }),
 
     http.post("*/api/v1/auth/register", async ({ request }) => {
-        const body = (await request.json()) as { email?: string } | null;
+        const body = (await request.json()) as {
+            email?: string;
+            password?: string;
+            full_name?: string;
+        } | null;
         if (body?.email === "existing@example.com") {
             return HttpResponse.json({ detail: "Email already registered" }, { status: 409 });
+        }
+        // Stateful: record the fresh signup as an orgless needs_onboarding user so
+        // the login handler recognizes the SAME email and drives it through the
+        // guided journey (CHAOS-2670 / CHAOS-2684).
+        if (body?.email) {
+            registeredOrglessUsers.set(body.email, {
+                password: typeof body.password === "string" ? body.password : "password123",
+                fullName: typeof body.full_name === "string" ? body.full_name : null,
+            });
         }
         return HttpResponse.json({ registered: true }, { status: 201 });
     }),

@@ -12,8 +12,9 @@ const AUTH_FILE = "test-results/.auth/state.json";
 // (playwright.onboarding.config.ts). Running a second flag-on `next dev` server
 // alongside this flag-off one corrupts Turbopack's shared CSS cache, so the two
 // suites must not start their dev servers at the same time. This default suite
-// keeps the flag off (legacy single-page behaviour) and ignores the guided
-// spec; `pnpm test:e2e:onboarding` (and CI) runs the guided config separately.
+// keeps the flag off and asserts the legacy single-page path via
+// auth-onboard-legacy.spec.ts, while ignoring the guided spec; `pnpm
+// test:e2e:onboarding` (and CI) runs the guided config separately.
 export default defineConfig({
     testDir: "./tests",
     testIgnore: ["live/**", "auth-onboard.spec.ts", "onboarding.setup.ts"],
@@ -42,6 +43,7 @@ export default defineConfig({
                 /auth-onboard\.spec\.ts/,
                 /onboarding\.setup\.ts/,
                 /account-creation-journey\.spec\.ts/,
+                /auth-onboard-legacy\.spec\.ts/,
             ],
             dependencies: ["auth-setup"],
             use: {
@@ -55,6 +57,7 @@ export default defineConfig({
                 /(?:^|\/)admin\.spec\.ts$/,
                 /marketing-pricing\.spec\.ts/,
                 /auth-signup\.spec\.ts/,
+                /auth-onboard-legacy\.spec\.ts/,
             ],
         },
     ],

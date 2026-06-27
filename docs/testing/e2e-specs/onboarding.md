@@ -9,7 +9,8 @@ Purpose
 
 Primary test files
 
-- `tests/auth-onboard.spec.ts` — guided journey against the mock backend (runs in the `onboarding-user` Playwright project on the flag-on dev server).
+- `tests/auth-onboard.spec.ts` — guided 6-step journey against the mock backend. Runs in the `onboarding-user` project of the flag-on config (`playwright.onboarding.config.ts`), started via `pnpm test:e2e:onboarding`. **Not** in the default suite.
+- `tests/auth-onboard-legacy.spec.ts` — legacy flag-off coverage. Runs in the **default** suite (`playwright.config.ts`, `pnpm test:e2e`), asserting the single-page `/auth/onboard` → create workspace → `/dashboard` path that still ships when `NEXT_PUBLIC_GUIDED_ONBOARDING` is off.
 - `tests/live/onboarding-ui.spec.ts`, `tests/live/journey.spec.ts` — live-backend coverage of the orgless → onboarded transition.
 
 Route sequence
@@ -30,7 +31,7 @@ Step behavior
 
 Flag-off behavior
 
-- With `NEXT_PUBLIC_GUIDED_ONBOARDING` unset, `/auth/onboard` renders the legacy single-page workspace form and creating a workspace lands directly on the dashboard (see Full Account Setup below). The default Playwright suite asserts this legacy behavior; the guided journey runs on a dedicated flag-on dev server.
+- With `NEXT_PUBLIC_GUIDED_ONBOARDING` unset, `/auth/onboard` renders the legacy single-page workspace form and creating a workspace lands directly on the dashboard (see Full Account Setup below). The **default** Playwright suite asserts this legacy path via `tests/auth-onboard-legacy.spec.ts`; the guided journey runs separately on a dedicated flag-on dev server (`pnpm test:e2e:onboarding`).
 
 ```mermaid
 sequenceDiagram
@@ -55,10 +56,11 @@ sequenceDiagram
 
 Test coverage
 
-| Layer        | Coverage | Tests                                                            | Notes                                                                        |
-| ------------ | -------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Frontend E2E | ✅       | `tests/auth-onboard.spec.ts`                                     | Guided journey + blank-name rejection + GitHub App return path + skip path.  |
-| Live E2E     | ✅       | `tests/live/onboarding-ui.spec.ts`, `tests/live/journey.spec.ts` | Orgless → onboarded transition against the live backend; no hidden auto-org. |
+| Layer                            | Coverage | Tests                                                            | Notes                                                                                                    |
+| -------------------------------- | -------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Frontend E2E (default, flag off) | ✅       | `tests/auth-onboard-legacy.spec.ts`                              | Legacy single-page `/auth/onboard` → create workspace → `/dashboard` (`pnpm test:e2e`).                  |
+| Frontend E2E (guided, flag on)   | ✅       | `tests/auth-onboard.spec.ts`                                     | Guided journey + blank-name rejection + GitHub App return path + skip path (`pnpm test:e2e:onboarding`). |
+| Live E2E                         | ✅       | `tests/live/onboarding-ui.spec.ts`, `tests/live/journey.spec.ts` | Orgless → onboarded transition against the live backend; no hidden auto-org.                             |
 
 ## Full Account Setup (7-Step Journey)
 

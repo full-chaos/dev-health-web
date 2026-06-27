@@ -177,9 +177,11 @@ test.describe("guided first-run journey (fresh signup)", () => {
         await expect(page).toHaveURL(/\/auth\/signin\?registered=true/, { timeout: 15_000 });
         await expect(page.getByText("Account created successfully")).toBeVisible();
 
-        // 3. Sign in as the orgless new user → guided onboarding takes over and
-        //    routes to the workspace step (never straight to the dashboard).
-        await page.getByLabel("Email").fill("newuser@example.com");
+        // 3. Sign in as the SAME just-registered orgless user → the stateful
+        //    register handler made journey@example.com a needs_onboarding user,
+        //    so guided onboarding takes over and routes to the workspace step
+        //    (never straight to the dashboard).
+        await page.getByLabel("Email").fill("journey@example.com");
         await page.getByLabel("Password").fill("password123");
         await page.getByRole("button", { name: "Sign In" }).click();
         await expect(page).toHaveURL(/\/auth\/onboard\/workspace/, { timeout: 30_000 });
