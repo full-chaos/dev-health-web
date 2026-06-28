@@ -200,7 +200,7 @@ export function InvestmentMixSection({
                         name: subLabel,
                         value: sub.value,
                         itemStyle: {
-                            color: adjustHex(baseColor, 18 + (idx % 3) * 10),
+                            color: adjustHex(baseColor, 8 + (idx % 3) * 6),
                             opacity: typeof subOpacity === "number" ? clamp(subOpacity) : undefined,
                         },
                         nodeType: "subcategory",
@@ -299,7 +299,7 @@ export function InvestmentMixSection({
                     <ChartTypeToggle
                         options={TREEMAP_SUNBURST_OPTIONS}
                         value={mixChartType}
-                        onChange={setMixChartType}
+                        onChangeAction={setMixChartType}
                     />
                 </div>
             </div>

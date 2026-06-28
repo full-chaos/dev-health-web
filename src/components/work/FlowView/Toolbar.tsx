@@ -29,7 +29,7 @@ export function Toolbar({
                 <ChartTypeToggle
                     options={TREEMAP_SUNBURST_OPTIONS}
                     value={chartType}
-                    onChange={onChartTypeChange}
+                    onChangeAction={onChartTypeChange}
                 />
             )}
         </div>

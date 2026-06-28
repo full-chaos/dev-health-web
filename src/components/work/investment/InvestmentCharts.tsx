@@ -129,7 +129,7 @@ export function InvestmentCharts({
                 <ChartTypeToggle
                     options={INVESTMENT_SANKEY_CHORD_OPTIONS}
                     value={chartType}
-                    onChange={setChartType}
+                    onChangeAction={setChartType}
                 />
             </div>
 
