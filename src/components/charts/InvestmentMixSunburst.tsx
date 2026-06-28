@@ -113,7 +113,7 @@ export function InvestmentMixSunburst({
                                   name: formatSubcategoryLabel(entry.key, true),
                                   value: entry.value,
                                   itemStyle: {
-                                      color: adjustHex(baseColor, 18 + (idx % 3) * 10),
+                                      color: adjustHex(baseColor, 8 + (idx % 3) * 6),
                                       opacity:
                                           typeof childOpacity === "number"
                                               ? childOpacity
@@ -252,6 +252,8 @@ export function InvestmentMixSunburst({
                             return p.name ?? "";
                         },
                         color: chartTheme.text,
+                        textBorderColor: chartTheme.background,
+                        textBorderWidth: 2,
                         fontSize: 11,
                         minAngle: 10,
                     },
@@ -267,6 +269,8 @@ export function InvestmentMixSunburst({
                             label: {
                                 fontSize: 12,
                                 fontWeight: 700,
+                                textBorderColor: chartTheme.background,
+                                textBorderWidth: 2,
                             },
                             itemStyle: { borderWidth: 3 },
                         },
@@ -275,7 +279,13 @@ export function InvestmentMixSunburst({
                             r: "70%",
                             label: { show: false },
                             emphasis: {
-                                label: { show: true, color: chartTheme.text, fontSize: 11 },
+                                label: {
+                                    show: true,
+                                    color: chartTheme.text,
+                                    textBorderColor: chartTheme.background,
+                                    textBorderWidth: 2,
+                                    fontSize: 11,
+                                },
                             },
                             itemStyle: { borderWidth: 2 },
                         },
