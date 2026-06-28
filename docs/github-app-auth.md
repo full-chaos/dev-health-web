@@ -18,11 +18,11 @@ GitHub social login is an optional provider in NextAuth.js v5. It is enabled onl
 
 See [`src/lib/config.ts`](../src/lib/config.ts) for the runtime env schema.
 
-| Variable             | Required                           | Description                                                                                  |
-| -------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
+| Variable             | Required                           | Description                                                                                     |
+| -------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `AUTH_URL`           | Yes outside simple localhost dev   | Public web origin Auth.js uses to derive `redirect_uri`, for example `https://app.example.com`. |
-| `AUTH_GITHUB_ID`     | Yes (to enable)                    | GitHub OAuth Client ID. Can be the same value as `GITHUB_APP_CLIENT_ID` in `ops/.env`.        |
-| `AUTH_GITHUB_SECRET` | Yes (when `AUTH_GITHUB_ID` is set) | GitHub OAuth Client secret. Can be the same value as `GITHUB_APP_CLIENT_SECRET` in `ops/.env`. |
+| `AUTH_GITHUB_ID`     | Yes (to enable)                    | GitHub OAuth Client ID. Can be the same value as `GITHUB_APP_CLIENT_ID` in `ops/.env`.          |
+| `AUTH_GITHUB_SECRET` | Yes (when `AUTH_GITHUB_ID` is set) | GitHub OAuth Client secret. Can be the same value as `GITHUB_APP_CLIENT_SECRET` in `ops/.env`.  |
 
 The ops backend must also know the same OAuth credentials so `/api/v1/auth/social-login`
 can verify the GitHub access token before issuing a Dev Health session:
