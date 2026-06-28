@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useMemo } from "react";
-// Type-only import from full echarts package (erased at runtime — no bundle impact).
+// Type-only import from full echarts package (erased at runtime - no bundle impact).
 import type { EChartsOption } from "echarts";
 import { TreemapChart as EChartsTreemapChart } from "echarts/charts";
 
@@ -10,9 +10,18 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
+import { getAccessibleTextColor } from "@/lib/chartColorContrast";
 import { formatPercent } from "@/lib/formatters";
 
 echarts.use([EChartsTreemapChart]);
+
+type TreemapTextStyle = {
+    color?: string;
+    fontSize?: number;
+    fontWeight?: number;
+    show?: boolean;
+    [key: string]: unknown;
+};
 
 export type TreemapNode = {
     name: string;
@@ -22,6 +31,8 @@ export type TreemapNode = {
         color?: string;
         opacity?: number;
     };
+    label?: TreemapTextStyle;
+    upperLabel?: TreemapTextStyle;
     [key: string]: unknown;
 };
 
@@ -43,6 +54,36 @@ type TreemapChartProps = {
         percent: number;
         data?: TreemapNode;
     }) => void;
+};
+
+const applyAccessibleLabels = (
+    node: TreemapNode,
+    surfaceColor: string,
+    fallbackTextColor: string,
+    inheritedFillColor?: string,
+): TreemapNode => {
+    const fillColor = node.itemStyle?.color ?? inheritedFillColor;
+    const labelColor = getAccessibleTextColor(
+        fillColor,
+        surfaceColor,
+        fallbackTextColor,
+        node.itemStyle?.opacity,
+    );
+
+    return {
+        ...node,
+        label: {
+            ...node.label,
+            color: labelColor,
+        },
+        upperLabel: {
+            ...node.upperLabel,
+            color: labelColor,
+        },
+        children: node.children?.map((child) =>
+            applyAccessibleLabels(child, surfaceColor, fallbackTextColor, fillColor),
+        ),
+    };
 };
 
 /**
@@ -68,7 +109,7 @@ export function TreemapChart({
 
     const totalValue = data.value || 0;
 
-    // Assign colors to top-level children
+    // Assign colors to top-level children.
     const coloredData = useMemo(() => {
         if (useInputColors || !data.children?.length) return data;
 
@@ -93,6 +134,11 @@ export function TreemapChart({
             children: data.children.map((child, idx) => assignColors(child, 0, idx)),
         };
     }, [data, chartColors, useInputColors]);
+
+    const accessibleData = useMemo(
+        () => applyAccessibleLabels(coloredData, chartTheme.background, chartTheme.text),
+        [chartTheme.background, chartTheme.text, coloredData],
+    );
 
     const handleClick = useCallback(
         (params: unknown) => {
@@ -163,7 +209,7 @@ export function TreemapChart({
                 series: [
                     {
                         type: "treemap" as const,
-                        data: coloredData.children ?? [],
+                        data: accessibleData.children ?? [],
                         top: 8,
                         left: 8,
                         right: 8,
@@ -243,7 +289,7 @@ export function TreemapChart({
                 ],
             }) as EChartsOption,
         [
-            coloredData,
+            accessibleData,
             totalValue,
             unit,
             chartTheme,
