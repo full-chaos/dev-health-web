@@ -2,16 +2,16 @@ import { useSyncExternalStore } from "react";
 import { isServer } from "@/lib/env";
 
 export const chartColors = [
-    "#1e88e5",
-    "#3949ab",
-    "#8e24aa",
-    "#00897b",
-    "#43a047",
-    "#7cb342",
-    "#f9a825",
-    "#fb8c00",
-    "#f4511e",
-    "#e53935",
+    "#1b7ace",
+    "#33429a",
+    "#802099",
+    "#007b6f",
+    "#3c9040",
+    "#70a13b",
+    "#e09721",
+    "#e27e00",
+    "#dc491b",
+    "#ce3330",
 ];
 
 export const fallbackTheme = {
@@ -109,19 +109,11 @@ export const setupObservers = () => {
         attributeFilter: ["data-theme", "data-palette"],
     });
 
-    if (media.addEventListener) {
-        media.addEventListener("change", updateStore);
-    } else {
-        media.addListener(updateStore);
-    }
+    media.addEventListener("change", updateStore);
 
     cleanupFn = () => {
         observer.disconnect();
-        if (media.removeEventListener) {
-            media.removeEventListener("change", updateStore);
-        } else {
-            media.removeListener(updateStore);
-        }
+        media.removeEventListener("change", updateStore);
         cleanupFn = null;
     };
 };
