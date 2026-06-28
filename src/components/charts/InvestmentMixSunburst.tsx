@@ -9,6 +9,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import { getAccessibleTextColor } from "@/lib/chartColorContrast";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
@@ -101,6 +102,12 @@ export function InvestmentMixSunburst({
             const themeLabel = titleCase(theme.key);
             const baseColor = themeColorMap.get(theme.key) ?? chartTheme.grid;
             const themeOpacity = evidenceQualityDistribution?.[theme.key];
+            const themeLabelColor = getAccessibleTextColor(
+                baseColor,
+                chartTheme.background,
+                chartTheme.text,
+                themeOpacity,
+            );
             const themeChildren =
                 focusedTheme && focusedTheme !== theme.key
                     ? undefined
@@ -109,15 +116,28 @@ export function InvestmentMixSunburst({
                           .sort((a, b) => b.value - a.value)
                           .map((entry, idx) => {
                               const childOpacity = evidenceQualityDistribution?.[entry.key];
+                              const childColor = adjustHex(baseColor, 18 + (idx % 3) * 10);
+                              const childLabelColor = getAccessibleTextColor(
+                                  childColor,
+                                  chartTheme.background,
+                                  chartTheme.text,
+                                  childOpacity,
+                              );
                               return {
                                   name: formatSubcategoryLabel(entry.key, true),
                                   value: entry.value,
                                   itemStyle: {
-                                      color: adjustHex(baseColor, 18 + (idx % 3) * 10),
+                                      color: childColor,
                                       opacity:
-                                          typeof childOpacity === "number"
-                                              ? childOpacity
-                                              : undefined,
+                                          typeof childOpacity === "number" ? childOpacity : undefined,
+                                  },
+                                  label: {
+                                      color: childLabelColor,
+                                  },
+                                  emphasis: {
+                                      label: {
+                                          color: childLabelColor,
+                                      },
                                   },
                                   nodeType: "subcategory",
                                   themeKey: theme.key,
@@ -132,13 +152,23 @@ export function InvestmentMixSunburst({
                     color: baseColor,
                     opacity: typeof themeOpacity === "number" ? themeOpacity : undefined,
                 },
+                label: {
+                    color: themeLabelColor,
+                },
+                emphasis: {
+                    label: {
+                        color: themeLabelColor,
+                    },
+                },
                 nodeType: "theme",
                 themeKey: theme.key,
                 children: themeChildren?.length ? themeChildren : undefined,
             };
         });
     }, [
+        chartTheme.background,
         chartTheme.grid,
+        chartTheme.text,
         evidenceQualityDistribution,
         focusedTheme,
         sortedThemes,
@@ -275,7 +305,7 @@ export function InvestmentMixSunburst({
                             r: "70%",
                             label: { show: false },
                             emphasis: {
-                                label: { show: true, color: chartTheme.text, fontSize: 11 },
+                                label: { show: true, fontSize: 11 },
                             },
                             itemStyle: { borderWidth: 2 },
                         },
