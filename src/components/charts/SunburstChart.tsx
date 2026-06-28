@@ -31,8 +31,8 @@ type SunburstChartProps = {
     className?: string;
     style?: CSSProperties;
     useInputColors?: boolean;
-    tooltipFormatter?: (params: unknown, totalValue: number, unit: string) => string;
-    onNodeClick?: (node: {
+    tooltipFormatterAction?: (params: unknown, totalValue: number, unit: string) => string;
+    onNodeClickAction?: (node: {
         name: string;
         value: number;
         path: string[];
@@ -54,8 +54,8 @@ export function SunburstChart({
     className,
     style,
     useInputColors = false,
-    tooltipFormatter,
-    onNodeClick,
+    tooltipFormatterAction,
+    onNodeClickAction,
 }: SunburstChartProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
@@ -91,7 +91,7 @@ export function SunburstChart({
 
     const handleClick = useCallback(
         (params: unknown) => {
-            if (!onNodeClick || !params || typeof params !== "object") return;
+            if (!onNodeClickAction || !params || typeof params !== "object") return;
             const entry = params as {
                 data?: { name?: string; value?: number };
                 treePathInfo?: Array<{ name: string; value: number }>;
@@ -103,9 +103,9 @@ export function SunburstChart({
             const value = nodeData.value ?? 0;
             const percent = calcPercent(value, totalValue);
 
-            onNodeClick({ name: nodeData.name, value, path, percent, data: nodeData });
+            onNodeClickAction({ name: nodeData.name, value, path, percent, data: nodeData });
         },
-        [onNodeClick, totalValue],
+        [onNodeClickAction, totalValue],
     );
 
     const option = useMemo(
@@ -118,8 +118,8 @@ export function SunburstChart({
                     color: chartTheme.text,
                 },
                 formatter: (params: unknown) => {
-                    if (tooltipFormatter) {
-                        return tooltipFormatter(params, totalValue, unit);
+                    if (tooltipFormatterAction) {
+                        return tooltipFormatterAction(params, totalValue, unit);
                     }
                     if (!params || typeof params !== "object") return "";
                     const entry = params as {
@@ -166,6 +166,8 @@ export function SunburstChart({
                             return p.name ?? "";
                         },
                         color: chartTheme.text,
+                        textBorderColor: chartTheme.background,
+                        textBorderWidth: 2,
                         fontSize: 10,
                         minAngle: 10,
                     },
@@ -182,6 +184,8 @@ export function SunburstChart({
                                 fontSize: 12,
                                 fontWeight: 600,
                                 rotate: 0,
+                                textBorderColor: chartTheme.background,
+                                textBorderWidth: 2,
                             },
                             itemStyle: {
                                 borderWidth: 3,
@@ -192,6 +196,8 @@ export function SunburstChart({
                             r: "65%",
                             label: {
                                 fontSize: 10,
+                                textBorderColor: chartTheme.background,
+                                textBorderWidth: 2,
                             },
                             itemStyle: {
                                 borderWidth: 2,
@@ -203,6 +209,8 @@ export function SunburstChart({
                             label: {
                                 fontSize: 9,
                                 position: "outside" as const,
+                                textBorderColor: chartTheme.background,
+                                textBorderWidth: 2,
                             },
                             itemStyle: {
                                 borderWidth: 1,
@@ -212,7 +220,7 @@ export function SunburstChart({
                 },
             ],
         }),
-        [coloredData, totalValue, unit, chartTheme, tooltipFormatter],
+        [coloredData, totalValue, unit, chartTheme, tooltipFormatterAction],
     );
 
     return (

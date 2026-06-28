@@ -67,7 +67,7 @@ export function useInvestmentColorMaps({
             map.set(theme.key, baseColor);
             const subs = subcategories.filter((s) => s.themeKey === theme.key);
             subs.forEach((sub, subIdx) => {
-                map.set(sub.key, adjustHex(baseColor, 18 + (subIdx % 3) * 10));
+                map.set(sub.key, adjustHex(baseColor, 8 + (subIdx % 3) * 6));
             });
         });
         return map;

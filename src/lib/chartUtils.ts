@@ -76,7 +76,7 @@ export const calcPercent = (value: number, total: number): number => {
  * Lightens a hex color based on tree depth for hierarchical charts.
  * At depth 0, returns the base color unchanged.
  */
-export const lightenByDepth = (color: string, depth: number, factor = 15): string => {
+export const lightenByDepth = (color: string, depth: number, factor = 10): string => {
     if (depth <= 0) return color;
 
     const normalized = color.replace("#", "");

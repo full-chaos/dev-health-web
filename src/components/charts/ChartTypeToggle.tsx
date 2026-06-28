@@ -11,7 +11,7 @@ type ChartTypeOption<T extends string = string> = {
 type ChartTypeToggleProps<T extends string = string> = {
     options: ChartTypeOption<T>[];
     value: T;
-    onChange: (value: T) => void;
+    onChangeAction: (value: T) => void;
     className?: string;
 };
 
@@ -22,7 +22,7 @@ type ChartTypeToggleProps<T extends string = string> = {
 export function ChartTypeToggle<T extends string = string>({
     options,
     value,
-    onChange,
+    onChangeAction,
     className = "",
 }: ChartTypeToggleProps<T>) {
     return (
@@ -38,12 +38,12 @@ export function ChartTypeToggle<T extends string = string>({
                         key={option.id}
                         role="radio"
                         aria-checked={isActive}
-                        onClick={() => onChange(option.id)}
+                        onClick={() => onChangeAction(option.id)}
                         className={`
               flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] font-medium transition-all duration-150
               ${
                   isActive
-                      ? "bg-(--accent-2) text-white shadow-sm"
+                      ? "bg-[color-mix(in_srgb,var(--accent-2)_55%,black)] text-white shadow-sm"
                       : "text-(--ink-muted) hover:text-foreground hover:bg-(--card-80)"
               }
             `}

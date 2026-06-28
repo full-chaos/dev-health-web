@@ -148,7 +148,9 @@ export function Chart({
                         data={hotspotHierarchy}
                         unit="changes"
                         height={500}
-                        onNodeClick={(node) => onTreemapClick(node, "code_hotspots", "changes")}
+                        onNodeClickAction={(node) =>
+                            onTreemapClick(node, "code_hotspots", "changes")
+                        }
                     />
                 ))}
 

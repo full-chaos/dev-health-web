@@ -18,17 +18,17 @@ describe("ChartTypeToggle", () => {
                 <ChartTypeToggle
                     options={INVESTMENT_SANKEY_CHORD_OPTIONS}
                     value="sankey"
-                    onChange={onChange}
+                    onChangeAction={onChange}
                 />
                 <ChartTypeToggle
                     options={TREEMAP_SUNBURST_OPTIONS}
                     value="treemap"
-                    onChange={vi.fn()}
+                    onChangeAction={vi.fn()}
                 />
                 <ChartTypeToggle
                     options={SANKEY_HEATMAP_OPTIONS}
                     value="sankey"
-                    onChange={vi.fn()}
+                    onChangeAction={vi.fn()}
                 />
             </>,
         );
@@ -38,6 +38,10 @@ describe("ChartTypeToggle", () => {
         expect(screen.getByRole("radio", { name: /sunburst/i })).toBeInTheDocument();
         expect(screen.getAllByRole("radio", { name: /sankey/i }).length).toBeGreaterThan(0);
         expect(screen.getByRole("radio", { name: /heatmap/i })).toBeInTheDocument();
+        expect(screen.getByRole("radio", { name: /treemap/i })).toHaveClass(
+            "bg-[color-mix(in_srgb,var(--accent-2)_55%,black)]",
+        );
+        expect(screen.getByRole("radio", { name: /treemap/i })).toHaveClass("text-white");
 
         await user.click(screen.getByRole("radio", { name: /chord/i }));
         expect(onChange).toHaveBeenCalledWith("chord");

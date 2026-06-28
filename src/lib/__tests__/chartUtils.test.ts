@@ -170,8 +170,8 @@ describe("chartUtils", () => {
         });
 
         it("lightens colors for positive depths", () => {
-            expect(lightenByDepth("#112233", 1)).toBe("#203142");
-            expect(lightenByDepth("#112233", 2)).toBe("#2f4051");
+            expect(lightenByDepth("#112233", 1)).toBe("#1b2c3d");
+            expect(lightenByDepth("#112233", 2)).toBe("#253647");
         });
 
         it("caps channels at white for large depths", () => {
