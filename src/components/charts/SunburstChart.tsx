@@ -9,8 +9,18 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
+import { getAccessibleTextColor } from "@/lib/chartColorContrast";
 
 echarts.use([EChartsSunburstChart]);
+
+type SunburstTextStyle = {
+    color?: string;
+    fontSize?: number;
+    fontWeight?: number;
+    rotate?: number | string;
+    show?: boolean;
+    [key: string]: unknown;
+};
 
 export type SunburstNode = {
     name: string;
@@ -19,6 +29,11 @@ export type SunburstNode = {
     itemStyle?: {
         color?: string;
         opacity?: number;
+    };
+    label?: SunburstTextStyle;
+    emphasis?: {
+        label?: SunburstTextStyle;
+        [key: string]: unknown;
     };
     [key: string]: unknown;
 };
@@ -39,6 +54,39 @@ type SunburstChartProps = {
         percent: number;
         data?: SunburstNode;
     }) => void;
+};
+
+const applyAccessibleLabels = (
+    node: SunburstNode,
+    surfaceColor: string,
+    fallbackTextColor: string,
+    inheritedFillColor?: string,
+): SunburstNode => {
+    const fillColor = node.itemStyle?.color ?? inheritedFillColor;
+    const labelColor = getAccessibleTextColor(
+        fillColor,
+        surfaceColor,
+        fallbackTextColor,
+        node.itemStyle?.opacity,
+    );
+
+    return {
+        ...node,
+        label: {
+            ...node.label,
+            color: labelColor,
+        },
+        emphasis: {
+            ...node.emphasis,
+            label: {
+                ...node.emphasis?.label,
+                color: labelColor,
+            },
+        },
+        children: node.children?.map((child) =>
+            applyAccessibleLabels(child, surfaceColor, fallbackTextColor, fillColor),
+        ),
+    };
 };
 
 /**
@@ -63,7 +111,7 @@ export function SunburstChart({
 
     const totalValue = data.value || 0;
 
-    // Assign colors to top-level children
+    // Assign colors to top-level children.
     const coloredData = useMemo(() => {
         if (useInputColors || !data.children?.length) return data;
 
@@ -88,6 +136,11 @@ export function SunburstChart({
             children: data.children.map((child, idx) => assignColors(child, 0, idx)),
         };
     }, [data, chartColors, useInputColors]);
+
+    const accessibleData = useMemo(
+        () => applyAccessibleLabels(coloredData, chartTheme.background, chartTheme.text),
+        [chartTheme.background, chartTheme.text, coloredData],
+    );
 
     const handleClick = useCallback(
         (params: unknown) => {
@@ -129,8 +182,7 @@ export function SunburstChart({
                     const nodeData = entry.data;
                     if (!nodeData?.name) return "";
 
-                    const path =
-                        entry.treePathInfo?.map((p) => p.name).join(" → ") ?? nodeData.name;
+                    const path = entry.treePathInfo?.map((p) => p.name).join(" → ") ?? nodeData.name;
                     const value = nodeData.value ?? 0;
                     const percent = calcPercent(value, totalValue);
 
@@ -148,7 +200,7 @@ export function SunburstChart({
             series: [
                 {
                     type: "sunburst" as const,
-                    data: coloredData.children ?? [],
+                    data: accessibleData.children ?? [],
                     radius: ["15%", "90%"],
                     center: ["50%", "50%"],
                     sort: "desc" as const,
@@ -212,7 +264,7 @@ export function SunburstChart({
                 },
             ],
         }),
-        [coloredData, totalValue, unit, chartTheme, tooltipFormatter],
+        [accessibleData, totalValue, unit, chartTheme, tooltipFormatter],
     );
 
     return (
