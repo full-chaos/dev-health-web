@@ -907,6 +907,43 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         });
     }
 
+    if (query.includes("BusFactor")) {
+        return HttpResponse.json({
+            data: {
+                busFactor: {
+                    orgId: vars.orgId ?? "org-e2e",
+                    scope: { repoId: null, teamId: null },
+                    value: 1,
+                    evidenceSampleCount: 3773,
+                    topMaintainers: [
+                        {
+                            author: "chrisgeo@users.noreply.github.com",
+                            sharePercent: 98.8,
+                        },
+                        {
+                            author: "49699333+dependabot[bot]@users.noreply.github.com",
+                            sharePercent: 1.2,
+                        },
+                    ],
+                    repos: [
+                        {
+                            repoId: "repo-ops",
+                            repoName: "full-chaos/dev-health-ops",
+                            value: 1,
+                            evidenceSampleCount: 1947,
+                            topMaintainers: [
+                                {
+                                    author: "chrisgeo@users.noreply.github.com",
+                                    sharePercent: 99.9,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        });
+    }
+
     // Investment breakdown query (analytics).
     if (query.includes("InvestmentBreakdown") || query.includes("analytics")) {
         return HttpResponse.json({
