@@ -102,7 +102,7 @@ export function FlameView({ filters }: FlameViewProps) {
                                 onClick={() => handleModeChange(m)}
                                 className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${
                                     mode === m
-                                        ? "border-(--accent-2) bg-(--accent-2) text-white"
+                                        ? "border-(--accent-2) bg-[color-mix(in_srgb,var(--accent-2)_55%,black)] text-white shadow-sm"
                                         : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
                                 }`}
                             >

@@ -259,7 +259,7 @@ export async function getDiagnoseSignals(
                       ).then((r) => r.complexityTimeseries),
             "complexity",
         ),
-        safe(() => getBusFactorData(filters), "bus-factor"),
+        safe(() => (isTestMode ? Promise.resolve(null) : getBusFactorData(filters)), "bus-factor"),
         safe(
             () =>
                 isTestMode || !cognitiveLoadScopeSupported

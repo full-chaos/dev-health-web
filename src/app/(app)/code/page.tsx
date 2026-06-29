@@ -146,23 +146,51 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                             spark={churnMetric?.spark}
                             caption="Churn over the active window"
                         />
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                        <div
+                            className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+                            data-testid="ownership-patterns-card"
+                        >
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">
                                     Ownership Patterns
                                 </h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    Manual
+                                    {hasBusFactorEvidence ? "Git blame" : "Manual"}
                                 </span>
                             </div>
                             <p className="mt-3 text-sm text-(--ink-muted)">
                                 Ownership concentration shows who carries the most-changed code in
                                 this view.
                             </p>
-                            <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
-                                Connect a Git provider with commit history to surface ownership
-                                concentration here.
-                            </div>
+                            {hasBusFactorEvidence ? (
+                                <div className="mt-4 space-y-3 text-sm">
+                                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                            Scope-wide ownership sample
+                                        </p>
+                                        <p className="mt-2 text-xs text-(--ink-muted)">
+                                            {busFactor?.evidenceSampleCount ?? 0} file-change
+                                            samples
+                                        </p>
+                                    </div>
+                                    {topMaintainers.slice(0, 3).map((maintainer) => (
+                                        <div
+                                            key={maintainer.author}
+                                            className="flex items-center justify-between gap-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                        >
+                                            <span className="truncate">{maintainer.author}</span>
+                                            <span className="shrink-0 text-xs text-(--ink-muted)">
+                                                {maintainer.sharePercent.toFixed(1)}%
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-sm text-(--ink-muted)">
+                                    Connect a Git provider with commit history to surface ownership
+                                    concentration here.
+                                </div>
+                            )}
                         </div>
                     </section>
 

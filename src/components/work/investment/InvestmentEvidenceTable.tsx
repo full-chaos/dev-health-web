@@ -181,7 +181,7 @@ export function InvestmentEvidenceTable({
                                 onClick={() => setGroupBy(option.id)}
                                 className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em] ${
                                     groupBy === option.id
-                                        ? "bg-(--accent-2) text-white"
+                                        ? "bg-[color-mix(in_srgb,var(--accent-2)_55%,black)] text-white shadow-sm"
                                         : "text-(--ink-muted)"
                                 }`}
                             >

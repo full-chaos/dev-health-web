@@ -232,9 +232,10 @@ test.describe("credentials journey", () => {
 
         const res = await request.post(`${liveBackendUrl}/api/v1/admin/credentials/test`, {
             headers: authHeaders(token),
-            data: { provider: "github", credential_id: credentialId },
+            data: { provider: "github", name: "default" },
         });
-        // Endpoint may return 200 with success:false or 422 for invalid creds
+        // The endpoint returns 200 with success:false when credential validation runs and fails.
+        // Some backend versions return 422 before validation for malformed invalid credentials.
         expect([200, 422]).toContain(res.status());
 
         if (res.status() === 200) {
