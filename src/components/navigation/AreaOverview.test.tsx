@@ -87,41 +87,6 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         expect(new Set(allIds).size).toBe(allIds.length);
     });
 
-    it("keeps low and neutral signals in the grid instead of promoting a hero", () => {
-        renderOverview([
-            signal("safe", "low"),
-            signal("info", "neutral"),
-            signal("gap", "unavailable"),
-        ]);
-
-        expect(screen.queryByTestId("area-overview-hero")).toBeNull();
-        const grid = screen.getByTestId("area-overview-grid");
-        const gridIds = within(grid)
-            .getAllByTestId("area-signal-card")
-            .map((card) => card.getAttribute("data-signal-id"));
-        expect(gridIds).toEqual(["safe", "info", "gap"]);
-    });
-
-    it("promotes the synthesized Improve top signal even when its severity is low", () => {
-        renderOverview([
-            signal("improve-top-signal", "low"),
-            signal("opportunities", "neutral"),
-            signal("gap", "unavailable"),
-        ]);
-
-        const hero = screen.getByTestId("area-overview-hero");
-        expect(within(hero).getByTestId("area-signal-card")).toHaveAttribute(
-            "data-signal-id",
-            "improve-top-signal",
-        );
-
-        const grid = screen.getByTestId("area-overview-grid");
-        const gridIds = within(grid)
-            .getAllByTestId("area-signal-card")
-            .map((card) => card.getAttribute("data-signal-id"));
-        expect(gridIds).toEqual(["opportunities", "gap"]);
-    });
-
     it("sinks empty/unconnected sub-areas to a separate muted tier after real signals", () => {
         renderOverview([
             signal("ok", "high"),

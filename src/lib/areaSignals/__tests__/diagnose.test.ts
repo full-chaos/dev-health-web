@@ -515,6 +515,20 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
         });
     });
 
+    it("test-mode skips bus factor and resolves landscape as unavailable", async () => {
+        // In test mode, getBusFactorData is never called for Landscape — it stays
+        // unavailable like the other GraphQL-backed Diagnose signals (complexity,
+        // cognitive-load). This stops a test-only BusFactor mock (added for the /code
+        // ownership card) from leaking an available Landscape hero into the Diagnose
+        // overview (CHAOS-2035 regression).
+        const signals = byId(await getDiagnoseSignals(defaultMetricFilter, true));
+        expect(mockGetBusFactorData).not.toHaveBeenCalled();
+        expect(signals.landscape).toMatchObject({
+            state: "unavailable",
+            value: "",
+        });
+    });
+
     it("each signal has a non-empty label, href, and metricLabel", async () => {
         const signals = await getDiagnoseSignals(defaultMetricFilter);
         for (const s of signals) {

@@ -913,7 +913,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                 busFactor: {
                     orgId: vars.orgId ?? "org-e2e",
                     scope: { repoId: null, teamId: null },
-                    value: 4,
+                    value: 1,
                     evidenceSampleCount: 3773,
                     topMaintainers: [
                         {
@@ -929,7 +929,7 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                         {
                             repoId: "repo-ops",
                             repoName: "full-chaos/dev-health-ops",
-                            value: 4,
+                            value: 1,
                             evidenceSampleCount: 1947,
                             topMaintainers: [
                                 {
