@@ -57,7 +57,9 @@ export function AreaOverview({
 
     const [candidateHero, ...restAvailable] = available;
     const candidateHeroIsActionable =
-        candidateHero && !["low", "neutral"].includes(candidateHero.state);
+        candidateHero &&
+        (candidateHero.id === "improve-top-signal" ||
+            !["low", "neutral"].includes(candidateHero.state));
     const hero = candidateHeroIsActionable ? candidateHero : undefined;
 
     const gridSignals = hero ? restAvailable : available;
