@@ -55,11 +55,12 @@ export function AreaOverview({
     const available = sortBySeverity(signals.filter(isAvailable));
     const unavailable = signals.filter((signal) => !isAvailable(signal));
 
-    // The single top signal becomes the hero and is dropped from the grid so no
-    // card appears in both hero and grid (CHAOS-2082 acceptance).
-    const [hero, ...restAvailable] = available;
+    const [candidateHero, ...restAvailable] = available;
+    const candidateHeroIsActionable =
+        candidateHero && !["low", "neutral"].includes(candidateHero.state);
+    const hero = candidateHeroIsActionable ? candidateHero : undefined;
 
-    const gridSignals = restAvailable;
+    const gridSignals = hero ? restAvailable : available;
 
     if (!hero && gridSignals.length === 0 && unavailable.length === 0) return null;
 
