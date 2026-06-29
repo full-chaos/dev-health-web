@@ -169,7 +169,8 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                             Scope-wide ownership sample
                                         </p>
                                         <p className="mt-2 text-xs text-(--ink-muted)">
-                                            {busFactor?.evidenceSampleCount ?? 0} file-change samples
+                                            {busFactor?.evidenceSampleCount ?? 0} file-change
+                                            samples
                                         </p>
                                     </div>
                                     {topMaintainers.slice(0, 3).map((maintainer) => (

@@ -89,14 +89,18 @@ describe("CodePage", () => {
         await renderPage();
 
         const card = screen.getByTestId("ownership-patterns-card");
-        expect(within(card).getByRole("heading", { name: "Ownership Patterns" })).toBeInTheDocument();
+        expect(
+            within(card).getByRole("heading", { name: "Ownership Patterns" }),
+        ).toBeInTheDocument();
         expect(within(card).getByText("Git blame")).toBeInTheDocument();
         expect(within(card).queryByText("Manual")).not.toBeInTheDocument();
         expect(within(card).getByText("chrisgeo@users.noreply.github.com")).toBeInTheDocument();
         expect(within(card).getByText("98.8%")).toBeInTheDocument();
         expect(within(card).getByText("3773 file-change samples")).toBeInTheDocument();
         expect(
-            within(card).queryByText(/connect a git provider with commit history to surface ownership/i),
+            within(card).queryByText(
+                /connect a git provider with commit history to surface ownership/i,
+            ),
         ).not.toBeInTheDocument();
     });
 });
