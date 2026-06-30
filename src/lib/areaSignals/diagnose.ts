@@ -112,6 +112,21 @@ function buildSignal(
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
 
+function normalizeReturnedSeverity(severity: string | undefined): AreaSignalState {
+    switch (severity?.trim().toLowerCase()) {
+        case "critical":
+            return "critical";
+        case "high":
+            return "high";
+        case "medium":
+            return "medium";
+        case "low":
+            return "low";
+        default:
+            return "neutral";
+    }
+}
+
 /** Find a home `deltas[]` entry by its backend metric key. */
 function homeDeltaValue(
     deltas: { metric: string; value: number; unit: string }[] | undefined,
@@ -127,7 +142,7 @@ function homeSignalByMetric(
     metric: string,
 ): { metric: string; severity: AreaSignalState } | undefined {
     const match = signals?.find((s) => s.metric === metric);
-    return match ? (match as { metric: string; severity: AreaSignalState }) : undefined;
+    return match ? { metric: match.metric, severity: normalizeReturnedSeverity(match.severity) } : undefined;
 }
 
 function meanCyclomaticPerKloc(result: ComplexityTimeseriesResult | undefined): number | undefined {
