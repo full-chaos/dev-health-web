@@ -579,7 +579,7 @@ export function GraphView({
     const emptyCopy =
         activeTab === "dependencies"
             ? `No dependency links between work items${themeFilterSuffix} in this scope and window.`
-            : `No work graph data${themeFilterSuffix} available for this scope and window.`;
+            : `No ${activeConnectionSlice.label} relationships${themeFilterSuffix} in the active connection slice. Try switching Connection type to ${CONNECTION_SLICES[1].label} to inspect PRs, commits, and files.`;
 
     return (
         <div
