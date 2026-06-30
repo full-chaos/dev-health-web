@@ -1,7 +1,13 @@
 import { render, screen } from "@/test/utils";
 import { describe, expect, it } from "vitest";
 
-import { ForecastContent, NoForecastState, StatusBadge, WipCongestionCard } from "./_components";
+import {
+    ForecastContent,
+    NoForecastState,
+    StaleWipCard,
+    StatusBadge,
+    WipCongestionCard,
+} from "./_components";
 import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -36,6 +42,7 @@ function makeForecast(overrides: Partial<ThroughputForecast> = {}): ThroughputFo
         rollingWindows: [],
         primaryRisk: makeWipOverlay(),
         wipCongestion: makeWipOverlay(),
+        staleWip: { p50AgeHours: 24, p90AgeHours: 96 },
         reviewBottleneck: makeNeutralOverlay("review"),
         incidentLoad: makeNeutralOverlay("incident"),
         insufficientHistory: false,
@@ -100,6 +107,28 @@ describe("WipCongestionCard — ratio semantics", () => {
     });
 });
 
+describe("StaleWipCard", () => {
+    it("renders p90 WIP age as an age signal, not a count", () => {
+        render(<StaleWipCard staleWip={{ p50AgeHours: 24, p90AgeHours: 96 }} />);
+        expect(screen.getByText("4 days")).toBeInTheDocument();
+        expect(screen.getByText("90th percentile age of in-progress items")).toBeInTheDocument();
+        expect(screen.getByText("Median in-progress age: 1 day")).toBeInTheDocument();
+        expect(screen.queryByText(/items stuck/i)).not.toBeInTheDocument();
+    });
+
+    it("pluralizes rounded day labels from the displayed value", () => {
+        render(<StaleWipCard staleWip={{ p50AgeHours: null, p90AgeHours: 24.1 }} />);
+        expect(screen.getByText("1 day")).toBeInTheDocument();
+        expect(screen.queryByText("1 days")).not.toBeInTheDocument();
+    });
+
+    it("renders a genuine no-data state when WIP age is missing", () => {
+        render(<StaleWipCard staleWip={null} />);
+        expect(screen.getByText("WIP age unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("WIP age not yet connected")).not.toBeInTheDocument();
+    });
+});
+
 // ── NoForecastState ───────────────────────────────────────────────────────────
 
 describe("NoForecastState", () => {
@@ -124,9 +153,9 @@ describe("ForecastContent", () => {
         expect(screen.getByText("Elevated")).toBeInTheDocument();
     });
 
-    it("renders Stale WIP and Unestimated Debt unavailable panels", () => {
+    it("renders live Stale WIP and leaves Unestimated Debt unavailable", () => {
         render(<ForecastContent forecast={makeForecast()} />);
-        expect(screen.getByText("WIP age not yet connected")).toBeInTheDocument();
+        expect(screen.getByText("4 days")).toBeInTheDocument();
         expect(screen.getByText("Estimate coverage not yet connected")).toBeInTheDocument();
     });
 

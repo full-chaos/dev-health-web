@@ -70,6 +70,54 @@ export function WipCongestionCard({ overlay, backlogSize }: WipCongestionCardPro
     );
 }
 
+type StaleWipCardProps = {
+    staleWip: ThroughputForecast["staleWip"];
+};
+
+function formatAgeHours(hours: number) {
+    if (hours < 24) {
+        const roundedHours = Math.round(hours);
+        return `${formatNumber(roundedHours, { maximumFractionDigits: 0 })} ${roundedHours === 1 ? "hour" : "hours"}`;
+    }
+
+    const days = hours / 24;
+    const roundedDays = Math.round(days * 10) / 10;
+    const dayLabel = roundedDays === 1 ? "day" : "days";
+    return `${formatNumber(roundedDays, { maximumFractionDigits: 1 })} ${dayLabel}`;
+}
+
+export function StaleWipCard({ staleWip }: StaleWipCardProps) {
+    const p90AgeHours = staleWip?.p90AgeHours;
+
+    return (
+        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
+                Stale WIP
+            </h2>
+            {p90AgeHours == null ? (
+                <DataState
+                    variant="insufficient-confidence"
+                    className="mt-4"
+                    title="WIP age unavailable"
+                    description="Sync in-progress work item age data to show how long current WIP has been open."
+                />
+            ) : (
+                <div className="mt-4">
+                    <p className="text-3xl font-semibold">{formatAgeHours(p90AgeHours)}</p>
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                        90th percentile age of in-progress items
+                    </p>
+                    {staleWip?.p50AgeHours != null ? (
+                        <p className="mt-4 text-xs text-(--ink-muted)">
+                            Median in-progress age: {formatAgeHours(staleWip.p50AgeHours)}
+                        </p>
+                    ) : null}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ── ForecastContent ───────────────────────────────────────────────────────────
 
 type ForecastContentProps = { forecast: ThroughputForecast };
@@ -83,17 +131,7 @@ export function ForecastContent({ forecast }: ForecastContentProps) {
             />
 
             <section className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-                    <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
-                        Stale WIP
-                    </h2>
-                    <DataState
-                        variant="detector-unavailable"
-                        className="mt-4"
-                        title="WIP age not yet connected"
-                        description="Items that appear stuck in progress will surface here once work item age data is connected."
-                    />
-                </div>
+                <StaleWipCard staleWip={forecast.staleWip} />
 
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
                     <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
