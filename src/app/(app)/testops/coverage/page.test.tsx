@@ -36,7 +36,7 @@ vi.mock("@/components/filters/FilterBar", () => ({
 }));
 
 vi.mock("@/components/shared/BackLink", () => ({
-    BackLink: () => <a href="/">Back</a>,
+    BackLink: () => <button type="button">Back</button>,
 }));
 
 vi.mock("../TestOpsTabs", () => ({
