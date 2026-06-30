@@ -114,7 +114,11 @@ describe("GraphView", () => {
         expect(screen.getByText(/1 edges/i)).toBeInTheDocument();
         expect(mockUseWorkGraphEdges).toHaveBeenCalledWith({
             orgId: "org-1",
-            filters: { repoIds: ["repo-1"], limit: 1000 },
+            filters: {
+                repoIds: ["repo-1"],
+                limit: 1000,
+                edgeTypes: ["FIXES", "IMPLEMENTS", "REFERENCES"],
+            },
             pause: false,
         });
     });
@@ -247,7 +251,11 @@ describe("GraphView", () => {
         render(<GraphView filters={filters} />);
 
         const filtersArg = lastEdgeFilters();
-        expect(filtersArg).toEqual({ repoIds: ["repo-1"], limit: 1000 });
+        expect(filtersArg).toEqual({
+            repoIds: ["repo-1"],
+            limit: 1000,
+            edgeTypes: ["FIXES", "IMPLEMENTS", "REFERENCES"],
+        });
         expect(filtersArg).not.toHaveProperty("theme");
         expect(filtersArg).not.toHaveProperty("subcategory");
     });
@@ -1226,7 +1234,7 @@ describe("GraphView", () => {
         expect(filtersArg.edgeTypes).not.toContain("REFERENCES");
     });
 
-    it("overview tab does NOT carry edgeTypes (keeps the broad fetch)", () => {
+    it("overview tab carries the default connection slice edgeTypes before the backend limit", () => {
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [],
             loading: false,
@@ -1236,6 +1244,44 @@ describe("GraphView", () => {
         });
 
         render(<GraphView filters={filters} activeTab="overview" />);
+
+        expect(lastEdgeFilters()).toMatchObject({
+            edgeTypes: ["FIXES", "IMPLEMENTS", "REFERENCES"],
+        });
+    });
+
+    it("overview tab sends the selected connection slice edgeTypes before the backend limit", async () => {
+        const user = userEvent.setup();
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="overview" />);
+
+        await user.selectOptions(screen.getByLabelText(/Connection type/i), "change-to-code");
+
+        expect(lastEdgeFilters()).toMatchObject({
+            edgeTypes: ["CONTAINS", "TOUCHES"],
+        });
+    });
+
+    it("overview tab omits edgeTypes for the All connections slice", async () => {
+        const user = userEvent.setup();
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="overview" />);
+
+        await user.selectOptions(screen.getByLabelText(/Connection type/i), "all");
 
         expect(lastEdgeFilters()).not.toHaveProperty("edgeTypes");
     });
