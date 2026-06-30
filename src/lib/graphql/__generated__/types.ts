@@ -1874,6 +1874,7 @@ export type ThroughputForecast = {
   primaryRisk: ThroughputRiskOverlay;
   reviewBottleneck: ThroughputRiskOverlay;
   rollingWindows: Array<ThroughputRollingWindow>;
+  staleWip?: Maybe<ThroughputStaleWip>;
   teamId?: Maybe<Scalars['String']['output']>;
   wipCongestion: ThroughputRiskOverlay;
   workScopeId?: Maybe<Scalars['String']['output']>;
@@ -1902,6 +1903,12 @@ export type ThroughputRollingWindow = {
   meanWeeklyThroughput: Scalars['Float']['output'];
   sampleCount: Scalars['Int']['output'];
   windowWeeks: Scalars['Int']['output'];
+};
+
+export type ThroughputStaleWip = {
+  __typename?: 'ThroughputStaleWip';
+  p50AgeHours?: Maybe<Scalars['Float']['output']>;
+  p90AgeHours?: Maybe<Scalars['Float']['output']>;
 };
 
 export type TimeGranularity =

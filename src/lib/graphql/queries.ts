@@ -265,6 +265,10 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
       threshold
       active
     }
+    staleWip {
+      p50AgeHours
+      p90AgeHours
+    }
     reviewBottleneck {
       kind
       score

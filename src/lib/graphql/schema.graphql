@@ -1529,9 +1529,15 @@ type ThroughputForecast {
   rollingWindows: [ThroughputRollingWindow!]!
   primaryRisk: ThroughputRiskOverlay!
   wipCongestion: ThroughputRiskOverlay!
+  staleWip: ThroughputStaleWip
   reviewBottleneck: ThroughputRiskOverlay!
   incidentLoad: ThroughputRiskOverlay!
   insufficientHistory: Boolean!
+}
+
+type ThroughputStaleWip {
+  p50AgeHours: Float
+  p90AgeHours: Float
 }
 
 input ThroughputForecastInput {

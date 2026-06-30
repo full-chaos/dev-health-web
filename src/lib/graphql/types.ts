@@ -370,6 +370,11 @@ export interface ThroughputRiskOverlay {
     active: boolean;
 }
 
+export interface ThroughputStaleWip {
+    p50AgeHours?: number | null;
+    p90AgeHours?: number | null;
+}
+
 export interface ThroughputForecast {
     forecastId: string;
     computedAt: string;
@@ -383,6 +388,7 @@ export interface ThroughputForecast {
     rollingWindows: ThroughputRollingWindow[];
     primaryRisk: ThroughputRiskOverlay;
     wipCongestion: ThroughputRiskOverlay;
+    staleWip?: ThroughputStaleWip | null;
     reviewBottleneck: ThroughputRiskOverlay;
     incidentLoad: ThroughputRiskOverlay;
     insufficientHistory: boolean;
