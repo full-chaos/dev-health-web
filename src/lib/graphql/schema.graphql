@@ -1535,11 +1535,6 @@ type ThroughputForecast {
   insufficientHistory: Boolean!
 }
 
-type ThroughputStaleWip {
-  p50AgeHours: Float
-  p90AgeHours: Float
-}
-
 input ThroughputForecastInput {
   teamIds: [String!] = null
   workScopeId: String = null
@@ -1561,6 +1556,11 @@ type ThroughputRollingWindow {
   meanWeeklyThroughput: Float!
   sampleCount: Int!
   insufficientHistory: Boolean!
+}
+
+type ThroughputStaleWip {
+  p50AgeHours: Float
+  p90AgeHours: Float
 }
 
 enum TimeGranularity {
