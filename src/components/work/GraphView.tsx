@@ -326,6 +326,11 @@ export function GraphView({
 
     const contextOrgId = useOrgId();
     const orgId = filters.scope.ids[0] || contextOrgId || "";
+    // The Overview tab honours the in-explorer connection-type selector; the
+    // Dependencies / Review Network tabs ARE the filter, so they pin it.
+    const activeConnectionSlice =
+        CONNECTION_SLICES.find((slice) => slice.id === connectionSliceId) ?? CONNECTION_SLICES[0];
+
     // Theme / subcategory are filtered SERVER-SIDE (CHAOS-2431): the backend
     // applies them before the LIMIT, so a sparse theme's edges can't fall
     // outside the edge cap and produce a false-empty graph. We therefore pass
@@ -335,20 +340,32 @@ export function GraphView({
     // page; inflow-outflow / artifacts now fetch their own server-side
     // aggregates (CHAOS-2442) and review-network uses pre-fetched review edges.
     const graphTabActive = activeTab === "overview" || activeTab === "dependencies";
+    const activeOverviewEdgeTypes =
+        activeTab === "overview" && activeConnectionSlice.edgeTypes.length > 0
+            ? activeConnectionSlice.edgeTypes
+            : undefined;
+    const activeDependencyEdgeTypes =
+        activeTab === "dependencies" ? DEPENDENCY_EDGE_TYPES : undefined;
     const edgeFilters = useMemo<WorkGraphEdgeFilterInput>(
         () => ({
             repoIds: filters.what?.repos,
             limit: GRAPH_EDGE_QUERY_LIMIT,
             ...(theme !== "all" ? { theme } : {}),
             ...(subcategory !== "all" ? { subcategory } : {}),
-            // Dependencies tab (CHAOS-2442): scope the edge query to dependency
-            // edge types SERVER-SIDE so they arrive pre-filtered before the LIMIT
-            // and can never be starved by a reference-heavy capped page. The
-            // client-side DEPENDENCY_EDGE_TYPES filter below is kept only as a
-            // harmless safety net. The overview tab keeps the broad set.
-            ...(activeTab === "dependencies" ? { edgeTypes: DEPENDENCY_EDGE_TYPES } : {}),
+            // Explorer tabs scope their edge-type slices SERVER-SIDE so selected
+            // relationships arrive pre-filtered before LIMIT and cannot be
+            // starved by a reference-heavy capped page. The client-side filters
+            // below remain as harmless safety nets.
+            ...(activeOverviewEdgeTypes ? { edgeTypes: activeOverviewEdgeTypes } : {}),
+            ...(activeDependencyEdgeTypes ? { edgeTypes: activeDependencyEdgeTypes } : {}),
         }),
-        [filters.what?.repos, theme, subcategory, activeTab],
+        [
+            filters.what?.repos,
+            theme,
+            subcategory,
+            activeOverviewEdgeTypes,
+            activeDependencyEdgeTypes,
+        ],
     );
     const { edges, loading, error, totalCount, degradedReason } = useWorkGraphEdges({
         orgId,
@@ -391,11 +408,6 @@ export function GraphView({
         filters: artifactFilters,
         pause: !orgId || activeTab !== "artifacts",
     });
-
-    // The Overview tab honours the in-explorer connection-type selector; the
-    // Dependencies / Review Network tabs ARE the filter, so they pin it.
-    const activeConnectionSlice =
-        CONNECTION_SLICES.find((slice) => slice.id === connectionSliceId) ?? CONNECTION_SLICES[0];
 
     const tabEdges = useMemo(() => {
         // NB: theme/subcategory are filtered server-side (see edgeFilters above),
