@@ -113,6 +113,7 @@ export default async function CoveragePage({
 
 	const coverageTimeseries = coverageData.timeseries || [];
 	const coverageBreakdowns = coverageData.breakdowns || [];
+	const fetchFailed = Boolean(coverageData.fetchFailed);
 
 	const measures = [
 		{ id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
@@ -213,9 +214,11 @@ export default async function CoveragePage({
 								value: `${COVERAGE_LINE_TARGET_PCT}%`,
 								tone: "info",
 							}}
+							isError={fetchFailed}
+							stateMessage="Coverage analytics could not be loaded. Coverage history will reappear once the data service recovers."
 							isEmpty={timeseriesData.length === 0}
 							stateTitle="Coverage trend not populated"
-							stateDescription="Coverage history appears here once CI coverage data is connected for this scope."
+							stateDescription="Coverage history appears here once connected CI coverage data is available for this scope."
 						>
 							<div className="h-64">
 								<TimeseriesChart
