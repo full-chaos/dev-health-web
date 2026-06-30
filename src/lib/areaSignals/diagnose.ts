@@ -142,7 +142,9 @@ function homeSignalByMetric(
     metric: string,
 ): { metric: string; severity: AreaSignalState } | undefined {
     const match = signals?.find((s) => s.metric === metric);
-    return match ? { metric: match.metric, severity: normalizeReturnedSeverity(match.severity) } : undefined;
+    return match
+        ? { metric: match.metric, severity: normalizeReturnedSeverity(match.severity) }
+        : undefined;
 }
 
 function meanCyclomaticPerKloc(result: ComplexityTimeseriesResult | undefined): number | undefined {
