@@ -36,11 +36,7 @@ type SelectedNode = {
 
 /** Canonical Work Graph tabs (ViewSet on the page). `overview` is the explorer. */
 export type WorkGraphTab =
-    | "overview"
-    | "dependencies"
-    | "inflow-outflow"
-    | "review-network"
-    | "artifacts";
+    "overview" | "dependencies" | "inflow-outflow" | "review-network" | "artifacts";
 
 type GraphViewProps = {
     filters: MetricFilter;

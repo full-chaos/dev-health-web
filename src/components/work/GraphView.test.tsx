@@ -558,7 +558,9 @@ describe("GraphView", () => {
         render(<GraphView filters={filters} />);
 
         const emptyState = within(screen.getByTestId("data-state-detector-enabled-no-findings"));
-        expect(emptyState.getByText(/No Work → PRs relationships matching Quality/i)).toBeInTheDocument();
+        expect(
+            emptyState.getByText(/No Work → PRs relationships matching Quality/i),
+        ).toBeInTheDocument();
         expect(emptyState.getByText(/active connection slice/i)).toBeInTheDocument();
     });
 

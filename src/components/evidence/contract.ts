@@ -16,13 +16,7 @@
 
 /** Artifact kinds the Evidence section is permitted to render. */
 export type EvidenceArtifactType =
-    | "PR"
-    | "commit"
-    | "review"
-    | "pipeline"
-    | "incident"
-    | "test"
-    | "deployment";
+    "PR" | "commit" | "review" | "pipeline" | "incident" | "test" | "deployment";
 
 /**
  * A single real, traceable artifact. Every field is required except `url`

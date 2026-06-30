@@ -25,14 +25,7 @@
 import type { Crumb } from "@/components/Breadcrumbs";
 
 export type NavAreaId =
-    | "cockpit"
-    | "diagnose"
-    | "plan"
-    | "improve"
-    | "govern"
-    | "ai"
-    | "reports"
-    | "admin";
+    "cockpit" | "diagnose" | "plan" | "improve" | "govern" | "ai" | "reports" | "admin";
 
 export type NavAreaHubItem = {
     id: string;

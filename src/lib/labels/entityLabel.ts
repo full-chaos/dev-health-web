@@ -153,8 +153,7 @@ export function resolveEntityLabel(
 export function resolveEntityLabels(
     ids: ReadonlyArray<string | null | undefined>,
     options:
-        | ResolveEntityLabelOptions
-        | ((id: string, index: number) => ResolveEntityLabelOptions) = {},
+        ResolveEntityLabelOptions | ((id: string, index: number) => ResolveEntityLabelOptions) = {},
 ): { labels: string[]; titles: string[]; results: EntityLabel[] } {
     const results = ids.map((id, i) => {
         const opts = typeof options === "function" ? options(id ?? "", i) : options;

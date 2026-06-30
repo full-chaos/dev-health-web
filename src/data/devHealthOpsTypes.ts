@@ -1,24 +1,10 @@
 export type WorkItemProvider = "jira" | "github" | "gitlab";
 
 export type WorkItemStatusCategory =
-    | "backlog"
-    | "todo"
-    | "in_progress"
-    | "in_review"
-    | "blocked"
-    | "done"
-    | "canceled"
-    | "unknown";
+    "backlog" | "todo" | "in_progress" | "in_review" | "blocked" | "done" | "canceled" | "unknown";
 
 export type WorkItemType =
-    | "story"
-    | "task"
-    | "bug"
-    | "epic"
-    | "issue"
-    | "incident"
-    | "chore"
-    | "unknown";
+    "story" | "task" | "bug" | "epic" | "issue" | "incident" | "chore" | "unknown";
 
 export type WorkItemMetricsDaily = {
     day: string;

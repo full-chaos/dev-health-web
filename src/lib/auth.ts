@@ -484,8 +484,7 @@ const nextAuth = NextAuth({
                 session.user.id = token.id as string;
                 session.user.is_impersonating = !!token.is_impersonating;
                 session.user.impersonated_user_id = token.impersonated_user_id as
-                    | string
-                    | undefined;
+                    string | undefined;
                 session.user.impersonated_email = token.impersonated_email as string | undefined;
                 session.user.impersonated_org_id = token.impersonated_org_id as string | undefined;
                 // org_id is the EFFECTIVE org: while impersonating it is the
