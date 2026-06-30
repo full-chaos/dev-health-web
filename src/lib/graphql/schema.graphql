@@ -1529,6 +1529,7 @@ type ThroughputForecast {
   rollingWindows: [ThroughputRollingWindow!]!
   primaryRisk: ThroughputRiskOverlay!
   wipCongestion: ThroughputRiskOverlay!
+  staleWip: ThroughputStaleWip
   reviewBottleneck: ThroughputRiskOverlay!
   incidentLoad: ThroughputRiskOverlay!
   insufficientHistory: Boolean!
@@ -1555,6 +1556,11 @@ type ThroughputRollingWindow {
   meanWeeklyThroughput: Float!
   sampleCount: Int!
   insufficientHistory: Boolean!
+}
+
+type ThroughputStaleWip {
+  p50AgeHours: Float
+  p90AgeHours: Float
 }
 
 enum TimeGranularity {
