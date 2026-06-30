@@ -23,6 +23,8 @@ import {
 
 const EMPTY_ANALYTICS: AnalyticsResult = { timeseries: [], breakdowns: [] };
 
+export type CoverageMetricsResult = AnalyticsResult & { fetchFailed?: boolean };
+
 // Duration measures whose backend buckets are stored in seconds. Sample data is
 // already in minutes, so this normalisation is applied only in real (non-test) mode.
 const DURATION_MEASURES_SECONDS = new Set([
@@ -110,7 +112,7 @@ export async function fetchCoverageMetrics(
     batch: AnalyticsRequestInput,
     isTestMode: boolean = false,
     orgIdOverride?: string,
-): Promise<AnalyticsResult> {
+): Promise<CoverageMetricsResult> {
     if (isTestMode) {
         return SAMPLE_COVERAGE_DATA;
     }
@@ -127,12 +129,12 @@ export async function fetchCoverageMetrics(
                 { err: parsed.error },
                 "Coverage analytics failed schema validation; returning empty result",
             );
-            return EMPTY_ANALYTICS;
+            return { ...EMPTY_ANALYTICS, fetchFailed: true };
         }
         return parsed.data;
     } catch (error) {
         logger.error({ err: error }, "Failed to fetch coverage metrics");
-        return EMPTY_ANALYTICS;
+        return { ...EMPTY_ANALYTICS, fetchFailed: true };
     }
 }
 

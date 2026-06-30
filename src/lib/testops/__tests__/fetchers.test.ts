@@ -126,7 +126,16 @@ describe("fetchCoverageMetrics schema hardening (CHAOS-2078)", () => {
 
         const result = await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
 
-        expect(result).toEqual(emptyAnalytics);
+        expect(result).toEqual({ ...emptyAnalytics, fetchFailed: true });
+    });
+
+    it("marks GraphQL errors as fetch failures instead of genuine empty coverage", async () => {
+        mockAuth({ user: { org_id: "org-1" } });
+        vi.mocked(graphqlFetch).mockRejectedValue(new Error("GraphQL unavailable"));
+
+        const result = await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
+
+        expect(result).toEqual({ ...emptyAnalytics, fetchFailed: true });
     });
 
     it("returns parsed analytics for a well-formed response", async () => {
