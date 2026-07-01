@@ -94,6 +94,13 @@ test.describe("Improve Overview landing", () => {
             "href",
             /\/improve\/automations/,
         );
+
+        // CHAOS-2223: Automations renders deterministic sample data in test mode
+        // (previously short-circuited to the honest-empty "Not yet connected" tier —
+        // the shared mock GraphQL server has no `improveOpportunities` handler).
+        const automationsCard = grid.locator('[data-signal-id="improve-automations"]');
+        await expect(automationsCard).toHaveAttribute("data-state", "neutral");
+        await expect(automationsCard.getByTestId("area-signal-value")).toHaveText("3 detected");
     });
 
     test("marks Improve as the single selected area on /improve", async ({ page }) => {

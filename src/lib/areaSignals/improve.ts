@@ -36,12 +36,16 @@
 //   - Automations (CHAOS-2220): REAL — count of flow opportunities from
 //     FlowOpportunityDetector via `improveOpportunities` GraphQL query.
 //     "neutral" when detectorReady (even zero is a valid "all green" state).
-//     "unavailable" when the fetch fails or the detector is not ready.
+//     "unavailable" when the fetch fails or the detector is not ready. In
+//     isTestMode this source short-circuits to a deterministic sample constant
+//     (CHAOS-2223) — the shared mock GraphQL server has no `improveOpportunities`
+//     handler, so without this the card degraded to a false "not connected".
 
 import { getHomeData, getOpportunities } from "@/lib/api/home";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { IMPROVE_OPPORTUNITIES_QUERY } from "@/lib/graphql/queries";
 import type { ImproveOpportunitiesResult } from "@/lib/graphql/__generated__/types";
+import { SAMPLE_IMPROVE_AUTOMATIONS } from "./improve-sample-data";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
@@ -140,10 +144,13 @@ async function safe<T>(fn: () => Promise<T>, source: string): Promise<T | undefi
  * Resolve the Improve area's signal cards.
  *
  * @param filters  Active metric filter (drives the home/opportunities date range).
- * @param isTestMode  Accepted for dispatcher-signature parity with the other area
- *   resolvers. NOT used as a fetch gate: both sources are MSW-mockable REST and
- *   are fetched unconditionally (see the fetch block) so the Overview renders
- *   real cards under Playwright's mock backend, matching Diagnose/Govern.
+ * @param isTestMode  Opportunities/home are MSW-mockable REST and are fetched
+ *   unconditionally regardless of this flag (see the fetch block) so the
+ *   Overview renders real cards under Playwright's mock backend, matching
+ *   Diagnose/Govern. Automations, the one GraphQL-direct source, DOES gate on
+ *   this flag: it short-circuits to a deterministic sample constant in test
+ *   mode (CHAOS-2223) instead of calling the mock backend, which has no
+ *   `improveOpportunities` handler.
  */
 export async function getImproveSignals(
     filters: MetricFilter,
@@ -167,6 +174,11 @@ export async function getImproveSignals(
         safe(() => getOpportunities(filters), "opportunities"),
         safe(() => getHomeData(filters), "home"),
         safe(() => {
+            // Test mode: deterministic sample data (CHAOS-2223), same convention as
+            // Govern/Diagnose's GraphQL-direct sources — bypasses the network so the
+            // Overview renders a real Automations card without depending on the mock
+            // backend having an `improveOpportunities` handler.
+            if (isTestMode) return Promise.resolve(SAMPLE_IMPROVE_AUTOMATIONS);
             // Guard: without an org in session, require_org_id will reject the
             // request server-side. Short-circuit here so safe() → UNAVAILABLE
             // rather than a false "0 detected / all green" (Warning 4, CHAOS-2220).

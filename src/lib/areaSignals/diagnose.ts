@@ -35,6 +35,11 @@ import {
 } from "@/lib/complexity/filters";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
 import type { CognitiveLoadResult } from "@/lib/graphql/cognitiveLoadFetchers";
+import {
+    SAMPLE_DIAGNOSE_BUS_FACTOR,
+    SAMPLE_DIAGNOSE_COGNITIVE_LOAD,
+    SAMPLE_DIAGNOSE_COMPLEXITY,
+} from "./diagnose-sample-data";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
@@ -248,7 +253,7 @@ export async function getDiagnoseSignals(
         safe(
             () =>
                 isTestMode
-                    ? Promise.resolve(undefined)
+                    ? Promise.resolve(SAMPLE_DIAGNOSE_COMPLEXITY)
                     : graphqlFetch<{
                           complexityTimeseries: ComplexityTimeseriesResult;
                       }>(
@@ -268,17 +273,25 @@ export async function getDiagnoseSignals(
                       ).then((r) => r.complexityTimeseries),
             "complexity",
         ),
-        safe(() => (isTestMode ? Promise.resolve(null) : getBusFactorData(filters)), "bus-factor"),
         safe(
             () =>
-                isTestMode || !cognitiveLoadScopeSupported
-                    ? Promise.resolve(undefined)
-                    : getCognitiveLoadViaGraphQL({
-                          orgId,
-                          sinceDate,
-                          untilDate,
-                          teamId: cognitiveLoadTeamId,
-                      }),
+                isTestMode
+                    ? Promise.resolve(SAMPLE_DIAGNOSE_BUS_FACTOR)
+                    : getBusFactorData(filters),
+            "bus-factor",
+        ),
+        safe(
+            () =>
+                isTestMode
+                    ? Promise.resolve(SAMPLE_DIAGNOSE_COGNITIVE_LOAD)
+                    : !cognitiveLoadScopeSupported
+                      ? Promise.resolve(undefined)
+                      : getCognitiveLoadViaGraphQL({
+                            orgId,
+                            sinceDate,
+                            untilDate,
+                            teamId: cognitiveLoadTeamId,
+                        }),
             "cognitive-load",
         ),
     ]);

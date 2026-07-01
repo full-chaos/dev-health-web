@@ -258,4 +258,25 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
             value: "95% success",
         });
     });
+
+    it("renders deterministic sample data for Security + Compounding Risk in isTestMode (no GraphQL calls, CHAOS-2223)", async () => {
+        // Security and Compounding Risk previously short-circuited to `undefined`
+        // in test mode (the graphql-direct sources), so the Govern hub could only
+        // ever render their honest-empty "Not yet connected" tier under Playwright.
+        // SAMPLE_GOVERN_SECURITY_OVERVIEW / SAMPLE_GOVERN_COMPOUNDING_RISK now flow
+        // through the SAME derivation logic above (never bypassing it).
+        const signals = byId(await getGovernSignals(defaultMetricFilter, true));
+
+        expect(signals.security).toMatchObject({
+            state: "high",
+            value: "9",
+            cluster: "Risk",
+        });
+        expect(signals["risk-compounding"]).toMatchObject({
+            state: "medium",
+            cluster: "Risk",
+        });
+        // Neither sample constant calls graphqlFetch — the network is bypassed.
+        expect(mockGraphql).not.toHaveBeenCalled();
+    });
 });

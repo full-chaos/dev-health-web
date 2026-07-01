@@ -27,6 +27,10 @@ import type {
     CompoundingRiskSeverity,
     SecurityOverview,
 } from "@/lib/graphql/__generated__/types";
+import {
+    SAMPLE_GOVERN_COMPOUNDING_RISK,
+    SAMPLE_GOVERN_SECURITY_OVERVIEW,
+} from "./govern-sample-data";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
 import { fetchCoverageMetrics, fetchRiskMetrics, fetchTestOpsData } from "@/lib/testops/fetchers";
 import type { AnalyticsRequestInput, TimeseriesResult } from "@/lib/graphql/schemas/analytics";
@@ -212,7 +216,7 @@ export async function getGovernSignals(
             safe(
                 () =>
                     isTestMode
-                        ? Promise.resolve(undefined)
+                        ? Promise.resolve(SAMPLE_GOVERN_SECURITY_OVERVIEW)
                         : graphqlFetch<{ securityOverview: SecurityOverview }>(
                               SECURITY_OVERVIEW_QUERY,
                               { orgId, filters: { openOnly: true } },
@@ -223,7 +227,7 @@ export async function getGovernSignals(
             safe(
                 () =>
                     isTestMode
-                        ? Promise.resolve(undefined)
+                        ? Promise.resolve(SAMPLE_GOVERN_COMPOUNDING_RISK)
                         : graphqlFetch<{ compoundingRisk: CompoundingRiskResult }>(
                               COMPOUNDING_RISK_QUERY,
                               { orgId, filter: null },
