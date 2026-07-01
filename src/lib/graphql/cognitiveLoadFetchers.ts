@@ -45,12 +45,17 @@ interface CognitiveLoadQueryResponse {
  * @param untilDate - End of the time window, inclusive ("YYYY-MM-DD").
  * @param teamId    - Optional team filter.  When the active filter scope is "team",
  *                    pass the team id so the resolver can scope team_metrics_daily.
+ * @param repoId    - Optional repo filter, sourced from `filters.what.repos` (the
+ *                    always-visible GlobalContextBarClient "Repo" picker). Only
+ *                    scopes `user_metrics_daily`; `team_metrics_daily` has no
+ *                    repo dimension so team-level ratios are unaffected.
  */
 export async function getCognitiveLoadViaGraphQL(params: {
     orgId: string;
     sinceDate: string;
     untilDate: string;
     teamId?: string | null;
+    repoId?: string | null;
 }): Promise<CognitiveLoadResult> {
     const response = await graphqlFetch<CognitiveLoadQueryResponse>(
         COGNITIVE_LOAD_QUERY,
@@ -60,6 +65,7 @@ export async function getCognitiveLoadViaGraphQL(params: {
                 sinceDate: params.sinceDate,
                 untilDate: params.untilDate,
                 teamId: params.teamId ?? null,
+                repoId: params.repoId ?? null,
             },
         },
         { orgId: params.orgId },

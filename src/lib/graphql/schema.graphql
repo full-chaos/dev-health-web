@@ -519,6 +519,7 @@ input CognitiveLoadInput {
   sinceDate: Date!
   untilDate: Date!
   teamId: String = null
+  repoId: String = null
 }
 
 type CognitiveLoadResult {

@@ -7,6 +7,7 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { requireSession } from "@/lib/auth";
 import { withFilterParam } from "@/lib/filters/url";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
+import { cognitiveLoadRepoIdFromFilter } from "@/lib/cognitiveLoad/filters";
 import { getHeatmap } from "@/lib/api/visuals";
 import {
     ContextSwitchingView,
@@ -118,6 +119,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
         filters.scope.level === "team" && filters.scope.ids.length > 0
             ? filters.scope.ids[0]
             : null;
+    const repoId = cognitiveLoadRepoIdFromFilter(filters);
     const { sinceDate, untilDate } = dateRangeFromFilter(filters.time);
 
     let cognitiveLoadData: Awaited<ReturnType<typeof getCognitiveLoadViaGraphQL>> | null = null;
@@ -130,6 +132,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 sinceDate,
                 untilDate,
                 teamId,
+                repoId,
             });
         } catch (err) {
             fetchError = err instanceof Error ? err.message : "Failed to load cognitive-load data";
