@@ -1197,6 +1197,64 @@ export type ProductTelemetryTopOrgType = {
   sessions: Scalars['Int']['output'];
 };
 
+export type PullRequestCommit = {
+  __typename?: 'PullRequestCommit';
+  authorEmail?: Maybe<Scalars['String']['output']>;
+  authorName?: Maybe<Scalars['String']['output']>;
+  authorWhen?: Maybe<Scalars['DateTime']['output']>;
+  confidence?: Maybe<Scalars['Float']['output']>;
+  evidence?: Maybe<Scalars['String']['output']>;
+  hash: Scalars['String']['output'];
+  message?: Maybe<Scalars['String']['output']>;
+  provenance?: Maybe<Scalars['String']['output']>;
+};
+
+export type PullRequestDetail = {
+  __typename?: 'PullRequestDetail';
+  additions?: Maybe<Scalars['Int']['output']>;
+  authorEmail?: Maybe<Scalars['String']['output']>;
+  authorName?: Maybe<Scalars['String']['output']>;
+  baseBranch?: Maybe<Scalars['String']['output']>;
+  body?: Maybe<Scalars['String']['output']>;
+  changedFiles?: Maybe<Scalars['Int']['output']>;
+  changesRequestedCount: Scalars['Int']['output'];
+  closedAt?: Maybe<Scalars['DateTime']['output']>;
+  commentsCount: Scalars['Int']['output'];
+  commits: Array<PullRequestCommit>;
+  createdAt: Scalars['DateTime']['output'];
+  deletions?: Maybe<Scalars['Int']['output']>;
+  firstCommentAt?: Maybe<Scalars['DateTime']['output']>;
+  firstReviewAt?: Maybe<Scalars['DateTime']['output']>;
+  headBranch?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  linkedIssues: Array<PullRequestIssueLink>;
+  mergedAt?: Maybe<Scalars['DateTime']['output']>;
+  number: Scalars['Int']['output'];
+  orgId: Scalars['String']['output'];
+  repoId: Scalars['ID']['output'];
+  repoName?: Maybe<Scalars['String']['output']>;
+  reviews: Array<PullRequestReview>;
+  reviewsCount: Scalars['Int']['output'];
+  state?: Maybe<Scalars['String']['output']>;
+  title?: Maybe<Scalars['String']['output']>;
+};
+
+export type PullRequestIssueLink = {
+  __typename?: 'PullRequestIssueLink';
+  confidence: Scalars['Float']['output'];
+  evidence: Scalars['String']['output'];
+  provenance: Scalars['String']['output'];
+  workItemId: Scalars['String']['output'];
+};
+
+export type PullRequestReview = {
+  __typename?: 'PullRequestReview';
+  reviewId: Scalars['String']['output'];
+  reviewer: Scalars['String']['output'];
+  state: Scalars['String']['output'];
+  submittedAt: Scalars['DateTime']['output'];
+};
+
 export type Query = {
   __typename?: 'Query';
   /** List AI-attributed pull requests in the requested window so the UI can offer a concrete drilldown selector. Rows come from ai_attribution_resolved joined to git_pull_requests; no aggregation, no fabrication. */
@@ -1247,6 +1305,8 @@ export type Query = {
   improveOpportunities: ImproveOpportunitiesResult;
   /** Weekly Engineering Operating Review */
   operatingReview: OperatingReview;
+  /** Pull request detail by stable id ({repo_id}#pr{number}) from persisted ClickHouse PR, review, commit, and Work Graph tables. */
+  pr?: Maybe<PullRequestDetail>;
   /** Get first-party product telemetry dashboard metrics */
   productTelemetryDashboard: ProductTelemetryDashboardType;
   /** Cross-org product telemetry dashboard for platform/super admins. Requires is_superuser. Returns global aggregates plus a top-orgs rollup with org names resolved from Postgres. */
@@ -1436,6 +1496,12 @@ export type QueryImproveOpportunitiesArgs = {
 
 export type QueryOperatingReviewArgs = {
   input: OperatingReviewInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryPrArgs = {
+  id: Scalars['ID']['input'];
   orgId: Scalars['String']['input'];
 };
 
