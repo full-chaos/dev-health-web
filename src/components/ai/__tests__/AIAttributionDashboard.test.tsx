@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@/test/utils";
 
 import type { AIFilter } from "@/lib/filters/ai";
+import type { AiAttributionEvidenceRow } from "@/lib/graphql/__generated__/types";
 
 const { mockUseAIAttributionOverview } = vi.hoisted(() => ({
     mockUseAIAttributionOverview: vi.fn(),
@@ -11,7 +12,7 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", () => ({
     useAIAttributionOverview: mockUseAIAttributionOverview,
 }));
 
-import { AIAttributionDashboard } from "../AIAttributionDashboard";
+import { AIAttributionDashboard, evidenceRowKey } from "../AIAttributionDashboard";
 
 const filter: AIFilter = { startDate: "2026-04-01", endDate: "2026-05-01" };
 
@@ -104,6 +105,21 @@ describe("AIAttributionDashboard", () => {
         expect(screen.queryByTestId("ai-attribution-dashboard")).not.toBeInTheDocument();
     });
 
+    it("renders an explicit unavailable state when the query returns no data without fetching or erroring", () => {
+        mockUseAIAttributionOverview.mockReturnValue({
+            data: undefined,
+            fetching: false,
+            error: undefined,
+        });
+
+        render(<AIAttributionDashboard filter={filter} />);
+
+        expect(screen.getByTestId("data-state-detector-unavailable")).toBeInTheDocument();
+        expect(screen.getByText("AI attribution data unavailable")).toBeInTheDocument();
+        expect(screen.queryByTestId("ai-attribution-dashboard")).not.toBeInTheDocument();
+        expect(screen.queryByText("No AI attribution data yet")).not.toBeInTheDocument();
+    });
+
     it("shows a loading skeleton before the first response arrives", () => {
         mockUseAIAttributionOverview.mockReturnValue({
             data: undefined,
@@ -151,5 +167,43 @@ describe("AIAttributionDashboard", () => {
         const narrower: AIFilter = { ...filter, teamId: "team-2" };
         rerender(<AIAttributionDashboard filter={narrower} />);
         expect(mockUseAIAttributionOverview).toHaveBeenLastCalledWith(narrower, 25, 0);
+    });
+});
+
+function evidenceRow(overrides: Partial<AiAttributionEvidenceRow> = {}): AiAttributionEvidenceRow {
+    return {
+        subjectType: "pull_request",
+        subjectId: "101",
+        repoId: "repo-1",
+        provider: "github",
+        kind: "ai_assisted",
+        source: "pr_label",
+        confidence: 0.9,
+        actor: "github-copilot",
+        evidence: '{"label":"ai-assisted"}',
+        observedAt: "2026-04-15T00:00:00Z",
+        teamId: "team-1",
+        ...overrides,
+    };
+}
+
+describe("evidenceRowKey (CHAOS-2744 finding 4)", () => {
+    it("stays unique across repos and providers sharing the same subject id and source", () => {
+        const rowA = evidenceRow();
+        const rowB = evidenceRow({ provider: "gitlab", repoId: "repo-2" });
+
+        expect(evidenceRowKey(rowA)).not.toBe(evidenceRowKey(rowB));
+    });
+
+    it("includes provider, repoId, subjectType, subjectId, kind, and source", () => {
+        const row = evidenceRow();
+        const key = evidenceRowKey(row);
+
+        expect(key).toContain(row.provider);
+        expect(key).toContain(row.repoId as string);
+        expect(key).toContain(row.subjectType);
+        expect(key).toContain(row.subjectId);
+        expect(key).toContain(row.kind);
+        expect(key).toContain(row.source);
     });
 });

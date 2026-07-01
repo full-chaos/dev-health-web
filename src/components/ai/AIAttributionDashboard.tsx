@@ -29,8 +29,15 @@ function formatObservedAt(value: string | null | undefined): string {
     }
 }
 
-function evidenceRowKey(row: AiAttributionEvidenceRow): string {
-    return `${row.subjectType}:${row.subjectId}:${row.source}`;
+export function evidenceRowKey(row: AiAttributionEvidenceRow): string {
+    return [
+        row.provider,
+        row.repoId ?? "no-repo",
+        row.subjectType,
+        row.subjectId,
+        row.kind,
+        row.source,
+    ].join(":");
 }
 
 /**
@@ -69,6 +76,16 @@ export function AIAttributionDashboard({ filter }: AIAttributionDashboardProps) 
         return <DashboardSkeleton />;
     }
 
+    if (!fetching && !data) {
+        return (
+            <DataState
+                variant="detector-unavailable"
+                title="AI attribution data unavailable"
+                description="The attribution overview did not return a result for this window. This is unexpected -- try reloading, or check back shortly."
+            />
+        );
+    }
+
     if (data && !data.dataAvailable) {
         return (
             <DataState
@@ -92,8 +109,8 @@ export function AIAttributionDashboard({ filter }: AIAttributionDashboardProps) 
                 <h2 className="font-(--font-display) text-lg font-semibold">Attribution mix</h2>
                 <p className="mt-1 text-sm text-(--ink-muted)">
                     Of {totalAttributed} resolved signal{totalAttributed === 1 ? "" : "s"} in this
-                    window, work appears to split across the following kinds. There is no human
-                    bucket here — this view only reflects subjects with a detected AI signal.
+                    window, work appears to split across the following kinds, based on signals that
+                    suggest AI involvement. This view does not surface a human bucket.
                 </p>
                 {mix.length === 0 ? (
                     <div className="mt-4">
