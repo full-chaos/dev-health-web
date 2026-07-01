@@ -6,6 +6,37 @@ enum AIAttributionBucketInput {
   UNKNOWN
 }
 
+type AIAttributionEvidenceRow {
+  subjectType: String!
+  subjectId: String!
+  repoId: String
+  provider: String!
+  kind: String!
+  source: String!
+  confidence: Float!
+  actor: String
+  evidence: String!
+  observedAt: DateTime!
+  teamId: String
+}
+
+type AIAttributionMixRow {
+  kind: String!
+  count: Int!
+  share: Float!
+}
+
+type AIAttributionOverviewResult {
+  orgId: String!
+  startDate: Date!
+  endDate: Date!
+  mix: [AIAttributionMixRow!]!
+  totalAttributed: Int!
+  rows: [AIAttributionEvidenceRow!]!
+  hasMore: Boolean!
+  dataAvailable: Boolean!
+}
+
 type AIComparison {
   orgId: String!
   startDate: Date!
@@ -1074,6 +1105,60 @@ type ProductTelemetryTopOrgType {
   orgSlug: String
 }
 
+type PullRequestCommit {
+  hash: String!
+  message: String
+  authorName: String
+  authorEmail: String
+  authorWhen: DateTime
+  confidence: Float
+  provenance: String
+  evidence: String
+}
+
+type PullRequestDetail {
+  id: ID!
+  orgId: String!
+  repoId: ID!
+  repoName: String
+  number: Int!
+  title: String
+  body: String
+  state: String
+  authorName: String
+  authorEmail: String
+  createdAt: DateTime!
+  mergedAt: DateTime
+  closedAt: DateTime
+  headBranch: String
+  baseBranch: String
+  additions: Int
+  deletions: Int
+  changedFiles: Int
+  firstReviewAt: DateTime
+  firstCommentAt: DateTime
+  changesRequestedCount: Int!
+  reviewsCount: Int!
+  commentsCount: Int!
+  reviews: [PullRequestReview!]!
+  commits: [PullRequestCommit!]!
+  linkedIssues: [PullRequestIssueLink!]!
+}
+
+type PullRequestIssueLink {
+  workItemId: String!
+  confidence: Float!
+  provenance: String!
+  evidence: String!
+}
+
+type PullRequestReview {
+  reviewId: String!
+  reviewer: String!
+  state: String!
+  submittedAt: DateTime!
+}
+
 type Query {
   """Get catalog of available dimensions, measures, and limits"""
   catalog(orgId: String!, dimension: DimensionInput = null, filters: FilterInput = null): CatalogResult!
@@ -1094,6 +1179,11 @@ type Query {
 
   """Query work graph edges with optional filters"""
   workGraphEdges(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphEdgesResult!
+
+  """
+  Pull request detail by stable id ({repo_id}#pr{number}) from persisted ClickHouse PR, review, commit, and Work Graph tables.
+  """
+  pr(orgId: String!, id: ID!): PullRequestDetail
 
   """Per-node-type inflow/outflow over the full work graph"""
   workGraphFlow(orgId: String!, filters: WorkGraphEdgeFilterInput = null): WorkGraphFlowResult!
@@ -1217,6 +1307,11 @@ type Query {
   List AI-attributed pull requests in the requested window so the UI can offer a concrete drilldown selector. Rows come from ai_attribution_resolved joined to git_pull_requests; no aggregation, no fabrication.
   """
   aiAttributedPrs(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, limit: Int! = 50, offset: Int! = 0): AiAttributedPrsResult!
+
+  """
+  AI attribution mix and provenance evidence for the requested window. Reads ai_attribution_resolved only - the highest-precedence, non-superseded signal per subject - so every row carries source, confidence, and evidence. Does not include a synthesized human bucket; use aiImpactSummary for the full AI-vs-human PR split.
+  """
+  aiAttributionOverview(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, limit: Int! = 50, offset: Int! = 0): AIAttributionOverviewResult!
 }
 
 type Recommendation {
@@ -1516,6 +1611,13 @@ enum TeamAttributionSource {
   UNASSIGNED
 }
 
+type ThroughputEstimateCoverage {
+  ratio: Float
+  estimatedCount: Int!
+  unestimatedCount: Int!
+  backlogSize: Int!
+}
+
 type ThroughputForecast {
   forecastId: String!
   computedAt: String!
@@ -1530,6 +1632,7 @@ type ThroughputForecast {
   primaryRisk: ThroughputRiskOverlay!
   wipCongestion: ThroughputRiskOverlay!
   staleWip: ThroughputStaleWip
+  estimateCoverage: ThroughputEstimateCoverage
   reviewBottleneck: ThroughputRiskOverlay!
   incidentLoad: ThroughputRiskOverlay!
   insufficientHistory: Boolean!

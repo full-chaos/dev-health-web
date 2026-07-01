@@ -112,6 +112,58 @@ query BusFactor($orgId: String!, $scope: BusFactorScopeInput = null) {
 }
 `;
 
+export const PR_DETAIL_QUERY = `
+query PrDetail($orgId: String!, $id: ID!) {
+  pr(orgId: $orgId, id: $id) {
+    id
+    orgId
+    repoId
+    repoName
+    number
+    title
+    body
+    state
+    authorName
+    authorEmail
+    createdAt
+    mergedAt
+    closedAt
+    headBranch
+    baseBranch
+    additions
+    deletions
+    changedFiles
+    firstReviewAt
+    firstCommentAt
+    changesRequestedCount
+    reviewsCount
+    commentsCount
+    reviews {
+      reviewId
+      reviewer
+      state
+      submittedAt
+    }
+    commits {
+      hash
+      message
+      authorName
+      authorEmail
+      authorWhen
+      confidence
+      provenance
+      evidence
+    }
+    linkedIssues {
+      workItemId
+      confidence
+      provenance
+      evidence
+    }
+  }
+}
+`;
+
 // Compounding Risk surface (CHAOS-1642)
 //
 // Reads from compounding_risk_daily (CHAOS-1641). Every field carries enough

@@ -1,9 +1,11 @@
 import { graphqlFetch } from "./server";
-import { AI_WORKFLOW_DRILLDOWN_QUERY, WORK_GRAPH_EDGES_QUERY } from "./queries";
+import { AI_WORKFLOW_DRILLDOWN_QUERY, PR_DETAIL_QUERY, WORK_GRAPH_EDGES_QUERY } from "./queries";
 import type {
     AIWorkflowDrilldownQueryResponse,
     AIWorkflowDrilldownResult,
     AIWorkflowRootTypeInput,
+    PrDetailQueryResponse,
+    PullRequestDetail,
     WorkGraphEdgeFilterInput,
     WorkGraphEdgesQueryResponse,
     WorkGraphEdgesResult,
@@ -49,6 +51,18 @@ export async function getAIWorkflowDrilldownViaGraphQL(params: {
         if (!params.useDemoFallback) throw new Error("Work Graph drilldown unavailable");
     }
     return demoWorkflowDrilldown(params.rootType, params.rootId, params.orgId);
+}
+
+export async function getPrDetailViaGraphQL(params: {
+    orgId: string;
+    id: string;
+}): Promise<PullRequestDetail | null> {
+    const response = await graphqlFetch<PrDetailQueryResponse>(
+        PR_DETAIL_QUERY,
+        { orgId: params.orgId, id: params.id },
+        { orgId: params.orgId },
+    );
+    return response.pr;
 }
 
 export function getWorkUnitInvestmentDistribution(params: {
