@@ -563,15 +563,35 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
         });
     });
 
-    it("test-mode renders deterministic sample Cognitive Load data, scope-independent (CHAOS-2223)", async () => {
-        // Test-mode samples are scope-independent by convention (mirrors the AI
-        // hub): the isTestMode branch is checked BEFORE the scope gate, so this
-        // never depends on cognitiveLoadScopeSupported.
+    it("test-mode renders deterministic sample Cognitive Load data for a scope-supported filter (CHAOS-2223)", async () => {
+        // The isTestMode branch is checked BEFORE the scope gate in the FETCH, so
+        // no network call happens for any scope. But the CHAOS-2077 privacy gate
+        // downstream (cognitiveLoadScopeSupported ? avgInterruptionLoad(...) :
+        // undefined, further below) is untouched and still applies regardless of
+        // test mode — this test uses defaultMetricFilter's supported "team: all"
+        // scope. See the companion test below for the unsupported-scope case.
         const signals = byId(await getDiagnoseSignals(defaultMetricFilter, true));
         expect(mockGetCognitiveLoad).not.toHaveBeenCalled();
         expect(signals["cognitive-load"]).toMatchObject({
             state: "low",
             value: "6",
+        });
+    });
+
+    it("test-mode still honors the CHAOS-2077 scope-support privacy gate for Cognitive Load (developer scope stays unavailable)", async () => {
+        // The isTestMode fetch-level bypass above does NOT make Cognitive Load
+        // scope-independent end-to-end: the downstream render gate
+        // (cognitiveLoadScopeSupported) still discards the fetched sample under an
+        // unsupported scope, so a developer scope can never leak org-wide sample
+        // data under its self-only privacy framing — even in test mode.
+        const developerFilter = {
+            ...defaultMetricFilter,
+            scope: { ...defaultMetricFilter.scope, level: "developer" as const, ids: ["u1"] },
+        };
+        const signals = byId(await getDiagnoseSignals(developerFilter, true));
+        expect(signals["cognitive-load"]).toMatchObject({
+            state: "unavailable",
+            value: "",
         });
     });
 

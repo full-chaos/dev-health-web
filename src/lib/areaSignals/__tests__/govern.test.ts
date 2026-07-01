@@ -274,6 +274,7 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         });
         expect(signals["risk-compounding"]).toMatchObject({
             state: "medium",
+            value: "0.6",
             cluster: "Risk",
         });
         // Neither sample constant calls graphqlFetch — the network is bypassed.
