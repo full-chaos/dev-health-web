@@ -269,6 +269,12 @@ query ThroughputForecast($orgId: String!, $input: ThroughputForecastInput!) {
       p50AgeHours
       p90AgeHours
     }
+    estimateCoverage {
+      ratio
+      estimatedCount
+      unestimatedCount
+      backlogSize
+    }
     reviewBottleneck {
       kind
       score

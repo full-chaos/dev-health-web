@@ -375,6 +375,13 @@ export interface ThroughputStaleWip {
     p90AgeHours?: number | null;
 }
 
+export interface ThroughputEstimateCoverage {
+    ratio?: number | null;
+    estimatedCount: number;
+    unestimatedCount: number;
+    backlogSize: number;
+}
+
 export interface ThroughputForecast {
     forecastId: string;
     computedAt: string;
@@ -389,6 +396,7 @@ export interface ThroughputForecast {
     primaryRisk: ThroughputRiskOverlay;
     wipCongestion: ThroughputRiskOverlay;
     staleWip?: ThroughputStaleWip | null;
+    estimateCoverage?: ThroughputEstimateCoverage | null;
     reviewBottleneck: ThroughputRiskOverlay;
     incidentLoad: ThroughputRiskOverlay;
     insufficientHistory: boolean;
