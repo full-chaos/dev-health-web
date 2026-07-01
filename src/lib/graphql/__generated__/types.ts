@@ -56,6 +56,12 @@ export type AiAttributionOverviewResult = {
   totalAttributed: Scalars['Int']['output'];
 };
 
+export type AiAttributionScopeInput = {
+  buckets?: InputMaybe<Array<AiAttributionBucketInput>>;
+  repoId?: InputMaybe<Scalars['String']['input']>;
+  teamId?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type AiComparison = {
   __typename?: 'AIComparison';
   aiSide: AiComparisonSide;
@@ -1390,7 +1396,7 @@ export type QueryAiAttributionOverviewArgs = {
   limit?: Scalars['Int']['input'];
   offset?: Scalars['Int']['input'];
   orgId: Scalars['String']['input'];
-  scope?: InputMaybe<AiScopeInput>;
+  scope?: InputMaybe<AiAttributionScopeInput>;
 };
 
 

@@ -37,6 +37,12 @@ type AIAttributionOverviewResult {
   dataAvailable: Boolean!
 }
 
+input AIAttributionScopeInput {
+  repoId: String = null
+  teamId: String = null
+  buckets: [AIAttributionBucketInput!] = null
+}
+
 type AIComparison {
   orgId: String!
   startDate: Date!
@@ -1311,7 +1317,7 @@ type Query {
   """
   AI attribution mix and provenance evidence for the requested window. Reads ai_attribution_resolved only - the highest-precedence, non-superseded signal per subject - so every row carries source, confidence, and evidence. Does not include a synthesized human bucket; use aiImpactSummary for the full AI-vs-human PR split.
   """
-  aiAttributionOverview(orgId: String!, dateRange: AIDateRangeInput!, scope: AIScopeInput = null, limit: Int! = 50, offset: Int! = 0): AIAttributionOverviewResult!
+  aiAttributionOverview(orgId: String!, dateRange: AIDateRangeInput!, scope: AIAttributionScopeInput = null, limit: Int! = 50, offset: Int! = 0): AIAttributionOverviewResult!
 }
 
 type Recommendation {
