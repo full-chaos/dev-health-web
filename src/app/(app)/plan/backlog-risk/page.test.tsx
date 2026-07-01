@@ -1,14 +1,47 @@
 import { render, screen } from "@/test/utils";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Session } from "next-auth";
+
+const checkApiHealthMock = vi.fn();
+const requireSessionMock = vi.fn();
+const getThroughputForecastViaGraphQLMock = vi.fn();
+
+vi.mock("@/components/navigation/GlobalContextBar", () => ({
+    GlobalContextBar: () => <div data-testid="global-context-bar" />,
+}));
+
+vi.mock("@/components/navigation/PrimaryNav", () => ({
+    PrimaryNav: () => <nav data-testid="primary-nav" />,
+}));
+
+vi.mock("@/lib/api/system", () => ({
+    checkApiHealth: () => checkApiHealthMock(),
+}));
+
+vi.mock("@/lib/auth", () => ({
+    requireSession: () => requireSessionMock(),
+}));
+
+vi.mock("@/lib/graphql/capacityFetchers", () => ({
+    getThroughputForecastViaGraphQL: (...args: unknown[]) =>
+        getThroughputForecastViaGraphQLMock(...args),
+}));
+
+vi.mock("@/lib/logger", () => ({
+    logger: { warn: vi.fn() },
+}));
 
 import {
     ForecastContent,
+    ForecastErrorState,
     NoForecastState,
     StaleWipCard,
     StatusBadge,
+    UnestimatedDebtCard,
     WipCongestionCard,
 } from "./_components";
 import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
+import BacklogRiskPage from "./page";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -43,12 +76,38 @@ function makeForecast(overrides: Partial<ThroughputForecast> = {}): ThroughputFo
         primaryRisk: makeWipOverlay(),
         wipCongestion: makeWipOverlay(),
         staleWip: { p50AgeHours: 24, p90AgeHours: 96 },
+        estimateCoverage: {
+            ratio: 0.72,
+            estimatedCount: 72,
+            unestimatedCount: 28,
+            backlogSize: 100,
+        },
         reviewBottleneck: makeNeutralOverlay("review"),
         incidentLoad: makeNeutralOverlay("incident"),
         insufficientHistory: false,
         ...overrides,
     };
 }
+
+function makeSession(orgId = "org-1"): Session {
+    return {
+        access_token: "test-token",
+        user: { id: "user-1", org_id: orgId },
+        expires: "2026-07-01T00:00:00.000Z",
+    } satisfies Session;
+}
+
+async function renderPage(params: Record<string, string> = {}) {
+    const ui = await BacklogRiskPage({ searchParams: Promise.resolve(params) });
+    render(ui as React.ReactElement);
+}
+
+beforeEach(() => {
+    vi.resetAllMocks();
+    checkApiHealthMock.mockResolvedValue({ ok: true });
+    requireSessionMock.mockResolvedValue(makeSession());
+    getThroughputForecastViaGraphQLMock.mockResolvedValue(makeForecast());
+});
 
 // ── StatusBadge ───────────────────────────────────────────────────────────────
 
@@ -129,12 +188,65 @@ describe("StaleWipCard", () => {
     });
 });
 
+describe("UnestimatedDebtCard", () => {
+    it("renders populated estimate coverage from the frozen GraphQL response", () => {
+        render(
+            <UnestimatedDebtCard
+                estimateCoverage={{
+                    ratio: 0.72,
+                    estimatedCount: 72,
+                    unestimatedCount: 28,
+                    backlogSize: 100,
+                }}
+            />,
+        );
+
+        expect(screen.getByTestId("unestimated-debt-count")).toHaveTextContent("28 unestimated");
+        expect(screen.getByText("72% estimate coverage")).toBeInTheDocument();
+        expect(screen.getByText("Estimated")).toBeInTheDocument();
+        expect(screen.getByText("Unestimated")).toBeInTheDocument();
+        expect(screen.getByText("Open backlog")).toBeInTheDocument();
+    });
+
+    it("renders connected-but-zero backlog copy without showing 0%", () => {
+        render(
+            <UnestimatedDebtCard
+                estimateCoverage={{
+                    ratio: null,
+                    estimatedCount: 0,
+                    unestimatedCount: 0,
+                    backlogSize: 0,
+                }}
+            />,
+        );
+
+        expect(screen.getByText("No open backlog")).toBeInTheDocument();
+        expect(screen.getByText(/estimate coverage is connected/i)).toBeInTheDocument();
+        expect(screen.queryByText(/0%/)).not.toBeInTheDocument();
+    });
+
+    it("renders unavailable copy when estimate coverage is missing", () => {
+        render(<UnestimatedDebtCard estimateCoverage={null} />);
+
+        expect(screen.getByText("Estimate coverage unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Estimate coverage not yet connected")).not.toBeInTheDocument();
+    });
+});
+
 // ── NoForecastState ───────────────────────────────────────────────────────────
 
 describe("NoForecastState", () => {
     it("renders the insufficient-confidence empty state", () => {
         render(<NoForecastState />);
         expect(screen.getByText("Not enough throughput history")).toBeInTheDocument();
+    });
+});
+
+describe("ForecastErrorState", () => {
+    it("renders a visually distinct fetch-failure state", () => {
+        render(<ForecastErrorState />);
+        expect(screen.getByTestId("backlog-risk-fetch-error")).toBeInTheDocument();
+        expect(screen.getByText("Backlog risk could not load")).toBeInTheDocument();
     });
 });
 
@@ -153,10 +265,11 @@ describe("ForecastContent", () => {
         expect(screen.getByText("Elevated")).toBeInTheDocument();
     });
 
-    it("renders live Stale WIP and leaves Unestimated Debt unavailable", () => {
+    it("renders live Stale WIP and live Unestimated Debt", () => {
         render(<ForecastContent forecast={makeForecast()} />);
         expect(screen.getByText("4 days")).toBeInTheDocument();
-        expect(screen.getByText("Estimate coverage not yet connected")).toBeInTheDocument();
+        expect(screen.getByText("28 unestimated")).toBeInTheDocument();
+        expect(screen.getByText("72% estimate coverage")).toBeInTheDocument();
     });
 
     it("does not leak internal metric field names in empty-state copy", () => {
@@ -164,5 +277,59 @@ describe("ForecastContent", () => {
         // DataState detail copy must never expose implementation vocabulary
         expect(screen.queryByText(/wip_age_p90_hours/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/rollup/i)).not.toBeInTheDocument();
+    });
+});
+
+describe("BacklogRiskPage GraphQL states", () => {
+    it("renders populated estimate coverage from a mocked GraphQL forecast", async () => {
+        getThroughputForecastViaGraphQLMock.mockResolvedValue(
+            makeForecast({
+                estimateCoverage: {
+                    ratio: 0.6,
+                    estimatedCount: 30,
+                    unestimatedCount: 20,
+                    backlogSize: 50,
+                },
+            }),
+        );
+
+        await renderPage();
+
+        expect(getThroughputForecastViaGraphQLMock).toHaveBeenCalledWith("org-1", {
+            teamIds: null,
+            workScopeId: null,
+            historyWeeks: 12,
+        });
+        expect(screen.getByText("20 unestimated")).toBeInTheDocument();
+        expect(screen.getByText("60% estimate coverage")).toBeInTheDocument();
+    });
+
+    it("renders connected-but-zero backlog from a mocked GraphQL forecast without 0%", async () => {
+        getThroughputForecastViaGraphQLMock.mockResolvedValue(
+            makeForecast({
+                backlogSize: 0,
+                estimateCoverage: {
+                    ratio: null,
+                    estimatedCount: 0,
+                    unestimatedCount: 0,
+                    backlogSize: 0,
+                },
+            }),
+        );
+
+        await renderPage();
+
+        expect(screen.getByText("No open backlog")).toBeInTheDocument();
+        expect(screen.queryByText(/0%/)).not.toBeInTheDocument();
+    });
+
+    it("renders error copy when the mocked GraphQL forecast rejects", async () => {
+        getThroughputForecastViaGraphQLMock.mockRejectedValue(new Error("GraphQL failed"));
+
+        await renderPage();
+
+        expect(screen.getByTestId("backlog-risk-fetch-error")).toBeInTheDocument();
+        expect(screen.getByText("Backlog risk could not load")).toBeInTheDocument();
+        expect(screen.queryByText("Not enough throughput history")).not.toBeInTheDocument();
     });
 });
