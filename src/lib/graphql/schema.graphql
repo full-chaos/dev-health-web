@@ -1530,6 +1530,7 @@ type ThroughputForecast {
   primaryRisk: ThroughputRiskOverlay!
   wipCongestion: ThroughputRiskOverlay!
   staleWip: ThroughputStaleWip
+  estimateCoverage: ThroughputEstimateCoverage
   reviewBottleneck: ThroughputRiskOverlay!
   incidentLoad: ThroughputRiskOverlay!
   insufficientHistory: Boolean!
@@ -1561,6 +1562,13 @@ type ThroughputRollingWindow {
 type ThroughputStaleWip {
   p50AgeHours: Float
   p90AgeHours: Float
+}
+
+type ThroughputEstimateCoverage {
+  ratio: Float
+  estimatedCount: Int!
+  unestimatedCount: Int!
+  backlogSize: Int!
 }
 
 enum TimeGranularity {
