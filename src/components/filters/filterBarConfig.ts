@@ -131,10 +131,13 @@ const COMPLEXITY_VISIBILITY: FilterVisibility = {
 };
 
 // Cognitive load preserves the no-surveillance contract — team/repo scope
-// only. Developer scope is gated separately at the page level (self-only).
+// only (repo filtering flows through the always-visible GlobalContextBarClient
+// picker; this flag keeps FilterBarClient's own config consistent with the
+// sibling repo-scoped views below rather than silently disagreeing with it).
+// Developer scope is gated separately at the page level (self-only).
 const COGNITIVE_LOAD_VISIBILITY: FilterVisibility = {
     scope: true,
-    repo: false,
+    repo: true,
     developer: false,
     workType: false,
     flowStage: false,

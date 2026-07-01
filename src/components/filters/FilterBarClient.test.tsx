@@ -162,6 +162,16 @@ describe("resolveVisibility (pure)", () => {
         expect(v.repo).toBe(false);
         expect(v.workType).toBe(false);
     });
+
+    it("enables repo for view=cognitive-load, still hides developer/workType/flowStage (CHAOS-2386)", () => {
+        const v = resolveVisibility("cognitive-load");
+        expect(v.scope).toBe(true);
+        expect(v.repo).toBe(true);
+        expect(v.developer).toBe(false);
+        expect(v.workType).toBe(false);
+        expect(v.flowStage).toBe(false);
+        expect(v.date).toBe(true);
+    });
 });
 
 describe("URL sync on filter change", () => {
