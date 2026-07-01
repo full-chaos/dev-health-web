@@ -223,4 +223,21 @@ describe("PrDetailPage", () => {
         expect(screen.getByText(/Related work unavailable/i)).toBeInTheDocument();
         expect(screen.queryByText("No data for related entities.")).not.toBeInTheDocument();
     });
+
+    it("resolves and renders the repo_id:number colon-format PR id route", async () => {
+        const colonId = "11111111-1111-1111-1111-111111111111:42";
+        getPrDetailViaGraphQLMock.mockResolvedValue({ ...samplePr, id: colonId });
+
+        await renderPage(colonId);
+
+        expect(screen.getByRole("heading", { name: "PR detail" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Wire PR detail" })).toBeInTheDocument();
+        expect(getPrDetailViaGraphQLMock).toHaveBeenCalledWith({ orgId: "org-1", id: colonId });
+        expect(getAIWorkflowDrilldownViaGraphQLMock).toHaveBeenCalledWith({
+            orgId: "org-1",
+            rootType: "PR",
+            rootId: colonId,
+            useDemoFallback: false,
+        });
+    });
 });
