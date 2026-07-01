@@ -48,13 +48,15 @@ test.describe("AI views", () => {
         }
     });
 
-    test("the preview Attribution route claims no false active tab (CHAOS-2200)", async ({
-        page,
-    }) => {
+    test("the Attribution route claims no false active tab (CHAOS-2200)", async ({ page }) => {
         await page.goto("/ai/attribution");
 
-        // The preview marker carries its copy as a tooltip (title attr), not text.
-        await expect(page.getByTitle("This feature is in preview.")).toBeVisible();
+        // CHAOS-2744 wired this route to the live aiAttributionOverview
+        // resolver -- it's no longer the static preview stub, so the old
+        // preview marker no longer renders here by design. It still isn't one
+        // of the four canonical AI tabs, though, so the tab strip must not
+        // claim a false active state for it.
+        await expect(page.getByRole("heading", { name: "Attribution" })).toBeVisible();
         const tabStrip = page.getByRole("navigation", { name: "AI views" });
         await expect(tabStrip.locator('a[aria-current="page"]')).toHaveCount(0);
     });
