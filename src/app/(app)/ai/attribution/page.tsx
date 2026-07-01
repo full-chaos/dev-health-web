@@ -1,18 +1,38 @@
+import { AIAttributionDashboard } from "@/components/ai/AIAttributionDashboard";
 import { AIPageHeader } from "@/components/ai/AIPageHeader";
-import { AITabPreview } from "@/components/ai/AITabPreview";
+import { FilterBar } from "@/components/filters/FilterBar";
+import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
+import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { checkApiHealth } from "@/lib/api/system";
+import { metricFilterToAIFilter } from "@/lib/filters/ai";
+import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
+type AIAttributionPageProps = {
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
 /**
- * Attribution tab — preview. The attribution mix currently lives as panels
- * inside Impact. Marked preview rather than fabricating a separate surface.
+ * Dedicated AI Attribution home (CHAOS-2744). Wires the previously
+ * structurally-unconnected static preview onto the live `aiAttributionOverview`
+ * resolver -- honest no-data/error states, no static preview content.
  */
-export default function AIAttributionPage() {
+export default async function AIAttributionPage({ searchParams }: AIAttributionPageProps) {
+    const params = (await searchParams) ?? {};
+    const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const aiFilter = metricFilterToAIFilter(filters);
+    const health = await checkApiHealth();
+
+    if (!health.ok) {
+        return <ServiceUnavailable />;
+    }
+
     return (
         <>
             <AIPageHeader
                 eyebrow="AI"
                 title="Attribution"
-                preview
                 breadcrumbs={[
                     ...navTrailForPathname("/ai/attribution").map((c) => ({
                         ...c,
@@ -21,20 +41,14 @@ export default function AIAttributionPage() {
                     { label: "Attribution" },
                 ]}
             >
-                A dedicated home for PR attribution — how work splits across human, AI-assisted,
-                AI-reviewed, agent-created, and unknown buckets — is coming. Today these panels live
-                within Impact.
+                How work in this window appears to split across AI-assisted, AI-reviewed,
+                agent-created, and unknown-signal kinds, with the persisted evidence behind every
+                bucket.
             </AIPageHeader>
-            <AITabPreview
-                whereNow={{
-                    label: "View attribution mix in Impact",
-                    href: "/ai/impact",
-                }}
-            >
-                Attribution diagnostics will move here when they can stand as a complete view. For
-                now the same signals — including the unknown bucket kept visible for coverage gaps —
-                appear on the Impact tab.
-            </AITabPreview>
+
+            <GlobalContextBar filters={filters} />
+            <FilterBar view="ai" />
+            <AIAttributionDashboard filter={aiFilter} />
         </>
     );
 }

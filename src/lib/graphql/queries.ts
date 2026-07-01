@@ -950,6 +950,41 @@ query AIAttributedPrs($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
 }
 `;
 
+// ---------------------------------------------------------------------------
+// AI attribution overview -- mix + provenance evidence (CHAOS-2744)
+// ---------------------------------------------------------------------------
+
+export const AI_ATTRIBUTION_OVERVIEW_QUERY = `
+query AIAttributionOverview($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIAttributionScopeInput, $limit: Int! = 50, $offset: Int! = 0) {
+  aiAttributionOverview(orgId: $orgId, dateRange: $dateRange, scope: $scope, limit: $limit, offset: $offset) {
+    orgId
+    startDate
+    endDate
+    mix {
+      kind
+      count
+      share
+    }
+    totalAttributed
+    hasMore
+    dataAvailable
+    rows {
+      subjectType
+      subjectId
+      repoId
+      provider
+      kind
+      source
+      confidence
+      actor
+      evidence
+      observedAt
+      teamId
+    }
+  }
+}
+`;
+
 // ==== Complexity Queries (CHAOS-1745) ====
 
 // Query for complexity timeseries — repo-level cyclomatic complexity over time.

@@ -259,16 +259,21 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         await expect(panel.getByTestId("ai-drilldown-empty")).toHaveCount(0);
     });
 
-    test("attribution stays an explicit preview surface", async ({ page }) => {
+    test("attribution renders the live resolver-backed dashboard (CHAOS-2744)", async ({
+        page,
+    }) => {
         await page.goto(`/ai/attribution?f=${populatedFilter}`);
 
         await expect(page.getByRole("heading", { name: "Attribution" })).toBeVisible();
-        // Two preview markers render by design: the AIPageHeader badge and the
-        // AITabPreview redirect block pointing at today's home in Impact.
-        await expect(page.getByTitle("This feature is in preview.")).toBeVisible();
-        await expect(page.getByTestId("ai-tab-preview")).toBeVisible();
-        await expect(
-            page.getByRole("link", { name: /View attribution mix in Impact/ }),
-        ).toBeVisible();
+
+        // CHAOS-2744 replaced the static preview stub (AITabPreview + preview
+        // badge) with the live aiAttributionOverview-backed dashboard. The
+        // Playwright mock backend does not yet stub aiAttributionOverview, so
+        // the honest "unavailable" DataState -- not the removed preview
+        // markers -- is the deterministic outcome here.
+        await expect(page.getByTestId("data-state-detector-unavailable")).toBeVisible();
+        await expect(page.getByText("AI attribution data unavailable")).toBeVisible();
+        await expect(page.getByTitle("This feature is in preview.")).toHaveCount(0);
+        await expect(page.getByTestId("ai-tab-preview")).toHaveCount(0);
     });
 });

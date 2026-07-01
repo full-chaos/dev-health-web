@@ -3,6 +3,7 @@ import { useQuery } from "urql";
 
 import {
     AI_ATTRIBUTED_PRS_QUERY,
+    AI_ATTRIBUTION_OVERVIEW_QUERY,
     AI_GOVERNANCE_SUMMARY_QUERY,
     AI_REVIEW_LOAD_QUERY,
     AI_RISK_BREAKDOWN_QUERY,
@@ -11,6 +12,8 @@ import {
 import { useOrgId } from "../provider";
 import type {
     AiAttributedPrsResult,
+    AiAttributionOverviewResult,
+    AiAttributionScopeInput,
     AiComparison,
     AiDateRangeInput,
     AiGovernanceSummary,
@@ -33,6 +36,11 @@ type AIInputs = {
     scope: AiScopeInput | null;
 };
 
+type AIAttributionInputs = {
+    dateRange: AiDateRangeInput;
+    scope: AiAttributionScopeInput | null;
+};
+
 type ReviewLoadData = {
     aiReviewLoad: AiReviewLoadResult;
     aiComparison: AiComparison;
@@ -51,11 +59,38 @@ type AttributedPrsData = {
     aiAttributedPrs: AiAttributedPrsResult;
 };
 
+type AttributionOverviewData = {
+    aiAttributionOverview: AiAttributionOverviewResult;
+};
+
 export function toAIQueryInputs(filter: AIFilter): AIInputs {
     const scope = {
         repoId: filter.repoId ?? null,
         teamId: filter.teamId ?? null,
         workType: filter.workType ?? null,
+        buckets: filter.buckets ?? null,
+    };
+
+    const hasScope = Object.values(scope).some((value) =>
+        Array.isArray(value) ? value.length > 0 : value != null,
+    );
+
+    return {
+        dateRange: { startDate: filter.startDate, endDate: filter.endDate },
+        scope: hasScope ? scope : null,
+    };
+}
+
+/**
+ * Attribution-specific scope shaping. `AIAttributionScopeInput` (backend,
+ * CHAOS-2744 ops #1098) has no `workType` field -- unlike the generic
+ * `AIScopeInput` used by the other AI queries -- so this omits it rather
+ * than reusing `toAIQueryInputs`, which would send an invalid variable.
+ */
+export function toAIAttributionQueryInputs(filter: AIFilter): AIAttributionInputs {
+    const scope = {
+        repoId: filter.repoId ?? null,
+        teamId: filter.teamId ?? null,
         buckets: filter.buckets ?? null,
     };
 
@@ -173,6 +208,24 @@ export function useAIAttributedPrs(filter: AIFilter, limit = 50, offset = 0, pau
 
     return {
         data: result.data?.aiAttributedPrs,
+        fetching: result.fetching,
+        error: result.error,
+    };
+}
+
+export function useAIAttributionOverview(filter: AIFilter, limit = 50, offset = 0) {
+    const orgId = useOrgId();
+    const inputs = useMemo(() => toAIAttributionQueryInputs(filter), [filter]);
+
+    const [result] = useQuery<AttributionOverviewData>({
+        query: AI_ATTRIBUTION_OVERVIEW_QUERY,
+        variables: { orgId: orgId ?? "", ...inputs, limit, offset },
+        pause: !orgId,
+        requestPolicy: "cache-and-network",
+    });
+
+    return {
+        data: result.data?.aiAttributionOverview,
         fetching: result.fetching,
         error: result.error,
     };
