@@ -449,11 +449,7 @@ export interface OperatingReviewQueryResponse {
 // ==== Work Graph Types ====
 
 export type InvestmentTheme =
-    | "feature_delivery"
-    | "operational"
-    | "maintenance"
-    | "quality"
-    | "risk";
+    "feature_delivery" | "operational" | "maintenance" | "quality" | "risk";
 
 export type InvestmentSubcategory =
     | "feature_delivery.customer"

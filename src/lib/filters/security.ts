@@ -75,11 +75,7 @@ const ALLOWED_KEYS = new Set([
 
 export type SecuritySeverity = "critical" | "high" | "medium" | "low" | "unknown";
 export type SecuritySource =
-    | "dependabot"
-    | "code_scanning"
-    | "advisory"
-    | "gitlab_vulnerability"
-    | "gitlab_dependency";
+    "dependabot" | "code_scanning" | "advisory" | "gitlab_vulnerability" | "gitlab_dependency";
 export type SecurityState = "open" | "fixed" | "dismissed" | "detected" | "confirmed" | "resolved";
 
 export type SecurityFilter = {

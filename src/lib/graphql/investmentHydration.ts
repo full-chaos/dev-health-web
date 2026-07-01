@@ -116,8 +116,7 @@ function adaptBreakdown(response: AnalyticsQueryResponse): InvestmentResponse {
         unit: "delivery_units",
         evidence_quality_distribution:
             (response.analytics.evidenceQualityDistribution as
-                | Record<string, number>
-                | undefined) ?? undefined,
+                Record<string, number> | undefined) ?? undefined,
         evidence_quality_stats: response.analytics.evidenceQualityStats
             ? {
                   mean: response.analytics.evidenceQualityStats.mean ?? null,

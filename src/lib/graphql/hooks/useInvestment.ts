@@ -142,8 +142,7 @@ export function useInvestmentMix(options: UseInvestmentMixOptions): UseInvestmen
             unit: "delivery_units",
             evidence_quality_distribution:
                 (result.data.analytics.evidenceQualityDistribution as
-                    | Record<string, number>
-                    | undefined) ?? undefined,
+                    Record<string, number> | undefined) ?? undefined,
             evidence_quality_stats: result.data.analytics.evidenceQualityStats
                 ? {
                       mean: result.data.analytics.evidenceQualityStats.mean ?? null,

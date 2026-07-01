@@ -173,17 +173,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     <ModeTabs
                         ariaLabel="Metrics views"
                         activeId={activeTab.id}
-                        items={METRIC_TABS.map(
-                            (tab): ModeTabItem => ({
-                                id: tab.id,
-                                label: tab.label,
-                                href: withFilterParam(
-                                    `/metrics?tab=${tab.id}`,
-                                    filters,
-                                    activeRole,
-                                ),
-                            }),
-                        )}
+                        items={METRIC_TABS.map((tab): ModeTabItem => ({
+                            id: tab.id,
+                            label: tab.label,
+                            href: withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole),
+                        }))}
                     />
 
                     <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">

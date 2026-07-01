@@ -19,10 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
  * | insufficient-confidence  | Some evidence, but not enough to show a result.  |
  */
 export type CockpitEmptyStateVariant =
-    | "no-data-connected"
-    | "detector-unavailable"
-    | "no-findings"
-    | "insufficient-confidence";
+    "no-data-connected" | "detector-unavailable" | "no-findings" | "insufficient-confidence";
 
 type VariantCopy = {
     title: string;

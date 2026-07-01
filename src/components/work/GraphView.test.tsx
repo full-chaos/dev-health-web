@@ -81,7 +81,10 @@ describe("GraphView", () => {
 
         render(<GraphView filters={filters} />);
 
-        expect(screen.getByText(/No work graph data available/i)).toBeInTheDocument();
+        const emptyState = within(screen.getByTestId("data-state-detector-enabled-no-findings"));
+        expect(emptyState.getByText(/No Work → PRs relationships/i)).toBeInTheDocument();
+        expect(emptyState.getByText(/active connection slice/i)).toBeInTheDocument();
+        expect(emptyState.getByText(/PRs → Commits → Files/i)).toBeInTheDocument();
         expect(screen.getByText(/0 edges/i)).toBeInTheDocument();
         expect(screen.getByTestId("work-graph-legend")).toBeInTheDocument();
     });
@@ -554,8 +557,11 @@ describe("GraphView", () => {
 
         render(<GraphView filters={filters} />);
 
-        // Backend returned no edges for this theme → empty copy names the filter.
-        expect(screen.getByText(/No work graph data matching Quality/i)).toBeInTheDocument();
+        const emptyState = within(screen.getByTestId("data-state-detector-enabled-no-findings"));
+        expect(
+            emptyState.getByText(/No Work → PRs relationships matching Quality/i),
+        ).toBeInTheDocument();
+        expect(emptyState.getByText(/active connection slice/i)).toBeInTheDocument();
     });
 
     it("shows the 'theme data is being prepared' state when degradedReason=MEMBERSHIP_NOT_MATERIALIZED under an active theme filter", () => {

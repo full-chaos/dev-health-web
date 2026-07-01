@@ -22,9 +22,7 @@ import { navTrailForPathname } from "@/lib/navigation/areas";
 
 /** Discriminated fetch result: distinguishes a real error from a genuine empty payload. */
 type ReviewResult =
-    | { status: "ok"; review: OperatingReview }
-    | { status: "empty" }
-    | { status: "error" };
+    { status: "ok"; review: OperatingReview } | { status: "empty" } | { status: "error" };
 
 type OperatingReviewPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;

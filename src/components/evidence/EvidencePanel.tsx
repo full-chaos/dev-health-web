@@ -84,10 +84,7 @@ const threadFromApiUrl = (apiUrl?: string) => {
 };
 
 type FetchableEvidenceResult =
-    | EvidencePanelResult
-    | HomeResponse
-    | InvestmentResponse
-    | OpportunitiesResponse;
+    EvidencePanelResult | HomeResponse | InvestmentResponse | OpportunitiesResponse;
 
 const isHomeResponse = (result: FetchableEvidenceResult): result is HomeResponse =>
     "freshness" in result && "tiles" in result && "constraint" in result;

@@ -11,15 +11,9 @@ export type RoleConfig = {
     shortLabel: string;
     framing: string;
     primaryQuadrant:
-        | "review_load_latency"
-        | "wip_throughput"
-        | "churn_throughput"
-        | "cycle_throughput";
+        "review_load_latency" | "wip_throughput" | "churn_throughput" | "cycle_throughput";
     secondaryQuadrant:
-        | "review_load_latency"
-        | "wip_throughput"
-        | "churn_throughput"
-        | "cycle_throughput";
+        "review_load_latency" | "wip_throughput" | "churn_throughput" | "cycle_throughput";
     investigationOrder: readonly string[];
 };
 

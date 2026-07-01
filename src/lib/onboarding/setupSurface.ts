@@ -13,11 +13,7 @@ import type { SetupStatus } from "./types";
 
 /** Distinct dashboard surfaces. `ready` renders nothing (fully set up). */
 export type SetupSurfaceVariant =
-    | "no-integration"
-    | "skipped"
-    | "sync-pending"
-    | "sync-failed"
-    | "ready";
+    "no-integration" | "skipped" | "sync-pending" | "sync-failed" | "ready";
 
 export const GITHUB_INTEGRATION_PATH = "/org/admin/integrations/github";
 export const FIRST_RUN_SYNC_PATH = "/org/admin/integrations/github/sync";

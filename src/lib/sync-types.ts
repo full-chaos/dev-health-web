@@ -46,8 +46,7 @@ export type SyncJob = {
 
 /** Where to poll for live status after a manual trigger. */
 export type SyncPollTarget =
-    | { kind: "planner"; runId: string }
-    | { kind: "legacy"; configId: string; runId: string };
+    { kind: "planner"; runId: string } | { kind: "legacy"; configId: string; runId: string };
 
 /**
  * Decide which endpoint to poll from a trigger response.
