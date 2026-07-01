@@ -211,4 +211,16 @@ describe("PrDetailPage", () => {
         if (evidence === null) throw new Error("Expected commits evidence panel");
         expect(within(evidence).getByText("abcdef1234567890")).toBeInTheDocument();
     });
+
+    it("renders a distinct error state when the related-entities fetch fails, not 'No data'", async () => {
+        getAIWorkflowDrilldownViaGraphQLMock.mockRejectedValue(
+            new Error("Work Graph drilldown unavailable"),
+        );
+
+        await renderPage();
+
+        expect(screen.getByTestId("related-entities-error")).toBeInTheDocument();
+        expect(screen.getByText(/Related work unavailable/i)).toBeInTheDocument();
+        expect(screen.queryByText("No data for related entities.")).not.toBeInTheDocument();
+    });
 });

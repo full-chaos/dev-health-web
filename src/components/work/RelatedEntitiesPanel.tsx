@@ -14,6 +14,8 @@ type RelatedEntitiesPanelProps = {
     rootId: string;
     drilldown: AIWorkflowDrilldownResult;
     investment: WorkUnitInvestmentDistribution;
+    /** True when the related-entities/Work Graph evidence fetch failed (distinct from a genuine empty result). */
+    relatedEntitiesError?: boolean;
 };
 
 const entityLabels: Record<string, string> = {
@@ -91,6 +93,7 @@ export function RelatedEntitiesPanel({
     rootId,
     drilldown,
     investment,
+    relatedEntitiesError = false,
 }: RelatedEntitiesPanelProps) {
     const theme = topDistributionEntry(investment.themeDistribution);
     const subcategory = topDistributionEntry(investment.subcategoryDistribution);
@@ -125,7 +128,15 @@ export function RelatedEntitiesPanel({
                 </div>
             </div>
 
-            {relatedEdges.length === 0 ? (
+            {relatedEntitiesError ? (
+                <div
+                    data-testid="related-entities-error"
+                    className="mt-6 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)"
+                >
+                    Related work unavailable. Work Graph evidence could not be loaded from the
+                    backend; try again once the data service recovers.
+                </div>
+            ) : relatedEdges.length === 0 ? (
                 <div className="mt-6 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
                     No data for related entities.
                 </div>

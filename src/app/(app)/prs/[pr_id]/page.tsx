@@ -185,7 +185,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
         );
     }
     const shouldLoadRelatedEntities = prResult.pr !== null || demoMode;
-    const [flame, drilldown] = await Promise.all([
+    const [flame, relatedEntitiesResult] = await Promise.all([
         fetchOrNull(getFlame({ entity_type: "pr", entity_id: prId }), "pr-flame"),
         shouldLoadRelatedEntities
             ? getAIWorkflowDrilldownViaGraphQL({
@@ -193,9 +193,18 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
                   rootType: "PR",
                   rootId: prId,
                   useDemoFallback: demoMode,
-              }).catch(() => emptyDrilldown(orgId, prId))
-            : Promise.resolve(emptyDrilldown(orgId, prId)),
+              })
+                  .then((drilldown) => ({ drilldown, relatedEntitiesError: false }))
+                  .catch(() => ({
+                      drilldown: emptyDrilldown(orgId, prId),
+                      relatedEntitiesError: true,
+                  }))
+            : Promise.resolve({
+                  drilldown: emptyDrilldown(orgId, prId),
+                  relatedEntitiesError: false,
+              }),
     ]);
+    const { drilldown, relatedEntitiesError } = relatedEntitiesResult;
     const investment = demoMode
         ? getWorkUnitInvestmentDistribution({ rootType: "PR", rootId: prId })
         : emptyInvestment(prId);
@@ -254,6 +263,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
                         rootId={prId}
                         drilldown={drilldown}
                         investment={investment}
+                        relatedEntitiesError={relatedEntitiesError}
                     />
                 </main>
             </div>
