@@ -567,6 +567,7 @@ export type CloneSavedReportInput = {
 
 export type CognitiveLoadInput = {
   orgId: Scalars['String']['input'];
+  repoId?: InputMaybe<Scalars['String']['input']>;
   sinceDate: Scalars['Date']['input'];
   teamId?: InputMaybe<Scalars['String']['input']>;
   untilDate: Scalars['Date']['input'];
