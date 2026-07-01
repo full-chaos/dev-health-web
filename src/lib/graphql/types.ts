@@ -247,6 +247,64 @@ export interface BusFactorScopeInput {
     teamId?: string | null;
 }
 
+export interface PullRequestReview {
+    reviewId: string;
+    reviewer: string;
+    state: string;
+    submittedAt: string;
+}
+
+export interface PullRequestCommit {
+    hash: string;
+    message?: string | null;
+    authorName?: string | null;
+    authorEmail?: string | null;
+    authorWhen?: string | null;
+    confidence?: number | null;
+    provenance?: string | null;
+    evidence?: string | null;
+}
+
+export interface PullRequestIssueLink {
+    workItemId: string;
+    confidence: number;
+    provenance: string;
+    evidence: string;
+}
+
+export interface PullRequestDetail {
+    id: string;
+    orgId: string;
+    repoId: string;
+    repoName?: string | null;
+    number: number;
+    title?: string | null;
+    body?: string | null;
+    state?: string | null;
+    authorName?: string | null;
+    authorEmail?: string | null;
+    createdAt: string;
+    mergedAt?: string | null;
+    closedAt?: string | null;
+    headBranch?: string | null;
+    baseBranch?: string | null;
+    additions?: number | null;
+    deletions?: number | null;
+    changedFiles?: number | null;
+    firstReviewAt?: string | null;
+    firstCommentAt?: string | null;
+    changesRequestedCount: number;
+    reviewsCount: number;
+    commentsCount: number;
+    reviews: PullRequestReview[];
+    commits: PullRequestCommit[];
+    linkedIssues: PullRequestIssueLink[];
+}
+
+export interface PrDetailQueryResponse {
+    pr: PullRequestDetail | null;
+}
+
 export interface MaintainerShare {
     author: string;
     sharePercent: number;
