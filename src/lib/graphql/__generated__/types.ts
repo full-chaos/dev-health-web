@@ -1860,6 +1860,14 @@ export type TeamAttributionSource =
   | 'REPO_OWNERSHIP'
   | 'UNASSIGNED';
 
+export type ThroughputEstimateCoverage = {
+  __typename?: 'ThroughputEstimateCoverage';
+  backlogSize: Scalars['Int']['output'];
+  estimatedCount: Scalars['Int']['output'];
+  ratio?: Maybe<Scalars['Float']['output']>;
+  unestimatedCount: Scalars['Int']['output'];
+};
+
 export type ThroughputForecast = {
   __typename?: 'ThroughputForecast';
   backlogSize: Scalars['Int']['output'];
@@ -1879,14 +1887,6 @@ export type ThroughputForecast = {
   teamId?: Maybe<Scalars['String']['output']>;
   wipCongestion: ThroughputRiskOverlay;
   workScopeId?: Maybe<Scalars['String']['output']>;
-};
-
-export type ThroughputEstimateCoverage = {
-  __typename?: 'ThroughputEstimateCoverage';
-  backlogSize: Scalars['Int']['output'];
-  estimatedCount: Scalars['Int']['output'];
-  ratio?: Maybe<Scalars['Float']['output']>;
-  unestimatedCount: Scalars['Int']['output'];
 };
 
 export type ThroughputForecastInput = {
