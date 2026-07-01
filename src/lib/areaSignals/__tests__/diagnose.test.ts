@@ -537,25 +537,59 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
         });
     });
 
-    it("test-mode skips graphql and resolves complexity as unavailable", async () => {
-        // In test mode, graphqlFetch is never called for complexity.
+    it("test-mode renders deterministic sample Complexity data (no GraphQL calls, CHAOS-2223)", async () => {
+        // In test mode, graphqlFetch is never called for complexity —
+        // SAMPLE_DIAGNOSE_COMPLEXITY flows through the SAME mean-cyclomaticPerKloc
+        // derivation above instead of the honest-empty "Not yet connected" tier.
         const signals = byId(await getDiagnoseSignals(defaultMetricFilter, true));
         expect(mockGraphql).not.toHaveBeenCalled();
         expect(signals.complexity).toMatchObject({
-            state: "unavailable",
-            value: "",
+            state: "medium",
+            value: "22",
         });
     });
 
-    it("test-mode skips bus factor and resolves landscape as unavailable", async () => {
-        // In test mode, getBusFactorData is never called for Landscape — it stays
-        // unavailable like the other GraphQL-backed Diagnose signals (complexity,
-        // cognitive-load). This stops a test-only BusFactor mock (added for the /code
-        // ownership card) from leaking an available Landscape hero into the Diagnose
-        // overview (CHAOS-2035 regression).
+    it("test-mode renders deterministic sample Landscape (bus factor) data (CHAOS-2223)", async () => {
+        // getBusFactorData is never called in test mode — SAMPLE_DIAGNOSE_BUS_FACTOR
+        // (a dedicated constant, NOT the shared /code-page MSW mock) flows through
+        // the same higher-is-better derivation instead. This no longer depends on
+        // (or can drift with) the /code ownership card's shared mock value, which
+        // is what caused the original CHAOS-2035 hero-leak regression.
         const signals = byId(await getDiagnoseSignals(defaultMetricFilter, true));
         expect(mockGetBusFactorData).not.toHaveBeenCalled();
         expect(signals.landscape).toMatchObject({
+            state: "high",
+            value: "1.8",
+        });
+    });
+
+    it("test-mode renders deterministic sample Cognitive Load data for a scope-supported filter (CHAOS-2223)", async () => {
+        // The isTestMode branch is checked BEFORE the scope gate in the FETCH, so
+        // no network call happens for any scope. But the CHAOS-2077 privacy gate
+        // downstream (cognitiveLoadScopeSupported ? avgInterruptionLoad(...) :
+        // undefined, further below) is untouched and still applies regardless of
+        // test mode — this test uses defaultMetricFilter's supported "team: all"
+        // scope. See the companion test below for the unsupported-scope case.
+        const signals = byId(await getDiagnoseSignals(defaultMetricFilter, true));
+        expect(mockGetCognitiveLoad).not.toHaveBeenCalled();
+        expect(signals["cognitive-load"]).toMatchObject({
+            state: "low",
+            value: "6",
+        });
+    });
+
+    it("test-mode still honors the CHAOS-2077 scope-support privacy gate for Cognitive Load (developer scope stays unavailable)", async () => {
+        // The isTestMode fetch-level bypass above does NOT make Cognitive Load
+        // scope-independent end-to-end: the downstream render gate
+        // (cognitiveLoadScopeSupported) still discards the fetched sample under an
+        // unsupported scope, so a developer scope can never leak org-wide sample
+        // data under its self-only privacy framing — even in test mode.
+        const developerFilter = {
+            ...defaultMetricFilter,
+            scope: { ...defaultMetricFilter.scope, level: "developer" as const, ids: ["u1"] },
+        };
+        const signals = byId(await getDiagnoseSignals(developerFilter, true));
+        expect(signals["cognitive-load"]).toMatchObject({
             state: "unavailable",
             value: "",
         });

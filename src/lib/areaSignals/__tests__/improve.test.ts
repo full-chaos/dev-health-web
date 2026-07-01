@@ -427,15 +427,19 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
     });
 
     it("degrades the 3 sub-areas to UNAVAILABLE (no top signal) when ALL sources fail (CHAOS-2219 + CHAOS-2220)", async () => {
-        // The genuine "not connected" path: all three fetches throw → safe()
-        // swallows to undefined → all sub-areas unavailable, no top signal.
+        // The genuine "not connected" path (production, isTestMode=false): all
+        // three fetches throw → safe() swallows to undefined → all sub-areas
+        // unavailable, no top signal. (In isTestMode, Automations now short-
+        // circuits to deterministic sample data instead of calling graphqlFetch
+        // at all — see the CHAOS-2223 test below — so this genuine-failure
+        // scenario is exercised with isTestMode=false.)
         // Both Experiments (CHAOS-2219) and Automations (CHAOS-2220) have real
         // routes, so neither degrades to "preview" even when unavailable.
         mockGetOpportunities.mockRejectedValue(new Error("opps down"));
         mockGetHomeData.mockRejectedValue(new Error("home down"));
         mockGraphqlFetch.mockRejectedValue(new Error("graphql down"));
 
-        const signals = await getImproveSignals(defaultMetricFilter, true);
+        const signals = await getImproveSignals(defaultMetricFilter, false);
         expect(signals).toHaveLength(3);
         expect(signals.find((s) => s.id === "improve-top-signal")).toBeUndefined();
         for (const signal of signals) {
@@ -447,5 +451,19 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         expect(byIdMap.experiments.preview).not.toBe(true);
         expect(byIdMap["improve-automations"].preview).not.toBe(true);
         expect(byIdMap.opportunities.preview).not.toBe(true);
+    });
+
+    it("renders deterministic sample Automations data in isTestMode (no GraphQL calls, CHAOS-2223)", async () => {
+        // Automations was the one Improve source still short-circuiting to an
+        // honest-empty card in test mode (the shared mock GraphQL server has no
+        // `improveOpportunities` handler). SAMPLE_IMPROVE_AUTOMATIONS now flows
+        // through the SAME detectorReady/totalCount derivation instead of calling
+        // graphqlFetch.
+        const signals = byId(await getImproveSignals(defaultMetricFilter, true));
+        expect(mockGraphqlFetch).not.toHaveBeenCalled();
+        expect(signals["improve-automations"]).toMatchObject({
+            state: "neutral",
+            value: "3 detected",
+        });
     });
 });

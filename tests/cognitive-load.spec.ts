@@ -24,7 +24,13 @@ test.describe("IA rejection regressions", () => {
         await expect(grid).toBeVisible();
         await expect(grid.getByTestId("area-signal-unavailable")).not.toHaveCount(0);
         await expect(grid.getByRole("link", { name: "People" })).not.toBeVisible();
-        await expect(grid.getByRole("link", { name: "Landscape" })).toBeVisible();
+        // CHAOS-2223: Landscape now renders deterministic sample bus-factor data in
+        // test mode and derives "high" severity — the most severe available Diagnose
+        // signal — so AreaOverview promotes it to the HERO slot, not the grid. Assert
+        // page-level visibility rather than scoping to `grid`.
+        await expect(
+            page.getByTestId("area-overview-hero").getByRole("heading", { name: "Landscape" }),
+        ).toBeVisible();
         await expect(grid.getByRole("link", { name: "Cognitive Load" })).toBeVisible();
 
         // People remains reachable via the active Diagnose sidebar navigation
