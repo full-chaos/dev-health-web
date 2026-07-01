@@ -112,19 +112,11 @@ function buildSignal(
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
 
+const VALID_SEVERITIES = new Set(["critical", "high", "medium", "low"]);
+
 function normalizeReturnedSeverity(severity: string | undefined): AreaSignalState {
-    switch (severity?.trim().toLowerCase()) {
-        case "critical":
-            return "critical";
-        case "high":
-            return "high";
-        case "medium":
-            return "medium";
-        case "low":
-            return "low";
-        default:
-            return "neutral";
-    }
+    const s = severity?.trim().toLowerCase() ?? "";
+    return VALID_SEVERITIES.has(s) ? (s as AreaSignalState) : "neutral";
 }
 
 /** Find a home `deltas[]` entry by its backend metric key. */
