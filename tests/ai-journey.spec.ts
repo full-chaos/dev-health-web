@@ -267,12 +267,18 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         await expect(page.getByRole("heading", { name: "Attribution" })).toBeVisible();
 
         // CHAOS-2744 replaced the static preview stub (AITabPreview + preview
-        // badge) with the live aiAttributionOverview-backed dashboard. The
-        // Playwright mock backend does not yet stub aiAttributionOverview, so
-        // the honest "unavailable" DataState -- not the removed preview
-        // markers -- is the deterministic outcome here.
-        await expect(page.getByTestId("data-state-detector-unavailable")).toBeVisible();
-        await expect(page.getByText("AI attribution data unavailable")).toBeVisible();
+        // badge) with the live aiAttributionOverview-backed dashboard. This is a
+        // fix-forward for PR #731, which merged asserting the honest
+        // "unavailable" DataState as the happy path instead of adding the
+        // missing aiAttributionOverview mock stub -- the populated filter must
+        // render the populated mix + evidence dashboard, never the unavailable
+        // state, when the mock backend has data to serve.
+        const dashboard = page.getByTestId("ai-attribution-dashboard");
+        await expect(dashboard).toBeVisible();
+        await expect(dashboard.getByTestId("ai-attribution-mix-row")).not.toHaveCount(0);
+        await expect(dashboard.getByTestId("ai-attribution-evidence-row")).not.toHaveCount(0);
+        await expect(page.getByTestId("data-state-detector-unavailable")).toHaveCount(0);
+        await expect(page.getByText("AI attribution data unavailable")).toHaveCount(0);
         await expect(page.getByTitle("This feature is in preview.")).toHaveCount(0);
         await expect(page.getByTestId("ai-tab-preview")).toHaveCount(0);
     });
