@@ -955,7 +955,7 @@ query AIAttributedPrs($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
 // ---------------------------------------------------------------------------
 
 export const AI_ATTRIBUTION_OVERVIEW_QUERY = `
-query AIAttributionOverview($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIScopeInput, $limit: Int! = 50, $offset: Int! = 0) {
+query AIAttributionOverview($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AIAttributionScopeInput, $limit: Int! = 50, $offset: Int! = 0) {
   aiAttributionOverview(orgId: $orgId, dateRange: $dateRange, scope: $scope, limit: $limit, offset: $offset) {
     orgId
     startDate

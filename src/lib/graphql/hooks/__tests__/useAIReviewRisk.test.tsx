@@ -54,4 +54,37 @@ describe("useAIAttributionOverview variable wiring (CHAOS-2744 finding 5)", () =
             }),
         );
     });
+
+    it("omits workType from scope -- AIAttributionScopeInput has no workType field (CHAOS-2744 ops #1098)", () => {
+        const filter: AIFilter = {
+            startDate: "2026-04-01",
+            endDate: "2026-05-01",
+            repoId: "repo-1",
+            teamId: "team-1",
+            workType: "feature",
+            buckets: ["AI_ASSISTED"],
+        };
+
+        renderHook(() => useAIAttributionOverview(filter, 25, 50));
+
+        expect(mockUseQuery).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: AI_ATTRIBUTION_OVERVIEW_QUERY,
+                variables: expect.objectContaining({
+                    dateRange: { startDate: "2026-04-01", endDate: "2026-05-01" },
+                    scope: expect.objectContaining({
+                        repoId: "repo-1",
+                        teamId: "team-1",
+                        buckets: ["AI_ASSISTED"],
+                    }),
+                    limit: 25,
+                    offset: 50,
+                }),
+            }),
+        );
+
+        const call = mockUseQuery.mock.calls.at(-1)?.[0] as
+            { variables?: { scope?: Record<string, unknown> } } | undefined;
+        expect(call?.variables?.scope).not.toHaveProperty("workType");
+    });
 });

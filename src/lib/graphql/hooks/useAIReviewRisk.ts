@@ -13,6 +13,7 @@ import { useOrgId } from "../provider";
 import type {
     AiAttributedPrsResult,
     AiAttributionOverviewResult,
+    AiAttributionScopeInput,
     AiComparison,
     AiDateRangeInput,
     AiGovernanceSummary,
@@ -33,6 +34,11 @@ type AIBucket = AiAttributionBucketInput;
 type AIInputs = {
     dateRange: AiDateRangeInput;
     scope: AiScopeInput | null;
+};
+
+type AIAttributionInputs = {
+    dateRange: AiDateRangeInput;
+    scope: AiAttributionScopeInput | null;
 };
 
 type ReviewLoadData = {
@@ -62,6 +68,29 @@ export function toAIQueryInputs(filter: AIFilter): AIInputs {
         repoId: filter.repoId ?? null,
         teamId: filter.teamId ?? null,
         workType: filter.workType ?? null,
+        buckets: filter.buckets ?? null,
+    };
+
+    const hasScope = Object.values(scope).some((value) =>
+        Array.isArray(value) ? value.length > 0 : value != null,
+    );
+
+    return {
+        dateRange: { startDate: filter.startDate, endDate: filter.endDate },
+        scope: hasScope ? scope : null,
+    };
+}
+
+/**
+ * Attribution-specific scope shaping. `AIAttributionScopeInput` (backend,
+ * CHAOS-2744 ops #1098) has no `workType` field -- unlike the generic
+ * `AIScopeInput` used by the other AI queries -- so this omits it rather
+ * than reusing `toAIQueryInputs`, which would send an invalid variable.
+ */
+export function toAIAttributionQueryInputs(filter: AIFilter): AIAttributionInputs {
+    const scope = {
+        repoId: filter.repoId ?? null,
+        teamId: filter.teamId ?? null,
         buckets: filter.buckets ?? null,
     };
 
@@ -186,7 +215,7 @@ export function useAIAttributedPrs(filter: AIFilter, limit = 50, offset = 0, pau
 
 export function useAIAttributionOverview(filter: AIFilter, limit = 50, offset = 0) {
     const orgId = useOrgId();
-    const inputs = useMemo(() => toAIQueryInputs(filter), [filter]);
+    const inputs = useMemo(() => toAIAttributionQueryInputs(filter), [filter]);
 
     const [result] = useQuery<AttributionOverviewData>({
         query: AI_ATTRIBUTION_OVERVIEW_QUERY,
