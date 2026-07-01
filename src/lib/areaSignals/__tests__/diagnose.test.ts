@@ -220,6 +220,38 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
                 value: "72%",
             });
         });
+
+        it("normalizes uppercase returned severities before rendering Diagnose cards", async () => {
+            mockGetHomeData.mockResolvedValue({
+                deltas: [
+                    { metric: "deploy_freq", value: 8, unit: "deploys" },
+                    { metric: "churn", value: 3200, unit: "loc" },
+                    { metric: "wip_saturation", value: 72, unit: "%" },
+                ],
+                signals: [
+                    { metric: "deploy_freq", severity: "HIGH" },
+                    { metric: "churn", severity: "MEDIUM" },
+                    { metric: "wip_saturation", severity: "LOW" },
+                ],
+            } as never);
+
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+
+            expect(signals.flow).toMatchObject({ state: "high", value: "8" });
+            expect(signals.code).toMatchObject({ state: "medium", value: "3,200" });
+            expect(signals.bottleneck).toMatchObject({ state: "low", value: "72%" });
+        });
+
+        it("maps unknown returned severities to a defined neutral state", async () => {
+            mockGetHomeData.mockResolvedValue({
+                deltas: [{ metric: "deploy_freq", value: 8, unit: "deploys" }],
+                signals: [{ metric: "deploy_freq", severity: "UNKNOWN" }],
+            } as never);
+
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+
+            expect(signals.flow).toMatchObject({ state: "neutral", value: "8" });
+        });
     });
 
     describe("DERIVE signals (Complexity)", () => {
