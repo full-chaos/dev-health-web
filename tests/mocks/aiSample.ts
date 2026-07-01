@@ -688,6 +688,140 @@ export function aiGovernanceSummaryResponse(
     };
 }
 
+/**
+ * AI Attribution overview (CHAOS-2744). Reads mirror the resolver's
+ * `ai_attribution_resolved` contract: kind is one of ai_assisted /
+ * agent_created / ai_review (`AIAttributionKind` in
+ * `ops/src/dev_health_ops/models/ai_attribution.py`), source is one of the
+ * seven precedence-ordered `AIAttributionSource` values, and subjectType is
+ * the raw persisted literal (pull_request / commit / issue / workflow_run /
+ * review) -- never the uppercase workflow-graph node-type vocabulary used by
+ * `aiWorkflowDrilldown`.
+ */
+export function aiAttributionOverviewResponse(
+    orgId: string,
+    startDate: string,
+    endDate: string,
+    mode: AIMode,
+    limit = 50,
+    offset = 0,
+) {
+    if (mode === "missing") {
+        return {
+            orgId,
+            startDate,
+            endDate,
+            mix: [],
+            totalAttributed: 0,
+            rows: [],
+            hasMore: false,
+            dataAvailable: false,
+        };
+    }
+    if (mode === "empty") {
+        return {
+            orgId,
+            startDate,
+            endDate,
+            mix: [],
+            totalAttributed: 0,
+            rows: [],
+            hasMore: false,
+            dataAvailable: true,
+        };
+    }
+
+    const allRows = [
+        {
+            subjectType: "pull_request",
+            subjectId: "201",
+            repoId: "repo-web-app",
+            provider: "github",
+            kind: "ai_assisted",
+            source: "pr_label",
+            confidence: 0.95,
+            actor: "github-copilot",
+            evidence: "PR labeled 'ai-assisted' at open.",
+            observedAt: `${endDate}T15:00:00Z`,
+            teamId: "team-platform",
+        },
+        {
+            subjectType: "pull_request",
+            subjectId: "198",
+            repoId: "repo-web-app",
+            provider: "github",
+            kind: "agent_created",
+            source: "bot_author",
+            confidence: 0.92,
+            actor: "claude-code[bot]",
+            evidence: "PR authored by claude-code[bot].",
+            observedAt: `${endDate}T09:30:00Z`,
+            teamId: "team-platform",
+        },
+        {
+            subjectType: "commit",
+            subjectId: "abc123",
+            repoId: "repo-api",
+            provider: "github",
+            kind: "ai_assisted",
+            source: "commit_trailer",
+            confidence: 0.88,
+            actor: "octocat",
+            evidence: "Commit trailer: AI-Assisted-By: GitHub Copilot.",
+            observedAt: `${endDate}T08:15:00Z`,
+            teamId: "team-platform",
+        },
+        {
+            subjectType: "pull_request",
+            subjectId: "154",
+            repoId: "repo-api",
+            provider: "github",
+            kind: "ai_review",
+            source: "ci_annotation",
+            confidence: 0.81,
+            actor: "code-review-bot",
+            evidence: "CI annotation: automated review pass completed.",
+            observedAt: `${endDate}T07:05:00Z`,
+            teamId: "team-product",
+        },
+        {
+            subjectType: "issue",
+            subjectId: "PROJ-101",
+            repoId: null,
+            provider: "jira",
+            kind: "agent_created",
+            source: "branch_name",
+            confidence: 0.6,
+            actor: null,
+            evidence: "Branch name matched pattern agent/*.",
+            observedAt: `${endDate}T06:40:00Z`,
+            teamId: null,
+        },
+    ];
+
+    const totalAttributed = allRows.length;
+    const mixCounts = new Map<string, number>();
+    for (const row of allRows) {
+        mixCounts.set(row.kind, (mixCounts.get(row.kind) ?? 0) + 1);
+    }
+    const mix = Array.from(mixCounts.entries()).map(([kind, count]) => ({
+        kind,
+        count,
+        share: totalAttributed ? count / totalAttributed : 0,
+    }));
+
+    return {
+        orgId,
+        startDate,
+        endDate,
+        mix,
+        totalAttributed,
+        rows: allRows.slice(offset, offset + limit),
+        hasMore: offset + limit < allRows.length,
+        dataAvailable: true,
+    };
+}
+
 export function catalogValuesResponse(dimension: string) {
     const values: Record<string, Array<{ value: string; count: number }>> = {
         TEAM: [

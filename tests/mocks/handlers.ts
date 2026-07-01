@@ -36,6 +36,7 @@ import {
 
 import {
     aiAttributedPrsResponse,
+    aiAttributionOverviewResponse,
     aiComparisonResponse,
     aiGovernanceSummaryResponse,
     aiImpactSummaryResponse,
@@ -1366,6 +1367,22 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
                     limit,
                     offset,
                     vars.scope ?? null,
+                ),
+            },
+        });
+    }
+    if (query.includes("AIAttributionOverview")) {
+        const limit = typeof variables.limit === "number" ? variables.limit : 50;
+        const offset = typeof variables.offset === "number" ? variables.offset : 0;
+        return HttpResponse.json({
+            data: {
+                aiAttributionOverview: aiAttributionOverviewResponse(
+                    orgId,
+                    startDate,
+                    endDate,
+                    aiMode,
+                    limit,
+                    offset,
                 ),
             },
         });
