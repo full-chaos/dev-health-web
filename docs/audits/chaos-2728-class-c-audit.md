@@ -22,7 +22,7 @@ Classification vocabulary follows the Phase 3 plan:
 | AI                    | `/ai/risk`                                                   | Fully implemented        | `src/app/(app)/ai/risk/page.tsx` hosts governance risk views; `src/components/ai/AIRiskDashboard.tsx` uses `AI_RISK_BREAKDOWN_QUERY`, `AI_GOVERNANCE_SUMMARY_QUERY`, comparison data, and missing-data panels.                                            |
 | AI                    | `/ai/review-load`                                            | Fully implemented        | `src/app/(app)/ai/review-load/page.tsx` mounts `AIReviewLoadDashboard`; `src/components/ai/AIReviewLoadDashboard.tsx` uses `AI_REVIEW_LOAD_QUERY` and handles `data_available=false`.                                                                     |
 | AI                    | `/ai/automations`                                            | Fully implemented        | `src/app/(app)/ai/automations/page.tsx` mounts `AIAutomationsDashboard`; `src/components/ai/AIAutomationsDashboard.tsx` uses `AI_OPPORTUNITIES_QUERY` and workflow drilldown data.                                                                        |
-| AI                    | `/ai/attribution`                                            | Structurally unconnected | `src/app/(app)/ai/attribution/page.tsx` is static preview copy with no query, hook, or resolver-backed data path. Covered by `CHAOS-2744`.                                                                                                                |
+| AI                    | `/ai/attribution`                                            | Fully implemented        | `src/app/(app)/ai/attribution/page.tsx` mounts `AIAttributionDashboard`; `src/components/ai/AIAttributionDashboard.tsx` uses `AI_ATTRIBUTION_OVERVIEW_QUERY` (`aiAttributionOverview`) and handles `dataAvailable=false` and error states. Resolved by `CHAOS-2744`.                                                    |
 | AI                    | `/ai/evidence`, `/ai/test-gaps`                              | Fully implemented        | `src/app/(app)/ai/evidence/page.tsx` and `src/app/(app)/ai/test-gaps/page.tsx` are intentional redirect aliases into `/ai/risk?view=...`, not standalone data surfaces.                                                                                   |
 | Investment            | `/investment`                                                | Fully implemented        | `src/app/(app)/investment/page.tsx` performs entitlement/bootstrap fetches; `src/components/work/InvestmentView.tsx` renders overview/allocation/evidence/confidence tabs.                                                                                |
 | Investment            | `/investment?tab=overview\|allocation\|evidence\|confidence` | Fully implemented        | `src/components/work/investment/useInvestmentData.ts`, `src/lib/graphql/hooks/useInvestment.ts`, and `src/lib/graphql/investmentFetchers.ts` wire work units, mix, flows, explanations, and backend-computed team attributions with empty-state branches. |
@@ -49,8 +49,8 @@ runtime states inside live-wired surfaces rather than placeholder-only pages.
 
 ## Structural gaps and Linear follow-up
 
-- `CHAOS-2744` already captures the true user-facing structural gap:
-  `/ai/attribution` is a static preview with no resolver wiring.
+- `CHAOS-2744` resolved the structural gap this audit flagged:
+  `/ai/attribution` is now wired to the live `aiAttributionOverview` resolver.
 - No additional follow-up issue is recommended from this audit. The AI and
   Landscape redirect aliases are intentional route shims. The legacy
   `src/components/work/LandscapeView.tsx` component is orphaned implementation
