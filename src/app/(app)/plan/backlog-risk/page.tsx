@@ -4,12 +4,13 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { BackLink } from "@/components/shared/BackLink";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
-import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
+import type { ThroughputForecast } from "@/lib/graphql/types";
+import { logger } from "@/lib/logger";
 
-import { ForecastContent, NoForecastState } from "./_components";
+import { ForecastContent, ForecastErrorState, NoForecastState } from "./_components";
 
 type BacklogRiskPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -34,14 +35,21 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
     if (!health.ok) return <ServiceUnavailable />;
 
     const orgId = session.user.org_id ?? "default-org";
-    const forecast = await fetchOrNull(
-        getThroughputForecastViaGraphQL(orgId, {
+    let forecast: ThroughputForecast | null = null;
+    let forecastFetchFailed = false;
+    try {
+        forecast = await getThroughputForecastViaGraphQL(orgId, {
             teamIds,
             workScopeId: workScopeId ?? null,
             historyWeeks: 12,
-        }),
-        "plan/backlog-risk/throughput-forecast",
-    );
+        });
+    } catch (err: unknown) {
+        forecastFetchFailed = true;
+        logger.warn(
+            { err, label: "plan/backlog-risk/throughput-forecast" },
+            "Backlog risk forecast fetch failed",
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -64,7 +72,13 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
 
                     <GlobalContextBar filters={filters} origin={originParam} />
 
-                    {forecast ? <ForecastContent forecast={forecast} /> : <NoForecastState />}
+                    {forecastFetchFailed ? (
+                        <ForecastErrorState />
+                    ) : forecast ? (
+                        <ForecastContent forecast={forecast} />
+                    ) : (
+                        <NoForecastState />
+                    )}
                 </main>
             </div>
         </div>
