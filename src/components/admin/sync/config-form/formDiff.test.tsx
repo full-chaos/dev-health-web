@@ -132,4 +132,26 @@ describe("buildChangeSummary", () => {
         expect(summary).toContainEqual(expect.stringContaining("Auto-import teams: enabled"));
         expect(summary).toContainEqual(expect.stringContaining("Schedule: disabled"));
     });
+
+    it("describes a joint schedule_cron + timezone change as a single Schedule entry", () => {
+        const baseline = snapshot({ schedule_cron: "0 6 * * *", timezone: "UTC" });
+        const current = snapshot({
+            schedule_cron: "0 18 * * *",
+            timezone: "America/New_York",
+        });
+
+        const summary = buildChangeSummary(baseline, current);
+
+        expect(summary.filter((line) => line.startsWith("Schedule:"))).toHaveLength(1);
+        expect(summary).toContainEqual("Schedule: 0 6 * * * \u2192 0 18 * * *");
+    });
+
+    it("flags a schedule change when only timezone changes (cron unchanged)", () => {
+        const baseline = snapshot({ schedule_cron: "0 6 * * *", timezone: "UTC" });
+        const current = snapshot({ schedule_cron: "0 6 * * *", timezone: "America/New_York" });
+
+        expect(buildChangeSummary(baseline, current)).toContainEqual(
+            expect.stringContaining("Schedule:"),
+        );
+    });
 });
