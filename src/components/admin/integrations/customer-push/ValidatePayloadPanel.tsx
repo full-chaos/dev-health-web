@@ -18,14 +18,13 @@ type ValidatePayloadPanelProps = {
 type Mode = "paste" | "upload" | "sample";
 
 /**
- * The admin validate proxy (`POST .../sources/{id}/validate`) ships with
- * CHAOS-2695 (wave 4). Until it lands, submitting would deterministically
- * 404 in production (only the MSW mock implements the route), so the submit
- * path is hard-gated off (adversarial-review finding). Flip to `true` in the
- * CHAOS-2695 changeset — the panel, parsing, and result rendering are fully
- * built and tested and need no other change.
+ * The admin validate proxy (`POST .../sources/{id}/validate`) landed with
+ * ops CHAOS-2695 (wave 4), so the interim hard-gate on the submit path is
+ * lifted. The gate machinery (this flag + the `validateProxyAvailable` test
+ * seam) is kept rather than deleted so a rollback is a one-line flip, and
+ * unit tests can still exercise the gated-off state.
  */
-export const VALIDATE_PROXY_AVAILABLE = false;
+export const VALIDATE_PROXY_AVAILABLE = true;
 
 /**
  * Screen 5 — VALIDATE ONLY in v1. The console-push proxy
@@ -34,10 +33,10 @@ export const VALIDATE_PROXY_AVAILABLE = false;
  * exclusively token-authed. There is deliberately no "Push this payload" CTA
  * here — only `POST .../sources/{id}/validate`.
  *
- * NOTE: the validate proxy itself has not landed in the merged ops source as
- * of this writing (owned by CHAOS-2695/wave 4) — this screen is built and
- * tested against the MSW mock only; a real request will 404 until that
- * lands, matching the brief's stated wave sequencing.
+ * The ops endpoint returns 200 `valid: false` result rows even for
+ * envelope-level failures (see ops
+ * docs/architecture/external-ingest-idempotency-ownership.md), matching the
+ * MSW mock contract this panel was built against.
  */
 export function ValidatePayloadPanel({
     sourceId,

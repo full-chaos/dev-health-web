@@ -3069,7 +3069,13 @@ export const handlers = [
         }
 
         const created: MockCustomerPushSource = {
-            id: `cps-${Date.now()}`,
+            // crypto.randomUUID, NOT Date.now(): two source-creating specs
+            // in parallel CI workers collide on the millisecond, and the
+            // find()-by-id lookups then resolve the WRONG source (wrong
+            // overview heading; batch-detail source-scope guard 404s) --
+            // the standing full-suite-only failure of the create-source
+            // happy path since #737 (CHAOS-2695 follow-up fix).
+            id: `cps-${crypto.randomUUID()}`,
             org_id: "org-e2e",
             system,
             instance,
@@ -3123,7 +3129,7 @@ export const handlers = [
             scopes?: string[];
             expires_at?: string | null;
         } | null;
-        const tokenId = `cpt-${Date.now()}`;
+        const tokenId = `cpt-${crypto.randomUUID()}`;
         const created: MockCustomerPushTokenCreateResponse = {
             id: tokenId,
             org_id: "org-e2e",
@@ -3158,7 +3164,7 @@ export const handlers = [
         // Hard cutover (verified: rotate_token revokes the old row and
         // mints a brand-new token id — no in-place rotation).
         token.revoked_at = new Date().toISOString();
-        const newTokenId = `cpt-${Date.now()}`;
+        const newTokenId = `cpt-${crypto.randomUUID()}`;
         const rotated: MockCustomerPushTokenCreateResponse = {
             id: newTokenId,
             org_id: token.org_id,
@@ -3285,17 +3291,29 @@ export const handlers = [
         });
     }),
 
-    // Provisional — the validate proxy has not landed in the merged ops
-    // source yet (CHAOS-2695/wave 4). This mock follows the brief's
-    // contract sketch, the only source of truth available until then.
+    // Mirrors the ops CHAOS-2695 endpoint's semantics (validate_source_payload
+    // in api/admin/routers/customer_push.py): BatchEnvelope parses FIRST, so
+    // a missing wrapper kind/externalId or empty records array is an
+    // ENVELOPE-level failure (200 valid:false, items 0/0, code
+    // "invalid_envelope") — per-record rejections only exist for envelopes
+    // that parse. Per-kind payload validation here covers the required
+    // fields of the kinds the console flows exercise (repository.v1,
+    // work_item.v1) with the real vocabulary (missing_required_field,
+    // "Field required", records[i].payload.<field>); other kinds pass
+    // payload validation in the mock.
     http.post("*/api/v1/admin/customer-push/sources/:id/validate", async ({ request }) => {
         const body = (await request.json()) as {
-            records?: Array<{ kind?: string; externalId?: string; payload?: unknown }>;
+            schemaVersion?: string;
+            records?: Array<{
+                kind?: string;
+                externalId?: string;
+                payload?: Record<string, unknown>;
+            }>;
         } | null;
         const records = body?.records ?? [];
 
-        if (records.length === 0) {
-            return HttpResponse.json({
+        const envelopeFailure = (path: string, message: string) =>
+            HttpResponse.json({
                 valid: false,
                 items_accepted: 0,
                 items_rejected: 0,
@@ -3305,33 +3323,48 @@ export const handlers = [
                         kind: "unknown",
                         external_id: null,
                         code: "invalid_envelope",
-                        path: "records",
-                        message: "records must contain at least 1 item",
+                        path,
+                        message,
                     },
                 ],
             });
+
+        if (records.length === 0) {
+            return envelopeFailure("records", "List should have at least 1 item");
+        }
+        const badWrapper = records.findIndex((r) => !r.kind || !r.externalId);
+        if (badWrapper !== -1) {
+            return envelopeFailure(
+                `records.${badWrapper}.${records[badWrapper].kind ? "externalId" : "kind"}`,
+                "Field required",
+            );
         }
 
+        const REQUIRED_PAYLOAD_FIELDS: Record<string, string[]> = {
+            "repository.v1": ["externalId", "sourceSystem"],
+            "work_item.v1": ["externalKey", "provider", "title", "status", "createdAt"],
+        };
         const errors = records.flatMap((record, index) => {
-            if (!record.externalId) {
-                return [
-                    {
-                        index,
-                        kind: record.kind ?? "unknown",
-                        external_id: null,
-                        code: "missing_required_field",
-                        path: `records[${index}].externalId`,
-                        message: "externalId is required",
-                    },
-                ];
-            }
-            return [];
+            const required = REQUIRED_PAYLOAD_FIELDS[record.kind ?? ""];
+            if (!required) return [];
+            const payload = record.payload ?? {};
+            return required
+                .filter((field) => payload[field] === undefined)
+                .map((field) => ({
+                    index,
+                    kind: record.kind,
+                    external_id: record.externalId ?? null,
+                    code: "missing_required_field",
+                    path: `records[${index}].payload.${field}`,
+                    message: "Field required",
+                }));
         });
+        const rejectedIndices = new Set(errors.map((e) => e.index));
 
         return HttpResponse.json({
             valid: errors.length === 0,
-            items_accepted: records.length - errors.length,
-            items_rejected: errors.length,
+            items_accepted: records.length - rejectedIndices.size,
+            items_rejected: rejectedIndices.size,
             errors,
         });
     }),
