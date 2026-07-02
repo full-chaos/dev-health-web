@@ -19,6 +19,10 @@ import type {
     MockSyncConfig,
     MockTeam,
     MockIdentity,
+    MockCustomerPushSource,
+    MockCustomerPushToken,
+    MockCustomerPushTokenCreateResponse,
+    MockCustomerPushBatchDetail,
 } from "./types";
 
 import {
@@ -793,6 +797,173 @@ const MOCK_REPOSITORY_SELECTIONS = new Map<string, { owner: string; repos: strin
 ]);
 const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
+
+// ---- Customer Push (CHAOS-2690/2714) ----
+// Vocabulary (field names, enum values, error shapes) mirrors the real ops
+// backend exactly — verified directly against dev-health-ops's merged
+// api/admin/routers/customer_push.py + schemas/customer_push.py, not the
+// original design doc or brief sketches. See src/lib/admin/types.ts's
+// "Customer Push" section for the corrections this reflects.
+
+const MOCK_CUSTOMER_PUSH_SOURCES: MockCustomerPushSource[] = [
+    {
+        id: "cps-github-1",
+        org_id: "org-e2e",
+        system: "github",
+        instance: "meridian/api",
+        display_name: "Meridian API (GitHub)",
+        mode: "customer_push",
+        enabled: true,
+        webhook_mode: "disabled",
+        matched_integration_source_id: null,
+        created_at: "2026-06-25T00:00:00.000Z",
+        updated_at: "2026-06-25T00:00:00.000Z",
+        warnings: [],
+    },
+];
+
+const MOCK_CUSTOMER_PUSH_TOKENS: MockCustomerPushToken[] = [
+    {
+        id: "cpt-1",
+        org_id: "org-e2e",
+        source_id: "cps-github-1",
+        name: "CI runner",
+        token_prefix: "fcpush_abc1",
+        scopes: ["schema:read", "ingest:write", "ingest:status"],
+        expires_at: null,
+        revoked_at: null,
+        last_used_at: "2026-06-26T00:00:00.000Z",
+        created_at: "2026-06-25T00:00:00.000Z",
+    },
+];
+
+const MOCK_CUSTOMER_PUSH_BATCHES: MockCustomerPushBatchDetail[] = [
+    {
+        ingestion_id: "batch-completed-1",
+        org_id: "org-e2e",
+        source_system: "github",
+        source_instance: "meridian/api",
+        producer: "dev-hops-cli",
+        producer_version: "0.12.0",
+        attempts: 1,
+        status: "completed",
+        items_received: 500,
+        items_accepted: 500,
+        items_rejected: 0,
+        created_at: "2026-06-26T00:01:00.000Z",
+        completed_at: "2026-06-26T00:03:00.000Z",
+        updated_at: "2026-06-26T00:03:00.000Z",
+        schema_version: "external-ingest.v1",
+        window_started_at: "2026-06-25T00:00:00.000Z",
+        window_ended_at: "2026-06-26T00:00:00.000Z",
+        record_counts: { "pull_request.v1": 300, "review.v1": 200 },
+        error_summary: null,
+        rejected_records: [],
+        rejected_records_total: 0,
+        rejected_records_limit: 50,
+        rejected_records_offset: 0,
+    },
+    {
+        ingestion_id: "batch-partial-1",
+        org_id: "org-e2e",
+        source_system: "github",
+        source_instance: "meridian/api",
+        producer: "github-actions",
+        producer_version: "0.12.0",
+        attempts: 1,
+        status: "partial",
+        items_received: 100,
+        items_accepted: 92,
+        items_rejected: 8,
+        created_at: "2026-06-27T00:01:00.000Z",
+        completed_at: "2026-06-27T00:02:30.000Z",
+        updated_at: "2026-06-27T00:02:30.000Z",
+        schema_version: "external-ingest.v1",
+        window_started_at: "2026-06-26T00:00:00.000Z",
+        window_ended_at: "2026-06-27T00:00:00.000Z",
+        record_counts: { "pull_request.v1": 100 },
+        error_summary: {
+            total_rejected: 8,
+            stored_rejections: 8,
+            truncated: false,
+            top_codes: [
+                { code: "missing_external_id", count: 5 },
+                { code: "unsupported_kind_for_system", count: 3 },
+            ],
+        },
+        rejected_records: [
+            {
+                index: 12,
+                kind: "pull_request.v1",
+                external_id: "PR#88",
+                code: "missing_external_id",
+                path: "records[12].externalId",
+                message: "externalId is required",
+            },
+            {
+                index: 47,
+                kind: "work_item.v1",
+                external_id: null,
+                code: "unsupported_kind_for_system",
+                path: "records[47].kind",
+                message: "work_item.v1 is not supported for source system github",
+            },
+        ],
+        rejected_records_total: 8,
+        rejected_records_limit: 50,
+        rejected_records_offset: 0,
+    },
+    {
+        ingestion_id: "batch-processing-1",
+        org_id: "org-e2e",
+        source_system: "github",
+        source_instance: "meridian/api",
+        producer: "relay-customer-owned",
+        producer_version: "0.3.0",
+        attempts: 1,
+        status: "processing",
+        items_received: 50,
+        items_accepted: 0,
+        items_rejected: 0,
+        created_at: "2026-06-28T00:31:00.000Z",
+        completed_at: null,
+        updated_at: "2026-06-28T00:31:00.000Z",
+        schema_version: "external-ingest.v1",
+        window_started_at: "2026-06-28T00:00:00.000Z",
+        window_ended_at: "2026-06-28T00:30:00.000Z",
+        record_counts: null,
+        error_summary: null,
+        rejected_records: [],
+        rejected_records_total: 0,
+        rejected_records_limit: 50,
+        rejected_records_offset: 0,
+    },
+];
+
+/** Verified: api/admin/routers/customer_push.py `_resolve_ownership` 409. */
+function customerPushOwnershipConflict(system: string, instance: string) {
+    return HttpResponse.json(
+        {
+            detail: {
+                code: "source_owned_by_fullchaos_sync",
+                message:
+                    `A managed ${system} sync source already owns '${instance}' in this ` +
+                    "organization; disable it before enabling customer-push for the same instance.",
+            },
+        },
+        { status: 409 },
+    );
+}
+
+/** Verified: duplicate (org_id, system, instance) unique-constraint 409 (plain string detail). */
+function customerPushDuplicateRegistration(system: string, instance: string) {
+    return HttpResponse.json(
+        {
+            detail: `A source is already registered for system='${system}' instance='${instance}' in this organization`,
+        },
+        { status: 409 },
+    );
+}
 
 const buildDeploymentFlameResponse = (deploymentId: string) => ({
     entity: {
@@ -2871,6 +3042,288 @@ export const handlers = [
             return HttpResponse.json(MOCK_SYNC_JOBS);
         }
         return HttpResponse.json([]);
+    }),
+
+    // ---- Customer Push (CHAOS-2690/2714) ----
+    // No server-side `system` filter on the list endpoint — verified against
+    // the real router (list_sources ignores query params entirely).
+
+    http.get("*/api/v1/admin/customer-push/sources", () =>
+        HttpResponse.json<MockCustomerPushSource[]>(MOCK_CUSTOMER_PUSH_SOURCES),
+    ),
+
+    http.post("*/api/v1/admin/customer-push/sources", async ({ request }) => {
+        const body = (await request.json()) as Partial<MockCustomerPushSource> | null;
+        const system = body?.system ?? "github";
+        const instance = body?.instance ?? "";
+
+        const ownershipMatch = MOCK_CUSTOMER_PUSH_SOURCES.find(
+            (s) => s.system === system && s.instance === instance,
+        );
+        if (ownershipMatch) {
+            // The seeded fixture source represents an existing customer-push
+            // registration, so re-registering the same (system, instance)
+            // hits the duplicate-registration 409, not the ownership one —
+            // both real 409 paths are exercised across the two mocks below.
+            return customerPushDuplicateRegistration(system, instance);
+        }
+
+        const created: MockCustomerPushSource = {
+            id: `cps-${Date.now()}`,
+            org_id: "org-e2e",
+            system,
+            instance,
+            display_name: body?.display_name ?? null,
+            mode: "customer_push",
+            enabled: true,
+            webhook_mode: "disabled",
+            matched_integration_source_id: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            warnings: [],
+        };
+        MOCK_CUSTOMER_PUSH_SOURCES.push(created);
+        return HttpResponse.json<MockCustomerPushSource>(created, { status: 201 });
+    }),
+
+    http.get("*/api/v1/admin/customer-push/sources/:id", ({ params }) => {
+        const source = MOCK_CUSTOMER_PUSH_SOURCES.find((s) => s.id === params.id);
+        if (!source) {
+            return HttpResponse.json({ detail: "Source not found" }, { status: 404 });
+        }
+        return HttpResponse.json<MockCustomerPushSource>(source);
+    }),
+
+    http.patch("*/api/v1/admin/customer-push/sources/:id", async ({ params, request }) => {
+        const source = MOCK_CUSTOMER_PUSH_SOURCES.find((s) => s.id === params.id);
+        if (!source) {
+            return HttpResponse.json({ detail: "Source not found" }, { status: 404 });
+        }
+        const body = (await request.json()) as {
+            enabled?: boolean;
+            display_name?: string | null;
+            mode?: string;
+            webhook_mode?: string;
+        } | null;
+        if (typeof body?.enabled === "boolean") source.enabled = body.enabled;
+        if (body?.display_name !== undefined) source.display_name = body.display_name;
+        source.updated_at = new Date().toISOString();
+        return HttpResponse.json<MockCustomerPushSource>(source);
+    }),
+
+    http.get("*/api/v1/admin/customer-push/sources/:id/tokens", ({ params }) => {
+        const tokens = MOCK_CUSTOMER_PUSH_TOKENS.filter((t) => t.source_id === params.id);
+        return HttpResponse.json<MockCustomerPushToken[]>(tokens);
+    }),
+
+    // No `source_id` in the body — the real backend derives it from the URL path.
+    http.post("*/api/v1/admin/customer-push/sources/:id/tokens", async ({ params, request }) => {
+        const body = (await request.json()) as {
+            name?: string;
+            scopes?: string[];
+            expires_at?: string | null;
+        } | null;
+        const tokenId = `cpt-${Date.now()}`;
+        const created: MockCustomerPushTokenCreateResponse = {
+            id: tokenId,
+            org_id: "org-e2e",
+            name: body?.name ?? "Ingest token",
+            source_id: params.id as string,
+            scopes: body?.scopes ?? ["schema:read", "ingest:write", "ingest:status"],
+            last_used_at: null,
+            expires_at: body?.expires_at ?? null,
+            revoked_at: null,
+            created_at: new Date().toISOString(),
+            token_prefix: `fcpush_${tokenId.slice(0, 4)}`,
+            token: `fcpush_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
+        };
+        MOCK_CUSTOMER_PUSH_TOKENS.push(created);
+        return HttpResponse.json<MockCustomerPushTokenCreateResponse>(created, { status: 201 });
+    }),
+
+    http.post("*/api/v1/admin/customer-push/tokens/:id/rotate", ({ params }) => {
+        const token = MOCK_CUSTOMER_PUSH_TOKENS.find((t) => t.id === params.id);
+        if (!token) {
+            return HttpResponse.json({ detail: "Token not found" }, { status: 404 });
+        }
+        if (token.revoked_at) {
+            return HttpResponse.json({ detail: "Token already revoked" }, { status: 400 });
+        }
+        // Hard cutover (verified: rotate_token revokes the old row and
+        // mints a brand-new token id — no in-place rotation).
+        token.revoked_at = new Date().toISOString();
+        const newTokenId = `cpt-${Date.now()}`;
+        const rotated: MockCustomerPushTokenCreateResponse = {
+            id: newTokenId,
+            org_id: token.org_id,
+            source_id: token.source_id,
+            name: token.name,
+            scopes: token.scopes,
+            last_used_at: null,
+            expires_at: token.expires_at,
+            revoked_at: null,
+            created_at: new Date().toISOString(),
+            token_prefix: `fcpush_${newTokenId.slice(0, 4)}`,
+            token: `fcpush_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
+        };
+        MOCK_CUSTOMER_PUSH_TOKENS.push(rotated);
+        return HttpResponse.json<MockCustomerPushTokenCreateResponse>(rotated);
+    }),
+
+    http.post("*/api/v1/admin/customer-push/tokens/:id/revoke", ({ params }) => {
+        const token = MOCK_CUSTOMER_PUSH_TOKENS.find((t) => t.id === params.id);
+        if (!token) {
+            return HttpResponse.json({ detail: "Token not found" }, { status: 404 });
+        }
+        token.revoked_at = token.revoked_at ?? new Date().toISOString();
+        return HttpResponse.json<MockCustomerPushToken>(token);
+    }),
+
+    // Paginated envelope — verified: AdminBatchListResponse.
+    http.get("*/api/v1/admin/customer-push/sources/:id/batches", ({ params, request }) => {
+        const source = MOCK_CUSTOMER_PUSH_SOURCES.find((s) => s.id === params.id);
+        if (!source) {
+            return HttpResponse.json({ detail: "Source not found" }, { status: 404 });
+        }
+
+        const url = new URL(request.url);
+        const status = url.searchParams.get("status");
+        const producer = url.searchParams.get("producer");
+        const limit = Number(url.searchParams.get("limit") ?? "50");
+        const offset = Number(url.searchParams.get("offset") ?? "0");
+
+        // Verified: the real router resolves source_id -> (system, instance)
+        // then filters batches by those, not by a source_id FK.
+        let filtered = MOCK_CUSTOMER_PUSH_BATCHES.filter(
+            (b) => b.source_system === source.system && b.source_instance === source.instance,
+        );
+        if (status) filtered = filtered.filter((b) => b.status === status);
+        if (producer) filtered = filtered.filter((b) => b.producer === producer);
+
+        const items = filtered
+            .slice(offset, offset + limit)
+            .map(
+                ({
+                    ingestion_id,
+                    status: batchStatus,
+                    source_system,
+                    source_instance,
+                    producer: batchProducer,
+                    items_received,
+                    items_accepted,
+                    items_rejected,
+                    created_at,
+                    completed_at,
+                }) => ({
+                    ingestion_id,
+                    status: batchStatus,
+                    source_system,
+                    source_instance,
+                    producer: batchProducer,
+                    items_received,
+                    items_accepted,
+                    items_rejected,
+                    created_at,
+                    completed_at,
+                }),
+            );
+
+        return HttpResponse.json({ items, total: filtered.length, limit, offset });
+    }),
+
+    http.get("*/api/v1/admin/customer-push/batches/:id", ({ params }) => {
+        const batch = MOCK_CUSTOMER_PUSH_BATCHES.find((b) => b.ingestion_id === params.id);
+        if (!batch) {
+            return HttpResponse.json({ detail: "Batch not found" }, { status: 404 });
+        }
+        return HttpResponse.json<MockCustomerPushBatchDetail>(batch);
+    }),
+
+    // Verified: admin schemas endpoint returns camelCase (thin proxy over
+    // the data-plane SCHEMA_VERSION/RECORD_KIND_MODELS), NOT the
+    // {schemas:[...]} shape the original design doc sketched.
+    http.get("*/api/v1/admin/customer-push/schemas", () =>
+        HttpResponse.json({
+            schemaVersions: ["external-ingest.v1"],
+            recordKinds: [
+                "repository.v1",
+                "pull_request.v1",
+                "review.v1",
+                "commit.v1",
+                "work_item.v1",
+                "work_item_transition.v1",
+                "work_item_dependency.v1",
+                "team.v1",
+                "identity.v1",
+            ],
+            limits: { maxRecordsPerBatch: 1000, maxBodyBytes: 10_000_000 },
+        }),
+    ),
+
+    http.get("*/api/v1/admin/customer-push/schemas/:version", ({ params }) => {
+        if (params.version !== "external-ingest.v1") {
+            return HttpResponse.json(
+                { detail: `Unknown schema version: '${params.version}'` },
+                { status: 404 },
+            );
+        }
+        return HttpResponse.json({
+            schemaVersion: "external-ingest.v1",
+            envelope: { type: "object" },
+            recordKinds: { "repository.v1": { type: "object" } },
+            limits: { maxRecordsPerBatch: 1000, maxBodyBytes: 10_000_000 },
+        });
+    }),
+
+    // Provisional — the validate proxy has not landed in the merged ops
+    // source yet (CHAOS-2695/wave 4). This mock follows the brief's
+    // contract sketch, the only source of truth available until then.
+    http.post("*/api/v1/admin/customer-push/sources/:id/validate", async ({ request }) => {
+        const body = (await request.json()) as {
+            records?: Array<{ kind?: string; externalId?: string; payload?: unknown }>;
+        } | null;
+        const records = body?.records ?? [];
+
+        if (records.length === 0) {
+            return HttpResponse.json({
+                valid: false,
+                items_accepted: 0,
+                items_rejected: 0,
+                errors: [
+                    {
+                        index: 0,
+                        kind: "unknown",
+                        external_id: null,
+                        code: "invalid_envelope",
+                        path: "records",
+                        message: "records must contain at least 1 item",
+                    },
+                ],
+            });
+        }
+
+        const errors = records.flatMap((record, index) => {
+            if (!record.externalId) {
+                return [
+                    {
+                        index,
+                        kind: record.kind ?? "unknown",
+                        external_id: null,
+                        code: "missing_required_field",
+                        path: `records[${index}].externalId`,
+                        message: "externalId is required",
+                    },
+                ];
+            }
+            return [];
+        });
+
+        return HttpResponse.json({
+            valid: errors.length === 0,
+            items_accepted: records.length - errors.length,
+            items_rejected: errors.length,
+            errors,
+        });
     }),
 
     http.get("*/api/v1/admin/teams", () => HttpResponse.json(MOCK_TEAMS)),
