@@ -6,10 +6,13 @@ import { RunBackfill } from "@/components/admin/sync/RunBackfill";
 
 interface EditSyncConfigPageProps {
     params: Promise<{ configId: string }>;
+    /** Gap-driven backfill deep link from the coverage timeline (CHAOS-2793). */
+    searchParams: Promise<{ backfill_from?: string; backfill_to?: string }>;
 }
 
-export default async function EditSyncConfigPage({ params }: EditSyncConfigPageProps) {
+export default async function EditSyncConfigPage({ params, searchParams }: EditSyncConfigPageProps) {
     const { configId } = await params;
+    const { backfill_from: backfillFrom, backfill_to: backfillTo } = await searchParams;
     const [configResult, credentialsResult, repositorySelectionResult] = await Promise.all([
         getSyncConfig(configId),
         listCredentials(),
@@ -37,7 +40,7 @@ export default async function EditSyncConfigPage({ params }: EditSyncConfigPageP
             />
 
             <div className="max-w-2xl">
-                <RunBackfill configId={configId} />
+                <RunBackfill configId={configId} initialSince={backfillFrom} initialBefore={backfillTo} />
             </div>
         </div>
     );
