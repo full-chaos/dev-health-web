@@ -4,9 +4,10 @@ import { render, renderWithToaster, screen, userEvent, waitFor } from "@/test/ut
 import type { IntegrationCredential, SyncConfig } from "@/lib/admin/types";
 
 const mockPush = vi.fn();
+const mockRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
-    useRouter: () => ({ push: mockPush }),
-    default: { useRouter: () => ({ push: mockPush }) },
+    useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
+    default: { useRouter: () => ({ push: mockPush, refresh: mockRefresh }) },
 }));
 
 const mockCreateSyncConfig = vi.fn();
@@ -84,6 +85,7 @@ const mockCredentials: IntegrationCredential[] = [
 describe("SyncConfigForm", () => {
     afterEach(() => {
         mockPush.mockReset();
+        mockRefresh.mockReset();
         mockCreateSyncConfig.mockReset();
         mockUpdateSyncConfig.mockReset();
         mockUpdateSyncConfigRepositories.mockReset();
@@ -109,7 +111,7 @@ describe("SyncConfigForm", () => {
         expect(screen.getByLabelText("Configuration Name")).toBeInTheDocument();
         expect(screen.getByLabelText("Provider")).toBeInTheDocument();
         expect(screen.getByLabelText("Credential")).toBeInTheDocument();
-        expect(screen.getByText("Sync Targets")).toBeInTheDocument();
+        expect(screen.getByText("Datasets & sync targets")).toBeInTheDocument();
         expect(screen.getByLabelText("Enable automatic sync schedule")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Create Configuration" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Cancel" })).toBeInTheDocument();
@@ -355,20 +357,28 @@ describe("SyncConfigForm", () => {
             await userEvent.type(ownerInput, "neworg");
             await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
 
-            await waitFor(() => {
-                expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-1", {
-                    sync_targets: ["git"],
-                    is_active: true,
-                    schedule_cron: null,
-                    timezone: null,
-                    initial_sync_depth: 30,
-                    sync_options: {
-                        owner: "neworg",
-                        repo: "oldrepo",
-                        auto_import_teams: false,
-                    },
-                });
+await waitFor(() => {
+expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-1", {
+sync_targets: ["git"],
+is_active: true,
+schedule_cron: null,
+timezone: null,
+initial_sync_depth: 30,
+sync_options: {
+owner: "neworg",
+repo: "oldrepo",
+auto_import_teams: false,
+},
+});
             });
+
+            // Save keeps the user on the edit page (revalidated via router.refresh)
+            // instead of navigating away, and the diff summary calls out what changed.
+            await waitFor(() => {
+                expect(mockRefresh).toHaveBeenCalled();
+                expect(mockPush).not.toHaveBeenCalled();
+                expect(screen.getByText(/Changed:.*Owner: oldorg → neworg/)).toBeInTheDocument();
+        });
         });
 
         it("shows selected repositories in edit mode", async () => {
@@ -940,6 +950,246 @@ describe("SyncConfigForm", () => {
             expect(
                 screen.queryByLabelText("Auto-import teams, projects & members"),
             ).not.toBeInTheDocument();
+        });
+    });
+
+    describe("CHAOS-2797 form sections", () => {
+        it("renders each IA section as a distinct card", () => {
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            expect(screen.getByText("Identity")).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Credential" })).toBeInTheDocument();
+            expect(screen.getByText("Repository & source scope")).toBeInTheDocument();
+            expect(screen.getByText("Datasets & sync targets")).toBeInTheDocument();
+            expect(screen.getByText("Initial depth")).toBeInTheDocument();
+            expect(screen.getAllByText("Schedule").length).toBeGreaterThan(0);
+            expect(screen.getByText("Advanced options")).toBeInTheDocument();
+        });
+
+        it("hides the Advanced options section for providers without team attribution", async () => {
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.selectOptions(screen.getByLabelText("Provider"), "launchdarkly");
+
+            expect(screen.queryByText("Advanced options")).not.toBeInTheDocument();
+        });
+
+        describe("immutable fields in edit mode", () => {
+            const initialData: SyncConfig = {
+                id: "cfg-immutable",
+                name: "Immutable Config",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: { owner: "myorg" },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+
+            it("renders name, provider, and credential as locked read-only fields with an explanation", () => {
+                render(<SyncConfigForm initialData={initialData} credentials={mockCredentials} />);
+
+                // Not editable form controls anymore in edit mode.
+                expect(screen.queryByLabelText("Configuration Name")).not.toBeInTheDocument();
+                expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
+                expect(screen.queryByLabelText("Credential")).not.toBeInTheDocument();
+
+                // Rendered as an explicit locked value + explanation, not a silently
+                // disabled input.
+                expect(screen.getByText("Immutable Config")).toBeInTheDocument();
+                expect(screen.getByText("GitHub")).toBeInTheDocument();
+                expect(screen.getByText("My GitHub Token")).toBeInTheDocument();
+                expect(screen.getAllByText("🔒 locked").length).toBeGreaterThanOrEqual(3);
+                expect(screen.getByText(/name can't be changed after creation/i)).toBeInTheDocument();
+                expect(
+                    screen.getByText(/provider can't be changed after creation/i),
+                ).toBeInTheDocument();
+                expect(
+                    screen.getByText(/credential can't be changed after creation/i),
+                ).toBeInTheDocument();
+            });
+        });
+
+        describe("destructive change warnings", () => {
+            it("warns when removing a dataset from an existing config", async () => {
+                const initialData: SyncConfig = {
+                    id: "cfg-datasets",
+                    name: "Dataset Config",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: ["git", "prs"],
+                    sync_options: {},
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    last_sync_at: null,
+                    last_sync_success: null,
+                    last_sync_error: null,
+                    created_at: "2024-01-01",
+                    updated_at: "2024-01-01",
+                    parent_id: null,
+                };
+
+                render(<SyncConfigForm initialData={initialData} credentials={mockCredentials} />);
+
+                expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+                await userEvent.click(screen.getByLabelText("Pull Requests"));
+
+                expect(screen.getByRole("alert")).toHaveTextContent(
+                    /Removing dataset.*Pull Requests/,
+                );
+            });
+
+            it("warns when reducing repo scope by removing a previously-synced repo", async () => {
+                mockListReposForCredential.mockResolvedValue({
+                    data: {
+                        provider: "github",
+                        owner: "myorg",
+                        repos: [
+                            {
+                                name: "repo-a",
+                                full_name: "myorg/repo-a",
+                                description: null,
+                                is_private: false,
+                                is_archived: false,
+                                default_branch: "main",
+                                language: null,
+                                stargazers_count: null,
+                                forks_count: null,
+                                updated_at: null,
+                            },
+                            {
+                                name: "repo-b",
+                                full_name: "myorg/repo-b",
+                                description: null,
+                                is_private: false,
+                                is_archived: false,
+                                default_branch: "main",
+                                language: null,
+                                stargazers_count: null,
+                                forks_count: null,
+                                updated_at: null,
+                            },
+                        ],
+                        total: 2,
+                    },
+                });
+                const initialData: SyncConfig = {
+                    id: "cfg-repo-scope",
+                    name: "Repo Scope Config",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: ["git"],
+                    sync_options: { owner: "myorg" },
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    last_sync_at: null,
+                    last_sync_success: null,
+                    last_sync_error: null,
+                    created_at: "2024-01-01",
+                    updated_at: "2024-01-01",
+                    parent_id: null,
+                };
+
+                render(
+                    <SyncConfigForm
+                        initialData={initialData}
+                        initialRepositorySelection={{
+                            owner: "myorg",
+                            repos: ["myorg/repo-a", "myorg/repo-b"],
+                            sync_all_repos: false,
+                        }}
+                        credentials={mockCredentials}
+                    />,
+                );
+
+                const repoBCheckbox = await screen.findByLabelText("repo-b");
+                expect(repoBCheckbox).toBeChecked();
+
+                await userEvent.click(repoBCheckbox);
+
+                expect(screen.getByRole("alert")).toHaveTextContent(/Removing 1 repository.*repo-b/);
+            });
+        });
+
+        describe("save diff summary", () => {
+            it("shows a change summary describing what was updated", async () => {
+                mockUpdateSyncConfig.mockResolvedValue(undefined);
+                const initialData: SyncConfig = {
+                    id: "cfg-diff",
+                    name: "Diff Config",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: ["git"],
+                    sync_options: { owner: "myorg" },
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    last_sync_at: null,
+                    last_sync_success: null,
+                    last_sync_error: null,
+                    created_at: "2024-01-01",
+                    updated_at: "2024-01-01",
+                    parent_id: null,
+                };
+
+                renderWithToaster(
+                    <SyncConfigForm initialData={initialData} credentials={mockCredentials} />,
+                );
+
+                await userEvent.click(screen.getByLabelText("Pull Requests"));
+                await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+
+                await waitFor(() => {
+                    expect(screen.getByText("Config updated")).toBeInTheDocument();
+                    expect(
+                        screen.getByText(/Changed:.*Datasets: \+Pull Requests/),
+                    ).toBeInTheDocument();
+                });
+            });
+
+            it("omits the change description when nothing actually changed", async () => {
+                mockUpdateSyncConfig.mockResolvedValue(undefined);
+                const initialData: SyncConfig = {
+                    id: "cfg-nochange",
+                    name: "No Change Config",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: ["git"],
+                    sync_options: { owner: "myorg" },
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    last_sync_at: null,
+                    last_sync_success: null,
+                    last_sync_error: null,
+                    created_at: "2024-01-01",
+                    updated_at: "2024-01-01",
+                    parent_id: null,
+                };
+
+                renderWithToaster(
+                    <SyncConfigForm initialData={initialData} credentials={mockCredentials} />,
+                );
+
+                await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+
+                await waitFor(() => {
+                    expect(screen.getByText("Config updated")).toBeInTheDocument();
+                });
+                expect(screen.queryByText(/Changed:/)).not.toBeInTheDocument();
+            });
         });
     });
 });
