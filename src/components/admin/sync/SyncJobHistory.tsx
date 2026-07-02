@@ -6,9 +6,14 @@ import { useRouter } from "next/navigation";
 import { getSyncJobs } from "@/lib/admin/server";
 import type { SyncJob } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatNumber } from "@/lib/formatters";
+import { formatDateUTC, formatNumber } from "@/lib/formatters";
 import { SyncStatusBadge } from "./SyncStatusBadge";
-import { CoverageBadge, jobCoverageLabel, jobCoverageTone, type JobCoverageResult } from "./CoverageBadge";
+import {
+    CoverageBadge,
+    jobCoverageLabel,
+    jobCoverageTone,
+    type JobCoverageResult,
+} from "./CoverageBadge";
 
 const PAGE_SIZE = 10;
 
@@ -27,26 +32,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function formatTimestamp(value: string | null | undefined): string {
-    if (!value) return "—";
-    return new Date(value).toLocaleString();
-}
+// Locked UTC-anchored formatter: bare toLocaleString() drifts between Node
+// and browser locales/timezones (hydration + CI mismatches). Module-level
+// so we don't allocate a new Intl.DateTimeFormat per render.
+const TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+});
 
-function formatDateOnly(value: string | null | undefined): string {
+function formatTimestamp(value: string | null | undefined): string {
     if (!value) return "—";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "—";
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-    });
+    return TIMESTAMP_FORMATTER.format(date);
 }
 
 function formatRange(range: { since: string; before: string } | null | undefined): string {
     if (!range) return "—";
-    return `${formatDateOnly(range.since)} → ${formatDateOnly(range.before)}`;
+    return `${formatDateUTC(range.since)} → ${formatDateUTC(range.before)}`;
 }
 
 function getDuration(job: SyncJob): string {
