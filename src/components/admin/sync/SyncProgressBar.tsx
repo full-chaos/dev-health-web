@@ -34,8 +34,14 @@ const POLL_INTERVAL_MS = 3500;
 const TERMINAL_DISPLAY_MS = 5000;
 /** Safety cap so a stuck/abandoned run never pins the bar in "running" forever. */
 const MAX_TRACK_DURATION_MS = 10 * 60 * 1000;
-/** How many recent jobs to inspect when looking for an active run. */
-const DISCOVERY_JOB_LIMIT = 5;
+/** How many recent jobs to inspect when looking for an active run.
+ *
+ * 25 (not just a handful) so a burst of newer terminal jobs never hides an
+ * older still-running one further back in descending-recency order. The
+ * enriched `/jobs` endpoint honors `limit` server-side, so this is a single
+ * cheap request — a paging loop would be overkill for a 3.5s poll cadence.
+ */
+const DISCOVERY_JOB_LIMIT = 25;
 
 interface SyncProgressBarProps {
     configId: string;
@@ -50,7 +56,7 @@ function formatElapsed(seconds: number): string {
 }
 
 export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarProps) {
-    const [run, setRun] = useState<SyncRun | null>(null);
+    const [tracked, setTracked] = useState<{ configId: string; run: SyncRun } | null>(null);
     const [now, setNow] = useState(() => Date.now());
     const [terminalUntil, setTerminalUntil] = useState<number | null>(null);
 
@@ -103,7 +109,11 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
                 if (effectSeq !== seqRef.current || runIdRef.current !== runId) return;
                 if (runRes.error || !runRes.data) return;
 
-                setRun(runRes.data);
+                // Pair the run with the configId this tick was discovered
+                // for (not just the current prop) so a later configId change
+                // can never keep rendering a stale config's run — render
+                // gates on `tracked.configId === configId` below.
+                setTracked({ configId, run: runRes.data });
                 setTerminalUntil(null);
 
                 const liveStatus = mapPlannerRunStatus(runRes.data.status);
@@ -120,7 +130,7 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
                     // it forever; fall back to discovery.
                     runIdRef.current = null;
                     trackStartedAtRef.current = null;
-                    setRun(null);
+                    setTracked(null);
                 }
             } finally {
                 inFlightRef.current = false;
@@ -136,8 +146,14 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
         };
     }, [configId, testMode]);
 
-    const runStatus = run?.status ?? null;
-    const runStartedAt = run?.started_at ?? null;
+    // Only ever visible when the tracked run's configId still matches the
+    // current prop — closes the stale-config leak: if `configId` changes
+    // before this instance's tracking state is cleared/overwritten, the OLD
+    // config's run immediately stops rendering rather than persisting until
+    // the next terminal/cleanup tick (CHAOS-2799).
+    const visibleRun = tracked && tracked.configId === configId ? tracked.run : null;
+    const runStatus = visibleRun?.status ?? null;
+    const runStartedAt = visibleRun?.started_at ?? null;
 
     // 1s display timer while a run is actively tracked, purely for the
     // elapsed-time readout. Derives from persisted `started_at` rather than a
@@ -155,11 +171,18 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
     useEffect(() => {
         if (terminalUntil === null) return undefined;
         const delay = Math.max(0, terminalUntil - Date.now());
-        const timer = setTimeout(() => setRun(null), delay);
+        const timer = setTimeout(() => {
+            // Functional update guarded by configId: never clear a NEWER
+            // config's tracked run if this timer was scheduled by an older
+            // config's now-stale terminal result.
+            setTracked((current) => (current && current.configId === configId ? null : current));
+        }, delay);
         return () => clearTimeout(timer);
-    }, [terminalUntil]);
+    }, [terminalUntil, configId]);
 
-    if (!run) return null;
+    if (!visibleRun) return null;
+
+    const run = visibleRun;
 
     const liveStatus = mapPlannerRunStatus(run.status);
     const settled = Math.min(run.total_units, run.completed_units + run.failed_units);
@@ -179,7 +202,11 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
             : `~${Math.floor(estimatedSecondsRemaining / 60)}m ${estimatedSecondsRemaining % 60}s remaining`;
 
     const statusLabel =
-        liveStatus === "running" ? "Syncing..." : liveStatus === "success" ? "Sync completed" : "Sync failed";
+        liveStatus === "running"
+            ? "Syncing..."
+            : liveStatus === "success"
+              ? "Sync completed"
+              : "Sync failed";
 
     return (
         <div

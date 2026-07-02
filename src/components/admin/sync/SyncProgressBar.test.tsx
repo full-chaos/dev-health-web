@@ -97,7 +97,7 @@ describe("SyncProgressBar", () => {
         render(<SyncProgressBar configId="cfg-1" />);
         await flush();
 
-        expect(getSyncJobs).toHaveBeenCalledWith("cfg-1", 5);
+        expect(getSyncJobs).toHaveBeenCalledWith("cfg-1", 25);
         expect(getSyncRunStatus).toHaveBeenCalledWith("run-1");
         expect(screen.getByText("Syncing...")).toBeInTheDocument();
         expect(screen.getByText(/4 \/ 10/)).toBeInTheDocument();
@@ -169,8 +169,8 @@ describe("SyncProgressBar", () => {
         );
         await flush();
 
-        expect(getSyncJobs).toHaveBeenCalledWith("cfg-a", 5);
-        expect(getSyncJobs).toHaveBeenCalledWith("cfg-b", 5);
+        expect(getSyncJobs).toHaveBeenCalledWith("cfg-a", 25);
+        expect(getSyncJobs).toHaveBeenCalledWith("cfg-b", 25);
         // Each bar renders ITS OWN config's counts — neither leaks into the other.
         expect(screen.getByText(/2 \/ 10/)).toBeInTheDocument();
         expect(screen.getByText(/8 \/ 10/)).toBeInTheDocument();
@@ -225,5 +225,89 @@ describe("SyncProgressBar", () => {
         await flush();
 
         expect(screen.getByText("Calculating...")).toBeInTheDocument();
+    });
+
+    it("clears the previous config's run once configId changes and the new config has no active run (stale-config leak regression, CHAOS-2799)", async () => {
+        vi.mocked(getSyncJobs).mockImplementation(async (configId: string) => {
+            if (configId === "cfg-a") {
+                return { data: [buildJob({ status: "running" })] };
+            }
+            return { data: [] }; // cfg-b: nothing active
+        });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ completed_units: 4, total_units: 10 }),
+        });
+
+        const { rerender } = render(<SyncProgressBar configId="cfg-a" />);
+        await flush();
+
+        expect(screen.getByRole("status")).toBeInTheDocument();
+        expect(screen.getByText(/4 \/ 10/)).toBeInTheDocument();
+
+        rerender(<SyncProgressBar configId="cfg-b" />);
+        await flush();
+
+        // cfg-b has no active run: cfg-a's progress bar must NOT persist —
+        // this is the exact leak CHAOS-2799 exists to kill.
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("discovers a still-running job even when several newer terminal jobs precede it in the discovery window (SHOULD-FIX 3, CHAOS-2799)", async () => {
+        const terminalJobs = Array.from({ length: 5 }, (_, i) =>
+            buildJob({ id: `job-terminal-${i}`, status: "success", sync_run: null }),
+        );
+        const runningJob = buildJob({
+            id: "job-running",
+            status: "running",
+            sync_run: buildEnrichment({ sync_run_id: "run-buried" }),
+        });
+        const allJobs = [...terminalJobs, runningJob];
+
+        // Mirrors the real enriched /jobs endpoint: `limit` bounds how many
+        // of the most-recent jobs come back. With the old limit of 5, the
+        // running job (6th) would never be seen.
+        vi.mocked(getSyncJobs).mockImplementation(async (_configId: string, limit?: number) => ({
+            data: allJobs.slice(0, limit ?? allJobs.length),
+        }));
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ id: "run-buried", completed_units: 3, total_units: 10 }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(getSyncJobs).toHaveBeenCalledWith("cfg-1", 25);
+        expect(getSyncRunStatus).toHaveBeenCalledWith("run-buried");
+        expect(screen.getByText("Syncing...")).toBeInTheDocument();
+    });
+
+    it("never calls setState or logs a warning when a discovery poll resolves after unmount", async () => {
+        let resolveJobs!: (value: { data: SyncJob[] }) => void;
+        vi.mocked(getSyncJobs).mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    resolveJobs = resolve;
+                }),
+        );
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        const { unmount } = render(<SyncProgressBar configId="cfg-1" />);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(0);
+        });
+
+        unmount();
+
+        // Resolve the in-flight discovery call AFTER unmount — the seqRef
+        // guard must drop this stale response rather than calling setState
+        // on an unmounted component.
+        await act(async () => {
+            resolveJobs({ data: [buildJob({ status: "running" })] });
+            await vi.advanceTimersByTimeAsync(0);
+        });
+
+        expect(getSyncRunStatus).not.toHaveBeenCalled();
+        expect(consoleError).not.toHaveBeenCalled();
+        consoleError.mockRestore();
     });
 });
