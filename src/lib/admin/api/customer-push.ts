@@ -112,9 +112,11 @@ export const customerPushApi = {
         ),
 
     /**
-     * Provisional — the validate proxy hasn't landed in the merged ops
-     * source yet (CHAOS-2695/wave 4). Wired against MSW mocks only until
-     * then; do not treat a 404 here as a bug in this client.
+     * Backed by the live ops endpoint since CHAOS-2695 (wave 4):
+     * POST /api/v1/admin/customer-push/sources/{id}/validate. Envelope-level
+     * failures come back as 200 valid:false result rows, never 4xx — a 404
+     * here now indicates deployment/routing skew, not an expected
+     * provisional state.
      */
     validate: (sourceId: string, envelope: unknown, token?: string, orgId?: string) =>
         request<CustomerPushValidateResponse>(

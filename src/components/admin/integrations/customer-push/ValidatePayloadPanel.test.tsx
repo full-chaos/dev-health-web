@@ -134,13 +134,30 @@ describe("ValidatePayloadPanel", () => {
     });
 });
 
-describe("ValidatePayloadPanel — proxy gate (CHAOS-2695 pending)", () => {
-    it("default-gated: banner visible and submit disabled until the proxy lands", () => {
+describe("ValidatePayloadPanel — proxy gate (flipped ON with ops CHAOS-2695)", () => {
+    it("default is live: no gate banner, submit enabled once payload present", async () => {
+        const user = userEvent.setup();
         render(
             <ValidatePayloadPanel
                 sourceId="cps-1"
                 sourceSystem="github"
                 sourceInstance="meridian/api"
+            />,
+        );
+        expect(
+            screen.queryByText(/Server-side validation isn't available yet/),
+        ).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Use sample" }));
+        expect(screen.getByRole("button", { name: "Validate payload" })).toBeEnabled();
+    });
+
+    it("gated-off state still renders banner + disabled submit (rollback seam)", () => {
+        render(
+            <ValidatePayloadPanel
+                sourceId="cps-1"
+                sourceSystem="github"
+                sourceInstance="meridian/api"
+                validateProxyAvailable={false}
             />,
         );
         expect(screen.getByText(/Server-side validation isn't available yet/)).toBeInTheDocument();
