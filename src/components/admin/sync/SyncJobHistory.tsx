@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { getSyncJobs } from "@/lib/admin/server";
 import type { SyncJob } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatNumber } from "@/lib/formatters";
+import { formatNumber, formatDateUTC as formatDateOnly } from "@/lib/formatters";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { CoverageBadge, jobCoverageLabel, jobCoverageTone, type JobCoverageResult } from "./CoverageBadge";
 
@@ -30,18 +30,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function formatTimestamp(value: string | null | undefined): string {
     if (!value) return "—";
     return new Date(value).toLocaleString();
-}
-
-function formatDateOnly(value: string | null | undefined): string {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-    });
 }
 
 function formatRange(range: { since: string; before: string } | null | undefined): string {

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
-import { formatNumber, formatPercent } from "@/lib/formatters";
+import { CTA_LABELS } from "@/lib/design/cta";
+import { formatNumber, formatPercent, formatDateUTC } from "@/lib/formatters";
 import { type SyncStatus, isTerminalSyncStatus, mapPlannerRunStatus } from "@/lib/sync-types";
 import type { SyncRun, SyncRunUnit, SyncRunUnitSummary } from "@/lib/admin/types";
 
@@ -14,6 +15,19 @@ const POLL_INTERVAL_MS = 3500;
 const MAX_POLL_DURATION_MS = 10 * 60 * 1000;
 /** Cap the rendered unit table so a huge fan-out stays readable. */
 const UNIT_TABLE_CAP = 100;
+
+/** Distinct unit statuses, in a stable display order, for the status filter. */
+const STATUS_FILTER_ORDER = [
+    "success",
+    "failed",
+    "retrying",
+    "running",
+    "dispatched",
+    "dispatching",
+    "pending",
+    "planned",
+    "cancelled",
+];
 
 interface SyncRunDetailLiveProps {
     initialRun: SyncRun;
@@ -52,6 +66,43 @@ function formatDuration(seconds: number | null): string {
     const minutes = Math.floor(seconds / 60);
     const remainder = Math.round(seconds % 60);
     return `${formatNumber(minutes)}m ${formatNumber(remainder)}s`;
+}
+
+interface UnitWindow {
+    since: string | null;
+    before: string | null;
+}
+
+/**
+ * Extent (min since_at, max before_at) spanning the given units — a simple
+ * display aggregate, NOT interval merging/gap subtraction (CHAOS-2794 scope:
+ * "min/max for display is fine, no coverage math beyond that"). Renders
+ * ONLY the persisted per-unit windows already returned by the units API.
+ */
+function computeWindow(units: readonly SyncRunUnit[]): UnitWindow {
+    let sinceMs = Number.POSITIVE_INFINITY;
+    let beforeMs = Number.NEGATIVE_INFINITY;
+    for (const unit of units) {
+        if (unit.since_at) {
+            const t = Date.parse(unit.since_at);
+            if (!Number.isNaN(t)) sinceMs = Math.min(sinceMs, t);
+        }
+        if (unit.before_at) {
+            const t = Date.parse(unit.before_at);
+            if (!Number.isNaN(t)) beforeMs = Math.max(beforeMs, t);
+        }
+    }
+    return {
+        since: Number.isFinite(sinceMs) ? new Date(sinceMs).toISOString() : null,
+        before: Number.isFinite(beforeMs) ? new Date(beforeMs).toISOString() : null,
+    };
+}
+
+function formatWindow(window: UnitWindow): string {
+    if (!window.since && !window.before) return "No window recorded";
+    const since = window.since ? formatDateUTC(window.since) : "—";
+    const before = window.before ? formatDateUTC(window.before) : "—";
+    return `${since} → ${before}`;
 }
 
 function StatBreakdown({ counts }: { counts: Record<string, number> }) {
@@ -234,8 +285,79 @@ export function SyncRunDetailLive({
         [summary],
     );
 
-    const cappedUnits = (summary?.units ?? []).slice(0, UNIT_TABLE_CAP);
-    const overflow = (summary?.units.length ?? 0) - cappedUnits.length;
+    // Unit table filters (CHAOS-2794) — client-side over the already-fetched
+    // unit summary; narrows which persisted rows are displayed, never
+    // re-derives coverage/category truth.
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [datasetFilter, setDatasetFilter] = useState("all");
+    const [sourceFilter, setSourceFilter] = useState("all");
+    const [failedOnlyFilter, setFailedOnlyFilter] = useState(false);
+    const [sinceFilter, setSinceFilter] = useState("");
+    const [beforeFilter, setBeforeFilter] = useState("");
+
+    const availableStatuses = useMemo(() => {
+        const present = new Set((summary?.units ?? []).map((unit) => unit.status));
+        return STATUS_FILTER_ORDER.filter((status) => present.has(status));
+    }, [summary]);
+
+    const availableDatasets = useMemo(
+        () => Array.from(new Set((summary?.units ?? []).map((unit) => unit.dataset_key))).sort(),
+        [summary],
+    );
+
+    const availableSourceIds = useMemo(
+        () => Array.from(new Set((summary?.units ?? []).map((unit) => unit.source_id))),
+        [summary],
+    );
+
+    const filteredUnits = useMemo(() => {
+        const units = summary?.units ?? [];
+        const sinceBoundary = sinceFilter ? Date.parse(`${sinceFilter}T00:00:00.000Z`) : null;
+        const beforeBoundary = beforeFilter ? Date.parse(`${beforeFilter}T23:59:59.999Z`) : null;
+        return units.filter((unit) => {
+            if (statusFilter !== "all" && unit.status !== statusFilter) return false;
+            if (datasetFilter !== "all" && unit.dataset_key !== datasetFilter) return false;
+            if (sourceFilter !== "all" && unit.source_id !== sourceFilter) return false;
+            if (failedOnlyFilter && unit.status !== "failed" && unit.status !== "retrying") {
+                return false;
+            }
+            if (sinceBoundary !== null) {
+                const unitBefore = unit.before_at ? Date.parse(unit.before_at) : null;
+                if (unitBefore !== null && !Number.isNaN(unitBefore) && unitBefore < sinceBoundary) {
+                    return false;
+                }
+            }
+            if (beforeBoundary !== null) {
+                const unitSince = unit.since_at ? Date.parse(unit.since_at) : null;
+                if (unitSince !== null && !Number.isNaN(unitSince) && unitSince > beforeBoundary) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }, [summary, statusFilter, datasetFilter, sourceFilter, failedOnlyFilter, sinceFilter, beforeFilter]);
+
+    const hasActiveUnitFilters =
+        statusFilter !== "all" ||
+        datasetFilter !== "all" ||
+        sourceFilter !== "all" ||
+        failedOnlyFilter ||
+        sinceFilter !== "" ||
+        beforeFilter !== "";
+
+    // Intent vs result (CHAOS-2794): requested window spans ALL units
+    // regardless of outcome; covered window spans SUCCESSFUL units only.
+    // Both are simple min/max display aggregates over persisted fields —
+    // counts below come from the persisted `by_status` rollup, never
+    // recomputed client-side.
+    const requestedWindow = useMemo(() => computeWindow(summary?.units ?? []), [summary]);
+    const coveredWindow = useMemo(
+        () => computeWindow((summary?.units ?? []).filter((unit) => unit.status === "success")),
+        [summary],
+    );
+
+    const cappedUnits = filteredUnits.slice(0, UNIT_TABLE_CAP);
+    const overflow = filteredUnits.length - cappedUnits.length;
 
     return (
         <div className="space-y-6">
@@ -245,7 +367,7 @@ export function SyncRunDetailLive({
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
                             <SyncStatusBadge status={liveStatus} className="text-sm px-3 py-1" />
-                            <span className="text-sm text-(--ink-muted)">
+                            <span className="text-sm text-(--ink-muted)" role="status" aria-live="polite">
                                 {isTerminal
                                     ? "Run complete"
                                     : unitsError
@@ -292,6 +414,54 @@ export function SyncRunDetailLive({
                     </div>
                 </div>
             </div>
+
+            {/* Intent vs result (CHAOS-2794): run mode + requested window (min/max
+                across all units) vs covered window (successful units only) vs
+                failed count. Renders ONLY persisted fields — by_status counts
+                come straight from the units-summary rollup; windows are a
+                simple min/max display aggregate, never coverage/gap math. */}
+            {summary && (
+                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <h3 className="mb-3 text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
+                        Intent vs result
+                    </h3>
+                    <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm sm:grid-cols-4">
+                        <div>
+                            <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
+                                Mode
+                            </dt>
+                            <dd className="mt-1 text-foreground">{run.mode}</dd>
+                        </div>
+                        <div>
+                            <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
+                                Requested window
+                            </dt>
+                            <dd className="mt-1 text-foreground">{formatWindow(requestedWindow)}</dd>
+                        </div>
+                        <div>
+                            <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
+                                Covered window
+                            </dt>
+                            <dd className="mt-1 text-foreground">
+                                {formatWindow(coveredWindow)}{" "}
+                                <span className="text-(--ink-muted)">
+                                    ({formatNumber(summary.by_status.success ?? 0)} unit
+                                    {(summary.by_status.success ?? 0) === 1 ? "" : "s"})
+                                </span>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
+                                Failed
+                            </dt>
+                            <dd className="mt-1 text-foreground">
+                                {formatNumber(summary.by_status.failed ?? 0)} unit
+                                {(summary.by_status.failed ?? 0) === 1 ? "" : "s"}
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+            )}
 
             {/* Overall progress */}
             <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
@@ -443,8 +613,88 @@ export function SyncRunDetailLive({
                     {/* Unit table */}
                     <div className="space-y-3">
                         <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
-                            Units ({formatNumber(summary.unit_count)})
+                            Units ({formatNumber(filteredUnits.length)}
+                            {hasActiveUnitFilters ? ` of ${formatNumber(summary.unit_count)}` : ""})
                         </h3>
+
+                        {/* Client-side filters over the already-fetched unit summary
+                            (CHAOS-2794) — narrows the table below only; the persisted
+                            rollups (Unit status / By dataset / By source / By cost class)
+                            above always reflect the full run. */}
+                        <div className="flex flex-wrap items-end gap-3">
+                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                                Status
+                                <select
+                                    value={statusFilter}
+                                    onChange={(event) => setStatusFilter(event.target.value)}
+                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                                >
+                                    <option value="all">{CTA_LABELS.allStatuses}</option>
+                                    {availableStatuses.map((status) => (
+                                        <option key={status} value={status}>
+                                            {status}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                                Dataset
+                                <select
+                                    value={datasetFilter}
+                                    onChange={(event) => setDatasetFilter(event.target.value)}
+                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                                >
+                                    <option value="all">{CTA_LABELS.allDatasets}</option>
+                                    {availableDatasets.map((dataset) => (
+                                        <option key={dataset} value={dataset}>
+                                            {dataset}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                                Source
+                                <select
+                                    value={sourceFilter}
+                                    onChange={(event) => setSourceFilter(event.target.value)}
+                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                                >
+                                    <option value="all">{CTA_LABELS.allSources}</option>
+                                    {availableSourceIds.map((sourceId) => (
+                                        <option key={sourceId} value={sourceId}>
+                                            {sourceLabel(sourceId)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                                Since
+                                <input
+                                    type="date"
+                                    value={sinceFilter}
+                                    onChange={(event) => setSinceFilter(event.target.value)}
+                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1 text-sm text-(--ink-muted)">
+                                Before
+                                <input
+                                    type="date"
+                                    value={beforeFilter}
+                                    onChange={(event) => setBeforeFilter(event.target.value)}
+                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
+                                />
+                            </label>
+                            <label className="flex items-center gap-2 pb-1.5 text-sm text-(--ink-muted)">
+                                <input
+                                    type="checkbox"
+                                    checked={failedOnlyFilter}
+                                    onChange={(event) => setFailedOnlyFilter(event.target.checked)}
+                                    className="h-4 w-4 rounded border-(--card-stroke)"
+                                />
+                                Failed/retrying only
+                            </label>
+                        </div>
                         <div className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)">
                             <table className="min-w-full divide-y divide-(--card-stroke)">
                                 <thead className="bg-(--card-bg)">
@@ -453,6 +703,8 @@ export function SyncRunDetailLive({
                                             "Unit",
                                             "Source",
                                             "Dataset",
+                                            "Since",
+                                            "Before",
                                             "Cost class",
                                             "Status",
                                             "Attempts",
@@ -480,6 +732,12 @@ export function SyncRunDetailLive({
                                             </td>
                                             <td className="px-4 py-3 text-sm text-(--ink-muted)">
                                                 {unit.dataset_key}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                {formatDateUTC(unit.since_at)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                {formatDateUTC(unit.before_at)}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-(--ink-muted)">
                                                 {unit.cost_class}
@@ -524,7 +782,7 @@ export function SyncRunDetailLive({
                             {overflow > 0 && (
                                 <div className="border-t border-(--card-stroke) px-4 py-3 text-xs text-(--ink-muted)">
                                     Showing first {formatNumber(UNIT_TABLE_CAP)} of{" "}
-                                    {formatNumber(summary.units.length)} units.
+                                    {formatNumber(filteredUnits.length)} units.
                                 </div>
                             )}
                         </div>

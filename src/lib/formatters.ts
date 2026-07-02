@@ -99,3 +99,21 @@ export const formatTimestamp = (value?: string | null) => {
     const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
     return `${get("month")} ${get("day")}, ${get("hour")}:${get("minute")} ${get("dayPeriod")}`;
 };
+
+/**
+ * UTC-locked date-only formatter (CHAOS-2791/2793/2794). Shared by
+ * SyncJobHistory, SyncCoverageTimeline, and SyncRunDetailLive so coverage
+ * windows read consistently regardless of the viewer's local timezone —
+ * planner windows are persisted/compared in UTC, so display must match.
+ */
+export const formatDateUTC = (value: string | null | undefined): string => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+    });
+};

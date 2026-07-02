@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DataState } from "@/components/ui/DataState";
+import { formatDateUTC as formatDate } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { SyncCoverageDataset, SyncCoverageRange, SyncCoverageSummary } from "@/lib/admin/types";
 import { CoverageBadge, statusLabel, statusTone, type CoverageTone } from "./CoverageBadge";
@@ -40,17 +41,6 @@ interface TimelineRow {
     kind: BandKind;
     range: SyncCoverageRange;
     datasetKey: string;
-}
-
-function formatDate(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-    });
 }
 
 function toDateInput(value: string): string {
