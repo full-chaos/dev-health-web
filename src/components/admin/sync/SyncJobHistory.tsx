@@ -156,16 +156,22 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [offset, setOffset] = useState(0);
-    const [pageJobs, setPageJobs] = useState<SyncJob[]>(() => jobs.slice(0, PAGE_SIZE));
-    const [hasMore, setHasMore] = useState(() => jobs.length > PAGE_SIZE);
+    // Fetched-page state is used ONLY for offset > 0 (server-backed mode).
+    // The offset-0 page is derived reactively from `jobs` below (see
+    // firstPageJobs) so a Sync Now / Backfill refresh — router.refresh()
+    // delivering a fresh `jobs` prop — is reflected immediately, without
+    // requiring a pagination click (regression: CHAOS-2791).
+    const [fetchedPageJobs, setFetchedPageJobs] = useState<SyncJob[]>([]);
+    const [fetchedHasMore, setFetchedHasMore] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
-    const clientPageJobs = useMemo(
-        () => jobs.slice(offset, offset + PAGE_SIZE),
-        [jobs, offset],
-    );
+    const clientPageJobs = useMemo(() => jobs.slice(offset, offset + PAGE_SIZE), [jobs, offset]);
 
-    const visibleJobs = testMode ? clientPageJobs : pageJobs;
+    const firstPageJobs = useMemo(() => jobs.slice(0, PAGE_SIZE), [jobs]);
+    const firstPageHasMore = jobs.length > PAGE_SIZE;
+
+    const visibleJobs = testMode ? clientPageJobs : offset === 0 ? firstPageJobs : fetchedPageJobs;
+    const hasMore = offset === 0 ? firstPageHasMore : fetchedHasMore;
 
     if (jobs.length === 0) {
         return (
@@ -182,6 +188,12 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
             return;
         }
         setFetchError(null);
+        if (safeOffset === 0) {
+            // No fetch needed — the offset-0 page always derives from the
+            // current `jobs` prop (see firstPageJobs above).
+            setOffset(0);
+            return;
+        }
         startTransition(async () => {
             const result = await getSyncJobs(configId, PAGE_SIZE + 1, safeOffset);
             if (result.error || !result.data) {
@@ -189,8 +201,8 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                 return;
             }
             setOffset(safeOffset);
-            setPageJobs(result.data.slice(0, PAGE_SIZE));
-            setHasMore(result.data.length > PAGE_SIZE);
+            setFetchedPageJobs(result.data.slice(0, PAGE_SIZE));
+            setFetchedHasMore(result.data.length > PAGE_SIZE);
         });
     };
 
@@ -200,7 +212,10 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
     return (
         <div className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)">
             {fetchError && (
-                <div role="alert" className="border-b border-(--card-stroke) px-6 py-3 text-sm text-(--negative)">
+                <div
+                    role="alert"
+                    className="border-b border-(--card-stroke) px-6 py-3 text-sm text-(--negative)"
+                >
                     {fetchError}
                 </div>
             )}
@@ -229,7 +244,11 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                             <tr
                                 key={job.id}
                                 onClick={href ? () => router.push(href) : undefined}
-                                className={href ? "cursor-pointer transition-colors hover:bg-(--card-70)" : undefined}
+                                className={
+                                    href
+                                        ? "cursor-pointer transition-colors hover:bg-(--card-70)"
+                                        : undefined
+                                }
                             >
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
                                     {sr?.triggered_by ?? job.triggered_by ?? "—"}
