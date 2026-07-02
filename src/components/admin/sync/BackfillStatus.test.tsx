@@ -49,6 +49,37 @@ describe("BackfillStatus", () => {
         expect(screen.getByText("Backfill complete")).toBeInTheDocument();
         expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
     });
+
+    it("renders a terminal fanout 'success' job without a live-polling indicator", () => {
+        render(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "success", progress_pct: 100 }}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText("Backfill complete")).toBeInTheDocument();
+        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+    });
+
+    it("renders a terminal fanout 'partial_failed' job with a completed-with-failures label", () => {
+        render(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "partial_failed", progress_pct: 100 }}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText("Completed with failures")).toBeInTheDocument();
+        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+    });
+
+    it("renders a fanout 'planned' job as non-terminal and waiting", () => {
+        render(<BackfillStatus initialJob={{ ...RUNNING_JOB, status: "planned" }} testMode />);
+
+        expect(screen.getByText("Waiting to start...")).toBeInTheDocument();
+        expect(screen.getByText("Live — refreshing…")).toBeInTheDocument();
+    });
 });
 
 describe("BackfillStatus — live poll", () => {
@@ -76,6 +107,49 @@ describe("BackfillStatus — live poll", () => {
         expect(screen.getByText("Backfill complete")).toBeInTheDocument();
 
         // Polling stopped: advancing further triggers no additional calls.
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000 * 4);
+        });
+        expect(getBackfillJobStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it("stops polling once a poll resolves the fanout 'success' status", async () => {
+        vi.mocked(getBackfillJobStatus).mockResolvedValue({
+            data: { ...RUNNING_JOB, status: "success", completed_chunks: 6, progress_pct: 100 },
+        });
+
+        render(<BackfillStatus initialJob={RUNNING_JOB} />);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000);
+        });
+
+        expect(screen.getByText("Backfill complete")).toBeInTheDocument();
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000 * 4);
+        });
+        expect(getBackfillJobStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it("stops polling once a poll resolves the fanout 'partial_failed' status", async () => {
+        vi.mocked(getBackfillJobStatus).mockResolvedValue({
+            data: {
+                ...RUNNING_JOB,
+                status: "partial_failed",
+                completed_chunks: 5,
+                progress_pct: 83,
+            },
+        });
+
+        render(<BackfillStatus initialJob={RUNNING_JOB} />);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000);
+        });
+
+        expect(screen.getByText("Completed with failures")).toBeInTheDocument();
+
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3000 * 4);
         });

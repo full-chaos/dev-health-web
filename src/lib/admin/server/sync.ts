@@ -115,12 +115,21 @@ export async function triggerBackfill(
         const res = await adminApi.syncConfigs.backfill(configId, { since, before }, token, orgId);
         revalidatePath("/org/admin/sync");
         revalidatePath(`/org/admin/sync/${configId}`);
-return res;
-});
+        return res;
+    });
 }
 
-/** Non-terminal BackfillJob statuses — mirrors RunBackfill's isTerminal check. */
-const ACTIVE_BACKFILL_STATUSES = new Set(["pending", "running"]);
+/**
+ * Non-terminal BackfillJob statuses — mirrors BackfillStatus's isTerminal check.
+ * Fanout backfills report the planner's SyncRun lifecycle (planned →
+ * dispatching → running → success | partial_failed | failed); the legacy
+ * per-chunk BackfillJob path reports pending | running | completed | failed.
+ * Both families are treated as active here since the persisted status field
+ * is a plain string mirrored verbatim from whichever backend path handled the
+ * request (see ops routers/sync.py ~L539/584, sync/planner.py ~L161,
+ * models/integrations.py ~L38).
+ */
+const ACTIVE_BACKFILL_STATUSES = new Set(["pending", "planned", "dispatching", "running"]);
 
 /**
  * Discover a persisted in-progress backfill for `configId` so its status

@@ -107,7 +107,7 @@ export const syncConfigsApi = {
             orgId,
         ),
 
-getBackfillJob: (jobId: string, token?: string, orgId?: string) =>
+    getBackfillJob: (jobId: string, token?: string, orgId?: string) =>
         request<BackfillJob>(`/backfill-jobs/${jobId}`, { method: "GET" }, token, orgId),
 
     /**
@@ -116,11 +116,7 @@ getBackfillJob: (jobId: string, token?: string, orgId?: string) =>
      * `GET /backfill-jobs`). Used to discover a persisted in-progress backfill
      * for a config so its status survives navigation (CHAOS-2795).
      */
-    listBackfillJobs: (
-        token?: string,
-        orgId?: string,
-        params: SyncJobsListParams = {},
-    ) =>
+    listBackfillJobs: (token?: string, orgId?: string, params: SyncJobsListParams = {}) =>
         request<BackfillJobListResponse>(
             `/backfill-jobs?${new URLSearchParams({
                 limit: String(params.limit ?? 50),

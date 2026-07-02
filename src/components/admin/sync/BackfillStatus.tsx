@@ -7,7 +7,14 @@ import type { BackfillJob } from "@/lib/admin/types";
 
 /** How often to poll for live backfill status. */
 const POLL_INTERVAL_MS = 3000;
-const TERMINAL_STATUSES = new Set(["completed", "failed"]);
+/**
+ * Terminal BackfillJob statuses across both backend paths: the legacy
+ * per-chunk path (`completed` | `failed`) and the planner fanout path
+ * (`success` | `partial_failed` | `failed`), whose lifecycle is `planned` ->
+ * `dispatching` -> `running` -> `success` | `partial_failed` | `failed`
+ * (mirrors ops routers/sync.py, sync/planner.py, models/integrations.py).
+ */
+const TERMINAL_STATUSES = new Set(["completed", "failed", "success", "partial_failed"]);
 
 interface BackfillStatusProps {
     /**
@@ -34,6 +41,36 @@ function formatDateOnly(value: string): string {
     });
 }
 
+/** Human-readable in-progress/terminal label for every status in both status families. */
+function statusLabel(job: BackfillJob): string {
+    switch (job.status) {
+        case "pending":
+        case "planned":
+            return "Waiting to start...";
+        case "dispatching":
+            return "Dispatching work...";
+        case "running":
+            return `Processing chunk ${job.completed_chunks} of ${job.total_chunks}`;
+        case "completed":
+        case "success":
+            return "Backfill complete";
+        case "partial_failed":
+            return job.error_message || "Completed with failures";
+        case "failed":
+            return job.error_message || "Backfill failed";
+        default:
+            return job.status;
+    }
+}
+
+/** Progress-bar fill color for every status in both status families. */
+function progressBarClassName(status: string): string {
+    if (status === "failed") return "bg-(--negative)";
+    if (status === "completed" || status === "success") return "bg-(--positive)";
+    if (status === "partial_failed") return "bg-(--caution)";
+    return "bg-(--accent)";
+}
+
 export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusProps) {
     const [job, setJob] = useState<BackfillJob | null>(initialJob);
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -44,10 +81,6 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
             pollingRef.current = null;
         }
     }, []);
-
-    useEffect(() => {
-        return () => stopPolling();
-    }, [stopPolling]);
 
     // Poll persisted job status while non-terminal. State is only mutated
     // inside the async interval callback, never synchronously in the effect
@@ -71,8 +104,12 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
             setJob(result.data);
             if (TERMINAL_STATUSES.has(result.data.status)) {
                 stopPolling();
-                if (result.data.status === "completed") {
+                if (result.data.status === "completed" || result.data.status === "success") {
                     toast.success("Backfill completed successfully");
+                } else if (result.data.status === "partial_failed") {
+                    toast.warning(
+                        result.data.error_message || "Backfill completed with some failures",
+                    );
                 } else {
                     toast.error(result.data.error_message || "Backfill failed");
                 }
@@ -104,30 +141,20 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
                         {formatDateOnly(job.since_date)} → {formatDateOnly(job.before_date)}
                     </p>
                 </div>
-                {!isTerminal && <span className="text-xs text-(--ink-muted)">Live — refreshing…</span>}
+                {!isTerminal && (
+                    <span className="text-xs text-(--ink-muted)">Live — refreshing…</span>
+                )}
             </div>
 
             <div className="flex items-center justify-between text-xs">
-                <span className="text-(--ink-muted)">
-                    {job.status === "pending" && "Waiting to start..."}
-                    {job.status === "running" &&
-                        `Processing chunk ${job.completed_chunks} of ${job.total_chunks}`}
-                    {job.status === "completed" && "Backfill complete"}
-                    {job.status === "failed" && (job.error_message || "Backfill failed")}
-                </span>
+                <span className="text-(--ink-muted)">{statusLabel(job)}</span>
                 <span className="font-medium tabular-nums">{Math.round(job.progress_pct)}%</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-(--card-stroke)">
                 <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                        job.status === "failed"
-                            ? "bg-(--negative)"
-                            : job.status === "completed"
-                              ? "bg-(--positive)"
-                              : "bg-(--accent)"
-                    }`}
+                    className={`h-full rounded-full transition-all duration-500 ${progressBarClassName(job.status)}`}
                     style={{
-                        width: `${Math.max(job.progress_pct, job.status === "pending" ? 2 : 0)}%`,
+                        width: `${Math.max(job.progress_pct, job.status === "pending" || job.status === "planned" ? 2 : 0)}%`,
                     }}
                 />
             </div>

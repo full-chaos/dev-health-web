@@ -320,12 +320,14 @@ describe("admin/server sync config actions", () => {
                     created_at: "2026-06-20T00:00:00Z",
                 },
             ];
-            const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
-                new Response(
-                    JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
-                    { status: 200 },
-                ),
-            );
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
 
             const result = await getActiveBackfillJob("cfg-coverage");
 
@@ -346,6 +348,40 @@ describe("admin/server sync config actions", () => {
             const result = await getActiveBackfillJob("cfg-coverage");
 
             expect(result.data).toBeNull();
+            fetchSpy.mockRestore();
+        });
+
+        it("treats a fanout 'planned' job as active (a just-submitted backfill must be visible)", async () => {
+            mockSession();
+            const jobs = [
+                {
+                    id: "job-planned",
+                    sync_config_id: "cfg-coverage",
+                    status: "planned",
+                    since_date: "2026-06-20",
+                    before_date: "2026-06-26",
+                    total_chunks: 0,
+                    completed_chunks: 0,
+                    failed_chunks: 0,
+                    progress_pct: 0,
+                    error_message: null,
+                    started_at: null,
+                    completed_at: null,
+                    created_at: "2026-06-20T00:00:00Z",
+                },
+            ];
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data?.id).toBe("job-planned");
             fetchSpy.mockRestore();
         });
     });
