@@ -8,7 +8,7 @@ import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
 import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
 import { TestConnectionButton } from "@/components/admin/sync/TestConnectionButton";
 import { getServerEnv } from "@/lib/config";
-import { getSyncConfig, getSyncJobs, getSyncCoverage, getCurrentOrg } from "@/lib/admin/server";
+import { getSyncConfig, getSyncJobs, getSyncCoverage } from "@/lib/admin/server";
 import {
     SAMPLE_SYNC_CONFIG,
     SAMPLE_SYNC_JOBS,
@@ -35,7 +35,6 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     let jobs: SyncJob[];
     let coverage: SyncCoverageSummary | null;
     let coverageError: string | null = null;
-    let orgId: string;
 
     if (isTestMode) {
         // Render deterministic sample data without hitting the admin API so the
@@ -43,13 +42,11 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
         config = SAMPLE_SYNC_CONFIG;
         jobs = SAMPLE_SYNC_JOBS;
         coverage = SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenario)];
-        orgId = "sample-org";
     } else {
-        const [configResult, jobsResult, coverageResult, orgResult] = await Promise.all([
+        const [configResult, jobsResult, coverageResult] = await Promise.all([
             getSyncConfig(configId),
             getSyncJobs(configId),
             getSyncCoverage(configId),
-            getCurrentOrg(),
         ]);
 
         if (configResult.error || !configResult.data) {
@@ -58,7 +55,6 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
 
         config = configResult.data;
         jobs = jobsResult.data ?? [];
-        orgId = orgResult.data?.id ?? "";
 
         // withErrorHandling RETURNS { error } (never throws), so a failed
         // coverage fetch surfaces here. Do NOT fabricate an empty summary —
@@ -83,7 +79,7 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
                 <TestConnectionButton provider={config.provider} credentialId={config.credential_id} />
             </AdminHeader>
 
-            <SyncProgressBar configId={config.id} provider={config.provider} orgId={orgId} />
+            <SyncProgressBar configId={config.id} testMode={isTestMode} />
 
             <SyncCoverageSummaryCard
                 configId={config.id}
