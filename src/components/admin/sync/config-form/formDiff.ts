@@ -94,14 +94,6 @@ export function getDatasetWarnings(
     ];
 }
 
-/** Combined repo-scope + dataset destructive warnings. */
-export function getDestructiveWarnings(
-    baseline: SyncFormSnapshot,
-    current: SyncFormSnapshot,
-): string[] {
-    return [...getRepoScopeWarnings(baseline, current), ...getDatasetWarnings(baseline, current)];
-}
-
 /**
  * Human-readable summary of every field that changed between the baseline
  * (values the form was seeded with) and the current form state, for the
