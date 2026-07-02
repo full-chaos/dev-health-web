@@ -323,7 +323,11 @@ export function SyncRunDetailLive({
             }
             if (sinceBoundary !== null) {
                 const unitBefore = unit.before_at ? Date.parse(unit.before_at) : null;
-                if (unitBefore !== null && !Number.isNaN(unitBefore) && unitBefore < sinceBoundary) {
+                if (
+                    unitBefore !== null &&
+                    !Number.isNaN(unitBefore) &&
+                    unitBefore < sinceBoundary
+                ) {
                     return false;
                 }
             }
@@ -335,7 +339,15 @@ export function SyncRunDetailLive({
             }
             return true;
         });
-    }, [summary, statusFilter, datasetFilter, sourceFilter, failedOnlyFilter, sinceFilter, beforeFilter]);
+    }, [
+        summary,
+        statusFilter,
+        datasetFilter,
+        sourceFilter,
+        failedOnlyFilter,
+        sinceFilter,
+        beforeFilter,
+    ]);
 
     const hasActiveUnitFilters =
         statusFilter !== "all" ||
@@ -367,7 +379,11 @@ export function SyncRunDetailLive({
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
                             <SyncStatusBadge status={liveStatus} className="text-sm px-3 py-1" />
-                            <span className="text-sm text-(--ink-muted)" role="status" aria-live="polite">
+                            <span
+                                className="text-sm text-(--ink-muted)"
+                                role="status"
+                                aria-live="polite"
+                            >
                                 {isTerminal
                                     ? "Run complete"
                                     : unitsError
@@ -436,7 +452,9 @@ export function SyncRunDetailLive({
                             <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
                                 Requested window
                             </dt>
-                            <dd className="mt-1 text-foreground">{formatWindow(requestedWindow)}</dd>
+                            <dd className="mt-1 text-foreground">
+                                {formatWindow(requestedWindow)}
+                            </dd>
                         </div>
                         <div>
                             <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
