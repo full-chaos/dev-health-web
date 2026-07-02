@@ -28,9 +28,12 @@ import {
     listRetentionResourceTypes,
     getOrgEntitlements,
     createSyncConfig,
+    getSyncCoverage,
+    getSyncJobs,
     approveTeamChanges,
     dismissTeamChanges,
 } from "../server";
+import { COMPLETE_COVERAGE_SUMMARY, SYNC_JOB_WITH_RUN } from "./syncCoverageFixtures";
 
 function mockSession() {
     mockAuth({ user: { id: "u-1", org_id: "org-1" } });
@@ -177,6 +180,66 @@ describe("admin/server sync config actions", () => {
             });
             expect(result.data).toBeDefined();
             expect(revalidatePath).toHaveBeenCalledWith("/org/admin/sync");
+            fetchSpy.mockRestore();
+        });
+    });
+
+    describe("getSyncCoverage", () => {
+        it("returns persisted coverage summary on success", async () => {
+            mockSession();
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(JSON.stringify(COMPLETE_COVERAGE_SUMMARY), { status: 200 }),
+                );
+
+            const result = await getSyncCoverage("cfg-coverage");
+
+            expect(result.data).toEqual(COMPLETE_COVERAGE_SUMMARY);
+            expect(result.error).toBeUndefined();
+            const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+            expect(url).toBe(
+                "http://test-ops:8000/api/v1/admin/sync-configs/cfg-coverage/coverage",
+            );
+            expect(options?.headers).toMatchObject({
+                Authorization: "Bearer test-token",
+                "X-Org-Id": "org-1",
+            });
+            fetchSpy.mockRestore();
+        });
+
+        it("returns a UI-safe error result instead of leaking non-200 throws", async () => {
+            mockSession();
+            const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+                new Response(JSON.stringify({ detail: "coverage unavailable" }), {
+                    status: 500,
+                    statusText: "Internal Server Error",
+                }),
+            );
+
+            await expect(getSyncCoverage("cfg-coverage")).resolves.toEqual({
+                error: "coverage unavailable",
+            });
+            fetchSpy.mockRestore();
+        });
+    });
+
+    describe("getSyncJobs", () => {
+        it("passes pagination through and preserves optional sync_run enrichment", async () => {
+            mockSession();
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(JSON.stringify([SYNC_JOB_WITH_RUN]), { status: 200 }),
+                );
+
+            const result = await getSyncJobs("cfg-coverage", 25, 50);
+
+            expect(result.data?.[0]?.sync_run?.sync_run_id).toBe("run-coverage");
+            const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+            expect(url).toBe(
+                "http://test-ops:8000/api/v1/admin/sync-configs/cfg-coverage/jobs?limit=25&offset=50",
+            );
             fetchSpy.mockRestore();
         });
     });
