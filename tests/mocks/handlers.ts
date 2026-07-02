@@ -3141,7 +3141,10 @@ export const handlers = [
             revoked_at: null,
             created_at: new Date().toISOString(),
             token_prefix: `fcpush_${tokenId.slice(0, 4)}`,
-            token: `fcpush_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
+            // Cryptographically secure even though this is mock/test-only data —
+            // avoids CodeQL js/insecure-randomness flagging Math.random() as a
+            // security-sensitive token generator (see CHAOS-2690 scanner triage).
+            token: `fcpush_${crypto.randomUUID().replace(/-/g, "")}`,
         };
         // One-time-display contract (adversarial-review finding): the plaintext
         // `token` exists ONLY in the immediate POST response — the stored list
@@ -3176,7 +3179,8 @@ export const handlers = [
             revoked_at: null,
             created_at: new Date().toISOString(),
             token_prefix: `fcpush_${newTokenId.slice(0, 4)}`,
-            token: `fcpush_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
+            // See rationale on the create-token handler above.
+            token: `fcpush_${crypto.randomUUID().replace(/-/g, "")}`,
         };
         // Same one-time-display contract as token creation: list store never
         // holds the plaintext.
