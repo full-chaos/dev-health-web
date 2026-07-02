@@ -1143,9 +1143,10 @@ export interface CustomerPushBatchDetail {
 }
 
 /**
- * Provisional — the validate proxy hasn't landed in the merged ops source
- * yet (CHAOS-2695/wave 4). Shape follows the brief's contract sketch;
- * re-verify against real source once that lands.
+ * Mirrors ops AdminValidateResponse (api/admin/schemas/customer_push.py,
+ * landed with CHAOS-2695): snake_case; envelope-level failures are reported
+ * through this same 200 shape (valid:false + synthetic error rows with
+ * code "invalid_envelope"), never as 4xx.
  */
 export interface CustomerPushValidateResponse {
     valid: boolean;

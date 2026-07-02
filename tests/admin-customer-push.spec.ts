@@ -32,15 +32,29 @@ test.describe("Provider detail — mode cards (D3/D4)", () => {
 test.describe("Create customer-push source", () => {
     test("happy path: fill form, submit, redirected to the new source overview", async ({
         page,
-    }) => {
+    }, testInfo) => {
+        // Per-retry instance key: the mock source store is a shared
+        // module-level array that survives retries, so a first attempt
+        // whose POST succeeded but whose assertion timed out would leave a
+        // row behind and turn every retry into a deterministic
+        // duplicate-registration 409 (root cause of the standing CI-only
+        // terminal failure of this spec).
+        const teamKey = testInfo.retry === 0 ? "E2E" : `E2E-R${testInfo.retry}`;
         await page.goto("/org/admin/integrations/linear/customer-push/new");
 
         await page.locator("#customer-push-display-name").fill("Linear e2e team");
-        await page.locator("#customer-push-instance").fill("E2E");
+        await page.locator("#customer-push-instance").fill(teamKey);
         await page.getByRole("button", { name: "Create customer-push source" }).click();
 
+        // waitForURL (30s nav timeout) before asserting: the redirect
+        // target route cold-compiles under next dev on the CI runner and
+        // routinely exceeds the 5s expect timeout (same pattern as the
+        // "empty state" test below).
+        await page.waitForURL(/\/org\/admin\/integrations\/linear\/customer-push\/[^/]+$/);
         await expect(page.getByRole("heading", { name: "Linear e2e team" })).toBeVisible();
-        await expect(page.getByText("Customer-push source · E2E", { exact: true })).toBeVisible();
+        await expect(
+            page.getByText(`Customer-push source · ${teamKey}`, { exact: true }),
+        ).toBeVisible();
     });
 
     test("duplicate/conflicting source shows the real backend one-active-owner message", async ({
@@ -186,37 +200,99 @@ test.describe("Runner setup examples", () => {
 });
 
 test.describe("Validate payload — validate-only in v1 (CC25 overrule)", () => {
-    // The full validate round-trip (accepted state, rejected-record table) is
-    // covered at unit level with the proxy seam enabled
-    // (ValidatePayloadPanel.test.tsx): the admin validate proxy ships with
-    // CHAOS-2695, so in the real app the submit path is hard-gated off — a
-    // live e2e round-trip here would only ever exercise the MSW mock while
-    // production 404s (adversarial-review finding). Restore the round-trip
-    // e2e when CHAOS-2695 flips VALIDATE_PROXY_AVAILABLE.
-    test("submit is gated off with guidance until the validate proxy lands", async ({ page }) => {
+    // Round-trip restored: the admin validate proxy landed with ops
+    // CHAOS-2695, so VALIDATE_PROXY_AVAILABLE is flipped on and the panel
+    // submits for real (against the MSW mock in e2e, the live endpoint in
+    // prod — the mock mirrors the ops 200-on-envelope-failure contract).
+    test("sample payload validates successfully end-to-end", async ({ page }) => {
         await page.goto(
             `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}/validate`,
         );
 
-        await expect(page.getByText(/Server-side validation isn't available yet/)).toBeVisible();
+        // The interim "not available yet" gate is gone.
+        await expect(page.getByText(/Server-side validation isn't available yet/)).toHaveCount(0);
 
-        // Payload prep still works (paste + sample) — only submission is gated.
         await page.getByRole("button", { name: "Use sample" }).click();
         await expect(page.getByPlaceholder(/schemaVersion/)).toHaveValue(/external-ingest.v1/);
-        await expect(page.getByRole("button", { name: "Validate payload" })).toBeDisabled();
+        await page.getByRole("button", { name: "Validate payload" }).click();
+
+        await expect(page.getByText(/Payload is valid/)).toBeVisible();
 
         // Regression guard: the console-push CTA was cut from v1 (CC25) —
         // Screen 5 is validate-only, there must be no push button anywhere.
         await expect(page.getByRole("button", { name: /push this payload/i })).toHaveCount(0);
     });
+
+    test("rejected records render in the results table", async ({ page }) => {
+        await page.goto(
+            `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}/validate`,
+        );
+
+        // Wrapper is VALID (kind + externalId present) so the envelope
+        // parses; the payload omits required sourceSystem — a genuine
+        // PER-RECORD rejection on the real ops endpoint, not the
+        // envelope-level invalid_envelope path (adversarial-review finding:
+        // the old fixture dropped wrapper externalId, which the real
+        // endpoint classifies as an envelope failure with items_rejected 0).
+        const payload = {
+            schemaVersion: "external-ingest.v1",
+            idempotencyKey: "e2e-validate-1",
+            source: { type: "customer_push", system: "github", instance: "acme/api" },
+            records: [
+                {
+                    kind: "repository.v1",
+                    externalId: "acme/api",
+                    payload: { externalId: "acme/api" },
+                },
+            ],
+        };
+        await page.getByPlaceholder(/schemaVersion/).fill(JSON.stringify(payload));
+        await page.getByRole("button", { name: "Validate payload" }).click();
+
+        await expect(page.getByText(/1 record rejected/)).toBeVisible();
+        await expect(page.getByText("missing_required_field")).toBeVisible();
+        await expect(page.getByText("records[0].payload.sourceSystem")).toBeVisible();
+    });
+
+    test("envelope-level failure renders as a result, not an API error", async ({ page }) => {
+        await page.goto(
+            `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}/validate`,
+        );
+
+        // Missing wrapper externalId → the real endpoint fails BatchEnvelope
+        // parsing → 200 valid:false with code invalid_envelope and zero
+        // per-record counts (never a 4xx the panel would show as apiError).
+        const payload = {
+            schemaVersion: "external-ingest.v1",
+            idempotencyKey: "e2e-validate-2",
+            source: { type: "customer_push", system: "github", instance: "acme/api" },
+            records: [
+                {
+                    kind: "repository.v1",
+                    payload: { externalId: "acme/api", sourceSystem: "github" },
+                },
+            ],
+        };
+        await page.getByPlaceholder(/schemaVersion/).fill(JSON.stringify(payload));
+        await page.getByRole("button", { name: "Validate payload" }).click();
+
+        await expect(page.getByText("invalid_envelope")).toBeVisible();
+        await expect(page.getByText(/Validation request failed/)).toHaveCount(0);
+    });
 });
 
 test.describe("Ingest status — batch list + drilldown", () => {
-    test("empty state shows guidance linking to Validate and Examples", async ({ page }) => {
+    test("empty state shows guidance linking to Validate and Examples", async ({
+        page,
+    }, testInfo) => {
         // A freshly created source has zero batches in the mock store.
         await page.goto("/org/admin/integrations/jira/customer-push/new");
         await page.locator("#customer-push-display-name").fill("Jira e2e project");
-        await page.locator("#customer-push-instance").fill("E2EJ");
+        await page
+            .locator("#customer-push-instance")
+            // Per-retry key: see the happy-path test's comment (mock store
+            // survives retries; a leftover row 409s the re-create).
+            .fill(testInfo.retry === 0 ? "E2EJ" : `E2EJ-R${testInfo.retry}`);
         await page.getByRole("button", { name: "Create customer-push source" }).click();
         // Wait for (and verify) the actual redirect target rather than
         // reading page.url() after a generic visibility assertion — pins
