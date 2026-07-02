@@ -82,14 +82,20 @@ export const SAMPLE_COVERAGE_HEALTHY: SyncCoverageSummary = {
             status: "healthy",
             covered_through: "2026-07-02T13:00:00.000Z",
             requested_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-07-02T13:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_HEALTHY,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T13:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_HEALTHY],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-07-02T13:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_HEALTHY,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T13:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_HEALTHY],
+                ),
             ],
             gaps: [],
             stale_ranges: [],
@@ -100,14 +106,20 @@ export const SAMPLE_COVERAGE_HEALTHY: SyncCoverageSummary = {
             status: "healthy",
             covered_through: "2026-07-02T13:00:00.000Z",
             requested_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-07-02T13:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_HEALTHY,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T13:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_HEALTHY],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-07-02T13:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_HEALTHY,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T13:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_HEALTHY],
+                ),
             ],
             gaps: [],
             stale_ranges: [],
@@ -148,17 +160,26 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
             status: "gaps",
             covered_through: "2026-06-28T00:00:00.000Z",
             requested_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-07-01T09:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-07-01T09:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_GAPS],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-06-24T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_GAPS,
-                ]),
-                range("2026-06-26T00:00:00.000Z", "2026-06-28T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-06-24T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_GAPS],
+                ),
+                range(
+                    "2026-06-26T00:00:00.000Z",
+                    "2026-06-28T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_GAPS],
+                ),
             ],
             gaps: [
                 range("2026-06-24T00:00:00.000Z", "2026-06-26T00:00:00.000Z", [SOURCE_PLATFORM]),
@@ -180,16 +201,22 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
                 ),
             ],
             covered_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-06-25T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-06-25T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_GAPS],
+                ),
             ],
             gaps: [],
             stale_ranges: [],
             failed_ranges: [
-                range("2026-06-25T00:00:00.000Z", "2026-06-27T00:00:00.000Z", [SOURCE_BILLING], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-25T00:00:00.000Z",
+                    "2026-06-27T00:00:00.000Z",
+                    [SOURCE_BILLING],
+                    [RUN_GAPS],
+                ),
             ],
         },
         {
@@ -197,14 +224,20 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
             status: "stale",
             covered_through: "2026-06-15T00:00:00.000Z",
             requested_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-06-15T00:00:00.000Z", [SOURCE_BILLING], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-06-15T00:00:00.000Z",
+                    [SOURCE_BILLING],
+                    [RUN_GAPS],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-06-15T00:00:00.000Z", [SOURCE_BILLING], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-06-15T00:00:00.000Z",
+                    [SOURCE_BILLING],
+                    [RUN_GAPS],
+                ),
             ],
             gaps: [],
             stale_ranges: [
@@ -255,21 +288,30 @@ export const SAMPLE_COVERAGE_FAILED: SyncCoverageSummary = {
             status: "failed",
             covered_through: "2026-06-20T00:00:00.000Z",
             requested_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-07-02T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_FAILED,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-07-02T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-18T00:00:00.000Z", "2026-06-20T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_FAILED,
-                ]),
+                range(
+                    "2026-06-18T00:00:00.000Z",
+                    "2026-06-20T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED],
+                ),
             ],
             gaps: [],
             stale_ranges: [],
             failed_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-07-02T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_FAILED,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-07-02T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED],
+                ),
             ],
         },
     ],
@@ -307,14 +349,20 @@ export const SAMPLE_COVERAGE_STALE: SyncCoverageSummary = {
             status: "stale",
             covered_through: "2026-06-10T00:00:00.000Z",
             requested_ranges: [
-                range("2026-05-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_STALE,
-                ]),
+                range(
+                    "2026-05-01T00:00:00.000Z",
+                    "2026-06-10T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_STALE],
+                ),
             ],
             covered_ranges: [
-                range("2026-05-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_STALE,
-                ]),
+                range(
+                    "2026-05-01T00:00:00.000Z",
+                    "2026-06-10T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_STALE],
+                ),
             ],
             gaps: [],
             stale_ranges: [
@@ -368,7 +416,9 @@ export type SyncCoverageSampleScenario = keyof typeof SYNC_COVERAGE_SAMPLES;
 
 export const DEFAULT_SYNC_COVERAGE_SCENARIO: SyncCoverageSampleScenario = "gaps";
 
-export function resolveSyncCoverageSampleScenario(value: string | undefined): SyncCoverageSampleScenario {
+export function resolveSyncCoverageSampleScenario(
+    value: string | undefined,
+): SyncCoverageSampleScenario {
     if (value && Object.hasOwn(SYNC_COVERAGE_SAMPLES, value)) {
         return value as SyncCoverageSampleScenario;
     }
@@ -395,16 +445,12 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         sync_run: {
             mode: "incremental",
             triggered_by: "scheduled",
-            requested_range: jobRange(
-                "2026-07-02T12:00:00.000Z",
-                "2026-07-02T13:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
-            covered_range: jobRange(
-                "2026-07-02T12:00:00.000Z",
-                "2026-07-02T13:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
+            requested_range: jobRange("2026-07-02T12:00:00.000Z", "2026-07-02T13:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
+            covered_range: jobRange("2026-07-02T12:00:00.000Z", "2026-07-02T13:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
             total_units: 4,
             completed_units: 4,
             failed_units: 0,
@@ -424,16 +470,14 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         sync_run: {
             mode: "incremental",
             triggered_by: "admin@devhealth.example",
-            requested_range: jobRange(
-                "2026-06-20T00:00:00.000Z",
-                "2026-07-01T09:00:00.000Z",
-                [SOURCE_PLATFORM, SOURCE_BILLING],
-            ),
-            covered_range: jobRange(
-                "2026-06-20T00:00:00.000Z",
-                "2026-06-28T00:00:00.000Z",
-                [SOURCE_PLATFORM, SOURCE_BILLING],
-            ),
+            requested_range: jobRange("2026-06-20T00:00:00.000Z", "2026-07-01T09:00:00.000Z", [
+                SOURCE_PLATFORM,
+                SOURCE_BILLING,
+            ]),
+            covered_range: jobRange("2026-06-20T00:00:00.000Z", "2026-06-28T00:00:00.000Z", [
+                SOURCE_PLATFORM,
+                SOURCE_BILLING,
+            ]),
             total_units: 6,
             completed_units: 4,
             failed_units: 1,
@@ -454,11 +498,9 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         sync_run: {
             mode: "full_resync",
             triggered_by: "scheduled",
-            requested_range: jobRange(
-                "2026-06-20T00:00:00.000Z",
-                "2026-07-02T00:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
+            requested_range: jobRange("2026-06-20T00:00:00.000Z", "2026-07-02T00:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
             covered_range: null,
             total_units: 3,
             completed_units: 0,
@@ -479,16 +521,12 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         sync_run: {
             mode: "incremental",
             triggered_by: "scheduled",
-            requested_range: jobRange(
-                "2026-05-01T00:00:00.000Z",
-                "2026-06-10T00:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
-            covered_range: jobRange(
-                "2026-05-01T00:00:00.000Z",
-                "2026-06-10T00:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
+            requested_range: jobRange("2026-05-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
+            covered_range: jobRange("2026-05-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
             total_units: 2,
             completed_units: 2,
             failed_units: 0,
@@ -552,9 +590,7 @@ export type SampleBackfillScenario = keyof typeof SAMPLE_BACKFILL_JOBS;
 
 export const DEFAULT_BACKFILL_SCENARIO: SampleBackfillScenario = "none";
 
-export function resolveSampleBackfillScenario(
-    value: string | undefined,
-): SampleBackfillScenario {
+export function resolveSampleBackfillScenario(value: string | undefined): SampleBackfillScenario {
     if (value && Object.hasOwn(SAMPLE_BACKFILL_JOBS, value)) {
         return value as SampleBackfillScenario;
     }

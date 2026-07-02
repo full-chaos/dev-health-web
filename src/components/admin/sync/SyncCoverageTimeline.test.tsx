@@ -41,7 +41,10 @@ describe("SyncCoverageTimeline", () => {
 
     it("renders dataset rows with resolved source names, never raw source ids", () => {
         render(
-            <SyncCoverageTimeline coverage={PARTIAL_COVERAGE_SUMMARY} onBackfillGapAction={vi.fn()} />,
+            <SyncCoverageTimeline
+                coverage={PARTIAL_COVERAGE_SUMMARY}
+                onBackfillGapAction={vi.fn()}
+            />,
         );
 
         expect(screen.getAllByText("commits").length).toBeGreaterThan(0);
@@ -71,7 +74,10 @@ describe("SyncCoverageTimeline", () => {
 
     it("filters rendered datasets by the dataset filter", async () => {
         render(
-            <SyncCoverageTimeline coverage={COMPLETE_COVERAGE_SUMMARY} onBackfillGapAction={vi.fn()} />,
+            <SyncCoverageTimeline
+                coverage={COMPLETE_COVERAGE_SUMMARY}
+                onBackfillGapAction={vi.fn()}
+            />,
         );
 
         expect(screen.getAllByText("commits").length).toBeGreaterThan(0);
@@ -84,7 +90,10 @@ describe("SyncCoverageTimeline", () => {
 
     it("filters the accessible table rows by the source filter", async () => {
         render(
-            <SyncCoverageTimeline coverage={PARTIAL_COVERAGE_SUMMARY} onBackfillGapAction={vi.fn()} />,
+            <SyncCoverageTimeline
+                coverage={PARTIAL_COVERAGE_SUMMARY}
+                onBackfillGapAction={vi.fn()}
+            />,
         );
 
         const selects = screen.getAllByRole("combobox");
@@ -99,7 +108,10 @@ describe("SyncCoverageTimeline", () => {
 
     it("renders an accessible table fallback alongside the CSS bands", () => {
         render(
-            <SyncCoverageTimeline coverage={PARTIAL_COVERAGE_SUMMARY} onBackfillGapAction={vi.fn()} />,
+            <SyncCoverageTimeline
+                coverage={PARTIAL_COVERAGE_SUMMARY}
+                onBackfillGapAction={vi.fn()}
+            />,
         );
 
         const tables = screen.getAllByRole("table");

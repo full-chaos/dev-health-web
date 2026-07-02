@@ -98,7 +98,10 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     return (
         <div className="space-y-8">
             <AdminHeader title={config.name} description={`Provider: ${config.provider}`}>
-                <TestConnectionButton provider={config.provider} credentialId={config.credential_id} />
+                <TestConnectionButton
+                    provider={config.provider}
+                    credentialId={config.credential_id}
+                />
             </AdminHeader>
 
             <SyncProgressBar configId={config.id} provider={config.provider} orgId={orgId} />
@@ -166,7 +169,8 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
 
                 {config.last_sync_error && (
                     <div className="mt-6 rounded-lg border border-(--negative)/20 bg-(--negative)/10 p-4 text-sm text-(--negative)">
-                        <span className="font-medium">Last sync error:</span> {config.last_sync_error}
+                        <span className="font-medium">Last sync error:</span>{" "}
+                        {config.last_sync_error}
                     </div>
                 )}
             </details>

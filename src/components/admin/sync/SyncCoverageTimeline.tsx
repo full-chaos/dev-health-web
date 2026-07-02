@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
-import type { SyncCoverageDataset, SyncCoverageRange, SyncCoverageSummary } from "@/lib/admin/types";
+import type {
+    SyncCoverageDataset,
+    SyncCoverageRange,
+    SyncCoverageSummary,
+} from "@/lib/admin/types";
 import { CoverageBadge, statusLabel, statusTone, type CoverageTone } from "./CoverageBadge";
 
 interface SyncCoverageTimelineProps {
@@ -53,7 +57,6 @@ function formatDate(value: string): string {
     });
 }
 
-
 function rangeIncludesSource(range: SyncCoverageRange, sourceId: string | null): boolean {
     if (!sourceId) return true;
     return range.source_ids.includes(sourceId);
@@ -81,7 +84,10 @@ function datasetExtent(dataset: SyncCoverageDataset): [number, number] | null {
     return [start, end];
 }
 
-function bandStyle(range: SyncCoverageRange, extent: [number, number]): { left: string; width: string } {
+function bandStyle(
+    range: SyncCoverageRange,
+    extent: [number, number],
+): { left: string; width: string } {
     const [start, end] = extent;
     const span = end - start;
     const since = new Date(range.since).getTime();
@@ -122,7 +128,6 @@ export function SyncCoverageTimeline({
         return all.filter((dataset) => dataset.dataset_key === datasetFilter);
     }, [coverage, datasetFilter]);
 
-
     if (error) {
         return (
             <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
@@ -156,7 +161,11 @@ export function SyncCoverageTimeline({
         return (
             <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
                 <DataState
-                    variant={coverage.data_basis === "legacy" ? "detector-unavailable" : "no-data-connected"}
+                    variant={
+                        coverage.data_basis === "legacy"
+                            ? "detector-unavailable"
+                            : "no-data-connected"
+                    }
                     title={
                         coverage.data_basis === "legacy"
                             ? "No planner-tracked coverage yet"
@@ -250,7 +259,9 @@ export function SyncCoverageTimeline({
                             className="space-y-3 rounded-lg border border-(--card-stroke) bg-(--card-70) p-4"
                         >
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="font-medium text-foreground">{dataset.dataset_key}</span>
+                                <span className="font-medium text-foreground">
+                                    {dataset.dataset_key}
+                                </span>
                                 <CoverageBadge
                                     tone={statusTone(dataset.status)}
                                     label={statusLabel(dataset.status)}
@@ -260,26 +271,30 @@ export function SyncCoverageTimeline({
                             {/* Decorative CSS band view — purely visual, mirrored by the table below. */}
                             {extent && (
                                 <div aria-hidden="true" className="space-y-1.5">
-                                    {(["covered", "gap", "stale", "failed"] as BandKind[]).map((kind) => {
-                                        const kindRanges = rows.filter((row) => row.kind === kind);
-                                        if (kindRanges.length === 0) return null;
-                                        return (
-                                            <div key={kind} className="flex items-center gap-2">
-                                                <span className="w-16 shrink-0 text-xs text-(--ink-muted)">
-                                                    {BAND_LABEL[kind]}
-                                                </span>
-                                                <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-(--card-stroke)">
-                                                    {kindRanges.map((row, index) => (
-                                                        <div
-                                                            key={`${kind}-${index}`}
-                                                            className={`absolute top-0 h-full rounded-full ${BAND_BAR_CLASS[kind]}`}
-                                                            style={bandStyle(row.range, extent)}
-                                                        />
-                                                    ))}
+                                    {(["covered", "gap", "stale", "failed"] as BandKind[]).map(
+                                        (kind) => {
+                                            const kindRanges = rows.filter(
+                                                (row) => row.kind === kind,
+                                            );
+                                            if (kindRanges.length === 0) return null;
+                                            return (
+                                                <div key={kind} className="flex items-center gap-2">
+                                                    <span className="w-16 shrink-0 text-xs text-(--ink-muted)">
+                                                        {BAND_LABEL[kind]}
+                                                    </span>
+                                                    <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-(--card-stroke)">
+                                                        {kindRanges.map((row, index) => (
+                                                            <div
+                                                                key={`${kind}-${index}`}
+                                                                className={`absolute top-0 h-full rounded-full ${BAND_BAR_CLASS[kind]}`}
+                                                                style={bandStyle(row.range, extent)}
+                                                            />
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        },
+                                    )}
                                 </div>
                             )}
 
@@ -291,19 +306,34 @@ export function SyncCoverageTimeline({
                                     </caption>
                                     <thead>
                                         <tr>
-                                            <th scope="col" className="px-2 py-2 text-left font-medium text-(--ink-muted)">
+                                            <th
+                                                scope="col"
+                                                className="px-2 py-2 text-left font-medium text-(--ink-muted)"
+                                            >
                                                 Window
                                             </th>
-                                            <th scope="col" className="px-2 py-2 text-left font-medium text-(--ink-muted)">
+                                            <th
+                                                scope="col"
+                                                className="px-2 py-2 text-left font-medium text-(--ink-muted)"
+                                            >
                                                 From
                                             </th>
-                                            <th scope="col" className="px-2 py-2 text-left font-medium text-(--ink-muted)">
+                                            <th
+                                                scope="col"
+                                                className="px-2 py-2 text-left font-medium text-(--ink-muted)"
+                                            >
                                                 To
                                             </th>
-                                            <th scope="col" className="px-2 py-2 text-left font-medium text-(--ink-muted)">
+                                            <th
+                                                scope="col"
+                                                className="px-2 py-2 text-left font-medium text-(--ink-muted)"
+                                            >
                                                 Source(s)
                                             </th>
-                                            <th scope="col" className="px-2 py-2 text-left font-medium text-(--ink-muted)">
+                                            <th
+                                                scope="col"
+                                                className="px-2 py-2 text-left font-medium text-(--ink-muted)"
+                                            >
                                                 Action
                                             </th>
                                         </tr>
@@ -311,7 +341,10 @@ export function SyncCoverageTimeline({
                                     <tbody className="divide-y divide-(--card-stroke)">
                                         {rows.length === 0 ? (
                                             <tr>
-                                                <td colSpan={5} className="px-2 py-3 text-(--ink-muted)">
+                                                <td
+                                                    colSpan={5}
+                                                    className="px-2 py-3 text-(--ink-muted)"
+                                                >
                                                     No windows recorded for this dataset yet.
                                                 </td>
                                             </tr>
@@ -349,7 +382,9 @@ export function SyncCoverageTimeline({
                                                                 {CTA_LABELS.backfillThisGap}
                                                             </button>
                                                         ) : (
-                                                            <span className="text-(--ink-muted)">—</span>
+                                                            <span className="text-(--ink-muted)">
+                                                                —
+                                                            </span>
                                                         )}
                                                     </td>
                                                 </tr>
