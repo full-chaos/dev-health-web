@@ -1,24 +1,167 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SyncJob } from "@/lib/admin/types";
+import { getSyncJobs } from "@/lib/admin/server";
+import type { SyncJob } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { formatNumber } from "@/lib/formatters";
 import { SyncStatusBadge } from "./SyncStatusBadge";
+import { CoverageBadge, jobCoverageLabel, jobCoverageTone, type JobCoverageResult } from "./CoverageBadge";
+
+const PAGE_SIZE = 10;
 
 interface SyncJobHistoryProps {
     jobs: SyncJob[];
     configId: string;
-    totalJobs?: number;
+    /**
+     * When true, paginate purely client-side over the full `jobs` array
+     * instead of calling the `getSyncJobs` server action (test-mode / sample
+     * data rendering — mirrors SyncRunDetailLive's `testMode` convention).
+     */
+    testMode?: boolean;
 }
 
-export function SyncJobHistory({ jobs, configId, totalJobs }: SyncJobHistoryProps) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function formatTimestamp(value: string | null | undefined): string {
+    if (!value) return "—";
+    return new Date(value).toLocaleString();
+}
+
+function formatDateOnly(value: string | null | undefined): string {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+    });
+}
+
+function formatRange(range: { since: string; before: string } | null | undefined): string {
+    if (!range) return "—";
+    return `${formatDateOnly(range.since)} → ${formatDateOnly(range.before)}`;
+}
+
+function getDuration(job: SyncJob): string {
+    if (job.duration_seconds != null) return `${Math.round(job.duration_seconds)}s`;
+    if (job.completed_at && job.started_at) {
+        return `${Math.round(
+            (new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000,
+        )}s`;
+    }
+    return "—";
+}
+
+function getBadgeStatus(status: SyncJob["status"]) {
+    switch (status) {
+        case "success":
+            return "success" as const;
+        case "failed":
+        case "cancelled":
+            return "failed" as const;
+        case "running":
+            return "running" as const;
+        case "pending":
+            return "idle" as const;
+        default:
+            return "never" as const;
+    }
+}
+
+function getBadgeLabel(status: SyncJob["status"]) {
+    switch (status) {
+        case "pending":
+            return "Queued";
+        case "cancelled":
+            return "Cancelled";
+        default:
+            return undefined;
+    }
+}
+
+/**
+ * Derive the coverage-result label for a planner-backed job (CHAOS-2792),
+ * using ONLY persisted job status + sync_run unit counts. Never re-derives
+ * from range/interval comparisons (platform ban on client-side coverage math).
+ * Returns null for non-terminal jobs or legacy rows (no sync_run block) —
+ * those render the plain job status badge instead.
+ */
+function deriveJobCoverageResult(job: SyncJob): JobCoverageResult | null {
+    const sr = job.sync_run;
+    if (!sr) return null;
+    if (job.status === "pending" || job.status === "running") return null;
+
+    const settled = sr.completed_units + sr.failed_units;
+
+    if (job.status === "failed" || job.status === "cancelled") {
+        return sr.completed_units === 0 ? "failed" : "partial";
+    }
+    // job.status === "success"
+    if (sr.total_units === 0) return "complete";
+    if (sr.failed_units > 0 && sr.completed_units > 0) return "partial";
+    if (sr.failed_units > 0 && sr.completed_units === 0) return "failed";
+    if (settled < sr.total_units) return "gap";
+    return "complete";
+}
+
+function getRunId(job: SyncJob): string | null {
+    if (job.sync_run?.sync_run_id) return job.sync_run.sync_run_id;
+    if (isRecord(job.result) && typeof job.result.sync_run_id === "string") {
+        return job.result.sync_run_id;
+    }
+    return null;
+}
+
+function getScopeLabel(job: SyncJob): string {
+    const sr = job.sync_run;
+    if (!sr) {
+        const datasetKey = isRecord(job.result) && typeof job.result.dataset_key === "string"
+            ? job.result.dataset_key
+            : null;
+        return datasetKey ?? "—";
+    }
+    const sourceIds = new Set<string>([
+        ...(sr.requested_range?.source_ids ?? []),
+        ...(sr.covered_range?.source_ids ?? []),
+    ]);
+    if (sourceIds.size === 0) return "—";
+    return `${formatNumber(sourceIds.size)} source${sourceIds.size === 1 ? "" : "s"}`;
+}
+
+const HEADINGS = [
+    "Trigger",
+    "Mode",
+    "Requested range",
+    "Covered range",
+    "Status",
+    "Scope",
+    "Units",
+    "Started",
+    "Duration",
+    "Actions",
+];
+
+export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHistoryProps) {
     const router = useRouter();
+    const [isPending, startTransition] = useTransition();
     const [offset, setOffset] = useState(0);
-    const limit = 10;
-    const total = totalJobs ?? jobs.length;
-    const paginatedJobs = useMemo(() => jobs.slice(offset, offset + limit), [jobs, offset]);
+    const [pageJobs, setPageJobs] = useState<SyncJob[]>(() => jobs.slice(0, PAGE_SIZE));
+    const [hasMore, setHasMore] = useState(() => jobs.length > PAGE_SIZE);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+
+    const clientPageJobs = useMemo(
+        () => jobs.slice(offset, offset + PAGE_SIZE),
+        [jobs, offset],
+    );
+
+    const visibleJobs = testMode ? clientPageJobs : pageJobs;
 
     if (jobs.length === 0) {
         return (
@@ -28,229 +171,80 @@ export function SyncJobHistory({ jobs, configId, totalJobs }: SyncJobHistoryProp
         );
     }
 
-    const getBadgeStatus = (status: SyncJob["status"]) => {
-        switch (status) {
-            case "success":
-                return "success";
-            case "failed":
-            case "cancelled":
-                return "failed";
-            case "running":
-                return "running";
-            case "pending":
-                return "idle";
-            default:
-                return "never";
+    const goToOffset = (nextOffset: number) => {
+        const safeOffset = Math.max(0, nextOffset);
+        if (testMode) {
+            setOffset(safeOffset);
+            return;
         }
+        setFetchError(null);
+        startTransition(async () => {
+            const result = await getSyncJobs(configId, PAGE_SIZE + 1, safeOffset);
+            if (result.error || !result.data) {
+                setFetchError(result.error ?? "Failed to load more jobs.");
+                return;
+            }
+            setOffset(safeOffset);
+            setPageJobs(result.data.slice(0, PAGE_SIZE));
+            setHasMore(result.data.length > PAGE_SIZE);
+        });
     };
 
-    const getBadgeLabel = (status: SyncJob["status"]) => {
-        switch (status) {
-            case "pending":
-                return "Queued";
-            case "cancelled":
-                return "Cancelled";
-            default:
-                return undefined;
-        }
-    };
-
-    const formatTimestamp = (value: string | null | undefined) => {
-        if (!value) return "—";
-        return new Date(value).toLocaleString();
-    };
-
-    const getDuration = (job: SyncJob) => {
-        if (job.duration_seconds != null) return `${Math.round(job.duration_seconds)}s`;
-        if (job.completed_at && job.started_at) {
-            return `${Math.round(
-                (new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000,
-            )}s`;
-        }
-        return "-";
-    };
-
-    const getActivityLabel = (job: SyncJob) => {
-        if (job.status === "cancelled") return "Cancelled";
-        if (job.completed_at) return "Completed";
-        if (job.status === "running") return "Still running";
-        if (job.status === "pending") return "Queued";
-        return "Last activity";
-    };
-
-    const getActivityTimestamp = (job: SyncJob) =>
-        job.completed_at ?? job.started_at ?? job.created_at ?? null;
-
-    const isRecord = (value: unknown): value is Record<string, unknown> =>
-        value !== null && typeof value === "object" && !Array.isArray(value);
-
-    const stringifyValue = (value: unknown): string | null => {
-        if (typeof value === "string" && value.trim().length > 0) return value;
-        if (typeof value === "number" || typeof value === "boolean") return String(value);
-        if (Array.isArray(value)) {
-            const items = value.map((item) => stringifyValue(item)).filter((item) => item != null);
-            return items.length > 0 ? items.join(", ") : null;
-        }
-        if (isRecord(value)) {
-            const entries = Object.entries(value)
-                .map(([key, item]) => {
-                    const text = stringifyValue(item);
-                    return text ? `${key}: ${text}` : null;
-                })
-                .filter((item) => item != null);
-            return entries.length > 0 ? entries.join("; ") : null;
-        }
-        return null;
-    };
-
-    const getResultValue = (result: Record<string, unknown> | null | undefined, key: string) =>
-        result ? stringifyValue(result[key]) : null;
-
-    const getResultDetails = (job: SyncJob) => {
-        const result = isRecord(job.result) ? job.result : null;
-        const details: string[] = [];
-        const part =
-            getResultValue(result, "sync_part") ??
-            getResultValue(result, "phase") ??
-            getResultValue(result, "dataset_key") ??
-            getResultValue(result, "provider") ??
-            getResultValue(result, "mode");
-        const category = getResultValue(result, "error_category");
-        const reason =
-            getResultValue(result, "partial_failure_summary") ??
-            getResultValue(result, "reason") ??
-            getResultValue(result, "message") ??
-            getResultValue(result, "error");
-        const failedUnits =
-            getResultValue(result, "failed_unit_count") ?? getResultValue(result, "failed_units");
-        const totalUnits = getResultValue(result, "total_units");
-        const failedUnitIds = result?.failed_unit_ids;
-
-        if (part) details.push(`Part: ${part}`);
-        if (category) details.push(`Category: ${category}`);
-        if (reason && reason !== job.error) details.push(reason);
-        if (failedUnits) {
-            details.push(
-                totalUnits
-                    ? `Failed units: ${failedUnits} of ${totalUnits}`
-                    : `Failed units: ${failedUnits}`,
-            );
-        }
-        if (Array.isArray(failedUnitIds) && failedUnitIds.length > 0) {
-            details.push(`Unit IDs: ${failedUnitIds.slice(0, 3).join(", ")}`);
-        }
-
-        return details;
-    };
-
-    const getJobDetails = (job: SyncJob) => {
-        const resultDetails = getResultDetails(job);
-        if (job.error) return { primary: job.error, secondary: resultDetails, tone: "error" };
-        if (job.status === "failed") {
-            return {
-                primary: resultDetails[0] ?? "Sync failed without a stored reason",
-                secondary: resultDetails.slice(1),
-                tone: "error",
-            };
-        }
-        if (job.status === "cancelled") {
-            return {
-                primary: resultDetails[0] ?? "Sync was cancelled before completion",
-                secondary: resultDetails.slice(1),
-                tone: "error",
-            };
-        }
-        if (job.status === "running") {
-            return {
-                primary: "Still running",
-                secondary: [`Started ${formatTimestamp(job.started_at)}`],
-                tone: "muted",
-            };
-        }
-        if (job.status === "pending") {
-            return { primary: "Queued", secondary: [], tone: "muted" };
-        }
-        return { primary: "-", secondary: [], tone: "muted" };
-    };
+    const canGoPrevious = offset > 0;
+    const canGoNext = testMode ? offset + PAGE_SIZE < jobs.length : hasMore;
 
     return (
         <div className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)">
+            {fetchError && (
+                <div role="alert" className="border-b border-(--card-stroke) px-6 py-3 text-sm text-(--negative)">
+                    {fetchError}
+                </div>
+            )}
             <table className="min-w-full divide-y divide-(--card-stroke)">
                 <thead className="bg-(--card-bg)">
                     <tr>
-                        <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
-                        >
-                            Status
-                        </th>
-                        <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
-                        >
-                            Started At
-                        </th>
-                        <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
-                        >
-                            Completed / Last Activity
-                        </th>
-                        <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
-                        >
-                            Duration
-                        </th>
-                        <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
-                        >
-                            Items Synced
-                        </th>
-                        <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
-                        >
-                            Details
-                        </th>
+                        {HEADINGS.map((heading) => (
+                            <th
+                                key={heading}
+                                scope="col"
+                                className="px-4 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
+                            >
+                                {heading}
+                            </th>
+                        ))}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-(--card-stroke) bg-(--card-80)">
-                    {paginatedJobs.map((job) => {
-                        const duration = getDuration(job);
-                        const activityTimestamp = getActivityTimestamp(job);
-                        const details = getJobDetails(job);
-                        const runId =
-                            isRecord(job.result) && typeof job.result.sync_run_id === "string"
-                                ? job.result.sync_run_id
-                                : null;
+                    {visibleJobs.map((job) => {
+                        const runId = getRunId(job);
                         const href = runId ? `/org/admin/sync/${configId}/runs/${runId}` : null;
+                        const coverageResult = deriveJobCoverageResult(job);
+                        const sr = job.sync_run;
 
                         return (
                             <tr
                                 key={job.id}
                                 onClick={href ? () => router.push(href) : undefined}
-                                className={
-                                    href
-                                        ? "cursor-pointer transition-colors hover:bg-(--card-70)"
-                                        : undefined
-                                }
+                                className={href ? "cursor-pointer transition-colors hover:bg-(--card-70)" : undefined}
                             >
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    {href ? (
-                                        <Link
-                                            href={href}
-                                            aria-label={`View run details for sync run started ${formatTimestamp(
-                                                job.started_at,
-                                            )}`}
-                                            className="inline-flex rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
-                                        >
-                                            <SyncStatusBadge
-                                                status={getBadgeStatus(job.status)}
-                                                label={getBadgeLabel(job.status)}
-                                            />
-                                        </Link>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
+                                    {sr?.triggered_by ?? job.triggered_by ?? "—"}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                    {sr?.mode ?? "—"}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                    {formatRange(sr?.requested_range)}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                    {formatRange(sr?.covered_range)}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                    {coverageResult ? (
+                                        <CoverageBadge
+                                            tone={jobCoverageTone(coverageResult)}
+                                            label={jobCoverageLabel(coverageResult)}
+                                        />
                                     ) : (
                                         <SyncStatusBadge
                                             status={getBadgeStatus(job.status)}
@@ -258,43 +252,33 @@ export function SyncJobHistory({ jobs, configId, totalJobs }: SyncJobHistoryProp
                                         />
                                     )}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                    {getScopeLabel(job)}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                    {sr
+                                        ? `${formatNumber(sr.completed_units)} done · ${formatNumber(sr.failed_units)} failed · ${formatNumber(sr.total_units)} total`
+                                        : (job.items_synced ?? "—")}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
                                     {formatTimestamp(job.started_at)}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                                    <div>{formatTimestamp(activityTimestamp)}</div>
-                                    <div className="text-xs text-(--ink-muted)">
-                                        {getActivityLabel(job)}
-                                    </div>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                    {getDuration(job)}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-(--ink-muted)">
-                                    {duration}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-(--ink-muted)">
-                                    {job.items_synced ?? "-"}
-                                </td>
-                                <td
-                                    className={`px-6 py-4 text-sm ${
-                                        details.tone === "error"
-                                            ? "text-red-500"
-                                            : "text-(--ink-muted)"
-                                    }`}
-                                >
-                                    {details.primary !== "-" ? (
-                                        <div
-                                            title={[details.primary, ...details.secondary].join(
-                                                " · ",
-                                            )}
+                                <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                    {href ? (
+                                        <Link
+                                            href={href}
+                                            aria-label={`View run details for sync run started ${formatTimestamp(
+                                                job.started_at,
+                                            )}`}
+                                            className="text-(--accent) hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
                                         >
-                                            <div className="line-clamp-2">{details.primary}</div>
-                                            {details.secondary.length > 0 && (
-                                                <div className="mt-1 line-clamp-2 text-xs text-(--ink-muted)">
-                                                    {details.secondary.join(" · ")}
-                                                </div>
-                                            )}
-                                        </div>
+                                            {CTA_LABELS.viewRun}
+                                        </Link>
                                     ) : (
-                                        <span className="text-(--ink-muted)">-</span>
+                                        <span className="text-(--ink-muted)">—</span>
                                     )}
                                 </td>
                             </tr>
@@ -305,21 +289,22 @@ export function SyncJobHistory({ jobs, configId, totalJobs }: SyncJobHistoryProp
 
             <div className="flex items-center justify-between border-t border-(--card-stroke) px-6 py-4">
                 <span className="text-sm text-(--ink-muted)">
-                    Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}
+                    Showing {offset + 1}-{offset + visibleJobs.length}
+                    {isPending ? " · Loading…" : ""}
                 </span>
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
-                        disabled={offset === 0}
+                        onClick={() => goToOffset(offset - PAGE_SIZE)}
+                        disabled={!canGoPrevious || isPending}
                         className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {CTA_LABELS.previousPage}
                     </button>
                     <button
                         type="button"
-                        onClick={() => setOffset((prev) => prev + limit)}
-                        disabled={offset + limit >= total}
+                        onClick={() => goToOffset(offset + PAGE_SIZE)}
+                        disabled={!canGoNext || isPending}
                         className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium hover:bg-(--card-70) disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {CTA_LABELS.nextPage}

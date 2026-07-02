@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent } from "@/test/utils";
+import { render, screen, userEvent, waitFor } from "@/test/utils";
 import type { SyncJob } from "@/lib/admin/types";
+import { SYNC_JOB_WITH_RUN } from "@/lib/admin/__tests__/syncCoverageFixtures";
 import { SyncJobHistory } from "./SyncJobHistory";
 
 const mockPush = vi.fn();
@@ -8,8 +9,14 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: mockPush }),
 }));
 
+const mockGetSyncJobs = vi.fn();
+vi.mock("@/lib/admin/server", () => ({
+    getSyncJobs: (...args: unknown[]) => mockGetSyncJobs(...args),
+}));
+
 beforeEach(() => {
     mockPush.mockClear();
+    mockGetSyncJobs.mockReset();
 });
 
 function buildJobs(count: number): SyncJob[] {
@@ -21,58 +28,73 @@ function buildJobs(count: number): SyncJob[] {
         completed_at: `2024-01-01T00:${String(index).padStart(2, "0")}:30.000Z`,
         duration_seconds: 30,
         items_synced: index + 1,
-        error: `error-${index + 1}`,
     }));
 }
 
 describe("SyncJobHistory", () => {
-    it("renders first page with 10 jobs", () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
+    it("shows empty state when there are no jobs", () => {
+        render(<SyncJobHistory jobs={[]} configId="cfg-1" />);
 
-        expect(screen.getByText("Completed / Last Activity")).toBeInTheDocument();
-        expect(screen.getByText("error-1")).toBeInTheDocument();
-        expect(screen.getByText("error-10")).toBeInTheDocument();
-        expect(screen.queryByText("error-11")).not.toBeInTheDocument();
-        expect(screen.getByText("Showing 1-10 of 12")).toBeInTheDocument();
+        expect(screen.getByText("No sync history available.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
     });
 
-    it("disables Previous on first page", () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
+    it("renders the redesigned column headings", () => {
+        render(<SyncJobHistory jobs={[SYNC_JOB_WITH_RUN]} configId="cfg-1" testMode />);
 
-        expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+        for (const heading of [
+            "Trigger",
+            "Mode",
+            "Requested range",
+            "Covered range",
+            "Status",
+            "Scope",
+            "Units",
+            "Started",
+            "Duration",
+            "Actions",
+        ]) {
+            expect(screen.getByText(heading)).toBeInTheDocument();
+        }
     });
 
-    it("disables Next on last page", async () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
+    it("derives a partial coverage-result badge from persisted sync_run unit counts only", () => {
+        render(<SyncJobHistory jobs={[SYNC_JOB_WITH_RUN]} configId="cfg-1" testMode />);
 
-        await userEvent.click(screen.getByRole("button", { name: "Next" }));
-
-        expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-        expect(screen.getByText("Showing 11-12 of 12")).toBeInTheDocument();
+        // SYNC_JOB_WITH_RUN: total_units=2, completed_units=1, failed_units=1.
+        expect(screen.getByText("Partial")).toBeInTheDocument();
+        expect(screen.getByText("1 done · 1 failed · 2 total")).toBeInTheDocument();
     });
 
-    it("clicking Next shows next page", async () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
+    it("renders requested/covered ranges and links planner-backed rows to run detail", () => {
+        render(<SyncJobHistory jobs={[SYNC_JOB_WITH_RUN]} configId="cfg-1" testMode />);
 
-        await userEvent.click(screen.getByRole("button", { name: "Next" }));
-
-        expect(screen.queryByText("error-1")).not.toBeInTheDocument();
-        expect(screen.getByText("error-11")).toBeInTheDocument();
-        expect(screen.getByText("error-12")).toBeInTheDocument();
+        const link = screen.getByRole("link", { name: /View run details/ });
+        expect(link).toHaveAttribute("href", "/org/admin/sync/cfg-1/runs/run-coverage");
+        expect(screen.getByText("Jan 1, 2026 → Jan 3, 2026")).toBeInTheDocument();
     });
 
-    it("clicking Previous returns to previous page", async () => {
-        render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" />);
+    it("renders legacy rows (no sync_run block) readably with em-dashes, never a fabricated coverage result", () => {
+        const legacyJob: SyncJob = {
+            id: "job-legacy",
+            config_id: "cfg-1",
+            status: "success",
+            started_at: "2024-01-01T00:00:00.000Z",
+            completed_at: "2024-01-01T00:00:30.000Z",
+            duration_seconds: 30,
+            items_synced: 5,
+        };
 
-        await userEvent.click(screen.getByRole("button", { name: "Next" }));
-        await userEvent.click(screen.getByRole("button", { name: "Previous" }));
+        render(<SyncJobHistory jobs={[legacyJob]} configId="cfg-1" testMode />);
 
-        expect(screen.getByText("error-1")).toBeInTheDocument();
-        expect(screen.queryByText("error-11")).not.toBeInTheDocument();
-        expect(screen.getByText("Showing 1-10 of 12")).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /View run details/ })).not.toBeInTheDocument();
+        expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+        // Legacy rows fall back to the plain job-status badge, not the
+        // complete/partial/gap/failed coverage vocabulary.
+        expect(screen.getByText("Success")).toBeInTheDocument();
     });
 
-    it("renders an em dash for pending jobs with null started_at, not the epoch date", () => {
+    it("renders a fallback badge for pending jobs with null started_at, never the epoch date", () => {
         const pendingJob: SyncJob = {
             id: "job-pending",
             config_id: "cfg-1",
@@ -82,150 +104,67 @@ describe("SyncJobHistory", () => {
             duration_seconds: null,
             items_synced: 0,
         };
-        render(<SyncJobHistory jobs={[pendingJob]} configId="cfg-1" />);
 
-        expect(screen.getAllByText("Queued").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("—").length).toBeGreaterThan(0);
-        // new Date(null) coerces to epoch 0; the 1969/1970 date must never render.
+        render(<SyncJobHistory jobs={[pendingJob]} configId="cfg-1" testMode />);
+
+        expect(screen.getByText("Queued")).toBeInTheDocument();
         expect(screen.queryByText(/19[67]\d/)).not.toBeInTheDocument();
     });
 
-    it("shows completed activity and structured failure context", () => {
-        const failedJob: SyncJob = {
-            id: "job-failed",
-            config_id: "cfg-1",
-            status: "failed",
-            started_at: "2024-01-01T00:00:00.000Z",
-            completed_at: "2024-01-01T00:00:45.000Z",
-            duration_seconds: null,
-            items_synced: 4,
-            error: "Sync run completed with failed units",
-            result: {
-                dataset_key: "work-items",
-                error_category: "rate_limit",
-                failed_unit_count: 2,
-                total_units: 5,
-                failed_unit_ids: ["unit-1", "unit-2"],
-            },
-        };
+    describe("test-mode client-side pagination", () => {
+        it("renders first page with 10 jobs", () => {
+            render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" testMode />);
 
-        render(<SyncJobHistory jobs={[failedJob]} configId="cfg-1" />);
+            expect(screen.getByText("Showing 1-10")).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+        });
 
-        expect(screen.getByText("Completed")).toBeInTheDocument();
-        expect(screen.getByText("45s")).toBeInTheDocument();
-        expect(screen.getByText("Sync run completed with failed units")).toBeInTheDocument();
-        expect(
-            screen.getByText(/Part: work-items · Category: rate_limit · Failed units: 2 of 5/),
-        ).toBeInTheDocument();
+        it("clicking Next shows the next page and disables Next on the last page", async () => {
+            render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" testMode />);
+
+            await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+            expect(screen.getByText("Showing 11-12")).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+        });
+
+        it("clicking Previous returns to the previous page", async () => {
+            render(<SyncJobHistory jobs={buildJobs(12)} configId="cfg-1" testMode />);
+
+            await userEvent.click(screen.getByRole("button", { name: "Next" }));
+            await userEvent.click(screen.getByRole("button", { name: "Previous" }));
+
+            expect(screen.getByText("Showing 1-10")).toBeInTheDocument();
+        });
     });
 
-    it("marks running jobs as still running when completed_at is not stamped", () => {
-        const runningJob: SyncJob = {
-            id: "job-running",
-            config_id: "cfg-1",
-            status: "running",
-            started_at: "2024-01-01T00:00:00.000Z",
-            completed_at: null,
-            duration_seconds: null,
-            items_synced: 3,
-        };
+    describe("server-backed pagination (non-test-mode)", () => {
+        it("fetches the next page via getSyncJobs with limit/offset params", async () => {
+            const firstPage = buildJobs(11); // PAGE_SIZE + 1 => hasMore
+            const secondPage = buildJobs(5).map((job, i) => ({ ...job, id: `page2-job-${i}` }));
+            mockGetSyncJobs.mockResolvedValueOnce({ data: secondPage });
 
-        render(<SyncJobHistory jobs={[runningJob]} configId="cfg-1" />);
+            render(<SyncJobHistory jobs={firstPage} configId="cfg-1" />);
 
-        expect(screen.getAllByText("Still running").length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/Started /).length).toBeGreaterThan(0);
-    });
+            await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
-    it("shows cancelled jobs and object-shaped partial failure summaries", () => {
-        const cancelledJob: SyncJob = {
-            id: "job-cancelled",
-            config_id: "cfg-1",
-            status: "cancelled",
-            started_at: "2024-01-01T00:00:00.000Z",
-            completed_at: "2024-01-01T00:00:10.000Z",
-            duration_seconds: 10,
-            items_synced: 1,
-            result: {
-                partial_failure_summary: {
-                    failed_datasets: ["prs", "work-items"],
-                    error_categories: ["rate_limit"],
-                },
-            },
-        };
+            await waitFor(() => {
+                expect(mockGetSyncJobs).toHaveBeenCalledWith("cfg-1", 11, 10);
+            });
+            expect(screen.getByText("Showing 11-15")).toBeInTheDocument();
+        });
 
-        render(<SyncJobHistory jobs={[cancelledJob]} configId="cfg-1" />);
+        it("shows an inline error and keeps the current page when the fetch fails", async () => {
+            mockGetSyncJobs.mockResolvedValueOnce({ error: "Request failed with 500" });
 
-        expect(screen.getAllByText("Cancelled")).toHaveLength(2);
-        expect(
-            screen.getByText(/failed_datasets: prs, work-items; error_categories: rate_limit/),
-        ).toBeInTheDocument();
-    });
+            render(<SyncJobHistory jobs={buildJobs(11)} configId="cfg-1" />);
 
-    it("shows empty state when there are no jobs", () => {
-        render(<SyncJobHistory jobs={[]} configId="cfg-1" />);
+            await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
-        expect(screen.getByText("No sync history available.")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
-    });
-
-    it("links planner-backed rows to the run detail page", () => {
-        const plannerJob: SyncJob = {
-            id: "job-planner",
-            config_id: "cfg-1",
-            status: "success",
-            started_at: "2024-01-01T00:00:00.000Z",
-            completed_at: "2024-01-01T00:00:30.000Z",
-            duration_seconds: 30,
-            items_synced: 5,
-            result: {
-                sync_run_id: "run-123",
-            },
-        };
-
-        render(<SyncJobHistory jobs={[plannerJob]} configId="cfg-1" />);
-
-        const link = screen.getByRole("link", { name: /View run details/ });
-        expect(link).toHaveAttribute("href", "/org/admin/sync/cfg-1/runs/run-123");
-    });
-
-    it("navigates to the run detail page when a planner-backed row is clicked", async () => {
-        const plannerJob: SyncJob = {
-            id: "job-planner",
-            config_id: "cfg-1",
-            status: "success",
-            started_at: "2024-01-01T00:00:00.000Z",
-            completed_at: "2024-01-01T00:00:30.000Z",
-            duration_seconds: 30,
-            items_synced: 5,
-            result: {
-                sync_run_id: "run-123",
-            },
-        };
-
-        render(<SyncJobHistory jobs={[plannerJob]} configId="cfg-1" />);
-
-        // Click a NON-link cell (duration) to prove whole-row navigation, not link bubbling.
-        await userEvent.click(screen.getByText("30s"));
-
-        expect(mockPush).toHaveBeenCalledWith("/org/admin/sync/cfg-1/runs/run-123");
-    });
-
-    it("does not link legacy rows without a sync_run_id", () => {
-        const legacyJob: SyncJob = {
-            id: "job-legacy",
-            config_id: "cfg-1",
-            status: "success",
-            started_at: "2024-01-01T00:00:00.000Z",
-            completed_at: "2024-01-01T00:00:30.000Z",
-            duration_seconds: 30,
-            items_synced: 5,
-            result: {
-                dataset_key: "work-items",
-            },
-        };
-
-        render(<SyncJobHistory jobs={[legacyJob]} configId="cfg-1" />);
-
-        expect(screen.queryByRole("link", { name: "View run details" })).not.toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByRole("alert")).toHaveTextContent("Request failed with 500");
+            });
+            expect(screen.getByText("Showing 1-10")).toBeInTheDocument();
+        });
     });
 });
