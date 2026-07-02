@@ -195,4 +195,77 @@ describe("SyncJobHistory", () => {
             expect(screen.getByText("999")).toBeInTheDocument();
         });
     });
+
+    describe("coverage-result precedence (CHAOS-2792 contract: failed > partial > gap > complete)", () => {
+        function jobWithRun(overrides: {
+            status: SyncJob["status"];
+            total_units: number;
+            completed_units: number;
+            failed_units: number;
+        }): SyncJob {
+            return {
+                id: `job-${overrides.status}-${overrides.completed_units}-${overrides.failed_units}`,
+                config_id: "cfg-1",
+                status: overrides.status,
+                started_at: "2026-01-01T00:00:00.000Z",
+                completed_at: "2026-01-01T00:05:00.000Z",
+                duration_seconds: 300,
+                items_synced: 0,
+                sync_run: {
+                    mode: "incremental",
+                    triggered_by: "scheduled",
+                    requested_range: null,
+                    covered_range: null,
+                    total_units: overrides.total_units,
+                    completed_units: overrides.completed_units,
+                    failed_units: overrides.failed_units,
+                    sync_run_id: "run-precedence",
+                },
+            };
+        }
+
+        it("reports 'partial', never 'gap', for a terminal failed run with unsettled units and some completed work", () => {
+            // settled=3 < total=5 (unsettled units remain) on a FAILED run.
+            const job = jobWithRun({
+                status: "failed",
+                total_units: 5,
+                completed_units: 2,
+                failed_units: 1,
+            });
+
+            render(<SyncJobHistory jobs={[job]} configId="cfg-1" testMode />);
+
+            expect(screen.getByText("Partial")).toBeInTheDocument();
+            expect(screen.queryByText("Gap")).not.toBeInTheDocument();
+        });
+
+        it("reports 'failed', never 'gap', for a terminal failed run with unsettled units and zero completed work", () => {
+            // settled=1 < total=5 (unsettled units remain) on a FAILED run.
+            const job = jobWithRun({
+                status: "failed",
+                total_units: 5,
+                completed_units: 0,
+                failed_units: 1,
+            });
+
+            render(<SyncJobHistory jobs={[job]} configId="cfg-1" testMode />);
+
+            expect(screen.getByText("Failed")).toBeInTheDocument();
+            expect(screen.queryByText("Gap")).not.toBeInTheDocument();
+        });
+
+        it("reports 'gap' for a terminal success run with unsettled units and zero failures", () => {
+            // settled=3 < total=5, no failures, terminal SUCCESS => gap.
+            const job = jobWithRun({
+                status: "success",
+                total_units: 5,
+                completed_units: 3,
+                failed_units: 0,
+            });
+
+            render(<SyncJobHistory jobs={[job]} configId="cfg-1" testMode />);
+
+            expect(screen.getByText("Gap")).toBeInTheDocument();
+        });
+    });
 });

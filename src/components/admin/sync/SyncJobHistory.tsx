@@ -96,6 +96,12 @@ function getBadgeLabel(status: SyncJob["status"]) {
  * from range/interval comparisons (platform ban on client-side coverage math).
  * Returns null for non-terminal jobs or legacy rows (no sync_run block) —
  * those render the plain job status badge instead.
+ *
+ * Precedence is deliberate and pinned by tests: failed > partial > gap >
+ * complete. A terminal failed/cancelled run is a STRONGER signal than an
+ * unsettled-units gap — so a failed/cancelled run with unsettled units
+ * (settled < total_units) still reports "failed"/"partial", never "gap".
+ * Only a terminal SUCCESS run with unsettled units reports "gap".
  */
 function deriveJobCoverageResult(job: SyncJob): JobCoverageResult | null {
     const sr = job.sync_run;
@@ -104,6 +110,8 @@ function deriveJobCoverageResult(job: SyncJob): JobCoverageResult | null {
 
     const settled = sr.completed_units + sr.failed_units;
 
+    // failed/cancelled precedence: a stronger signal than "gap" (see doc
+    // comment above) — reported regardless of how many units settled.
     if (job.status === "failed" || job.status === "cancelled") {
         return sr.completed_units === 0 ? "failed" : "partial";
     }
@@ -126,9 +134,10 @@ function getRunId(job: SyncJob): string | null {
 function getScopeLabel(job: SyncJob): string {
     const sr = job.sync_run;
     if (!sr) {
-        const datasetKey = isRecord(job.result) && typeof job.result.dataset_key === "string"
-            ? job.result.dataset_key
-            : null;
+        const datasetKey =
+            isRecord(job.result) && typeof job.result.dataset_key === "string"
+                ? job.result.dataset_key
+                : null;
         return datasetKey ?? "—";
     }
     const sourceIds = new Set<string>([
