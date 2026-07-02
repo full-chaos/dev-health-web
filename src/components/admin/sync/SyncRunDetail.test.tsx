@@ -178,6 +178,21 @@ describe("SyncRunDetailLive", () => {
         expect(within(table).getByText("Jun 12, 2026")).toBeInTheDocument();
         expect(screen.getByText(/Units \(2 of 4\)/)).toBeInTheDocument();
     });
+
+    it("filters the unit table by the Since date input", () => {
+        renderDetail();
+        const table = screen.getByRole("table");
+
+        expect(within(table).getAllByText("cicd").length).toBeGreaterThan(0);
+
+        // All sample units share the same before_at (Jun 26, 2026, 11:00 UTC)
+        // — a Since date AFTER that excludes every unit, since none of them
+        // cover data as recent as the requested boundary.
+        fireEvent.change(screen.getByLabelText("Since"), { target: { value: "2026-06-27" } });
+
+        expect(within(table).queryByText("cicd")).not.toBeInTheDocument();
+        expect(screen.getByText(/Units \(0 of 4\)/)).toBeInTheDocument();
+    });
 });
 
 describe("SyncRunDetailLive — live poll error handling", () => {
