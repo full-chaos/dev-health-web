@@ -29,8 +29,16 @@ import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { BaseForm, useBaseFormState } from "@/components/shared/BaseForm";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { CreateCredentialModal } from "./CreateCredentialModal";
-import { AUTO_IMPORT_PROVIDERS, getSyncTargetsForProvider, sameRepoSelection } from "./config-form/constants";
-import { buildChangeSummary, getDatasetWarnings, getRepoScopeWarnings } from "./config-form/formDiff";
+import {
+    AUTO_IMPORT_PROVIDERS,
+    getSyncTargetsForProvider,
+    sameRepoSelection,
+} from "./config-form/constants";
+import {
+    buildChangeSummary,
+    getDatasetWarnings,
+    getRepoScopeWarnings,
+} from "./config-form/formDiff";
 import type { SyncFormSnapshot } from "./config-form/formDiff";
 import { IdentitySection } from "./config-form/IdentitySection";
 import { CredentialSection } from "./config-form/CredentialSection";
@@ -111,11 +119,12 @@ export function SyncConfigForm({
         initialRepositorySelection?.sync_all_repos ??
             ((initialData?.sync_options?.all_repos as boolean | undefined) || false),
     );
-    // Snapshot of the values the form was seeded with — captured once, never
-    // reassigned — so destructive-change warnings and the post-save diff
-    // summary are computed from actual form-state bookkeeping, not server
-    // inference (CHAOS-2797).
-    const [baseline] = useState<SyncFormSnapshot>(() =>
+    // Snapshot of the values the form was seeded with, updated to the
+    // just-saved values on a successful edit — so destructive-change
+    // warnings and the post-save diff summary are always computed
+    // relative to the config's current persisted state, not the values
+    // the page happened to load with (CHAOS-2797).
+    const [baseline, setBaseline] = useState<SyncFormSnapshot>(() =>
         toSnapshot(
             buildInitialFormValues(initialData, initialRepositorySelection),
             initialRepositorySelection?.sync_all_repos ??
@@ -150,7 +159,10 @@ export function SyncConfigForm({
     );
     const canBrowseRepos = !initialData || !!initialRepositorySelection;
 
-    const currentSnapshot = useMemo(() => toSnapshot(formData, syncAllRepos), [formData, syncAllRepos]);
+    const currentSnapshot = useMemo(
+        () => toSnapshot(formData, syncAllRepos),
+        [formData, syncAllRepos],
+    );
     const repoScopeWarnings = useMemo(
         () => (isEdit ? getRepoScopeWarnings(baseline, currentSnapshot) : []),
         [isEdit, baseline, currentSnapshot],
@@ -263,6 +275,7 @@ export function SyncConfigForm({
                         if (result?.error) {
                             toast.error(result.error);
                         } else {
+                            const savedSnapshot = toSnapshot(formData, syncAllRepos);
                             const shouldUpdateRepos = Boolean(
                                 (formData.provider === "github" ||
                                     formData.provider === "gitlab") &&
@@ -287,16 +300,14 @@ export function SyncConfigForm({
                                     return;
                                 }
                             }
-                            const changeSummary = buildChangeSummary(
-                                baseline,
-                                toSnapshot(formData, syncAllRepos),
-                            );
+                            const changeSummary = buildChangeSummary(baseline, savedSnapshot);
                             toast.success(
                                 "Config updated",
                                 changeSummary.length > 0
                                     ? { description: `Changed: ${changeSummary.join("; ")}` }
                                     : undefined,
                             );
+                            setBaseline(savedSnapshot);
                             if (onSuccessAction) {
                                 onSuccessAction();
                             } else {
@@ -458,7 +469,9 @@ export function SyncConfigForm({
 
                 <InitialDepthSection
                     value={formData.initial_sync_depth}
-                    onChange={(value) => setFormData((prev) => ({ ...prev, initial_sync_depth: value }))}
+                    onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, initial_sync_depth: value }))
+                    }
                     isTierGated={isDepthTierGated}
                 />
 

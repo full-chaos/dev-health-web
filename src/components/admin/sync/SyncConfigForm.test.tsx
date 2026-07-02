@@ -1195,5 +1195,66 @@ describe("SyncConfigForm", () => {
                 expect(screen.queryByText(/Changed:/)).not.toBeInTheDocument();
             });
         });
+
+        describe("baseline refresh after save (CHAOS-2797 stale-baseline regression)", () => {
+            it("clears the destructive warning after a save and does not repeat the stale diff on a no-op re-save", async () => {
+                mockUpdateSyncConfig.mockResolvedValue(undefined);
+                const initialData: SyncConfig = {
+                    id: "cfg-baseline-refresh",
+                    name: "Baseline Refresh Config",
+                    provider: "github",
+                    credential_id: "cred-1",
+                    sync_targets: ["git", "prs"],
+                    sync_options: {},
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    last_sync_at: null,
+                    last_sync_success: null,
+                    last_sync_error: null,
+                    created_at: "2024-01-01",
+                    updated_at: "2024-01-01",
+                    parent_id: null,
+                };
+
+                renderWithToaster(
+                    <SyncConfigForm initialData={initialData} credentials={mockCredentials} />,
+                );
+
+                // Stage a destructive change (dropping a dataset) — the inline
+                // warning surfaces before submit.
+                await userEvent.click(screen.getByLabelText("Pull Requests"));
+                expect(screen.getByRole("alert")).toHaveTextContent(
+                    /Removing dataset.*Pull Requests/,
+                );
+
+                // Save the destructive change. router.refresh() is mocked and
+                // does not remount the component, so the baseline must be
+                // advanced in-place for the warning to clear.
+                await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+                await waitFor(() => {
+                    expect(mockUpdateSyncConfig).toHaveBeenCalledTimes(1);
+                    expect(
+                        screen.getByText(/Changed:.*Datasets: -Pull Requests/),
+                    ).toBeInTheDocument();
+                });
+                expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+                // Save again with no further edits. A stale baseline would
+                // recompute the same "Datasets: -Pull Requests" diff a second
+                // time against the original page-load snapshot. Wait for the
+                // transition to fully settle (button label back from
+                // "Saving...") before re-submitting.
+                const saveButtonAgain = await screen.findByRole("button", {
+                    name: "Update Configuration",
+                });
+                await userEvent.click(saveButtonAgain);
+                await waitFor(() => {
+                    expect(mockUpdateSyncConfig).toHaveBeenCalledTimes(2);
+                });
+                expect(screen.getAllByText(/Changed:/)).toHaveLength(1);
+            });
+        });
     });
 });
