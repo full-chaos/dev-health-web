@@ -84,6 +84,30 @@ export const CTA_LABELS = {
     darkTheme: "Dark",
     enabled: "Enabled",
     disabled: "Disabled",
+    /** Start the managed-sync connection flow from the provider mode-choice card (CHAOS-2714). */
+    setUpManagedSync: "Set up managed sync",
+    /** Start the customer-push source setup flow from the provider mode-choice card (CHAOS-2714). */
+    setUpCustomerPush: "Set up customer push",
+    /** Submit the customer-push source registration form (CHAOS-2714). */
+    createCustomerPushSource: "Create customer-push source",
+    /** Submit the customer-push ingest credential creation form (CHAOS-2714). */
+    createCredential: "Create credential",
+    /** Revoke a customer-push ingest credential (CHAOS-2714). */
+    revoke: "Revoke",
+    /** Rotate a customer-push ingest credential, issuing a new one-time token (CHAOS-2714). */
+    rotate: "Rotate",
+    /** Dismiss the one-time token reveal panel (CHAOS-2714 D9). */
+    done: "Done",
+    /** Jump from the token reveal panel to the runner setup examples (CHAOS-2714). */
+    viewSetupExamples: "View setup examples",
+    /** Submit the customer-push payload validation form (CHAOS-2714, validate-only in v1). */
+    validatePayload: "Validate payload",
+    /** Clear the active producer-bucket filter chip on the batch list (CHAOS-2714 D8). */
+    allProducers: "All producers",
+    /** Inline link to the Validate screen from the empty batch-list state (CHAOS-2714). */
+    goToValidate: "Validate",
+    /** Inline link to the runner setup examples from the empty batch-list state (CHAOS-2714). */
+    goToCiJob: "CI job",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
