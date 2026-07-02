@@ -971,3 +971,212 @@ export interface DeletionPlan {
     credentialDeletionCount: number;
     warnings: string[];
 }
+
+// ---- Customer Push (CHAOS-2690/2714) ----
+//
+// Mirrors dev-health-ops/api/admin/schemas/customer_push.py and
+// api/admin/routers/customer_push.py EXACTLY — verified by reading the
+// merged source directly (ops worktree chaos-2690-integration, 2026-07-02),
+// not derived from the original design doc or brief sketches, both of which
+// drifted from what actually landed. Notable corrections vs the design doc:
+//   - `display_name` is nullable (falls back to `instance` in the UI).
+//   - No `conflicting_managed_sync` boolean — the real signals are
+//     `matched_integration_source_id` (persisted at registration) and a
+//     `warnings: string[]` array (non-blocking, populated on writes).
+//   - Tokens carry `org_id` and `token_prefix`; `IngestTokenCreate` has NO
+//     `source_id` field — it's derived from the URL path, never the body.
+//   - `GET /customer-push/sources` has no server-side `system` filter —
+//     always returns every org source; filter client-side.
+//   - Batch list is a paginated envelope `{items,total,limit,offset}`, not
+//     a bare array. Batch rows use `source_system`/`source_instance`, never
+//     `source_id`. `producer`/`producer_version`/window timestamps are
+//     nullable. `record_counts`/`error_summary` are nullable.
+//   - `error_summary.top_codes` is `{code,count}[]`, not a Record.
+//   - `rejected_records` on the detail response is itself paginated
+//     (`rejected_records_total/limit/offset`).
+//   - `recompute_status` is NOT surfaced by the admin batch detail endpoint
+//     yet (CHAOS-2699's status.py extension had not landed in the merged
+//     source as of this writing) — omitted here; do not render it until a
+//     future patch adds the field back once it actually exists.
+//   - The validate proxy (`POST .../sources/{id}/validate`, owned by
+//     CHAOS-2695/wave 4) does not exist in the merged source yet — its type
+//     below is retained from the brief's contract sketch since there is no
+//     ground truth to verify against; treat as provisional until CHAOS-2695
+//     lands and re-verify then.
+
+export type CustomerPushSystem = Provider | "custom";
+export type CustomerPushMode = "fullchaos_sync" | "customer_push" | "disabled";
+export type CustomerPushWebhookMode = "disabled" | "customer_relay" | "fullchaos_hosted";
+export type CustomerPushBatchStatus =
+    "accepted" | "stream_unavailable" | "processing" | "completed" | "partial" | "failed";
+export type CustomerPushScope = "schema:read" | "ingest:write" | "ingest:status";
+
+export interface CustomerPushSource {
+    id: string;
+    org_id: string;
+    system: CustomerPushSystem;
+    instance: string;
+    display_name: string | null;
+    mode: CustomerPushMode;
+    enabled: boolean;
+    webhook_mode: CustomerPushWebhookMode;
+    matched_integration_source_id: string | null;
+    created_at: string;
+    updated_at: string;
+    warnings: string[];
+}
+
+export interface CustomerPushSourceCreate {
+    system: CustomerPushSystem;
+    instance: string;
+    display_name?: string | null;
+    mode?: CustomerPushMode;
+    webhook_mode?: CustomerPushWebhookMode;
+}
+
+export interface CustomerPushSourceUpdate {
+    display_name?: string | null;
+    mode?: CustomerPushMode;
+    enabled?: boolean;
+    webhook_mode?: CustomerPushWebhookMode;
+}
+
+/** List/detail item — never includes the plaintext token. */
+export interface CustomerPushToken {
+    id: string;
+    org_id: string;
+    source_id: string | null;
+    name: string;
+    token_prefix: string;
+    scopes: CustomerPushScope[];
+    expires_at: string | null;
+    revoked_at: string | null;
+    last_used_at: string | null;
+    created_at: string;
+}
+
+/** No `source_id` field — the backend derives it from the URL path. */
+export interface CustomerPushTokenCreate {
+    name: string;
+    scopes: CustomerPushScope[];
+    expires_at?: string | null;
+}
+
+/** Create/rotate response only — the plaintext token is shown exactly once. */
+export interface CustomerPushTokenCreateResponse {
+    id: string;
+    org_id: string;
+    source_id: string | null;
+    name: string;
+    token: string;
+    token_prefix: string;
+    scopes: CustomerPushScope[];
+    expires_at: string | null;
+    created_at: string;
+}
+
+export interface CustomerPushRejectedRecord {
+    index: number;
+    kind: string;
+    external_id: string | null;
+    code: string;
+    message: string;
+    path: string | null;
+}
+
+export interface CustomerPushBatchSummary {
+    ingestion_id: string;
+    status: CustomerPushBatchStatus;
+    source_system: CustomerPushSystem;
+    source_instance: string;
+    producer: string | null;
+    items_received: number;
+    items_accepted: number;
+    items_rejected: number;
+    created_at: string;
+    completed_at: string | null;
+}
+
+export interface CustomerPushBatchListResponse {
+    items: CustomerPushBatchSummary[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
+export interface CustomerPushErrorSummaryTopCode {
+    code: string;
+    count: number;
+}
+
+export interface CustomerPushErrorSummary {
+    total_rejected: number;
+    stored_rejections: number;
+    truncated: boolean;
+    top_codes: CustomerPushErrorSummaryTopCode[];
+}
+
+export interface CustomerPushBatchDetail {
+    ingestion_id: string;
+    org_id: string;
+    status: CustomerPushBatchStatus;
+    attempts: number;
+    source_system: CustomerPushSystem;
+    source_instance: string;
+    producer: string | null;
+    producer_version: string | null;
+    schema_version: string;
+    window_started_at: string | null;
+    window_ended_at: string | null;
+    items_received: number;
+    items_accepted: number;
+    items_rejected: number;
+    record_counts: Record<string, number> | null;
+    error_summary: CustomerPushErrorSummary | null;
+    created_at: string;
+    updated_at: string;
+    completed_at: string | null;
+    rejected_records: CustomerPushRejectedRecord[];
+    rejected_records_total: number;
+    rejected_records_limit: number;
+    rejected_records_offset: number;
+}
+
+/**
+ * Provisional — the validate proxy hasn't landed in the merged ops source
+ * yet (CHAOS-2695/wave 4). Shape follows the brief's contract sketch;
+ * re-verify against real source once that lands.
+ */
+export interface CustomerPushValidateResponse {
+    valid: boolean;
+    items_accepted: number;
+    items_rejected: number;
+    errors: CustomerPushRejectedRecord[];
+}
+
+export interface CustomerPushSchemaLimits {
+    maxRecordsPerBatch: number;
+    maxBodyBytes: number;
+}
+
+export interface CustomerPushSchemaListResponse {
+    schemaVersions: string[];
+    recordKinds: string[];
+    limits: CustomerPushSchemaLimits;
+}
+
+export interface CustomerPushSchemaDetailResponse {
+    schemaVersion: string;
+    envelope: Record<string, unknown>;
+    recordKinds: Record<string, unknown>;
+    limits: CustomerPushSchemaLimits;
+}
+
+export interface CustomerPushBatchListParams {
+    status?: CustomerPushBatchStatus;
+    producer?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+}
