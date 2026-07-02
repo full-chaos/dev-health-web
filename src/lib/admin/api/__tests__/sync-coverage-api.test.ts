@@ -82,4 +82,22 @@ describe("sync coverage admin API", () => {
             "http://test-ops:8000/api/v1/admin/sync-configs/cfg-coverage/jobs?limit=50&offset=0",
         );
     });
+
+    it("requests paginated backfill jobs with current-compatible defaults", async () => {
+        const fetchSpy = mockJsonResponse({ items: [], total: 0, limit: 50, offset: 0 });
+
+        await syncConfigsApi.listBackfillJobs("token-1", "org-1");
+
+        const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+        expect(url).toBe("http://test-ops:8000/api/v1/admin/backfill-jobs?limit=50&offset=0");
+    });
+
+    it("passes explicit pagination through to the backfill-jobs listing", async () => {
+        const fetchSpy = mockJsonResponse({ items: [], total: 0, limit: 10, offset: 20 });
+
+        await syncConfigsApi.listBackfillJobs("token-1", "org-1", { limit: 10, offset: 20 });
+
+        const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+        expect(url).toBe("http://test-ops:8000/api/v1/admin/backfill-jobs?limit=10&offset=20");
+    });
 });

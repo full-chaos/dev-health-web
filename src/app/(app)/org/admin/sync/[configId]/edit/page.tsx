@@ -2,17 +2,13 @@ import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncConfigForm } from "@/components/admin/sync/SyncConfigForm";
 import { getSyncConfig, getSyncConfigRepositories, listCredentials } from "@/lib/admin/server";
-import { RunBackfill } from "@/components/admin/sync/RunBackfill";
 
 interface EditSyncConfigPageProps {
     params: Promise<{ configId: string }>;
-    /** Gap-driven backfill deep link from the coverage timeline (CHAOS-2793). */
-    searchParams: Promise<{ backfill_from?: string; backfill_to?: string }>;
 }
 
-export default async function EditSyncConfigPage({ params, searchParams }: EditSyncConfigPageProps) {
+export default async function EditSyncConfigPage({ params }: EditSyncConfigPageProps) {
     const { configId } = await params;
-    const { backfill_from: backfillFrom, backfill_to: backfillTo } = await searchParams;
     const [configResult, credentialsResult, repositorySelectionResult] = await Promise.all([
         getSyncConfig(configId),
         listCredentials(),
@@ -38,10 +34,6 @@ export default async function EditSyncConfigPage({ params, searchParams }: EditS
                 initialRepositorySelection={repositorySelectionResult.data}
                 credentials={credentials}
             />
-
-            <div className="max-w-2xl">
-                <RunBackfill configId={configId} initialSince={backfillFrom} initialBefore={backfillTo} />
-            </div>
         </div>
     );
 }

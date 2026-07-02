@@ -355,6 +355,8 @@ export interface BackfillResponse {
     task_id: string;
     status: string;
     backfill_job_id: string;
+    /** Present on the backend response (routers/sync.py); optional here for defensive forward-compat. */
+    sync_run_id?: string;
 }
 
 export interface BackfillJob {
@@ -371,6 +373,13 @@ export interface BackfillJob {
     started_at: string | null;
     completed_at: string | null;
     created_at: string;
+}
+
+export interface BackfillJobListResponse {
+    items: BackfillJob[];
+    total: number;
+    limit: number;
+    offset: number;
 }
 
 export interface SyncConfigUpdate {

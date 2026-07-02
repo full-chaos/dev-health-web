@@ -1,16 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { SyncCoverageDataset, SyncCoverageRange, SyncCoverageSummary } from "@/lib/admin/types";
 import { CoverageBadge, statusLabel, statusTone, type CoverageTone } from "./CoverageBadge";
 
 interface SyncCoverageTimelineProps {
-    configId: string;
     coverage: SyncCoverageSummary | null;
     error?: string | null;
+    /** Opens the backfill wizard prefilled with this gap's range (CHAOS-2795/2796). */
+    onBackfillGapAction: (range: SyncCoverageRange) => void;
 }
 
 type BandKind = "covered" | "gap" | "stale" | "failed";
@@ -53,11 +53,6 @@ function formatDate(value: string): string {
     });
 }
 
-function toDateInput(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toISOString().slice(0, 10);
-}
 
 function rangeIncludesSource(range: SyncCoverageRange, sourceId: string | null): boolean {
     if (!sourceId) return true;
@@ -103,7 +98,11 @@ function bandStyle(range: SyncCoverageRange, extent: [number, number]): { left: 
  * horizontal bands are a decorative supplement (aria-hidden); the table below
  * is the authoritative, screen-reader-friendly rendering of the same rows.
  */
-export function SyncCoverageTimeline({ configId, coverage, error }: SyncCoverageTimelineProps) {
+export function SyncCoverageTimeline({
+    coverage,
+    error,
+    onBackfillGapAction,
+}: SyncCoverageTimelineProps) {
     const [datasetFilter, setDatasetFilter] = useState<string>("all");
     const [sourceFilter, setSourceFilter] = useState<string>("all");
 
@@ -123,14 +122,6 @@ export function SyncCoverageTimeline({ configId, coverage, error }: SyncCoverage
         return all.filter((dataset) => dataset.dataset_key === datasetFilter);
     }, [coverage, datasetFilter]);
 
-    const backfillGapHref = (range: SyncCoverageRange): string => {
-        const from = toDateInput(range.since);
-        const to = toDateInput(range.before);
-        const params = new URLSearchParams();
-        if (from) params.set("backfill_from", from);
-        if (to) params.set("backfill_to", to);
-        return `/org/admin/sync/${configId}/edit?${params.toString()}#backfill`;
-    };
 
     if (error) {
         return (
@@ -348,12 +339,15 @@ export function SyncCoverageTimeline({ configId, coverage, error }: SyncCoverage
                                                     </td>
                                                     <td className="px-2 py-2">
                                                         {row.kind === "gap" ? (
-                                                            <Link
-                                                                href={backfillGapHref(row.range)}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    onBackfillGapAction(row.range)
+                                                                }
                                                                 className="text-(--accent) hover:underline"
                                                             >
                                                                 {CTA_LABELS.backfillThisGap}
-                                                            </Link>
+                                                            </button>
                                                         ) : (
                                                             <span className="text-(--ink-muted)">—</span>
                                                         )}

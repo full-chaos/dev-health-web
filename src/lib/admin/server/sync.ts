@@ -114,7 +114,32 @@ export async function triggerBackfill(
         const { token, orgId } = await getSessionContext();
         const res = await adminApi.syncConfigs.backfill(configId, { since, before }, token, orgId);
         revalidatePath("/org/admin/sync");
-        return res;
+        revalidatePath(`/org/admin/sync/${configId}`);
+return res;
+});
+}
+
+/** Non-terminal BackfillJob statuses — mirrors RunBackfill's isTerminal check. */
+const ACTIVE_BACKFILL_STATUSES = new Set(["pending", "running"]);
+
+/**
+ * Discover a persisted in-progress backfill for `configId` so its status
+ * survives navigation (CHAOS-2795). The `/backfill-jobs` endpoint has no
+ * server-side sync_config_id filter, so this fetches the most recent org-wide
+ * page (newest first) and filters client-side — a long-running backfill
+ * buried past the page size would be missed, an accepted limitation of the
+ * existing API surface.
+ */
+export async function getActiveBackfillJob(
+    configId: string,
+): Promise<ActionResult<BackfillJob | null>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const result = await adminApi.syncConfigs.listBackfillJobs(token, orgId, { limit: 50 });
+        const active = result.items.find(
+            (job) => job.sync_config_id === configId && ACTIVE_BACKFILL_STATUSES.has(job.status),
+        );
+        return active ?? null;
     });
 }
 

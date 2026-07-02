@@ -15,6 +15,8 @@ interface SyncCoverageSummaryCardProps {
     /** UI-safe error message when the coverage fetch failed (never a raw exception). */
     error?: string | null;
     isActive: boolean;
+    /** Opens the backfill wizard in place on the detail page (CHAOS-2795). */
+    onBackfillAction: () => void;
 }
 
 function StatBlock({ label, value }: { label: string; value: ReactNode }) {
@@ -33,9 +35,9 @@ export function SyncCoverageSummaryCard({
     coverage,
     error,
     isActive,
+    onBackfillAction,
 }: SyncCoverageSummaryCardProps) {
     const editHref = `/org/admin/sync/${configId}/edit`;
-    const backfillHref = `${editHref}#backfill`;
 
     if (error) {
         return (
@@ -90,12 +92,13 @@ export function SyncCoverageSummaryCard({
                     )}
                 </div>
                 <div className="flex items-center gap-3">
-                    <Link
-                        href={backfillHref}
+                    <button
+                        type="button"
+                        onClick={onBackfillAction}
                         className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
                     >
                         {CTA_LABELS.backfill}
-                    </Link>
+                    </button>
                     <Link
                         href={editHref}
                         className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"

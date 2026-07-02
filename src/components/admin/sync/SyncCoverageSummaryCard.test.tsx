@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { render, screen, userEvent } from "@/test/utils";
 import { SyncCoverageSummaryCard } from "./SyncCoverageSummaryCard";
 import {
     COMPLETE_COVERAGE_SUMMARY,
@@ -24,7 +24,13 @@ beforeEach(() => {
 describe("SyncCoverageSummaryCard", () => {
     it("renders a loading state when coverage has not resolved yet", () => {
         render(
-            <SyncCoverageSummaryCard configId="cfg-1" coverage={null} isActive error={undefined} />,
+            <SyncCoverageSummaryCard
+                configId="cfg-1"
+                coverage={null}
+                isActive
+                error={undefined}
+                onBackfillAction={vi.fn()}
+            />,
         );
 
         expect(screen.getByTestId("coverage-summary-loading")).toBeInTheDocument();
@@ -37,6 +43,7 @@ describe("SyncCoverageSummaryCard", () => {
                 coverage={null}
                 error="Request failed with 500"
                 isActive
+                onBackfillAction={vi.fn()}
             />,
         );
 
@@ -44,13 +51,16 @@ describe("SyncCoverageSummaryCard", () => {
         expect(screen.getByText("Request failed with 500")).toBeInTheDocument();
     });
 
-    it("renders the healthy health badge and key stats", () => {
+    it("renders the healthy health badge and key stats, and opens the wizard on Backfill", async () => {
+        const onBackfillAction = vi.fn();
+        const user = userEvent.setup();
         render(
             <SyncCoverageSummaryCard
                 configId="cfg-1"
                 coverage={COMPLETE_COVERAGE_SUMMARY}
                 isActive
                 error={undefined}
+                onBackfillAction={onBackfillAction}
             />,
         );
 
@@ -61,10 +71,10 @@ describe("SyncCoverageSummaryCard", () => {
             "href",
             "/org/admin/sync/cfg-1/edit",
         );
-        expect(screen.getByRole("link", { name: "Backfill" })).toHaveAttribute(
-            "href",
-            "/org/admin/sync/cfg-1/edit#backfill",
-        );
+
+        const backfillButton = screen.getByRole("button", { name: "Backfill" });
+        await user.click(backfillButton);
+        expect(onBackfillAction).toHaveBeenCalledOnce();
     });
 
     it("renders gap-detected health without the literal word unknown", () => {
@@ -74,6 +84,7 @@ describe("SyncCoverageSummaryCard", () => {
                 coverage={PARTIAL_COVERAGE_SUMMARY}
                 isActive
                 error={undefined}
+                onBackfillAction={vi.fn()}
             />,
         );
 
@@ -88,6 +99,7 @@ describe("SyncCoverageSummaryCard", () => {
                 coverage={LEGACY_INSUFFICIENT_DATA_SUMMARY}
                 isActive={false}
                 error={undefined}
+                onBackfillAction={vi.fn()}
             />,
         );
 
