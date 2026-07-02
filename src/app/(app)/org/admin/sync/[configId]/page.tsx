@@ -20,12 +20,17 @@ import type { SyncConfig, SyncCoverageSummary, SyncJob } from "@/lib/admin/types
 interface PageProps {
     params: Promise<{ configId: string }>;
     /** `coverage_scenario` selects a sample scenario in DEV_HEALTH_TEST_MODE only. */
-    searchParams: Promise<{ coverage_scenario?: string }>;
+    searchParams: Promise<{ coverage_scenario?: string | string[] }>;
+}
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+    return Array.isArray(value) ? value[0] : value;
 }
 
 export default async function SyncConfigDetailPage({ params, searchParams }: PageProps) {
     const { configId } = await params;
     const { coverage_scenario: coverageScenario } = await searchParams;
+    const coverageScenarioParam = firstParam(coverageScenario);
 
     const env = getServerEnv();
     const isTestMode =
@@ -42,7 +47,7 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
         // page is exercisable in Playwright/test mode (web AGENTS test-mode rule).
         config = SAMPLE_SYNC_CONFIG;
         jobs = SAMPLE_SYNC_JOBS;
-        coverage = SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenario)];
+        coverage = SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenarioParam)];
         orgId = "sample-org";
     } else {
         const [configResult, jobsResult, coverageResult, orgResult] = await Promise.all([
@@ -80,7 +85,10 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     return (
         <div className="space-y-8">
             <AdminHeader title={config.name} description={`Provider: ${config.provider}`}>
-                <TestConnectionButton provider={config.provider} credentialId={config.credential_id} />
+                <TestConnectionButton
+                    provider={config.provider}
+                    credentialId={config.credential_id}
+                />
             </AdminHeader>
 
             <SyncProgressBar configId={config.id} provider={config.provider} orgId={orgId} />
@@ -148,7 +156,8 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
 
                 {config.last_sync_error && (
                     <div className="mt-6 rounded-lg border border-(--negative)/20 bg-(--negative)/10 p-4 text-sm text-(--negative)">
-                        <span className="font-medium">Last sync error:</span> {config.last_sync_error}
+                        <span className="font-medium">Last sync error:</span>{" "}
+                        {config.last_sync_error}
                     </div>
                 )}
             </details>
