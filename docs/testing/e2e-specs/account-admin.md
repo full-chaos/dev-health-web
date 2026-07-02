@@ -130,18 +130,20 @@ Test coverage
 
 Purpose
 
-- Covers historical data backfill triggered from a sync configuration detail page.
-- Validates date range input, backfill trigger, and real-time progress polling.
+- Covers historical data backfill as an operational action from the sync configuration detail page (CHAOS-2795).
+- Validates date range input/validation, the expensive-range confirmation step, backfill trigger, and persisted progress polling that survives navigation.
 - Initial Sync Depth selector in SyncConfigForm is tier-gated by organization billing tier.
 
 Primary components
 
-- `src/components/admin/sync/RunBackfill.tsx`
+- `src/components/admin/sync/BackfillOperations.tsx` (hosts the wizard + persisted status on the config detail page)
+- `src/components/admin/sync/BackfillWizard.tsx` (multi-step range / preview / result flow, including the expensive-range confirmation)
+- `src/components/admin/sync/BackfillStatus.tsx` (persisted progress polling that survives navigation)
 - `src/components/admin/sync/SyncConfigForm.tsx` (Initial Sync Depth section)
 
 Routes
 
-- `/admin/sync/[configId]` (backfill controls are embedded in the sync config detail page)
+- `/org/admin/sync/[configId]` (backfill wizard and status are embedded in the sync config detail page)
 
 Tier-gated sync depth options
 
@@ -155,52 +157,56 @@ The Initial Sync Depth selector in SyncConfigForm displays radio buttons for 30,
 
 Backfill controls
 
-- Date range inputs: "From" and "To" date pickers
-- "Run Backfill" button triggers `triggerBackfill` server action
-- Progress bar polls `getBackfillJobStatus` every 3 seconds
-- Auto-stops polling on terminal states (completed or failed)
+- Date range inputs: "From" and "To" date pickers, with an inline error when the range is invalid
+- Ranges longer than 180 days require an explicit confirmation checkbox before submit
+- "Run backfill" button (wizard) triggers the `triggerBackfill` server action
+- Persisted status (`BackfillStatus`) polls `getBackfillJobStatus` every 3 seconds
+- Auto-stops polling on terminal states across both backend paths: `completed`/`failed` (legacy per-chunk) and `success`/`partial_failed`/`failed` (planner fanout)
 
 Server actions
 
-- `triggerBackfill(configId, since, before)` in `src/lib/admin/server.ts`
-- `getBackfillJobStatus(jobId)` in `src/lib/admin/server.ts`
+- `triggerBackfill(configId, since, before)` in `src/lib/admin/server/sync.ts`
+- `getActiveBackfillJob(configId)` in `src/lib/admin/server/sync.ts` (discovers a persisted in-progress backfill so it survives navigation)
+- `getBackfillJobStatus(jobId)` in `src/lib/admin/server/sync.ts`
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant U as User
     participant F as Sync Config Detail UI
-    participant RB as RunBackfill Component
+    participant BW as BackfillWizard Component
+    participant BS as BackfillStatus Component
     participant SA as Admin Server Actions
     participant API as Backend API
-    U->>F: Open /admin/sync/[configId]
-    F-->>U: Show sync config with backfill controls
-    U->>RB: Select "From" and "To" dates
-    U->>RB: Click "Run Backfill"
-    RB->>SA: triggerBackfill(configId, since, before)
+    U->>F: Open /org/admin/sync/[configId]
+    F-->>U: Show sync config with Backfill CTA
+    U->>BW: Select "From" and "To" dates
+    U->>BW: Click "Run backfill"
+    BW->>SA: triggerBackfill(configId, since, before)
     SA->>API: POST /admin/sync-configs/{id}/backfill
-    API-->>SA: { backfill_job_id }
-    SA-->>RB: Return backfill_job_id
-    RB->>RB: Start polling (every 3s)
+    API-->>SA: { backfill_job_id, sync_run_id }
+    SA-->>BW: Return backfill_job_id
+    BW-->>F: Close wizard
+    F->>BS: Render with the persisted active job
     loop Every 3 seconds
-        RB->>SA: getBackfillJobStatus(jobId)
+        BS->>SA: getBackfillJobStatus(jobId)
         SA->>API: GET /admin/backfill-jobs/{id}
         API-->>SA: BackfillJob status
-        SA-->>RB: { status, progress_pct, completed_chunks, total_chunks }
-        RB-->>U: Update progress bar
+        SA-->>BS: { status, progress_pct, completed_chunks, total_chunks }
+        BS-->>U: Update progress bar
     end
-    Note over RB: Stops polling on completed/failed
-    RB-->>U: Show completion toast
+    Note over BS: Stops polling on completed/success/partial_failed/failed
+    BS-->>U: Show completion toast
 ```
 
 Test coverage
 
-| Layer         | Coverage | Tests                                                            | Notes                                                      |
-| ------------- | -------- | ---------------------------------------------------------------- | ---------------------------------------------------------- |
-| Backend Unit  | ✅       | `test_backfill_integration.py`, `test_backfill_observability.py` | Covers Celery task wiring and BackfillJob service.         |
-| Frontend Unit | ✅       | `src/components/admin/sync/SyncConfigForm.test.tsx`              | Covers Initial Sync Depth selector and tier-gated options. |
-| Frontend E2E  | —        | —                                                                | No dedicated E2E test for backfill flow yet.               |
-| Live E2E      | —        | —                                                                | Requires running Celery worker with backfill queue.        |
+| Layer         | Coverage | Tests                                                                                                          | Notes                                                                                                      |
+| ------------- | -------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Backend Unit  | ✅       | `test_backfill_integration.py`, `test_backfill_observability.py`                                               | Covers Celery task wiring and BackfillJob service.                                                         |
+| Frontend Unit | ✅       | `SyncConfigForm.test.tsx`, `BackfillOperations.test.tsx`, `BackfillWizard.test.tsx`, `BackfillStatus.test.tsx` | Covers Initial Sync Depth, wizard validation/confirmation, and status polling across both status families. |
+| Frontend E2E  | ✅       | `tests/screenshot-chaos-2795.spec.ts`                                                                          | Visual-evidence coverage for the wizard and status flow (CHAOS-2795/2796).                                 |
+| Live E2E      | —        | —                                                                                                              | Requires running Celery worker with backfill queue.                                                        |
 
 ## Team Management
 
