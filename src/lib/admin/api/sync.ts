@@ -13,7 +13,21 @@ import type {
     SyncTriggerResult,
     SyncRun,
     SyncRunUnitSummary,
+    SyncCoverageSummary,
 } from "../types";
+
+export interface SyncJobsListParams {
+    limit?: number;
+    offset?: number;
+}
+
+function jobListPath(id: string, params: SyncJobsListParams = {}): string {
+    const query = new URLSearchParams({
+        limit: String(params.limit ?? 50),
+        offset: String(params.offset ?? 0),
+    });
+    return `/sync-configs/${id}/jobs?${query.toString()}`;
+}
 
 export const syncConfigsApi = {
     list: (token?: string, orgId?: string) =>
@@ -71,6 +85,14 @@ export const syncConfigsApi = {
     getSyncRunUnits: (runId: string, token?: string, orgId?: string) =>
         request<SyncRunUnitSummary>(`/sync-runs/${runId}/units`, { method: "GET" }, token, orgId),
 
+    getSyncCoverage: (id: string, token?: string, orgId?: string) =>
+        request<SyncCoverageSummary>(
+            `/sync-configs/${id}/coverage`,
+            { method: "GET" },
+            token,
+            orgId,
+        ),
+
     backfill: (
         id: string,
         data: { since: string; before: string },
@@ -87,8 +109,8 @@ export const syncConfigsApi = {
     getBackfillJob: (jobId: string, token?: string, orgId?: string) =>
         request<BackfillJob>(`/backfill-jobs/${jobId}`, { method: "GET" }, token, orgId),
 
-    jobs: (id: string, token?: string, orgId?: string) =>
-        request<SyncJob[]>(`/sync-configs/${id}/jobs`, {}, token, orgId),
+    jobs: (id: string, token?: string, orgId?: string, params?: SyncJobsListParams) =>
+        request<SyncJob[]>(jobListPath(id, params), {}, token, orgId),
 
     batchCreate: (data: SyncConfigBatchCreate, token?: string, orgId?: string) =>
         request<SyncConfigBatchResponse>(

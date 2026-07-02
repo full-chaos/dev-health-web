@@ -18,6 +18,7 @@ import type {
     SyncTriggerResult,
     SyncRun,
     SyncRunUnitSummary,
+    SyncCoverageSummary,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
@@ -157,10 +158,21 @@ export async function getSyncRunUnits(runId: string): Promise<ActionResult<SyncR
     });
 }
 
-export async function getSyncJobs(id: string): Promise<ActionResult<SyncJob[]>> {
+export async function getSyncCoverage(id: string): Promise<ActionResult<SyncCoverageSummary>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        return adminApi.syncConfigs.jobs(id, token, orgId);
+        return adminApi.syncConfigs.getSyncCoverage(id, token, orgId);
+    });
+}
+
+export async function getSyncJobs(
+    id: string,
+    limit?: number,
+    offset?: number,
+): Promise<ActionResult<SyncJob[]>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.syncConfigs.jobs(id, token, orgId, { limit, offset });
     });
 }
 

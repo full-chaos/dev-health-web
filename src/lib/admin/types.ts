@@ -139,6 +139,80 @@ export interface SyncConfigRepositorySelectionUpdate {
     repos: string[];
 }
 
+export type SyncCoverageHealth = "healthy" | "stale" | "gaps" | "failed" | "insufficient_data";
+
+export type SyncCoverageStatus =
+    | "healthy"
+    | "stale"
+    | "gaps"
+    | "failed"
+    | "insufficient_data"
+    | "paused"
+    | "not_scheduled"
+    | "running";
+
+export type SyncCoverageDataBasis = "planner" | "legacy";
+
+export interface SyncCoverageRange {
+    since: string;
+    before: string;
+    source_ids: string[];
+    run_ids: string[];
+}
+
+export interface SyncRunJobEnrichment {
+    mode: string;
+    triggered_by: string;
+    requested_range: SyncCoverageRange | null;
+    covered_range: SyncCoverageRange | null;
+    total_units: number;
+    completed_units: number;
+    failed_units: number;
+    sync_run_id: string;
+}
+
+export interface SyncCoverageOverall {
+    health: SyncCoverageHealth;
+    latest_successful_run_at: string | null;
+    latest_covered_through: string | null;
+    next_scheduled_run_at: string | null;
+    gap_count: number;
+    stale_dataset_count: number;
+    failed_range_count: number;
+}
+
+export interface SyncCoverageDataset {
+    dataset_key: string;
+    status: SyncCoverageStatus;
+    covered_through: string | null;
+    requested_ranges: SyncCoverageRange[];
+    covered_ranges: SyncCoverageRange[];
+    gaps: SyncCoverageRange[];
+    stale_ranges: SyncCoverageRange[];
+    failed_ranges: SyncCoverageRange[];
+}
+
+export interface SyncCoverageSource {
+    source_id: string;
+    source_name: string;
+    status: SyncCoverageStatus;
+    covered_through: string | null;
+    gap_count: number;
+    failed_range_count: number;
+}
+
+export interface SyncCoverageSummary {
+    config_id: string;
+    provider: string;
+    generated_at: string;
+    data_basis: SyncCoverageDataBasis;
+    history_lookback_days: number;
+    truncated_before: string;
+    overall: SyncCoverageOverall;
+    datasets: SyncCoverageDataset[];
+    sources: SyncCoverageSource[];
+}
+
 export interface SyncJob {
     id: string;
     config_id?: string;
@@ -151,6 +225,7 @@ export interface SyncJob {
     result?: Record<string, unknown> | null;
     error?: string | null;
     triggered_by?: string;
+    sync_run?: SyncRunJobEnrichment | null;
     created_at?: string;
 }
 
