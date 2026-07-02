@@ -11,9 +11,21 @@ type ValidatePayloadPanelProps = {
     sourceId: string;
     sourceSystem: CustomerPushSystem;
     sourceInstance: string;
+    /** Test seam only — pages must not override the module default. */
+    validateProxyAvailable?: boolean;
 };
 
 type Mode = "paste" | "upload" | "sample";
+
+/**
+ * The admin validate proxy (`POST .../sources/{id}/validate`) ships with
+ * CHAOS-2695 (wave 4). Until it lands, submitting would deterministically
+ * 404 in production (only the MSW mock implements the route), so the submit
+ * path is hard-gated off (adversarial-review finding). Flip to `true` in the
+ * CHAOS-2695 changeset — the panel, parsing, and result rendering are fully
+ * built and tested and need no other change.
+ */
+export const VALIDATE_PROXY_AVAILABLE = false;
 
 /**
  * Screen 5 — VALIDATE ONLY in v1. The console-push proxy
@@ -31,6 +43,7 @@ export function ValidatePayloadPanel({
     sourceId,
     sourceSystem,
     sourceInstance,
+    validateProxyAvailable = VALIDATE_PROXY_AVAILABLE,
 }: ValidatePayloadPanelProps) {
     const [mode, setMode] = useState<Mode>("paste");
     const [payloadText, setPayloadText] = useState("");
@@ -67,6 +80,7 @@ export function ValidatePayloadPanel({
     };
 
     const handleValidate = () => {
+        if (!validateProxyAvailable) return;
         resetOutcome();
 
         let parsed: unknown;
@@ -135,11 +149,24 @@ export function ValidatePayloadPanel({
 
             {parseError && <p className="text-sm text-red-500">{parseError}</p>}
 
+            {!validateProxyAvailable && (
+                <div
+                    role="status"
+                    className="rounded-lg border border-(--card-stroke) bg-(--surface-base) p-4 text-sm text-(--ink-muted)"
+                >
+                    Server-side validation isn&apos;t available yet — it arrives with the validation
+                    endpoint (CHAOS-2695). You can prepare and inspect payloads here, or validate
+                    from CI with <code>dev-hops push validate</code>.
+                </div>
+            )}
+
             <div className="flex items-center gap-3">
                 <button
                     type="button"
                     onClick={handleValidate}
-                    disabled={isPending || payloadText.trim().length === 0}
+                    disabled={
+                        !validateProxyAvailable || isPending || payloadText.trim().length === 0
+                    }
                     className="inline-flex items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 disabled:opacity-50"
                 >
                     {isPending ? "Validating..." : CTA_LABELS.validatePayload}

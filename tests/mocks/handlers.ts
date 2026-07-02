@@ -3137,7 +3137,13 @@ export const handlers = [
             token_prefix: `fcpush_${tokenId.slice(0, 4)}`,
             token: `fcpush_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
         };
-        MOCK_CUSTOMER_PUSH_TOKENS.push(created);
+        // One-time-display contract (adversarial-review finding): the plaintext
+        // `token` exists ONLY in the immediate POST response — the stored list
+        // row must be the list-safe shape, or GET /tokens would re-serve the
+        // secret after the reveal is dismissed.
+        const { token: _createdSecret, ...createdListSafe } = created;
+        void _createdSecret;
+        MOCK_CUSTOMER_PUSH_TOKENS.push(createdListSafe);
         return HttpResponse.json<MockCustomerPushTokenCreateResponse>(created, { status: 201 });
     }),
 
@@ -3166,7 +3172,11 @@ export const handlers = [
             token_prefix: `fcpush_${newTokenId.slice(0, 4)}`,
             token: `fcpush_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
         };
-        MOCK_CUSTOMER_PUSH_TOKENS.push(rotated);
+        // Same one-time-display contract as token creation: list store never
+        // holds the plaintext.
+        const { token: _rotatedSecret, ...rotatedListSafe } = rotated;
+        void _rotatedSecret;
+        MOCK_CUSTOMER_PUSH_TOKENS.push(rotatedListSafe);
         return HttpResponse.json<MockCustomerPushTokenCreateResponse>(rotated);
     }),
 

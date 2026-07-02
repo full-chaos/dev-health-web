@@ -20,6 +20,7 @@ describe("ValidatePayloadPanel", () => {
                 sourceId="cps-1"
                 sourceSystem="github"
                 sourceInstance="meridian/api"
+                validateProxyAvailable
             />,
         );
         expect(screen.queryByText(/push this payload/i)).not.toBeInTheDocument();
@@ -32,6 +33,7 @@ describe("ValidatePayloadPanel", () => {
                 sourceId="cps-1"
                 sourceSystem="github"
                 sourceInstance="meridian/api"
+                validateProxyAvailable
             />,
         );
         await user.click(screen.getByPlaceholderText(/schemaVersion/));
@@ -66,6 +68,7 @@ describe("ValidatePayloadPanel", () => {
                 sourceId="cps-1"
                 sourceSystem="github"
                 sourceInstance="meridian/api"
+                validateProxyAvailable
             />,
         );
         await user.click(screen.getByPlaceholderText(/schemaVersion/));
@@ -86,6 +89,7 @@ describe("ValidatePayloadPanel", () => {
                 sourceId="cps-1"
                 sourceSystem="github"
                 sourceInstance="meridian/api"
+                validateProxyAvailable
             />,
         );
         await user.click(screen.getByPlaceholderText(/schemaVersion/));
@@ -103,6 +107,7 @@ describe("ValidatePayloadPanel", () => {
                 sourceId="cps-1"
                 sourceSystem="github"
                 sourceInstance="meridian/api"
+                validateProxyAvailable
             />,
         );
         await user.click(screen.getByPlaceholderText(/schemaVersion/));
@@ -119,11 +124,26 @@ describe("ValidatePayloadPanel", () => {
                 sourceId="cps-1"
                 sourceSystem="github"
                 sourceInstance="meridian/api"
+                validateProxyAvailable
             />,
         );
         await user.click(screen.getByRole("button", { name: "Use sample" }));
         const textarea = screen.getByPlaceholderText(/schemaVersion/) as HTMLTextAreaElement;
         expect(textarea.value).toContain("meridian/api");
         expect(textarea.value).toContain("repository.v1");
+    });
+});
+
+describe("ValidatePayloadPanel — proxy gate (CHAOS-2695 pending)", () => {
+    it("default-gated: banner visible and submit disabled until the proxy lands", () => {
+        render(
+            <ValidatePayloadPanel
+                sourceId="cps-1"
+                sourceSystem="github"
+                sourceInstance="meridian/api"
+            />,
+        );
+        expect(screen.getByText(/Server-side validation isn't available yet/)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Validate payload" })).toBeDisabled();
     });
 });

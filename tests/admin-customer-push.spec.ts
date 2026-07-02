@@ -91,6 +91,19 @@ test.describe("Credential creation — one-time token display (D9)", () => {
         );
         await expect(page.getByText("e2e runner token", { exact: true })).toBeVisible();
         await expect(page.getByText(tokenText)).toHaveCount(0);
+
+        // Contract-level guard (adversarial-review finding): the token-LIST
+        // response itself must not re-serve the one-time plaintext — asserting
+        // only that the UI hides it would let a leaking API pass.
+        const listResp = await page.request.get(
+            `/api/v1/admin/customer-push/sources/${SEEDED_SOURCE_ID}/tokens`,
+        );
+        expect(listResp.ok()).toBe(true);
+        const listBody = await listResp.text();
+        expect(listBody).not.toContain(tokenText);
+        for (const row of JSON.parse(listBody) as Array<Record<string, unknown>>) {
+            expect(row).not.toHaveProperty("token");
+        }
     });
 });
 
@@ -173,54 +186,27 @@ test.describe("Runner setup examples", () => {
 });
 
 test.describe("Validate payload — validate-only in v1 (CC25 overrule)", () => {
-    test("invalid payload renders the rejected-record error table", async ({ page }) => {
+    // The full validate round-trip (accepted state, rejected-record table) is
+    // covered at unit level with the proxy seam enabled
+    // (ValidatePayloadPanel.test.tsx): the admin validate proxy ships with
+    // CHAOS-2695, so in the real app the submit path is hard-gated off — a
+    // live e2e round-trip here would only ever exercise the MSW mock while
+    // production 404s (adversarial-review finding). Restore the round-trip
+    // e2e when CHAOS-2695 flips VALIDATE_PROXY_AVAILABLE.
+    test("submit is gated off with guidance until the validate proxy lands", async ({ page }) => {
         await page.goto(
             `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}/validate`,
         );
 
-        const invalidPayload = JSON.stringify({
-            schemaVersion: "external-ingest.v1",
-            idempotencyKey: "e2e-invalid",
-            source: { type: "customer_push", system: "github", instance: SEEDED_SOURCE_INSTANCE },
-            window: { startedAt: "2026-01-01T00:00:00Z", endedAt: "2026-01-01T01:00:00Z" },
-            records: [{ kind: "pull_request.v1", payload: {} }],
-        });
-        await page.getByPlaceholder(/schemaVersion/).click();
-        await page.getByPlaceholder(/schemaVersion/).fill(invalidPayload);
-        await page.getByRole("button", { name: "Validate payload" }).click();
+        await expect(page.getByText(/Server-side validation isn't available yet/)).toBeVisible();
 
-        await expect(page.getByRole("columnheader", { name: "Index" })).toBeVisible();
-        await expect(page.getByRole("columnheader", { name: "Path" })).toBeVisible();
-        await expect(page.getByRole("columnheader", { name: "Message" })).toBeVisible();
-        await expect(page.getByText("externalId is required")).toBeVisible();
+        // Payload prep still works (paste + sample) — only submission is gated.
+        await page.getByRole("button", { name: "Use sample" }).click();
+        await expect(page.getByPlaceholder(/schemaVersion/)).toHaveValue(/external-ingest.v1/);
+        await expect(page.getByRole("button", { name: "Validate payload" })).toBeDisabled();
 
         // Regression guard: the console-push CTA was cut from v1 (CC25) —
         // Screen 5 is validate-only, there must be no push button anywhere.
-        await expect(page.getByRole("button", { name: /push this payload/i })).toHaveCount(0);
-    });
-
-    test("valid payload renders the accepted-count success state", async ({ page }) => {
-        await page.goto(
-            `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}/validate`,
-        );
-
-        const validPayload = JSON.stringify({
-            schemaVersion: "external-ingest.v1",
-            idempotencyKey: "e2e-valid",
-            source: { type: "customer_push", system: "github", instance: SEEDED_SOURCE_INSTANCE },
-            window: { startedAt: "2026-01-01T00:00:00Z", endedAt: "2026-01-01T01:00:00Z" },
-            records: [
-                {
-                    kind: "repository.v1",
-                    externalId: SEEDED_SOURCE_INSTANCE,
-                    payload: { externalId: SEEDED_SOURCE_INSTANCE, name: "api" },
-                },
-            ],
-        });
-        await page.getByPlaceholder(/schemaVersion/).fill(validPayload);
-        await page.getByRole("button", { name: "Validate payload" }).click();
-
-        await expect(page.getByText(/Payload is valid/)).toBeVisible();
         await expect(page.getByRole("button", { name: /push this payload/i })).toHaveCount(0);
     });
 });
