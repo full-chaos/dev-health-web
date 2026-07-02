@@ -9,7 +9,12 @@
 // contract fixtures in lib/admin/__tests__/syncCoverageFixtures.ts (CHAOS-2790)
 // so sample-mode rendering and the API contract never drift apart.
 
-import type { SyncConfig, SyncCoverageRange, SyncCoverageSummary, SyncJob } from "@/lib/admin/types";
+import type {
+    SyncConfig,
+    SyncCoverageRange,
+    SyncCoverageSummary,
+    SyncJob,
+} from "@/lib/admin/types";
 
 const CONFIG_ID = "sample-sync-config";
 const PROVIDER = "github";
@@ -19,6 +24,10 @@ const RUN_HEALTHY = "sample-run-healthy";
 const RUN_GAPS = "sample-run-gaps";
 const RUN_FAILED = "sample-run-failed";
 const RUN_STALE = "sample-run-stale";
+const RUN_RETRY = "sample-run-retry";
+const RUN_CONCURRENT = "sample-run-concurrent";
+const SOURCE_SECONDARY = "sample-source-secondary-repo";
+const CONFIG_ID_SECONDARY = "sample-sync-config-secondary";
 
 const GENERATED_AT = "2026-07-02T15:00:00.000Z";
 const TRUNCATED_BEFORE = "2026-01-03T00:00:00.000Z";
@@ -76,14 +85,20 @@ export const SAMPLE_COVERAGE_HEALTHY: SyncCoverageSummary = {
             status: "healthy",
             covered_through: "2026-07-02T13:00:00.000Z",
             requested_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-07-02T13:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_HEALTHY,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T13:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_HEALTHY],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-07-02T13:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_HEALTHY,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T13:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_HEALTHY],
+                ),
             ],
             gaps: [],
             stale_ranges: [],
@@ -94,14 +109,20 @@ export const SAMPLE_COVERAGE_HEALTHY: SyncCoverageSummary = {
             status: "healthy",
             covered_through: "2026-07-02T13:00:00.000Z",
             requested_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-07-02T13:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_HEALTHY,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T13:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_HEALTHY],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-07-02T13:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_HEALTHY,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T13:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_HEALTHY],
+                ),
             ],
             gaps: [],
             stale_ranges: [],
@@ -142,17 +163,26 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
             status: "gaps",
             covered_through: "2026-06-28T00:00:00.000Z",
             requested_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-07-01T09:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-07-01T09:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_GAPS],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-06-24T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_GAPS,
-                ]),
-                range("2026-06-26T00:00:00.000Z", "2026-06-28T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-06-24T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_GAPS],
+                ),
+                range(
+                    "2026-06-26T00:00:00.000Z",
+                    "2026-06-28T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_GAPS],
+                ),
             ],
             gaps: [
                 range("2026-06-24T00:00:00.000Z", "2026-06-26T00:00:00.000Z", [SOURCE_PLATFORM]),
@@ -174,16 +204,22 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
                 ),
             ],
             covered_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-06-25T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-06-25T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_GAPS],
+                ),
             ],
             gaps: [],
             stale_ranges: [],
             failed_ranges: [
-                range("2026-06-25T00:00:00.000Z", "2026-06-27T00:00:00.000Z", [SOURCE_BILLING], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-25T00:00:00.000Z",
+                    "2026-06-27T00:00:00.000Z",
+                    [SOURCE_BILLING],
+                    [RUN_GAPS],
+                ),
             ],
         },
         {
@@ -191,14 +227,20 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
             status: "stale",
             covered_through: "2026-06-15T00:00:00.000Z",
             requested_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-06-15T00:00:00.000Z", [SOURCE_BILLING], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-06-15T00:00:00.000Z",
+                    [SOURCE_BILLING],
+                    [RUN_GAPS],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-01T00:00:00.000Z", "2026-06-15T00:00:00.000Z", [SOURCE_BILLING], [
-                    RUN_GAPS,
-                ]),
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-06-15T00:00:00.000Z",
+                    [SOURCE_BILLING],
+                    [RUN_GAPS],
+                ),
             ],
             gaps: [],
             stale_ranges: [
@@ -249,21 +291,30 @@ export const SAMPLE_COVERAGE_FAILED: SyncCoverageSummary = {
             status: "failed",
             covered_through: "2026-06-20T00:00:00.000Z",
             requested_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-07-02T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_FAILED,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-07-02T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED],
+                ),
             ],
             covered_ranges: [
-                range("2026-06-18T00:00:00.000Z", "2026-06-20T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_FAILED,
-                ]),
+                range(
+                    "2026-06-18T00:00:00.000Z",
+                    "2026-06-20T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED],
+                ),
             ],
             gaps: [],
             stale_ranges: [],
             failed_ranges: [
-                range("2026-06-20T00:00:00.000Z", "2026-07-02T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_FAILED,
-                ]),
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-07-02T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED],
+                ),
             ],
         },
     ],
@@ -301,14 +352,20 @@ export const SAMPLE_COVERAGE_STALE: SyncCoverageSummary = {
             status: "stale",
             covered_through: "2026-06-10T00:00:00.000Z",
             requested_ranges: [
-                range("2026-05-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_STALE,
-                ]),
+                range(
+                    "2026-05-01T00:00:00.000Z",
+                    "2026-06-10T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_STALE],
+                ),
             ],
             covered_ranges: [
-                range("2026-05-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z", [SOURCE_PLATFORM], [
-                    RUN_STALE,
-                ]),
+                range(
+                    "2026-05-01T00:00:00.000Z",
+                    "2026-06-10T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_STALE],
+                ),
             ],
             gaps: [],
             stale_ranges: [
@@ -349,6 +406,131 @@ export const SAMPLE_COVERAGE_INSUFFICIENT_DATA: SyncCoverageSummary = {
     sources: [],
 };
 
+export const SAMPLE_COVERAGE_OVERLAPPING_RETRY: SyncCoverageSummary = {
+    config_id: CONFIG_ID,
+    provider: PROVIDER,
+    generated_at: GENERATED_AT,
+    data_basis: "planner",
+    history_lookback_days: 180,
+    truncated_before: TRUNCATED_BEFORE,
+    overall: {
+        health: "healthy",
+        latest_successful_run_at: "2026-06-27T00:00:00.000Z",
+        latest_covered_through: "2026-06-27T00:00:00.000Z",
+        next_scheduled_run_at: "2026-07-02T16:00:00.000Z",
+        gap_count: 0,
+        stale_dataset_count: 0,
+        failed_range_count: 1,
+    },
+    datasets: [
+        {
+            dataset_key: "git",
+            status: "healthy",
+            covered_through: "2026-06-27T00:00:00.000Z",
+            requested_ranges: [
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-06-27T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED, RUN_RETRY],
+                ),
+            ],
+            covered_ranges: [
+                // A successful retry (RUN_RETRY) re-covers and extends past
+                // the window an earlier run (RUN_FAILED) failed on — the
+                // failed and covered ranges below deliberately OVERLAP
+                // (CHAOS-2791 D3: "overlapping-retry" scenario).
+                range(
+                    "2026-06-22T00:00:00.000Z",
+                    "2026-06-27T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_RETRY],
+                ),
+            ],
+            gaps: [],
+            stale_ranges: [],
+            failed_ranges: [
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-06-24T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED],
+                ),
+            ],
+        },
+    ],
+    sources: [
+        {
+            source_id: SOURCE_PLATFORM,
+            source_name: "fullchaos/platform-api",
+            status: "healthy",
+            covered_through: "2026-06-27T00:00:00.000Z",
+            gap_count: 0,
+            failed_range_count: 1,
+        },
+    ],
+};
+
+/**
+ * Second GitHub config's coverage (CHAOS-2791 D3: "concurrent same-provider
+ * configs"). Demonstrates that coverage summaries are scoped per config_id
+ * even when two configs share a provider — a distinct config_id/source pair
+ * from the primary sample config above.
+ */
+export const SAMPLE_COVERAGE_CONCURRENT_CONFIG: SyncCoverageSummary = {
+    config_id: CONFIG_ID_SECONDARY,
+    provider: PROVIDER,
+    generated_at: GENERATED_AT,
+    data_basis: "planner",
+    history_lookback_days: 180,
+    truncated_before: TRUNCATED_BEFORE,
+    overall: {
+        health: "healthy",
+        latest_successful_run_at: "2026-07-02T12:30:00.000Z",
+        latest_covered_through: "2026-07-02T12:30:00.000Z",
+        next_scheduled_run_at: "2026-07-02T13:30:00.000Z",
+        gap_count: 0,
+        stale_dataset_count: 0,
+        failed_range_count: 0,
+    },
+    datasets: [
+        {
+            dataset_key: "git",
+            status: "healthy",
+            covered_through: "2026-07-02T12:30:00.000Z",
+            requested_ranges: [
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T12:30:00.000Z",
+                    [SOURCE_SECONDARY],
+                    [RUN_CONCURRENT],
+                ),
+            ],
+            covered_ranges: [
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T12:30:00.000Z",
+                    [SOURCE_SECONDARY],
+                    [RUN_CONCURRENT],
+                ),
+            ],
+            gaps: [],
+            stale_ranges: [],
+            failed_ranges: [],
+        },
+    ],
+    sources: [
+        {
+            source_id: SOURCE_SECONDARY,
+            source_name: "fullchaos/second-repo",
+            status: "healthy",
+            covered_through: "2026-07-02T12:30:00.000Z",
+            gap_count: 0,
+            failed_range_count: 0,
+        },
+    ],
+};
+
 /** Named scenarios selectable via the `?coverage_scenario=` test-mode query param. */
 export const SYNC_COVERAGE_SAMPLES = {
     healthy: SAMPLE_COVERAGE_HEALTHY,
@@ -356,13 +538,17 @@ export const SYNC_COVERAGE_SAMPLES = {
     failed: SAMPLE_COVERAGE_FAILED,
     stale: SAMPLE_COVERAGE_STALE,
     insufficient_data: SAMPLE_COVERAGE_INSUFFICIENT_DATA,
+    overlapping_retry: SAMPLE_COVERAGE_OVERLAPPING_RETRY,
+    concurrent_config: SAMPLE_COVERAGE_CONCURRENT_CONFIG,
 } satisfies Record<string, SyncCoverageSummary>;
 
 export type SyncCoverageSampleScenario = keyof typeof SYNC_COVERAGE_SAMPLES;
 
 export const DEFAULT_SYNC_COVERAGE_SCENARIO: SyncCoverageSampleScenario = "gaps";
 
-export function resolveSyncCoverageSampleScenario(value: string | undefined): SyncCoverageSampleScenario {
+export function resolveSyncCoverageSampleScenario(
+    value: string | undefined,
+): SyncCoverageSampleScenario {
     if (value && Object.hasOwn(SYNC_COVERAGE_SAMPLES, value)) {
         return value as SyncCoverageSampleScenario;
     }
@@ -389,16 +575,12 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         sync_run: {
             mode: "incremental",
             triggered_by: "scheduled",
-            requested_range: jobRange(
-                "2026-07-02T12:00:00.000Z",
-                "2026-07-02T13:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
-            covered_range: jobRange(
-                "2026-07-02T12:00:00.000Z",
-                "2026-07-02T13:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
+            requested_range: jobRange("2026-07-02T12:00:00.000Z", "2026-07-02T13:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
+            covered_range: jobRange("2026-07-02T12:00:00.000Z", "2026-07-02T13:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
             total_units: 4,
             completed_units: 4,
             failed_units: 0,
@@ -418,16 +600,14 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         sync_run: {
             mode: "incremental",
             triggered_by: "admin@devhealth.example",
-            requested_range: jobRange(
-                "2026-06-20T00:00:00.000Z",
-                "2026-07-01T09:00:00.000Z",
-                [SOURCE_PLATFORM, SOURCE_BILLING],
-            ),
-            covered_range: jobRange(
-                "2026-06-20T00:00:00.000Z",
-                "2026-06-28T00:00:00.000Z",
-                [SOURCE_PLATFORM, SOURCE_BILLING],
-            ),
+            requested_range: jobRange("2026-06-20T00:00:00.000Z", "2026-07-01T09:00:00.000Z", [
+                SOURCE_PLATFORM,
+                SOURCE_BILLING,
+            ]),
+            covered_range: jobRange("2026-06-20T00:00:00.000Z", "2026-06-28T00:00:00.000Z", [
+                SOURCE_PLATFORM,
+                SOURCE_BILLING,
+            ]),
             total_units: 6,
             completed_units: 4,
             failed_units: 1,
@@ -448,11 +628,9 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         sync_run: {
             mode: "full_resync",
             triggered_by: "scheduled",
-            requested_range: jobRange(
-                "2026-06-20T00:00:00.000Z",
-                "2026-07-02T00:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
+            requested_range: jobRange("2026-06-20T00:00:00.000Z", "2026-07-02T00:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
             covered_range: null,
             total_units: 3,
             completed_units: 0,
@@ -473,16 +651,12 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         sync_run: {
             mode: "incremental",
             triggered_by: "scheduled",
-            requested_range: jobRange(
-                "2026-05-01T00:00:00.000Z",
-                "2026-06-10T00:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
-            covered_range: jobRange(
-                "2026-05-01T00:00:00.000Z",
-                "2026-06-10T00:00:00.000Z",
-                [SOURCE_PLATFORM],
-            ),
+            requested_range: jobRange("2026-05-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
+            covered_range: jobRange("2026-05-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z", [
+                SOURCE_PLATFORM,
+            ]),
             total_units: 2,
             completed_units: 2,
             failed_units: 0,
