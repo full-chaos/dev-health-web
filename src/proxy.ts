@@ -59,6 +59,17 @@ const ROUTE_LIMITS: Array<{
             maxRequests: 10,
         },
     },
+    {
+        // Token issuance abuse guard (CHAOS-2714): covers both
+        // POST .../sources/:id/tokens (create) and POST .../tokens/:id/rotate.
+        match: (method, pathname) => method === "POST" && isCustomerPushTokenIssuancePath(pathname),
+        opts: {
+            failClosed: true,
+            namespace: "admin-customer-push-token-issue",
+            windowMs: 60 * 60_000,
+            maxRequests: 20,
+        },
+    },
 ];
 
 const EXACT_PUBLIC_PATHS = [
@@ -129,6 +140,13 @@ function buildCspHeader(nonce: string): string {
     ].join("; ");
 }
 
+function isCustomerPushTokenIssuancePath(pathname: string): boolean {
+    return (
+        pathname.startsWith("/api/v1/admin/customer-push/") &&
+        (/\/sources\/[^/]+\/tokens$/.test(pathname) || /\/tokens\/[^/]+\/rotate$/.test(pathname))
+    );
+}
+
 function pathBucket(pathname: string): string {
     if (pathname.startsWith("/api/v1/auth/login")) return "auth-login";
     if (
@@ -140,6 +158,9 @@ function pathBucket(pathname: string): string {
     if (pathname.startsWith("/api/v1/auth/")) return "auth-other";
     if (pathname.startsWith("/api/v1/admin/credentials/test-connection"))
         return "admin-credentials-test-connection";
+    // Bucket by route shape, not the dynamic source/token id in the path —
+    // otherwise rotating across ids would reset the counter per id.
+    if (isCustomerPushTokenIssuancePath(pathname)) return "admin-customer-push-token-issue";
     return pathname;
 }
 
@@ -161,9 +182,10 @@ async function enforceProxyRateLimit(
     const env = getServerEnv();
     const clientIp = getClientIp(request, { trustProxy: isTrustProxyEnabled(env.TRUST_PROXY) });
     const bucket = pathBucket(pathname);
-    const identity = pathname.startsWith("/api/v1/admin/credentials/test-connection")
-        ? `user:${sessionUserId ?? `ip:${clientIp}`}`
-        : `ip:${clientIp}`;
+    const isUserKeyed =
+        pathname.startsWith("/api/v1/admin/credentials/test-connection") ||
+        isCustomerPushTokenIssuancePath(pathname);
+    const identity = isUserKeyed ? `user:${sessionUserId ?? `ip:${clientIp}`}` : `ip:${clientIp}`;
     const key = `proxy:${method}:${bucket}:${identity}`;
     const result = await checkRateLimit(key, routeLimit.opts);
 

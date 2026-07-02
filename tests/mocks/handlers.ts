@@ -19,6 +19,10 @@ import type {
     MockSyncConfig,
     MockTeam,
     MockIdentity,
+    MockCustomerPushSource,
+    MockCustomerPushToken,
+    MockCustomerPushTokenCreateResponse,
+    MockCustomerPushBatch,
 } from "./types";
 
 import {
@@ -793,6 +797,199 @@ const MOCK_REPOSITORY_SELECTIONS = new Map<string, { owner: string; repos: strin
 ]);
 const MOCK_TEAMS: MockTeam[] = [];
 const MOCK_IDENTITIES: MockIdentity[] = [];
+
+// ---- Customer Push (CHAOS-2690/2714) ----
+// Vocabulary (field names, enum values) mirrors the real ops backend
+// contract exactly — verified against dev-health-ops
+// api/admin/routers/customer_push.py + api/admin/schemas/customer_push.py
+// source (CHAOS-2696/2712/2694, merged into chaos-2690-integration), not
+// just the design doc's illustrative sketch. See src/lib/admin/types.ts's
+// "Customer Push" section for the same corrections.
+
+const MOCK_CUSTOMER_PUSH_SOURCES: MockCustomerPushSource[] = [
+    {
+        id: "cps-github-1",
+        org_id: "org-e2e",
+        system: "github",
+        instance: "meridian/api",
+        display_name: "Meridian API (GitHub)",
+        mode: "customer_push",
+        enabled: true,
+        webhook_mode: "disabled",
+        matched_integration_source_id: null,
+        created_at: "2026-06-25T00:00:00.000Z",
+        updated_at: "2026-06-25T00:00:00.000Z",
+        warnings: [],
+    },
+];
+
+const MOCK_CUSTOMER_PUSH_TOKENS: MockCustomerPushToken[] = [
+    {
+        id: "cpt-1",
+        org_id: "org-e2e",
+        name: "CI runner",
+        source_id: "cps-github-1",
+        token_prefix: "fcpush_ab12cd34",
+        scopes: ["schema:read", "ingest:write", "ingest:status"],
+        last_used_at: "2026-06-26T00:00:00.000Z",
+        expires_at: null,
+        revoked_at: null,
+        created_at: "2026-06-25T00:00:00.000Z",
+    },
+];
+
+const MOCK_CUSTOMER_PUSH_BATCHES: MockCustomerPushBatch[] = [
+    {
+        ingestion_id: "batch-completed-1",
+        org_id: "org-e2e",
+        status: "completed",
+        attempts: 1,
+        source_system: "github",
+        source_instance: "meridian/api",
+        producer: "dev-hops-cli",
+        producer_version: "0.12.0",
+        schema_version: "external-ingest.v1",
+        window_started_at: "2026-06-25T00:00:00.000Z",
+        window_ended_at: "2026-06-26T00:00:00.000Z",
+        items_received: 500,
+        items_accepted: 500,
+        items_rejected: 0,
+        record_counts: { "pull_request.v1": 300, "review.v1": 200 },
+        error_summary: null,
+        created_at: "2026-06-26T00:01:00.000Z",
+        updated_at: "2026-06-26T00:03:00.000Z",
+        completed_at: "2026-06-26T00:03:00.000Z",
+        rejected_records: [],
+        rejected_records_total: 0,
+        rejected_records_limit: 50,
+        rejected_records_offset: 0,
+    },
+    {
+        ingestion_id: "batch-partial-1",
+        org_id: "org-e2e",
+        status: "partial",
+        attempts: 1,
+        source_system: "github",
+        source_instance: "meridian/api",
+        producer: "github-actions",
+        producer_version: "0.12.0",
+        schema_version: "external-ingest.v1",
+        window_started_at: "2026-06-26T00:00:00.000Z",
+        window_ended_at: "2026-06-27T00:00:00.000Z",
+        items_received: 100,
+        items_accepted: 92,
+        items_rejected: 8,
+        record_counts: { "pull_request.v1": 100 },
+        error_summary: {
+            total_rejected: 8,
+            stored_rejections: 8,
+            truncated: false,
+            top_codes: [
+                { code: "missing_external_id", count: 5 },
+                { code: "unsupported_kind_for_system", count: 3 },
+            ],
+        },
+        created_at: "2026-06-27T00:01:00.000Z",
+        updated_at: "2026-06-27T00:02:30.000Z",
+        completed_at: "2026-06-27T00:02:30.000Z",
+        rejected_records: [
+            {
+                index: 12,
+                kind: "pull_request.v1",
+                external_id: "PR#88",
+                code: "missing_external_id",
+                path: "records[12].externalId",
+                message: "externalId is required",
+            },
+            {
+                index: 47,
+                kind: "work_item.v1",
+                external_id: null,
+                code: "unsupported_kind_for_system",
+                path: "records[47].kind",
+                message: "work_item.v1 is not supported for source system github",
+            },
+        ],
+        rejected_records_total: 8,
+        rejected_records_limit: 50,
+        rejected_records_offset: 0,
+    },
+    {
+        ingestion_id: "batch-processing-1",
+        org_id: "org-e2e",
+        status: "processing",
+        attempts: 1,
+        source_system: "github",
+        source_instance: "meridian/api",
+        producer: "relay-customer-owned",
+        producer_version: "0.3.0",
+        schema_version: "external-ingest.v1",
+        window_started_at: "2026-06-28T00:00:00.000Z",
+        window_ended_at: "2026-06-28T00:30:00.000Z",
+        items_received: 50,
+        items_accepted: 0,
+        items_rejected: 0,
+        record_counts: null,
+        error_summary: null,
+        created_at: "2026-06-28T00:31:00.000Z",
+        updated_at: "2026-06-28T00:31:00.000Z",
+        completed_at: null,
+        rejected_records: [],
+        rejected_records_total: 0,
+        rejected_records_limit: 50,
+        rejected_records_offset: 0,
+    },
+];
+
+// Mirrors GET /customer-push/schemas — a camelCase pass-through of the
+// data-plane schema shape ({schemaVersions, recordKinds, limits}), NOT a
+// `schemas: [...]` list of per-version entries.
+const MOCK_CUSTOMER_PUSH_SCHEMAS = {
+    schemaVersions: ["external-ingest.v1"],
+    recordKinds: [
+        "repository.v1",
+        "pull_request.v1",
+        "review.v1",
+        "commit.v1",
+        "work_item.v1",
+        "work_item_transition.v1",
+        "work_item_dependency.v1",
+        "team.v1",
+        "identity.v1",
+    ],
+    limits: { maxRecordsPerBatch: 1000, maxBodyBytes: 10_000_000 },
+};
+
+/** Mirrors _resolve_ownership's 409 detail={code, message} shape exactly. */
+function customerPushOwnershipConflict(system: string, instance: string) {
+    return HttpResponse.json(
+        {
+            detail: {
+                code: "source_owned_by_fullchaos_sync",
+                message: `A managed ${system} sync source already owns '${instance}' in this organization; disable it before enabling customer-push for the same instance.`,
+            },
+        },
+        { status: 409 },
+    );
+}
+
+/**
+ * Mirrors the real router's OTHER 409 path: the (org_id, system, instance)
+ * unique-constraint IntegrityError when the exact same customer-push source
+ * is registered twice. Distinct plain-string detail (no {code,message})
+ * from the ownership-conflict 409 above — a real, different failure mode.
+ */
+function customerPushDuplicateSourceConflict(system: string, instance: string) {
+    return HttpResponse.json(
+        {
+            detail: `A source is already registered for system='${system}' instance='${instance}' in this organization`,
+        },
+        { status: 409 },
+    );
+}
+
+/** Special-case instance value that simulates a matching, enabled managed-sync source (CC5). */
+const MOCK_MANAGED_SYNC_OWNED_INSTANCE = "owned-by-managed-sync";
 
 const buildDeploymentFlameResponse = (deploymentId: string) => ({
     entity: {
@@ -2871,6 +3068,247 @@ export const handlers = [
             return HttpResponse.json(MOCK_SYNC_JOBS);
         }
         return HttpResponse.json([]);
+    }),
+
+    // ---- Customer Push (CHAOS-2690/2714) ----
+
+    // GET /customer-push/sources has NO server-side system filter in the
+    // real router — it always returns every source for the org.
+    http.get("*/api/v1/admin/customer-push/sources", () =>
+        HttpResponse.json<MockCustomerPushSource[]>(MOCK_CUSTOMER_PUSH_SOURCES),
+    ),
+
+    http.post("*/api/v1/admin/customer-push/sources", async ({ request }) => {
+        const body = (await request.json()) as Partial<MockCustomerPushSource> | null;
+        const system = body?.system ?? "github";
+        const instance = body?.instance ?? "";
+        if (instance === MOCK_MANAGED_SYNC_OWNED_INSTANCE) {
+            return customerPushOwnershipConflict(system, instance);
+        }
+        const duplicate = MOCK_CUSTOMER_PUSH_SOURCES.some(
+            (s) => s.system === system && s.instance === instance,
+        );
+        if (duplicate) {
+            return customerPushDuplicateSourceConflict(system, instance);
+        }
+        const created: MockCustomerPushSource = {
+            id: `cps-${Date.now()}`,
+            org_id: "org-e2e",
+            system,
+            instance,
+            display_name: body?.display_name ?? null,
+            mode: "customer_push",
+            enabled: true,
+            webhook_mode: "disabled",
+            matched_integration_source_id: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            warnings: [],
+        };
+        MOCK_CUSTOMER_PUSH_SOURCES.push(created);
+        return HttpResponse.json<MockCustomerPushSource>(created, { status: 201 });
+    }),
+
+    http.get("*/api/v1/admin/customer-push/sources/:id", ({ params }) => {
+        const source = MOCK_CUSTOMER_PUSH_SOURCES.find((s) => s.id === params.id);
+        if (!source) {
+            return HttpResponse.json({ detail: "Source not found" }, { status: 404 });
+        }
+        return HttpResponse.json<MockCustomerPushSource>(source);
+    }),
+
+    http.patch("*/api/v1/admin/customer-push/sources/:id", async ({ params, request }) => {
+        const source = MOCK_CUSTOMER_PUSH_SOURCES.find((s) => s.id === params.id);
+        if (!source) {
+            return HttpResponse.json({ detail: "Source not found" }, { status: 404 });
+        }
+        const body = (await request.json()) as { enabled?: boolean; display_name?: string } | null;
+        if (typeof body?.enabled === "boolean") source.enabled = body.enabled;
+        if (body?.display_name) source.display_name = body.display_name;
+        source.updated_at = new Date().toISOString();
+        return HttpResponse.json<MockCustomerPushSource>(source);
+    }),
+
+    http.get("*/api/v1/admin/customer-push/sources/:id/tokens", ({ params }) => {
+        const tokens = MOCK_CUSTOMER_PUSH_TOKENS.filter((t) => t.source_id === params.id);
+        return HttpResponse.json<MockCustomerPushToken[]>(tokens);
+    }),
+
+    http.post("*/api/v1/admin/customer-push/sources/:id/tokens", async ({ params, request }) => {
+        const body = (await request.json()) as {
+            name?: string;
+            scopes?: string[];
+            expires_at?: string | null;
+        } | null;
+        const tokenPrefix = `fcpush_${Math.random().toString(36).slice(2, 10)}`;
+        const created: MockCustomerPushTokenCreateResponse = {
+            id: `cpt-${Date.now()}`,
+            org_id: "org-e2e",
+            name: body?.name ?? "Ingest token",
+            source_id: params.id as string,
+            token_prefix: tokenPrefix,
+            scopes: body?.scopes ?? ["schema:read", "ingest:write", "ingest:status"],
+            last_used_at: null,
+            expires_at: body?.expires_at ?? null,
+            revoked_at: null,
+            created_at: new Date().toISOString(),
+            token: `${tokenPrefix}${Date.now().toString(36)}`,
+        };
+        MOCK_CUSTOMER_PUSH_TOKENS.push(created);
+        return HttpResponse.json<MockCustomerPushTokenCreateResponse>(created, { status: 201 });
+    }),
+
+    http.post("*/api/v1/admin/customer-push/tokens/:id/rotate", ({ params }) => {
+        const token = MOCK_CUSTOMER_PUSH_TOKENS.find((t) => t.id === params.id);
+        if (!token) {
+            return HttpResponse.json({ detail: "Token not found" }, { status: 404 });
+        }
+        // Real backend: hard cutover — revokes the old token and mints a new
+        // one with a NEW id (not a same-id refresh).
+        token.revoked_at = new Date().toISOString();
+        const tokenPrefix = `fcpush_${Math.random().toString(36).slice(2, 10)}`;
+        const rotated: MockCustomerPushTokenCreateResponse = {
+            id: `cpt-${Date.now()}`,
+            org_id: token.org_id,
+            name: token.name,
+            source_id: token.source_id,
+            token_prefix: tokenPrefix,
+            scopes: token.scopes,
+            last_used_at: null,
+            expires_at: token.expires_at,
+            revoked_at: null,
+            created_at: new Date().toISOString(),
+            token: `${tokenPrefix}${Date.now().toString(36)}`,
+        };
+        MOCK_CUSTOMER_PUSH_TOKENS.push(rotated);
+        return HttpResponse.json<MockCustomerPushTokenCreateResponse>(rotated);
+    }),
+
+    http.post("*/api/v1/admin/customer-push/tokens/:id/revoke", ({ params }) => {
+        const token = MOCK_CUSTOMER_PUSH_TOKENS.find((t) => t.id === params.id);
+        if (!token) {
+            return HttpResponse.json({ detail: "Token not found" }, { status: 404 });
+        }
+        token.revoked_at = new Date().toISOString();
+        return HttpResponse.json<MockCustomerPushToken>(token);
+    }),
+
+    // Real endpoint returns a paginated envelope {items, total, limit,
+    // offset}, not a bare array.
+    http.get("*/api/v1/admin/customer-push/sources/:id/batches", ({ params, request }) => {
+        const url = new URL(request.url);
+        const status = url.searchParams.get("status");
+        const producer = url.searchParams.get("producer");
+        const limit = Number(url.searchParams.get("limit") ?? "50");
+        const offset = Number(url.searchParams.get("offset") ?? "0");
+        const source = MOCK_CUSTOMER_PUSH_SOURCES.find((s) => s.id === params.id);
+        let batches = source
+            ? MOCK_CUSTOMER_PUSH_BATCHES.filter(
+                  (b) => b.source_system === source.system && b.source_instance === source.instance,
+              )
+            : [];
+        if (status) batches = batches.filter((b) => b.status === status);
+        if (producer) batches = batches.filter((b) => b.producer === producer);
+        const total = batches.length;
+        const page = batches
+            .slice(offset, offset + limit)
+            .map(
+                ({
+                    org_id: _org_id,
+                    attempts: _attempts,
+                    producer_version: _producer_version,
+                    schema_version: _schema_version,
+                    window_started_at: _window_started_at,
+                    window_ended_at: _window_ended_at,
+                    record_counts: _record_counts,
+                    error_summary: _error_summary,
+                    updated_at: _updated_at,
+                    rejected_records: _rejected_records,
+                    rejected_records_total: _rejected_records_total,
+                    rejected_records_limit: _rejected_records_limit,
+                    rejected_records_offset: _rejected_records_offset,
+                    recompute_status: _recompute_status,
+                    ...listItem
+                }) => listItem,
+            );
+        return HttpResponse.json({ items: page, total, limit, offset });
+    }),
+
+    http.get("*/api/v1/admin/customer-push/batches/:id", ({ params }) => {
+        const batch = MOCK_CUSTOMER_PUSH_BATCHES.find((b) => b.ingestion_id === params.id);
+        if (!batch) {
+            return HttpResponse.json({ detail: "Batch not found" }, { status: 404 });
+        }
+        return HttpResponse.json<MockCustomerPushBatch>(batch);
+    }),
+
+    http.get("*/api/v1/admin/customer-push/schemas", () =>
+        HttpResponse.json(MOCK_CUSTOMER_PUSH_SCHEMAS),
+    ),
+
+    http.get("*/api/v1/admin/customer-push/schemas/:version", ({ params }) => {
+        if (params.version !== MOCK_CUSTOMER_PUSH_SCHEMAS.schemaVersions[0]) {
+            return HttpResponse.json(
+                { detail: `Unknown schema version: '${params.version}'` },
+                { status: 404 },
+            );
+        }
+        return HttpResponse.json({
+            schemaVersion: MOCK_CUSTOMER_PUSH_SCHEMAS.schemaVersions[0],
+            envelope: { type: "object" },
+            recordKinds: Object.fromEntries(
+                MOCK_CUSTOMER_PUSH_SCHEMAS.recordKinds.map((kind) => [kind, { type: "object" }]),
+            ),
+            limits: MOCK_CUSTOMER_PUSH_SCHEMAS.limits,
+        });
+    }),
+
+    http.post("*/api/v1/admin/customer-push/sources/:id/validate", async ({ request }) => {
+        const body = (await request.json()) as {
+            records?: Array<{ kind?: string; externalId?: string; payload?: unknown }>;
+        } | null;
+        const records = body?.records ?? [];
+
+        if (records.length === 0) {
+            return HttpResponse.json({
+                valid: false,
+                items_accepted: 0,
+                items_rejected: 0,
+                errors: [
+                    {
+                        index: 0,
+                        kind: "unknown",
+                        external_id: null,
+                        code: "invalid_envelope",
+                        path: "records",
+                        message: "records must contain at least 1 item",
+                    },
+                ],
+            });
+        }
+
+        const errors = records.flatMap((record, index) => {
+            if (!record.externalId) {
+                return [
+                    {
+                        index,
+                        kind: record.kind ?? "unknown",
+                        external_id: null,
+                        code: "missing_required_field",
+                        path: `records[${index}].externalId`,
+                        message: "externalId is required",
+                    },
+                ];
+            }
+            return [];
+        });
+
+        return HttpResponse.json({
+            valid: errors.length === 0,
+            items_accepted: records.length - errors.length,
+            items_rejected: errors.length,
+            errors,
+        });
     }),
 
     http.get("*/api/v1/admin/teams", () => HttpResponse.json(MOCK_TEAMS)),

@@ -140,6 +140,101 @@ export interface MockIdentity {
     user_id: string;
 }
 
+/**
+ * Mirrors IngestSourceResponse (dev-health-ops
+ * api/admin/schemas/customer_push.py, CHAOS-2696) — verified against the
+ * real router source, NOT the CHAOS-2714 design doc's illustrative sketch.
+ * No `conflicting_managed_sync` field exists; the backend returns
+ * `matched_integration_source_id` + a `warnings` string array instead.
+ */
+export interface MockCustomerPushSource {
+    id: string;
+    org_id: string;
+    system: string;
+    instance: string;
+    display_name: string | null;
+    mode: "fullchaos_sync" | "customer_push" | "disabled";
+    enabled: boolean;
+    webhook_mode: "disabled" | "customer_relay" | "fullchaos_hosted";
+    matched_integration_source_id: string | null;
+    created_at: string;
+    updated_at: string;
+    warnings: string[];
+}
+
+/** Mirrors IngestTokenResponse — no status/last_result field, derived client-side. */
+export interface MockCustomerPushToken {
+    id: string;
+    org_id: string;
+    name: string;
+    source_id: string | null;
+    token_prefix: string;
+    scopes: string[];
+    last_used_at: string | null;
+    expires_at: string | null;
+    revoked_at: string | null;
+    created_at: string;
+}
+
+/** Mirrors IngestTokenCreateResponse — one-time plaintext token. */
+export interface MockCustomerPushTokenCreateResponse extends MockCustomerPushToken {
+    token: string;
+}
+
+/** Mirrors AdminBatchListItemResponse — the LIST shape is deliberately thinner than the detail. */
+export interface MockCustomerPushBatchListItem {
+    ingestion_id: string;
+    status: "accepted" | "stream_unavailable" | "processing" | "completed" | "partial" | "failed";
+    source_system: string;
+    source_instance: string;
+    producer: string | null;
+    items_received: number;
+    items_accepted: number;
+    items_rejected: number;
+    created_at: string;
+    completed_at: string | null;
+}
+
+/** Mirrors AdminBatchResponse (detail) — has no `source_id`; no `recompute_status` yet in this branch. */
+export interface MockCustomerPushBatch {
+    ingestion_id: string;
+    org_id: string;
+    status: "accepted" | "stream_unavailable" | "processing" | "completed" | "partial" | "failed";
+    attempts: number;
+    source_system: string;
+    source_instance: string;
+    producer: string | null;
+    producer_version: string | null;
+    schema_version: string;
+    window_started_at: string | null;
+    window_ended_at: string | null;
+    items_received: number;
+    items_accepted: number;
+    items_rejected: number;
+    record_counts: Record<string, number> | null;
+    error_summary: {
+        total_rejected: number;
+        stored_rejections: number;
+        truncated: boolean;
+        top_codes: Array<{ code: string; count: number }>;
+    } | null;
+    created_at: string;
+    updated_at: string;
+    completed_at: string | null;
+    rejected_records: Array<{
+        index: number;
+        kind: string;
+        external_id: string | null;
+        code: string;
+        path: string | null;
+        message: string;
+    }>;
+    rejected_records_total: number;
+    rejected_records_limit: number;
+    rejected_records_offset: number;
+    recompute_status?: "not_applicable" | "pending" | "dispatched" | "skipped_no_scope" | "failed";
+}
+
 /** Full credential response as returned by GET /api/v1/admin/credentials. */
 export type IntegrationCredentialResponse = MockCredential;
 

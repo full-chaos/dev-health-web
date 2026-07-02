@@ -14,11 +14,13 @@ import { retentionApi } from "./api/retention";
 import { llmSettingsApi } from "./api/llm-settings";
 import { platformApi, impersonationApi } from "./api/platform";
 import { setupApi } from "./api/setup";
+import { customerPushApi } from "./api/customer-push";
 
 export const adminApi = {
     settings: settingsApi,
     credentials: credentialsApi,
     syncConfigs: syncConfigsApi,
+    customerPush: customerPushApi,
     identities: identitiesApi,
     teams: teamsApi,
     users: usersApi,

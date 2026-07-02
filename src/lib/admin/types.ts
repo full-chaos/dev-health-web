@@ -802,3 +802,205 @@ export interface DeletionPlan {
     credentialDeletionCount: number;
     warnings: string[];
 }
+
+// ---- Customer Push (CHAOS-2690/2714) ----
+//
+// Mirrors dev-health-ops/api/admin/routers/customer_push.py and
+// api/admin/schemas/customer_push.py EXACTLY — verified 2026-07-02 against
+// the real router/schema source in the ops chaos-2690-integration branch
+// (CHAOS-2696/2712/2694 are merged there), not just the design-doc sketch.
+// Real-backend corrections vs. the earlier design-doc-only draft of this
+// section:
+//   - source rows use `id`, not `source_id`; there is NO
+//     `conflicting_managed_sync` boolean — the backend returns
+//     `matched_integration_source_id` (the CC5-matched managed source, if
+//     any) plus a `warnings` string array to render verbatim.
+//   - `GET /customer-push/sources` has NO server-side `?system=` filter —
+//     it always returns every source for the org; filter client-side.
+//   - token rows carry `token_prefix` (always present) and NO
+//     `status`/`last_result` field — status is derived client-side from
+//     revoked_at/expires_at/last_used_at, see
+//     src/lib/customer-push/token-status.ts. Token prefix is `fcpush_`.
+//   - `POST .../tokens` request body has no `source_id` — it's implied by
+//     the URL (`/sources/{id}/tokens` vs. the org-wide `/tokens`).
+//   - batch LIST items (`GET .../sources/{id}/batches`) are wrapped in a
+//     paginated envelope `{items, total, limit, offset}`, NOT a bare array,
+//     and carry `source_system`/`source_instance` (no `source_id`,
+//     `producer_version`, or window_started_at/ended_at — those only exist
+//     on the single-batch detail response).
+//   - batch DETAIL (`GET .../batches/{id}`) additionally carries `attempts`,
+//     `updated_at`, and `rejected_records_total/limit/offset` (the rejected-
+//     records sub-list is itself paginated, default limit 50). It has NO
+//     `recompute_status` field yet in this branch — CHAOS-2699 adds that in
+//     wave 3; treat it as optional until then.
+//   - `error_summary.top_codes` is an array of `{code, count}` sorted
+//     descending by count, NOT a `Record<string, number>`.
+//   - `GET .../schemas` returns `{schemaVersions, recordKinds, limits}`
+//     (camelCase — a pass-through of the data-plane schema shape), not a
+//     `schemas: [...]` list of per-version entries.
+
+export type CustomerPushSystem = Provider | "custom";
+export type CustomerPushMode = "fullchaos_sync" | "customer_push" | "disabled";
+export type CustomerPushWebhookMode = "disabled" | "customer_relay" | "fullchaos_hosted";
+export type CustomerPushBatchStatus =
+    "accepted" | "stream_unavailable" | "processing" | "completed" | "partial" | "failed";
+export type CustomerPushScope = "schema:read" | "ingest:write" | "ingest:status";
+export type CustomerPushRecomputeStatus =
+    "not_applicable" | "pending" | "dispatched" | "skipped_no_scope" | "failed";
+
+export interface CustomerPushSource {
+    id: string;
+    org_id: string;
+    system: CustomerPushSystem;
+    instance: string;
+    display_name: string | null;
+    mode: CustomerPushMode;
+    enabled: boolean;
+    webhook_mode: CustomerPushWebhookMode;
+    /** CC5-matched managed-sync source id, whether or not it's actively enabled. */
+    matched_integration_source_id: string | null;
+    /** Non-blocking, backend-authored warning copy — render verbatim. */
+    warnings: string[];
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CustomerPushSourceCreate {
+    system: CustomerPushSystem;
+    instance: string;
+    display_name?: string;
+}
+
+export interface CustomerPushSourceUpdate {
+    enabled?: boolean;
+    display_name?: string;
+}
+
+/** List/detail item — never includes the plaintext token. */
+export interface CustomerPushToken {
+    id: string;
+    org_id: string;
+    name: string;
+    source_id: string | null;
+    token_prefix: string;
+    scopes: CustomerPushScope[];
+    last_used_at: string | null;
+    expires_at: string | null;
+    revoked_at: string | null;
+    created_at: string;
+}
+
+export interface CustomerPushTokenCreate {
+    name: string;
+    scopes: CustomerPushScope[];
+    expires_at?: string | null;
+}
+
+/** Create/rotate response only — the plaintext token is shown exactly once. */
+export interface CustomerPushTokenCreateResponse {
+    id: string;
+    org_id: string;
+    token: string;
+    token_prefix: string;
+    name: string;
+    source_id: string | null;
+    scopes: CustomerPushScope[];
+    expires_at: string | null;
+    created_at: string;
+}
+
+/** GET .../sources/{id}/batches list item — a deliberately thinner shape than the detail response. */
+export interface CustomerPushBatchSummary {
+    ingestion_id: string;
+    source_system: CustomerPushSystem;
+    source_instance: string;
+    producer: string | null;
+    status: CustomerPushBatchStatus;
+    items_received: number;
+    items_accepted: number;
+    items_rejected: number;
+    created_at: string;
+    completed_at: string | null;
+}
+
+export interface CustomerPushBatchListResponse {
+    items: CustomerPushBatchSummary[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
+export interface CustomerPushRejectedRecord {
+    index: number;
+    kind: string;
+    external_id: string | null;
+    code: string;
+    path: string | null;
+    message: string;
+}
+
+export interface CustomerPushErrorSummary {
+    total_rejected: number;
+    stored_rejections: number;
+    truncated: boolean;
+    top_codes: Array<{ code: string; count: number }>;
+}
+
+export interface CustomerPushBatchDetail {
+    ingestion_id: string;
+    org_id: string;
+    status: CustomerPushBatchStatus;
+    attempts: number;
+    source_system: CustomerPushSystem;
+    source_instance: string;
+    producer: string | null;
+    producer_version: string | null;
+    schema_version: string;
+    window_started_at: string | null;
+    window_ended_at: string | null;
+    items_received: number;
+    items_accepted: number;
+    items_rejected: number;
+    record_counts: Record<string, number> | null;
+    error_summary: CustomerPushErrorSummary | null;
+    created_at: string;
+    updated_at: string;
+    completed_at: string | null;
+    rejected_records: CustomerPushRejectedRecord[];
+    rejected_records_total: number;
+    rejected_records_limit: number;
+    rejected_records_offset: number;
+    /** Not surfaced by this branch's status.py yet — CHAOS-2699 (wave 3) adds it. */
+    recompute_status?: CustomerPushRecomputeStatus;
+}
+
+export interface CustomerPushValidateResponse {
+    valid: boolean;
+    items_accepted: number;
+    items_rejected: number;
+    errors: CustomerPushRejectedRecord[];
+}
+
+/** GET .../schemas — camelCase pass-through of the data-plane schema shape. */
+export interface CustomerPushSchemaListResponse {
+    schemaVersions: string[];
+    recordKinds: string[];
+    limits: { maxRecordsPerBatch: number; maxBodyBytes: number };
+}
+
+/** GET .../schemas/{version} — camelCase pass-through, JSON-Schema bodies. */
+export interface CustomerPushSchemaDetailResponse {
+    schemaVersion: string;
+    envelope: Record<string, unknown>;
+    recordKinds: Record<string, Record<string, unknown>>;
+    limits: { maxRecordsPerBatch: number; maxBodyBytes: number };
+}
+
+export interface CustomerPushBatchListParams {
+    status?: CustomerPushBatchStatus;
+    producer?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+}
