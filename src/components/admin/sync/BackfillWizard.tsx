@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -68,6 +68,32 @@ export function BackfillWizard({
     const [isPending, startTransition] = useTransition();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submittedSyncRunId, setSubmittedSyncRunId] = useState<string | null>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const onCloseActionRef = useRef(onCloseAction);
+    useEffect(() => {
+        onCloseActionRef.current = onCloseAction;
+    }, [onCloseAction]);
+
+    // Modal a11y (CHAOS-2796): move focus into the dialog on open and restore
+    // it to whatever was focused before (the trigger button) on close. Escape
+    // is handled via a document-level listener — rather than an onKeyDown on
+    // the overlay — so it works no matter where focus currently sits; an
+    // overlay-only handler misses Escape while focus is still on the
+    // background trigger that opened the wizard.
+    useEffect(() => {
+        const previouslyFocused = document.activeElement as HTMLElement | null;
+        dialogRef.current?.focus();
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") onCloseActionRef.current();
+        }
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("keydown", handleKeyDown);
+            previouslyFocused?.focus();
+        };
+    }, []);
 
     const days = rangeDays(since, before);
     const hasBothDates = Boolean(since) && Boolean(before);
@@ -107,21 +133,21 @@ export function BackfillWizard({
     };
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-            onKeyDown={(event) => {
-                if (event.key === "Escape") onCloseAction();
-            }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="backfill-wizard-title"
-                className="w-full max-w-xl rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl"
+                tabIndex={-1}
+                className="w-full max-w-xl rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl focus:outline-none"
             >
                 <div className="flex items-center justify-between border-b border-(--card-stroke) p-6">
                     <div>
-                        <h2 id="backfill-wizard-title" className="text-lg font-semibold text-foreground">
+                        <h2
+                            id="backfill-wizard-title"
+                            className="text-lg font-semibold text-foreground"
+                        >
                             Run historical backfill
                         </h2>
                         <p className="mt-1 text-xs text-(--ink-muted)">
@@ -141,9 +167,9 @@ export function BackfillWizard({
                     {step === "range" && (
                         <>
                             <p className="text-sm text-(--ink-muted)">
-                                Backfill fetches historical data for the selected window. It does not
-                                affect incremental sync watermarks — regular scheduled syncs continue
-                                independently.
+                                Backfill fetches historical data for the selected window. It does
+                                not affect incremental sync watermarks — regular scheduled syncs
+                                continue independently.
                             </p>
 
                             <div className="flex items-end gap-3">
@@ -158,9 +184,14 @@ export function BackfillWizard({
                                         id="backfill-since"
                                         type="date"
                                         value={since}
-                                        onChange={(event) => setSince(event.target.value)}
+                                        onChange={(event) => {
+                                            setSince(event.target.value);
+                                            setExpensiveConfirmed(false);
+                                        }}
                                         aria-invalid={isRangeInvalid}
-                                        aria-describedby={isRangeInvalid ? RANGE_ERROR_ID : undefined}
+                                        aria-describedby={
+                                            isRangeInvalid ? RANGE_ERROR_ID : undefined
+                                        }
                                         className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                     />
                                 </div>
@@ -175,16 +206,25 @@ export function BackfillWizard({
                                         id="backfill-before"
                                         type="date"
                                         value={before}
-                                        onChange={(event) => setBefore(event.target.value)}
+                                        onChange={(event) => {
+                                            setBefore(event.target.value);
+                                            setExpensiveConfirmed(false);
+                                        }}
                                         aria-invalid={isRangeInvalid}
-                                        aria-describedby={isRangeInvalid ? RANGE_ERROR_ID : undefined}
+                                        aria-describedby={
+                                            isRangeInvalid ? RANGE_ERROR_ID : undefined
+                                        }
                                         className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                     />
                                 </div>
                             </div>
 
                             {isRangeInvalid && (
-                                <p id={RANGE_ERROR_ID} role="alert" className="text-sm text-(--negative)">
+                                <p
+                                    id={RANGE_ERROR_ID}
+                                    role="alert"
+                                    className="text-sm text-(--negative)"
+                                >
                                     Start date must be before end date.
                                 </p>
                             )}
@@ -247,7 +287,9 @@ export function BackfillWizard({
                                     <dt className="text-xs font-medium text-(--ink-muted) uppercase tracking-wider">
                                         Estimated chunks
                                     </dt>
-                                    <dd className="mt-1 text-foreground">~{chunkEstimate} (estimate)</dd>
+                                    <dd className="mt-1 text-foreground">
+                                        ~{chunkEstimate} (estimate)
+                                    </dd>
                                 </div>
                             </dl>
 
@@ -258,8 +300,8 @@ export function BackfillWizard({
                                 >
                                     <p className="text-sm font-medium text-(--caution)">
                                         ⚠ This range spans {days} days, more than{" "}
-                                        {EXPENSIVE_RANGE_THRESHOLD_DAYS}. Large backfills can take a long
-                                        time and consume significant sync capacity.
+                                        {EXPENSIVE_RANGE_THRESHOLD_DAYS}. Large backfills can take a
+                                        long time and consume significant sync capacity.
                                     </p>
                                     <label
                                         htmlFor="backfill-expensive-confirm"
