@@ -215,38 +215,38 @@ Columns/cards:
 ```yaml
 name: Push Dev Health Data
 on:
-  schedule:
-    - cron: "*/30 * * * *"
-  workflow_dispatch:
+    schedule:
+        - cron: "*/30 * * * *"
+    workflow_dispatch:
 
 jobs:
-  push-dev-health:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Generate payload
-        run: dev-hops push export github --repo "$GITHUB_REPOSITORY" --since "$SINCE" --until "$UNTIL" > payload.json
-      - name: Validate payload
-        run: dev-hops push validate payload.json --schema external-ingest.v1
-      - name: Push payload
-        run: dev-hops push batch payload.json --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
-        env:
-          FULLCHAOS_API_URL: ${{ vars.FULLCHAOS_API_URL }}
-          FULLCHAOS_ORG_ID: ${{ vars.FULLCHAOS_ORG_ID }}
-          FULLCHAOS_INGEST_TOKEN: ${{ secrets.FULLCHAOS_INGEST_TOKEN }}
+    push-dev-health:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Generate payload
+              run: dev-hops push export github --repo "$GITHUB_REPOSITORY" --since "$SINCE" --until "$UNTIL" > payload.json
+            - name: Validate payload
+              run: dev-hops push validate payload.json --schema external-ingest.v1
+            - name: Push payload
+              run: dev-hops push batch payload.json --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
+              env:
+                  FULLCHAOS_API_URL: ${{ vars.FULLCHAOS_API_URL }}
+                  FULLCHAOS_ORG_ID: ${{ vars.FULLCHAOS_ORG_ID }}
+                  FULLCHAOS_INGEST_TOKEN: ${{ secrets.FULLCHAOS_INGEST_TOKEN }}
 ```
 
 ### GitLab Runner example
 
 ```yaml
 push_dev_health:
-  image: ghcr.io/full-chaos/dev-hops:latest
-  script:
-    - dev-hops push export gitlab --project "$CI_PROJECT_PATH" --since "$SINCE" --until "$UNTIL" > payload.json
-    - dev-hops push validate payload.json --schema external-ingest.v1
-    - dev-hops push batch payload.json --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    image: ghcr.io/full-chaos/dev-hops:latest
+    script:
+        - dev-hops push export gitlab --project "$CI_PROJECT_PATH" --since "$SINCE" --until "$UNTIL" > payload.json
+        - dev-hops push validate payload.json --schema external-ingest.v1
+        - dev-hops push batch payload.json --api-url "$FULLCHAOS_API_URL" --token "$FULLCHAOS_INGEST_TOKEN" --org "$FULLCHAOS_ORG_ID" --poll
+    rules:
+        - if: $CI_PIPELINE_SOURCE == "schedule"
 ```
 
 ### cURL example
