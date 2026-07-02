@@ -33,6 +33,11 @@ export const toList = (value: string) =>
         .map((item) => item.trim())
         .filter(Boolean);
 
+const EMAIL_VALUE_PATTERN = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+
+export const toEmailList = (value: string) =>
+    toList(value).filter((item) => EMAIL_VALUE_PATTERN.test(item));
+
 export const toValue = (value?: string[]) => (value && value.length ? value.join(", ") : "");
 
 export const formatSelection = (values: string[], emptyLabel: string) => {

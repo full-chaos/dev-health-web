@@ -1,6 +1,6 @@
 import type { MetricFilter } from "@/lib/filters/types";
 import type { FilterVisibility } from "../filterBarConfig";
-import { toList, toValue } from "../filterBarUtils";
+import { toEmailList, toList, toValue } from "../filterBarUtils";
 import { HowSection } from "./HowSection";
 import { WhatSection } from "./WhatSection";
 import { WhoSection } from "./WhoSection";
@@ -44,6 +44,7 @@ export function AdvancedFiltersPanel({
                 <WhoSection
                     developers={developers}
                     roles={roles}
+                    toDeveloperList={toEmailList}
                     toList={toList}
                     toValue={toValue}
                     updateDevelopers={(nextValues) =>
