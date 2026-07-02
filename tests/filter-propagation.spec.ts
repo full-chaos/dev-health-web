@@ -23,7 +23,7 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
     });
     await page.getByRole("button", { name: /^Filters$/ }).click();
     await page.locator("summary", { hasText: "Who" }).click();
-    await page.getByPlaceholder("alice, bob").fill(value);
+    await page.getByPlaceholder("alice@example.com, bob@example.com").fill(value);
     await page.waitForFunction(
         (prev) => {
             const current = new URL(window.location.href).searchParams.get("f");
@@ -62,7 +62,11 @@ test.describe("filter propagation", () => {
     test("primary area routes retain filter param", async ({ page }) => {
         await page.goto("/dashboard");
         const initialFilter = await waitForFilterParam(page);
-        const updatedFilter = await updateDeveloperFilter(page, "dev-health-web", initialFilter);
+        const updatedFilter = await updateDeveloperFilter(
+            page,
+            "dev-health-web@example.com",
+            initialFilter,
+        );
 
         const nav = page.locator("aside nav");
         const areas = [
@@ -81,14 +85,18 @@ test.describe("filter propagation", () => {
                 new RegExp(`${area.path}(?:[?#].*)?$`),
             );
             await expectFilterParam(page, updatedFilter);
-            await expectDeveloperFilter(page, "dev-health-web");
+            await expectDeveloperFilter(page, "dev-health-web@example.com");
         }
     });
 
     test("diagnose child routes retain filter param", async ({ page }) => {
         await page.goto("/dashboard");
         const initialFilter = await waitForFilterParam(page);
-        const updatedFilter = await updateDeveloperFilter(page, "diagnose-owner", initialFilter);
+        const updatedFilter = await updateDeveloperFilter(
+            page,
+            "diagnose-owner@example.com",
+            initialFilter,
+        );
 
         const nav = page.locator("aside nav");
         await clickUntilUrl(
@@ -109,7 +117,7 @@ test.describe("filter propagation", () => {
                 new RegExp(`${child.path}(?:[?#].*)?$`),
             );
             await expectFilterParam(page, updatedFilter);
-            await expectDeveloperFilter(page, "diagnose-owner");
+            await expectDeveloperFilter(page, "diagnose-owner@example.com");
             await page.goto(`/diagnose?f=${updatedFilter}`);
         }
     });
@@ -117,7 +125,11 @@ test.describe("filter propagation", () => {
     test("filter change updates URL and persists across nav", async ({ page }) => {
         await page.goto("/metrics?tab=dora");
         const initialFilter = await waitForFilterParam(page);
-        const updatedFilter = await updateDeveloperFilter(page, "metrics-owner", initialFilter);
+        const updatedFilter = await updateDeveloperFilter(
+            page,
+            "metrics-owner@example.com",
+            initialFilter,
+        );
         expect(updatedFilter).not.toBe(initialFilter);
 
         const nav = page.locator("aside nav");
@@ -127,6 +139,6 @@ test.describe("filter propagation", () => {
             /\/govern(?:[?#].*)?$/,
         );
         await expectFilterParam(page, updatedFilter);
-        await expectDeveloperFilter(page, "metrics-owner");
+        await expectDeveloperFilter(page, "metrics-owner@example.com");
     });
 });
