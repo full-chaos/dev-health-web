@@ -11,7 +11,10 @@ export function AdvancedSection({ provider, autoImportTeams, onChange }: Advance
     if (!AUTO_IMPORT_PROVIDERS.includes(provider)) return null;
 
     return (
-        <FormSection title="Advanced options" description="Optional behavior most syncs don't need.">
+        <FormSection
+            title="Advanced options"
+            description="Optional behavior most syncs don't need."
+        >
             <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                     <input
@@ -27,8 +30,8 @@ export function AdvancedSection({ provider, autoImportTeams, onChange }: Advance
                     </label>
                 </div>
                 <p className="text-xs text-(--ink-muted)">
-                    Discover and import teams, projects, and members from this provider during
-                    sync to populate ownership and attribution.
+                    Discover and import teams, projects, and members from this provider during sync
+                    to populate ownership and attribution.
                 </p>
             </div>
         </FormSection>

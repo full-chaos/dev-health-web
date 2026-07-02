@@ -31,7 +31,10 @@ function diffIds(baseline: string[], current: string[]) {
 }
 
 /** Dataset ids present in the baseline but no longer selected. */
-export function getRemovedDatasets(baseline: SyncFormSnapshot, current: SyncFormSnapshot): string[] {
+export function getRemovedDatasets(
+    baseline: SyncFormSnapshot,
+    current: SyncFormSnapshot,
+): string[] {
     return diffIds(baseline.sync_targets, current.sync_targets).removed;
 }
 
@@ -53,7 +56,10 @@ function formatRepoList(repos: string[]): string {
  * "sync all repositories", removing individually-selected repos, or removing
  * datasets/sync targets. Empty array means nothing destructive is staged.
  */
-export function getRepoScopeWarnings(baseline: SyncFormSnapshot, current: SyncFormSnapshot): string[] {
+export function getRepoScopeWarnings(
+    baseline: SyncFormSnapshot,
+    current: SyncFormSnapshot,
+): string[] {
     const warnings: string[] = [];
 
     if (baseline.syncAllRepos && !current.syncAllRepos) {
@@ -75,7 +81,10 @@ export function getRepoScopeWarnings(baseline: SyncFormSnapshot, current: SyncFo
 }
 
 /** Human-readable warning for dataset/sync-target removal (CHAOS-2797). */
-export function getDatasetWarnings(baseline: SyncFormSnapshot, current: SyncFormSnapshot): string[] {
+export function getDatasetWarnings(
+    baseline: SyncFormSnapshot,
+    current: SyncFormSnapshot,
+): string[] {
     const removedDatasets = getRemovedDatasets(baseline, current);
     if (removedDatasets.length === 0) return [];
 
@@ -86,17 +95,22 @@ export function getDatasetWarnings(baseline: SyncFormSnapshot, current: SyncForm
 }
 
 /** Combined repo-scope + dataset destructive warnings. */
-export function getDestructiveWarnings(baseline: SyncFormSnapshot, current: SyncFormSnapshot): string[] {
+export function getDestructiveWarnings(
+    baseline: SyncFormSnapshot,
+    current: SyncFormSnapshot,
+): string[] {
     return [...getRepoScopeWarnings(baseline, current), ...getDatasetWarnings(baseline, current)];
 }
-
 
 /**
  * Human-readable summary of every field that changed between the baseline
  * (values the form was seeded with) and the current form state, for the
  * post-save "what changed" confirmation.
  */
-export function buildChangeSummary(baseline: SyncFormSnapshot, current: SyncFormSnapshot): string[] {
+export function buildChangeSummary(
+    baseline: SyncFormSnapshot,
+    current: SyncFormSnapshot,
+): string[] {
     const changes: string[] = [];
 
     const { added: addedDatasets, removed: removedDatasets } = diffIds(
@@ -118,7 +132,10 @@ export function buildChangeSummary(baseline: SyncFormSnapshot, current: SyncForm
         changes.push(`Schedule: ${current.is_active ? "enabled" : "disabled"}`);
     }
 
-    if (baseline.schedule_cron !== current.schedule_cron || baseline.timezone !== current.timezone) {
+    if (
+        baseline.schedule_cron !== current.schedule_cron ||
+        baseline.timezone !== current.timezone
+    ) {
         changes.push(
             `Schedule: ${formatScheduleLabel(baseline.schedule_cron)} \u2192 ${formatScheduleLabel(current.schedule_cron)}`,
         );

@@ -357,19 +357,19 @@ describe("SyncConfigForm", () => {
             await userEvent.type(ownerInput, "neworg");
             await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
 
-await waitFor(() => {
-expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-1", {
-sync_targets: ["git"],
-is_active: true,
-schedule_cron: null,
-timezone: null,
-initial_sync_depth: 30,
-sync_options: {
-owner: "neworg",
-repo: "oldrepo",
-auto_import_teams: false,
-},
-});
+            await waitFor(() => {
+                expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-1", {
+                    sync_targets: ["git"],
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: {
+                        owner: "neworg",
+                        repo: "oldrepo",
+                        auto_import_teams: false,
+                    },
+                });
             });
 
             // Save keeps the user on the edit page (revalidated via router.refresh)
@@ -378,7 +378,7 @@ auto_import_teams: false,
                 expect(mockRefresh).toHaveBeenCalled();
                 expect(mockPush).not.toHaveBeenCalled();
                 expect(screen.getByText(/Changed:.*Owner: oldorg → neworg/)).toBeInTheDocument();
-        });
+            });
         });
 
         it("shows selected repositories in edit mode", async () => {
@@ -1007,7 +1007,9 @@ auto_import_teams: false,
                 expect(screen.getByText("GitHub")).toBeInTheDocument();
                 expect(screen.getByText("My GitHub Token")).toBeInTheDocument();
                 expect(screen.getAllByText("🔒 locked").length).toBeGreaterThanOrEqual(3);
-                expect(screen.getByText(/name can't be changed after creation/i)).toBeInTheDocument();
+                expect(
+                    screen.getByText(/name can't be changed after creation/i),
+                ).toBeInTheDocument();
                 expect(
                     screen.getByText(/provider can't be changed after creation/i),
                 ).toBeInTheDocument();
@@ -1117,7 +1119,9 @@ auto_import_teams: false,
 
                 await userEvent.click(repoBCheckbox);
 
-                expect(screen.getByRole("alert")).toHaveTextContent(/Removing 1 repository.*repo-b/);
+                expect(screen.getByRole("alert")).toHaveTextContent(
+                    /Removing 1 repository.*repo-b/,
+                );
             });
         });
 

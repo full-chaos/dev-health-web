@@ -26,7 +26,10 @@ export function CredentialSection({
     onOpenCreateModal,
 }: CredentialSectionProps) {
     return (
-        <FormSection title="Credential" description="Stored credential that authenticates this sync.">
+        <FormSection
+            title="Credential"
+            description="Stored credential that authenticates this sync."
+        >
             {isEdit ? (
                 <ImmutableField
                     label="Credential"
