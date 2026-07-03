@@ -6,9 +6,14 @@ import { useRouter } from "next/navigation";
 import { getSyncJobs } from "@/lib/admin/server";
 import type { SyncJob } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatNumber, formatDateUTC as formatDateOnly } from "@/lib/formatters";
+import { formatDateUTC, formatNumber } from "@/lib/formatters";
 import { SyncStatusBadge } from "./SyncStatusBadge";
-import { CoverageBadge, jobCoverageLabel, jobCoverageTone, type JobCoverageResult } from "./CoverageBadge";
+import {
+    CoverageBadge,
+    jobCoverageLabel,
+    jobCoverageTone,
+    type JobCoverageResult,
+} from "./CoverageBadge";
 
 const PAGE_SIZE = 10;
 
@@ -27,14 +32,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// Locked UTC-anchored formatter: bare toLocaleString() drifts between Node
+// and browser locales/timezones (hydration + CI mismatches). Module-level
+// so we don't allocate a new Intl.DateTimeFormat per render.
+const TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+});
+
 function formatTimestamp(value: string | null | undefined): string {
     if (!value) return "—";
-    return new Date(value).toLocaleString();
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return TIMESTAMP_FORMATTER.format(date);
 }
 
 function formatRange(range: { since: string; before: string } | null | undefined): string {
     if (!range) return "—";
-    return `${formatDateOnly(range.since)} → ${formatDateOnly(range.before)}`;
+    return `${formatDateUTC(range.since)} → ${formatDateUTC(range.before)}`;
 }
 
 function getDuration(job: SyncJob): string {
@@ -80,6 +96,12 @@ function getBadgeLabel(status: SyncJob["status"]) {
  * from range/interval comparisons (platform ban on client-side coverage math).
  * Returns null for non-terminal jobs or legacy rows (no sync_run block) —
  * those render the plain job status badge instead.
+ *
+ * Precedence is deliberate and pinned by tests: failed > partial > gap >
+ * complete. A terminal failed/cancelled run is a STRONGER signal than an
+ * unsettled-units gap — so a failed/cancelled run with unsettled units
+ * (settled < total_units) still reports "failed"/"partial", never "gap".
+ * Only a terminal SUCCESS run with unsettled units reports "gap".
  */
 function deriveJobCoverageResult(job: SyncJob): JobCoverageResult | null {
     const sr = job.sync_run;
@@ -88,6 +110,8 @@ function deriveJobCoverageResult(job: SyncJob): JobCoverageResult | null {
 
     const settled = sr.completed_units + sr.failed_units;
 
+    // failed/cancelled precedence: a stronger signal than "gap" (see doc
+    // comment above) — reported regardless of how many units settled.
     if (job.status === "failed" || job.status === "cancelled") {
         return sr.completed_units === 0 ? "failed" : "partial";
     }
@@ -110,9 +134,10 @@ function getRunId(job: SyncJob): string | null {
 function getScopeLabel(job: SyncJob): string {
     const sr = job.sync_run;
     if (!sr) {
-        const datasetKey = isRecord(job.result) && typeof job.result.dataset_key === "string"
-            ? job.result.dataset_key
-            : null;
+        const datasetKey =
+            isRecord(job.result) && typeof job.result.dataset_key === "string"
+                ? job.result.dataset_key
+                : null;
         return datasetKey ?? "—";
     }
     const sourceIds = new Set<string>([
@@ -140,16 +165,22 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [offset, setOffset] = useState(0);
-    const [pageJobs, setPageJobs] = useState<SyncJob[]>(() => jobs.slice(0, PAGE_SIZE));
-    const [hasMore, setHasMore] = useState(() => jobs.length > PAGE_SIZE);
+    // Fetched-page state is used ONLY for offset > 0 (server-backed mode).
+    // The offset-0 page is derived reactively from `jobs` below (see
+    // firstPageJobs) so a Sync Now / Backfill refresh — router.refresh()
+    // delivering a fresh `jobs` prop — is reflected immediately, without
+    // requiring a pagination click (regression: CHAOS-2791).
+    const [fetchedPageJobs, setFetchedPageJobs] = useState<SyncJob[]>([]);
+    const [fetchedHasMore, setFetchedHasMore] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
-    const clientPageJobs = useMemo(
-        () => jobs.slice(offset, offset + PAGE_SIZE),
-        [jobs, offset],
-    );
+    const clientPageJobs = useMemo(() => jobs.slice(offset, offset + PAGE_SIZE), [jobs, offset]);
 
-    const visibleJobs = testMode ? clientPageJobs : pageJobs;
+    const firstPageJobs = useMemo(() => jobs.slice(0, PAGE_SIZE), [jobs]);
+    const firstPageHasMore = jobs.length > PAGE_SIZE;
+
+    const visibleJobs = testMode ? clientPageJobs : offset === 0 ? firstPageJobs : fetchedPageJobs;
+    const hasMore = offset === 0 ? firstPageHasMore : fetchedHasMore;
 
     if (jobs.length === 0) {
         return (
@@ -166,6 +197,12 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
             return;
         }
         setFetchError(null);
+        if (safeOffset === 0) {
+            // No fetch needed — the offset-0 page always derives from the
+            // current `jobs` prop (see firstPageJobs above).
+            setOffset(0);
+            return;
+        }
         startTransition(async () => {
             const result = await getSyncJobs(configId, PAGE_SIZE + 1, safeOffset);
             if (result.error || !result.data) {
@@ -173,8 +210,8 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                 return;
             }
             setOffset(safeOffset);
-            setPageJobs(result.data.slice(0, PAGE_SIZE));
-            setHasMore(result.data.length > PAGE_SIZE);
+            setFetchedPageJobs(result.data.slice(0, PAGE_SIZE));
+            setFetchedHasMore(result.data.length > PAGE_SIZE);
         });
     };
 
@@ -184,7 +221,10 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
     return (
         <div className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)">
             {fetchError && (
-                <div role="alert" className="border-b border-(--card-stroke) px-6 py-3 text-sm text-(--negative)">
+                <div
+                    role="alert"
+                    className="border-b border-(--card-stroke) px-6 py-3 text-sm text-(--negative)"
+                >
                     {fetchError}
                 </div>
             )}
@@ -213,7 +253,11 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                             <tr
                                 key={job.id}
                                 onClick={href ? () => router.push(href) : undefined}
-                                className={href ? "cursor-pointer transition-colors hover:bg-(--card-70)" : undefined}
+                                className={
+                                    href
+                                        ? "cursor-pointer transition-colors hover:bg-(--card-70)"
+                                        : undefined
+                                }
                             >
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
                                     {sr?.triggered_by ?? job.triggered_by ?? "—"}

@@ -90,9 +90,6 @@ export const CTA_LABELS = {
     backfill: "Backfill",
     /** Gap-scoped backfill deep-link from the coverage timeline (CHAOS-2793). */
     backfillThisGap: "Backfill this gap",
-    /** Toggle between the CSS band view and the accessible table view (CHAOS-2793). */
-    showAsTable: "Show as table",
-    showAsTimeline: "Show as timeline",
     allDatasets: "All datasets",
     allSources: "All sources",
     /** Reset the run-detail unit table status filter (CHAOS-2794). */

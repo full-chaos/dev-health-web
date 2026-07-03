@@ -101,10 +101,10 @@ export const formatTimestamp = (value?: string | null) => {
 };
 
 /**
- * UTC-locked date-only formatter (CHAOS-2791/2793/2794). Shared by
- * SyncJobHistory, SyncCoverageTimeline, and SyncRunDetailLive so coverage
- * windows read consistently regardless of the viewer's local timezone —
- * planner windows are persisted/compared in UTC, so display must match.
+ * Date-only formatter locked to UTC (CHAOS-2791 D3): avoids hydration/CI
+ * drift from bare toLocaleDateString() calls that pick up the runtime's
+ * local timezone. Shared by SyncJobHistory and SyncCoverageTimeline so the
+ * two coverage surfaces never drift apart on date-only formatting.
  */
 export const formatDateUTC = (value: string | null | undefined): string => {
     if (!value) return "—";
