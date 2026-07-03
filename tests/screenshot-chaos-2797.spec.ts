@@ -9,7 +9,7 @@
  * Runs under the "authenticated" project (auth state from auth.setup.ts),
  * test-mode (mocked backend). Delete this file after PR is merged.
  */
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("CHAOS-2797 screenshots", () => {
     test("new sync config form shows reorganized sections", async ({ page }) => {
@@ -41,7 +41,8 @@ test.describe("CHAOS-2797 screenshots", () => {
         // "Editable Repos" is seeded with sync_targets: ["git"]; enable another
         // dataset then remove "Git Data" to trigger the destructive warning.
         const gitCheckbox = page.getByLabel("Git Data (Commits, Branches)");
-        await gitCheckbox.uncheck();
+        await page.getByText("Git Data (Commits, Branches)").click();
+        await expect(gitCheckbox).not.toBeChecked();
         await page
             .getByRole("alert")
             .filter({ hasText: "Removing dataset" })
