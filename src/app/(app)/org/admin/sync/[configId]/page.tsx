@@ -2,25 +2,37 @@ import { notFound } from "next/navigation";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
-import { SyncCoverageSummaryCard } from "@/components/admin/sync/SyncCoverageSummaryCard";
-import { SyncCoverageTimeline } from "@/components/admin/sync/SyncCoverageTimeline";
+import { BackfillOperations } from "@/components/admin/sync/BackfillOperations";
 import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
 import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
 import { TestConnectionButton } from "@/components/admin/sync/TestConnectionButton";
 import { getServerEnv } from "@/lib/config";
-import { getSyncConfig, getSyncJobs, getSyncCoverage } from "@/lib/admin/server";
+import {
+    getSyncConfig,
+    getSyncJobs,
+    getSyncCoverage,
+    getActiveBackfillJob,
+} from "@/lib/admin/server";
 import {
     SAMPLE_SYNC_CONFIG,
     SAMPLE_SYNC_JOBS,
     SYNC_COVERAGE_SAMPLES,
     resolveSyncCoverageSampleScenario,
+    SAMPLE_BACKFILL_JOBS,
+    resolveSampleBackfillScenario,
 } from "@/data/syncCoverageSample";
-import type { SyncConfig, SyncCoverageSummary, SyncJob } from "@/lib/admin/types";
+import type { BackfillJob, SyncConfig, SyncCoverageSummary, SyncJob } from "@/lib/admin/types";
 
 interface PageProps {
     params: Promise<{ configId: string }>;
-    /** `coverage_scenario` selects a sample scenario in DEV_HEALTH_TEST_MODE only. */
-    searchParams: Promise<{ coverage_scenario?: string | string[] }>;
+    /**
+     * `coverage_scenario` / `backfill_scenario` select sample scenarios in
+     * DEV_HEALTH_TEST_MODE only.
+     */
+    searchParams: Promise<{
+        coverage_scenario?: string | string[];
+        backfill_scenario?: string | string[];
+    }>;
 }
 
 function firstParam(value: string | string[] | undefined): string | undefined {
@@ -29,8 +41,10 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 
 export default async function SyncConfigDetailPage({ params, searchParams }: PageProps) {
     const { configId } = await params;
-    const { coverage_scenario: coverageScenario } = await searchParams;
+    const { coverage_scenario: coverageScenario, backfill_scenario: backfillScenario } =
+        await searchParams;
     const coverageScenarioParam = firstParam(coverageScenario);
+    const backfillScenarioParam = firstParam(backfillScenario);
 
     const env = getServerEnv();
     const isTestMode =
@@ -40,6 +54,7 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     let jobs: SyncJob[];
     let coverage: SyncCoverageSummary | null;
     let coverageError: string | null = null;
+    let activeBackfillJob: BackfillJob | null;
 
     if (isTestMode) {
         // Render deterministic sample data without hitting the admin API so the
@@ -47,11 +62,14 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
         config = SAMPLE_SYNC_CONFIG;
         jobs = SAMPLE_SYNC_JOBS;
         coverage = SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenarioParam)];
+        activeBackfillJob =
+            SAMPLE_BACKFILL_JOBS[resolveSampleBackfillScenario(backfillScenarioParam)];
     } else {
-        const [configResult, jobsResult, coverageResult] = await Promise.all([
+        const [configResult, jobsResult, coverageResult, activeBackfillResult] = await Promise.all([
             getSyncConfig(configId),
             getSyncJobs(configId),
             getSyncCoverage(configId),
+            getActiveBackfillJob(configId),
         ]);
 
         if (configResult.error || !configResult.data) {
@@ -60,6 +78,9 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
 
         config = configResult.data;
         jobs = jobsResult.data ?? [];
+        // Non-critical supplementary status; a failed lookup just means no
+        // in-progress-backfill banner renders, not a page-level error.
+        activeBackfillJob = activeBackfillResult.data ?? null;
 
         // withErrorHandling RETURNS { error } (never throws), so a failed
         // coverage fetch surfaces here. Do NOT fabricate an empty summary —
@@ -89,14 +110,14 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
 
             <SyncProgressBar configId={config.id} testMode={isTestMode} />
 
-            <SyncCoverageSummaryCard
+            <BackfillOperations
                 configId={config.id}
                 coverage={coverage}
-                error={coverageError}
+                coverageError={coverageError}
                 isActive={config.is_active}
+                activeBackfillJob={activeBackfillJob}
+                testMode={isTestMode}
             />
-
-            <SyncCoverageTimeline configId={config.id} coverage={coverage} error={coverageError} />
 
             <details className="group space-y-4 rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
                 <summary className="cursor-pointer text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
