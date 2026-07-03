@@ -76,6 +76,19 @@ test.describe("Compounding Risk surface", () => {
         expect(drilldownFilters.what.repos).toEqual(["repo-a"]);
     });
 
+    test("team-scope rows show a disabled Work Graph indicator, not an active link", async ({
+        page,
+    }) => {
+        // Work Graph only supports repo-scoped edge filtering (no persisted
+        // team\u2192repo resolution client-side), so team-breakout rows must not
+        // link to an unscoped/misleading "global" graph (CHAOS-2851).
+        await page.goto(`/risk/compounding?f=${encodeFilter(teamFilter)}&breakout=team`);
+
+        await expect(page.getByTestId("compounding-risk-dashboard")).toBeVisible();
+        await expect(page.getByTestId("open-in-work-graph")).toHaveCount(0);
+        await expect(page.getByTestId("work-graph-drilldown-unavailable")).toBeVisible();
+    });
+
     test("person scope is blocked with the no-surveillance guardrail", async ({ page }) => {
         await page.goto(`/risk/compounding?f=${encodeFilter(developerFilter)}`);
 

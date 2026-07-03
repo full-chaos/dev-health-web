@@ -23,21 +23,19 @@ import { withFilterParam } from "@/lib/filters/url";
 
 // Builds a direct `/diagnose/work-graph?f=…` link (bypassing the lossy
 // `/work` legacy-redirect, which drops any query param outside `tab`/`view`)
-// so the scope survives the drilldown (CHAOS-2851). Repo scope also seeds
-// `what.repos` because GraphView filters graph edges off that field, not
-// `scope.ids` — see `src/components/work/GraphView.tsx`.
-function buildRiskDrilldownUrl({
-    scope,
-}: {
-    scope: { kind: "repo" | "team"; id: string };
-}): string {
+// so the scope survives the drilldown (CHAOS-2851).
+//
+// Repo-scope only: `WorkGraphEdgeFilterInput` (and `GraphView`, which reads
+// `filters.what.repos`) only supports filtering graph edges by `repoIds` —
+// there is no team-repo resolution available client-side today. Team-scope
+// rows therefore render a disabled indicator instead of a drilldown link
+// (see `ScopeTable` below) rather than linking to an unscoped/misleading
+// "global" graph.
+function buildRiskDrilldownUrl({ repoId }: { repoId: string }): string {
     const filters: MetricFilter = {
         ...defaultMetricFilter,
-        scope: { level: scope.kind, ids: [scope.id] },
-        what: {
-            ...defaultMetricFilter.what,
-            ...(scope.kind === "repo" ? { repos: [scope.id] } : {}),
-        },
+        scope: { level: "repo", ids: [repoId] },
+        what: { ...defaultMetricFilter.what, repos: [repoId] },
     };
     return withFilterParam("/diagnose/work-graph", filters);
 }
@@ -287,12 +285,13 @@ function ScopeTable({
                 </thead>
                 <tbody>
                     {rows.map((row) => {
-                        const workGraphHref = buildRiskDrilldownUrl({
-                            scope:
-                                breakout === "team"
-                                    ? { kind: "team", id: row.scopeId }
-                                    : { kind: "repo", id: row.scopeId },
-                        });
+                        // Team-scope has no persisted team→repo resolution, so
+                        // Work Graph (repo-only filtering) can't be scoped to it —
+                        // only repo rows get an active drilldown.
+                        const workGraphHref =
+                            breakout === "repo"
+                                ? buildRiskDrilldownUrl({ repoId: row.scopeId })
+                                : null;
                         return (
                             <tr
                                 key={row.scopeId}
@@ -323,13 +322,23 @@ function ScopeTable({
                                     {fmtScore(row.components.reviewNorm)}
                                 </td>
                                 <td className="px-5 py-3">
-                                    <Link
-                                        href={workGraphHref}
-                                        className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
-                                        data-testid="open-in-work-graph"
-                                    >
-                                        {CTA_LABELS.openWorkGraph} ↗
-                                    </Link>
+                                    {workGraphHref ? (
+                                        <Link
+                                            href={workGraphHref}
+                                            className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
+                                            data-testid="open-in-work-graph"
+                                        >
+                                            {CTA_LABELS.openWorkGraph} ↗
+                                        </Link>
+                                    ) : (
+                                        <span
+                                            className="text-xs text-(--ink-muted)"
+                                            data-testid="work-graph-drilldown-unavailable"
+                                            title="Work Graph doesn't support team-level scoping yet; switch to the repo view to drill in."
+                                        >
+                                            Not available for team scope
+                                        </span>
+                                    )}
                                 </td>
                             </tr>
                         );

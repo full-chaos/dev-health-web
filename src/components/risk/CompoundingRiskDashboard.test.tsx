@@ -129,7 +129,7 @@ describe("CompoundingRiskDashboard", () => {
         expect(filters.what.repos).toEqual(["repo-a"]);
     });
 
-    it("uses 'team' in the drilldown URL when breakout is team", () => {
+    it("renders a disabled indicator (not an active link) for team-scope rows, since Work Graph has no team\u2192repo resolution", () => {
         const rows = [
             makeRow({
                 scope: "team",
@@ -140,10 +140,10 @@ describe("CompoundingRiskDashboard", () => {
         ];
         renderDashboard({ breakout: "team", rows });
 
-        const drilldown = screen.getByTestId("open-in-work-graph");
-        const href = drilldown.getAttribute("href") ?? "";
-        const filters = decodeFilter(new URL(href, "http://localhost").searchParams.get("f"));
-        expect(filters.scope).toEqual({ level: "team", ids: ["team-x"] });
+        expect(screen.queryByTestId("open-in-work-graph")).not.toBeInTheDocument();
+        expect(screen.getByTestId("work-graph-drilldown-unavailable")).toHaveTextContent(
+            "Not available for team scope",
+        );
     });
 
     it("renders the rich empty state when no rows are supplied (no compounding_risk_daily payload)", () => {
