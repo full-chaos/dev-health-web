@@ -62,7 +62,8 @@ export function SyncCoverageSummaryCard({
     }
 
     const { overall, data_basis: dataBasis } = coverage;
-    const isLegacyInsufficientData = overall.health === "insufficient_data" && dataBasis === "legacy";
+    const isLegacyInsufficientData =
+        overall.health === "insufficient_data" && dataBasis === "legacy";
 
     return (
         <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
@@ -84,8 +85,8 @@ export function SyncCoverageSummaryCard({
                             data-testid="coverage-legacy-notice"
                         >
                             This configuration has no planner-tracked sync runs yet, so detailed
-                            coverage cannot be computed. Coverage will populate once a planner-backed
-                            sync completes.
+                            coverage cannot be computed. Coverage will populate once a
+                            planner-backed sync completes.
                         </p>
                     )}
                 </div>
@@ -109,7 +110,12 @@ export function SyncCoverageSummaryCard({
             <dl className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
                 <StatBlock
                     label="Last successful run"
-                    value={<ClientTimestamp value={overall.latest_successful_run_at} fallback="Never" />}
+                    value={
+                        <ClientTimestamp
+                            value={overall.latest_successful_run_at}
+                            fallback="Never"
+                        />
+                    }
                 />
                 <StatBlock
                     label="Next scheduled run"
@@ -125,7 +131,10 @@ export function SyncCoverageSummaryCard({
                     value={<ClientTimestamp value={overall.latest_covered_through} fallback="—" />}
                 />
                 <StatBlock label="Gaps" value={formatNumber(overall.gap_count)} />
-                <StatBlock label="Stale datasets" value={formatNumber(overall.stale_dataset_count)} />
+                <StatBlock
+                    label="Stale datasets"
+                    value={formatNumber(overall.stale_dataset_count)}
+                />
                 <StatBlock label="Failed ranges" value={formatNumber(overall.failed_range_count)} />
             </dl>
         </div>
