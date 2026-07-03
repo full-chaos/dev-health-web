@@ -126,6 +126,47 @@ Test coverage
 | Frontend E2E  | ✅       | `tests/admin-sync.spec.ts`, `tests/account-creation-journey.spec.ts` (step 5) | Covers dedicated sync flow and onboarding integration.  |
 | Live E2E      | ✅       | `tests/live/journey.spec.ts`                                                  | Covers sync path in live account setup journey.         |
 
+## Sync Observability
+
+Purpose
+
+- Covers sync observability in config detail: coverage-first summary ordering, coverage timeline rows/actions, and job history coverage-result semantics.
+- Validates deterministic fixtures and non-empty edge behavior in `DEV_HEALTH_TEST_MODE`.
+- Exercises gap-driven backfill prefill + validation + expensive-range gating in the wizard.
+
+Primary test files
+
+- `tests/admin-sync-observability.spec.ts`
+
+Primary components
+
+- `src/components/admin/sync/SyncCoverageSummaryCard.tsx`
+- `src/components/admin/sync/SyncCoverageTimeline.tsx`
+- `src/components/admin/sync/SyncJobHistory.tsx`
+- `src/components/admin/sync/BackfillOperations.tsx`
+- `src/components/admin/sync/BackfillWizard.tsx`
+
+Routes
+
+- `/org/admin/sync/[configId]`
+
+Behaviors
+
+- `health` label + KPI order with summary header shown before job history
+- Timeline with dataset filter, source filter, and per-gap `Backfill this gap` rows
+- Wizard range validation and expensive-range confirmation flow
+- Job history rendering of requested/covered ranges and terminal status coverage-result labels (Complete/Partial/Failed)
+- Pagination when row count fits one page in sample mode
+
+Test coverage
+
+| Layer         | Coverage | Tests                                                | Notes                                                                   |
+| ------------- | -------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| Backend Unit  | —        | —                                                    | Observability assertions here depend on API fixture/contract surfaces.  |
+| Frontend Unit | ✅       | `BackfillWizard.test.tsx`, `SyncJobHistory.test.tsx` | Covers wizard validation and job status/result derivation in isolation. |
+| Frontend E2E  | ✅       | `tests/admin-sync-observability.spec.ts`             | Full observability behavior in deterministic sample mode.               |
+| Live E2E      | —        | —                                                    | Dedicated live coverage not yet added for this slice.                   |
+
 ## Historical Backfill
 
 Purpose
