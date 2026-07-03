@@ -93,6 +93,14 @@ export const CTA_LABELS = {
     allDatasets: "All datasets",
     allSources: "All sources",
     viewRun: "View run",
+    /** Advance the backfill wizard to the previous step (CHAOS-2796). */
+    backButton: "Back",
+    /** Submit the backfill wizard's final step (CHAOS-2796). */
+    runBackfill: "Run backfill",
+    /** Dismiss the backfill wizard modal (CHAOS-2796). */
+    closeWizard: "Close",
+    /** Dismiss the wizard's post-submit result step (CHAOS-2796). */
+    done: "Done",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;

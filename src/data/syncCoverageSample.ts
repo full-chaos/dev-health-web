@@ -10,6 +10,7 @@
 // so sample-mode rendering and the API contract never drift apart.
 
 import type {
+    BackfillJob,
     SyncConfig,
     SyncCoverageRange,
     SyncCoverageSummary,
@@ -690,3 +691,39 @@ export const SAMPLE_SYNC_JOBS: SyncJob[] = [
         created_at: "2026-05-01T00:00:00.000Z",
     },
 ];
+
+// ---- Active backfill job sample (BackfillStatus, CHAOS-2795) ----
+
+/** Sample in-progress backfill job, selectable via `?backfill_scenario=running`. */
+export const SAMPLE_ACTIVE_BACKFILL_JOB: BackfillJob = {
+    id: "sample-backfill-job-running",
+    sync_config_id: CONFIG_ID,
+    status: "running",
+    since_date: "2026-06-20",
+    before_date: "2026-06-26",
+    total_chunks: 6,
+    completed_chunks: 3,
+    failed_chunks: 0,
+    progress_pct: 50,
+    error_message: null,
+    started_at: "2026-07-02T15:05:00.000Z",
+    completed_at: null,
+    created_at: "2026-07-02T15:00:00.000Z",
+};
+
+/** Named scenarios selectable via the `?backfill_scenario=` test-mode query param. */
+export const SAMPLE_BACKFILL_JOBS = {
+    none: null,
+    running: SAMPLE_ACTIVE_BACKFILL_JOB,
+} satisfies Record<string, BackfillJob | null>;
+
+export type SampleBackfillScenario = keyof typeof SAMPLE_BACKFILL_JOBS;
+
+export const DEFAULT_BACKFILL_SCENARIO: SampleBackfillScenario = "none";
+
+export function resolveSampleBackfillScenario(value: string | undefined): SampleBackfillScenario {
+    if (value && Object.hasOwn(SAMPLE_BACKFILL_JOBS, value)) {
+        return value as SampleBackfillScenario;
+    }
+    return DEFAULT_BACKFILL_SCENARIO;
+}

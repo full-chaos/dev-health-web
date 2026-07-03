@@ -41,7 +41,7 @@ interface UseSyncTriggerResult {
 /**
  * Encapsulates the "Sync Now" trigger + client-side status polling (CHAOS-2557a).
  *
- * Mirrors the established poll-until-terminal pattern in RunBackfill.tsx and the
+ * Mirrors the established poll-until-terminal pattern in BackfillStatus.tsx and the
  * reports detail page: fire the trigger, read the response union to learn which
  * endpoint can see the run, then poll every few seconds until a terminal state
  * (or a timeout) before calling router.refresh() so the persisted last_sync_*
