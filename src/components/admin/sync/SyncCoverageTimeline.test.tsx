@@ -126,8 +126,8 @@ describe("SyncCoverageTimeline", () => {
     it("renders the overlapping-retry sample scenario with both a failed window and a later overlapping covered window (CHAOS-2791 D3)", () => {
         render(
             <SyncCoverageTimeline
-                configId="sample-sync-config"
                 coverage={SAMPLE_COVERAGE_OVERLAPPING_RETRY}
+                onBackfillGapAction={vi.fn()}
             />,
         );
 
@@ -140,8 +140,8 @@ describe("SyncCoverageTimeline", () => {
     it("renders the concurrent-config sample scenario with its own resolved source name (CHAOS-2791 D3)", () => {
         render(
             <SyncCoverageTimeline
-                configId="sample-sync-config-secondary"
                 coverage={SAMPLE_COVERAGE_CONCURRENT_CONFIG}
+                onBackfillGapAction={vi.fn()}
             />,
         );
 
