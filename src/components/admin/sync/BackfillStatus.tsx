@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getBackfillJobStatus } from "@/lib/admin/server";
+import { formatDateUTC } from "@/lib/formatters";
 import type { BackfillJob } from "@/lib/admin/types";
 
 /** How often to poll for live backfill status. */
@@ -28,17 +29,6 @@ interface BackfillStatusProps {
     initialJob: BackfillJob | null;
     /** When true, render the provided sample job and never poll a live API. */
     testMode?: boolean;
-}
-
-function formatDateOnly(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-    });
 }
 
 /** Human-readable in-progress/terminal label for every status in both status families. */
@@ -138,7 +128,7 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
                         Backfill in progress
                     </h3>
                     <p className="mt-1 text-xs text-(--ink-muted)">
-                        {formatDateOnly(job.since_date)} → {formatDateOnly(job.before_date)}
+                        {formatDateUTC(job.since_date)} → {formatDateUTC(job.before_date)}
                     </p>
                 </div>
                 {!isTerminal && (

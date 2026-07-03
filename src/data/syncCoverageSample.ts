@@ -25,6 +25,10 @@ const RUN_HEALTHY = "sample-run-healthy";
 const RUN_GAPS = "sample-run-gaps";
 const RUN_FAILED = "sample-run-failed";
 const RUN_STALE = "sample-run-stale";
+const RUN_RETRY = "sample-run-retry";
+const RUN_CONCURRENT = "sample-run-concurrent";
+const SOURCE_SECONDARY = "sample-source-secondary-repo";
+const CONFIG_ID_SECONDARY = "sample-sync-config-secondary";
 
 const GENERATED_AT = "2026-07-02T15:00:00.000Z";
 const TRUNCATED_BEFORE = "2026-01-03T00:00:00.000Z";
@@ -403,6 +407,131 @@ export const SAMPLE_COVERAGE_INSUFFICIENT_DATA: SyncCoverageSummary = {
     sources: [],
 };
 
+export const SAMPLE_COVERAGE_OVERLAPPING_RETRY: SyncCoverageSummary = {
+    config_id: CONFIG_ID,
+    provider: PROVIDER,
+    generated_at: GENERATED_AT,
+    data_basis: "planner",
+    history_lookback_days: 180,
+    truncated_before: TRUNCATED_BEFORE,
+    overall: {
+        health: "healthy",
+        latest_successful_run_at: "2026-06-27T00:00:00.000Z",
+        latest_covered_through: "2026-06-27T00:00:00.000Z",
+        next_scheduled_run_at: "2026-07-02T16:00:00.000Z",
+        gap_count: 0,
+        stale_dataset_count: 0,
+        failed_range_count: 1,
+    },
+    datasets: [
+        {
+            dataset_key: "git",
+            status: "healthy",
+            covered_through: "2026-06-27T00:00:00.000Z",
+            requested_ranges: [
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-06-27T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED, RUN_RETRY],
+                ),
+            ],
+            covered_ranges: [
+                // A successful retry (RUN_RETRY) re-covers and extends past
+                // the window an earlier run (RUN_FAILED) failed on — the
+                // failed and covered ranges below deliberately OVERLAP
+                // (CHAOS-2791 D3: "overlapping-retry" scenario).
+                range(
+                    "2026-06-22T00:00:00.000Z",
+                    "2026-06-27T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_RETRY],
+                ),
+            ],
+            gaps: [],
+            stale_ranges: [],
+            failed_ranges: [
+                range(
+                    "2026-06-20T00:00:00.000Z",
+                    "2026-06-24T00:00:00.000Z",
+                    [SOURCE_PLATFORM],
+                    [RUN_FAILED],
+                ),
+            ],
+        },
+    ],
+    sources: [
+        {
+            source_id: SOURCE_PLATFORM,
+            source_name: "fullchaos/platform-api",
+            status: "healthy",
+            covered_through: "2026-06-27T00:00:00.000Z",
+            gap_count: 0,
+            failed_range_count: 1,
+        },
+    ],
+};
+
+/**
+ * Second GitHub config's coverage (CHAOS-2791 D3: "concurrent same-provider
+ * configs"). Demonstrates that coverage summaries are scoped per config_id
+ * even when two configs share a provider — a distinct config_id/source pair
+ * from the primary sample config above.
+ */
+export const SAMPLE_COVERAGE_CONCURRENT_CONFIG: SyncCoverageSummary = {
+    config_id: CONFIG_ID_SECONDARY,
+    provider: PROVIDER,
+    generated_at: GENERATED_AT,
+    data_basis: "planner",
+    history_lookback_days: 180,
+    truncated_before: TRUNCATED_BEFORE,
+    overall: {
+        health: "healthy",
+        latest_successful_run_at: "2026-07-02T12:30:00.000Z",
+        latest_covered_through: "2026-07-02T12:30:00.000Z",
+        next_scheduled_run_at: "2026-07-02T13:30:00.000Z",
+        gap_count: 0,
+        stale_dataset_count: 0,
+        failed_range_count: 0,
+    },
+    datasets: [
+        {
+            dataset_key: "git",
+            status: "healthy",
+            covered_through: "2026-07-02T12:30:00.000Z",
+            requested_ranges: [
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T12:30:00.000Z",
+                    [SOURCE_SECONDARY],
+                    [RUN_CONCURRENT],
+                ),
+            ],
+            covered_ranges: [
+                range(
+                    "2026-06-01T00:00:00.000Z",
+                    "2026-07-02T12:30:00.000Z",
+                    [SOURCE_SECONDARY],
+                    [RUN_CONCURRENT],
+                ),
+            ],
+            gaps: [],
+            stale_ranges: [],
+            failed_ranges: [],
+        },
+    ],
+    sources: [
+        {
+            source_id: SOURCE_SECONDARY,
+            source_name: "fullchaos/second-repo",
+            status: "healthy",
+            covered_through: "2026-07-02T12:30:00.000Z",
+            gap_count: 0,
+            failed_range_count: 0,
+        },
+    ],
+};
+
 /** Named scenarios selectable via the `?coverage_scenario=` test-mode query param. */
 export const SYNC_COVERAGE_SAMPLES = {
     healthy: SAMPLE_COVERAGE_HEALTHY,
@@ -410,6 +539,8 @@ export const SYNC_COVERAGE_SAMPLES = {
     failed: SAMPLE_COVERAGE_FAILED,
     stale: SAMPLE_COVERAGE_STALE,
     insufficient_data: SAMPLE_COVERAGE_INSUFFICIENT_DATA,
+    overlapping_retry: SAMPLE_COVERAGE_OVERLAPPING_RETRY,
+    concurrent_config: SAMPLE_COVERAGE_CONCURRENT_CONFIG,
 } satisfies Record<string, SyncCoverageSummary>;
 
 export type SyncCoverageSampleScenario = keyof typeof SYNC_COVERAGE_SAMPLES;

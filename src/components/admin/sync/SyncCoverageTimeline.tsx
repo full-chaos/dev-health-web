@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { formatDateUTC } from "@/lib/formatters";
 import type {
     SyncCoverageDataset,
     SyncCoverageRange,
@@ -46,15 +47,9 @@ interface TimelineRow {
     datasetKey: string;
 }
 
-function formatDate(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-    });
+/** Content-derived row/band key — stable across re-renders, unlike array index. */
+function rangeKey(kind: BandKind, range: SyncCoverageRange): string {
+    return `${kind}-${range.since}-${range.before}-${range.source_ids.join(",")}`;
 }
 
 function rangeIncludesSource(range: SyncCoverageRange, sourceId: string | null): boolean {
@@ -283,9 +278,9 @@ export function SyncCoverageTimeline({
                                                         {BAND_LABEL[kind]}
                                                     </span>
                                                     <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-(--card-stroke)">
-                                                        {kindRanges.map((row, index) => (
+                                                        {kindRanges.map((row) => (
                                                             <div
-                                                                key={`${kind}-${index}`}
+                                                                key={rangeKey(kind, row.range)}
                                                                 className={`absolute top-0 h-full rounded-full ${BAND_BAR_CLASS[kind]}`}
                                                                 style={bandStyle(row.range, extent)}
                                                             />
@@ -349,8 +344,8 @@ export function SyncCoverageTimeline({
                                                 </td>
                                             </tr>
                                         ) : (
-                                            rows.map((row, index) => (
-                                                <tr key={`${row.kind}-${index}`}>
+                                            rows.map((row) => (
+                                                <tr key={rangeKey(row.kind, row.range)}>
                                                     <td className="px-2 py-2">
                                                         <CoverageBadge
                                                             tone={BAND_TONE[row.kind]}
@@ -358,10 +353,10 @@ export function SyncCoverageTimeline({
                                                         />
                                                     </td>
                                                     <td className="px-2 py-2 text-foreground">
-                                                        {formatDate(row.range.since)}
+                                                        {formatDateUTC(row.range.since)}
                                                     </td>
                                                     <td className="px-2 py-2 text-foreground">
-                                                        {formatDate(row.range.before)}
+                                                        {formatDateUTC(row.range.before)}
                                                     </td>
                                                     <td className="px-2 py-2 text-(--ink-muted)">
                                                         {row.range.source_ids.length === 0

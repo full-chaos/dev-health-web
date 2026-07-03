@@ -30,13 +30,22 @@ interface PageProps {
      * `coverage_scenario` / `backfill_scenario` select sample scenarios in
      * DEV_HEALTH_TEST_MODE only.
      */
-    searchParams: Promise<{ coverage_scenario?: string; backfill_scenario?: string }>;
+    searchParams: Promise<{
+        coverage_scenario?: string | string[];
+        backfill_scenario?: string | string[];
+    }>;
+}
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+    return Array.isArray(value) ? value[0] : value;
 }
 
 export default async function SyncConfigDetailPage({ params, searchParams }: PageProps) {
     const { configId } = await params;
     const { coverage_scenario: coverageScenario, backfill_scenario: backfillScenario } =
         await searchParams;
+    const coverageScenarioParam = firstParam(coverageScenario);
+    const backfillScenarioParam = firstParam(backfillScenario);
 
     const env = getServerEnv();
     const isTestMode =
@@ -54,8 +63,9 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
         // page is exercisable in Playwright/test mode (web AGENTS test-mode rule).
         config = SAMPLE_SYNC_CONFIG;
         jobs = SAMPLE_SYNC_JOBS;
-        coverage = SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenario)];
-        activeBackfillJob = SAMPLE_BACKFILL_JOBS[resolveSampleBackfillScenario(backfillScenario)];
+        coverage = SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenarioParam)];
+        activeBackfillJob =
+            SAMPLE_BACKFILL_JOBS[resolveSampleBackfillScenario(backfillScenarioParam)];
         orgId = "sample-org";
     } else {
         const [configResult, jobsResult, coverageResult, orgResult, activeBackfillResult] =

@@ -99,3 +99,21 @@ export const formatTimestamp = (value?: string | null) => {
     const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
     return `${get("month")} ${get("day")}, ${get("hour")}:${get("minute")} ${get("dayPeriod")}`;
 };
+
+/**
+ * Date-only formatter locked to UTC (CHAOS-2791 D3): avoids hydration/CI
+ * drift from bare toLocaleDateString() calls that pick up the runtime's
+ * local timezone. Shared by SyncJobHistory and SyncCoverageTimeline so the
+ * two coverage surfaces never drift apart on date-only formatting.
+ */
+export const formatDateUTC = (value: string | null | undefined): string => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+    });
+};
