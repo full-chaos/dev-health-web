@@ -22,6 +22,7 @@
 
 - [Integration Setup](account-admin.md#integration-setup)
 - [Sync Configuration](account-admin.md#sync-configuration)
+- [Sync Observability](account-admin.md#sync-observability)
 - [Team Management](account-admin.md#team-management)
 - [Identity Mapping](account-admin.md#identity-mapping)
 - [Organization Settings](account-admin.md#organization-settings)
@@ -55,32 +56,33 @@
 
 ### Master Coverage Matrix
 
-| Journey                     | Backend Unit                           | Frontend Unit                   | Frontend E2E                                                       | Live E2E                                        |
-| --------------------------- | -------------------------------------- | ------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
-| Guided First-Run Onboarding | —                                      | —                               | ✅ (`auth-onboard.spec.ts`)                                        | ✅ (`onboarding-ui.spec.ts`, `journey.spec.ts`) |
-| Full Account Setup          | —                                      | —                               | ✅                                                                 | ✅                                              |
-| Integration Setup           | ✅ (`test_admin_credentials.py`)       | ✅ (`IntegrationForm.test.tsx`) | ✅ (`admin-integrations.spec.ts`, account-creation-journey step 4) | ✅ (`journey.spec.ts`)                          |
-| Sync Configuration          | ✅ (`test_sync_configs.py`)            | ✅ (`SyncConfigForm.test.tsx`)  | ✅ (`admin-sync.spec.ts`, account-creation-journey step 5)         | ✅ (`journey.spec.ts`)                          |
-| Team Management             | ✅ (`test_teams.py`)                   | ✅ (`TeamForm.test.tsx`)        | ✅ (`admin-teams.spec.ts`, account-creation-journey step 6)        | —                                               |
-| Identity Mapping            | ✅ (`test_identities.py`)              | ✅ (`IdentityForm.test.tsx`)    | ✅ (`admin-identities.spec.ts`, account-creation-journey step 7)   | —                                               |
-| Organization Settings       | —                                      | —                               | ✅ (`admin-settings.spec.ts`)                                      | —                                               |
-| Dashboard & Drill-down      | —                                      | —                               | ✅ (`home-flow.spec.ts`)                                           | —                                               |
-| Work Navigation             | —                                      | —                               | ✅ (`work-navigation.spec.ts`)                                     | —                                               |
-| Filter Propagation          | —                                      | —                               | ✅ (`filter-propagation.spec.ts`)                                  | —                                               |
-| People Search               | —                                      | —                               | ✅ (`people.spec.ts`)                                              | —                                               |
-| Chart Rendering             | —                                      | —                               | ✅ (`sankey/quadrant/heatmap/flame.spec.ts`)                       | —                                               |
-| Deployment Flame            | —                                      | —                               | ✅ (`deployments.spec.ts`)                                         | —                                               |
-| Marketing/Pricing           | —                                      | —                               | ✅ (`marketing-pricing.spec.ts`)                                   | —                                               |
-| Impersonation               | ✅ (`test_impersonation_endpoints.py`) | ✅ (`access-matrix.test.ts`)    | —                                                                  | ✅ (`impersonation.spec.ts`)                    |
-| Billing Plans               | ✅ (`test_billing_plans.py`)           | —                               | ✅ (`billing-plans.spec.ts`)                                       | —                                               |
-| Subscriptions               | ✅ (`test_subscriptions.py`)           | —                               | ✅ (`billing-subscriptions.spec.ts`)                               | —                                               |
-| Invoices                    | —                                      | —                               | ✅ (`billing-invoices.spec.ts`)                                    | —                                               |
-| Refunds                     | ✅ (`test_refunds.py`)                 | —                               | ✅ (`billing-refunds.spec.ts`)                                     | —                                               |
-| Billing Audit               | —                                      | —                               | ✅ (`billing-audit.spec.ts`)                                       | —                                               |
-| IP Allowlisting             | ✅ (`test_ip_allowlist.py`)            | ✅ (`server.test.ts`)           | —                                                                  | —                                               |
-| Retention Policies          | ✅ (`test_retention.py`)               | ✅ (`server.test.ts`)           | —                                                                  | —                                               |
-| Platform Stats              | ✅ (`test_platform_stats.py`)          | —                               | —                                                                  | —                                               |
-| Tier Feature Gating         | ✅ (`test_community_features.py`)      | ✅ (`access-matrix.test.ts`)    | —                                                                  | —                                               |
+| Journey                     | Backend Unit                           | Frontend Unit                                             | Frontend E2E                                                       | Live E2E                                        |
+| --------------------------- | -------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
+| Guided First-Run Onboarding | —                                      | —                                                         | ✅ (`auth-onboard.spec.ts`)                                        | ✅ (`onboarding-ui.spec.ts`, `journey.spec.ts`) |
+| Full Account Setup          | —                                      | —                                                         | ✅                                                                 | ✅                                              |
+| Integration Setup           | ✅ (`test_admin_credentials.py`)       | ✅ (`IntegrationForm.test.tsx`)                           | ✅ (`admin-integrations.spec.ts`, account-creation-journey step 4) | ✅ (`journey.spec.ts`)                          |
+| Sync Configuration          | ✅ (`test_sync_configs.py`)            | ✅ (`SyncConfigForm.test.tsx`)                            | ✅ (`admin-sync.spec.ts`, account-creation-journey step 5)         | ✅ (`journey.spec.ts`)                          |
+| Sync Observability          | —                                      | ✅ (`BackfillWizard.test.tsx`, `SyncJobHistory.test.tsx`) | ✅ (`admin-sync-observability.spec.ts`)                            | —                                               |
+| Team Management             | ✅ (`test_teams.py`)                   | ✅ (`TeamForm.test.tsx`)                                  | ✅ (`admin-teams.spec.ts`, account-creation-journey step 6)        | —                                               |
+| Identity Mapping            | ✅ (`test_identities.py`)              | ✅ (`IdentityForm.test.tsx`)                              | ✅ (`admin-identities.spec.ts`, account-creation-journey step 7)   | —                                               |
+| Organization Settings       | —                                      | —                                                         | ✅ (`admin-settings.spec.ts`)                                      | —                                               |
+| Dashboard & Drill-down      | —                                      | —                                                         | ✅ (`home-flow.spec.ts`)                                           | —                                               |
+| Work Navigation             | —                                      | —                                                         | ✅ (`work-navigation.spec.ts`)                                     | —                                               |
+| Filter Propagation          | —                                      | —                                                         | ✅ (`filter-propagation.spec.ts`)                                  | —                                               |
+| People Search               | —                                      | —                                                         | ✅ (`people.spec.ts`)                                              | —                                               |
+| Chart Rendering             | —                                      | —                                                         | ✅ (`sankey/quadrant/heatmap/flame.spec.ts`)                       | —                                               |
+| Deployment Flame            | —                                      | —                                                         | ✅ (`deployments.spec.ts`)                                         | —                                               |
+| Marketing/Pricing           | —                                      | —                                                         | ✅ (`marketing-pricing.spec.ts`)                                   | —                                               |
+| Impersonation               | ✅ (`test_impersonation_endpoints.py`) | ✅ (`access-matrix.test.ts`)                              | —                                                                  | ✅ (`impersonation.spec.ts`)                    |
+| Billing Plans               | ✅ (`test_billing_plans.py`)           | —                                                         | ✅ (`billing-plans.spec.ts`)                                       | —                                               |
+| Subscriptions               | ✅ (`test_subscriptions.py`)           | —                                                         | ✅ (`billing-subscriptions.spec.ts`)                               | —                                               |
+| Invoices                    | —                                      | —                                                         | ✅ (`billing-invoices.spec.ts`)                                    | —                                               |
+| Refunds                     | ✅ (`test_refunds.py`)                 | —                                                         | ✅ (`billing-refunds.spec.ts`)                                     | —                                               |
+| Billing Audit               | —                                      | —                                                         | ✅ (`billing-audit.spec.ts`)                                       | —                                               |
+| IP Allowlisting             | ✅ (`test_ip_allowlist.py`)            | ✅ (`server.test.ts`)                                     | —                                                                  | —                                               |
+| Retention Policies          | ✅ (`test_retention.py`)               | ✅ (`server.test.ts`)                                     | —                                                                  | —                                               |
+| Platform Stats              | ✅ (`test_platform_stats.py`)          | —                                                         | —                                                                  | —                                               |
+| Tier Feature Gating         | ✅ (`test_community_features.py`)      | ✅ (`access-matrix.test.ts`)                              | —                                                                  | —                                               |
 
 ### Coverage Gaps
 

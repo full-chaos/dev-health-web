@@ -66,6 +66,13 @@ export default async function SyncRunDetailPage({ params }: PageProps) {
             <AdminHeader title="Sync run" description={`Run ${runId.slice(0, 8)}`} />
 
             <SyncRunDetailLive
+                // Force remount on run navigation (CHAOS-2794): App Router can
+                // reuse this mounted client component across
+                // /runs/[runId] pushes, and initialRun/initialSummary are
+                // only read into state ONCE (useState initializer), so
+                // without this key a client-side nav to a different run
+                // would keep showing the PREVIOUS run's state.
+                key={run.id}
                 initialRun={run}
                 initialSummary={summary}
                 initialUnitsError={unitsError}

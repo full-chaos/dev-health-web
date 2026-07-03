@@ -18,6 +18,7 @@ import type {
     SyncTriggerResult,
     SyncRun,
     SyncRunUnitSummary,
+    SyncCoverageSummary,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
@@ -113,7 +114,41 @@ export async function triggerBackfill(
         const { token, orgId } = await getSessionContext();
         const res = await adminApi.syncConfigs.backfill(configId, { since, before }, token, orgId);
         revalidatePath("/org/admin/sync");
+        revalidatePath(`/org/admin/sync/${configId}`);
         return res;
+    });
+}
+
+/**
+ * Non-terminal BackfillJob statuses — mirrors BackfillStatus's isTerminal check.
+ * Fanout backfills report the planner's SyncRun lifecycle (planned →
+ * dispatching → running → success | partial_failed | failed); the legacy
+ * per-chunk BackfillJob path reports pending | running | completed | failed.
+ * Both families are treated as active here since the persisted status field
+ * is a plain string mirrored verbatim from whichever backend path handled the
+ * request (see ops routers/sync.py ~L539/584, sync/planner.py ~L161,
+ * models/integrations.py ~L38).
+ */
+const ACTIVE_BACKFILL_STATUSES = new Set(["pending", "planned", "dispatching", "running"]);
+
+/**
+ * Discover a persisted in-progress backfill for `configId` so its status
+ * survives navigation (CHAOS-2795). The `/backfill-jobs` endpoint has no
+ * server-side sync_config_id filter, so this fetches the most recent org-wide
+ * page (newest first) and filters client-side — a long-running backfill
+ * buried past the page size would be missed, an accepted limitation of the
+ * existing API surface.
+ */
+export async function getActiveBackfillJob(
+    configId: string,
+): Promise<ActionResult<BackfillJob | null>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const result = await adminApi.syncConfigs.listBackfillJobs(token, orgId, { limit: 50 });
+        const active = result.items.find(
+            (job) => job.sync_config_id === configId && ACTIVE_BACKFILL_STATUSES.has(job.status),
+        );
+        return active ?? null;
     });
 }
 
@@ -157,10 +192,21 @@ export async function getSyncRunUnits(runId: string): Promise<ActionResult<SyncR
     });
 }
 
-export async function getSyncJobs(id: string): Promise<ActionResult<SyncJob[]>> {
+export async function getSyncCoverage(id: string): Promise<ActionResult<SyncCoverageSummary>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        return adminApi.syncConfigs.jobs(id, token, orgId);
+        return adminApi.syncConfigs.getSyncCoverage(id, token, orgId);
+    });
+}
+
+export async function getSyncJobs(
+    id: string,
+    limit?: number,
+    offset?: number,
+): Promise<ActionResult<SyncJob[]>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.syncConfigs.jobs(id, token, orgId, { limit, offset });
     });
 }
 

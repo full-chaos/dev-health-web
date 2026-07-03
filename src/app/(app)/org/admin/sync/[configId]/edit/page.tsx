@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncConfigForm } from "@/components/admin/sync/SyncConfigForm";
 import { getSyncConfig, getSyncConfigRepositories, listCredentials } from "@/lib/admin/server";
-import { RunBackfill } from "@/components/admin/sync/RunBackfill";
 
 interface EditSyncConfigPageProps {
     params: Promise<{ configId: string }>;
@@ -35,10 +34,6 @@ export default async function EditSyncConfigPage({ params }: EditSyncConfigPageP
                 initialRepositorySelection={repositorySelectionResult.data}
                 credentials={credentials}
             />
-
-            <div className="max-w-2xl">
-                <RunBackfill configId={configId} />
-            </div>
         </div>
     );
 }

@@ -28,9 +28,14 @@ import {
     listRetentionResourceTypes,
     getOrgEntitlements,
     createSyncConfig,
+    getSyncCoverage,
+    getSyncJobs,
+    triggerBackfill,
+    getActiveBackfillJob,
     approveTeamChanges,
     dismissTeamChanges,
 } from "../server";
+import { COMPLETE_COVERAGE_SUMMARY, SYNC_JOB_WITH_RUN } from "./syncCoverageFixtures";
 
 function mockSession() {
     mockAuth({ user: { id: "u-1", org_id: "org-1" } });
@@ -177,6 +182,206 @@ describe("admin/server sync config actions", () => {
             });
             expect(result.data).toBeDefined();
             expect(revalidatePath).toHaveBeenCalledWith("/org/admin/sync");
+            fetchSpy.mockRestore();
+        });
+    });
+
+    describe("getSyncCoverage", () => {
+        it("returns persisted coverage summary on success", async () => {
+            mockSession();
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(JSON.stringify(COMPLETE_COVERAGE_SUMMARY), { status: 200 }),
+                );
+
+            const result = await getSyncCoverage("cfg-coverage");
+
+            expect(result.data).toEqual(COMPLETE_COVERAGE_SUMMARY);
+            expect(result.error).toBeUndefined();
+            const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+            expect(url).toBe(
+                "http://test-ops:8000/api/v1/admin/sync-configs/cfg-coverage/coverage",
+            );
+            expect(options?.headers).toMatchObject({
+                Authorization: "Bearer test-token",
+                "X-Org-Id": "org-1",
+            });
+            fetchSpy.mockRestore();
+        });
+
+        it("returns a UI-safe error result instead of leaking non-200 throws", async () => {
+            mockSession();
+            const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+                new Response(JSON.stringify({ detail: "coverage unavailable" }), {
+                    status: 500,
+                    statusText: "Internal Server Error",
+                }),
+            );
+
+            await expect(getSyncCoverage("cfg-coverage")).resolves.toEqual({
+                error: "coverage unavailable",
+            });
+            fetchSpy.mockRestore();
+        });
+    });
+
+    describe("getSyncJobs", () => {
+        it("passes pagination through and preserves optional sync_run enrichment", async () => {
+            mockSession();
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(JSON.stringify([SYNC_JOB_WITH_RUN]), { status: 200 }),
+                );
+
+            const result = await getSyncJobs("cfg-coverage", 25, 50);
+
+            expect(result.data?.[0]?.sync_run?.sync_run_id).toBe("run-coverage");
+            const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+            expect(url).toBe(
+                "http://test-ops:8000/api/v1/admin/sync-configs/cfg-coverage/jobs?limit=25&offset=50",
+            );
+            fetchSpy.mockRestore();
+        });
+    });
+
+    describe("triggerBackfill", () => {
+        it("revalidates both the list and the config detail path on success", async () => {
+            mockSession();
+            const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        status: "accepted",
+                        task_id: "task-1",
+                        backfill_job_id: "job-1",
+                        sync_run_id: "run-1",
+                    }),
+                    { status: 202 },
+                ),
+            );
+
+            const result = await triggerBackfill("cfg-coverage", "2026-06-01", "2026-06-05");
+
+            expect(result.data?.sync_run_id).toBe("run-1");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/sync");
+            expect(revalidatePath).toHaveBeenCalledWith("/org/admin/sync/cfg-coverage");
+            fetchSpy.mockRestore();
+        });
+    });
+
+    describe("getActiveBackfillJob", () => {
+        it("returns the config's non-terminal job, filtered client-side from the org-wide list", async () => {
+            mockSession();
+            const jobs = [
+                {
+                    id: "job-other-config",
+                    sync_config_id: "cfg-other",
+                    status: "running",
+                    since_date: "2026-06-01",
+                    before_date: "2026-06-05",
+                    total_chunks: 1,
+                    completed_chunks: 0,
+                    failed_chunks: 0,
+                    progress_pct: 0,
+                    error_message: null,
+                    started_at: null,
+                    completed_at: null,
+                    created_at: "2026-06-01T00:00:00Z",
+                },
+                {
+                    id: "job-completed",
+                    sync_config_id: "cfg-coverage",
+                    status: "completed",
+                    since_date: "2026-05-01",
+                    before_date: "2026-05-05",
+                    total_chunks: 1,
+                    completed_chunks: 1,
+                    failed_chunks: 0,
+                    progress_pct: 100,
+                    error_message: null,
+                    started_at: "2026-05-01T00:00:00Z",
+                    completed_at: "2026-05-01T01:00:00Z",
+                    created_at: "2026-05-01T00:00:00Z",
+                },
+                {
+                    id: "job-active",
+                    sync_config_id: "cfg-coverage",
+                    status: "running",
+                    since_date: "2026-06-20",
+                    before_date: "2026-06-26",
+                    total_chunks: 6,
+                    completed_chunks: 3,
+                    failed_chunks: 0,
+                    progress_pct: 50,
+                    error_message: null,
+                    started_at: "2026-06-20T00:00:00Z",
+                    completed_at: null,
+                    created_at: "2026-06-20T00:00:00Z",
+                },
+            ];
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data?.id).toBe("job-active");
+            const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+            expect(url).toBe("http://test-ops:8000/api/v1/admin/backfill-jobs?limit=50&offset=0");
+            fetchSpy.mockRestore();
+        });
+
+        it("returns null when the config has no non-terminal backfill job", async () => {
+            mockSession();
+            const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
+                new Response(JSON.stringify({ items: [], total: 0, limit: 50, offset: 0 }), {
+                    status: 200,
+                }),
+            );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data).toBeNull();
+            fetchSpy.mockRestore();
+        });
+
+        it("treats a fanout 'planned' job as active (a just-submitted backfill must be visible)", async () => {
+            mockSession();
+            const jobs = [
+                {
+                    id: "job-planned",
+                    sync_config_id: "cfg-coverage",
+                    status: "planned",
+                    since_date: "2026-06-20",
+                    before_date: "2026-06-26",
+                    total_chunks: 0,
+                    completed_chunks: 0,
+                    failed_chunks: 0,
+                    progress_pct: 0,
+                    error_message: null,
+                    started_at: null,
+                    completed_at: null,
+                    created_at: "2026-06-20T00:00:00Z",
+                },
+            ];
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data?.id).toBe("job-planned");
             fetchSpy.mockRestore();
         });
     });

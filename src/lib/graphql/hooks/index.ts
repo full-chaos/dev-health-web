@@ -17,10 +17,8 @@ export {
 export {
     useMetricsUpdated,
     useTaskStatus,
-    useSyncProgress,
     type MetricsUpdate,
     type TaskStatus,
-    type SyncProgress,
 } from "./useSubscription";
 export {
     useWorkGraphEdges,

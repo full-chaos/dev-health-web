@@ -84,6 +84,25 @@ export const CTA_LABELS = {
     darkTheme: "Dark",
     enabled: "Enabled",
     disabled: "Disabled",
+    /** Edit a sync configuration from its detail page (CHAOS-2791). */
+    editConfig: "Edit config",
+    /** Generic backfill entry point from the coverage summary header (CHAOS-2791). */
+    backfill: "Backfill",
+    /** Gap-scoped backfill deep-link from the coverage timeline (CHAOS-2793). */
+    backfillThisGap: "Backfill this gap",
+    allDatasets: "All datasets",
+    allSources: "All sources",
+    /** Reset the run-detail unit table status filter (CHAOS-2794). */
+    allStatuses: "All statuses",
+    viewRun: "View run",
+    /** Advance the backfill wizard to the previous step (CHAOS-2796). */
+    backButton: "Back",
+    /** Submit the backfill wizard's final step (CHAOS-2796). */
+    runBackfill: "Run backfill",
+    /** Dismiss the backfill wizard modal (CHAOS-2796). */
+    closeWizard: "Close",
+    /** Dismiss the wizard's post-submit result step (CHAOS-2796). */
+    done: "Done",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
