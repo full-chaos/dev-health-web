@@ -16,17 +16,30 @@
 
 import Link from "next/link";
 
+import { CTA_LABELS } from "@/lib/design/cta";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
+
+// Builds a direct `/diagnose/work-graph?f=…` link (bypassing the lossy
+// `/work` legacy-redirect, which drops any query param outside `tab`/`view`)
+// so the scope survives the drilldown (CHAOS-2851). Repo scope also seeds
+// `what.repos` because GraphView filters graph edges off that field, not
+// `scope.ids` — see `src/components/work/GraphView.tsx`.
 function buildRiskDrilldownUrl({
     scope,
 }: {
     scope: { kind: "repo" | "team"; id: string };
 }): string {
-    const params = new URLSearchParams({
-        tab: "graph",
-        risk_scope_kind: scope.kind,
-        risk_scope_id: scope.id,
-    });
-    return `/work?${params.toString()}`;
+    const filters: MetricFilter = {
+        ...defaultMetricFilter,
+        scope: { level: scope.kind, ids: [scope.id] },
+        what: {
+            ...defaultMetricFilter.what,
+            ...(scope.kind === "repo" ? { repos: [scope.id] } : {}),
+        },
+    };
+    return withFilterParam("/diagnose/work-graph", filters);
 }
 
 export type CompoundingRiskSeverity = "unknown" | "low" | "elevated" | "high";
@@ -40,7 +53,6 @@ export type CompoundingRiskComponentsView = {
     reviewNorm: number | null;
     reworkChurn: number | null;
     complexityDelta: number | null;
-    busFactor: number | null;
     ownershipGini: number | null;
     singleOwnerRatio: number | null;
     reviewLatencyP90h: number | null;
@@ -316,7 +328,7 @@ function ScopeTable({
                                         className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
                                         data-testid="open-in-work-graph"
                                     >
-                                        Open in Work Graph →
+                                        {CTA_LABELS.openWorkGraph} ↗
                                     </Link>
                                 </td>
                             </tr>
