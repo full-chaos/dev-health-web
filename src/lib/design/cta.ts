@@ -96,7 +96,7 @@ export const CTA_LABELS = {
     revoke: "Revoke",
     /** Rotate a customer-push ingest credential, issuing a new one-time token (CHAOS-2714). */
     rotate: "Rotate",
-    /** Dismiss the one-time token reveal panel (CHAOS-2714 D9). */
+    /** Dismiss a one-time reveal / post-submit result panel (CHAOS-2714 D9, CHAOS-2796). */
     done: "Done",
     /** Jump from the token reveal panel to the runner setup examples (CHAOS-2714). */
     viewSetupExamples: "View setup examples",
@@ -108,6 +108,23 @@ export const CTA_LABELS = {
     goToValidate: "Validate",
     /** Inline link to the runner setup examples from the empty batch-list state (CHAOS-2714). */
     goToCiJob: "CI job",
+    /** Edit a sync configuration from its detail page (CHAOS-2791). */
+    editConfig: "Edit config",
+    /** Generic backfill entry point from the coverage summary header (CHAOS-2791). */
+    backfill: "Backfill",
+    /** Gap-scoped backfill deep-link from the coverage timeline (CHAOS-2793). */
+    backfillThisGap: "Backfill this gap",
+    allDatasets: "All datasets",
+    allSources: "All sources",
+    /** Reset the run-detail unit table status filter (CHAOS-2794). */
+    allStatuses: "All statuses",
+    viewRun: "View run",
+    /** Advance the backfill wizard to the previous step (CHAOS-2796). */
+    backButton: "Back",
+    /** Submit the backfill wizard's final step (CHAOS-2796). */
+    runBackfill: "Run backfill",
+    /** Dismiss the backfill wizard modal (CHAOS-2796). */
+    closeWizard: "Close",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;

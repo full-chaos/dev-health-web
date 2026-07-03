@@ -16,8 +16,6 @@ import {
     SyncConfig,
     IntegrationCredential,
     Provider,
-    PROVIDERS,
-    PROVIDER_LABELS,
     PROVIDER_SYNC_TARGETS,
     SyncConfigRepositorySelection,
 } from "@/lib/admin/types";
@@ -27,13 +25,28 @@ import {
     updateSyncConfig,
     updateSyncConfigRepositories,
 } from "@/lib/admin/server";
-import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
-import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
+import { BaseForm, useBaseFormState } from "@/components/shared/BaseForm";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { CreateCredentialModal } from "./CreateCredentialModal";
-import { RepoSelector } from "./RepoSelector";
-import { SchedulePicker } from "./SchedulePicker";
+import {
+    AUTO_IMPORT_PROVIDERS,
+    getSyncTargetsForProvider,
+    sameRepoSelection,
+} from "./config-form/constants";
+import {
+    buildChangeSummary,
+    getDatasetWarnings,
+    getRepoScopeWarnings,
+} from "./config-form/formDiff";
+import type { SyncFormSnapshot } from "./config-form/formDiff";
+import { IdentitySection } from "./config-form/IdentitySection";
+import { CredentialSection } from "./config-form/CredentialSection";
+import { RepositoryScopeSection } from "./config-form/RepositoryScopeSection";
+import { DatasetsSection } from "./config-form/DatasetsSection";
+import { InitialDepthSection } from "./config-form/InitialDepthSection";
+import { ScheduleSection } from "./config-form/ScheduleSection";
+import { AdvancedSection } from "./config-form/AdvancedSection";
 
 type SyncConfigFormProps = {
     initialData?: SyncConfig;
@@ -42,55 +55,11 @@ type SyncConfigFormProps = {
     onSuccessAction?: () => void;
 };
 
-const ALL_SYNC_TARGETS = [
-    { id: "git", label: "Git Data (Commits, Branches)" },
-    { id: "prs", label: "Pull Requests" },
-    { id: "cicd", label: "CI/CD Pipelines" },
-    { id: "deployments", label: "Deployments" },
-    { id: "incidents", label: "Incidents" },
-    { id: "work-items", label: "Work Items (Issues, Tickets)" },
-    { id: "feature-flags", label: "Feature Flags" },
-];
-
-// Providers where work-item / team attribution applies, so auto-importing
-// teams, projects & members is meaningful. Pure feature-flag providers
-// (e.g. launchdarkly) and pure-git/local sources are excluded.
-const AUTO_IMPORT_PROVIDERS = ["github", "gitlab", "jira", "linear"];
-
-function getSyncTargetsForProvider(provider: string) {
-    const allowed =
-        PROVIDER_SYNC_TARGETS[provider as Provider] ?? Object.values(PROVIDER_SYNC_TARGETS).flat();
-    return ALL_SYNC_TARGETS.filter((t) => allowed.includes(t.id));
-}
-
-function sameRepoSelection(left: string[], right: string[]) {
-    if (left.length !== right.length) return false;
-    const rightSet = new Set(right);
-    return left.every((repo) => rightSet.has(repo));
-}
-
-export function SyncConfigForm({
-    initialData,
-    initialRepositorySelection,
-    credentials,
-    onSuccessAction,
-}: SyncConfigFormProps) {
-    const router = useRouter();
-    const [isPending, startTransition] = useTransition();
-    const [showCredentialModal, setShowCredentialModal] = useState(false);
-    const [localCredentials, setLocalCredentials] = useState(credentials);
-    const { features, minSyncIntervalHours, limits } = useAdminTier();
-    const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
-    const [syncAllRepos, setSyncAllRepos] = useState(
-        initialRepositorySelection?.sync_all_repos ??
-            ((initialData?.sync_options?.all_repos as boolean | undefined) || false),
-    );
-
-    const {
-        formData,
-        setFormData,
-        handleChange: handleBaseChange,
-    } = useBaseFormState({
+function buildInitialFormValues(
+    initialData: SyncConfig | undefined,
+    initialRepositorySelection: SyncConfigRepositorySelection | undefined,
+) {
+    return {
         name: initialData?.name || "",
         provider: initialData?.provider || "github",
         credential_id: initialData?.credential_id || "",
@@ -112,7 +81,62 @@ export function SyncConfigForm({
         repos: initialRepositorySelection?.repos || ([] as string[]),
         gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
         auto_import_teams: (initialData?.sync_options?.auto_import_teams as boolean) ?? false,
-    });
+    };
+}
+
+function toSnapshot(
+    formData: ReturnType<typeof buildInitialFormValues>,
+    syncAllRepos: boolean,
+): SyncFormSnapshot {
+    return {
+        sync_targets: formData.sync_targets,
+        is_active: formData.is_active,
+        schedule_cron: formData.schedule_cron,
+        timezone: formData.timezone,
+        initial_sync_depth: formData.initial_sync_depth,
+        owner: formData.owner,
+        gitlab_url: formData.gitlab_url,
+        auto_import_teams: formData.auto_import_teams,
+        repos: formData.repos,
+        syncAllRepos,
+    };
+}
+
+export function SyncConfigForm({
+    initialData,
+    initialRepositorySelection,
+    credentials,
+    onSuccessAction,
+}: SyncConfigFormProps) {
+    const router = useRouter();
+    const isEdit = !!initialData;
+    const [isPending, startTransition] = useTransition();
+    const [showCredentialModal, setShowCredentialModal] = useState(false);
+    const [localCredentials, setLocalCredentials] = useState(credentials);
+    const { features, minSyncIntervalHours, limits } = useAdminTier();
+    const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
+    const [syncAllRepos, setSyncAllRepos] = useState(
+        initialRepositorySelection?.sync_all_repos ??
+            ((initialData?.sync_options?.all_repos as boolean | undefined) || false),
+    );
+    // Snapshot of the values the form was seeded with, updated to the
+    // just-saved values on a successful edit — so destructive-change
+    // warnings and the post-save diff summary are always computed
+    // relative to the config's current persisted state, not the values
+    // the page happened to load with (CHAOS-2797).
+    const [baseline, setBaseline] = useState<SyncFormSnapshot>(() =>
+        toSnapshot(
+            buildInitialFormValues(initialData, initialRepositorySelection),
+            initialRepositorySelection?.sync_all_repos ??
+                ((initialData?.sync_options?.all_repos as boolean | undefined) || false),
+        ),
+    );
+
+    const {
+        formData,
+        setFormData,
+        handleChange: handleBaseChange,
+    } = useBaseFormState(buildInitialFormValues(initialData, initialRepositorySelection));
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- local credentials intentionally mirror updated server props.
@@ -124,11 +148,34 @@ export function SyncConfigForm({
         [localCredentials, formData.provider],
     );
 
+    const credentialName = useMemo(
+        () => localCredentials.find((c) => c.id === formData.credential_id)?.name ?? null,
+        [localCredentials, formData.credential_id],
+    );
+
     const availableTargets = useMemo(
         () => getSyncTargetsForProvider(formData.provider),
         [formData.provider],
     );
     const canBrowseRepos = !initialData || !!initialRepositorySelection;
+
+    const currentSnapshot = useMemo(
+        () => toSnapshot(formData, syncAllRepos),
+        [formData, syncAllRepos],
+    );
+    const repoScopeWarnings = useMemo(
+        () => (isEdit ? getRepoScopeWarnings(baseline, currentSnapshot) : []),
+        [isEdit, baseline, currentSnapshot],
+    );
+    const datasetWarnings = useMemo(
+        () => (isEdit ? getDatasetWarnings(baseline, currentSnapshot) : []),
+        [isEdit, baseline, currentSnapshot],
+    );
+
+    const isDepthTierGated = useCallback(
+        (tier: "team" | "enterprise" | null) => !!tier && !features["initial_sync_depth"],
+        [features],
+    );
 
     const handleChange = useCallback(
         (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -228,6 +275,7 @@ export function SyncConfigForm({
                         if (result?.error) {
                             toast.error(result.error);
                         } else {
+                            const savedSnapshot = toSnapshot(formData, syncAllRepos);
                             const shouldUpdateRepos = Boolean(
                                 (formData.provider === "github" ||
                                     formData.provider === "gitlab") &&
@@ -252,11 +300,21 @@ export function SyncConfigForm({
                                     return;
                                 }
                             }
-                            toast.success("Config updated");
+                            const changeSummary = buildChangeSummary(baseline, savedSnapshot);
+                            toast.success(
+                                "Config updated",
+                                changeSummary.length > 0
+                                    ? { description: `Changed: ${changeSummary.join("; ")}` }
+                                    : undefined,
+                            );
+                            setBaseline(savedSnapshot);
                             if (onSuccessAction) {
                                 onSuccessAction();
                             } else {
-                                router.push("/org/admin/sync");
+                                // Stay on the edit page — the config was just
+                                // saved here, not somewhere else — and pull
+                                // fresh server data via revalidated props.
+                                router.refresh();
                             }
                         }
                     } else {
@@ -338,6 +396,7 @@ export function SyncConfigForm({
             formData,
             syncAllRepos,
             buildSyncOptions,
+            baseline,
             onSuccessAction,
             router,
         ],
@@ -356,7 +415,7 @@ export function SyncConfigForm({
                           : "Create Configuration"
                 }
                 className="max-w-2xl space-y-6"
-                contentClassName="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
+                contentClassName="space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
                 actionsClassName="flex items-center gap-4"
                 actionsStart={
                     <Link
@@ -367,310 +426,75 @@ export function SyncConfigForm({
                     </Link>
                 }
             >
-                {/* Name */}
-                <div>
-                    <label htmlFor="name" className="mb-1.5 block text-sm font-medium">
-                        Configuration Name
-                    </label>
-                    <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        disabled={!!initialData} // Name often immutable or just disabled for simplicity in edit
-                        required
-                        className={`${inputClass} text-sm disabled:opacity-50`}
-                        placeholder="e.g., GitHub Main Org Sync"
-                    />
-                </div>
+                <IdentitySection
+                    isEdit={isEdit}
+                    name={formData.name}
+                    provider={formData.provider}
+                    onChange={handleChange}
+                />
 
-                {/* Provider */}
-                <div>
-                    <label htmlFor="provider" className="mb-1.5 block text-sm font-medium">
-                        Provider
-                    </label>
-                    <select
-                        id="provider"
-                        name="provider"
-                        value={formData.provider}
-                        onChange={handleChange}
-                        disabled={!!initialData}
-                        className={`${inputClass} text-sm disabled:opacity-50`}
-                    >
-                        {PROVIDERS.map((p) => (
-                            <option key={p} value={p}>
-                                {PROVIDER_LABELS[p]}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <CredentialSection
+                    isEdit={isEdit}
+                    credentialId={formData.credential_id}
+                    credentialName={credentialName}
+                    filteredCredentials={filteredCredentials}
+                    onChange={handleChange}
+                    onOpenCreateModal={() => setShowCredentialModal(true)}
+                />
 
-                {/* Credential */}
-                <div>
-                    <div className="mb-1.5 flex items-center justify-between">
-                        <label htmlFor="credential_id" className="block text-sm font-medium">
-                            Credential
-                        </label>
-                        <button
-                            type="button"
-                            onClick={() => setShowCredentialModal(true)}
-                            className="rounded-md border border-(--card-stroke) px-2 py-1 text-xs font-medium text-(--foreground) hover:bg-(--card-70)"
-                        >
-                            + New
-                        </button>
-                    </div>
-                    <select
-                        id="credential_id"
-                        name="credential_id"
-                        value={formData.credential_id}
-                        onChange={handleChange}
-                        disabled={!!initialData} // Changing credential might require re-auth flow, keep simple for now
-                        className={`${inputClass} text-sm disabled:opacity-50`}
-                    >
-                        <option value="">Select a credential...</option>
-                        {filteredCredentials.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {c.name}
-                            </option>
-                        ))}
-                    </select>
-                    {filteredCredentials.length === 0 && !initialData && (
-                        <div className="mt-1 flex items-center gap-1 text-xs text-amber-500">
-                            <span>No credentials found for this provider.</span>
-                            <Link href="/org/admin/integrations" className="underline">
-                                {CTA_LABELS.addOneFirst}
-                            </Link>
-                            <span>or</span>
-                            <button
-                                type="button"
-                                onClick={() => setShowCredentialModal(true)}
-                                className="underline"
-                            >
-                                {CTA_LABELS.createOneNow}
-                            </button>
-                            <span>.</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Repository Settings */}
                 {(formData.provider === "github" || formData.provider === "gitlab") && (
-                    <div className="space-y-4">
-                        <span className="mb-2 block text-sm font-medium">Repository</span>
-                        <div>
-                            <label
-                                htmlFor="owner"
-                                className="mb-1.5 block text-sm font-medium text-(--ink-muted)"
-                            >
-                                Owner / Organization
-                            </label>
-                            <input
-                                type="text"
-                                id="owner"
-                                name="owner"
-                                value={formData.owner}
-                                onChange={handleChange}
-                                className={`${inputClass} text-sm disabled:opacity-50`}
-                                placeholder="e.g., myorg"
-                            />
-                        </div>
-                        {formData.provider === "gitlab" && (
-                            <div>
-                                <label
-                                    htmlFor="gitlab_url"
-                                    className="mb-1.5 block text-sm font-medium text-(--ink-muted)"
-                                >
-                                    GitLab URL
-                                </label>
-                                <input
-                                    type="text"
-                                    id="gitlab_url"
-                                    name="gitlab_url"
-                                    value={formData.gitlab_url}
-                                    onChange={handleChange}
-                                    className={`${inputClass} text-sm disabled:opacity-50`}
-                                    placeholder="https://gitlab.com"
-                                />
-                            </div>
-                        )}
-                        {!initialData && (
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="sync_all_repos"
-                                    name="sync_all_repos"
-                                    checked={syncAllRepos}
-                                    onChange={(e) => setSyncAllRepos(e.target.checked)}
-                                    className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
-                                />
-                                <label htmlFor="sync_all_repos" className="text-sm font-medium">
-                                    Sync all repositories this token can access
-                                </label>
-                            </div>
-                        )}
-                        {syncAllRepos && (
-                            <p className="text-xs text-(--ink-muted)">
-                                Every repository the selected credential can reach will be synced.
-                                Enter an owner above to narrow this to a single organization
-                                (optional).
-                            </p>
-                        )}
-                        {!syncAllRepos &&
-                        canBrowseRepos &&
-                        formData.credential_id &&
-                        formData.owner ? (
-                            <div>
-                                <span className="mb-2 block text-sm font-medium text-(--ink-muted)">
-                                    Select Repositories
-                                </span>
-                                <RepoSelector
-                                    credentialId={formData.credential_id}
-                                    owner={formData.owner}
-                                    selectedRepos={formData.repos}
-                                    onSelectionChangeAction={(repos) =>
-                                        setFormData((prev) => ({ ...prev, repos }))
-                                    }
-                                    maxRepos={maxRepos}
-                                />
-                            </div>
-                        ) : (
-                            !syncAllRepos &&
-                            canBrowseRepos && (
-                                <p className="text-xs text-(--ink-muted)">
-                                    Select a credential and enter an owner above to browse and
-                                    select repositories.
-                                </p>
-                            )
-                        )}
-                    </div>
-                )}
-
-                {/* Sync Targets */}
-                <div>
-                    <span className="mb-2 block text-sm font-medium">Sync Targets</span>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {availableTargets.map((target) => (
-                            <label
-                                key={target.id}
-                                className="flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 hover:bg-(--card-60)"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={formData.sync_targets.includes(target.id)}
-                                    onChange={(e) =>
-                                        handleTargetChange(target.id, e.target.checked)
-                                    }
-                                    className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
-                                />
-                                <span className="text-sm">{target.label}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Auto-import teams, projects & members */}
-                {AUTO_IMPORT_PROVIDERS.includes(formData.provider) && (
-                    <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                id="auto_import_teams"
-                                name="auto_import_teams"
-                                checked={formData.auto_import_teams}
-                                onChange={(e) =>
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        auto_import_teams: e.target.checked,
-                                    }))
-                                }
-                                className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
-                            />
-                            <label htmlFor="auto_import_teams" className="text-sm font-medium">
-                                Auto-import teams, projects &amp; members
-                            </label>
-                        </div>
-                        <p className="text-xs text-(--ink-muted)">
-                            Discover and import teams, projects, and members from this provider
-                            during sync to populate ownership and attribution.
-                        </p>
-                    </div>
-                )}
-
-                {/* Initial Sync Depth */}
-                <div className="space-y-3">
-                    <span className="text-sm font-medium text-[var(--text-primary)]">
-                        Initial Sync Depth
-                    </span>
-                    <p className="text-xs text-[var(--text-secondary)]">
-                        How far back to pull historical data when first connecting.
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {[
-                            { label: "30 days", value: 30, tier: null },
-                            { label: "90 days", value: 90, tier: "team" },
-                            { label: "6 months", value: 180, tier: "team" },
-                            { label: "1 year", value: 365, tier: "enterprise" },
-                            { label: "All time", value: 0, tier: "enterprise" },
-                        ].map((opt) => {
-                            const isSelected = (formData.initial_sync_depth ?? 30) === opt.value;
-                            const isGated = !!opt.tier && !features[`initial_sync_depth`];
-                            return (
-                                <button
-                                    key={opt.value}
-                                    type="button"
-                                    disabled={isGated}
-                                    onClick={() =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            initial_sync_depth: opt.value,
-                                        }))
-                                    }
-                                    className={`rounded-md border px-3 py-2 text-sm transition-colors ${
-                                        isSelected
-                                            ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
-                                            : isGated
-                                              ? "cursor-not-allowed border-[var(--card-stroke)] bg-[var(--bg-secondary)] text-[var(--text-tertiary)] opacity-50"
-                                              : "border-[var(--card-stroke)] hover:border-[var(--accent)]/50"
-                                    }`}
-                                >
-                                    {opt.label}
-                                    {isGated && <span className="ml-1 text-label-caps">🔒</span>}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* Active Toggle */}
-                <div className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        id="is_active"
-                        name="is_active"
-                        checked={formData.is_active}
+                    <RepositoryScopeSection
+                        provider={formData.provider}
+                        owner={formData.owner}
+                        gitlabUrl={formData.gitlab_url}
                         onChange={handleChange}
-                        className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                        isEdit={isEdit}
+                        syncAllRepos={syncAllRepos}
+                        onSyncAllReposChange={setSyncAllRepos}
+                        canBrowseRepos={canBrowseRepos}
+                        credentialId={formData.credential_id}
+                        repos={formData.repos}
+                        onReposChange={(repos) => setFormData((prev) => ({ ...prev, repos }))}
+                        maxRepos={maxRepos}
+                        destructiveWarnings={repoScopeWarnings}
                     />
-                    <label htmlFor="is_active" className="text-sm font-medium">
-                        Enable automatic sync schedule
-                    </label>
-                </div>
+                )}
 
-                <UpgradeGate feature="scheduled_jobs" requiredTier="team">
-                    <SchedulePicker
-                        value={formData.schedule_cron}
-                        timezone={formData.timezone}
-                        onChange={(cron, tz) =>
-                            setFormData((prev) => ({
-                                ...prev,
-                                schedule_cron: cron,
-                                timezone: tz,
-                            }))
-                        }
-                        minIntervalHours={minSyncIntervalHours}
-                    />
-                </UpgradeGate>
+                <DatasetsSection
+                    availableTargets={availableTargets}
+                    selectedTargets={formData.sync_targets}
+                    onTargetChange={handleTargetChange}
+                    destructiveWarnings={datasetWarnings}
+                />
+
+                <InitialDepthSection
+                    value={formData.initial_sync_depth}
+                    onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, initial_sync_depth: value }))
+                    }
+                    isTierGated={isDepthTierGated}
+                />
+
+                <ScheduleSection
+                    isActive={formData.is_active}
+                    onIsActiveChange={(checked) =>
+                        setFormData((prev) => ({ ...prev, is_active: checked }))
+                    }
+                    scheduleCron={formData.schedule_cron}
+                    timezone={formData.timezone}
+                    onScheduleChange={(cron, tz) =>
+                        setFormData((prev) => ({ ...prev, schedule_cron: cron, timezone: tz }))
+                    }
+                    minIntervalHours={minSyncIntervalHours}
+                />
+
+                <AdvancedSection
+                    provider={formData.provider}
+                    autoImportTeams={formData.auto_import_teams}
+                    onChange={(checked) =>
+                        setFormData((prev) => ({ ...prev, auto_import_teams: checked }))
+                    }
+                />
             </BaseForm>
 
             {showCredentialModal && (
