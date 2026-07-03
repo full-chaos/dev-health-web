@@ -60,7 +60,9 @@ test("editing sync config repositories updates selected repos", async ({ page })
     await expect(page.getByText("2 of 2 selected")).toBeVisible();
     await page.getByRole("button", { name: /update configuration/i }).click();
 
-    await expect(page).toHaveURL(/\/org\/admin\/sync$/);
+    await expect(page).toHaveURL(/\/org\/admin\/sync\/sync-config-edit-repos\/edit$/);
+    await expect(page.getByText("Config updated")).toBeVisible();
+    await expect(page.getByText("2 of 2 selected")).toBeVisible();
 });
 
 test("sync config history exposes coverage-first job columns and results", async ({ page }) => {
