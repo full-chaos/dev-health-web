@@ -11,7 +11,6 @@ import {
     getSyncConfig,
     getSyncJobs,
     getSyncCoverage,
-    getCurrentOrg,
     getActiveBackfillJob,
 } from "@/lib/admin/server";
 import {
@@ -56,7 +55,6 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     let coverage: SyncCoverageSummary | null;
     let coverageError: string | null = null;
     let activeBackfillJob: BackfillJob | null;
-    let orgId: string;
 
     if (isTestMode) {
         // Render deterministic sample data without hitting the admin API so the
@@ -66,16 +64,13 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
         coverage = SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenarioParam)];
         activeBackfillJob =
             SAMPLE_BACKFILL_JOBS[resolveSampleBackfillScenario(backfillScenarioParam)];
-        orgId = "sample-org";
     } else {
-        const [configResult, jobsResult, coverageResult, orgResult, activeBackfillResult] =
-            await Promise.all([
-                getSyncConfig(configId),
-                getSyncJobs(configId),
-                getSyncCoverage(configId),
-                getCurrentOrg(),
-                getActiveBackfillJob(configId),
-            ]);
+        const [configResult, jobsResult, coverageResult, activeBackfillResult] = await Promise.all([
+            getSyncConfig(configId),
+            getSyncJobs(configId),
+            getSyncCoverage(configId),
+            getActiveBackfillJob(configId),
+        ]);
 
         if (configResult.error || !configResult.data) {
             notFound();
@@ -83,7 +78,6 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
 
         config = configResult.data;
         jobs = jobsResult.data ?? [];
-        orgId = orgResult.data?.id ?? "";
         // Non-critical supplementary status; a failed lookup just means no
         // in-progress-backfill banner renders, not a page-level error.
         activeBackfillJob = activeBackfillResult.data ?? null;
@@ -114,7 +108,7 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
                 />
             </AdminHeader>
 
-            <SyncProgressBar configId={config.id} provider={config.provider} orgId={orgId} />
+            <SyncProgressBar configId={config.id} testMode={isTestMode} />
 
             <BackfillOperations
                 configId={config.id}

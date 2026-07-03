@@ -29,20 +29,6 @@ const TASK_STATUS_SUBSCRIPTION = `
   }
 `;
 
-const SYNC_PROGRESS_SUBSCRIPTION = `
-  subscription SyncProgress($orgId: String!) {
-    syncProgress(orgId: $orgId) {
-      orgId
-      provider
-      status
-      itemsProcessed
-      itemsTotal
-      message
-      updatedAt
-    }
-  }
-`;
-
 export interface MetricsUpdate {
     orgId: string;
     day: string;
@@ -56,16 +42,6 @@ export interface TaskStatus {
     progress: number;
     message?: string;
     result?: string;
-    updatedAt: string;
-}
-
-export interface SyncProgress {
-    orgId: string;
-    provider: string;
-    status: string;
-    itemsProcessed: number;
-    itemsTotal: number;
-    message?: string;
     updatedAt: string;
 }
 
@@ -133,44 +109,6 @@ export function useTaskStatus(options: UseTaskStatusOptions) {
         {
             query: TASK_STATUS_SUBSCRIPTION,
             variables: { taskId },
-            pause,
-        },
-        handleSubscription,
-    );
-
-    return {
-        data: result.data,
-        loading: result.fetching,
-        error: result.error ?? null,
-    };
-}
-
-interface UseSyncProgressOptions {
-    orgId: string;
-    onUpdate?: (data: SyncProgress) => void;
-    pause?: boolean;
-}
-
-/**
- * Subscribe to sync progress updates.
- */
-export function useSyncProgress(options: UseSyncProgressOptions) {
-    const { orgId, onUpdate, pause = false } = options;
-
-    const handleSubscription: SubscriptionHandler<
-        { syncProgress: SyncProgress },
-        SyncProgress | null
-    > = (_, response) => {
-        if (response.syncProgress && onUpdate) {
-            onUpdate(response.syncProgress);
-        }
-        return response.syncProgress ?? null;
-    };
-
-    const [result] = useSubscription(
-        {
-            query: SYNC_PROGRESS_SUBSCRIPTION,
-            variables: { orgId },
             pause,
         },
         handleSubscription,

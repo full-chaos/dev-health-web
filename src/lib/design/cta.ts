@@ -92,6 +92,8 @@ export const CTA_LABELS = {
     backfillThisGap: "Backfill this gap",
     allDatasets: "All datasets",
     allSources: "All sources",
+    /** Reset the run-detail unit table status filter (CHAOS-2794). */
+    allStatuses: "All statuses",
     viewRun: "View run",
     /** Advance the backfill wizard to the previous step (CHAOS-2796). */
     backButton: "Back",

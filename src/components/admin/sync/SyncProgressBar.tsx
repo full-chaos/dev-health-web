@@ -1,117 +1,223 @@
 "use client";
 
-import { useSyncProgress } from "@/lib/graphql/hooks/useSubscription";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getSyncJobs, getSyncRunStatus } from "@/lib/admin/server";
+import { isTerminalSyncStatus, mapPlannerRunStatus } from "@/lib/sync-types";
+import type { SyncRun } from "@/lib/admin/types";
+
+/**
+ * Config-scoped live sync progress (CHAOS-2799).
+ *
+ * Replaces the previous org+provider-scoped GraphQL subscription — which the
+ * backend publisher never wires into unitized/planner workers (CHAOS-2703),
+ * and which conflated concurrent same-provider configs since it only
+ * filtered by `provider`, never `configId` — with polling over PERSISTED
+ * run state:
+ *
+ *   1. Discovery: while no run is being tracked, poll the config's recent
+ *      jobs (GET /sync-configs/{id}/jobs) for a planner-backed job that is
+ *      still running/pending. This surfaces manual, scheduled, AND
+ *      backfill-triggered runs uniformly, with no direct hookup to
+ *      SyncNowButton/useSyncTrigger required.
+ *   2. Tracking: once a `sync_run_id` is known, poll GET /sync-runs/{id}
+ *      directly until the run reaches a terminal status, then drop back to
+ *      discovery so a later scheduled run is picked up too.
+ *
+ * All state is component-local (no module-level cache), so two
+ * `<SyncProgressBar configId=".."/>` instances — e.g. two concurrent
+ * same-provider configs — never share or leak progress.
+ */
+
+/** How often to check for an active run, or refresh the tracked run's state. */
+const POLL_INTERVAL_MS = 3500;
+/** How long to keep showing a terminal result before clearing it. */
+const TERMINAL_DISPLAY_MS = 5000;
+/** Safety cap so a stuck/abandoned run never pins the bar in "running" forever. */
+const MAX_TRACK_DURATION_MS = 10 * 60 * 1000;
+/** How many recent jobs to inspect when looking for an active run.
+ *
+ * 25 (not just a handful) so a burst of newer terminal jobs never hides an
+ * older still-running one further back in descending-recency order. The
+ * enriched `/jobs` endpoint honors `limit` server-side, so this is a single
+ * cheap request — a paging loop would be overkill for a 3.5s poll cadence.
+ */
+const DISCOVERY_JOB_LIMIT = 25;
 
 interface SyncProgressBarProps {
     configId: string;
-    provider: string;
-    orgId: string;
+    /** When true, never poll a live API (Playwright/test-mode sample rendering). */
+    testMode?: boolean;
 }
 
-export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
-    const [progress, setProgress] = useState<{
-        itemsProcessed: number;
-        itemsTotal: number;
-        message?: string;
-        status: string;
-        stage?: string;
-        currentStep?: string;
-    } | null>(null);
-    const [startedAt, setStartedAt] = useState<number | null>(null);
+function formatElapsed(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const remainder = seconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
+export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarProps) {
+    const [tracked, setTracked] = useState<{ configId: string; run: SyncRun } | null>(null);
     const [now, setNow] = useState(() => Date.now());
+    const [terminalUntil, setTerminalUntil] = useState<number | null>(null);
 
-    useSyncProgress({
-        orgId,
-        onUpdate: (data) => {
-            // Filter updates for this provider
-            // Note: The subscription currently returns updates by provider, not configId.
-            // This assumes one active sync per provider per org, which is a reasonable simplification for now.
-            if (data.provider === provider) {
-                const update = data as typeof data & { stage?: string; current_step?: string };
-                const newStatus = data.status;
-                if (newStatus === "RUNNING") {
-                    setStartedAt((prev) => prev ?? Date.now());
-                } else if (newStatus !== "RUNNING" && newStatus !== "PENDING") {
-                    setStartedAt(null);
+    // The sync_run_id currently being tracked for THIS config instance. A ref
+    // (not state) because it only drives poll branching inside the interval
+    // callback, never rendering directly.
+    const runIdRef = useRef<string | null>(null);
+    const trackStartedAtRef = useRef<number | null>(null);
+    const inFlightRef = useRef(false);
+    // Invalidates any in-flight response once the effect tears down (configId
+    // change or unmount) so a slow discovery/tracking call can never mutate
+    // state for a config this instance has moved away from.
+    const seqRef = useRef(0);
+
+    // Discover + poll. Re-runs whenever `configId` changes, tearing down the
+    // previous interval and resetting tracking refs — so switching configs
+    // (or two sibling instances with different configIds) never share state.
+    useEffect(() => {
+        if (testMode) return undefined;
+
+        seqRef.current += 1;
+        const effectSeq = seqRef.current;
+        runIdRef.current = null;
+        trackStartedAtRef.current = null;
+
+        const tick = async () => {
+            if (inFlightRef.current) return;
+            inFlightRef.current = true;
+            try {
+                if (!runIdRef.current) {
+                    const jobsRes = await getSyncJobs(configId, DISCOVERY_JOB_LIMIT);
+                    if (effectSeq !== seqRef.current) return;
+                    if (jobsRes.error || !jobsRes.data) return;
+                    const activeJob = jobsRes.data.find(
+                        (job) =>
+                            job.sync_run?.sync_run_id &&
+                            (job.status === "running" || job.status === "pending"),
+                    );
+                    if (!activeJob?.sync_run) return;
+                    runIdRef.current = activeJob.sync_run.sync_run_id;
+                    trackStartedAtRef.current = Date.now();
                 }
-                setProgress({
-                    itemsProcessed: data.itemsProcessed,
-                    itemsTotal: data.itemsTotal,
-                    message: data.message,
-                    status: data.status,
-                    stage: update.stage,
-                    currentStep: update.current_step,
-                });
+
+                const runId = runIdRef.current;
+                if (!runId) return;
+
+                const runRes = await getSyncRunStatus(runId);
+                // Ignore stale responses: a newer effect run (configId
+                // changed) or a since-cleared tracked run must never apply.
+                if (effectSeq !== seqRef.current || runIdRef.current !== runId) return;
+                if (runRes.error || !runRes.data) return;
+
+                // Pair the run with the configId this tick was discovered
+                // for (not just the current prop) so a later configId change
+                // can never keep rendering a stale config's run — render
+                // gates on `tracked.configId === configId` below.
+                setTracked({ configId, run: runRes.data });
+                setTerminalUntil(null);
+
+                const liveStatus = mapPlannerRunStatus(runRes.data.status);
+                const trackedTooLong =
+                    trackStartedAtRef.current !== null &&
+                    Date.now() - trackStartedAtRef.current > MAX_TRACK_DURATION_MS;
+
+                if (isTerminalSyncStatus(liveStatus)) {
+                    runIdRef.current = null;
+                    trackStartedAtRef.current = null;
+                    setTerminalUntil(Date.now() + TERMINAL_DISPLAY_MS);
+                } else if (trackedTooLong) {
+                    // Give up tracking a stuck run so the bar doesn't spin on
+                    // it forever; fall back to discovery.
+                    runIdRef.current = null;
+                    trackStartedAtRef.current = null;
+                    setTracked(null);
+                }
+            } finally {
+                inFlightRef.current = false;
             }
-        },
-    });
+        };
 
+        const interval = setInterval(() => void tick(), POLL_INTERVAL_MS);
+        void tick();
+
+        return () => {
+            seqRef.current += 1;
+            clearInterval(interval);
+        };
+    }, [configId, testMode]);
+
+    // Only ever visible when the tracked run's configId still matches the
+    // current prop — closes the stale-config leak: if `configId` changes
+    // before this instance's tracking state is cleared/overwritten, the OLD
+    // config's run immediately stops rendering rather than persisting until
+    // the next terminal/cleanup tick (CHAOS-2799).
+    const visibleRun = tracked && tracked.configId === configId ? tracked.run : null;
+    const runStatus = visibleRun?.status ?? null;
+    const runStartedAt = visibleRun?.started_at ?? null;
+
+    // 1s display timer while a run is actively tracked, purely for the
+    // elapsed-time readout. Derives from persisted `started_at` rather than a
+    // client-observed timestamp, per the render-persisted-state contract.
     useEffect(() => {
-        if (progress?.status !== "RUNNING") {
-            return;
+        if (!runStartedAt || isTerminalSyncStatus(mapPlannerRunStatus(runStatus ?? ""))) {
+            return undefined;
         }
-
-        const timer = setInterval(() => {
-            setNow(Date.now());
-        }, 1000);
-
+        const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);
-    }, [progress?.status]);
+    }, [runStatus, runStartedAt]);
 
-    // Reset progress when status changes to something terminal, but keep showing it for a moment
+    // Auto-clear a terminal result after a short grace period so the bar
+    // doesn't linger indefinitely once a run finishes.
     useEffect(() => {
-        if (progress?.status === "SUCCESS" || progress?.status === "FAILED") {
-            const timer = setTimeout(() => {
-                setProgress(null);
-            }, 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [progress?.status]);
+        if (terminalUntil === null) return undefined;
+        const delay = Math.max(0, terminalUntil - Date.now());
+        const timer = setTimeout(() => {
+            // Functional update guarded by configId: never clear a NEWER
+            // config's tracked run if this timer was scheduled by an older
+            // config's now-stale terminal result.
+            setTracked((current) => (current && current.configId === configId ? null : current));
+        }, delay);
+        return () => clearTimeout(timer);
+    }, [terminalUntil, configId]);
 
-    if (!progress || progress.status === "IDLE" || progress.status === "PENDING") {
-        return null;
-    }
+    if (!visibleRun) return null;
 
+    const run = visibleRun;
+
+    const liveStatus = mapPlannerRunStatus(run.status);
+    const settled = Math.min(run.total_units, run.completed_units + run.failed_units);
     const percentage =
-        progress.itemsTotal > 0
-            ? Math.min(100, Math.round((progress.itemsProcessed / progress.itemsTotal) * 100))
-            : 0;
-    const elapsedSeconds = startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
-    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-    const elapsedRemainderSeconds = elapsedSeconds % 60;
-    const elapsedText = `${String(elapsedMinutes).padStart(2, "0")}:${String(elapsedRemainderSeconds).padStart(2, "0")}`;
+        run.total_units > 0 ? Math.min(100, Math.round((settled / run.total_units) * 100)) : 0;
+    const elapsedSeconds = run.started_at
+        ? Math.max(0, Math.floor((now - new Date(run.started_at).getTime()) / 1000))
+        : 0;
 
-    const hasEtaData =
-        progress.itemsProcessed >= 2 &&
-        elapsedSeconds > 0 &&
-        progress.itemsTotal > progress.itemsProcessed;
+    const hasEtaData = settled >= 2 && elapsedSeconds > 0 && run.total_units > settled;
     const estimatedSecondsRemaining = hasEtaData
-        ? Math.max(
-              0,
-              Math.round(
-                  (progress.itemsTotal - progress.itemsProcessed) *
-                      (elapsedSeconds / progress.itemsProcessed),
-              ),
-          )
+        ? Math.max(0, Math.round((run.total_units - settled) * (elapsedSeconds / settled)))
         : null;
-    const etaMinutes = estimatedSecondsRemaining ? Math.floor(estimatedSecondsRemaining / 60) : 0;
-    const etaSeconds = estimatedSecondsRemaining ? estimatedSecondsRemaining % 60 : 0;
     const etaText =
         estimatedSecondsRemaining === null
             ? "Calculating..."
-            : `~${etaMinutes}m ${etaSeconds}s remaining`;
+            : `~${Math.floor(estimatedSecondsRemaining / 60)}m ${estimatedSecondsRemaining % 60}s remaining`;
 
-    const stageLabel = progress.stage || progress.currentStep || `${percentage}% complete`;
+    const statusLabel =
+        liveStatus === "running"
+            ? "Syncing..."
+            : liveStatus === "success"
+              ? "Sync completed"
+              : "Sync failed";
 
     return (
-        <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+        <div
+            className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6"
+            role="status"
+            aria-live="polite"
+        >
             <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-medium text-foreground">
-                    {progress.status === "RUNNING" ? "Syncing..." : progress.status}
-                </span>
+                <span className="font-medium text-foreground">{statusLabel}</span>
                 <span className="text-(--ink-muted)">
-                    {progress.itemsProcessed} / {progress.itemsTotal} ({percentage}%)
+                    {settled} / {run.total_units} ({percentage}%)
                 </span>
             </div>
 
@@ -124,14 +230,10 @@ export function SyncProgressBar({ provider, orgId }: SyncProgressBarProps) {
 
             <div className="mt-2 flex items-center justify-between text-xs text-(--ink-muted)">
                 <span>
-                    Elapsed {elapsedText} - {stageLabel}
+                    Elapsed {formatElapsed(elapsedSeconds)} - {percentage}% complete
                 </span>
-                <span>{etaText}</span>
+                <span>{liveStatus === "running" ? etaText : ""}</span>
             </div>
-
-            {progress.message && (
-                <p className="mt-2 text-xs text-(--ink-muted)">{progress.message}</p>
-            )}
         </div>
     );
 }
