@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { encodeFilter } from "../src/lib/filters/encode";
+import { decodeFilter, encodeFilter } from "../src/lib/filters/encode";
 import type { MetricFilter } from "../src/lib/filters/types";
 
 /**
@@ -64,12 +64,16 @@ test.describe("Compounding Risk surface", () => {
         await expect(rows.first()).toHaveAttribute("data-scope-id", "repo-a");
         await expect(rows.first()).toHaveAttribute("data-severity", "high");
 
-        // Drilldown link encodes the scope.
+        // Drilldown link encodes the scope directly for /diagnose/work-graph
+        // (CHAOS-2851) instead of the lossy /work?risk_scope_* redirect.
         const drilldown = page.getByTestId("open-in-work-graph").first();
-        await expect(drilldown).toHaveAttribute(
-            "href",
-            /risk_scope_kind=repo.*risk_scope_id=repo-a/,
+        const drilldownHref = await drilldown.getAttribute("href");
+        expect(drilldownHref).toMatch(/^\/diagnose\/work-graph\?f=/);
+        const drilldownFilters = decodeFilter(
+            new URL(drilldownHref ?? "", "http://localhost").searchParams.get("f"),
         );
+        expect(drilldownFilters.scope).toEqual({ level: "repo", ids: ["repo-a"] });
+        expect(drilldownFilters.what.repos).toEqual(["repo-a"]);
     });
 
     test("person scope is blocked with the no-surveillance guardrail", async ({ page }) => {
