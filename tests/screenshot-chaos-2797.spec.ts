@@ -41,7 +41,8 @@ test.describe("CHAOS-2797 screenshots", () => {
         // "Editable Repos" is seeded with sync_targets: ["git"]; enable another
         // dataset then remove "Git Data" to trigger the destructive warning.
         const gitCheckbox = page.getByLabel("Git Data (Commits, Branches)");
-        await page.getByText("Git Data (Commits, Branches)").click();
+        await expect(gitCheckbox).toBeChecked();
+        await gitCheckbox.uncheck();
         await expect(gitCheckbox).not.toBeChecked();
         await page
             .getByRole("alert")
