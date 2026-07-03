@@ -193,7 +193,6 @@ query CompoundingRisk(
         reviewNorm
         reworkChurn
         complexityDelta
-        busFactor
         ownershipGini
         singleOwnerRatio
         reviewLatencyP90h

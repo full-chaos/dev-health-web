@@ -15,6 +15,8 @@ import { describe, expect, it } from "vitest";
 
 import { render, screen, within } from "@/test/utils";
 
+import { decodeFilter } from "@/lib/filters/encode";
+
 import {
     CompoundingRiskDashboard,
     type CompoundingRiskDashboardProps,
@@ -36,7 +38,6 @@ function makeRow(overrides: Partial<CompoundingRiskRowView> = {}): CompoundingRi
             reviewNorm: 0.5,
             reworkChurn: 0.18,
             complexityDelta: 0.12,
-            busFactor: 4,
             ownershipGini: 0.55,
             singleOwnerRatio: 0.65,
             reviewLatencyP90h: 30,
@@ -121,11 +122,14 @@ describe("CompoundingRiskDashboard", () => {
         expect(tableRows[1].getAttribute("data-severity")).toBe("low");
 
         const drilldownLinks = screen.getAllByTestId("open-in-work-graph");
-        expect(drilldownLinks[0].getAttribute("href")).toContain("risk_scope_id=repo-a");
-        expect(drilldownLinks[0].getAttribute("href")).toContain("risk_scope_kind=repo");
+        const href = drilldownLinks[0].getAttribute("href") ?? "";
+        expect(href).toMatch(/^\/diagnose\/work-graph\?f=/);
+        const filters = decodeFilter(new URL(href, "http://localhost").searchParams.get("f"));
+        expect(filters.scope).toEqual({ level: "repo", ids: ["repo-a"] });
+        expect(filters.what.repos).toEqual(["repo-a"]);
     });
 
-    it("uses 'team' in the drilldown URL when breakout is team", () => {
+    it("renders a disabled indicator (not an active link) for team-scope rows, since Work Graph has no team\u2192repo resolution", () => {
         const rows = [
             makeRow({
                 scope: "team",
@@ -136,9 +140,10 @@ describe("CompoundingRiskDashboard", () => {
         ];
         renderDashboard({ breakout: "team", rows });
 
-        const drilldown = screen.getByTestId("open-in-work-graph");
-        expect(drilldown.getAttribute("href")).toContain("risk_scope_kind=team");
-        expect(drilldown.getAttribute("href")).toContain("risk_scope_id=team-x");
+        expect(screen.queryByTestId("open-in-work-graph")).not.toBeInTheDocument();
+        expect(screen.getByTestId("work-graph-drilldown-unavailable")).toHaveTextContent(
+            "Not available for team scope",
+        );
     });
 
     it("renders the rich empty state when no rows are supplied (no compounding_risk_daily payload)", () => {

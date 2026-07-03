@@ -16,17 +16,28 @@
 
 import Link from "next/link";
 
-function buildRiskDrilldownUrl({
-    scope,
-}: {
-    scope: { kind: "repo" | "team"; id: string };
-}): string {
-    const params = new URLSearchParams({
-        tab: "graph",
-        risk_scope_kind: scope.kind,
-        risk_scope_id: scope.id,
-    });
-    return `/work?${params.toString()}`;
+import { CTA_LABELS } from "@/lib/design/cta";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
+
+// Builds a direct `/diagnose/work-graph?f=…` link (bypassing the lossy
+// `/work` legacy-redirect, which drops any query param outside `tab`/`view`)
+// so the scope survives the drilldown (CHAOS-2851).
+//
+// Repo-scope only: `WorkGraphEdgeFilterInput` (and `GraphView`, which reads
+// `filters.what.repos`) only supports filtering graph edges by `repoIds` —
+// there is no team-repo resolution available client-side today. Team-scope
+// rows therefore render a disabled indicator instead of a drilldown link
+// (see `ScopeTable` below) rather than linking to an unscoped/misleading
+// "global" graph.
+function buildRiskDrilldownUrl({ repoId }: { repoId: string }): string {
+    const filters: MetricFilter = {
+        ...defaultMetricFilter,
+        scope: { level: "repo", ids: [repoId] },
+        what: { ...defaultMetricFilter.what, repos: [repoId] },
+    };
+    return withFilterParam("/diagnose/work-graph", filters);
 }
 
 export type CompoundingRiskSeverity = "unknown" | "low" | "elevated" | "high";
@@ -40,7 +51,6 @@ export type CompoundingRiskComponentsView = {
     reviewNorm: number | null;
     reworkChurn: number | null;
     complexityDelta: number | null;
-    busFactor: number | null;
     ownershipGini: number | null;
     singleOwnerRatio: number | null;
     reviewLatencyP90h: number | null;
@@ -275,12 +285,13 @@ function ScopeTable({
                 </thead>
                 <tbody>
                     {rows.map((row) => {
-                        const workGraphHref = buildRiskDrilldownUrl({
-                            scope:
-                                breakout === "team"
-                                    ? { kind: "team", id: row.scopeId }
-                                    : { kind: "repo", id: row.scopeId },
-                        });
+                        // Team-scope has no persisted team→repo resolution, so
+                        // Work Graph (repo-only filtering) can't be scoped to it —
+                        // only repo rows get an active drilldown.
+                        const workGraphHref =
+                            breakout === "repo"
+                                ? buildRiskDrilldownUrl({ repoId: row.scopeId })
+                                : null;
                         return (
                             <tr
                                 key={row.scopeId}
@@ -311,13 +322,23 @@ function ScopeTable({
                                     {fmtScore(row.components.reviewNorm)}
                                 </td>
                                 <td className="px-5 py-3">
-                                    <Link
-                                        href={workGraphHref}
-                                        className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
-                                        data-testid="open-in-work-graph"
-                                    >
-                                        Open in Work Graph →
-                                    </Link>
+                                    {workGraphHref ? (
+                                        <Link
+                                            href={workGraphHref}
+                                            className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
+                                            data-testid="open-in-work-graph"
+                                        >
+                                            {CTA_LABELS.openWorkGraph} ↗
+                                        </Link>
+                                    ) : (
+                                        <span
+                                            className="text-xs text-(--ink-muted)"
+                                            data-testid="work-graph-drilldown-unavailable"
+                                            title="Work Graph doesn't support team-level scoping yet; switch to the repo view to drill in."
+                                        >
+                                            Not available for team scope
+                                        </span>
+                                    )}
                                 </td>
                             </tr>
                         );
