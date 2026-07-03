@@ -63,15 +63,40 @@ test("editing sync config repositories updates selected repos", async ({ page })
     await expect(page).toHaveURL(/\/org\/admin\/sync$/);
 });
 
-test("sync config history exposes completion and failure context", async ({ page }) => {
+test("sync config history exposes coverage-first job columns and results", async ({ page }) => {
     await page.goto("/org/admin/sync/sync-config-edit-repos");
 
-    await expect(page.getByRole("heading", { name: /editable repos/i })).toBeVisible();
-    await expect(page.getByText("Completed / Last Activity")).toBeVisible();
-    await expect(page.getByText("Sync run completed with failed units")).toBeVisible();
-    await expect(page.getByText(/Part: work-items · Category: rate_limit/)).toBeVisible();
-    await expect(page.getByText(/Failed units: 2 of 6/)).toBeVisible();
-    await expect(page.getByText("Still running").first()).toBeVisible();
+    // DEV_HEALTH_TEST_MODE renders the deterministic sample config/coverage/
+    // job data regardless of the configId in the URL (see [configId]/page.tsx).
+    await expect(
+        page.getByRole("heading", { name: "fullchaos/platform-api (sample)" }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Job History" })).toBeVisible();
+
+    const jobTable = page.getByRole("table").filter({ hasText: "Trigger" });
+    for (const heading of [
+        "Trigger",
+        "Mode",
+        "Requested range",
+        "Covered range",
+        "Status",
+        "Scope",
+        "Units",
+        "Started",
+        "Duration",
+        "Actions",
+    ]) {
+        await expect(jobTable.getByRole("columnheader", { name: heading })).toBeVisible();
+    }
+
+    // Coverage-result badges derive from persisted sync_run unit counts only
+    // (CHAOS-2792) — never from client-side range/interval recomputation.
+    await expect(jobTable.getByRole("cell", { name: "Partial", exact: true })).toBeVisible();
+    await expect(jobTable.getByRole("cell", { name: "4 done · 1 failed · 6 total" })).toBeVisible();
+    await expect(jobTable.getByRole("cell", { name: "2 sources", exact: true })).toBeVisible();
+    await expect(
+        jobTable.getByRole("link", { name: /View run details for sync run started/ }).first(),
+    ).toBeVisible();
 });
 
 test("provider selection filters sync targets", async ({ page }) => {

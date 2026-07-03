@@ -7,12 +7,16 @@ import type { BackfillJob } from "@/lib/admin/types";
 
 interface RunBackfillProps {
     configId: string;
+    /** Pre-fill from a gap-driven deep link (?backfill_from=YYYY-MM-DD), CHAOS-2793. */
+    initialSince?: string;
+    /** Pre-fill from a gap-driven deep link (?backfill_to=YYYY-MM-DD), CHAOS-2793. */
+    initialBefore?: string;
 }
 
-export function RunBackfill({ configId }: RunBackfillProps) {
+export function RunBackfill({ configId, initialSince = "", initialBefore = "" }: RunBackfillProps) {
     const [isPending, startTransition] = useTransition();
-    const [since, setSince] = useState("");
-    const [before, setBefore] = useState("");
+    const [since, setSince] = useState(initialSince);
+    const [before, setBefore] = useState(initialBefore);
     const [activeJob, setActiveJob] = useState<BackfillJob | null>(null);
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -91,7 +95,10 @@ export function RunBackfill({ configId }: RunBackfillProps) {
     const isTerminal = activeJob?.status === "completed" || activeJob?.status === "failed";
 
     return (
-        <div className="space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6 mt-6">
+        <div
+            id="backfill"
+            className="space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6 mt-6 scroll-mt-24"
+        >
             <div>
                 <h3 className="text-sm font-medium">Run Historical Backfill</h3>
                 <p className="mt-1 text-xs text-(--ink-muted)">
