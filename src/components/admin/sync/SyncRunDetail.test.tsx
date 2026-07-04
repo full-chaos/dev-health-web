@@ -82,6 +82,36 @@ describe("SyncRunDetailLive", () => {
         );
     });
 
+    it("renders every returned unit without a client-side table cap", () => {
+        const units = Array.from({ length: 201 }, (_, index) => ({
+            ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.units[0],
+            id: `bulk-${String(index).padStart(3, "0")}-unit`,
+        }));
+
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    total_units: units.length,
+                    completed_units: units.length,
+                    failed_units: 0,
+                }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { success: units.length },
+                    unit_count: units.length,
+                    units,
+                }}
+                testMode
+            />,
+        );
+
+        const table = screen.getByRole("table");
+        expect(within(table).getAllByText(/^bulk-\d{3}$/)).toHaveLength(units.length);
+        expect(screen.getByText(/Units \(201\)/)).toBeInTheDocument();
+        expect(screen.queryByText(/Showing first/)).not.toBeInTheDocument();
+    });
+
     it("renders since_at/before_at windows per unit", () => {
         renderDetail();
 
