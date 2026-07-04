@@ -13,8 +13,6 @@ import type { SyncRun, SyncRunUnit, SyncRunUnitSummary } from "@/lib/admin/types
 const POLL_INTERVAL_MS = 3500;
 /** Safety cap so a stuck/abandoned run never polls forever (~10 min). */
 const MAX_POLL_DURATION_MS = 10 * 60 * 1000;
-/** Cap the rendered unit table so a huge fan-out stays readable. */
-const UNIT_TABLE_CAP = 100;
 
 /** Distinct unit statuses, in a stable display order, for the status filter. */
 const STATUS_FILTER_ORDER = [
@@ -367,9 +365,6 @@ export function SyncRunDetailLive({
         () => computeWindow((summary?.units ?? []).filter((unit) => unit.status === "success")),
         [summary],
     );
-
-    const cappedUnits = filteredUnits.slice(0, UNIT_TABLE_CAP);
-    const overflow = filteredUnits.length - cappedUnits.length;
 
     return (
         <div className="space-y-6">
@@ -740,7 +735,7 @@ export function SyncRunDetailLive({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-(--card-stroke)">
-                                    {cappedUnits.map((unit: SyncRunUnit) => (
+                                    {filteredUnits.map((unit: SyncRunUnit) => (
                                         <tr key={unit.id}>
                                             <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
                                                 {unit.id.slice(0, 8)}
@@ -797,12 +792,6 @@ export function SyncRunDetailLive({
                                     ))}
                                 </tbody>
                             </table>
-                            {overflow > 0 && (
-                                <div className="border-t border-(--card-stroke) px-4 py-3 text-xs text-(--ink-muted)">
-                                    Showing first {formatNumber(UNIT_TABLE_CAP)} of{" "}
-                                    {formatNumber(filteredUnits.length)} units.
-                                </div>
-                            )}
                         </div>
                     </div>
                 </>
