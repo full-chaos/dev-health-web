@@ -103,11 +103,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 
     const quadrantPoints = riskData.quadrant_data
         ? riskData.quadrant_data.flatMap(
-              (item: {
-                  id: string;
-                  pipeline_success_rate?: number;
-                  test_pass_rate?: number;
-              }) => {
+              (item: { id: string; pipeline_success_rate?: number; test_pass_rate?: number }) => {
                   if (
                       !isFiniteNumber(item.pipeline_success_rate) ||
                       !isFiniteNumber(item.test_pass_rate)
