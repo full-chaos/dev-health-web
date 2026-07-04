@@ -74,11 +74,23 @@ jobs:
             - name: Checkout web
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+            - name: Resolve dev-health-ops ref
+              id: ops-ref
+              shell: bash
+              run: |
+                  ref="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+                  if git ls-remote --exit-code --heads https://github.com/full-chaos/dev-health-ops.git "${ref}" >/dev/null 2>&1; then
+                    echo "ref=${ref}" >> "${GITHUB_OUTPUT}"
+                  else
+                    echo "ref=main" >> "${GITHUB_OUTPUT}"
+                  fi
+
             - name: Checkout dev-health-ops
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
               with:
                   repository: full-chaos/dev-health-ops
                   path: dev-health-ops
+                  ref: ${{ steps.ops-ref.outputs.ref }}
 
             - name: Setup pnpm
               uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
