@@ -72,25 +72,39 @@ key
 `;
 
 export const TESTOPS_RISK_QUERY = `
-query TestOpsRisk($orgId: String!, $batch: AnalyticsRequestInput!) {
-  analytics(orgId: $orgId, batch: $batch) {
+query TestOpsRisk($orgId: String!, $input: TestOpsRiskInput!) {
+  testopsRisk(orgId: $orgId, input: $input) {
+    releaseConfidence
+    qualityDragHours
+    pipelineStability
     timeseries {
-      dimension
-      dimensionValue
-      measure
-      buckets {
-        date
-        value
-      }
+      date
+      riskScore
     }
-    breakdowns {
-      dimension
-      measure
-      items {
-        key
-        value
-      }
+    qualityDragBreakdown {
+      category
+      hours
     }
+    quadrantData {
+      id
+      pipelineSuccessRate
+      testPassRate
+    }
+    confidenceSpark {
+      ts
+      value
+    }
+    confidenceDelta
+    dragSpark {
+      ts
+      value
+    }
+    dragDelta
+    stabilitySpark {
+      ts
+      value
+    }
+    stabilityDelta
   }
 }
 `;
