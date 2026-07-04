@@ -1253,6 +1253,11 @@ type Query {
   compoundingRisk(orgId: String!, filter: CompoundingRiskFilterInput = null): CompoundingRiskResult!
 
   """
+  Persisted TestOps Delivery Risk metrics from release confidence, quality drag, and pipeline stability tables.
+  """
+  testopsRisk(orgId: String!, input: TestOpsRiskInput!): TestOpsRiskResult!
+
+  """
   Cyclomatic complexity trend by repo or file. Reads from append-only ``repo_complexity_daily`` / ``file_complexity_snapshots`` tables — no recomputation, pure surface of persisted data.
   """
   complexityTimeseries(input: ComplexityTimeseriesInput!): ComplexityTimeseriesResult!
@@ -1616,6 +1621,48 @@ enum TeamAttributionSource {
   LINKED_ISSUE
   MANUAL_FALLBACK
   UNASSIGNED
+}
+
+type TestOpsRiskBreakdownItem {
+  category: String!
+  hours: Float!
+}
+
+input TestOpsRiskInput {
+  startDate: Date!
+  endDate: Date!
+}
+
+type TestOpsRiskQuadrantPoint {
+  id: String!
+  pipelineSuccessRate: Float
+  testPassRate: Float
+}
+
+type TestOpsRiskResult {
+  orgId: String!
+  releaseConfidence: Float
+  qualityDragHours: Float
+  pipelineStability: Float
+  timeseries: [TestOpsRiskTrendPoint!]!
+  qualityDragBreakdown: [TestOpsRiskBreakdownItem!]!
+  quadrantData: [TestOpsRiskQuadrantPoint!]!
+  confidenceSpark: [TestOpsRiskSparkPoint!]!
+  confidenceDelta: Float
+  dragSpark: [TestOpsRiskSparkPoint!]!
+  dragDelta: Float
+  stabilitySpark: [TestOpsRiskSparkPoint!]!
+  stabilityDelta: Float
+}
+
+type TestOpsRiskSparkPoint {
+  ts: Date!
+  value: Float!
+}
+
+type TestOpsRiskTrendPoint {
+  date: Date!
+  riskScore: Float!
 }
 
 type ThroughputEstimateCoverage {

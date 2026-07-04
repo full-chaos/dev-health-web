@@ -1368,6 +1368,8 @@ export type Query = {
   securityAlerts: SecurityAlertConnection;
   /** Aggregated security posture for the dashboard */
   securityOverview: SecurityOverview;
+  /** Persisted TestOps Delivery Risk metrics from release confidence, quality drag, and pipeline stability tables. */
+  testopsRisk: TestOpsRiskResult;
   /** Compute throughput-based capacity forecast */
   throughputForecast?: Maybe<ThroughputForecast>;
   /** Top-N work graph nodes ranked by degree over the full graph */
@@ -1610,6 +1612,12 @@ export type QuerySecurityAlertsArgs = {
 
 export type QuerySecurityOverviewArgs = {
   filters?: InputMaybe<SecurityAlertFilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryTestopsRiskArgs = {
+  input: TestOpsRiskInput;
   orgId: Scalars['String']['input'];
 };
 
@@ -1977,6 +1985,53 @@ export type TeamAttributionSource =
   | 'PROJECT_OWNERSHIP'
   | 'REPO_OWNERSHIP'
   | 'UNASSIGNED';
+
+export type TestOpsRiskBreakdownItem = {
+  __typename?: 'TestOpsRiskBreakdownItem';
+  category: Scalars['String']['output'];
+  hours: Scalars['Float']['output'];
+};
+
+export type TestOpsRiskInput = {
+  endDate: Scalars['Date']['input'];
+  startDate: Scalars['Date']['input'];
+};
+
+export type TestOpsRiskQuadrantPoint = {
+  __typename?: 'TestOpsRiskQuadrantPoint';
+  id: Scalars['String']['output'];
+  pipelineSuccessRate?: Maybe<Scalars['Float']['output']>;
+  testPassRate?: Maybe<Scalars['Float']['output']>;
+};
+
+export type TestOpsRiskResult = {
+  __typename?: 'TestOpsRiskResult';
+  confidenceDelta?: Maybe<Scalars['Float']['output']>;
+  confidenceSpark: Array<TestOpsRiskSparkPoint>;
+  dragDelta?: Maybe<Scalars['Float']['output']>;
+  dragSpark: Array<TestOpsRiskSparkPoint>;
+  orgId: Scalars['String']['output'];
+  pipelineStability?: Maybe<Scalars['Float']['output']>;
+  quadrantData: Array<TestOpsRiskQuadrantPoint>;
+  qualityDragBreakdown: Array<TestOpsRiskBreakdownItem>;
+  qualityDragHours?: Maybe<Scalars['Float']['output']>;
+  releaseConfidence?: Maybe<Scalars['Float']['output']>;
+  stabilityDelta?: Maybe<Scalars['Float']['output']>;
+  stabilitySpark: Array<TestOpsRiskSparkPoint>;
+  timeseries: Array<TestOpsRiskTrendPoint>;
+};
+
+export type TestOpsRiskSparkPoint = {
+  __typename?: 'TestOpsRiskSparkPoint';
+  ts: Scalars['Date']['output'];
+  value: Scalars['Float']['output'];
+};
+
+export type TestOpsRiskTrendPoint = {
+  __typename?: 'TestOpsRiskTrendPoint';
+  date: Scalars['Date']['output'];
+  riskScore: Scalars['Float']['output'];
+};
 
 export type ThroughputEstimateCoverage = {
   __typename?: 'ThroughputEstimateCoverage';
