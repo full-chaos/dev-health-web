@@ -30,7 +30,7 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
  * Row detail surface for the org audit-logs investigation page (CHAOS-2843).
  * A drawer, not a new route — modeled on {@link EvidencePanel}'s slide-over
  * pattern. Every field the audit-log API returns is shown as a typed,
- * labeled row; payload/context objects render through {@link PayloadFieldList}
+ * labeled row; the Changes/Request details sections render through {@link PayloadFieldList}
  * instead of a raw JSON dump.
  */
 export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogDetailDrawerProps) {
@@ -106,14 +106,14 @@ export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogD
                     </DetailRow>
 
                     <PayloadFieldList
-                        title="Change payload"
+                        title="Changes"
                         data={entry.changes}
-                        emptyMessage="No change payload was returned for this event."
+                        emptyMessage="No changes were recorded for this event."
                     />
                     <PayloadFieldList
-                        title="Request context"
+                        title="Request details"
                         data={entry.request_metadata}
-                        emptyMessage="No request context was returned for this event."
+                        emptyMessage="No request details were recorded for this event."
                     />
                 </div>
             </div>

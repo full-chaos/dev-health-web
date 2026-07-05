@@ -48,7 +48,7 @@ describe("AuditLogDetailDrawer", () => {
         expect(screen.getAllByText("Unresolved")).toHaveLength(2);
     });
 
-    it("renders the payload and context as typed, labeled fields — never a raw JSON dump", () => {
+    it("renders Changes and Request details as typed, labeled fields — never a raw JSON dump", () => {
         render(<AuditLogDetailDrawer entry={makeEntry()} isOpen={true} onCloseAction={vi.fn()} />);
 
         expect(screen.getByText("Old Role")).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe("AuditLogDetailDrawer", () => {
         expect(screen.queryByText(/"old_role":"member"/)).not.toBeInTheDocument();
     });
 
-    it("shows an empty-payload message when changes and request context are both null", () => {
+    it("shows customer-safe empty messages when Changes and Request details are both empty", () => {
         render(
             <AuditLogDetailDrawer
                 entry={makeEntry({ changes: null, request_metadata: null })}
@@ -68,10 +68,10 @@ describe("AuditLogDetailDrawer", () => {
         );
 
         expect(
-            screen.getByText("No change payload was returned for this event."),
+            screen.getByText("No changes were recorded for this event."),
         ).toBeInTheDocument();
         expect(
-            screen.getByText("No request context was returned for this event."),
+            screen.getByText("No request details were recorded for this event."),
         ).toBeInTheDocument();
     });
 
