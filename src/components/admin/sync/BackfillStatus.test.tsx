@@ -80,6 +80,31 @@ describe("BackfillStatus", () => {
         expect(screen.getByText("Waiting to start...")).toBeInTheDocument();
         expect(screen.getByText("Live — refreshing…")).toBeInTheDocument();
     });
+
+    it("re-syncs local state when initialJob transitions to a terminal status on the SAME job id (CHAOS-2868)", () => {
+        const { rerender } = render(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "dispatching", progress_pct: 0 }}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText("Dispatching work...")).toBeInTheDocument();
+        expect(screen.getByText("Live — refreshing…")).toBeInTheDocument();
+
+        // Same job id, status-only change — BackfillOperations keys by id alone,
+        // so a real remount would not happen here either; this re-renders the
+        // SAME component instance to prove the local state re-syncs from props.
+        rerender(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "completed", progress_pct: 100 }}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText("Backfill complete")).toBeInTheDocument();
+        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+    });
 });
 
 describe("BackfillStatus — live poll", () => {
@@ -177,6 +202,81 @@ describe("BackfillStatus — live poll", () => {
         expect(getBackfillJobStatus).toHaveBeenCalledTimes(1);
         expect(screen.getByText("Processing chunk 3 of 6")).toBeInTheDocument();
 
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000 * 4);
+        });
+        expect(getBackfillJobStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives up polling and stops the Live indicator after a bounded zero-progress window (CHAOS-2868)", async () => {
+        vi.mocked(getBackfillJobStatus).mockResolvedValue({
+            data: { ...RUNNING_JOB, status: "dispatching", progress_pct: 0 },
+        });
+
+        render(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "dispatching", progress_pct: 0 }}
+            />,
+        );
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+        });
+
+        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+        expect(screen.getByText("Live updates paused")).toBeInTheDocument();
+
+        // Polling stopped: advancing further triggers no additional calls.
+        const callsAtGiveUp = vi.mocked(getBackfillJobStatus).mock.calls.length;
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000 * 5);
+        });
+        expect(getBackfillJobStatus).toHaveBeenCalledTimes(callsAtGiveUp);
+    });
+
+    it("never starts an overlapping poll while a request is in flight, so a slow response can't be resurrected after a terminal one (CHAOS-2868)", async () => {
+        let resolveSlowPoll: (result: { data: BackfillJob }) => void = () => {};
+        const slowPoll = new Promise<{ data: BackfillJob }>((resolve) => {
+            resolveSlowPoll = resolve;
+        });
+        vi.mocked(getBackfillJobStatus).mockReturnValue(slowPoll);
+
+        render(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "dispatching", progress_pct: 0 }}
+            />,
+        );
+
+        // First tick fires and is left unresolved, simulating a slow response.
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000);
+        });
+        expect(getBackfillJobStatus).toHaveBeenCalledTimes(1);
+
+        // Several more poll cycles elapse while that request is still in
+        // flight. The in-flight guard must skip every one of them rather than
+        // dispatching an overlapping request that could resolve out of order
+        // and be overwritten by — or overwrite — whatever the slow response
+        // eventually applies (the exact race that used to resurrect a stale
+        // zombie banner after a terminal result).
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000 * 3);
+        });
+        expect(getBackfillJobStatus).toHaveBeenCalledTimes(1);
+
+        // The slow request finally resolves with a terminal result.
+        await act(async () => {
+            resolveSlowPoll({
+                data: { ...RUNNING_JOB, status: "completed", progress_pct: 100 },
+            });
+            await vi.advanceTimersByTimeAsync(0);
+        });
+
+        expect(screen.getByText("Backfill complete")).toBeInTheDocument();
+        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+        expect(screen.queryByText("Live updates paused")).not.toBeInTheDocument();
+
+        // No overlapping/late response can resurrect the banner afterward.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3000 * 4);
         });

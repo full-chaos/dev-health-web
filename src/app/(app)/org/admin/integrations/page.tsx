@@ -4,6 +4,10 @@ import {
     IntegrationProvider,
 } from "@/components/admin/integrations/IntegrationCard";
 import { listCredentials } from "@/lib/admin/server";
+import {
+    CREDENTIAL_STATUS_PRIORITY,
+    deriveCredentialStatus,
+} from "@/components/admin/integrations/credentialStatus";
 import type { ConnectionStatusType } from "@/components/admin/integrations/ConnectionStatus";
 
 const GitHubIcon = () => (
@@ -73,9 +77,8 @@ export default async function IntegrationsPage() {
     const getStatus = (providerId: string): ConnectionStatusType => {
         const creds = credentials.filter((c) => c.provider === providerId);
         if (creds.length === 0) return "not_configured";
-        if (creds.some((c) => c.last_test_success === false)) return "error";
-        if (creds.some((c) => c.last_test_success === true)) return "connected";
-        return "connected";
+        const statuses = new Set(creds.map(deriveCredentialStatus));
+        return CREDENTIAL_STATUS_PRIORITY.find((status) => statuses.has(status)) ?? "inactive";
     };
 
     const getCount = (providerId: string): number => {

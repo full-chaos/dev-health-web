@@ -117,6 +117,8 @@ export const CTA_LABELS = {
     openSyncStatus: "Open sync status",
     /** Open the row-level detail surface for an audit-log event (CHAOS-2843). */
     openDetails: "Open details",
+    /** Generic affirmative action for the shared ConfirmDialog primitive (CHAOS-2845). */
+    confirm: "Confirm",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
