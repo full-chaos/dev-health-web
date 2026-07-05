@@ -136,7 +136,9 @@ export function ImportTeamsDialog() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="w-full max-w-2xl rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl max-h-[90vh] flex flex-col">
                 <div className="flex items-center justify-between border-b border-(--card-stroke) p-6">
-                    <h2 className="text-xl font-semibold text-foreground">{CTA_LABELS.importTeams}</h2>
+                    <h2 className="text-xl font-semibold text-foreground">
+                        {CTA_LABELS.importTeams}
+                    </h2>
                     <button
                         type="button"
                         onClick={handleClose}

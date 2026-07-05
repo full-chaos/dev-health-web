@@ -51,16 +51,23 @@ function SignalCard({
 }
 
 export default async function AdminDashboardPage() {
-    const [session, usersResult, teamsResult, identitiesResult, credentialsResult, syncResult, pendingResult] =
-        await Promise.all([
-            auth(),
-            listUsers(),
-            listTeams(),
-            listIdentities(),
-            listCredentials(),
-            listSyncConfigs(),
-            getPendingTeamChanges(),
-        ]);
+    const [
+        session,
+        usersResult,
+        teamsResult,
+        identitiesResult,
+        credentialsResult,
+        syncResult,
+        pendingResult,
+    ] = await Promise.all([
+        auth(),
+        listUsers(),
+        listTeams(),
+        listIdentities(),
+        listCredentials(),
+        listSyncConfigs(),
+        getPendingTeamChanges(),
+    ]);
     const user = session?.user;
     const users = usersResult.data ?? [];
     const teams = teamsResult.data ?? [];
@@ -69,12 +76,16 @@ export default async function AdminDashboardPage() {
     const syncConfigs = syncResult.data ?? [];
     const pendingTeamChanges = pendingResult.data?.total ?? 0;
     const invitedUsers = users.filter((adminUser) => !adminUser.is_verified).length;
-    const unassignedIdentities = identities.filter((identity) => identity.team_ids.length === 0).length;
+    const unassignedIdentities = identities.filter(
+        (identity) => identity.team_ids.length === 0,
+    ).length;
     const activeCredentials = credentials.filter((credential) => credential.is_active).length;
     const failingCredentials = credentials.filter(
         (credential) => credential.last_test_success === false,
     ).length;
-    const failingSyncConfigs = syncConfigs.filter((config) => config.last_sync_success === false).length;
+    const failingSyncConfigs = syncConfigs.filter(
+        (config) => config.last_sync_success === false,
+    ).length;
     const activeSyncConfigs = syncConfigs.filter((config) => config.is_active).length;
     const unmappedTeams = teams.filter(
         (team) => team.repo_patterns.length === 0 && team.project_keys.length === 0,
@@ -156,17 +167,25 @@ export default async function AdminDashboardPage() {
                         <div>
                             <dt className="text-label-caps uppercase text-(--ink-muted)">Users</dt>
                             <dd className="mt-1 text-2xl font-semibold">{users.length}</dd>
-                            <p className="mt-1 text-xs text-(--ink-muted)">{invitedUsers} invited</p>
+                            <p className="mt-1 text-xs text-(--ink-muted)">
+                                {invitedUsers} invited
+                            </p>
                         </div>
                         <div>
                             <dt className="text-label-caps uppercase text-(--ink-muted)">Teams</dt>
                             <dd className="mt-1 text-2xl font-semibold">{teams.length}</dd>
-                            <p className="mt-1 text-xs text-(--ink-muted)">{unmappedTeams} unmapped</p>
+                            <p className="mt-1 text-xs text-(--ink-muted)">
+                                {unmappedTeams} unmapped
+                            </p>
                         </div>
                         <div>
-                            <dt className="text-label-caps uppercase text-(--ink-muted)">Identities</dt>
+                            <dt className="text-label-caps uppercase text-(--ink-muted)">
+                                Identities
+                            </dt>
                             <dd className="mt-1 text-2xl font-semibold">{identities.length}</dd>
-                            <p className="mt-1 text-xs text-(--ink-muted)">{unassignedIdentities} unassigned</p>
+                            <p className="mt-1 text-xs text-(--ink-muted)">
+                                {unassignedIdentities} unassigned
+                            </p>
                         </div>
                     </dl>
                 </div>
