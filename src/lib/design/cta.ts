@@ -115,6 +115,12 @@ export const CTA_LABELS = {
     manageConnections: "Manage connections",
     reviewIdentities: "Review identities",
     openSyncStatus: "Open sync status",
+    /** Schedule the subscription to end at the current billing period's close (CHAOS-2839). */
+    cancelAtPeriodEnd: "Cancel at period end",
+    /** End the subscription right away, forfeiting remaining paid time (CHAOS-2839). */
+    cancelImmediately: "Cancel immediately",
+    /** Restore a subscription that was scheduled to cancel at period end (CHAOS-2839). */
+    reactivateSubscription: "Reactivate",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
