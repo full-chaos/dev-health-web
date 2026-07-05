@@ -293,6 +293,7 @@ describe("admin/server sync config actions", () => {
                     started_at: null,
                     completed_at: null,
                     created_at: "2026-06-01T00:00:00Z",
+                    updated_at: "2026-06-01T00:00:00Z",
                 },
                 {
                     id: "job-completed",
@@ -308,6 +309,7 @@ describe("admin/server sync config actions", () => {
                     started_at: "2026-05-01T00:00:00Z",
                     completed_at: "2026-05-01T01:00:00Z",
                     created_at: "2026-05-01T00:00:00Z",
+                    updated_at: "2026-05-01T01:00:00Z",
                 },
                 {
                     id: "job-active",
@@ -323,6 +325,7 @@ describe("admin/server sync config actions", () => {
                     started_at: hoursAgoIso(1),
                     completed_at: null,
                     created_at: hoursAgoIso(1),
+                    updated_at: hoursAgoIso(1),
                 },
             ];
             const fetchSpy = vi
@@ -373,6 +376,7 @@ describe("admin/server sync config actions", () => {
                     started_at: null,
                     completed_at: null,
                     created_at: hoursAgoIso(1),
+                    updated_at: hoursAgoIso(1),
                 },
             ];
             const fetchSpy = vi
@@ -407,6 +411,7 @@ describe("admin/server sync config actions", () => {
                     started_at: null,
                     completed_at: null,
                     created_at: hoursAgoIso(48),
+                    updated_at: hoursAgoIso(48),
                 },
             ];
             const fetchSpy = vi
@@ -441,6 +446,7 @@ describe("admin/server sync config actions", () => {
                     started_at: hoursAgoIso(1),
                     completed_at: null,
                     created_at: hoursAgoIso(48),
+                    updated_at: hoursAgoIso(1),
                 },
             ];
             const fetchSpy = vi
@@ -458,7 +464,7 @@ describe("admin/server sync config actions", () => {
             fetchSpy.mockRestore();
         });
 
-        it("keeps a job with real progress visible past the staleness cutoff (CHAOS-2868 review: age alone must not hide progressed jobs)", async () => {
+        it("keeps a progressed job visible when its freshness timestamp is recent", async () => {
             mockSession();
             const jobs = [
                 {
@@ -475,6 +481,7 @@ describe("admin/server sync config actions", () => {
                     started_at: hoursAgoIso(48),
                     completed_at: null,
                     created_at: hoursAgoIso(48),
+                    updated_at: hoursAgoIso(1),
                 },
             ];
             const fetchSpy = vi
@@ -489,6 +496,41 @@ describe("admin/server sync config actions", () => {
             const result = await getActiveBackfillJob("cfg-coverage");
 
             expect(result.data?.id).toBe("job-long-running");
+            fetchSpy.mockRestore();
+        });
+
+        it("excludes a progressed non-terminal job when its freshness timestamp is stale (CHAOS-2872)", async () => {
+            mockSession();
+            const jobs = [
+                {
+                    id: "job-progress-zombie",
+                    sync_config_id: "cfg-coverage",
+                    status: "running",
+                    since_date: "2026-06-01",
+                    before_date: "2026-06-05",
+                    total_chunks: 5,
+                    completed_chunks: 2,
+                    failed_chunks: 0,
+                    progress_pct: 40,
+                    error_message: null,
+                    started_at: hoursAgoIso(48),
+                    completed_at: null,
+                    created_at: hoursAgoIso(48),
+                    updated_at: hoursAgoIso(48),
+                },
+            ];
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data).toBeNull();
             fetchSpy.mockRestore();
         });
 
@@ -509,6 +551,7 @@ describe("admin/server sync config actions", () => {
                     started_at: null,
                     completed_at: null,
                     created_at: null,
+                    updated_at: null,
                 },
             ];
             const fetchSpy = vi
