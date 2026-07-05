@@ -26,7 +26,7 @@ export function IntegrationCard({ provider }: IntegrationCardProps) {
                     <div className="flex items-center gap-2">
                         {provider.credentialCount > 0 && (
                             <span className="inline-flex items-center rounded-full bg-(--surface-muted) px-2.5 py-0.5 text-xs font-medium text-(--ink-base)">
-                                {provider.credentialCount} connected
+                                {provider.credentialCount} credential{provider.credentialCount === 1 ? "" : "s"}
                             </span>
                         )}
                         <ConnectionStatus status={provider.status} />
