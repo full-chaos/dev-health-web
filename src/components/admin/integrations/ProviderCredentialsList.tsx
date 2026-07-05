@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CredentialCard } from "./CredentialCard";
+import { deriveCredentialStatus } from "./credentialStatus";
 import { IntegrationFormWrapper } from "@/app/(app)/org/admin/integrations/[provider]/IntegrationFormWrapper";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
 import type { ConnectionStatusType } from "@/components/admin/integrations/ConnectionStatus";
@@ -13,11 +14,9 @@ type ProviderCredentialsListProps = {
     syncConfigs: { credential_id: string | null }[];
 };
 
-function getStatus(credential: IntegrationCredential | undefined): ConnectionStatusType {
+function getInitialStatus(credential: IntegrationCredential | undefined): ConnectionStatusType {
     if (!credential) return "not_configured";
-    if (credential.last_test_success === true) return "connected";
-    if (credential.last_test_success === false) return "error";
-    return "connected";
+    return deriveCredentialStatus(credential);
 }
 
 export function ProviderCredentialsList({
@@ -58,7 +57,7 @@ export function ProviderCredentialsList({
             <IntegrationFormWrapper
                 provider={provider}
                 providerName={providerName}
-                initialStatus={getStatus(editingCredential)}
+                initialStatus={getInitialStatus(editingCredential)}
                 existingCredential={editingCredential}
                 onCancel={handleCancel}
                 onSuccess={handleSuccess}
