@@ -74,7 +74,9 @@ describe("OrgAuditLogPage", () => {
         expect(lastFilterCall.action).toBe("user.invite");
 
         // Reset clears the filter and re-queries immediately.
-        mockListAuditLogs.mockResolvedValueOnce(respondWith([makeEntry({ action: "user.invite" })]));
+        mockListAuditLogs.mockResolvedValueOnce(
+            respondWith([makeEntry({ action: "user.invite" })]),
+        );
         const emptyState = screen.getByTestId("audit-log-empty-filtered");
         await user.click(within(emptyState).getByRole("button", { name: /reset filters/i }));
 

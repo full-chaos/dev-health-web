@@ -47,7 +47,9 @@ describe("AuditLogRows", () => {
     });
 
     it("shows System when the entry has no actor", () => {
-        render(<AuditLogRows entries={[makeEntry({ user_id: null })]} onRowSelectAction={vi.fn()} />);
+        render(
+            <AuditLogRows entries={[makeEntry({ user_id: null })]} onRowSelectAction={vi.fn()} />,
+        );
         expect(screen.getByText("System")).toBeInTheDocument();
     });
 

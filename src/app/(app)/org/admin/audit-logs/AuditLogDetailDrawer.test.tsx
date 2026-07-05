@@ -67,9 +67,7 @@ describe("AuditLogDetailDrawer", () => {
             />,
         );
 
-        expect(
-            screen.getByText("No changes were recorded for this event."),
-        ).toBeInTheDocument();
+        expect(screen.getByText("No changes were recorded for this event.")).toBeInTheDocument();
         expect(
             screen.getByText("No request details were recorded for this event."),
         ).toBeInTheDocument();
@@ -83,7 +81,13 @@ describe("AuditLogDetailDrawer", () => {
     it("calls onCloseAction when the close button is clicked", async () => {
         const onCloseAction = vi.fn();
         const user = userEvent.setup();
-        render(<AuditLogDetailDrawer entry={makeEntry()} isOpen={true} onCloseAction={onCloseAction} />);
+        render(
+            <AuditLogDetailDrawer
+                entry={makeEntry()}
+                isOpen={true}
+                onCloseAction={onCloseAction}
+            />,
+        );
 
         await user.click(screen.getByTitle(/close panel/i));
 
@@ -93,7 +97,13 @@ describe("AuditLogDetailDrawer", () => {
     it("calls onCloseAction when the backdrop is clicked", async () => {
         const onCloseAction = vi.fn();
         const user = userEvent.setup();
-        render(<AuditLogDetailDrawer entry={makeEntry()} isOpen={true} onCloseAction={onCloseAction} />);
+        render(
+            <AuditLogDetailDrawer
+                entry={makeEntry()}
+                isOpen={true}
+                onCloseAction={onCloseAction}
+            />,
+        );
 
         await user.click(screen.getByRole("button", { name: /close panel/i }));
 

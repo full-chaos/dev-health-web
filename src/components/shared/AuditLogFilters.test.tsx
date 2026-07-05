@@ -76,9 +76,15 @@ describe("AuditLogFilters — admin variant", () => {
         await user.type(screen.getByLabelText(/action/i), "user.invite");
         await user.click(screen.getByRole("button", { name: /apply filters/i }));
 
-        expect(onFilter).toHaveBeenNthCalledWith(1, expect.objectContaining({ action: "org.create" }));
+        expect(onFilter).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({ action: "org.create" }),
+        );
         expect(onFilter).toHaveBeenNthCalledWith(2, expect.objectContaining({ action: undefined }));
-        expect(onFilter).toHaveBeenNthCalledWith(3, expect.objectContaining({ action: "user.invite" }));
+        expect(onFilter).toHaveBeenNthCalledWith(
+            3,
+            expect.objectContaining({ action: "user.invite" }),
+        );
     });
 });
 

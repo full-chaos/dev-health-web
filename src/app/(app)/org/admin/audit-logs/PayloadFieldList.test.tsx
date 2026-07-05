@@ -6,7 +6,9 @@ describe("PayloadFieldList", () => {
     afterEach(() => cleanup());
 
     it("shows the empty message when data is null", () => {
-        render(<PayloadFieldList title="Changes" data={null} emptyMessage="No changes recorded." />);
+        render(
+            <PayloadFieldList title="Changes" data={null} emptyMessage="No changes recorded." />,
+        );
         expect(screen.getByText("No changes recorded.")).toBeInTheDocument();
     });
 

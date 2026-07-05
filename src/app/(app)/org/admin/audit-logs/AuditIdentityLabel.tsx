@@ -33,7 +33,8 @@ export function AuditIdentityLabel({
         return <span className="text-xs text-(--ink-muted)">{emptyLabel}</span>;
     }
 
-    const containerClass = layout === "stacked" ? "flex flex-col gap-1" : "flex flex-wrap items-center gap-2";
+    const containerClass =
+        layout === "stacked" ? "flex flex-col gap-1" : "flex flex-wrap items-center gap-2";
 
     return (
         <div className={containerClass}>

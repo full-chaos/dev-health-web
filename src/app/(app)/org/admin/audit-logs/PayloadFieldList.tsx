@@ -35,11 +35,7 @@ function summarizeArray(items: unknown[]): string {
  * as readable text; anything deeper or an array of objects becomes a count
  * summary instead of a blob.
  */
-function flattenPayload(
-    data: Record<string, unknown>,
-    prefix = "",
-    depth = 0,
-): FlattenedField[] {
+function flattenPayload(data: Record<string, unknown>, prefix = "", depth = 0): FlattenedField[] {
     return Object.entries(data).flatMap(([key, value]): FlattenedField[] => {
         const path = prefix ? `${prefix}.${key}` : key;
 
@@ -85,7 +81,9 @@ export function PayloadFieldList({ title, data, emptyMessage }: PayloadFieldList
                 <dl className="grid gap-2 text-sm">
                     {fields.map(({ path, value }) => (
                         <div key={path} className="flex gap-2">
-                            <dt className="w-36 shrink-0 text-(--ink-muted)">{humanizePath(path)}</dt>
+                            <dt className="w-36 shrink-0 text-(--ink-muted)">
+                                {humanizePath(path)}
+                            </dt>
                             <dd className="min-w-0 break-words font-mono text-xs">
                                 {formatFieldValue(value)}
                             </dd>
