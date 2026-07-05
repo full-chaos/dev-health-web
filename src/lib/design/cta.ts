@@ -106,7 +106,7 @@ export const CTA_LABELS = {
     closeWizard: "Close",
     /** Dismiss the wizard's post-submit result step (CHAOS-2796). */
     done: "Done",
-    inviteUser: "Invite User",
+    addUser: "Add User",
     addTeam: "Add Team",
     importTeams: "Import Teams",
     addIdentity: "Add Identity",
@@ -117,6 +117,12 @@ export const CTA_LABELS = {
     openSyncStatus: "Open sync status",
     /** Open the row-level detail surface for an audit-log event (CHAOS-2843). */
     openDetails: "Open details",
+    /** Schedule the subscription to end at the current billing period's close (CHAOS-2839). */
+    cancelAtPeriodEnd: "Cancel at period end",
+    /** End the subscription right away, forfeiting remaining paid time (CHAOS-2839). */
+    cancelImmediately: "Cancel immediately",
+    /** Restore a subscription that was scheduled to cancel at period end (CHAOS-2839). */
+    reactivateSubscription: "Reactivate",
     /** Generic affirmative action for the shared ConfirmDialog primitive (CHAOS-2845). */
     confirm: "Confirm",
 } as const;

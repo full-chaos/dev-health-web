@@ -1,6 +1,7 @@
 import type { SyntheticEvent } from "react";
 import type { UserCreate, User } from "@/lib/admin/types";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export type UserFormData = UserCreate & { is_active?: boolean };
 
@@ -37,7 +38,7 @@ export function UserForm({
             onSubmitAction={handleSubmit}
             onCancelAction={onCancel}
             isLoading={isLoading}
-            submitLabel={isLoading ? "Saving..." : isEdit ? "Save Changes" : "Create User"}
+            submitLabel={isLoading ? "Saving..." : isEdit ? "Save Changes" : CTA_LABELS.addUser}
             className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
             contentClassName="grid gap-6 md:grid-cols-2"
             actionsClassName="flex justify-end gap-3 pt-4"
@@ -108,7 +109,7 @@ export function UserForm({
                         minLength={8}
                     />
                     <p className="text-xs text-(--ink-muted)">
-                        Leave blank to send invitation email instead
+                        Optional — leave blank if the user will set their own password later
                     </p>
                 </div>
             )}

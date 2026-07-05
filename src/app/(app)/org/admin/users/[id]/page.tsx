@@ -13,7 +13,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     }
 
     const user = result.data;
-    const statusLabel = !user.is_active ? "inactive" : !user.is_verified ? "invited" : "active";
+    const statusLabel = !user.is_active ? "inactive" : !user.is_verified ? "pending" : "active";
     const statusClass = !user.is_active
         ? "bg-red-500/10 text-red-500"
         : !user.is_verified

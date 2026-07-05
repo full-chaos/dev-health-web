@@ -38,7 +38,7 @@ export default function NewUserPage() {
     return (
         <div className="max-w-2xl">
             <AdminHeader
-                title="Create User"
+                title="Add User"
                 description="Add a new team member to the organization."
             />
             <UserForm onSubmit={handleSubmit} onCancel={handleCancel} isLoading={isLoading} />
