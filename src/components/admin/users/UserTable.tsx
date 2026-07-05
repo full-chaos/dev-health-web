@@ -1,8 +1,11 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { User } from "@/lib/admin/types";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { CTA_LABELS } from "@/lib/design/cta";
+import { formatDateUTC } from "@/lib/formatters";
 
 export type { User };
 
@@ -20,7 +23,32 @@ function getStatusDisplay(user: User): { label: string; className: string } {
     return { label: "active", className: "bg-green-500/10 text-green-500" };
 }
 
+function includesSearch(value: string | null | undefined, query: string): boolean {
+    return value?.toLowerCase().includes(query) ?? false;
+}
+
+function userMatchesSearch(user: User, query: string): boolean {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+        return true;
+    }
+
+    const status = getStatusDisplay(user).label;
+    return (
+        includesSearch(user.full_name, normalizedQuery) ||
+        includesSearch(user.email, normalizedQuery) ||
+        includesSearch(user.username, normalizedQuery) ||
+        includesSearch(status, normalizedQuery) ||
+        includesSearch(user.auth_provider, normalizedQuery)
+    );
+}
+
 export function UserTable({ users }: UserTableProps) {
+    const [searchQuery, setSearchQuery] = useState("");
+    const filteredUsers = useMemo(
+        () => users.filter((user) => userMatchesSearch(user, searchQuery)),
+        [users, searchQuery],
+    );
     const columns: DataTableColumn<User>[] = [
         {
             key: "name",
@@ -72,8 +100,7 @@ export function UserTable({ users }: UserTableProps) {
             header: "Last Login",
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 text-(--ink-muted)",
-            render: (user) =>
-                user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : "Never",
+            render: (user) => (user.last_login_at ? formatDateUTC(user.last_login_at) : "Never"),
         },
         {
             key: "actions",
@@ -85,7 +112,7 @@ export function UserTable({ users }: UserTableProps) {
                     href={`/org/admin/users/${user.id}/edit`}
                     className="text-(--accent) hover:underline"
                 >
-                    Edit
+                    {CTA_LABELS.edit}
                 </Link>
             ),
         },
@@ -94,10 +121,17 @@ export function UserTable({ users }: UserTableProps) {
     return (
         <DataTable
             columns={columns}
-            data={users}
+            data={filteredUsers}
             rowKeyAction={(user) => user.id}
             emptyColSpan={6}
-            emptyMessage="No users found."
+            emptyMessage={users.length === 0 ? "No users found." : "No users match your search."}
+            search={{
+                value: searchQuery,
+                placeholder: "Search users",
+                buttonLabel: CTA_LABELS.applyFilters,
+            }}
+            onSearchAction={setSearchQuery}
+            onSearchChangeAction={setSearchQuery}
         />
     );
 }
