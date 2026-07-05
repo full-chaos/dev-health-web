@@ -22,6 +22,7 @@ const RUNNING_JOB: BackfillJob = {
     started_at: "2026-07-02T15:05:00.000Z",
     completed_at: null,
     created_at: "2026-07-02T15:00:00.000Z",
+    updated_at: "2026-07-02T15:05:00.000Z",
 };
 
 describe("BackfillStatus", () => {
