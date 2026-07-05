@@ -1,6 +1,14 @@
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, renderWithToaster, screen, userEvent, waitFor, within } from "@/test/utils";
+import {
+    fireEvent,
+    render,
+    renderWithToaster,
+    screen,
+    userEvent,
+    waitFor,
+    within,
+} from "@/test/utils";
 import type { IntegrationCredential, SyncConfig } from "@/lib/admin/types";
 
 const mockPush = vi.fn();
@@ -229,6 +237,23 @@ describe("SyncConfigForm", () => {
             expect(gitDataCheckbox).not.toBeChecked();
         });
 
+        it("datasets step shows user-facing consequence copy for each dataset", async () => {
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Copy Test");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await clickContinue(); // scope, skip owner
+
+            expect(
+                screen.getByText(/Pulls commit history, branches, and authorship/),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/Pulls pull\/merge request activity, reviews, and cycle time/),
+            ).toBeInTheDocument();
+        });
+
         it("skips the repository scope step and hides auto-import for a non-repo-scoped provider without team attribution", async () => {
             render(<SyncConfigForm credentials={mockCredentials} />);
 
@@ -259,10 +284,98 @@ describe("SyncConfigForm", () => {
 
             const ninetyDayButton = screen.getByText("90 days").closest("button");
             expect(ninetyDayButton).toBeDisabled();
+            expect(screen.getAllByText("Team").length).toBeGreaterThan(0);
+            expect(screen.getByRole("link", { name: "Upgrade plan" })).toBeInTheDocument();
             expect(screen.getByText("Team Plan Feature")).toBeInTheDocument();
             expect(
                 screen.queryByRole("radio", { name: "Manual only (no schedule)" }),
             ).not.toBeInTheDocument();
+        });
+
+        it("Team tier unlocks Team-gated depth options but keeps Enterprise-only ranges locked with upgrade copy", async () => {
+            mockUseAdminTier.mockReturnValue({
+                tier: "team",
+                features: { scheduled_jobs: true, initial_sync_depth: true },
+                limits: {},
+                minSyncIntervalHours: 0.25,
+            });
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Team Tier Sync");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await clickContinue(); // scope
+            await clickContinue(); // datasets
+
+            // Team-gated ranges are unlocked for a Team-tier account.
+            expect(screen.getByText("90 days").closest("button")).toBeEnabled();
+            expect(screen.getByText("6 months").closest("button")).toBeEnabled();
+
+            // Enterprise-only ranges must stay locked — this is the tier-
+            // ordering regression: the prior gating check only looked at the
+            // single `initial_sync_depth` feature boolean (true for both Team
+            // and Enterprise), so a Team account could unlock Enterprise
+            // ranges too. Rank-based gating fixes this.
+            const oneYearButton = screen.getByText("1 year").closest("button");
+            const allTimeButton = screen.getByText("All time").closest("button");
+            expect(oneYearButton).toBeDisabled();
+            expect(allTimeButton).toBeDisabled();
+            expect(screen.getAllByText("Enterprise").length).toBe(2);
+            expect(screen.getByRole("link", { name: "Upgrade plan" })).toBeInTheDocument();
+        });
+
+        it("Enterprise tier unlocks every initial-depth option", async () => {
+            mockUseAdminTier.mockReturnValue({
+                tier: "enterprise",
+                features: {
+                    scheduled_jobs: true,
+                    initial_sync_depth: true,
+                    unlimited_sync_depth: true,
+                },
+                limits: {},
+                minSyncIntervalHours: 0,
+            });
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(
+                screen.getByLabelText("Configuration Name"),
+                "Enterprise Tier Sync",
+            );
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await clickContinue(); // scope
+            await clickContinue(); // datasets
+
+            for (const label of ["30 days", "90 days", "6 months", "1 year", "All time"]) {
+                expect(screen.getByText(label).closest("button")).toBeEnabled();
+            }
+            expect(screen.queryByText("Upgrade plan")).not.toBeInTheDocument();
+        });
+
+        it("depth/schedule step shows user-facing consequence copy for schedule cadences", async () => {
+            mockUseAdminTier.mockReturnValue({
+                tier: "team",
+                features: { scheduled_jobs: true },
+                limits: {},
+                minSyncIntervalHours: 0.25,
+            });
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Schedule Copy");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await clickContinue(); // scope
+            await clickContinue(); // datasets
+
+            expect(
+                screen.getByText("Data only updates when you manually trigger a sync."),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/Near real-time data, but the most frequent API usage/),
+            ).toBeInTheDocument();
         });
 
         it("clears owner/gitlab_url in form state when the provider changes, even after leaving the scope step", async () => {
@@ -327,6 +440,62 @@ describe("SyncConfigForm", () => {
                 expect(screen.getByText("Config created")).toBeInTheDocument();
                 expect(mockPush).toHaveBeenCalledWith("/org/admin/sync");
             });
+        });
+
+        it("implicit form submission (e.g. pressing Enter) outside the review step never creates the config", async () => {
+            mockCreateSyncConfig.mockResolvedValue(undefined);
+            const { container } = renderWithToaster(
+                <SyncConfigForm credentials={mockCredentials} />,
+            );
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Implicit Submit");
+            // Simulate the browser's implicit form submission that pressing
+            // Enter in a text field triggers — without clicking the explicit
+            // Continue button. The gated step-1 name requirement was already
+            // satisfied, so this is treated like Continue (advance one step)
+            // rather than being silently swallowed — the point is it must
+            // NEVER reach the create action from here.
+            const form = container.querySelector("form");
+            expect(form).not.toBeNull();
+            fireEvent.submit(form as HTMLFormElement);
+
+            expect(mockCreateSyncConfig).not.toHaveBeenCalled();
+            expect(screen.getByLabelText("Credential")).toBeInTheDocument();
+        });
+
+        it("implicit form submission with an unmet gate neither advances nor creates the config", async () => {
+            mockCreateSyncConfig.mockResolvedValue(undefined);
+            const { container } = renderWithToaster(
+                <SyncConfigForm credentials={mockCredentials} />,
+            );
+
+            // No name entered yet — the provider step's Continue gate is
+            // unmet, so an implicit submit must be a no-op, not a bypass.
+            const form = container.querySelector("form");
+            fireEvent.submit(form as HTMLFormElement);
+
+            expect(mockCreateSyncConfig).not.toHaveBeenCalled();
+            expect(screen.getByLabelText("Configuration Name")).toBeInTheDocument();
+        });
+
+        it("implicit form submission on the owner field mid-flow does not bypass the review step", async () => {
+            mockCreateSyncConfig.mockResolvedValue(undefined);
+            const { container } = renderWithToaster(
+                <SyncConfigForm credentials={mockCredentials} />,
+            );
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Owner Enter Sync");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await userEvent.type(screen.getByLabelText("Owner / Organization"), "myorg");
+
+            const form = container.querySelector("form");
+            fireEvent.submit(form as HTMLFormElement);
+
+            expect(mockCreateSyncConfig).not.toHaveBeenCalled();
+            // Advanced one step (scope has no gate), never straight to create.
+            expect(screen.getByLabelText("Git Data (Commits, Branches)")).toBeInTheDocument();
         });
 
         it("failed create on the review step shows an error toast and stays on the review step", async () => {

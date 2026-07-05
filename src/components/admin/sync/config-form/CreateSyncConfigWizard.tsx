@@ -42,11 +42,12 @@ type CreateSyncConfigWizardProps = {
     formData: CreateSyncConfigWizardFormData;
     credentialName: string | null;
     filteredCredentials: IntegrationCredential[];
-    availableTargets: { id: string; label: string }[];
+    availableTargets: { id: string; label: string; description: string }[];
     syncAllRepos: boolean;
     onSyncAllReposChangeAction: (checked: boolean) => void;
     maxRepos?: number;
-    isDepthTierGated: (tier: "team" | "enterprise" | null) => boolean;
+    /** Current account tier (serializable data, not a function prop). */
+    tier: string;
     minSyncIntervalHours?: number;
     onChangeAction: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     onTargetChangeAction: (targetId: string, checked: boolean) => void;
@@ -74,7 +75,7 @@ export function CreateSyncConfigWizard({
     syncAllRepos,
     onSyncAllReposChangeAction,
     maxRepos,
-    isDepthTierGated,
+    tier,
     minSyncIntervalHours,
     onChangeAction,
     onTargetChangeAction,
@@ -107,12 +108,27 @@ export function CreateSyncConfigWizard({
     function goBack() {
         setCurrentIndex((i) => Math.max(i - 1, 0));
     }
+    // Guard against the browser's implicit form submission (e.g. pressing
+    // Enter in a text field like "Configuration Name" or "Owner /
+    // Organization"): only the review step's explicit submit button may
+    // ever call the real onSubmitAction. Everywhere else, an implicit
+    // submit is treated the same as clicking Continue, gated by the same
+    // blockReason, so it can never create a config with an incomplete
+    // payload.
+    function handleFormSubmit(event: SyntheticEvent<HTMLFormElement>) {
+        if (currentStep.id !== "review") {
+            event.preventDefault();
+            goNext();
+            return;
+        }
+        onSubmitAction(event);
+    }
 
     const isRepoScoped = isRepoScopedProvider(formData.provider);
     const showAutoImport = AUTO_IMPORT_PROVIDERS.includes(formData.provider);
 
     return (
-        <form onSubmit={onSubmitAction} className="max-w-2xl space-y-6">
+        <form onSubmit={handleFormSubmit} className="max-w-2xl space-y-6">
             <div className="flex items-center justify-between gap-4">
                 <StepProgress
                     steps={visibleSteps}
@@ -187,7 +203,7 @@ export function CreateSyncConfigWizard({
                         <InitialDepthSection
                             value={formData.initial_sync_depth}
                             onChange={onDepthChangeAction}
-                            isTierGated={isDepthTierGated}
+                            currentTier={tier}
                         />
                         <ScheduleSection
                             isActive={formData.is_active}

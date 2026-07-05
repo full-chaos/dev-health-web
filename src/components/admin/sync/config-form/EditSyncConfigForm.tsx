@@ -32,14 +32,15 @@ type EditSyncConfigFormProps = {
     formData: EditSyncConfigFormData;
     credentialName: string | null;
     filteredCredentials: IntegrationCredential[];
-    availableTargets: { id: string; label: string }[];
+    availableTargets: { id: string; label: string; description: string }[];
     syncAllRepos: boolean;
     onSyncAllReposChangeAction: (checked: boolean) => void;
     canBrowseRepos: boolean;
     maxRepos?: number;
     repoScopeWarnings: string[];
     datasetWarnings: string[];
-    isDepthTierGated: (tier: "team" | "enterprise" | null) => boolean;
+    /** Current account tier (serializable data, not a function prop). */
+    tier: string;
     minSyncIntervalHours?: number;
     onChangeAction: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     onTargetChangeAction: (targetId: string, checked: boolean) => void;
@@ -72,7 +73,7 @@ export function EditSyncConfigForm({
     maxRepos,
     repoScopeWarnings,
     datasetWarnings,
-    isDepthTierGated,
+    tier,
     minSyncIntervalHours,
     onChangeAction,
     onTargetChangeAction,
@@ -148,7 +149,7 @@ export function EditSyncConfigForm({
             <InitialDepthSection
                 value={formData.initial_sync_depth}
                 onChange={onDepthChangeAction}
-                isTierGated={isDepthTierGated}
+                currentTier={tier}
             />
 
             <ScheduleSection

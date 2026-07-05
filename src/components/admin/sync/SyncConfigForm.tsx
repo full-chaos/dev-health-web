@@ -108,7 +108,7 @@ export function SyncConfigForm({
     const [showCredentialModal, setShowCredentialModal] = useState(false);
     const [showDestructiveConfirm, setShowDestructiveConfirm] = useState(false);
     const [localCredentials, setLocalCredentials] = useState(credentials);
-    const { features, minSyncIntervalHours, limits } = useAdminTier();
+    const { tier, minSyncIntervalHours, limits } = useAdminTier();
     const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
     const [syncAllRepos, setSyncAllRepos] = useState(
         initialRepositorySelection?.sync_all_repos ??
@@ -169,11 +169,6 @@ export function SyncConfigForm({
     const combinedDestructiveWarnings = useMemo(
         () => [...repoScopeWarnings, ...datasetWarnings],
         [repoScopeWarnings, datasetWarnings],
-    );
-
-    const isDepthTierGated = useCallback(
-        (tier: "team" | "enterprise" | null) => !!tier && !features["initial_sync_depth"],
-        [features],
     );
 
     const handleChange = useCallback(
@@ -435,7 +430,7 @@ export function SyncConfigForm({
                     maxRepos={maxRepos}
                     repoScopeWarnings={repoScopeWarnings}
                     datasetWarnings={datasetWarnings}
-                    isDepthTierGated={isDepthTierGated}
+                    tier={tier}
                     minSyncIntervalHours={minSyncIntervalHours}
                     onChangeAction={handleChange}
                     onTargetChangeAction={handleTargetChange}
@@ -457,7 +452,7 @@ export function SyncConfigForm({
                     syncAllRepos={syncAllRepos}
                     onSyncAllReposChangeAction={setSyncAllRepos}
                     maxRepos={maxRepos}
-                    isDepthTierGated={isDepthTierGated}
+                    tier={tier}
                     minSyncIntervalHours={minSyncIntervalHours}
                     onChangeAction={handleChange}
                     onTargetChangeAction={handleTargetChange}

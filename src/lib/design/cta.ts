@@ -123,6 +123,8 @@ export const CTA_LABELS = {
     updateConfiguration: "Update Configuration",
     /** In-flight label while a sync-config create/update request is pending (CHAOS-2838). */
     savingConfiguration: "Saving...",
+    /** Link to plan settings from a tier-gated/locked option's upgrade copy (CHAOS-2838). */
+    upgradePlan: "Upgrade plan",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
