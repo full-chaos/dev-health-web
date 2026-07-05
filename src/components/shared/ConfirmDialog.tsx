@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type KeyboardEvent as ReactKeyboardEvent,
+    type ReactNode,
+} from "react";
 
-import { CTA_LABELS } from "@/lib/design/cta";
+import { CTA_LABELS, type CtaLabel } from "@/lib/design/cta";
 
 export type ConfirmDialogTone = "default" | "destructive";
 
@@ -12,8 +19,8 @@ type ConfirmDialogProps = {
     description?: ReactNode;
     /** Visual emphasis for irreversible/safety-critical actions. */
     tone?: ConfirmDialogTone;
-    confirmLabel?: string;
-    cancelLabel?: string;
+    confirmLabel?: CtaLabel;
+    cancelLabel?: CtaLabel;
     isPending?: boolean;
     /**
      * When set, the confirm action stays disabled until the user types this
@@ -29,6 +36,14 @@ const TONE_CLASSNAME: Record<ConfirmDialogTone, string> = {
     default: "bg-(--accent) text-white hover:bg-(--accent)/90",
     destructive: "bg-(--negative) text-white hover:bg-(--negative)/90",
 };
+
+/** Focusable candidates considered for the Tab/Shift+Tab trap (backdrop excluded via tabIndex={-1}). */
+const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+    return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+}
 
 /**
  * Accessible modal confirmation dialog for destructive/safety-critical
@@ -89,6 +104,29 @@ export function ConfirmDialog({
         };
     }, [isOpen]);
 
+    // Focus trap: Tab from the last focusable element wraps to the first,
+    // and Shift+Tab from the first wraps to the last, so focus can never
+    // escape past the backdrop while the dialog is open.
+    function handleDialogKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+        if (event.key !== "Tab") return;
+        const container = dialogRef.current;
+        if (!container) return;
+        const focusable = getFocusableElements(container);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement;
+        if (event.shiftKey) {
+            if (active === first || active === container) {
+                event.preventDefault();
+                last.focus();
+            }
+        } else if (active === last || active === container) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
     if (!isOpen) {
         return null;
     }
@@ -102,6 +140,7 @@ export function ConfirmDialog({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <button
                 type="button"
+                tabIndex={-1}
                 aria-label={cancelLabel}
                 onClick={onCancelAction}
                 className="absolute inset-0 bg-black/50"
@@ -112,6 +151,7 @@ export function ConfirmDialog({
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
+                onKeyDown={handleDialogKeyDown}
                 className="relative z-10 w-full max-w-md rounded-2xl border border-(--card-stroke) bg-(--background) p-6 shadow-2xl focus:outline-none"
             >
                 <h3 id={titleId} className="text-h2 text-foreground">
