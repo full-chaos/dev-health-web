@@ -112,40 +112,55 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
         if (!initialJob || TERMINAL_STATUSES.has(initialJob.status)) return undefined;
 
         let cancelled = false;
+        // Skip overlapping ticks: only one request in flight at a time, so a
+        // slow response can never resolve AFTER a later tick's response
+        // already reached a terminal/stalled conclusion and overwrite it
+        // (out-of-order poll race — mirrors SyncRunDetailLive's inFlightRef).
+        let inFlight = false;
         const jobId = initialJob.id;
         const pollStartedAt = Date.now();
 
         const tick = async () => {
-            const result = await getBackfillJobStatus(jobId);
-            if (cancelled) return;
-            if (result.error || !result.data) {
-                stopPolling();
-                return;
-            }
-            setJob(result.data);
-            if (TERMINAL_STATUSES.has(result.data.status)) {
-                stopPolling();
-                if (result.data.status === "completed" || result.data.status === "success") {
-                    toast.success("Backfill completed successfully");
-                } else if (result.data.status === "partial_failed") {
-                    toast.warning(
-                        result.data.error_message || "Backfill completed with some failures",
-                    );
-                } else {
-                    toast.error(result.data.error_message || "Backfill failed");
+            if (inFlight) return;
+            inFlight = true;
+            try {
+                const result = await getBackfillJobStatus(jobId);
+                if (cancelled) return;
+                if (result.error || !result.data) {
+                    stopPolling();
+                    return;
                 }
-                return;
-            }
-            // Bounded liveness (CHAOS-2868): a stranded zombie reports a
-            // non-terminal status with 0% progress forever. Give up once
-            // that has held for the whole window rather than polling and
-            // claiming "Live" indefinitely.
-            if (
-                result.data.progress_pct === 0 &&
-                Date.now() - pollStartedAt >= MAX_ZERO_PROGRESS_POLL_MS
-            ) {
-                stopPolling();
-                setPollStalled(true);
+                setJob(result.data);
+                if (TERMINAL_STATUSES.has(result.data.status)) {
+                    stopPolling();
+                    setPollStalled(false);
+                    if (result.data.status === "completed" || result.data.status === "success") {
+                        toast.success("Backfill completed successfully");
+                    } else if (result.data.status === "partial_failed") {
+                        toast.warning(
+                            result.data.error_message || "Backfill completed with some failures",
+                        );
+                    } else {
+                        toast.error(result.data.error_message || "Backfill failed");
+                    }
+                    return;
+                }
+                if (result.data.progress_pct > 0) {
+                    // Real forward progress: never leave a stale "paused"
+                    // label behind from an earlier zero-progress window.
+                    setPollStalled(false);
+                    return;
+                }
+                // Bounded liveness (CHAOS-2868): a stranded zombie reports a
+                // non-terminal status with 0% progress forever. Give up once
+                // that has held for the whole window rather than polling and
+                // claiming "Live" indefinitely.
+                if (Date.now() - pollStartedAt >= MAX_ZERO_PROGRESS_POLL_MS) {
+                    stopPolling();
+                    setPollStalled(true);
+                }
+            } finally {
+                inFlight = false;
             }
         };
 
