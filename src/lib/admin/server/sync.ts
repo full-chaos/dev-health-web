@@ -132,34 +132,25 @@ export async function triggerBackfill(
 const ACTIVE_BACKFILL_STATUSES = new Set(["pending", "planned", "dispatching", "running"]);
 
 /**
- * Non-terminal jobs with ZERO recorded progress whose most recent activity
- * timestamp is older than this are treated as stranded zombies and excluded
- * from discovery (CHAOS-2868): the backend merges a linked SyncRun's status
- * over the stored BackfillJob row, so a job whose run got stuck/lost reports
- * pending|dispatching forever with 0% progress. Re-surfacing a week-old
- * zombie on every page load would otherwise pin the "Backfill in progress"
- * banner on indefinitely. Jobs with real progress are NEVER excluded by age
- * alone — a legitimate long-running backfill must stay visible.
+ * Non-terminal jobs whose most recent BackfillJob update is older than this are
+ * treated as stranded zombies and excluded from discovery (CHAOS-2868/2872):
+ * the backend merges a linked SyncRun's status over the stored BackfillJob row,
+ * so a lost run can report pending|dispatching|running forever, even after
+ * recording partial progress. Re-surfacing a week-old zombie on every page load
+ * would otherwise pin the "Backfill in progress" banner indefinitely. Freshly
+ * updated long-running backfills remain visible regardless of progress percent.
  */
 const ACTIVE_BACKFILL_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-/** True when a job has recorded any forward progress (chunks or percent). */
-function hasBackfillProgress(job: BackfillJob): boolean {
-    return job.progress_pct > 0 || job.completed_chunks > 0 || job.failed_chunks > 0;
-}
-
 /**
- * True when a non-terminal, zero-progress job's activity is older than
- * ACTIVE_BACKFILL_MAX_AGE_MS. A job with any recorded progress is never
- * stale regardless of age (see ACTIVE_BACKFILL_MAX_AGE_MS doc).
+ * True when a non-terminal job's freshness timestamp is older than
+ * ACTIVE_BACKFILL_MAX_AGE_MS.
  */
 function isStaleBackfillJob(job: BackfillJob, now: number): boolean {
-    if (hasBackfillProgress(job)) return false;
-
     // Falsy/missing timestamps (defensive against a malformed row despite
     // the response type) are treated as NOT stale — age can't be judged, so
     // err on the side of keeping the job visible rather than hiding it.
-    const timestamp = job.started_at || job.created_at;
+    const timestamp = job.updated_at || job.started_at || job.created_at;
     if (!timestamp) return false;
 
     // Backend datetimes are stored `DateTime(timezone=True)` and always
