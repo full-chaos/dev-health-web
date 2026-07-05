@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export type Team = {
     team_id: string;
@@ -13,10 +15,34 @@ export type Team = {
 
 type TeamTableProps = {
     teams: Team[];
-    onDelete?: (teamId: string) => void;
+    onDeleteAction?: (teamId: string) => void;
 };
 
-export function TeamTable({ teams, onDelete }: TeamTableProps) {
+function includesSearch(value: string | null | undefined, query: string): boolean {
+    return value?.toLowerCase().includes(query) ?? false;
+}
+
+function teamMatchesSearch(team: Team, query: string): boolean {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+        return true;
+    }
+
+    return (
+        includesSearch(team.name, normalizedQuery) ||
+        includesSearch(team.team_id, normalizedQuery) ||
+        includesSearch(team.description, normalizedQuery) ||
+        team.repo_patterns.some((pattern) => includesSearch(pattern, normalizedQuery)) ||
+        team.project_keys.some((key) => includesSearch(key, normalizedQuery))
+    );
+}
+
+export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
+    const [searchQuery, setSearchQuery] = useState("");
+    const filteredTeams = useMemo(
+        () => teams.filter((team) => teamMatchesSearch(team, searchQuery)),
+        [teams, searchQuery],
+    );
     const columns: DataTableColumn<Team>[] = [
         {
             key: "name",
@@ -80,15 +106,15 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
                         href={`/org/admin/teams/${team.team_id}/edit`}
                         className="text-(--accent) hover:underline"
                     >
-                        Edit
+                        {CTA_LABELS.edit}
                     </Link>
-                    {onDelete && (
+                    {onDeleteAction && (
                         <button
                             type="button"
-                            onClick={() => onDelete(team.team_id)}
+                            onClick={() => onDeleteAction(team.team_id)}
                             className="text-red-500 hover:underline"
                         >
-                            Delete
+                            {CTA_LABELS.delete}
                         </button>
                     )}
                 </div>
@@ -99,10 +125,17 @@ export function TeamTable({ teams, onDelete }: TeamTableProps) {
     return (
         <DataTable
             columns={columns}
-            data={teams}
+            data={filteredTeams}
             rowKeyAction={(team) => team.team_id}
             emptyColSpan={5}
-            emptyMessage="No teams found."
+            emptyMessage={teams.length === 0 ? "No teams found." : "No teams match your search."}
+            search={{
+                value: searchQuery,
+                placeholder: "Search teams",
+                buttonLabel: CTA_LABELS.applyFilters,
+            }}
+            onSearchAction={setSearchQuery}
+            onSearchChangeAction={setSearchQuery}
         />
     );
 }

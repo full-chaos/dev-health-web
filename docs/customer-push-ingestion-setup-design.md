@@ -129,11 +129,11 @@ CTA: `Create customer-push source`
 - Source display name
 - Provider/system: GitHub, GitLab, Jira, Linear, Custom
 - Source instance:
-  - GitHub: `github.com/acme` or `github.com/acme/repo`
-  - GitLab: `gitlab.com/group` or `gitlab.com/group/project`
-  - Jira: `https://acme.atlassian.net` plus project keys
-  - Linear: workspace slug or team key
-  - Custom: customer-defined stable source id
+    - GitHub: `github.com/acme` or `github.com/acme/repo`
+    - GitLab: `gitlab.com/group` or `gitlab.com/group/project`
+    - Jira: `https://acme.atlassian.net` plus project keys
+    - Linear: workspace slug or team key
+    - Custom: customer-defined stable source id
 - Ingestion mode: customer push
 - Optional reconciliation cadence recommendation
 
@@ -164,14 +164,14 @@ Create an org/source-scoped ingest credential for the customer.
 - Credential name
 - Source binding
 - Scopes:
-  - `schema:read`
-  - `ingest:write`
-  - `ingest:status`
+    - `schema:read`
+    - `ingest:write`
+    - `ingest:status`
 - Optional provider-specific scopes later:
-  - `ingest:github`
-  - `ingest:gitlab`
-  - `ingest:jira`
-  - `ingest:linear`
+    - `ingest:github`
+    - `ingest:gitlab`
+    - `ingest:jira`
+    - `ingest:linear`
 - Optional expiration
 
 ### Token display state

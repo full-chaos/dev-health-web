@@ -26,12 +26,15 @@ export const CTA_LABELS = {
     /** Reset filters back to defaults. */
     resetFilters: "Reset filters",
     selectAll: "Select All",
+    deselectAll: "Deselect All",
     clear: "Clear",
     cancel: "Cancel",
     addOneFirst: "Add one first",
     createOneNow: "Create One Now",
+    importSelected: "Import Selected",
     /** Copy the current selection / link to the clipboard. */
     copy: "Copy",
+    edit: "Edit",
     save: "Save",
     delete: "Delete",
     confirmDelete: "Confirm delete?",
@@ -103,6 +106,15 @@ export const CTA_LABELS = {
     closeWizard: "Close",
     /** Dismiss the wizard's post-submit result step (CHAOS-2796). */
     done: "Done",
+    inviteUser: "Invite User",
+    addTeam: "Add Team",
+    importTeams: "Import Teams",
+    addIdentity: "Add Identity",
+    reviewIssues: "Review issues",
+    reviewSyncHealth: "Review sync health",
+    manageConnections: "Manage connections",
+    reviewIdentities: "Review identities",
+    openSyncStatus: "Open sync status",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;

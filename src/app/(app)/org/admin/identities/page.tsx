@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { IdentityTable } from "@/components/admin/identities/IdentityTable";
 import { listIdentities } from "@/lib/admin/server";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export default async function IdentitiesPage() {
     const result = await listIdentities();
@@ -16,7 +17,7 @@ export default async function IdentitiesPage() {
                     href="/org/admin/identities/new"
                     className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
                 >
-                    Add Identity
+                    {CTA_LABELS.addIdentity}
                 </Link>
             </AdminHeader>
 
@@ -25,15 +26,6 @@ export default async function IdentitiesPage() {
                     Failed to load identities: {result.error}
                 </div>
             )}
-
-            <div className="mb-6 flex gap-4">
-                <input
-                    type="text"
-                    placeholder="Search identities..."
-                    className="w-full max-w-sm rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
-                />
-            </div>
-
             <IdentityTable
                 identities={(result.data ?? []).map((i) => ({
                     canonical_id: i.canonical_id,

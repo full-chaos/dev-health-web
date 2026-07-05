@@ -90,6 +90,13 @@ type AdminSidebarProps = {
     features?: Record<string, boolean>;
 };
 
+function isNavItemActive(pathname: string, item: NavItem): boolean {
+    if (item.href === "/org/admin") {
+        return pathname === item.href;
+    }
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
 export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
     const pathname = usePathname();
 
@@ -125,7 +132,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                     <OrgSwitcher />
                     <nav className="mt-5 space-y-2 text-sm">
                         {filteredNavItems.map((item) => {
-                            const isActive = pathname === item.href;
+                            const isActive = isNavItemActive(pathname, item);
                             return (
                                 <Link
                                     key={item.id}
