@@ -10,10 +10,7 @@ export default async function UsersPage() {
     if (result.error) {
         return (
             <div>
-                <AdminHeader
-                    title="Users"
-                    description="Manage organization members."
-                />
+                <AdminHeader title="Users" description="Manage organization members." />
                 <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
                     Failed to load users: {result.error}
                 </div>

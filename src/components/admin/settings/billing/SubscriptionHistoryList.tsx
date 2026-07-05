@@ -17,8 +17,12 @@ export function SubscriptionHistoryList({ history }: SubscriptionHistoryListProp
                 {history.map((item) => (
                     <li key={item.id} className="rounded-md border border-(--card-stroke) p-3">
                         <div className="flex items-center justify-between gap-4 text-sm">
-                            <span className="font-medium text-(--foreground)">{item.event_type}</span>
-                            <span className="text-(--ink-muted)">{formatDate(item.processed_at)}</span>
+                            <span className="font-medium text-(--foreground)">
+                                {item.event_type}
+                            </span>
+                            <span className="text-(--ink-muted)">
+                                {formatDate(item.processed_at)}
+                            </span>
                         </div>
                         <p className="mt-1 text-xs text-(--ink-muted)">
                             {item.previous_status ?? "-"}

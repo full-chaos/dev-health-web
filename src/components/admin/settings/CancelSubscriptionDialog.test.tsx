@@ -35,9 +35,7 @@ describe("CancelSubscriptionDialog", () => {
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
         expect(screen.getByText(/1\/1\/2027/)).toBeInTheDocument();
-        expect(
-            screen.getByRole("button", { name: /cancel at period end/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /cancel at period end/i })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /cancel immediately/i })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /^cancel$/i })).toBeInTheDocument();
     });

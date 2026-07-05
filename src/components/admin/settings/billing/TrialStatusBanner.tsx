@@ -27,7 +27,9 @@ export function TrialStatusBanner({
                 </span>
                 <span
                     className={`text-xl font-bold ${
-                        isTrialWarning ? "text-amber-600 dark:text-amber-500" : "text-(--foreground)"
+                        isTrialWarning
+                            ? "text-amber-600 dark:text-amber-500"
+                            : "text-(--foreground)"
                     }`}
                 >
                     {trialDaysRemaining} days left
