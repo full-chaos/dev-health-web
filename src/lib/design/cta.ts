@@ -106,7 +106,7 @@ export const CTA_LABELS = {
     closeWizard: "Close",
     /** Dismiss the wizard's post-submit result step (CHAOS-2796). */
     done: "Done",
-    inviteUser: "Invite User",
+    addUser: "Add User",
     addTeam: "Add Team",
     importTeams: "Import Teams",
     addIdentity: "Add Identity",
