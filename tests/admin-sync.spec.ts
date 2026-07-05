@@ -7,21 +7,27 @@ test("sync page renders empty state with new config link", async ({ page }) => {
     await expect(page.getByRole("link", { name: "New Config" })).toBeVisible();
 });
 
-test("new sync config form renders all fields", async ({ page }) => {
+test("new sync config form starts at the guided provider step", async ({ page }) => {
     await page.goto("/org/admin/sync/new");
 
     await expect(page.locator("#name")).toBeVisible();
     await expect(page.locator("#provider")).toBeVisible();
-    await expect(page.locator("#credential_id")).toBeVisible();
-    await expect(page.getByText(/Git Data/i)).toBeVisible();
-    await expect(page.getByText(/Pull Requests/i)).toBeVisible();
+    await expect(page.locator("#credential_id")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
 });
 
-test("creating sync config navigates back to list", async ({ page }) => {
+test("creating sync config walks the guided flow and navigates back to list", async ({ page }) => {
     await page.goto("/org/admin/sync/new");
 
     await page.locator("#name").fill("Test Config");
     await page.locator("#provider").selectOption("github");
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await page.locator("#credential_id").selectOption("cred-github-1");
+    await page.getByRole("button", { name: "Continue" }).click(); // -> scope
+    await page.getByRole("button", { name: "Continue" }).click(); // -> datasets, skip owner
+    await page.getByRole("button", { name: "Continue" }).click(); // -> depth/schedule
+    await page.getByRole("button", { name: "Continue" }).click(); // -> review
     await page.getByRole("button", { name: /submit|save|create/i }).click();
 
     await expect(page).toHaveURL(/\/org\/admin\/sync$/);
@@ -32,9 +38,12 @@ test("selecting discovered repos submits full names", async ({ page }) => {
 
     await page.locator("#name").fill("Selected Repos");
     await page.locator("#provider").selectOption("github");
-    await page.locator("#credential_id").selectOption("cred-github-1");
-    await page.locator("#owner").fill("myorg");
+    await page.getByRole("button", { name: "Continue" }).click();
 
+    await page.locator("#credential_id").selectOption("cred-github-1");
+    await page.getByRole("button", { name: "Continue" }).click(); // -> scope
+
+    await page.locator("#owner").fill("myorg");
     await expect(page.getByText("repo-alpha")).toBeVisible();
     await expect(page.getByText("myorg/repo-alpha")).toHaveCount(0);
 
@@ -44,6 +53,10 @@ test("selecting discovered repos submits full names", async ({ page }) => {
 
     await page.getByRole("checkbox", { name: /repo-beta/i }).check();
     await expect(page.getByText("1 of 2 selected")).toBeVisible();
+
+    await page.getByRole("button", { name: "Continue" }).click(); // -> datasets
+    await page.getByRole("button", { name: "Continue" }).click(); // -> depth/schedule
+    await page.getByRole("button", { name: "Continue" }).click(); // -> review
     await page.getByRole("button", { name: /submit|save|create/i }).click();
 
     await expect(page).toHaveURL(/\/org\/admin\/sync$/);
@@ -104,18 +117,37 @@ test("sync config history exposes coverage-first job columns and results", async
 test("provider selection filters sync targets", async ({ page }) => {
     await page.goto("/org/admin/sync/new");
 
+    await page.locator("#name").fill("Filter Targets");
     await page.locator("#provider").selectOption("github");
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.locator("#credential_id").selectOption("cred-github-1");
+    await page.getByRole("button", { name: "Continue" }).click(); // -> scope
+    await page.getByRole("button", { name: "Continue" }).click(); // -> datasets
+
     await expect(page.getByText(/Git Data/i)).toBeVisible();
     await expect(page.getByText(/Pull Requests/i)).toBeVisible();
     await expect(page.getByText(/CI\/CD/i)).toBeVisible();
     await expect(page.getByText(/Deployments/i)).toBeVisible();
 
+    await page.getByRole("button", { name: "Back" }).click(); // -> scope
+    await page.getByRole("button", { name: "Back" }).click(); // -> credential
+    await page.getByRole("button", { name: "Back" }).click(); // -> provider
     await page.locator("#provider").selectOption("jira");
-    await expect(page.getByText(/Work Items/i)).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
+    // No jira credential is seeded in test-mode data, so the credential step
+    // offers the Create Credential affordance instead of a filled dropdown.
+    await expect(page.getByRole("button", { name: "Create One Now" })).toBeVisible();
 });
 
 test("sync target checkboxes toggle", async ({ page }) => {
     await page.goto("/org/admin/sync/new");
+
+    await page.locator("#name").fill("Toggle Targets");
+    await page.locator("#provider").selectOption("github");
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.locator("#credential_id").selectOption("cred-github-1");
+    await page.getByRole("button", { name: "Continue" }).click(); // -> scope
+    await page.getByRole("button", { name: "Continue" }).click(); // -> datasets
 
     const checkbox = page.getByRole("checkbox").first();
     await checkbox.check();

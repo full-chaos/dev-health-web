@@ -1,13 +1,42 @@
 import { PROVIDER_SYNC_TARGETS, type Provider } from "@/lib/admin/types";
 
 export const ALL_SYNC_TARGETS = [
-    { id: "git", label: "Git Data (Commits, Branches)" },
-    { id: "prs", label: "Pull Requests" },
-    { id: "cicd", label: "CI/CD Pipelines" },
-    { id: "deployments", label: "Deployments" },
-    { id: "incidents", label: "Incidents" },
-    { id: "work-items", label: "Work Items (Issues, Tickets)" },
-    { id: "feature-flags", label: "Feature Flags" },
+    {
+        id: "git",
+        label: "Git Data (Commits, Branches)",
+        description:
+            "Pulls commit history, branches, and authorship for delivery and ownership metrics.",
+    },
+    {
+        id: "prs",
+        label: "Pull Requests",
+        description: "Pulls pull/merge request activity, reviews, and cycle time.",
+    },
+    {
+        id: "cicd",
+        label: "CI/CD Pipelines",
+        description: "Pulls pipeline runs, build status, and duration for delivery health.",
+    },
+    {
+        id: "deployments",
+        label: "Deployments",
+        description: "Pulls deployment events for release frequency and stability tracking.",
+    },
+    {
+        id: "incidents",
+        label: "Incidents",
+        description: "Pulls incident records for reliability and on-call load metrics.",
+    },
+    {
+        id: "work-items",
+        label: "Work Items (Issues, Tickets)",
+        description: "Pulls issues and tickets for work-item tracking and investment analysis.",
+    },
+    {
+        id: "feature-flags",
+        label: "Feature Flags",
+        description: "Pulls feature-flag state and evaluation activity for rollout tracking.",
+    },
 ];
 
 export const DATASET_LABELS: Record<string, string> = Object.fromEntries(
@@ -44,6 +73,35 @@ export const INITIAL_DEPTH_OPTIONS: {
     { label: "1 year", value: 365, tier: "enterprise" },
     { label: "All time", value: 0, tier: "enterprise" },
 ];
+
+/**
+ * Numeric ordering for tier gating (higher = more access). Any tier string
+ * not present here (including "community"/"free") ranks lowest, so an
+ * unrecognized or entry-level tier never unlocks a gated option.
+ */
+const DEPTH_TIER_RANK: Record<string, number> = {
+    community: 0,
+    free: 0,
+    team: 1,
+    enterprise: 2,
+};
+
+export const DEPTH_TIER_LABELS: Record<"team" | "enterprise", string> = {
+    team: "Team",
+    enterprise: "Enterprise",
+};
+
+/**
+ * Whether an initial-depth option is locked for the given account tier.
+ * Compares tier RANK (not a single feature boolean) so a Team-tier account
+ * unlocks Team-gated options but NOT Enterprise-gated ones (CHAOS-2838
+ * review fix — the prior boolean-only check let Team accounts through to
+ * Enterprise-only ranges).
+ */
+export function isDepthOptionGated(currentTier: string, optionTier: InitialDepthTier): boolean {
+    if (!optionTier) return false;
+    return (DEPTH_TIER_RANK[currentTier] ?? 0) < DEPTH_TIER_RANK[optionTier];
+}
 
 export function formatDepthLabel(value: number | null | undefined): string {
     const match = INITIAL_DEPTH_OPTIONS.find((opt) => opt.value === (value ?? 30));

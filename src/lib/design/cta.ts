@@ -125,6 +125,14 @@ export const CTA_LABELS = {
     reactivateSubscription: "Reactivate",
     /** Generic affirmative action for the shared ConfirmDialog primitive (CHAOS-2845). */
     confirm: "Confirm",
+    /** Submit the guided sync-config creation wizard's review step (CHAOS-2838). */
+    createConfiguration: "Create Configuration",
+    /** Submit the sync-config edit form (CHAOS-2838). */
+    updateConfiguration: "Update Configuration",
+    /** In-flight label while a sync-config create/update request is pending (CHAOS-2838). */
+    savingConfiguration: "Saving...",
+    /** Link to plan settings from a tier-gated/locked option's upgrade copy (CHAOS-2838). */
+    upgradePlan: "Upgrade plan",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
