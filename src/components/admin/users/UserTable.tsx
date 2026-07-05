@@ -18,7 +18,7 @@ function getStatusDisplay(user: User): { label: string; className: string } {
         return { label: "inactive", className: "bg-red-500/10 text-red-500" };
     }
     if (!user.is_verified) {
-        return { label: "invited", className: "bg-yellow-500/10 text-yellow-500" };
+        return { label: "pending", className: "bg-yellow-500/10 text-yellow-500" };
     }
     return { label: "active", className: "bg-green-500/10 text-green-500" };
 }
