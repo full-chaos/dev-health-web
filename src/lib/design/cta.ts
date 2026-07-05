@@ -115,6 +115,8 @@ export const CTA_LABELS = {
     manageConnections: "Manage connections",
     reviewIdentities: "Review identities",
     openSyncStatus: "Open sync status",
+    /** Generic affirmative action for the shared ConfirmDialog primitive (CHAOS-2845). */
+    confirm: "Confirm",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
