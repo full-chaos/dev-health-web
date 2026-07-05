@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { deriveCredentialStatus } from "./credentialStatus";
 import { testConnection, deleteCredential } from "@/lib/admin/server";
+import { formatDateTimeUTC } from "@/lib/formatters";
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { IntegrationCredential } from "@/lib/admin/types";
 
 type CredentialCardProps = {
@@ -58,7 +60,7 @@ export function CredentialCard({
                 </div>
                 <div className="mb-6 text-sm text-(--ink-muted)">
                     {credential.last_test_at ? (
-                        <p>Last tested: {new Date(credential.last_test_at).toLocaleString()}</p>
+                        <p>Last tested: {formatDateTimeUTC(credential.last_test_at)}</p>
                     ) : (
                         <p>Never tested</p>
                     )}
@@ -79,7 +81,7 @@ export function CredentialCard({
                     disabled={isTesting || isDeleting}
                     className="inline-flex items-center justify-center rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-1.5 text-sm font-medium text-(--ink-base) hover:bg-(--surface-muted) disabled:opacity-50"
                 >
-                    Edit
+                    {CTA_LABELS.edit}
                 </button>
                 <button
                     type="button"
@@ -87,7 +89,7 @@ export function CredentialCard({
                     disabled={isTesting || isDeleting}
                     className="inline-flex items-center justify-center rounded-md border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-500/20 disabled:opacity-50"
                 >
-                    Delete
+                    {CTA_LABELS.delete}
                 </button>
             </div>
 
@@ -114,7 +116,7 @@ export function CredentialCard({
                                 disabled={isDeleting}
                                 className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm hover:bg-(--card-80) disabled:opacity-50"
                             >
-                                Cancel
+                                {CTA_LABELS.cancel}
                             </button>
                             <button
                                 type="button"
