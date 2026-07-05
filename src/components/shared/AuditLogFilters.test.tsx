@@ -4,10 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { AuditLogFilters } from "./AuditLogFilters";
 
 describe("AuditLogFilters — admin variant", () => {
-    it("renders labelled action and resource type inputs", () => {
+    it("renders labelled action, resource type, status, and date inputs", () => {
         render(<AuditLogFilters variant="admin" onFilter={vi.fn()} />);
         expect(screen.getByLabelText(/action/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/resource type/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^status$/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/end date/i)).toBeInTheDocument();
     });
@@ -32,14 +33,52 @@ describe("AuditLogFilters — admin variant", () => {
         expect(onFilter).toHaveBeenCalledWith({
             action: undefined,
             resource_type: undefined,
+            status: undefined,
             start_date: undefined,
             end_date: undefined,
         });
     });
 
-    it("renders the Search button", () => {
+    it("renders the Apply filters and Reset filters buttons", () => {
         render(<AuditLogFilters variant="admin" onFilter={vi.fn()} />);
-        expect(screen.getByRole("button", { name: /search/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /apply filters/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /reset filters/i })).toBeInTheDocument();
+    });
+
+    it("Reset immediately clears an empty filter without waiting for Apply", async () => {
+        const onFilter = vi.fn();
+        const user = userEvent.setup();
+        render(<AuditLogFilters variant="admin" onFilter={onFilter} />);
+
+        await user.type(screen.getByLabelText(/action/i), "org.create");
+        await user.selectOptions(screen.getByLabelText(/^status$/i), "success");
+        await user.click(screen.getByRole("button", { name: /reset filters/i }));
+
+        expect(onFilter).toHaveBeenCalledWith({
+            action: undefined,
+            resource_type: undefined,
+            status: undefined,
+            start_date: undefined,
+            end_date: undefined,
+        });
+        expect(screen.getByLabelText(/action/i)).toHaveValue("");
+        expect(screen.getByLabelText(/^status$/i)).toHaveValue("");
+    });
+
+    it("applies again cleanly after a reset (apply \u2192 reset \u2192 apply)", async () => {
+        const onFilter = vi.fn();
+        const user = userEvent.setup();
+        render(<AuditLogFilters variant="admin" onFilter={onFilter} />);
+
+        await user.type(screen.getByLabelText(/action/i), "org.create");
+        await user.click(screen.getByRole("button", { name: /apply filters/i }));
+        await user.click(screen.getByRole("button", { name: /reset filters/i }));
+        await user.type(screen.getByLabelText(/action/i), "user.invite");
+        await user.click(screen.getByRole("button", { name: /apply filters/i }));
+
+        expect(onFilter).toHaveBeenNthCalledWith(1, expect.objectContaining({ action: "org.create" }));
+        expect(onFilter).toHaveBeenNthCalledWith(2, expect.objectContaining({ action: undefined }));
+        expect(onFilter).toHaveBeenNthCalledWith(3, expect.objectContaining({ action: "user.invite" }));
     });
 });
 
