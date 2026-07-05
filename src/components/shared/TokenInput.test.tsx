@@ -92,4 +92,31 @@ describe("TokenInput", () => {
         expect(screen.queryByText("alpha")).not.toBeInTheDocument();
         expect(screen.getByText("beta")).toBeInTheDocument();
     });
+
+    it("does not commit on Enter or comma while an IME composition is in progress", () => {
+        const onChangeAction = vi.fn();
+        render(<TokenInput value={[]} onChangeAction={onChangeAction} ariaLabel="Tags" />);
+        const input = screen.getByLabelText("Tags");
+
+        fireEvent.change(input, { target: { value: "\u30a2\u30eb\u30d5\u30a1" } });
+        fireEvent.compositionStart(input);
+        fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+        fireEvent.keyDown(input, { key: ",", isComposing: true });
+
+        expect(onChangeAction).not.toHaveBeenCalled();
+        expect(input).toHaveValue("\u30a2\u30eb\u30d5\u30a1");
+    });
+
+    it("commits normally on Enter once the IME composition has ended", () => {
+        const onChangeAction = vi.fn();
+        render(<TokenInput value={[]} onChangeAction={onChangeAction} ariaLabel="Tags" />);
+        const input = screen.getByLabelText("Tags");
+
+        fireEvent.change(input, { target: { value: "\u30a2\u30eb\u30d5\u30a1" } });
+        fireEvent.compositionStart(input);
+        fireEvent.compositionEnd(input);
+        fireEvent.keyDown(input, { key: "Enter", isComposing: false });
+
+        expect(onChangeAction).toHaveBeenCalledWith(["\u30a2\u30eb\u30d5\u30a1"]);
+    });
 });

@@ -58,6 +58,9 @@ export function TokenInput({ value, onChangeAction, placeholder, ariaLabel, clas
     }
 
     function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+        // IME composition (CJK/Japanese/Korean input): Enter/comma confirm the
+        // in-progress composition, not the token — never commit while composing.
+        if (event.nativeEvent.isComposing) return;
         if (event.key !== "Enter" && event.key !== ",") return;
         event.preventDefault();
         if (!draft.trim()) return;
