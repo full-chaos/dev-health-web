@@ -17,7 +17,9 @@ function makeProvider(overrides: Partial<IntegrationProvider> = {}): Integration
 
 describe("IntegrationCard", () => {
     it('renders "Needs verification" and neutral count copy, never "1 connected"', () => {
-        render(<IntegrationCard provider={makeProvider({ status: "untested", credentialCount: 1 })} />);
+        render(
+            <IntegrationCard provider={makeProvider({ status: "untested", credentialCount: 1 })} />,
+        );
 
         expect(screen.getByText("Needs verification")).toBeInTheDocument();
         expect(screen.getByText("1 credential")).toBeInTheDocument();
@@ -26,14 +28,22 @@ describe("IntegrationCard", () => {
     });
 
     it("pluralizes credential count copy for more than one credential", () => {
-        render(<IntegrationCard provider={makeProvider({ status: "connected", credentialCount: 3 })} />);
+        render(
+            <IntegrationCard
+                provider={makeProvider({ status: "connected", credentialCount: 3 })}
+            />,
+        );
 
         expect(screen.getByText("3 credentials")).toBeInTheDocument();
         expect(screen.queryByText("3 connected")).not.toBeInTheDocument();
     });
 
     it("hides the count badge when there are no credentials", () => {
-        render(<IntegrationCard provider={makeProvider({ status: "not_configured", credentialCount: 0 })} />);
+        render(
+            <IntegrationCard
+                provider={makeProvider({ status: "not_configured", credentialCount: 0 })}
+            />,
+        );
 
         expect(screen.queryByText(/credential/)).not.toBeInTheDocument();
     });

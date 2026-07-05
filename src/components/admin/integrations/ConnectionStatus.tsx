@@ -2,13 +2,7 @@ import React from "react";
 import { CREDENTIAL_STATUS_META } from "./credentialStatus";
 
 export type ConnectionStatusType =
-    | "connected"
-    | "error"
-    | "not_configured"
-    | "connecting"
-    | "failing"
-    | "untested"
-    | "inactive";
+    "connected" | "error" | "not_configured" | "connecting" | "failing" | "untested" | "inactive";
 
 type ConnectionStatusProps = {
     status: ConnectionStatusType;

@@ -53,9 +53,9 @@ describe("deriveCredentialStatus", () => {
     });
 
     it('returns "inactive" when is_active is false, regardless of last test result', () => {
-        expect(deriveCredentialStatus(makeCredential({ is_active: false, last_test_success: true }))).toBe(
-            "inactive",
-        );
+        expect(
+            deriveCredentialStatus(makeCredential({ is_active: false, last_test_success: true })),
+        ).toBe("inactive");
         expect(
             deriveCredentialStatus(makeCredential({ is_active: false, last_test_success: false })),
         ).toBe("inactive");
@@ -75,14 +75,19 @@ describe("CREDENTIAL_STATUS_META", () => {
         });
     });
 
-    it("never uses the word \"connected\" in the untested label", () => {
+    it('never uses the word "connected" in the untested label', () => {
         expect(CREDENTIAL_STATUS_META.untested.label.toLowerCase()).not.toContain("connected");
     });
 });
 
 describe("CREDENTIAL_STATUS_PRIORITY", () => {
     it("ranks failing above untested above connected above inactive", () => {
-        expect(CREDENTIAL_STATUS_PRIORITY).toEqual(["failing", "untested", "connected", "inactive"]);
+        expect(CREDENTIAL_STATUS_PRIORITY).toEqual([
+            "failing",
+            "untested",
+            "connected",
+            "inactive",
+        ]);
     });
 
     it("contains exactly the four credential statuses", () => {
