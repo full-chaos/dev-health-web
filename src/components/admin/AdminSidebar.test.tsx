@@ -78,4 +78,23 @@ describe("AdminSidebar", () => {
             screen.queryByRole("link", { name: /ip allowlistsecurity/i }),
         ).not.toBeInTheDocument();
     });
+
+    it.each([
+        ["/org/admin/users/new", /usersmanagement/i],
+        ["/org/admin/integrations/github", /integrationsconnectors/i],
+        ["/org/admin/teams/team-1/edit", /teamsidentity/i],
+    ])("keeps the parent nav item active for descendant route %s", (route, linkName) => {
+        pathname = route;
+
+        render(<AdminSidebar />);
+
+        const activeLinks = screen
+            .getAllByRole("link")
+            .filter((link) => link.getAttribute("aria-current") === "page");
+        expect(activeLinks).toHaveLength(1);
+        expect(screen.getByRole("link", { name: linkName })).toHaveAttribute(
+            "aria-current",
+            "page",
+        );
+    });
 });
