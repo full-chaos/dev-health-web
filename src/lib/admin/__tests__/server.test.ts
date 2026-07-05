@@ -41,6 +41,11 @@ function mockSession() {
     mockAuth({ user: { id: "u-1", org_id: "org-1" } });
 }
 
+/** ISO timestamp `hours` in the past, for getActiveBackfillJob staleness fixtures. */
+function hoursAgoIso(hours: number): string {
+    return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+}
+
 describe("admin/server credential actions", () => {
     beforeEach(() => {
         vi.resetAllMocks();
@@ -315,9 +320,9 @@ describe("admin/server sync config actions", () => {
                     failed_chunks: 0,
                     progress_pct: 50,
                     error_message: null,
-                    started_at: "2026-06-20T00:00:00Z",
+                    started_at: hoursAgoIso(1),
                     completed_at: null,
-                    created_at: "2026-06-20T00:00:00Z",
+                    created_at: hoursAgoIso(1),
                 },
             ];
             const fetchSpy = vi
@@ -367,7 +372,7 @@ describe("admin/server sync config actions", () => {
                     error_message: null,
                     started_at: null,
                     completed_at: null,
-                    created_at: "2026-06-20T00:00:00Z",
+                    created_at: hoursAgoIso(1),
                 },
             ];
             const fetchSpy = vi
@@ -382,6 +387,142 @@ describe("admin/server sync config actions", () => {
             const result = await getActiveBackfillJob("cfg-coverage");
 
             expect(result.data?.id).toBe("job-planned");
+            fetchSpy.mockRestore();
+        });
+
+        it("excludes a non-terminal job older than the staleness cutoff (zombie backfill, CHAOS-2868)", async () => {
+            mockSession();
+            const jobs = [
+                {
+                    id: "job-zombie",
+                    sync_config_id: "cfg-coverage",
+                    status: "dispatching",
+                    since_date: "2026-06-01",
+                    before_date: "2026-06-05",
+                    total_chunks: 0,
+                    completed_chunks: 0,
+                    failed_chunks: 0,
+                    progress_pct: 0,
+                    error_message: null,
+                    started_at: null,
+                    completed_at: null,
+                    created_at: hoursAgoIso(48),
+                },
+            ];
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data).toBeNull();
+            fetchSpy.mockRestore();
+        });
+
+        it("treats a zero-progress job as active when it recently started even if it was created long ago", async () => {
+            mockSession();
+            const jobs = [
+                {
+                    id: "job-late-dispatch",
+                    sync_config_id: "cfg-coverage",
+                    status: "dispatching",
+                    since_date: "2026-06-01",
+                    before_date: "2026-06-05",
+                    total_chunks: 0,
+                    completed_chunks: 0,
+                    failed_chunks: 0,
+                    progress_pct: 0,
+                    error_message: null,
+                    started_at: hoursAgoIso(1),
+                    completed_at: null,
+                    created_at: hoursAgoIso(48),
+                },
+            ];
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data?.id).toBe("job-late-dispatch");
+            fetchSpy.mockRestore();
+        });
+
+        it("keeps a job with real progress visible past the staleness cutoff (CHAOS-2868 review: age alone must not hide progressed jobs)", async () => {
+            mockSession();
+            const jobs = [
+                {
+                    id: "job-long-running",
+                    sync_config_id: "cfg-coverage",
+                    status: "running",
+                    since_date: "2026-06-01",
+                    before_date: "2026-06-05",
+                    total_chunks: 5,
+                    completed_chunks: 3,
+                    failed_chunks: 0,
+                    progress_pct: 60,
+                    error_message: null,
+                    started_at: hoursAgoIso(48),
+                    completed_at: null,
+                    created_at: hoursAgoIso(48),
+                },
+            ];
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data?.id).toBe("job-long-running");
+            fetchSpy.mockRestore();
+        });
+
+        it("treats a zero-progress job with no parseable timestamps as not stale (defensive against a malformed row, CHAOS-2868 review)", async () => {
+            mockSession();
+            const jobs = [
+                {
+                    id: "job-no-timestamps",
+                    sync_config_id: "cfg-coverage",
+                    status: "pending",
+                    since_date: "2026-06-01",
+                    before_date: "2026-06-05",
+                    total_chunks: 0,
+                    completed_chunks: 0,
+                    failed_chunks: 0,
+                    progress_pct: 0,
+                    error_message: null,
+                    started_at: null,
+                    completed_at: null,
+                    created_at: null,
+                },
+            ];
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(
+                    new Response(
+                        JSON.stringify({ items: jobs, total: jobs.length, limit: 50, offset: 0 }),
+                        { status: 200 },
+                    ),
+                );
+
+            const result = await getActiveBackfillJob("cfg-coverage");
+
+            expect(result.data?.id).toBe("job-no-timestamps");
             fetchSpy.mockRestore();
         });
     });
