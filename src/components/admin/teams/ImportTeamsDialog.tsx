@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { discoverTeams, importTeams } from "@/lib/admin/server";
 import type { DiscoveredTeam, TeamImportResponse } from "@/lib/admin/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type Step = "provider" | "discovering" | "select" | "importing" | "result";
 
@@ -126,7 +127,7 @@ export function ImportTeamsDialog() {
                 onClick={handleOpen}
                 className="cursor-pointer rounded-lg border border-(--card-stroke) bg-(--card) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) transition-colors"
             >
-                Import Teams
+                {CTA_LABELS.importTeams}
             </button>
         );
     }
@@ -135,7 +136,7 @@ export function ImportTeamsDialog() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="w-full max-w-2xl rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl max-h-[90vh] flex flex-col">
                 <div className="flex items-center justify-between border-b border-(--card-stroke) p-6">
-                    <h2 className="text-xl font-semibold text-foreground">Import Teams</h2>
+                    <h2 className="text-xl font-semibold text-foreground">{CTA_LABELS.importTeams}</h2>
                     <button
                         type="button"
                         onClick={handleClose}
@@ -185,8 +186,8 @@ export function ImportTeamsDialog() {
                                         className="cursor-pointer text-sm text-(--accent) hover:underline"
                                     >
                                         {selectedTeams.size === discoveredTeams.length
-                                            ? "Deselect All"
-                                            : "Select All"}
+                                            ? CTA_LABELS.deselectAll
+                                            : CTA_LABELS.selectAll}
                                     </button>
                                     <span className="text-sm text-(--ink-muted)">
                                         {selectedTeams.size} selected
@@ -208,7 +209,7 @@ export function ImportTeamsDialog() {
                                 </div>
                             </div>
 
-                            <div className="max-h-[400px] overflow-y-auto rounded-lg border border-(--card-stroke)">
+                            <div className="max-h-96 overflow-y-auto rounded-lg border border-(--card-stroke)">
                                 {discoveredTeams.length === 0 ? (
                                     <div className="p-8 text-center text-(--ink-muted)">
                                         No teams found.
@@ -261,7 +262,7 @@ export function ImportTeamsDialog() {
                                                             {team.name}
                                                         </div>
                                                         {team.description && (
-                                                            <div className="text-xs text-(--ink-muted) truncate max-w-[200px]">
+                                                            <div className="max-w-48 truncate text-xs text-(--ink-muted)">
                                                                 {team.description}
                                                             </div>
                                                         )}
@@ -344,7 +345,7 @@ export function ImportTeamsDialog() {
                             onClick={handleClose}
                             className="cursor-pointer rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
                         >
-                            Done
+                            {CTA_LABELS.done}
                         </button>
                     ) : (
                         <>
@@ -354,7 +355,7 @@ export function ImportTeamsDialog() {
                                 disabled={isPending}
                                 className="cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground disabled:opacity-50 transition-colors"
                             >
-                                Cancel
+                                {CTA_LABELS.cancel}
                             </button>
                             {step === "select" && (
                                 <button
@@ -363,7 +364,7 @@ export function ImportTeamsDialog() {
                                     disabled={selectedTeams.size === 0 || isPending}
                                     className="cursor-pointer rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
                                 >
-                                    Import Selected ({selectedTeams.size})
+                                    {CTA_LABELS.importSelected} ({selectedTeams.size})
                                 </button>
                             )}
                         </>
