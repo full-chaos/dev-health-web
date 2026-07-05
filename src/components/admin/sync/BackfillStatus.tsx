@@ -17,14 +17,23 @@ const POLL_INTERVAL_MS = 3000;
  */
 const TERMINAL_STATUSES = new Set(["completed", "failed", "success", "partial_failed"]);
 
+/**
+ * Bounded liveness window (CHAOS-2868): mirrors SyncRunDetailLive's
+ * MAX_POLL_DURATION_MS safety cap. A live job reports forward progress
+ * within minutes; one still pinned at 0% after this long is presumed a
+ * stranded zombie, so polling gives up instead of claiming "Live" forever.
+ */
+const MAX_ZERO_PROGRESS_POLL_MS = 10 * 60 * 1000;
+
 interface BackfillStatusProps {
     /**
      * Backfill job resolved server-side from PERSISTED state (live
      * `getActiveBackfillJob` fetch, or a test-mode sample) — never derived
      * client-side, so an in-progress backfill survives navigation (CHAOS-2795).
-     * Render this component with `key={initialJob?.id ?? "none"}` from the
-     * parent so a newly-submitted job resets local poll state on mount
-     * instead of needing an effect to resync a changed prop.
+     * The parent renders this with `key={initialJob?.id ?? "none"}` so a
+     * newly-submitted job resets local poll state on mount; local state also
+     * re-syncs from this prop directly (see `backfillJobSyncKey` below) as
+     * defense in depth for a status change on the SAME job id (CHAOS-2868).
      */
     initialJob: BackfillJob | null;
     /** When true, render the provided sample job and never poll a live API. */
@@ -61,8 +70,29 @@ function progressBarClassName(status: string): string {
     return "bg-(--accent)";
 }
 
+/** Resync key: local state re-syncs whenever the job identity OR its status changes. */
+function backfillJobSyncKey(job: BackfillJob | null): string {
+    return job ? `${job.id}:${job.status}` : "none";
+}
+
 export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusProps) {
     const [job, setJob] = useState<BackfillJob | null>(initialJob);
+    const [pollStalled, setPollStalled] = useState(false);
+    // Defense in depth (CHAOS-2868): re-sync local state whenever the parent
+    // passes a job with a new id OR a new status, even if BackfillOperations'
+    // `key={activeBackfillJob?.id}` doesn't remount this component (e.g. a
+    // status-only change on the same job id). Adjusting state during render
+    // rather than inside an effect mirrors the documented React pattern for
+    // resetting state from props and keeps `react-hooks/set-state-in-effect`
+    // satisfied.
+    const [syncedJobKey, setSyncedJobKey] = useState(() => backfillJobSyncKey(initialJob));
+    const initialJobKey = backfillJobSyncKey(initialJob);
+    if (initialJobKey !== syncedJobKey) {
+        setSyncedJobKey(initialJobKey);
+        setJob(initialJob);
+        setPollStalled(false);
+    }
+
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const stopPolling = useCallback(() => {
@@ -83,6 +113,7 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
 
         let cancelled = false;
         const jobId = initialJob.id;
+        const pollStartedAt = Date.now();
 
         const tick = async () => {
             const result = await getBackfillJobStatus(jobId);
@@ -103,6 +134,18 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
                 } else {
                     toast.error(result.data.error_message || "Backfill failed");
                 }
+                return;
+            }
+            // Bounded liveness (CHAOS-2868): a stranded zombie reports a
+            // non-terminal status with 0% progress forever. Give up once
+            // that has held for the whole window rather than polling and
+            // claiming "Live" indefinitely.
+            if (
+                result.data.progress_pct === 0 &&
+                Date.now() - pollStartedAt >= MAX_ZERO_PROGRESS_POLL_MS
+            ) {
+                stopPolling();
+                setPollStalled(true);
             }
         };
 
@@ -132,7 +175,9 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
                     </p>
                 </div>
                 {!isTerminal && (
-                    <span className="text-xs text-(--ink-muted)">Live — refreshing…</span>
+                    <span className="text-xs text-(--ink-muted)">
+                        {pollStalled ? "Live updates paused" : "Live — refreshing…"}
+                    </span>
                 )}
             </div>
 

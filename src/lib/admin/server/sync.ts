@@ -132,6 +132,23 @@ export async function triggerBackfill(
 const ACTIVE_BACKFILL_STATUSES = new Set(["pending", "planned", "dispatching", "running"]);
 
 /**
+ * Non-terminal jobs whose most recent activity timestamp is older than this
+ * are treated as stranded zombies and excluded from discovery (CHAOS-2868):
+ * the backend merges a linked SyncRun's status over the stored BackfillJob
+ * row, so a job whose run got stuck/lost reports pending|dispatching forever
+ * with 0% progress. Re-surfacing a week-old zombie on every page load would
+ * otherwise pin the "Backfill in progress" banner on indefinitely.
+ */
+const ACTIVE_BACKFILL_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/** True when a non-terminal job's activity is older than ACTIVE_BACKFILL_MAX_AGE_MS. */
+function isStaleBackfillJob(job: BackfillJob, now: number): boolean {
+    const referenceTime = new Date(job.started_at ?? job.created_at).getTime();
+    if (Number.isNaN(referenceTime)) return false;
+    return now - referenceTime > ACTIVE_BACKFILL_MAX_AGE_MS;
+}
+
+/**
  * Discover a persisted in-progress backfill for `configId` so its status
  * survives navigation (CHAOS-2795). The `/backfill-jobs` endpoint has no
  * server-side sync_config_id filter, so this fetches the most recent org-wide
@@ -145,8 +162,12 @@ export async function getActiveBackfillJob(
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.syncConfigs.listBackfillJobs(token, orgId, { limit: 50 });
+        const now = Date.now();
         const active = result.items.find(
-            (job) => job.sync_config_id === configId && ACTIVE_BACKFILL_STATUSES.has(job.status),
+            (job) =>
+                job.sync_config_id === configId &&
+                ACTIVE_BACKFILL_STATUSES.has(job.status) &&
+                !isStaleBackfillJob(job, now),
         );
         return active ?? null;
     });

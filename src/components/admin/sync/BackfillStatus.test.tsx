@@ -80,6 +80,31 @@ describe("BackfillStatus", () => {
         expect(screen.getByText("Waiting to start...")).toBeInTheDocument();
         expect(screen.getByText("Live — refreshing…")).toBeInTheDocument();
     });
+
+    it("re-syncs local state when initialJob transitions to a terminal status on the SAME job id (CHAOS-2868)", () => {
+        const { rerender } = render(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "dispatching", progress_pct: 0 }}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText("Dispatching work...")).toBeInTheDocument();
+        expect(screen.getByText("Live — refreshing…")).toBeInTheDocument();
+
+        // Same job id, status-only change — BackfillOperations keys by id alone,
+        // so a real remount would not happen here either; this re-renders the
+        // SAME component instance to prove the local state re-syncs from props.
+        rerender(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "completed", progress_pct: 100 }}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText("Backfill complete")).toBeInTheDocument();
+        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+    });
 });
 
 describe("BackfillStatus — live poll", () => {
@@ -181,5 +206,31 @@ describe("BackfillStatus — live poll", () => {
             await vi.advanceTimersByTimeAsync(3000 * 4);
         });
         expect(getBackfillJobStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives up polling and stops the Live indicator after a bounded zero-progress window (CHAOS-2868)", async () => {
+        vi.mocked(getBackfillJobStatus).mockResolvedValue({
+            data: { ...RUNNING_JOB, status: "dispatching", progress_pct: 0 },
+        });
+
+        render(
+            <BackfillStatus
+                initialJob={{ ...RUNNING_JOB, status: "dispatching", progress_pct: 0 }}
+            />,
+        );
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+        });
+
+        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+        expect(screen.getByText("Live updates paused")).toBeInTheDocument();
+
+        // Polling stopped: advancing further triggers no additional calls.
+        const callsAtGiveUp = vi.mocked(getBackfillJobStatus).mock.calls.length;
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3000 * 5);
+        });
+        expect(getBackfillJobStatus).toHaveBeenCalledTimes(callsAtGiveUp);
     });
 });
