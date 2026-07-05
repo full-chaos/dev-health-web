@@ -22,10 +22,13 @@ function makeEntry(overrides: Partial<AuditLog> = {}): AuditLog {
 }
 
 describe("AuditLogRows", () => {
+    let user: ReturnType<typeof userEvent.setup>;
+
     beforeEach(() => {
-        // AuditIdentityLabel's copy affordance uses navigator.clipboard, which
-        // user-event's clipboard stub supplies once setup() has run.
-        userEvent.setup();
+        // userEvent.setup() installs its own jsdom-friendly clipboard stub, so
+        // AuditIdentityLabel's copy affordance has something real to write to.
+        user = userEvent.setup();
+        vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
     });
     afterEach(() => cleanup());
 
@@ -53,35 +56,60 @@ describe("AuditLogRows", () => {
         expect(screen.getAllByText("Unresolved")).toHaveLength(2);
     });
 
-    it("calls onRowSelectAction with the clicked entry", async () => {
+    it("calls onRowSelectAction when the explicit Open details button is clicked", async () => {
         const onRowSelectAction = vi.fn();
-        const user = userEvent.setup();
         const entry = makeEntry();
         render(<AuditLogRows entries={[entry]} onRowSelectAction={onRowSelectAction} />);
 
-        await user.click(screen.getByRole("button", { name: /user\.login/i }));
+        await user.click(screen.getByRole("button", { name: /open details/i }));
+
+        expect(onRowSelectAction).toHaveBeenCalledTimes(1);
+        expect(onRowSelectAction).toHaveBeenCalledWith(entry);
+    });
+
+    it("calls onRowSelectAction on Enter when the Open details button is focused", async () => {
+        const onRowSelectAction = vi.fn();
+        const entry = makeEntry();
+        render(<AuditLogRows entries={[entry]} onRowSelectAction={onRowSelectAction} />);
+
+        screen.getByRole("button", { name: /open details/i }).focus();
+        await user.keyboard("{Enter}");
 
         expect(onRowSelectAction).toHaveBeenCalledWith(entry);
     });
 
-    it("calls onRowSelectAction on Enter key when a row is focused", async () => {
+    it("also opens the row as a pointer-only enhancement when clicking elsewhere in the row", async () => {
         const onRowSelectAction = vi.fn();
-        const user = userEvent.setup();
         const entry = makeEntry();
         render(<AuditLogRows entries={[entry]} onRowSelectAction={onRowSelectAction} />);
 
-        screen.getByRole("button", { name: /user\.login/i }).focus();
-        await user.keyboard("{Enter}");
+        await user.click(screen.getByText("user.login"));
 
         expect(onRowSelectAction).toHaveBeenCalledWith(entry);
     });
 
     it("does not open the row when a copy affordance inside it is clicked", async () => {
         const onRowSelectAction = vi.fn();
-        const user = userEvent.setup();
         render(<AuditLogRows entries={[makeEntry()]} onRowSelectAction={onRowSelectAction} />);
 
         await user.click(screen.getAllByRole("button", { name: /copy resource id/i })[0]);
+
+        expect(onRowSelectAction).not.toHaveBeenCalled();
+    });
+
+    it("copies without opening the drawer when a focused copy button is triggered via Enter or Space", async () => {
+        const onRowSelectAction = vi.fn();
+        const writeText = vi.spyOn(navigator.clipboard, "writeText");
+        render(<AuditLogRows entries={[makeEntry()]} onRowSelectAction={onRowSelectAction} />);
+
+        const copyButton = screen.getAllByRole("button", { name: /copy resource id/i })[0];
+        copyButton.focus();
+        await user.keyboard("{Enter}");
+
+        expect(writeText).toHaveBeenCalled();
+        expect(onRowSelectAction).not.toHaveBeenCalled();
+
+        await user.keyboard(" ");
 
         expect(onRowSelectAction).not.toHaveBeenCalled();
     });

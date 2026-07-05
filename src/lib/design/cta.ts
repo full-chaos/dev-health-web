@@ -115,6 +115,8 @@ export const CTA_LABELS = {
     manageConnections: "Manage connections",
     reviewIdentities: "Review identities",
     openSyncStatus: "Open sync status",
+    /** Open the row-level detail surface for an audit-log event (CHAOS-2843). */
+    openDetails: "Open details",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;

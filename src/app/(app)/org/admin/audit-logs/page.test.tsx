@@ -88,7 +88,7 @@ describe("OrgAuditLogPage", () => {
         render(<OrgAuditLogPage />);
         await waitFor(() => expect(screen.getByText("org.create")).toBeInTheDocument());
 
-        await user.click(screen.getByRole("button", { name: /org\.create/i }));
+        await user.click(screen.getByRole("button", { name: /open details/i }));
 
         expect(await screen.findByTestId("audit-log-detail-drawer")).toBeInTheDocument();
         expect(screen.getByText("Created the organization")).toBeInTheDocument();
