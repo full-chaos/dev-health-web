@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { deriveCredentialStatus } from "./credentialStatus";
 import { testConnection, deleteCredential } from "@/lib/admin/server";
 import type { IntegrationCredential } from "@/lib/admin/types";
 
@@ -23,12 +24,7 @@ export function CredentialCard({
     const [isDeleting, startDeleting] = useTransition();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    const status =
-        credential.last_test_success === true
-            ? "connected"
-            : credential.last_test_success === false
-              ? "error"
-              : "not_configured";
+    const status = deriveCredentialStatus(credential);
 
     const handleTest = () => {
         startTesting(async () => {
