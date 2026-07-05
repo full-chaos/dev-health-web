@@ -50,6 +50,19 @@ function SignalCard({
     );
 }
 
+/**
+ * Boundary guard: admin list actions are typed to return arrays, but a
+ * misbehaving backend/mock payload (e.g. a paginated envelope) must degrade
+ * to the partial-signals banner instead of throwing during RSC render.
+ */
+function asList<T>(value: T[] | undefined): T[] {
+    return Array.isArray(value) ? value : [];
+}
+
+function isMalformedList(value: unknown): boolean {
+    return value !== undefined && !Array.isArray(value);
+}
+
 export default async function AdminDashboardPage() {
     const [
         session,
@@ -69,12 +82,13 @@ export default async function AdminDashboardPage() {
         getPendingTeamChanges(),
     ]);
     const user = session?.user;
-    const users = usersResult.data ?? [];
-    const teams = teamsResult.data ?? [];
-    const identities = identitiesResult.data ?? [];
-    const credentials = credentialsResult.data ?? [];
-    const syncConfigs = syncResult.data ?? [];
-    const pendingTeamChanges = pendingResult.data?.total ?? 0;
+    const users = asList(usersResult.data);
+    const teams = asList(teamsResult.data);
+    const identities = asList(identitiesResult.data);
+    const credentials = asList(credentialsResult.data);
+    const syncConfigs = asList(syncResult.data);
+    const pendingTotal = pendingResult.data?.total;
+    const pendingTeamChanges = typeof pendingTotal === "number" ? pendingTotal : 0;
     const invitedUsers = users.filter((adminUser) => !adminUser.is_verified).length;
     const unassignedIdentities = identities.filter(
         (identity) => identity.team_ids.length === 0,
@@ -103,6 +117,13 @@ export default async function AdminDashboardPage() {
             : failingCredentials > 0
               ? CTA_LABELS.manageConnections
               : CTA_LABELS.reviewSyncHealth;
+    const malformedSignals = [
+        usersResult.data,
+        teamsResult.data,
+        identitiesResult.data,
+        credentialsResult.data,
+        syncResult.data,
+    ].filter(isMalformedList).length;
     const loadErrors = [
         usersResult.error,
         teamsResult.error,
@@ -111,6 +132,7 @@ export default async function AdminDashboardPage() {
         syncResult.error,
         pendingResult.error,
     ].filter(Boolean);
+    const hasPartialSignals = loadErrors.length > 0 || malformedSignals > 0;
 
     return (
         <div className="space-y-8">
@@ -120,7 +142,7 @@ export default async function AdminDashboardPage() {
                 breadcrumbs={[{ label: "Home", href: "/dashboard" }, { label: "Admin" }]}
             />
 
-            {loadErrors.length > 0 && (
+            {hasPartialSignals && (
                 <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-200">
                     Some admin signals could not load. The available signals below may be partial.
                 </div>
