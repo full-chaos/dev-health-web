@@ -163,7 +163,10 @@ export function ConfirmDialog({
 
                 {confirmationRequired ? (
                     <div className="mt-4">
-                        <label htmlFor={confirmInputId} className="mb-1.5 block text-sm text-foreground">
+                        <label
+                            htmlFor={confirmInputId}
+                            className="mb-1.5 block text-sm text-foreground"
+                        >
                             Type <strong>{requiredConfirmationText}</strong> to confirm:
                         </label>
                         <input

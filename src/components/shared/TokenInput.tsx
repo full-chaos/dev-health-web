@@ -27,7 +27,13 @@ function isSameToken(a: string, b: string): boolean {
  * splits on commas/whitespace, entries are trimmed, empties are dropped, and
  * duplicates are rejected case-insensitively with visible feedback.
  */
-export function TokenInput({ value, onChangeAction, placeholder, ariaLabel, className }: TokenInputProps) {
+export function TokenInput({
+    value,
+    onChangeAction,
+    placeholder,
+    ariaLabel,
+    className,
+}: TokenInputProps) {
     const [draft, setDraft] = useState("");
     const [feedback, setFeedback] = useState<string | null>(null);
     const feedbackId = useId();

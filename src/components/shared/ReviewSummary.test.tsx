@@ -21,11 +21,7 @@ describe("ReviewSummary", () => {
     });
 
     it("renders ReactNode values, not only strings", () => {
-        render(
-            <ReviewSummary
-                rows={[{ label: "Status", value: <strong>Active</strong> }]}
-            />,
-        );
+        render(<ReviewSummary rows={[{ label: "Status", value: <strong>Active</strong> }]} />);
 
         expect(screen.getByText("Active").tagName).toBe("STRONG");
     });

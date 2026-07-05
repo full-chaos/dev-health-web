@@ -46,7 +46,9 @@ export function ReviewSummary({ rows, warnings, className }: ReviewSummaryProps)
                         key={row.id ?? row.label}
                         className="flex items-start justify-between gap-4 px-4 py-3"
                     >
-                        <dt className="text-label-caps uppercase text-(--ink-muted)">{row.label}</dt>
+                        <dt className="text-label-caps uppercase text-(--ink-muted)">
+                            {row.label}
+                        </dt>
                         <dd className="text-right text-sm text-foreground">{row.value}</dd>
                     </div>
                 ))}
