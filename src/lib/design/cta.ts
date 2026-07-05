@@ -115,6 +115,8 @@ export const CTA_LABELS = {
     manageConnections: "Manage connections",
     reviewIdentities: "Review identities",
     openSyncStatus: "Open sync status",
+    /** Open the row-level detail surface for an audit-log event (CHAOS-2843). */
+    openDetails: "Open details",
     /** Schedule the subscription to end at the current billing period's close (CHAOS-2839). */
     cancelAtPeriodEnd: "Cancel at period end",
     /** End the subscription right away, forfeiting remaining paid time (CHAOS-2839). */
