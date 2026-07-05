@@ -10,10 +10,7 @@ export default async function UsersPage() {
     if (result.error) {
         return (
             <div>
-                <AdminHeader
-                    title="Users"
-                    description="Manage organization members and their roles."
-                />
+                <AdminHeader title="Users" description="Manage organization members." />
                 <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
                     Failed to load users: {result.error}
                 </div>
@@ -23,12 +20,12 @@ export default async function UsersPage() {
 
     return (
         <div>
-            <AdminHeader title="Users" description="Manage organization members and their roles.">
+            <AdminHeader title="Users" description="Manage organization members.">
                 <Link
                     href="/org/admin/users/new"
                     className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
                 >
-                    {CTA_LABELS.inviteUser}
+                    {CTA_LABELS.addUser}
                 </Link>
             </AdminHeader>
             <UserTable users={result.data ?? []} />

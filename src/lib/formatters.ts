@@ -117,3 +117,25 @@ export const formatDateUTC = (value: string | null | undefined): string => {
         timeZone: "UTC",
     });
 };
+
+/**
+ * Full date + time formatter locked to UTC (CHAOS-2843): audit-log
+ * timestamps must be unambiguous and deterministic across server/client
+ * rendering, so this never falls back to a bare `toLocaleString()` call.
+ * Appends an explicit `UTC` marker so investigators never misread the
+ * offset.
+ */
+export const formatDateTimeUTC = (value: string | null | undefined): string => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "UTC",
+        timeZoneName: "short",
+    });
+};

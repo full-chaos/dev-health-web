@@ -9,11 +9,17 @@
  *   - src/components/admin/billing/AuditLogFilters.tsx (variant="billing")
  *
  * Differences handled by variant:
- *   - "admin":   onFilter callback, fields: action / resource_type / start_date / end_date
+ *   - "admin":   onFilter callback, fields: action / resource_type / status / start_date / end_date
  *   - "billing": onApply callback, fields: action / resource_type / reconciliation_status / from_date / to_date
+ *
+ * Admin variant (CHAOS-2843): the Apply/Reset controls are explicit and
+ * independent — Reset clears every field and immediately re-queries with an
+ * empty filter (it does not wait for a follow-up Apply), matching the
+ * Apply-then-Reset-then-Apply investigation flow.
  */
 
 import { useState } from "react";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 // ============================================================================
 // Shared filter shapes
@@ -22,6 +28,7 @@ import { useState } from "react";
 export type AdminAuditFilter = {
     action?: string;
     resource_type?: string;
+    status?: string;
     start_date?: string;
     end_date?: string;
 };
@@ -34,15 +41,33 @@ export type BillingAuditFilter = {
     to_date?: string;
 };
 
+const EMPTY_ADMIN_FILTER: AdminAuditFilter = {
+    action: undefined,
+    resource_type: undefined,
+    status: undefined,
+    start_date: undefined,
+    end_date: undefined,
+};
+
 // ============================================================================
-// Variant: admin — labelled inputs, full-width button
+// Variant: admin — labelled inputs, explicit Apply + Reset controls
 // ============================================================================
 
 function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) => void }) {
     const [action, setAction] = useState("");
     const [resourceType, setResourceType] = useState("");
+    const [status, setStatus] = useState("");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+
+    const handleReset = () => {
+        setAction("");
+        setResourceType("");
+        setStatus("");
+        setStartDate("");
+        setEndDate("");
+        onFilter(EMPTY_ADMIN_FILTER);
+    };
 
     return (
         <form
@@ -51,11 +76,12 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                 onFilter({
                     action: action || undefined,
                     resource_type: resourceType || undefined,
+                    status: status || undefined,
                     start_date: startDate || undefined,
                     end_date: endDate || undefined,
                 });
             }}
-            className="mb-6 grid gap-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 sm:grid-cols-2 lg:grid-cols-5"
+            className="mb-6 grid gap-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 sm:grid-cols-2 lg:grid-cols-6"
         >
             <div>
                 <label
@@ -91,6 +117,24 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
             </div>
             <div>
                 <label
+                    htmlFor="audit-status-filter"
+                    className="mb-1 block text-xs font-medium text-(--ink-muted)"
+                >
+                    Status
+                </label>
+                <select
+                    id="audit-status-filter"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
+                >
+                    <option value="">Any status</option>
+                    <option value="success">Success</option>
+                    <option value="failure">Failure</option>
+                </select>
+            </div>
+            <div>
+                <label
                     htmlFor="audit-start-date"
                     className="mb-1 block text-xs font-medium text-(--ink-muted)"
                 >
@@ -119,12 +163,19 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                     className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
                 />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
                 <button
                     type="submit"
                     className="w-full rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
                 >
-                    Search
+                    {CTA_LABELS.applyFilters}
+                </button>
+                <button
+                    type="button"
+                    onClick={handleReset}
+                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium hover:border-(--ink-muted)"
+                >
+                    {CTA_LABELS.resetFilters}
                 </button>
             </div>
         </form>

@@ -34,7 +34,7 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
 
     return (
         <SettingsSection
-            title="General Settings"
+            title="Profile"
             description="Manage your organization's basic information."
         >
             <form onSubmit={handleSubmit} className="space-y-4">

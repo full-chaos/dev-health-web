@@ -4,6 +4,7 @@ import {
     formatMetricValue,
     formatNumber,
     formatPercent,
+    formatDateTimeUTC,
     defaultFormatter,
     integerFormatter,
     compactFormatter,
@@ -113,5 +114,20 @@ describe("formatter caching", () => {
         });
         expect(formatter).not.toBe(compactFormatter);
         expect(customFormatters.size).toBe(1);
+    });
+});
+
+describe("formatDateTimeUTC", () => {
+    it("formats a timestamp deterministically in UTC regardless of runtime timezone", () => {
+        expect(formatDateTimeUTC("2025-01-01T12:34:00Z")).toBe("Jan 1, 2025, 12:34 PM UTC");
+    });
+
+    it("returns an em dash for a null or undefined value", () => {
+        expect(formatDateTimeUTC(null)).toBe("—");
+        expect(formatDateTimeUTC(undefined)).toBe("—");
+    });
+
+    it("returns an em dash for an unparseable value", () => {
+        expect(formatDateTimeUTC("not-a-date")).toBe("—");
     });
 });
