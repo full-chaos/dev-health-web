@@ -126,18 +126,49 @@ export interface MockSyncConfig {
     updated_at: string;
 }
 
+/**
+ * Mirrors the backend TeamMapping contract (src/lib/admin/types.ts) so admin
+ * surfaces that dereference array fields (repo_patterns, project_keys) never
+ * throw on mock-created rows. `source` is a legacy mock-only field kept for
+ * existing specs.
+ */
 export interface MockTeam {
     id: string;
     team_id: string;
     name: string;
-    source: string;
+    source?: string;
+    description: string | null;
+    repo_patterns: string[];
+    project_keys: string[];
+    extra_data: Record<string, unknown>;
+    managed_fields: string[];
+    sync_policy: number;
+    flagged_changes: Record<string, unknown> | null;
+    last_drift_sync_at: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
+/**
+ * Mirrors the backend IdentityMapping contract (src/lib/admin/types.ts) so
+ * admin surfaces that dereference team_ids/provider_identities never throw on
+ * mock-created rows. provider/external_id/user_id are legacy mock-only fields
+ * kept for existing specs.
+ */
 export interface MockIdentity {
     id: string;
-    provider: string;
-    external_id: string;
-    user_id: string;
+    canonical_id: string;
+    display_name: string | null;
+    email: string | null;
+    provider_identities: Record<string, string[]>;
+    team_ids: string[];
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    provider?: string;
+    external_id?: string;
+    user_id?: string;
 }
 
 /** Full credential response as returned by GET /api/v1/admin/credentials. */
