@@ -10,33 +10,33 @@ The org-admin surfaces live under `/org/admin/*`, so this file keeps the mock li
 
 Replace placeholders with Penpot frame URLs as mocks land; this is the canonical index.
 
-| Surface | Mock link | Status |
-| --- | --- | --- |
-| Dashboard | _Placeholder, attach Penpot frame link_ | Pending |
+| Surface                  | Mock link                               | Status  |
+| ------------------------ | --------------------------------------- | ------- |
+| Dashboard                | _Placeholder, attach Penpot frame link_ | Pending |
 | Providers (integrations) | _Placeholder, attach Penpot frame link_ | Pending |
-| GitHub provider detail | _Placeholder, attach Penpot frame link_ | Pending |
-| Settings | _Placeholder, attach Penpot frame link_ | Pending |
-| Sync config form | _Placeholder, attach Penpot frame link_ | Pending |
-| Teams | _Placeholder, attach Penpot frame link_ | Pending |
-| Identities | _Placeholder, attach Penpot frame link_ | Pending |
-| IP allowlist | _Placeholder, attach Penpot frame link_ | Pending |
-| Retention | _Placeholder, attach Penpot frame link_ | Pending |
-| Audit logs | _Placeholder, attach Penpot frame link_ | Pending |
+| GitHub provider detail   | _Placeholder, attach Penpot frame link_ | Pending |
+| Settings                 | _Placeholder, attach Penpot frame link_ | Pending |
+| Sync config form         | _Placeholder, attach Penpot frame link_ | Pending |
+| Teams                    | _Placeholder, attach Penpot frame link_ | Pending |
+| Identities               | _Placeholder, attach Penpot frame link_ | Pending |
+| IP allowlist             | _Placeholder, attach Penpot frame link_ | Pending |
+| Retention                | _Placeholder, attach Penpot frame link_ | Pending |
+| Audit logs               | _Placeholder, attach Penpot frame link_ | Pending |
 
 ## Current-state screenshots
 
-| Surface | Route | Current-state evidence |
-| --- | --- | --- |
-| Dashboard | `/org/admin` | [Screenshot](https://github.com/user-attachments/assets/72d304fa-4363-44b0-80fb-1997942edf6d) |
-| Providers (integrations) | `/org/admin/integrations` | [Screenshot](https://github.com/user-attachments/assets/eaf9562e-c2be-4246-b9f6-e56f640f8cbb) |
-| GitHub provider detail | `/org/admin/integrations/github` | [Screenshot](https://github.com/user-attachments/assets/69f02483-5ec4-4b0a-8dc3-1edfcd7b4028) |
-| Settings | `/org/admin/settings` | [Screenshot](https://github.com/user-attachments/assets/9e7499b2-990b-4474-99cf-b3cc621fafd7) |
-| Sync config form | `/org/admin/sync` | [Screenshot](https://github.com/user-attachments/assets/5c10d3d1-468c-4ff1-b9d9-a843bbf2a5c2) |
-| Teams | `/org/admin/teams` | [Screenshot](https://github.com/user-attachments/assets/a506845a-0064-4764-9c40-f8b174e2066b) |
-| Identities | `/org/admin/identities` | [Screenshot](https://github.com/user-attachments/assets/05e6accf-05d1-49ad-90f6-3df000f2d717) |
-| IP allowlist | `/org/admin/ip-allowlist` | [Screenshot](https://github.com/user-attachments/assets/810cce10-1dbe-40a2-b27e-263e560e8a0b) |
-| Retention | `/org/admin/retention` | [Screenshot](https://github.com/user-attachments/assets/5ef0a777-0eee-493f-88ab-9bc35c83bcb5) |
-| Audit logs | `/org/admin/audit-logs` | [Screenshot](https://github.com/user-attachments/assets/474316fe-3727-465b-bd73-0119bd6ecad6) |
+| Surface                  | Route                            | Current-state evidence                                                                        |
+| ------------------------ | -------------------------------- | --------------------------------------------------------------------------------------------- |
+| Dashboard                | `/org/admin`                     | [Screenshot](https://github.com/user-attachments/assets/72d304fa-4363-44b0-80fb-1997942edf6d) |
+| Providers (integrations) | `/org/admin/integrations`        | [Screenshot](https://github.com/user-attachments/assets/eaf9562e-c2be-4246-b9f6-e56f640f8cbb) |
+| GitHub provider detail   | `/org/admin/integrations/github` | [Screenshot](https://github.com/user-attachments/assets/69f02483-5ec4-4b0a-8dc3-1edfcd7b4028) |
+| Settings                 | `/org/admin/settings`            | [Screenshot](https://github.com/user-attachments/assets/9e7499b2-990b-4474-99cf-b3cc621fafd7) |
+| Sync config form         | `/org/admin/sync`                | [Screenshot](https://github.com/user-attachments/assets/5c10d3d1-468c-4ff1-b9d9-a843bbf2a5c2) |
+| Teams                    | `/org/admin/teams`               | [Screenshot](https://github.com/user-attachments/assets/a506845a-0064-4764-9c40-f8b174e2066b) |
+| Identities               | `/org/admin/identities`          | [Screenshot](https://github.com/user-attachments/assets/05e6accf-05d1-49ad-90f6-3df000f2d717) |
+| IP allowlist             | `/org/admin/ip-allowlist`        | [Screenshot](https://github.com/user-attachments/assets/810cce10-1dbe-40a2-b27e-263e560e8a0b) |
+| Retention                | `/org/admin/retention`           | [Screenshot](https://github.com/user-attachments/assets/5ef0a777-0eee-493f-88ab-9bc35c83bcb5) |
+| Audit logs               | `/org/admin/audit-logs`          | [Screenshot](https://github.com/user-attachments/assets/474316fe-3727-465b-bd73-0119bd6ecad6) |
 
 Current-state captures follow the runbook in `docs/agent-visual-testing.md`.
 
@@ -102,6 +102,6 @@ Two suppression paths are supported:
 
 and shared entries in `design-lint.allowlist.json` with `file`, optional `line`, and `reason`. Broad allowlist entries must stay rare and documented.
 
-| File | Rule | Reason |
-| --- | --- | --- |
-| _None recorded yet_ |  |  |
+| File                | Rule | Reason |
+| ------------------- | ---- | ------ |
+| _None recorded yet_ |      |        |
