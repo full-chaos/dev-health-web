@@ -19,6 +19,7 @@ const baseStatus: SetupStatus = {
     has_sync_config: false,
     sync_config_id: null,
     first_sync_started: false,
+    first_sync_completed: false,
     sync_status: "none",
     selected_repositories_count: 0,
     last_sync_error: null,
@@ -59,13 +60,42 @@ describe("deriveSetupSurface (CHAOS-2678, C2)", () => {
     });
 
     it.each(["none", "pending", "running", "partial"] as const)(
-        "treats connected + %s sync as sync-pending",
+        "treats connected + %s first sync as sync-pending",
         (sync_status) => {
             expect(deriveSetupSurface(status({ has_integration: true, sync_status }))).toBe(
                 "sync-pending",
             );
         },
     );
+
+    it("maps a later running sync to ready after the first sync completed", () => {
+        expect(
+            deriveSetupSurface(
+                status({
+                    has_integration: true,
+                    first_sync_started: true,
+                    first_sync_completed: true,
+                    sync_status: "running",
+                    next_action: "complete",
+                }),
+            ),
+        ).toBe("ready");
+    });
+
+    it("does not reopen setup blockers for a later failed sync", () => {
+        expect(
+            deriveSetupSurface(
+                status({
+                    has_integration: true,
+                    first_sync_started: true,
+                    first_sync_completed: true,
+                    sync_status: "failed",
+                    blocker: "Later sync failed",
+                    next_action: "start_sync",
+                }),
+            ),
+        ).toBe("ready");
+    });
 
     it("maps a failed sync to sync-failed regardless of integration", () => {
         expect(
@@ -78,7 +108,12 @@ describe("deriveSetupSurface (CHAOS-2678, C2)", () => {
     it("maps a completed sync to ready", () => {
         expect(
             deriveSetupSurface(
-                status({ has_integration: true, sync_status: "complete", next_action: "complete" }),
+                status({
+                    has_integration: true,
+                    first_sync_completed: true,
+                    sync_status: "complete",
+                    next_action: "complete",
+                }),
             ),
         ).toBe("ready");
     });
@@ -146,7 +181,13 @@ describe("setupSurfaceCta (CTA hrefs)", () => {
 
     it("ready → no CTA", () => {
         expect(
-            setupSurfaceCta(status({ has_integration: true, sync_status: "complete" })),
+            setupSurfaceCta(
+                status({
+                    has_integration: true,
+                    first_sync_completed: true,
+                    sync_status: "complete",
+                }),
+            ),
         ).toBeNull();
     });
 });
