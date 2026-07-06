@@ -109,4 +109,36 @@ describe("AuditLogDetailDrawer", () => {
 
         expect(onCloseAction).toHaveBeenCalled();
     });
+
+    it("calls onCloseAction when Escape is pressed while open", async () => {
+        const onCloseAction = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <AuditLogDetailDrawer
+                entry={makeEntry()}
+                isOpen={true}
+                onCloseAction={onCloseAction}
+            />,
+        );
+
+        await user.keyboard("{Escape}");
+
+        expect(onCloseAction).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not close on Escape when the drawer is closed", async () => {
+        const onCloseAction = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <AuditLogDetailDrawer
+                entry={makeEntry()}
+                isOpen={false}
+                onCloseAction={onCloseAction}
+            />,
+        );
+
+        await user.keyboard("{Escape}");
+
+        expect(onCloseAction).not.toHaveBeenCalled();
+    });
 });
