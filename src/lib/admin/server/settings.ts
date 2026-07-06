@@ -22,6 +22,7 @@ import type {
     RetentionPolicyListResponse,
     RetentionExecuteResponse,
     LLMSettingsResponse,
+    LLMSettingsStatusResponse,
     LLMSettingsUpsert,
     LLMSettingsActionResult,
     LLMSpendSummaryResponse,
@@ -244,6 +245,22 @@ export async function getLLMSettings(): Promise<LLMSettingsActionResult<LLMSetti
     return withStatusErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.llmSettings.get(token, orgId);
+    });
+}
+
+/**
+ * BYO-LLM status badge read (CHAOS-2560/2565). Pure evaluator, no side
+ * effects on the GET. The backend endpoint is being built on a sibling
+ * branch (CHAOS-2560); callers must treat any error here as "unknown" and
+ * fall back to settings-derived wording rather than surfacing it as a hard
+ * failure.
+ */
+export async function getLLMSettingsStatus(): Promise<
+    LLMSettingsActionResult<LLMSettingsStatusResponse>
+> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.llmSettings.status(token, orgId);
     });
 }
 

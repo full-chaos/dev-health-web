@@ -1,7 +1,9 @@
 import { ByoLlmSettings } from "@/components/admin/llm/ByoLlmSettings";
+import { ByoLlmErrorStates } from "@/components/admin/llm/ByoLlmErrorStates";
 import { ByoLlmSpendSummary } from "@/components/admin/llm/ByoLlmSpendSummary";
 import {
     getLLMSettings,
+    getLLMSettingsStatus,
     upsertLLMSettings,
     deleteLLMSettings,
     getLLMSpendSummary,
@@ -15,13 +17,15 @@ import {
 // state by the form itself.
 export default function ByoLlmAdminPage() {
     return (
-        <div className="space-y-8">
+        <div className="flex flex-col gap-8">
             <ByoLlmSettings
                 loadSettingsAction={getLLMSettings}
+                loadStatusAction={getLLMSettingsStatus}
                 saveSettingsAction={upsertLLMSettings}
                 removeSettingsAction={deleteLLMSettings}
             />
             <ByoLlmSpendSummary loadSpendAction={getLLMSpendSummary} />
+            <ByoLlmErrorStates />
         </div>
     );
 }
