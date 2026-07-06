@@ -1604,6 +1604,7 @@ function buildSetupStatus() {
         has_sync_config: false,
         sync_config_id: null,
         first_sync_started: false,
+        first_sync_completed: false,
         sync_status: "none",
         selected_repositories_count: 0,
         last_sync_error: null,
