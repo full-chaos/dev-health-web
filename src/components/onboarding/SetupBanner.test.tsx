@@ -20,6 +20,7 @@ const baseStatus: SetupStatus = {
     has_sync_config: false,
     sync_config_id: null,
     first_sync_started: false,
+    first_sync_completed: false,
     sync_status: "none",
     selected_repositories_count: 0,
     last_sync_error: null,
@@ -71,6 +72,26 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
         expect(cta).toHaveAttribute("href", connectGitHubHref());
 
         expect(emitOnboardingEventOnce).not.toHaveBeenCalled();
+    });
+
+    it("later running sync after first sync completed → renders nothing", () => {
+        const { container } = render(
+            <SetupBanner
+                status={status({
+                    has_integration: true,
+                    providers: ["github"],
+                    has_sync_config: true,
+                    first_sync_started: true,
+                    first_sync_completed: true,
+                    sync_status: "running",
+                    next_action: "complete",
+                })}
+            />,
+        );
+
+        expect(screen.queryByText(/first sync/i)).not.toBeInTheDocument();
+        expect(screen.queryByTestId("setup-banner")).not.toBeInTheDocument();
+        expect(container).toBeEmptyDOMElement();
     });
 
     it("connected but unsynced → distinct sync-pending banner with continue CTA to the sync surface", () => {
@@ -137,6 +158,7 @@ describe("SetupBanner (CHAOS-2678, four C2 states)", () => {
             <SetupBanner
                 status={status({
                     has_integration: true,
+                    first_sync_completed: true,
                     sync_status: "complete",
                     next_action: "complete",
                 })}
