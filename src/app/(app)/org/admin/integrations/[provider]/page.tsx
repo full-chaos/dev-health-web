@@ -5,7 +5,6 @@ import {
     GitHubAppConnect,
     type GitHubAppConnectResult,
 } from "@/components/admin/integrations/GitHubAppConnect";
-import { hasConnectedGitHubApp } from "@/components/admin/integrations/authMethod";
 import { listCredentials, listSyncConfigs } from "@/lib/admin/server";
 import type { Provider } from "@/lib/admin/types";
 
@@ -42,8 +41,6 @@ export default async function IntegrationPage({
     const credentials = (credentialsResult.data ?? []).filter((c) => c.provider === provider);
     const syncConfigs = syncConfigsResult.data ?? [];
 
-    const showGitHubAppCta = provider === "github" && !hasConnectedGitHubApp(credentials);
-
     return (
         <div className="space-y-6">
             <AdminHeader
@@ -57,16 +54,13 @@ export default async function IntegrationPage({
                 </div>
             )}
 
-            {/* CHAOS-2837 AC4 (hard non-goal): banner-only when a GitHub App
-                is already connected — the one-click install CTA never renders
-                again once a credential exists; the Add Provider wizard is the
-                only place a fresh install CTA can appear, and it applies the
-                same suppression rule. */}
-            {provider === "github" && (
-                <GitHubAppConnect
-                    result={githubAppResult}
-                    variant={showGitHubAppCta ? "card" : "banner-only"}
-                />
+            {/* CHAOS-2837: never a standalone install-card CTA on this page —
+                setup (including the recommended GitHub App path) routes entirely
+                through the Add Provider wizard below. This banner only ever
+                surfaces the OAuth-callback result (connected/error) when the
+                browser lands back here after the install round trip. */}
+            {provider === "github" && githubAppResult && (
+                <GitHubAppConnect result={githubAppResult} variant="banner-only" />
             )}
 
             <ProviderCredentialsList
