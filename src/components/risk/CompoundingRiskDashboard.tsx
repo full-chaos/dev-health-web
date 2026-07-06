@@ -92,7 +92,7 @@ export type CompoundingRiskDashboardProps = {
     breakout: CompoundingRiskScope;
     rows: CompoundingRiskRowView[];
     trend: CompoundingRiskTrendPointView[];
-    generatedAt: string;
+    generatedAt: string | null;
 };
 
 const SEVERITY_COPY: Record<CompoundingRiskSeverity, { label: string; tone: string }> = {
@@ -259,9 +259,9 @@ function ScopeTable({
                 className="rounded-2xl border border-(--card-stroke) bg-card p-6 text-sm text-(--ink-muted)"
                 data-testid="empty-state"
             >
-                No Compounding Risk data is available for this org yet. Run{" "}
-                <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> to populate{" "}
-                <code className="font-mono text-[0.85em]">compounding_risk_daily</code>.
+                Compounding Risk needs persisted churn, complexity, ownership, and review-latency
+                inputs before it can show a score. Check that the upstream repository metrics and
+                daily risk rollups have completed for this org.
             </p>
         );
     }
@@ -350,13 +350,19 @@ function ScopeTable({
 }
 
 export function CompoundingRiskDashboard({
-    orgId,
     breakout,
     rows,
     trend,
     generatedAt,
 }: CompoundingRiskDashboardProps) {
     const hasRows = rows.length > 0;
+    const generatedAtLabel =
+        generatedAt === null
+            ? null
+            : {
+                  dateTime: generatedAt,
+                  text: generatedAt.replace("T", " ").slice(0, 16),
+              };
     const allScoresNull = !hasRows || rows.every((r) => r.score === null);
     if (allScoresNull) {
         const missingInputs: string[] = [];
@@ -381,9 +387,9 @@ export function CompoundingRiskDashboard({
                     className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
                     data-testid="all-scores-null-state"
                 >
-                    <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                    <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">
                         Scores currently unavailable
-                    </h1>
+                    </h2>
 
                     <p className="mt-6 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
                         Compounding Risk is a deterministic composite of four normalized inputs:
@@ -393,12 +399,8 @@ export function CompoundingRiskDashboard({
                     </p>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
                         {hasRows
-                            ? `This usually clears once more PR review activity or recent complexity data is recorded. The page will populate automatically when the next daily metrics run completes.`
-                            : `No compounding_risk_daily rows are available yet for this org. Run `}
-                        {!hasRows && (
-                            <code className="font-mono text-[0.85em]">dev-hops metrics daily</code>
-                        )}
-                        {!hasRows && ` to populate the metric, then refresh this page.`}
+                            ? `This usually clears once more PR review activity, file complexity history, ownership data, or review-latency data is recorded. The page will populate automatically after the upstream repository metrics and daily risk rollups complete.`
+                            : `No eligible compounding-risk rows are available for this org yet. Confirm the upstream repository metrics, including complexity history and review latency, have been generated before rerunning the daily risk rollup.`}
                     </p>
 
                     {missingInputs.length > 0 && (
@@ -414,12 +416,12 @@ export function CompoundingRiskDashboard({
                         </div>
                     )}
 
-                    <p className="mt-8 text-xs text-(--ink-muted)">
-                        Org <span className="font-mono">{orgId}</span> · generated{" "}
-                        <time dateTime={generatedAt}>
-                            {generatedAt.replace("T", " ").slice(0, 16)}
-                        </time>
-                    </p>
+                    {generatedAtLabel !== null && (
+                        <p className="mt-8 text-xs text-(--ink-muted)">
+                            Generated{" "}
+                            <time dateTime={generatedAtLabel.dateTime}>{generatedAtLabel.text}</time>
+                        </p>
+                    )}
                 </section>
             </div>
         );
@@ -441,12 +443,14 @@ export function CompoundingRiskDashboard({
                             inspectable: weights, thresholds, and raw inputs are persisted alongside
                             the composite so historical rows stay auditable.
                         </p>
-                        <p className="mt-3 text-xs text-(--ink-muted)">
-                            Org <span className="font-mono">{orgId}</span> · generated{" "}
-                            <time dateTime={generatedAt}>
-                                {generatedAt.replace("T", " ").slice(0, 16)}
-                            </time>
-                        </p>
+                        {generatedAtLabel !== null && (
+                            <p className="mt-3 text-xs text-(--ink-muted)">
+                                Generated{" "}
+                                <time dateTime={generatedAtLabel.dateTime}>
+                                    {generatedAtLabel.text}
+                                </time>
+                            </p>
+                        )}
                     </div>
                     <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
