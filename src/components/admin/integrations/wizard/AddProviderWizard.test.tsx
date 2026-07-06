@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
+import { act, cleanup, renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
 
 import { AddProviderWizard } from "./AddProviderWizard";
 import type { IntegrationCredential } from "@/lib/admin/types";
@@ -183,6 +183,64 @@ describe("AddProviderWizard", () => {
         // stale verification once a field has changed.
         expect(screen.queryByText(/connection successful(?!ly)/i)).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+        expect(createCredential).not.toHaveBeenCalled();
+    });
+
+    it("ignores a stale in-flight verify resolution after inputs change, never persisting unverified fields (CHAOS-2837 race fix)", async () => {
+        let resolveDeferred!: (value: {
+            data: { success: boolean; error: string | null; details: null };
+        }) => void;
+        const deferred = new Promise<{
+            data: { success: boolean; error: string | null; details: null };
+        }>((resolve) => {
+            resolveDeferred = resolve;
+        });
+        vi.mocked(testConnection).mockReturnValueOnce(deferred);
+
+        renderWithToaster(
+            <AddProviderWizard
+                lockedProvider="linear"
+                credentials={[]}
+                onCloseAction={vi.fn()}
+                onCreatedAction={vi.fn()}
+            />,
+        );
+
+        // Fill in snapshot A and fire verify against it — leave the request
+        // pending (simulating a slow network round trip).
+        await userEvent.type(screen.getByLabelText("API Key"), "lin_api_ORIGINAL");
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+        await userEvent.click(screen.getByRole("button", { name: "Verify connection" }));
+        expect(testConnection).toHaveBeenCalledWith(
+            "linear",
+            expect.objectContaining({ credentials: { apiKey: "lin_api_ORIGINAL" } }),
+        );
+
+        // While that request is still in flight, go back and edit the field
+        // the request was fired against — now snapshot B.
+        await userEvent.click(screen.getByRole("button", { name: "Back" }));
+        await userEvent.clear(screen.getByLabelText("API Key"));
+        await userEvent.type(screen.getByLabelText("API Key"), "lin_api_CHANGED");
+
+        // The STALE request for snapshot A now resolves successfully.
+        await act(async () => {
+            resolveDeferred({ data: { success: true, error: null, details: null } });
+            await deferred;
+            await Promise.resolve();
+        });
+
+        // Snapshot B (the live form) must NOT be considered verified: Continue
+        // from the credential step lands back on a still-blocked verify step,
+        // never on review, and no stale success message leaks through.
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+        expect(screen.queryByText(/connection successful(?!ly)/i)).not.toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+        });
+        expect(screen.queryByRole("button", { name: "Finish" })).not.toBeInTheDocument();
+
+        // Even if the user forced their way to review somehow, Finish must
+        // never call createCredential with the unverified snapshot B fields.
         expect(createCredential).not.toHaveBeenCalled();
     });
 });

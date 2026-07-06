@@ -16,6 +16,7 @@ import {
     type AddProviderMethod,
 } from "../addProviderWizardSteps";
 import { hasPrimaryCredentialField } from "./providerRequiredFields";
+import { fingerprintVerificationInputs } from "./verificationFingerprint";
 import { ProviderSelectStep } from "./ProviderSelectStep";
 import { AuthMethodStep } from "./AuthMethodStep";
 import { CredentialEntryStep } from "./CredentialEntryStep";
@@ -30,6 +31,13 @@ type AddProviderWizardProps = {
     onCloseAction: () => void;
     /** Fired once the credential is actually persisted. */
     onCreatedAction: () => void;
+};
+
+/** A completed test-connection result, tagged with the exact inputs it tested. */
+type TestResult = {
+    fingerprint: string;
+    success: boolean;
+    message: string;
 };
 
 function initialMethod(provider: Provider | "", hasGitHubApp: boolean): AddProviderMethod | null {
@@ -49,6 +57,14 @@ function initialMethod(provider: Provider | "", hasGitHubApp: boolean): AddProvi
  * `getVisibleAddProviderSteps`) — the `credential` step's install CTA is the
  * terminal step for that path, so the step-nav Continue footer is hidden
  * once that method is chosen (there's nothing left to continue to).
+ *
+ * Verification is never a bare boolean (see `verificationFingerprint.ts`):
+ * `testConnection` is async, so the user can go Back and edit any input
+ * while a request is still in flight. "Is the form verified" is derived on
+ * every render by comparing the current inputs' fingerprint against the
+ * fingerprint the last *successful* test actually ran against — a stale
+ * resolution for edited-away inputs can never match the live fingerprint,
+ * so it can never re-enable Finish for inputs it didn't test.
  */
 export function AddProviderWizard({
     lockedProvider,
@@ -63,10 +79,7 @@ export function AddProviderWizard({
     );
     const [credentialName, setCredentialName] = useState("");
     const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
-    const [verified, setVerified] = useState(false);
-    const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(
-        null,
-    );
+    const [testResult, setTestResult] = useState<TestResult | null>(null);
     const [submitted, setSubmitted] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isPending, startPending] = useTransition();
@@ -86,12 +99,23 @@ export function AddProviderWizard({
     const resolvedProvider = (provider || "github") as Provider;
     const redirect = isRedirectMethod(method);
 
+    const currentFingerprint = useMemo(
+        () => fingerprintVerificationInputs({ provider, method, credentialName, fieldValues }),
+        [provider, method, credentialName, fieldValues],
+    );
+    // A stale result (from an in-flight request resolved after the user
+    // edited something) is tagged with the fingerprint it actually tested —
+    // it only counts as "current" when that still matches the live inputs.
+    const currentTestResult =
+        testResult && testResult.fingerprint === currentFingerprint ? testResult : null;
+    const isVerified = currentTestResult?.success === true;
+
     const blockReason = getAddProviderStepBlockReason(currentStep.id, {
         provider,
         method,
         credentialName,
         credentialFieldsComplete: hasPrimaryCredentialField(resolvedProvider, fieldValues),
-        verified,
+        verified: isVerified,
     });
 
     function goToStep(index: number) {
@@ -105,60 +129,55 @@ export function AddProviderWizard({
         setCurrentIndex((i) => Math.max(i - 1, 0));
     }
 
-    // A verify result is only meaningful for the exact credential inputs it
-    // was run against — invalidate it the moment ANY of provider, method, or
-    // a credential field changes, so Back → edit → Finish can never persist
-    // an unverified (or differently-verified) credential (CHAOS-2837).
-    function invalidateVerification() {
-        setVerified(false);
-        setTestResult(null);
-    }
-
     function handleProviderChange(next: Provider) {
         setProvider(next);
         setMethod(initialMethod(next, next === "github" ? hasGitHubApp : false));
         setFieldValues({});
         setCredentialName("");
-        invalidateVerification();
     }
     function handleMethodChange(next: AddProviderMethod) {
         setMethod(next);
         setFieldValues({});
-        invalidateVerification();
     }
     function handleFieldChange(name: string, value: string) {
         setFieldValues((prev) => ({ ...prev, [name]: value }));
-        invalidateVerification();
-    }
-    function handleCredentialNameChange(name: string) {
-        setCredentialName(name);
-        invalidateVerification();
     }
 
     function handleVerify() {
+        // Snapshot the exact inputs this request tests, at the moment it's
+        // fired — not re-read from state when it resolves, which may be
+        // arbitrarily later and reflect edits the user made in the meantime.
+        const testedFingerprint = currentFingerprint;
+        const testedProvider = resolvedProvider;
+        const testedName = credentialName || "default";
+        const testedFields = fieldValues;
         startPending(async () => {
-            const result = await testConnection(resolvedProvider, {
-                name: credentialName || "default",
-                credentials: fieldValues,
+            const result = await testConnection(testedProvider, {
+                name: testedName,
+                credentials: testedFields,
             });
             if (result.error || !result.data?.success) {
-                setVerified(false);
                 setTestResult({
+                    fingerprint: testedFingerprint,
                     success: false,
                     message: result.error ?? result.data?.error ?? "Connection test failed",
                 });
                 return;
             }
-            setVerified(true);
-            setTestResult({ success: true, message: "Connection successful" });
+            setTestResult({
+                fingerprint: testedFingerprint,
+                success: true,
+                message: "Connection successful",
+            });
         });
     }
 
     function handleFinish() {
-        // Defensive guard mirroring FinishStep's disabled Finish button: a
-        // manual credential can never be persisted without first passing
-        // verify-connection against its current field values (CHAOS-2837).
-        if (!verified) return;
+        // Gated on the fingerprint-derived `isVerified`, never a bare
+        // boolean: a manual credential can never be persisted unless the
+        // CURRENT inputs are exactly what the last successful test ran
+        // against (CHAOS-2837 — closes the stale in-flight-verify race).
+        if (!isVerified) return;
         startPending(async () => {
             const result = await createCredential({
                 provider: resolvedProvider,
@@ -203,14 +222,14 @@ export function AddProviderWizard({
                         provider={resolvedProvider}
                         method={method}
                         credentialName={credentialName}
-                        onCredentialNameChangeAction={handleCredentialNameChange}
+                        onCredentialNameChangeAction={setCredentialName}
                         onFieldChangeAction={handleFieldChange}
                     />
                 )}
                 {currentStep.id === "verify" && (
                     <VerifyConnectionStep
                         isPending={isPending}
-                        testResult={testResult}
+                        testResult={currentTestResult}
                         onVerifyAction={handleVerify}
                     />
                 )}
@@ -219,7 +238,7 @@ export function AddProviderWizard({
                         providerLabel={PROVIDER_LABELS[resolvedProvider]}
                         credentialName={credentialName}
                         authMethodLabel={getManualAuthMethodLabel(resolvedProvider)}
-                        verified={verified}
+                        verified={isVerified}
                         isPending={isPending}
                         submitted={submitted}
                         onBackAction={goBack}
