@@ -2,7 +2,7 @@
 
 import { adminApi } from "../api";
 import type { ActionResult } from "@/lib/result";
-import type { IdentityMapping, IdentityMappingCreate, IdentityMappingUpdate } from "../types";
+import type { IdentityMapping, IdentityMappingCreate } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
 export async function listIdentities(): Promise<ActionResult<IdentityMapping[]>> {
@@ -29,12 +29,11 @@ export async function getIdentity(id: string): Promise<ActionResult<IdentityMapp
 }
 
 export async function updateIdentity(
-    id: string,
-    data: IdentityMappingUpdate,
+    data: IdentityMappingCreate,
 ): Promise<ActionResult<IdentityMapping>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        return adminApi.identities.update(id, data, token, orgId);
+        return adminApi.identities.update(data, token, orgId);
     });
 }
 

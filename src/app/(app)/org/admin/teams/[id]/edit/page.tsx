@@ -12,9 +12,10 @@ export default async function EditTeamPage({ params }: { params: Promise<{ id: s
     }
 
     const team = result.data;
-    const linkedIdentityCount = (identitiesResult.data ?? []).filter((identity) =>
-        identity.team_ids.includes(team.team_id),
-    ).length;
+    const linkedIdentityCount = identitiesResult.data
+        ? identitiesResult.data.filter((identity) => identity.team_ids.includes(team.team_id))
+              .length
+        : undefined;
 
     return (
         <div>

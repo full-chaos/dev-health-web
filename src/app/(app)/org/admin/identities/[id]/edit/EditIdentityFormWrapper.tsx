@@ -29,7 +29,12 @@ export function EditIdentityFormWrapper({ identity, teams }: EditIdentityFormWra
     const handleSubmit = async (data: Identity) => {
         setIsLoading(true);
 
-        const result = await updateIdentity(identity.id, {
+        // POST /identities is an upsert keyed on canonical_id — there is no
+        // PATCH /identities/{id} route, so the full desired state (including
+        // canonical_id and complete team_ids/provider_identities arrays) must
+        // be sent, not a partial diff.
+        const result = await updateIdentity({
+            canonical_id: data.canonical_id,
             display_name: data.display_name || undefined,
             email: data.email || undefined,
             provider_identities: data.provider_identities,
