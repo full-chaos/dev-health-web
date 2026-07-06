@@ -1,4 +1,5 @@
 import { ByoLlmSettings } from "@/components/admin/llm/ByoLlmSettings";
+import { ByoLlmErrorStates } from "@/components/admin/llm/ByoLlmErrorStates";
 import { getLLMSettings, upsertLLMSettings, deleteLLMSettings } from "@/lib/admin/server";
 
 // Bring Your Own LLM (BYO-LLM) org-admin settings page. Sits inside
@@ -9,10 +10,13 @@ import { getLLMSettings, upsertLLMSettings, deleteLLMSettings } from "@/lib/admi
 // state by the form itself.
 export default function ByoLlmAdminPage() {
     return (
-        <ByoLlmSettings
-            loadSettingsAction={getLLMSettings}
-            saveSettingsAction={upsertLLMSettings}
-            removeSettingsAction={deleteLLMSettings}
-        />
+        <div className="flex flex-col gap-8">
+            <ByoLlmSettings
+                loadSettingsAction={getLLMSettings}
+                saveSettingsAction={upsertLLMSettings}
+                removeSettingsAction={deleteLLMSettings}
+            />
+            <ByoLlmErrorStates />
+        </div>
     );
 }
