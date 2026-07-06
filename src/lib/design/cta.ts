@@ -133,6 +133,18 @@ export const CTA_LABELS = {
     savingConfiguration: "Saving...",
     /** Link to plan settings from a tier-gated/locked option's upgrade copy (CHAOS-2838). */
     upgradePlan: "Upgrade plan",
+    /** Open the create-entry form on the IP allowlist admin page (CHAOS-2842). */
+    addIpAllowlistEntry: "Add IP Rule",
+    /** Open the create-policy form on the data retention admin page (CHAOS-2842). */
+    addRetentionPolicy: "Add Policy",
+    /** Turn on a currently-inactive IP rule or retention policy (CHAOS-2842). */
+    enableEntry: "Enable",
+    /** Turn off a currently-active IP rule or retention policy (CHAOS-2842). */
+    disableEntry: "Disable",
+    /** Trigger the dry-run-then-confirm manual retention run flow (CHAOS-2842). */
+    runPolicyNow: "Run Now",
+    /** Proceed with a safety-critical change despite an explicit lockout-risk warning (CHAOS-2842). */
+    acknowledgeAndSave: "Save anyway",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
