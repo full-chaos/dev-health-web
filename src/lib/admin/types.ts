@@ -406,19 +406,21 @@ export interface IdentityMapping {
     updated_at: string;
 }
 
+/**
+ * Payload for POST /identities. The backend endpoint
+ * (create_or_update_identity) is an UPSERT keyed on `canonical_id` with
+ * replacement semantics for `provider_identities` / `team_ids`: a field
+ * that IS present in the request body replaces the stored value wholesale,
+ * even if the array/object is empty. There is no PATCH /identities/{id}
+ * route — both create and update flows must POST the FULL desired state
+ * (not a partial diff) through this same shape.
+ */
 export interface IdentityMappingCreate {
     canonical_id: string;
     display_name?: string | null;
     email?: string | null;
     provider_identities?: Record<string, string[]>;
     team_ids?: string[];
-}
-
-export interface IdentityMappingUpdate {
-    display_name?: string | null;
-    email?: string | null;
-    provider_identities?: Record<string, string[]> | null;
-    team_ids?: string[] | null;
 }
 
 // ---- Team Mappings ----

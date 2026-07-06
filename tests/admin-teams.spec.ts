@@ -17,8 +17,8 @@ test("new team form renders all fields", async ({ page }) => {
     await expect(page.locator("#team_id")).toBeVisible();
     await expect(page.locator("#name")).toBeVisible();
     await expect(page.locator("#description")).toBeVisible();
-    await expect(page.locator("#repo_patterns")).toBeVisible();
-    await expect(page.locator("#project_keys")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Repository Patterns" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Project Keys" })).toBeVisible();
 });
 
 test("creating team redirects to team list", async ({ page }) => {
