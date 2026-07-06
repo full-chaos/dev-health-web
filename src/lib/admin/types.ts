@@ -772,6 +772,64 @@ export interface LLMSettingsActionResult<T> {
     status?: number;
 }
 
+// ---- BYO LLM Spend Summary (CHAOS-2564) ----
+
+/**
+ * A single run's LLM spend aggregate row, returned inside
+ * `GET /admin/llm-settings/spend`. Sourced from ClickHouse `llm_token_usage`
+ * (per-run calls/tokens/model) joined with `failures_by_class` derived from
+ * `work_unit_investments.categorization_status` / `categorization_errors_json`
+ * for that run (see CHAOS-2349 plan §3 Task B).
+ *
+ * `failures_by_class` keys are persisted **categorization-outcome** classes
+ * (e.g. "llm_error", "low_confidence") — NOT the exact fatal provider-exception
+ * taxonomy (`LLMAuthError`/`LLMRateLimitError`/etc, which is only logged, never
+ * persisted). The UI must label this distinction explicitly (plan §7 C4).
+ */
+export interface LLMSpendRunSummary {
+    run_id: string;
+    provider?: string | null;
+    model: string | null;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    computed_at?: string | null;
+    failures_by_class: Record<string, number>;
+}
+
+/**
+ * A pre-run_id `llm_token_usage` row — spend recorded before `run_id` was
+ * threaded through the sink (plan §7 C1). `run_id` is always the empty
+ * string here (`marker: "legacy_empty_run_id"` flags it); the UI must never
+ * present these as per-run data (plan §6.3, §7 C4).
+ */
+export interface LLMSpendLegacyRow {
+    run_id: "";
+    marker: "legacy_empty_run_id";
+    provider: string | null;
+    model: string | null;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    computed_at: string | null;
+}
+
+/**
+ * `GET /admin/llm-settings/spend` response. Org-scoped; `runs` defaults to
+ * the latest ~20 non-empty `run_id`s within the last 30 days (`since`),
+ * capped at `limit`, ordered by `max(computed_at) DESC` (CHAOS-2349 plan
+ * §6.3). `legacy` holds pre-run_id rows excluded from `runs` — spend
+ * happened but can't be attributed to a specific run; the UI must render an
+ * explicit legacy state for them and never fold them into per-run data
+ * (plan §6.3, §7 C4).
+ */
+export interface LLMSpendSummaryResponse {
+    since: string;
+    limit: number;
+    runs: LLMSpendRunSummary[];
+    legacy: LLMSpendLegacyRow[];
+}
+
 // ---- Provider types ----
 
 export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly";

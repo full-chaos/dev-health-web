@@ -1,5 +1,5 @@
 import { request } from "./_request";
-import type { LLMSettingsResponse, LLMSettingsUpsert } from "../types";
+import type { LLMSettingsResponse, LLMSettingsUpsert, LLMSpendSummaryResponse } from "../types";
 
 // Admin BYO-LLM settings endpoints. The backend force-encrypts and masks the
 // api_key, and tier/flag gates GET/PUT (402/403) while always allowing DELETE
@@ -18,4 +18,9 @@ export const llmSettingsApi = {
 
     remove: (token?: string, orgId?: string) =>
         request<{ deleted: boolean }>("/llm-settings", { method: "DELETE" }, token, orgId),
+
+    // Org-scoped per-run spend summary (CHAOS-2564). Tier/flag-gated the same
+    // way as the settings CRUD above (402/403); see admin/routers/settings.py.
+    spend: (token?: string, orgId?: string) =>
+        request<LLMSpendSummaryResponse>("/llm-settings/spend", {}, token, orgId),
 };
