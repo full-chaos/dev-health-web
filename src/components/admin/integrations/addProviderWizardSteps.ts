@@ -39,15 +39,25 @@ export function providerHasAuthMethodChoice(provider: string, hasGitHubApp: bool
  * The step list actually shown. `lockProvider` skips the provider-select
  * step when the wizard is launched from a specific provider's detail page
  * (the provider is already fixed by the entry point, not chosen mid-flow).
+ *
+ * The GitHub App redirect method (`method === "github_app"`) drops `verify`
+ * and `review` entirely: the one-click install is a full-page redirect to
+ * GitHub and back, and the backend creates + verifies the credential
+ * atomically on that round trip (`install-callback`), so the wizard has
+ * nothing left to verify or review in-session — the `credential` step (the
+ * install CTA itself) is the terminal step for that path, not a dead end
+ * behind an unreachable Finish button.
  */
 export function getVisibleAddProviderSteps(
     provider: string,
     hasGitHubApp: boolean,
     lockProvider: boolean,
+    method: AddProviderMethod | null,
 ): AddProviderStep[] {
     return ALL_STEPS.filter((step) => {
         if (step.id === "provider") return !lockProvider;
         if (step.id === "method") return providerHasAuthMethodChoice(provider, hasGitHubApp);
+        if (step.id === "verify" || step.id === "review") return !isRedirectMethod(method);
         return true;
     });
 }

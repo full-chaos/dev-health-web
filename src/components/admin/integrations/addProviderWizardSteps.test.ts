@@ -38,7 +38,7 @@ describe("providerHasAuthMethodChoice", () => {
 
 describe("getVisibleAddProviderSteps", () => {
     it("includes the method step for github when no GitHub App is connected", () => {
-        const steps = getVisibleAddProviderSteps("github", false, false);
+        const steps = getVisibleAddProviderSteps("github", false, false, null);
         expect(steps.map((s) => s.id)).toEqual([
             "provider",
             "method",
@@ -49,18 +49,33 @@ describe("getVisibleAddProviderSteps", () => {
     });
 
     it("hides the method step for github once a GitHub App is already connected", () => {
-        const steps = getVisibleAddProviderSteps("github", true, false);
+        const steps = getVisibleAddProviderSteps("github", true, false, "manual");
         expect(steps.map((s) => s.id)).toEqual(["provider", "credential", "verify", "review"]);
     });
 
     it("hides the method step for non-github providers", () => {
-        const steps = getVisibleAddProviderSteps("linear", false, false);
+        const steps = getVisibleAddProviderSteps("linear", false, false, "manual");
         expect(steps.map((s) => s.id)).toEqual(["provider", "credential", "verify", "review"]);
     });
 
     it("hides the provider step when launched from a fixed provider page", () => {
-        const steps = getVisibleAddProviderSteps("github", false, true);
+        const steps = getVisibleAddProviderSteps("github", false, true, null);
         expect(steps.map((s) => s.id)).toEqual(["method", "credential", "verify", "review"]);
+    });
+
+    it("drops verify and review for the github_app redirect method — credential is the terminal step", () => {
+        const steps = getVisibleAddProviderSteps("github", true, true, "github_app");
+        expect(steps.map((s) => s.id)).toEqual(["credential"]);
+    });
+
+    it("drops verify and review for github_app even while the method step is still visible (no GitHub App connected yet)", () => {
+        const steps = getVisibleAddProviderSteps("github", false, true, "github_app");
+        expect(steps.map((s) => s.id)).toEqual(["method", "credential"]);
+    });
+
+    it("keeps verify and review for the manual method even when github_app was available", () => {
+        const steps = getVisibleAddProviderSteps("github", true, true, "manual");
+        expect(steps.map((s) => s.id)).toEqual(["credential", "verify", "review"]);
     });
 });
 

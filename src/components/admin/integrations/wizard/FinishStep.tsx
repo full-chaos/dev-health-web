@@ -6,7 +6,8 @@ type FinishStepProps = {
     providerLabel: string;
     credentialName: string;
     authMethodLabel: string;
-    isRedirect: boolean;
+    /** Gates Finish — a manual credential must pass verify-connection first (CHAOS-2837). */
+    verified: boolean;
     isPending: boolean;
     submitted: boolean;
     onBackAction: () => void;
@@ -19,12 +20,17 @@ type FinishStepProps = {
  * summary of the staged credential, then "Finish" persists it. On success it
  * flips to a confirmation state offering the wizard's declared next step —
  * creating a sync configuration — rather than silently closing.
+ *
+ * Only reachable for the manual credential path — `getVisibleAddProviderSteps`
+ * drops this step entirely for the `github_app` redirect method, so there is
+ * no `isRedirect` branch here (see `VerifyConnectionStep` for the same
+ * reasoning on the preceding step).
  */
 export function FinishStep({
     providerLabel,
     credentialName,
     authMethodLabel,
-    isRedirect,
+    verified,
     isPending,
     submitted,
     onBackAction,
@@ -66,6 +72,11 @@ export function FinishStep({
     return (
         <div className="space-y-4">
             <ReviewSummary rows={rows} />
+            {!verified && (
+                <p className="text-xs text-(--caution)">
+                    Go back and verify the connection before finishing.
+                </p>
+            )}
             <div className="flex items-center justify-between gap-3">
                 <button
                     type="button"
@@ -74,16 +85,14 @@ export function FinishStep({
                 >
                     {CTA_LABELS.backButton}
                 </button>
-                {!isRedirect && (
-                    <button
-                        type="button"
-                        onClick={onFinishAction}
-                        disabled={isPending}
-                        className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
-                    >
-                        {isPending ? CTA_LABELS.savingConfiguration : CTA_LABELS.finishAddProvider}
-                    </button>
-                )}
+                <button
+                    type="button"
+                    onClick={onFinishAction}
+                    disabled={isPending || !verified}
+                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
+                >
+                    {isPending ? CTA_LABELS.savingConfiguration : CTA_LABELS.finishAddProvider}
+                </button>
             </div>
         </div>
     );
