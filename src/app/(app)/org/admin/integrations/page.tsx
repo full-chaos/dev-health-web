@@ -1,14 +1,14 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import {
-    IntegrationCard,
-    IntegrationProvider,
-} from "@/components/admin/integrations/IntegrationCard";
-import { listCredentials } from "@/lib/admin/server";
+import { ProvidersPage } from "@/components/admin/integrations/ProvidersPage";
+import type { ProviderRow } from "@/components/admin/integrations/ProviderTable";
+import { listCredentials, listSyncConfigs } from "@/lib/admin/server";
 import {
     CREDENTIAL_STATUS_PRIORITY,
     deriveCredentialStatus,
 } from "@/components/admin/integrations/credentialStatus";
+import { getAuthMethodLabel } from "@/components/admin/integrations/authMethod";
 import type { ConnectionStatusType } from "@/components/admin/integrations/ConnectionStatus";
+import type { Provider } from "@/lib/admin/types";
 
 const GitHubIcon = () => (
     <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current text-gray-900 dark:text-gray-100">
@@ -71,8 +71,12 @@ const PROVIDER_META: Record<string, { name: string; description: string; icon: R
     };
 
 export default async function IntegrationsPage() {
-    const result = await listCredentials();
-    const credentials = result.data ?? [];
+    const [credentialsResult, syncConfigsResult] = await Promise.all([
+        listCredentials(),
+        listSyncConfigs(),
+    ]);
+    const credentials = credentialsResult.data ?? [];
+    const syncConfigs = syncConfigsResult.data ?? [];
 
     const getStatus = (providerId: string): ConnectionStatusType => {
         const creds = credentials.filter((c) => c.provider === providerId);
@@ -81,37 +85,52 @@ export default async function IntegrationsPage() {
         return CREDENTIAL_STATUS_PRIORITY.find((status) => statuses.has(status)) ?? "inactive";
     };
 
-    const getCount = (providerId: string): number => {
-        return credentials.filter((c) => c.provider === providerId).length;
-    };
+    const providers: ProviderRow[] = Object.entries(PROVIDER_META).map(([id, meta]) => {
+        const providerCredentials = credentials.filter((c) => c.provider === id);
+        const lastTestedAt =
+            providerCredentials
+                .map((c) => c.last_test_at)
+                .filter((v): v is string => v !== null)
+                .sort()
+                .at(-1) ?? null;
+        const syncConfigCount = syncConfigs.filter(
+            (sc) =>
+                sc.credential_id !== null &&
+                providerCredentials.some((c) => c.id === sc.credential_id),
+        ).length;
+        const authMethods = new Set(
+            providerCredentials.map((c) => getAuthMethodLabel(id as Provider, c)),
+        );
 
-    const providers: IntegrationProvider[] = Object.entries(PROVIDER_META).map(([id, meta]) => ({
-        id,
-        name: meta.name,
-        description: meta.description,
-        icon: meta.icon,
-        status: getStatus(id),
-        credentialCount: getCount(id),
-    }));
+        return {
+            id: id as Provider,
+            name: meta.name,
+            description: meta.description,
+            icon: meta.icon,
+            status: getStatus(id),
+            credentialCount: providerCredentials.length,
+            singleCredentialName:
+                providerCredentials.length === 1 ? providerCredentials[0].name : null,
+            authMethodLabel: authMethods.size === 1 ? [...authMethods][0] : null,
+            lastTestedAt,
+            syncConfigCount,
+        };
+    });
 
     return (
-        <div>
+        <div className="space-y-6">
             <AdminHeader
-                title="Integrations"
+                title="Providers"
                 description="Manage connections to external tools and services."
             />
 
-            {result.error && (
-                <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
-                    Failed to load credentials: {result.error}
+            {credentialsResult.error && (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                    Failed to load credentials: {credentialsResult.error}
                 </div>
             )}
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {providers.map((provider) => (
-                    <IntegrationCard key={provider.id} provider={provider} />
-                ))}
-            </div>
+            <ProvidersPage providers={providers} credentials={credentials} />
         </div>
     );
 }
