@@ -19,12 +19,18 @@ export function isGitHubAppCredential(credential: IntegrationCredential): boolea
 }
 
 /**
- * True when an active GitHub App credential already exists among the given
- * credentials. Drives the hard non-goal (CHAOS-2837 AC4): `Connect GitHub
- * App` must never render once this is true.
+ * True when a GitHub App credential already EXISTS among the given
+ * credentials — active or not. Drives the hard non-goal (CHAOS-2837 AC4):
+ * `Connect GitHub App` must never render again once this is true, because
+ * re-running the one-click install would try to create a second `github-app`
+ * credential the backend would just upsert over the first (see
+ * `IntegrationCredentialsService.set`, which is a per-`(provider, name)`
+ * upsert) — an inactive record still means the org already went through
+ * install once and the UI must route them to re-activating/re-installing it,
+ * never a fresh "Connect GitHub App" CTA.
  */
-export function hasConnectedGitHubApp(credentials: IntegrationCredential[]): boolean {
-    return credentials.some((c) => isGitHubAppCredential(c) && c.is_active);
+export function hasGitHubAppCredential(credentials: IntegrationCredential[]): boolean {
+    return credentials.some((c) => isGitHubAppCredential(c));
 }
 
 /** Non-GitHub-App auth method label per provider (single shape today). */

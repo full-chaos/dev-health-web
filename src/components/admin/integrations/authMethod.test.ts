@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getAuthMethodLabel, hasConnectedGitHubApp, isGitHubAppCredential } from "./authMethod";
+import { getAuthMethodLabel, hasGitHubAppCredential, isGitHubAppCredential } from "./authMethod";
 import type { IntegrationCredential } from "@/lib/admin/types";
 
 function makeCredential(overrides: Partial<IntegrationCredential> = {}): IntegrationCredential {
@@ -45,16 +45,16 @@ describe("isGitHubAppCredential", () => {
     });
 });
 
-describe("hasConnectedGitHubApp", () => {
+describe("hasGitHubAppCredential", () => {
     it("is true when an active GitHub App credential exists", () => {
         const credentials = [
             makeCredential({ name: "github-app", config: { auth_mode: "github_app" } }),
         ];
 
-        expect(hasConnectedGitHubApp(credentials)).toBe(true);
+        expect(hasGitHubAppCredential(credentials)).toBe(true);
     });
 
-    it("is false when the GitHub App credential is inactive", () => {
+    it("is true when the GitHub App credential is INACTIVE — existence, not activity, gates the CTA", () => {
         const credentials = [
             makeCredential({
                 name: "github-app",
@@ -63,17 +63,17 @@ describe("hasConnectedGitHubApp", () => {
             }),
         ];
 
-        expect(hasConnectedGitHubApp(credentials)).toBe(false);
+        expect(hasGitHubAppCredential(credentials)).toBe(true);
     });
 
     it("is false when only a manual token credential exists", () => {
         const credentials = [makeCredential({ name: "default", config: {} })];
 
-        expect(hasConnectedGitHubApp(credentials)).toBe(false);
+        expect(hasGitHubAppCredential(credentials)).toBe(false);
     });
 
     it("is false for an empty credential list", () => {
-        expect(hasConnectedGitHubApp([])).toBe(false);
+        expect(hasGitHubAppCredential([])).toBe(false);
     });
 });
 
