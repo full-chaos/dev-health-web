@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Mock dependencies BEFORE importing the module under test
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/headers", () => ({ headers: vi.fn() }));
 
 import { revalidatePath } from "next/cache";
 import { mockAuth } from "@/test/mocks/auth";
@@ -20,6 +21,7 @@ import {
     updateIPAllowlistEntry,
     deleteIPAllowlistEntry,
     checkIPAllowed,
+    getCurrentClientIp,
     listRetentionPolicies,
     createRetentionPolicy,
     updateRetentionPolicy,
@@ -851,6 +853,35 @@ describe("admin/server IP allowlist actions", () => {
             expect(result.data).toBeDefined();
             expect(result.data?.allowed).toBe(true);
             fetchSpy.mockRestore();
+        });
+    });
+
+    describe("getCurrentClientIp", () => {
+        it("derives the client IP from request headers via getClientIp", async () => {
+            mockSession();
+            vi.stubEnv("TRUST_PROXY", "true");
+            const { headers } = await import("next/headers");
+            vi.mocked(headers).mockResolvedValue(
+                new Headers({ "x-forwarded-for": "198.51.100.10, 10.0.0.1" }),
+            );
+
+            const result = await getCurrentClientIp();
+            expect(result.data).toBe("198.51.100.10");
+        });
+
+        it("falls back to an anonymous fingerprint when no forwarded header is trusted", async () => {
+            mockSession();
+            vi.stubEnv("TRUST_PROXY", "false");
+            const { headers } = await import("next/headers");
+            vi.mocked(headers).mockResolvedValue(
+                new Headers({
+                    "x-forwarded-for": "198.51.100.10",
+                    "user-agent": "vitest",
+                }),
+            );
+
+            const result = await getCurrentClientIp();
+            expect(result.data).toMatch(/^anon:/);
         });
     });
 });
