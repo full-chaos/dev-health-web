@@ -1,5 +1,5 @@
 import { request } from "./_request";
-import type { IdentityMapping, IdentityMappingCreate, IdentityMappingUpdate } from "../types";
+import type { IdentityMapping, IdentityMappingCreate } from "../types";
 
 export const identitiesApi = {
     list: (token?: string, orgId?: string) =>
@@ -16,10 +16,13 @@ export const identitiesApi = {
             orgId,
         ),
 
-    update: (id: string, data: IdentityMappingUpdate, token?: string, orgId?: string) =>
+    // No PATCH /identities/{id} route exists on the backend — identity
+    // updates go through the same POST /identities upsert as create, keyed
+    // on `canonical_id` in the body (see create_or_update_identity).
+    update: (data: IdentityMappingCreate, token?: string, orgId?: string) =>
         request<IdentityMapping>(
-            `/identities/${id}`,
-            { method: "PATCH", body: JSON.stringify(data) },
+            "/identities",
+            { method: "POST", body: JSON.stringify(data) },
             token,
             orgId,
         ),
