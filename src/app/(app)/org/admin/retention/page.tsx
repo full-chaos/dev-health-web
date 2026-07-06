@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import {
     listRetentionPolicies,
@@ -10,8 +10,24 @@ import {
     executeRetentionPolicy,
     listRetentionResourceTypes,
 } from "@/lib/admin/server";
-import type { RetentionPolicy, RetentionPolicyCreate } from "@/lib/admin/types";
+import type {
+    RetentionPolicy,
+    RetentionPolicyCreate,
+    RetentionPolicyUpdate,
+} from "@/lib/admin/types";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
+import { CTA_LABELS } from "@/lib/design/cta";
+import { RetentionPolicyForm } from "./RetentionPolicyForm";
+import { RetentionPolicyTable } from "./RetentionPolicyTable";
+import { RetentionRunConfirm } from "./RetentionRunConfirm";
+
+type FormState =
+    { mode: "closed" } | { mode: "create" } | { mode: "edit"; policy: RetentionPolicy };
+
+function formatDate(d: string | null): string {
+    if (!d) return "--";
+    return new Date(d).toLocaleDateString();
+}
 
 export default function RetentionPolicyPage() {
     const [policies, setPolicies] = useState<RetentionPolicy[]>([]);
@@ -21,20 +37,10 @@ export default function RetentionPolicyPage() {
     const [offset, setOffset] = useState(0);
     const limit = 50;
 
-    const [showAddForm, setShowAddForm] = useState(false);
-    const [formData, setFormData] = useState<RetentionPolicyCreate>({
-        resource_type: "",
-        retention_days: 90,
-    });
+    const [formState, setFormState] = useState<FormState>({ mode: "closed" });
     const [saving, setSaving] = useState(false);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [togglingId, setTogglingId] = useState<string | null>(null);
-    const [executingId, setExecutingId] = useState<string | null>(null);
-    const [executeResult, setExecuteResult] = useState<{
-        id: string;
-        count: number;
-        confirming: boolean;
-    } | null>(null);
+    const [runTarget, setRunTarget] = useState<RetentionPolicy | null>(null);
 
     const fetchPolicies = useCallback(async () => {
         setLoading(true);
@@ -64,16 +70,17 @@ export default function RetentionPolicyPage() {
         });
     }, []);
 
-    const handleCreate = async () => {
-        if (!formData.resource_type) return;
+    const handleSave = async (data: RetentionPolicyCreate | RetentionPolicyUpdate) => {
         setSaving(true);
-        const { error: apiError } = await createRetentionPolicy(formData);
+        const result =
+            formState.mode === "edit"
+                ? await updateRetentionPolicy(formState.policy.id, data)
+                : await createRetentionPolicy(data as RetentionPolicyCreate);
         setSaving(false);
-        if (apiError) {
-            setError(apiError);
+        if (result.error) {
+            setError(result.error);
         } else {
-            setShowAddForm(false);
-            setFormData({ resource_type: "", retention_days: 90 });
+            setFormState({ mode: "closed" });
             fetchPolicies();
         }
     };
@@ -91,50 +98,23 @@ export default function RetentionPolicyPage() {
         }
     };
 
-    const handleDryRun = async (id: string) => {
-        setExecutingId(id);
-        const { data, error: apiError } = await executeRetentionPolicy(id, true);
-        setExecutingId(null);
+    const handleDelete = async (policy: RetentionPolicy) => {
+        const { error: apiError } = await deleteRetentionPolicy(policy.id);
         if (apiError) {
             setError(apiError);
-        } else if (data) {
-            setExecuteResult({ id, count: data.deleted_count, confirming: false });
+        } else {
+            fetchPolicies();
         }
     };
 
     const handleExecute = async (id: string) => {
-        if (executeResult?.id === id && executeResult.confirming) {
-            setExecutingId(id);
-            const { data, error: apiError } = await executeRetentionPolicy(id, false);
-            setExecutingId(null);
-            setExecuteResult(null);
-            if (apiError) {
-                setError(apiError);
-            } else if (data) {
-                fetchPolicies();
-            }
-        } else if (executeResult?.id === id) {
-            setExecuteResult({ ...executeResult, confirming: true });
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        if (deletingId === id) {
-            const { error: apiError } = await deleteRetentionPolicy(id);
-            setDeletingId(null);
-            if (apiError) {
-                setError(apiError);
-            } else {
-                fetchPolicies();
-            }
+        const result = await executeRetentionPolicy(id, false);
+        if (result.error) {
+            setError(result.error);
         } else {
-            setDeletingId(id);
+            fetchPolicies();
         }
-    };
-
-    const formatDate = (d: string | null) => {
-        if (!d) return "--";
-        return new Date(d).toLocaleDateString();
+        return result;
     };
 
     return (
@@ -152,94 +132,22 @@ export default function RetentionPolicyPage() {
                 )}
 
                 <div className="mb-6">
-                    {showAddForm ? (
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-5">
-                            <div className="grid gap-4 sm:grid-cols-3">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-(--ink-muted)">
-                                        Resource Type
-                                    </label>
-                                    <select
-                                        value={formData.resource_type}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                resource_type: e.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
-                                    >
-                                        <option value="">Select...</option>
-                                        {resourceTypes.map((rt) => (
-                                            <option key={rt} value={rt}>
-                                                {rt}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-(--ink-muted)">
-                                        Retention Days
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={formData.retention_days ?? 90}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                retention_days: parseInt(e.target.value) || 90,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-(--ink-muted)">
-                                        Description
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Optional"
-                                        value={formData.description ?? ""}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                description: e.target.value || null,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm focus:border-(--accent) focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-                            <div className="mt-4 flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={handleCreate}
-                                    disabled={saving}
-                                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                                >
-                                    {saving ? "Saving..." : "Save"}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowAddForm(false);
-                                        setFormData({ resource_type: "", retention_days: 90 });
-                                    }}
-                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
+                    {formState.mode !== "closed" ? (
+                        <RetentionPolicyForm
+                            mode={formState.mode}
+                            initialPolicy={formState.mode === "edit" ? formState.policy : undefined}
+                            resourceTypes={resourceTypes}
+                            isSaving={saving}
+                            onSaveAction={handleSave}
+                            onCancelAction={() => setFormState({ mode: "closed" })}
+                        />
                     ) : (
                         <button
                             type="button"
-                            onClick={() => setShowAddForm(true)}
+                            onClick={() => setFormState({ mode: "create" })}
                             className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white"
                         >
-                            Add Policy
+                            {CTA_LABELS.addRetentionPolicy}
                         </button>
                     )}
                 </div>
@@ -250,123 +158,15 @@ export default function RetentionPolicyPage() {
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
-                                        <th className="px-4 py-3 text-left font-medium">
-                                            Resource Type
-                                        </th>
-                                        <th className="px-4 py-3 text-left font-medium">
-                                            Retention
-                                        </th>
-                                        <th className="px-4 py-3 text-left font-medium">Status</th>
-                                        <th className="px-4 py-3 text-left font-medium">
-                                            Last Run
-                                        </th>
-                                        <th className="px-4 py-3 text-left font-medium">Deleted</th>
-                                        <th className="px-4 py-3 text-left font-medium">
-                                            Next Run
-                                        </th>
-                                        <th className="px-4 py-3 text-right font-medium">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {policies.length === 0 ? (
-                                        <tr>
-                                            <td
-                                                colSpan={7}
-                                                className="px-4 py-8 text-center text-(--ink-muted)"
-                                            >
-                                                No retention policies configured.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        policies.map((policy) => (
-                                            <tr
-                                                key={policy.id}
-                                                className="border-b border-(--card-stroke) last:border-0"
-                                            >
-                                                <td className="px-4 py-3 font-mono text-xs">
-                                                    {policy.resource_type}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {policy.retention_days} days
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span
-                                                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                                            policy.is_active
-                                                                ? "bg-green-500/10 text-green-500"
-                                                                : "bg-red-500/10 text-red-500"
-                                                        }`}
-                                                    >
-                                                        {policy.is_active ? "Active" : "Inactive"}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-(--ink-muted)">
-                                                    {policy.last_run_at
-                                                        ? formatDate(policy.last_run_at)
-                                                        : "Never"}
-                                                </td>
-                                                <td className="px-4 py-3 text-(--ink-muted)">
-                                                    {policy.last_run_deleted_count ?? "--"}
-                                                </td>
-                                                <td className="px-4 py-3 text-(--ink-muted)">
-                                                    {formatDate(policy.next_run_at)}
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex flex-wrap items-center justify-end gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleToggle(policy)}
-                                                            disabled={togglingId === policy.id}
-                                                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-xs font-medium disabled:opacity-50"
-                                                        >
-                                                            {policy.is_active
-                                                                ? "Disable"
-                                                                : "Enable"}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDryRun(policy.id)}
-                                                            disabled={executingId === policy.id}
-                                                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-xs font-medium disabled:opacity-50"
-                                                        >
-                                                            Dry Run
-                                                        </button>
-                                                        {executeResult?.id === policy.id && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    handleExecute(policy.id)
-                                                                }
-                                                                className="rounded-lg bg-red-500 px-3 py-1 text-xs font-medium text-white"
-                                                            >
-                                                                {executeResult.confirming
-                                                                    ? `Confirm delete ${executeResult.count} records?`
-                                                                    : `${executeResult.count} would be deleted`}
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDelete(policy.id)}
-                                                            className="rounded-lg bg-red-500/10 px-3 py-1 text-xs font-medium text-red-500"
-                                                        >
-                                                            {deletingId === policy.id
-                                                                ? "Confirm?"
-                                                                : "Delete"}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                        <RetentionPolicyTable
+                            policies={policies}
+                            togglingId={togglingId}
+                            onEditAction={(policy) => setFormState({ mode: "edit", policy })}
+                            onToggleAction={handleToggle}
+                            onDeleteAction={handleDelete}
+                            onRequestRunAction={setRunTarget}
+                            formatDate={formatDate}
+                        />
 
                         <div className="mt-4 flex items-center justify-between">
                             <button
@@ -375,7 +175,7 @@ export default function RetentionPolicyPage() {
                                 disabled={offset === 0}
                                 className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
                             >
-                                Previous
+                                {CTA_LABELS.previousPage}
                             </button>
                             <span className="text-sm text-(--ink-muted)">
                                 Showing {offset + 1}-{offset + policies.length}
@@ -386,11 +186,18 @@ export default function RetentionPolicyPage() {
                                 disabled={policies.length < limit}
                                 className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
                             >
-                                Next
+                                {CTA_LABELS.nextPage}
                             </button>
                         </div>
                     </>
                 )}
+
+                <RetentionRunConfirm
+                    policy={runTarget}
+                    onDryRunAction={(id) => executeRetentionPolicy(id, true)}
+                    onExecuteAction={handleExecute}
+                    onCloseAction={() => setRunTarget(null)}
+                />
             </div>
         </UpgradeGate>
     );
