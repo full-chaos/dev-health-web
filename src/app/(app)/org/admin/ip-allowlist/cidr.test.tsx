@@ -10,6 +10,9 @@ describe("validateIpOrCidrInput", () => {
         ["2001:db8::/32", null],
         ["::1", null],
         ["fe80::1/64", null],
+        ["::ffff:192.0.2.1", null],
+        ["::ffff:192.0.2.0/120", null],
+        ["::ffff:192.0.2.1/128", null],
     ])("accepts %s", (value, expected) => {
         expect(validateIpOrCidrInput(value)).toBe(expected);
     });
@@ -25,6 +28,8 @@ describe("validateIpOrCidrInput", () => {
         ["10.0.0"],
         ["gggg::1"],
         ["2001:db8::/129"],
+        ["::ffff:999.0.2.1"],
+        ["::ffff:192.0.2.1/129"],
     ])("rejects %s with a user-safe message", (value) => {
         const error = validateIpOrCidrInput(value);
         expect(error).not.toBeNull();
@@ -68,11 +73,19 @@ describe("currentIpCoveredByRule", () => {
         expect(currentIpCoveredByRule(null, "10.0.0.0/24")).toBeNull();
     });
 
-    it("returns null when the range input is invalid", () => {
-        expect(currentIpCoveredByRule("10.0.0.1", "not-a-cidr")).toBeNull();
+    it("returns false (not null) for a cross-version comparison so the lockout warning still fires", () => {
+        expect(currentIpCoveredByRule("2001:db8::1", "10.0.0.0/24")).toBe(false);
+        expect(currentIpCoveredByRule("10.0.0.1", "2001:db8::/32")).toBe(false);
     });
 
-    it("returns null when IP versions differ", () => {
-        expect(currentIpCoveredByRule("2001:db8::1", "10.0.0.0/24")).toBeNull();
+    it("returns null only for unparseable input, never for a valid cross-version pair", () => {
+        expect(currentIpCoveredByRule("10.0.0.1", "not-a-cidr")).toBeNull();
+        expect(currentIpCoveredByRule("not-an-ip", "10.0.0.0/24")).toBeNull();
+    });
+
+    it("handles IPv4-mapped IPv6 (embedded dotted-quad) containment", () => {
+        expect(currentIpCoveredByRule("::ffff:192.0.2.5", "::ffff:192.0.2.0/120")).toBe(true);
+        expect(currentIpCoveredByRule("::ffff:192.0.3.5", "::ffff:192.0.2.0/120")).toBe(false);
+        expect(currentIpCoveredByRule("::ffff:192.0.2.1", "::ffff:192.0.2.1")).toBe(true);
     });
 });

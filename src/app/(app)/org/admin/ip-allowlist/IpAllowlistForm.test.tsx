@@ -62,6 +62,24 @@ describe("IpAllowlistForm", () => {
         );
     });
 
+    it("warns before saving an IPv6 range when the admin's current IP is IPv4 (cross-version lockout)", async () => {
+        const user = userEvent.setup();
+        const { onSaveAction } = renderForm({ currentIp: "203.0.113.5" });
+
+        await user.type(screen.getByLabelText("IP Range"), "2001:db8::/32");
+        await user.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(onSaveAction).not.toHaveBeenCalled();
+        expect(
+            screen.getByRole("dialog", { name: "This rule may lock you out" }),
+        ).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Save anyway" }));
+        expect(onSaveAction).toHaveBeenCalledWith(
+            expect.objectContaining({ ip_range: "2001:db8::/32" }),
+        );
+    });
+
     it("does not warn about lockout when editing an entry that is already inactive", async () => {
         const user = userEvent.setup();
         const inactiveEntry: IPAllowlist = {

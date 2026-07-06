@@ -111,6 +111,12 @@ export default function RetentionPolicyPage() {
         const result = await executeRetentionPolicy(id, false);
         if (result.error) {
             setError(result.error);
+        } else if (result.data?.error) {
+            // The backend can report a failed run as an HTTP 200 with an
+            // embedded error (e.g. the policy went inactive, or the resource
+            // type isn't implemented) — surface it instead of silently
+            // refetching as if the run succeeded.
+            setError(result.data.error);
         } else {
             fetchPolicies();
         }

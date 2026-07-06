@@ -160,4 +160,32 @@ describe("RetentionPolicyPage", () => {
 
         await waitFor(() => expect(mockExecuteRetentionPolicy).toHaveBeenCalledWith("rp-1", false));
     });
+
+    it("surfaces a 200-OK embedded execute failure instead of silently refreshing", async () => {
+        const policy = makePolicy();
+        mockListRetentionPolicies.mockResolvedValue(respondWith([policy]));
+        mockExecuteRetentionPolicy.mockImplementation((_id: string, dryRun: boolean) =>
+            Promise.resolve(
+                dryRun
+                    ? { data: { deleted_count: 7, error: null } }
+                    : { data: { deleted_count: 0, error: "Policy is inactive" } },
+            ),
+        );
+        const user = userEvent.setup();
+
+        render(<RetentionPolicyPage />);
+        await waitFor(() => expect(screen.getByText("audit_logs")).toBeInTheDocument());
+
+        await user.click(screen.getByRole("button", { name: "Run Now" }));
+        await waitFor(() => expect(screen.getByText("7")).toBeInTheDocument());
+
+        const dialog = screen.getByRole("dialog", { name: "Run retention policy now?" });
+        await user.click(within(dialog).getByRole("button", { name: "Run Now" }));
+
+        await waitFor(() => expect(mockExecuteRetentionPolicy).toHaveBeenCalledWith("rp-1", false));
+        await waitFor(() => expect(screen.getByText("Policy is inactive")).toBeInTheDocument());
+        // Only the initial mount call + the dry-run should have listed policies —
+        // a failed execute must not silently trigger a refetch as if it succeeded.
+        expect(mockListRetentionPolicies).toHaveBeenCalledTimes(1);
+    });
 });

@@ -98,6 +98,35 @@ describe("RetentionRunConfirm", () => {
         expect(screen.getByRole("button", { name: "Run Now" })).toBeDisabled();
     });
 
+    it("keeps confirm disabled and shows the error when the dry run reports a 200-OK embedded failure", async () => {
+        // The backend can return a dry-run failure (inactive policy, unimplemented
+        // resource type) as HTTP 200 with { deleted_count, error } — result.error
+        // is unset, but result.data.error is populated. This must block confirm
+        // just like a transport-level failure, and onExecuteAction must never fire.
+        const onDryRunAction = vi
+            .fn()
+            .mockResolvedValue({ data: { deleted_count: 0, error: "Policy is inactive" } });
+        const onExecuteAction = vi.fn();
+        const user = userEvent.setup();
+
+        render(
+            <RetentionRunConfirm
+                policy={makePolicy()}
+                onDryRunAction={onDryRunAction}
+                onExecuteAction={onExecuteAction}
+                onCloseAction={vi.fn()}
+            />,
+        );
+
+        await waitFor(() => expect(screen.getByText("Policy is inactive")).toBeInTheDocument());
+        const confirmButton = screen.getByRole("button", { name: "Run Now" });
+        expect(confirmButton).toBeDisabled();
+        expect(screen.queryByText("0")).not.toBeInTheDocument();
+
+        await user.click(confirmButton);
+        expect(onExecuteAction).not.toHaveBeenCalled();
+    });
+
     it("dismisses via Cancel without executing", async () => {
         const onDryRunAction = vi
             .fn()

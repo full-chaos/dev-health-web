@@ -32,8 +32,27 @@ function isValidIpv4(address: string): boolean {
     return IPV4_REGEX.test(address);
 }
 
-function isValidIpv6(address: string): boolean {
-    return IPV6_REGEX.test(address);
+/**
+ * Expands an IPv4-mapped/compatible IPv6 tail (e.g. "::ffff:192.0.2.1" ->
+ * "::ffff:c000:201") into pure hextets so the rest of the parser and the
+ * containment math can treat every IPv6 address as 8 hex groups — matching
+ * what the backend's Python `ipaddress` module accepts. Returns the address
+ * unchanged when it has no dotted-quad tail, or `null` when a "." is
+ * present but the tail isn't a valid IPv4 address.
+ */
+function expandEmbeddedIpv4Tail(address: string): string | null {
+    if (!address.includes(".")) return address;
+
+    const lastColon = address.lastIndexOf(":");
+    if (lastColon === -1) return null;
+
+    const tail = address.slice(lastColon + 1);
+    if (!isValidIpv4(tail)) return null;
+
+    const octets = tail.split(".").map(Number);
+    const hexHigh = ((octets[0] << 8) | octets[1]).toString(16);
+    const hexLow = ((octets[2] << 8) | octets[3]).toString(16);
+    return `${address.slice(0, lastColon)}:${hexHigh}:${hexLow}`;
 }
 
 /** Parses a bare IP address or a `<ip>/<prefix>` CIDR range. */
@@ -51,14 +70,23 @@ export function parseIpOrCidr(value: string): CidrParseResult {
         return { valid: false, error: "Enter an IP address or CIDR range." };
     }
 
-    const version = isValidIpv4(address) ? 4 : isValidIpv6(address) ? 6 : null;
-    if (!version) {
-        return { valid: false, error: `"${address}" is not a valid IPv4 or IPv6 address.` };
+    let normalizedIp: string;
+    let version: 4 | 6;
+    if (isValidIpv4(address)) {
+        normalizedIp = address;
+        version = 4;
+    } else {
+        const expanded = expandEmbeddedIpv4Tail(address);
+        if (expanded === null || !IPV6_REGEX.test(expanded)) {
+            return { valid: false, error: `"${address}" is not a valid IPv4 or IPv6 address.` };
+        }
+        normalizedIp = expanded;
+        version = 6;
     }
 
     const maxPrefix = version === 4 ? 32 : 128;
     if (prefixPart === undefined) {
-        return { valid: true, ip: address, version, prefixLength: maxPrefix };
+        return { valid: true, ip: normalizedIp, version, prefixLength: maxPrefix };
     }
 
     if (!/^\d{1,3}$/.test(prefixPart)) {
@@ -76,7 +104,7 @@ export function parseIpOrCidr(value: string): CidrParseResult {
         };
     }
 
-    return { valid: true, ip: address, version, prefixLength };
+    return { valid: true, ip: normalizedIp, version, prefixLength };
 }
 
 /** Returns a user-safe error message, or `null` when the input is a valid IP/CIDR. */
@@ -124,9 +152,12 @@ function isIpv6InCidr(ip: string, network: string, prefixLength: number): boolea
 
 /**
  * Whether `currentIp` falls inside the range described by `ipRangeInput`.
- * Returns `null` (unknown/not applicable) when either value is missing,
- * invalid, or the two are different IP versions — callers should treat
- * `null` as "can't tell", never as "not covered".
+ * Returns `false` when the range does not cover `currentIp` — including
+ * when the two are different (but individually valid) IP versions, since
+ * an IPv6 current IP is definitively NOT covered by an IPv4-only rule and
+ * vice versa, and callers rely on `false` to trigger the lockout warning.
+ * Returns `null` only when the comparison is genuinely undeterminable:
+ * `currentIp` is unknown, or either value fails to parse as a valid IP/CIDR.
  */
 export function currentIpCoveredByRule(
     currentIp: string | null,
@@ -136,9 +167,8 @@ export function currentIpCoveredByRule(
 
     const range = parseIpOrCidr(ipRangeInput.trim());
     const current = parseIpOrCidr(currentIp.trim());
-    if (!range.valid || !current.valid || range.version !== current.version) {
-        return null;
-    }
+    if (!range.valid || !current.valid) return null;
+    if (range.version !== current.version) return false;
 
     return range.version === 4
         ? isIpv4InCidr(current.ip, range.ip, range.prefixLength)

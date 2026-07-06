@@ -55,11 +55,20 @@ export function RetentionRunConfirm({
             const result = await onDryRunAction(targetPolicyId);
             if (!active) return;
             setIsPending(false);
+
             if (result.error) {
                 setDryRunError(result.error);
-            } else if (result.data) {
-                setDryRunResult(result.data);
+                return;
             }
+            if (!result.data) {
+                setDryRunError("Dry run failed: the backend returned no response data.");
+                return;
+            }
+            if (result.data.error) {
+                setDryRunError(result.data.error);
+                return;
+            }
+            setDryRunResult(result.data);
         }
         runDryRun();
 
@@ -100,7 +109,7 @@ export function RetentionRunConfirm({
                 )
             }
             confirmLabel={CTA_LABELS.runPolicyNow}
-            isPending={isPending || dryRunError !== null}
+            isPending={isPending || dryRunResult === null}
             onConfirmAction={() => {
                 setIsPending(true);
                 onExecuteAction(policy.id).finally(() => {
