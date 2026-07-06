@@ -10,9 +10,10 @@ import type { TeamMapping } from "@/lib/admin/types";
 
 type EditTeamFormWrapperProps = {
     team: TeamMapping;
+    linkedIdentityCount?: number;
 };
 
-export function EditTeamFormWrapper({ team }: EditTeamFormWrapperProps) {
+export function EditTeamFormWrapper({ team, linkedIdentityCount }: EditTeamFormWrapperProps) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -50,6 +51,7 @@ export function EditTeamFormWrapper({ team }: EditTeamFormWrapperProps) {
             onSubmit={handleSubmit}
             isEditing
             isLoading={isLoading}
+            linkedIdentityCount={linkedIdentityCount}
         />
     );
 }
