@@ -145,6 +145,26 @@ export const CTA_LABELS = {
     runPolicyNow: "Run Now",
     /** Proceed with a safety-critical change despite an explicit lockout-risk warning (CHAOS-2842). */
     acknowledgeAndSave: "Save anyway",
+    /** Open the guided Add Provider workflow (CHAOS-2837). */
+    addProvider: "Add Provider",
+    /** Advance the Add Provider wizard's provider-select step (CHAOS-2837). */
+    chooseProvider: "Choose provider",
+    /** Pick the recommended, one-click GitHub App auth method (CHAOS-2837). */
+    useGitHubApp: "Use GitHub App",
+    /** Secondary, manual-credential auth method path (CHAOS-2837). */
+    useManualToken: "Use a personal access token instead",
+    /** Row action opening the manage/edit modal for a healthy credential (CHAOS-2837). */
+    manageCredential: "Manage",
+    /** Row action opening the manage/edit modal for a failing/untested credential (CHAOS-2837). */
+    resolveCredential: "Resolve",
+    /** Row action re-running a connection test from the credentials table (CHAOS-2837). */
+    testCredential: "Test",
+    /** Submit the Add Provider wizard's verify-connection step (CHAOS-2837). */
+    verifyConnection: "Verify connection",
+    /** Submit the Add Provider wizard's final review step (CHAOS-2837). */
+    finishAddProvider: "Finish",
+    /** Finish-step follow-up: jump straight into creating a sync configuration (CHAOS-2837). */
+    createSyncConfig: "Create sync configuration",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
