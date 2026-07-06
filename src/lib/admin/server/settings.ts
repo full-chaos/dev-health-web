@@ -25,6 +25,7 @@ import type {
     LLMSettingsStatusResponse,
     LLMSettingsUpsert,
     LLMSettingsActionResult,
+    LLMSpendSummaryResponse,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
@@ -280,5 +281,17 @@ export async function deleteLLMSettings(): Promise<LLMSettingsActionResult<{ del
         const result = await adminApi.llmSettings.remove(token, orgId);
         revalidatePath("/org/admin/ai");
         return result;
+    });
+}
+
+// Org-scoped per-run spend summary (CHAOS-2564). Uses withStatusErrorHandling
+// (not the generic withErrorHandling) so a tier/flag gate (402/403) surfaces
+// as a distinguishable locked state rather than a generic load error.
+export async function getLLMSpendSummary(): Promise<
+    LLMSettingsActionResult<LLMSpendSummaryResponse>
+> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.llmSettings.spend(token, orgId);
     });
 }

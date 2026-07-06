@@ -1,10 +1,12 @@
 import { ByoLlmSettings } from "@/components/admin/llm/ByoLlmSettings";
 import { ByoLlmErrorStates } from "@/components/admin/llm/ByoLlmErrorStates";
+import { ByoLlmSpendSummary } from "@/components/admin/llm/ByoLlmSpendSummary";
 import {
     getLLMSettings,
     getLLMSettingsStatus,
     upsertLLMSettings,
     deleteLLMSettings,
+    getLLMSpendSummary,
 } from "@/lib/admin/server";
 
 // Bring Your Own LLM (BYO-LLM) org-admin settings page. Sits inside
@@ -22,6 +24,7 @@ export default function ByoLlmAdminPage() {
                 saveSettingsAction={upsertLLMSettings}
                 removeSettingsAction={deleteLLMSettings}
             />
+            <ByoLlmSpendSummary loadSpendAction={getLLMSpendSummary} />
             <ByoLlmErrorStates />
         </div>
     );
