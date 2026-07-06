@@ -42,19 +42,26 @@ export default async function IntegrationPage({
     const syncConfigs = syncConfigsResult.data ?? [];
 
     return (
-        <div>
+        <div className="space-y-6">
             <AdminHeader
-                title={`${providerName} Integration`}
-                description={`Manage your ${providerName} connections and credentials.`}
+                title={providerName}
+                description={`Manage ${providerName} credentials and connections.`}
             />
 
             {credentialsResult.error && (
-                <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
                     Failed to load credentials: {credentialsResult.error}
                 </div>
             )}
 
-            {provider === "github" && <GitHubAppConnect result={githubAppResult} />}
+            {/* CHAOS-2837: never a standalone install-card CTA on this page —
+                setup (including the recommended GitHub App path) routes entirely
+                through the Add Provider wizard below. This banner only ever
+                surfaces the OAuth-callback result (connected/error) when the
+                browser lands back here after the install round trip. */}
+            {provider === "github" && githubAppResult && (
+                <GitHubAppConnect result={githubAppResult} variant="banner-only" />
+            )}
 
             <ProviderCredentialsList
                 provider={provider as Provider}
