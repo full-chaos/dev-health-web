@@ -57,4 +57,19 @@ describe("GitHubAppConnect", () => {
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
+
+    it('variant="banner-only" renders the result banner but never the install CTA', () => {
+        render(<GitHubAppConnect result="connected" variant="banner-only" />);
+
+        expect(screen.getByRole("status")).toHaveTextContent(/GitHub App connected/i);
+        expect(screen.queryByRole("link", { name: "Connect GitHub App" })).not.toBeInTheDocument();
+    });
+
+    it('variant="flat" still renders the install CTA without an outer bordered box', () => {
+        render(<GitHubAppConnect variant="flat" />);
+
+        const cta = screen.getByRole("link", { name: "Connect GitHub App" });
+        expect(cta).toBeInTheDocument();
+        expect(cta.closest("div.rounded-lg.border")).toBeNull();
+    });
 });
