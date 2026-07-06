@@ -3,6 +3,9 @@
 import { adminApi } from "../api";
 import { AdminApiError } from "../api";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
+import { getServerEnv } from "@/lib/config";
 import type { ActionResult } from "@/lib/result";
 import type {
     Setting,
@@ -132,6 +135,24 @@ export async function checkIPAllowed(ipAddress: string): Promise<ActionResult<IP
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.ipAllowlist.check(ipAddress, token, orgId);
+    });
+}
+
+/**
+ * Best-effort detection of the requesting admin's own client IP (CHAOS-2842),
+ * derived the same way as rate limiting (`getClientIp` + `TRUST_PROXY`) so it
+ * reflects what the backend itself would see. Used only to warn admins before
+ * they save an IP allowlist rule that would exclude their own current IP —
+ * never treated as an authoritative allow/deny decision.
+ */
+export async function getCurrentClientIp(): Promise<ActionResult<string>> {
+    return withErrorHandling(async () => {
+        await getSessionContext();
+        const requestHeaders = await headers();
+        return getClientIp(
+            { headers: requestHeaders },
+            { trustProxy: isTrustProxyEnabled(getServerEnv().TRUST_PROXY) },
+        );
     });
 }
 
