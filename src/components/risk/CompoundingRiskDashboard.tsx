@@ -419,7 +419,9 @@ export function CompoundingRiskDashboard({
                     {generatedAtLabel !== null && (
                         <p className="mt-8 text-xs text-(--ink-muted)">
                             Generated{" "}
-                            <time dateTime={generatedAtLabel.dateTime}>{generatedAtLabel.text}</time>
+                            <time dateTime={generatedAtLabel.dateTime}>
+                                {generatedAtLabel.text}
+                            </time>
                         </p>
                     )}
                 </section>
