@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("settings page renders all sections", async ({ page }) => {
     await page.goto("/org/admin/settings");
 
-    await expect(page.getByRole("heading", { name: "Organization Settings" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Organization", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();

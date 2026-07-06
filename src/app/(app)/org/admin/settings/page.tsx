@@ -12,7 +12,7 @@ export default async function OrganizationSettingsPage() {
     return (
         <div>
             <AdminHeader
-                title="Organization Settings"
+                title="Organization"
                 description="Manage your organization's profile, billing, and security settings."
             />
 
