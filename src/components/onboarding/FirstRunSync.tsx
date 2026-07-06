@@ -25,6 +25,7 @@ type FirstRunSyncProps = {
 type SyncPhase = "connect" | "select-repos" | "ready-to-sync" | "syncing" | "failed" | "complete";
 
 function derivePhase(status: SetupStatus, locallyStarted: boolean): SyncPhase {
+    if (status.first_sync_completed) return "complete";
     if (status.sync_status === "failed") return "failed";
     if (status.sync_status === "complete") return "complete";
     if (!status.has_integration) return "connect";

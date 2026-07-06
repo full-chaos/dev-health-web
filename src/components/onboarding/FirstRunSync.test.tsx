@@ -25,6 +25,7 @@ const baseStatus: SetupStatus = {
     has_sync_config: true,
     sync_config_id: "sync-1",
     first_sync_started: false,
+    first_sync_completed: false,
     sync_status: "pending",
     selected_repositories_count: 3,
     last_sync_error: null,
@@ -173,7 +174,11 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
     it("complete → emits onboarding_completed once and offers a return to the cockpit", () => {
         render(
             <FirstRunSync
-                status={status({ sync_status: "complete", next_action: "complete" })}
+                status={status({
+                    first_sync_completed: true,
+                    sync_status: "complete",
+                    next_action: "complete",
+                })}
                 orgId="org-1"
             />,
         );
@@ -187,6 +192,22 @@ describe("FirstRunSync (CHAOS-2681 / CHAOS-2683)", () => {
             "href",
             "/dashboard",
         );
+    });
+
+    it("later running sync stays complete after the first sync completed", () => {
+        render(
+            <FirstRunSync
+                status={status({
+                    first_sync_started: true,
+                    first_sync_completed: true,
+                    sync_status: "running",
+                    next_action: "complete",
+                })}
+                orgId="org-1"
+            />,
+        );
+
+        expect(screen.getByTestId("first-run-sync")).toHaveAttribute("data-phase", "complete");
     });
 
     it("arrival error → recoverable connect prompt without restarting onboarding", () => {
