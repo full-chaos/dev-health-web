@@ -5,10 +5,10 @@ test("providers page renders a provider management table", async ({ page }) => {
 
     await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
-    await expect(page.getByRole("cell", { name: "GitHub" })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "GitLab" })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "Jira" })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "Linear" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "GitHub", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "GitLab", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Jira", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Linear", exact: true })).toBeVisible();
 });
 
 // CHAOS-2837 reworked provider connections into a guided Add Provider
@@ -54,7 +54,7 @@ test("GitHub manual credential flow: fill token -> verify -> finish", async ({ p
     await page.locator("#github-org").fill("test-org");
     await page.getByRole("button", { name: "Continue" }).click();
 
-    await page.getByRole("button", { name: "Verify connection" }).click();
+    await page.getByRole("button", { name: "Verify connection", exact: true }).click();
     await expect(page.getByText(/Connection successful/i)).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole("button", { name: "Continue" }).click();
