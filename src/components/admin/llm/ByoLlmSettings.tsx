@@ -10,6 +10,7 @@ import {
     type LLMProvider,
     type LLMSettingsActionResult,
     type LLMSettingsResponse,
+    type LLMSettingsStatusResponse,
     type LLMSettingsUpsert,
 } from "@/lib/admin/types";
 
@@ -21,8 +22,25 @@ type LockState = {
     message: string;
 } | null;
 
+/** Read-only summary vs. editable-form view of the saved configuration (CHAOS-2565). */
+type Mode = "view" | "edit";
+
+type BadgeTone = "positive" | "caution" | "muted";
+
+type BadgeInfo = {
+    label: string;
+    tone: BadgeTone;
+};
+
 export type ByoLlmSettingsProps = {
     loadSettingsAction: () => Promise<LLMSettingsActionResult<LLMSettingsResponse>>;
+    /**
+     * BYO-LLM status badge read (CHAOS-2560/2565). The backend endpoint is
+     * built on a sibling branch; a failed/errored result degrades gracefully
+     * to the settings-derived Saved/Not configured wording rather than
+     * blocking the summary or form.
+     */
+    loadStatusAction: () => Promise<LLMSettingsActionResult<LLMSettingsStatusResponse>>;
     saveSettingsAction: (
         data: LLMSettingsUpsert,
     ) => Promise<LLMSettingsActionResult<LLMSettingsResponse>>;
@@ -34,14 +52,58 @@ const inputClass =
 const labelClass = "mb-1 block text-xs font-medium uppercase tracking-wide text-(--ink-muted)";
 const captionClass = "mt-1 text-xs text-(--ink-muted)";
 
+const BADGE_TONE_CLASSES: Record<BadgeTone, string> = {
+    positive: "bg-(--positive)/10 text-(--positive)",
+    caution: "bg-(--caution)/10 text-(--caution)",
+    muted: "bg-(--card-70) text-(--ink-muted)",
+};
+
+const BADGE_DOT_CLASSES: Record<BadgeTone, string> = {
+    positive: "bg-(--positive)",
+    caution: "bg-(--caution)",
+    muted: "bg-(--ink-muted)",
+};
+
+/**
+ * Derives the status badge wording/tone from the CHAOS-2560 status DTO.
+ * When `status` is null (endpoint not yet available or the call failed),
+ * fall back to the settings-derived Saved/Not configured wording so the
+ * summary never blocks on a still-being-built backend endpoint.
+ */
+function deriveStatusBadge(
+    status: LLMSettingsStatusResponse | null,
+    hasSavedSettings: boolean,
+): BadgeInfo {
+    if (!status) {
+        return hasSavedSettings
+            ? { label: "Saved", tone: "positive" }
+            : { label: "Not configured", tone: "muted" };
+    }
+    if (!status.configured) {
+        return { label: "Not configured", tone: "muted" };
+    }
+    if (status.active) {
+        return { label: "Active", tone: "positive" };
+    }
+    if (status.degraded) {
+        return { label: "Invalid — using platform default", tone: "caution" };
+    }
+    return { label: "Saved", tone: "positive" };
+}
+
 export function ByoLlmSettings({
     loadSettingsAction,
+    loadStatusAction,
     saveSettingsAction,
     removeSettingsAction,
 }: ByoLlmSettingsProps) {
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
+
+    const [mode, setMode] = useState<Mode>("edit");
+    const [savedSettings, setSavedSettings] = useState<LLMSettingsResponse | null>(null);
+    const [status, setStatus] = useState<LLMSettingsStatusResponse | null>(null);
 
     const [provider, setProvider] = useState<string>(DEFAULT_PROVIDER);
     const [model, setModel] = useState("");
@@ -57,15 +119,21 @@ export function ByoLlmSettings({
     const [baseUrlError, setBaseUrlError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
 
+    const fetchStatus = useCallback(async () => {
+        const result = await loadStatusAction();
+        setStatus(result.data ?? null);
+    }, [loadStatusAction]);
+
     const applySettings = useCallback((data: LLMSettingsResponse) => {
+        setSavedSettings(data);
         setProvider(data.provider ?? DEFAULT_PROVIDER);
         setModel(data.model ?? "");
         setBaseUrl(data.base_url ?? "");
         setMaskedKey(data.api_key ?? null);
         setHasStoredKey(Boolean(data.api_key));
-        // TODO(CHAOS-2560): replace Saved/Not configured with backend validity-driven routing states.
         setHasSavedSettings(Boolean(data.provider));
         setApiKey("");
+        setMode(data.provider ? "view" : "edit");
     }, []);
 
     const fetchSettings = useCallback(async () => {
@@ -88,14 +156,35 @@ export function ByoLlmSettings({
             setLoadError(result.error);
         } else if (result.data) {
             applySettings(result.data);
+            void fetchStatus();
         }
         setLoading(false);
-    }, [loadSettingsAction, applySettings]);
+    }, [loadSettingsAction, applySettings, fetchStatus]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchSettings coordinates async loading state after mount.
         fetchSettings();
     }, [fetchSettings]);
+
+    const handleEdit = () => {
+        setFormError(null);
+        setBaseUrlError(null);
+        setConfirmingDelete(false);
+        setMode("edit");
+    };
+
+    const handleCancel = () => {
+        if (savedSettings) {
+            setProvider(savedSettings.provider ?? DEFAULT_PROVIDER);
+            setModel(savedSettings.model ?? "");
+            setBaseUrl(savedSettings.base_url ?? "");
+            setApiKey("");
+        }
+        setFormError(null);
+        setBaseUrlError(null);
+        setConfirmingDelete(false);
+        setMode("view");
+    };
 
     const handleSave = async () => {
         if (!provider.trim()) {
@@ -129,6 +218,7 @@ export function ByoLlmSettings({
         }
         if (result.data) {
             applySettings(result.data);
+            void fetchStatus();
         }
         toast.success("BYO-LLM settings saved.");
     };
@@ -155,6 +245,9 @@ export function ByoLlmSettings({
         setMaskedKey(null);
         setHasStoredKey(false);
         setHasSavedSettings(false);
+        setSavedSettings(null);
+        setStatus(null);
+        setMode("edit");
         toast.success("BYO-LLM settings removed.");
     };
 
@@ -230,22 +323,34 @@ export function ByoLlmSettings({
         );
     }
 
+    const providerLabel = LLM_PROVIDER_LABELS[provider as LLMProvider] ?? provider;
+    const badge = deriveStatusBadge(status, hasSavedSettings);
+
     const statusBadge = (
         <span
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${
-                hasSavedSettings
-                    ? "bg-(--positive)/10 text-(--positive)"
-                    : "bg-(--card-70) text-(--ink-muted)"
-            }`}
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${BADGE_TONE_CLASSES[badge.tone]}`}
         >
             <span
                 aria-hidden="true"
-                className={`h-2 w-2 rounded-full ${
-                    hasSavedSettings ? "bg-(--positive)" : "bg-(--ink-muted)"
-                }`}
+                className={`h-2 w-2 rounded-full ${BADGE_DOT_CLASSES[badge.tone]}`}
             />
-            {hasSavedSettings ? "Saved" : "Not configured"}
+            {badge.label}
         </span>
+    );
+
+    const deleteButton = (
+        <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting || (!hasSavedSettings && !hasStoredKey)}
+            className="rounded-lg bg-(--negative)/10 px-4 py-2 text-sm font-medium text-(--negative) disabled:opacity-50"
+        >
+            {deleting
+                ? "Deleting…"
+                : confirmingDelete
+                  ? CTA_LABELS.confirmDelete
+                  : CTA_LABELS.delete}
+        </button>
     );
 
     return (
@@ -268,109 +373,149 @@ export function ByoLlmSettings({
                 </div>
             )}
 
-            <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
-                <div className="grid gap-5 sm:grid-cols-2">
-                    <div>
-                        <label htmlFor="byo-provider" className={labelClass}>
-                            Provider
-                        </label>
-                        <select
-                            id="byo-provider"
-                            value={provider}
-                            onChange={(e) => setProvider(e.target.value)}
-                            className={inputClass}
+            {mode === "view" && hasSavedSettings ? (
+                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <dl className="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <dt className={labelClass}>Provider</dt>
+                            <dd className="text-sm text-foreground">{providerLabel}</dd>
+                        </div>
+                        <div>
+                            <dt className={labelClass}>Model</dt>
+                            <dd className="text-sm text-foreground">{model || "Not set"}</dd>
+                        </div>
+                        <div>
+                            <dt className={labelClass}>API Key</dt>
+                            <dd className="text-sm text-foreground">{maskedKey ?? "••••••••"}</dd>
+                        </div>
+                        <div>
+                            <dt className={labelClass}>Base URL</dt>
+                            <dd className="text-sm text-foreground">{baseUrl || "Not set"}</dd>
+                        </div>
+                    </dl>
+
+                    <div className="mt-6 rounded-xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-xs text-(--ink-muted)">
+                        BYO-LLM requires Team tier or higher. Keys are encrypted with the org
+                        settings store and masked in all responses.
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={handleEdit}
+                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-(--accent)/60"
                         >
-                            {LLM_PROVIDERS.map((p) => (
-                                <option key={p} value={p}>
-                                    {LLM_PROVIDER_LABELS[p]}
-                                </option>
-                            ))}
-                        </select>
+                            {CTA_LABELS.edit}
+                        </button>
+                        {deleteButton}
+                    </div>
+                </div>
+            ) : (
+                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label htmlFor="byo-provider" className={labelClass}>
+                                Provider
+                            </label>
+                            <select
+                                id="byo-provider"
+                                value={provider}
+                                onChange={(e) => setProvider(e.target.value)}
+                                className={inputClass}
+                            >
+                                {LLM_PROVIDERS.map((p) => (
+                                    <option key={p} value={p}>
+                                        {LLM_PROVIDER_LABELS[p]}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label htmlFor="byo-model" className={labelClass}>
+                                Model
+                            </label>
+                            <input
+                                id="byo-model"
+                                type="text"
+                                value={model}
+                                placeholder="Model name"
+                                onChange={(e) => setModel(e.target.value)}
+                                className={inputClass}
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="byo-api-key" className={labelClass}>
+                                API Key
+                            </label>
+                            <input
+                                id="byo-api-key"
+                                type="password"
+                                autoComplete="off"
+                                value={apiKey}
+                                placeholder={hasStoredKey ? (maskedKey ?? "••••••••") : "sk-..."}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                className={inputClass}
+                            />
+                            <p className={captionClass}>
+                                {hasStoredKey
+                                    ? "Encrypted at rest, never returned. Enter a new key to replace the stored key."
+                                    : "Encrypted at rest, never returned."}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label htmlFor="byo-base-url" className={labelClass}>
+                                Base URL
+                            </label>
+                            <input
+                                id="byo-base-url"
+                                type="text"
+                                value={baseUrl}
+                                placeholder="https://..."
+                                onChange={(e) => setBaseUrl(e.target.value)}
+                                className={`${inputClass} ${baseUrlError ? "border-(--negative)/60" : ""}`}
+                                aria-invalid={baseUrlError ? true : undefined}
+                            />
+                            {baseUrlError ? (
+                                <p className="mt-1 text-xs text-(--negative)">{baseUrlError}</p>
+                            ) : (
+                                <p className={captionClass}>
+                                    Optional. OpenAI-compatible endpoints.
+                                </p>
+                            )}
+                        </div>
                     </div>
 
-                    <div>
-                        <label htmlFor="byo-model" className={labelClass}>
-                            Model
-                        </label>
-                        <input
-                            id="byo-model"
-                            type="text"
-                            value={model}
-                            placeholder="Model name"
-                            onChange={(e) => setModel(e.target.value)}
-                            className={inputClass}
-                        />
+                    <div className="mt-6 rounded-xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-xs text-(--ink-muted)">
+                        BYO-LLM requires Team tier or higher. Keys are encrypted with the org
+                        settings store and masked in all responses.
                     </div>
 
-                    <div>
-                        <label htmlFor="byo-api-key" className={labelClass}>
-                            API Key
-                        </label>
-                        <input
-                            id="byo-api-key"
-                            type="password"
-                            autoComplete="off"
-                            value={apiKey}
-                            placeholder={hasStoredKey ? (maskedKey ?? "••••••••") : "sk-..."}
-                            onChange={(e) => setApiKey(e.target.value)}
-                            className={inputClass}
-                        />
-                        <p className={captionClass}>
-                            {hasStoredKey
-                                ? "Encrypted at rest, never returned. Enter a new key to replace the stored key."
-                                : "Encrypted at rest, never returned."}
-                        </p>
-                    </div>
-
-                    <div>
-                        <label htmlFor="byo-base-url" className={labelClass}>
-                            Base URL
-                        </label>
-                        <input
-                            id="byo-base-url"
-                            type="text"
-                            value={baseUrl}
-                            placeholder="https://..."
-                            onChange={(e) => setBaseUrl(e.target.value)}
-                            className={`${inputClass} ${baseUrlError ? "border-(--negative)/60" : ""}`}
-                            aria-invalid={baseUrlError ? true : undefined}
-                        />
-                        {baseUrlError ? (
-                            <p className="mt-1 text-xs text-(--negative)">{baseUrlError}</p>
-                        ) : (
-                            <p className={captionClass}>Optional. OpenAI-compatible endpoints.</p>
+                    <div className="mt-6 flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                            {saving ? "Saving…" : CTA_LABELS.save}
+                        </button>
+                        {hasSavedSettings && (
+                            <button
+                                type="button"
+                                onClick={handleCancel}
+                                disabled={saving}
+                                className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
+                            >
+                                {CTA_LABELS.cancel}
+                            </button>
                         )}
+                        {deleteButton}
                     </div>
                 </div>
-
-                <div className="mt-6 rounded-xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-xs text-(--ink-muted)">
-                    BYO-LLM requires Team tier or higher. Keys are encrypted with the org settings
-                    store and masked in all responses.
-                </div>
-
-                <div className="mt-6 flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                    >
-                        {saving ? "Saving…" : CTA_LABELS.save}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleDelete}
-                        disabled={deleting || (!hasSavedSettings && !hasStoredKey)}
-                        className="rounded-lg bg-(--negative)/10 px-4 py-2 text-sm font-medium text-(--negative) disabled:opacity-50"
-                    >
-                        {deleting
-                            ? "Deleting…"
-                            : confirmingDelete
-                              ? CTA_LABELS.confirmDelete
-                              : CTA_LABELS.delete}
-                    </button>
-                </div>
-            </div>
+            )}
         </div>
     );
 }

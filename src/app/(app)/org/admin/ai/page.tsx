@@ -1,5 +1,10 @@
 import { ByoLlmSettings } from "@/components/admin/llm/ByoLlmSettings";
-import { getLLMSettings, upsertLLMSettings, deleteLLMSettings } from "@/lib/admin/server";
+import {
+    getLLMSettings,
+    getLLMSettingsStatus,
+    upsertLLMSettings,
+    deleteLLMSettings,
+} from "@/lib/admin/server";
 
 // Bring Your Own LLM (BYO-LLM) org-admin settings page. Sits inside
 // (app)/org/admin so it inherits the AdminSidebar + AdminTierProvider and the
@@ -11,6 +16,7 @@ export default function ByoLlmAdminPage() {
     return (
         <ByoLlmSettings
             loadSettingsAction={getLLMSettings}
+            loadStatusAction={getLLMSettingsStatus}
             saveSettingsAction={upsertLLMSettings}
             removeSettingsAction={deleteLLMSettings}
         />

@@ -772,6 +772,31 @@ export interface LLMSettingsActionResult<T> {
     status?: number;
 }
 
+/**
+ * Reason code for the current BYO-LLM status evaluation (CHAOS-2560, plan
+ * correction C2). The backend evaluator is pure (no AuditLog side effects on
+ * a GET) and returns exactly one of these buckets.
+ */
+export type LLMSettingsStatusReasonCode =
+    "not_configured" | "unknown_provider" | "missing_credentials" | "invalid_base_url" | "active";
+
+/**
+ * GET /admin/llm-settings/status response (CHAOS-2560). Drives the BYO-LLM
+ * status badge on the AI Setup summary (CHAOS-2565): `active` renders
+ * "Active", `configured && degraded` renders "Invalid — using platform
+ * default", and `!configured` renders "Not configured". This endpoint is a
+ * pure evaluator over stored settings + recent fallback audit rows — never a
+ * live provider call — so a fetch failure degrades gracefully to the
+ * settings-derived Saved/Not configured wording rather than blocking the UI.
+ */
+export interface LLMSettingsStatusResponse {
+    configured: boolean;
+    active: boolean;
+    degraded: boolean;
+    reason_code: LLMSettingsStatusReasonCode;
+    last_fallback_at: string | null;
+}
+
 // ---- Provider types ----
 
 export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly";
