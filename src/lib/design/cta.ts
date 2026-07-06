@@ -133,6 +133,10 @@ export const CTA_LABELS = {
     savingConfiguration: "Saving...",
     /** Link to plan settings from a tier-gated/locked option's upgrade copy (CHAOS-2838). */
     upgradePlan: "Upgrade plan",
+    /** Discoverable row-level remove action for a mapping entry (provider identity row, CHAOS-2841). */
+    remove: "Remove",
+    /** Add another provider identity row to the identity mapping form (CHAOS-2841). */
+    addProviderIdentity: "+ Add Identity",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
