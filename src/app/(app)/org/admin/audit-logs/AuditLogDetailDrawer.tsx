@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { AuditLog } from "@/lib/admin/types";
 import { formatDateTimeUTC } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -34,6 +34,17 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
  * instead of a raw JSON dump.
  */
 export function AuditLogDetailDrawer({ entry, isOpen, onCloseAction }: AuditLogDetailDrawerProps) {
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                onCloseAction();
+            }
+        };
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [isOpen, onCloseAction]);
+
     if (!isOpen || !entry) return null;
 
     return (
