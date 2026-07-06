@@ -124,7 +124,7 @@ describe("AddProviderWizard", () => {
         );
     });
 
-    it("github_app method: credential step shows the one-click install CTA, never a Finish button", async () => {
+    it("github_app method: credential step shows the one-click install CTA, never a Finish button, and has no dangling Continue", async () => {
         renderWithToaster(
             <AddProviderWizard
                 lockedProvider="github"
@@ -139,5 +139,50 @@ describe("AddProviderWizard", () => {
 
         expect(screen.getByRole("link", { name: "Connect GitHub App" })).toBeInTheDocument();
         expect(screen.queryByLabelText("Personal access token")).not.toBeInTheDocument();
+        // The credential step is terminal for this method (CHAOS-2837 blocker 4):
+        // no verify/review steps and no dangling Continue button to nowhere.
+        expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Finish" })).not.toBeInTheDocument();
+    });
+
+    it("invalidates a passed verification when a credential field changes afterward, blocking Finish until re-verified (CHAOS-2837 blocker 2)", async () => {
+        vi.mocked(testConnection).mockResolvedValue({
+            data: { success: true, error: null, details: null },
+        });
+
+        renderWithToaster(
+            <AddProviderWizard
+                lockedProvider="linear"
+                credentials={[]}
+                onCloseAction={vi.fn()}
+                onCreatedAction={vi.fn()}
+            />,
+        );
+
+        await userEvent.type(screen.getByLabelText("API Key"), "lin_api_test");
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+        await userEvent.click(screen.getByRole("button", { name: "Verify connection" }));
+        await waitFor(() => {
+            expect(screen.getByText(/connection successful/i)).toBeInTheDocument();
+        });
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+        // On the review step with a verified credential, Finish is enabled.
+        expect(screen.getByRole("button", { name: "Finish" })).not.toBeDisabled();
+
+        // Go back to the credential step and change the field the test was run against.
+        await userEvent.click(screen.getByRole("button", { name: "Back" }));
+        await userEvent.click(screen.getByRole("button", { name: "Back" }));
+        await userEvent.clear(screen.getByLabelText("API Key"));
+        await userEvent.type(screen.getByLabelText("API Key"), "lin_api_test_CHANGED");
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+        // Verify step: the stale result is gone and re-verifying is required
+        // again before Continue (and therefore Finish) can ever be reached —
+        // the wizard structurally cannot get back to the review step with a
+        // stale verification once a field has changed.
+        expect(screen.queryByText(/connection successful(?!ly)/i)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+        expect(createCredential).not.toHaveBeenCalled();
     });
 });

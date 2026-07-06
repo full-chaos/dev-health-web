@@ -7,7 +7,7 @@ import { AddProviderStepProgress } from "./AddProviderStepProgress";
 import { StepNav } from "@/components/admin/sync/config-form/StepNav";
 import { createCredential, testConnection } from "@/lib/admin/server";
 import { PROVIDER_LABELS, type IntegrationCredential, type Provider } from "@/lib/admin/types";
-import { hasConnectedGitHubApp, getManualAuthMethodLabel } from "../authMethod";
+import { hasGitHubAppCredential, getManualAuthMethodLabel } from "../authMethod";
 import {
     getAddProviderStepBlockReason,
     getVisibleAddProviderSteps,
@@ -38,12 +38,17 @@ function initialMethod(provider: Provider | "", hasGitHubApp: boolean): AddProvi
 }
 
 /**
- * Guided Add Provider workflow (CHAOS-2837): provider \u2192 auth method \u2192
- * credential \u2192 verify \u2192 review, orchestrated the same way
- * `CreateSyncConfigWizard` orchestrates the sync-config creation flow \u2014
+ * Guided Add Provider workflow (CHAOS-2837): provider → auth method →
+ * credential → verify → review, orchestrated the same way
+ * `CreateSyncConfigWizard` orchestrates the sync-config creation flow —
  * a pure step model (`addProviderWizardSteps.ts`) decides visibility/gating,
  * this component only wires state to it and to the existing credential
  * server actions.
+ *
+ * The GitHub App redirect method drops verify/review entirely (see
+ * `getVisibleAddProviderSteps`) — the `credential` step's install CTA is the
+ * terminal step for that path, so the step-nav Continue footer is hidden
+ * once that method is chosen (there's nothing left to continue to).
  */
 export function AddProviderWizard({
     lockedProvider,
@@ -51,7 +56,7 @@ export function AddProviderWizard({
     onCloseAction,
     onCreatedAction,
 }: AddProviderWizardProps) {
-    const hasGitHubApp = useMemo(() => hasConnectedGitHubApp(credentials), [credentials]);
+    const hasGitHubApp = useMemo(() => hasGitHubAppCredential(credentials), [credentials]);
     const [provider, setProvider] = useState<Provider | "">(lockedProvider ?? "");
     const [method, setMethod] = useState<AddProviderMethod | null>(
         initialMethod(lockedProvider ?? "", hasGitHubApp),
@@ -68,8 +73,13 @@ export function AddProviderWizard({
 
     const visibleSteps = useMemo(
         () =>
-            getVisibleAddProviderSteps(provider || "github", hasGitHubApp, Boolean(lockedProvider)),
-        [provider, hasGitHubApp, lockedProvider],
+            getVisibleAddProviderSteps(
+                provider || "github",
+                hasGitHubApp,
+                Boolean(lockedProvider),
+                method,
+            ),
+        [provider, hasGitHubApp, lockedProvider, method],
     );
     const clampedIndex = Math.min(currentIndex, visibleSteps.length - 1);
     const currentStep = visibleSteps[clampedIndex];
@@ -95,17 +105,34 @@ export function AddProviderWizard({
         setCurrentIndex((i) => Math.max(i - 1, 0));
     }
 
+    // A verify result is only meaningful for the exact credential inputs it
+    // was run against — invalidate it the moment ANY of provider, method, or
+    // a credential field changes, so Back → edit → Finish can never persist
+    // an unverified (or differently-verified) credential (CHAOS-2837).
+    function invalidateVerification() {
+        setVerified(false);
+        setTestResult(null);
+    }
+
     function handleProviderChange(next: Provider) {
         setProvider(next);
         setMethod(initialMethod(next, next === "github" ? hasGitHubApp : false));
         setFieldValues({});
+        setCredentialName("");
+        invalidateVerification();
     }
     function handleMethodChange(next: AddProviderMethod) {
         setMethod(next);
         setFieldValues({});
+        invalidateVerification();
     }
     function handleFieldChange(name: string, value: string) {
         setFieldValues((prev) => ({ ...prev, [name]: value }));
+        invalidateVerification();
+    }
+    function handleCredentialNameChange(name: string) {
+        setCredentialName(name);
+        invalidateVerification();
     }
 
     function handleVerify() {
@@ -128,6 +155,10 @@ export function AddProviderWizard({
     }
 
     function handleFinish() {
+        // Defensive guard mirroring FinishStep's disabled Finish button: a
+        // manual credential can never be persisted without first passing
+        // verify-connection against its current field values (CHAOS-2837).
+        if (!verified) return;
         startPending(async () => {
             const result = await createCredential({
                 provider: resolvedProvider,
@@ -172,13 +203,12 @@ export function AddProviderWizard({
                         provider={resolvedProvider}
                         method={method}
                         credentialName={credentialName}
-                        onCredentialNameChangeAction={setCredentialName}
+                        onCredentialNameChangeAction={handleCredentialNameChange}
                         onFieldChangeAction={handleFieldChange}
                     />
                 )}
                 {currentStep.id === "verify" && (
                     <VerifyConnectionStep
-                        isRedirect={redirect}
                         isPending={isPending}
                         testResult={testResult}
                         onVerifyAction={handleVerify}
@@ -188,10 +218,8 @@ export function AddProviderWizard({
                     <FinishStep
                         providerLabel={PROVIDER_LABELS[resolvedProvider]}
                         credentialName={credentialName}
-                        authMethodLabel={
-                            redirect ? "GitHub App" : getManualAuthMethodLabel(resolvedProvider)
-                        }
-                        isRedirect={redirect}
+                        authMethodLabel={getManualAuthMethodLabel(resolvedProvider)}
+                        verified={verified}
                         isPending={isPending}
                         submitted={submitted}
                         onBackAction={goBack}
@@ -201,7 +229,11 @@ export function AddProviderWizard({
                 )}
             </div>
 
-            {currentStep.id !== "review" && (
+            {/* The credential step is terminal for the github_app redirect method —
+                its install CTA navigates the browser away, so there is nothing
+                to "Continue" to. Every other step (including "method" even
+                after github_app is chosen there) still needs its Continue. */}
+            {!(redirect && currentStep.id === "credential") && currentStep.id !== "review" && (
                 <StepNav
                     onBackAction={clampedIndex > 0 ? goBack : undefined}
                     onContinueAction={goNext}
