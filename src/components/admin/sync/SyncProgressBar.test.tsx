@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@/test/utils";
 import { SyncProgressBar } from "./SyncProgressBar";
-import { getSyncJobs, getSyncRunStatus } from "@/lib/admin/server";
-import type { SyncJob, SyncRun, SyncRunJobEnrichment } from "@/lib/admin/types";
+import { getSyncJobs, getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
+import type {
+    SyncJob,
+    SyncRun,
+    SyncRunJobEnrichment,
+    SyncRunUnit,
+    SyncRunUnitSummary,
+} from "@/lib/admin/types";
 
 // The component polls the admin server actions directly (CHAOS-2799 —
 // config-scoped polling replaces the org+provider GraphQL subscription), so
@@ -10,6 +16,7 @@ import type { SyncJob, SyncRun, SyncRunJobEnrichment } from "@/lib/admin/types";
 vi.mock("@/lib/admin/server", () => ({
     getSyncJobs: vi.fn(),
     getSyncRunStatus: vi.fn(),
+    getSyncRunUnits: vi.fn(),
 }));
 
 function buildEnrichment(overrides: Partial<SyncRunJobEnrichment> = {}): SyncRunJobEnrichment {
@@ -59,6 +66,53 @@ function buildRun(overrides: Partial<SyncRun> = {}): SyncRun {
     };
 }
 
+function buildUnit(overrides: Partial<SyncRunUnit> = {}): SyncRunUnit {
+    return {
+        id: "unit-1",
+        org_id: "org-1",
+        sync_run_id: "run-1",
+        integration_id: "integration-1",
+        source_id: "source-1",
+        source_name: "source",
+        source_full_name: "org/source",
+        provider: "github",
+        dataset_key: "git",
+        cost_class: "rest",
+        mode: "incremental",
+        since_at: null,
+        before_at: null,
+        status: "running",
+        attempts: 1,
+        available_at: null,
+        rate_limit_deferrals: 0,
+        duration_seconds: null,
+        error: null,
+        error_category: null,
+        last_heartbeat_at: null,
+        result: null,
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-01T00:00:00.000Z",
+        ...overrides,
+    };
+}
+
+function buildSummary(overrides: Partial<SyncRunUnitSummary> = {}): SyncRunUnitSummary {
+    return {
+        by_status: { running: 10 },
+        by_source: {},
+        by_dataset: {},
+        by_cost_class: {},
+        slowest_unit_ids: [],
+        failed_unit_ids: [],
+        failed_unit_count: 0,
+        unit_count: 10,
+        partial_failure_summary: null,
+        next_retry_at: null,
+        units: [],
+        ...overrides,
+    };
+}
+
 async function flush() {
     await act(async () => {
         await vi.advanceTimersByTimeAsync(0);
@@ -70,6 +124,7 @@ describe("SyncProgressBar", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2024-01-01T00:00:00.000Z"));
         vi.clearAllMocks();
+        vi.mocked(getSyncRunUnits).mockResolvedValue({ error: "Unit rollups unavailable" });
     });
 
     afterEach(() => {
@@ -99,8 +154,147 @@ describe("SyncProgressBar", () => {
 
         expect(getSyncJobs).toHaveBeenCalledWith("cfg-1", 25);
         expect(getSyncRunStatus).toHaveBeenCalledWith("run-1");
+        expect(getSyncRunUnits).toHaveBeenCalledWith("run-1");
         expect(screen.getByText("Syncing...")).toBeInTheDocument();
         expect(screen.getByText(/4 \/ 10/)).toBeInTheDocument();
+    });
+
+    it("uses unit rollups for active-run progress when run counters are stale", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ completed_units: 0, failed_units: 0, total_units: 4 }),
+        });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({
+            data: buildSummary({
+                by_status: { success: 2, failed: 1, running: 1 },
+                unit_count: 4,
+                failed_unit_count: 1,
+                units: [
+                    buildUnit({ id: "unit-success-1", status: "success" }),
+                    buildUnit({ id: "unit-success-2", status: "success" }),
+                    buildUnit({ id: "unit-failed", status: "failed" }),
+                    buildUnit({ id: "unit-running", status: "running" }),
+                ],
+            }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(screen.getByText("Syncing...")).toBeInTheDocument();
+        expect(screen.getByText(/3 \/ 4/)).toBeInTheDocument();
+        expect(screen.getByText(/75% complete/)).toBeInTheDocument();
+        expect(screen.getByRole("progressbar", { name: "Sync progress" })).toHaveAttribute(
+            "aria-valuenow",
+            "75",
+        );
+    });
+
+    it("keeps the last good unit rollup when a later units poll errors", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ completed_units: 0, failed_units: 0, total_units: 4 }),
+        });
+        vi.mocked(getSyncRunUnits)
+            .mockResolvedValueOnce({
+                data: buildSummary({
+                    by_status: { success: 2, running: 2 },
+                    unit_count: 4,
+                    units: [
+                        buildUnit({ id: "unit-success-1", status: "success" }),
+                        buildUnit({ id: "unit-success-2", status: "success" }),
+                        buildUnit({ id: "unit-running-1", status: "running" }),
+                        buildUnit({ id: "unit-running-2", status: "running" }),
+                    ],
+                }),
+            })
+            .mockResolvedValueOnce({ error: "Unit rollups unavailable" });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(screen.getByText(/2 \/ 4/)).toBeInTheDocument();
+        expect(screen.getByText(/50% complete/)).toBeInTheDocument();
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3500);
+        });
+
+        expect(screen.getByText(/2 \/ 4/)).toBeInTheDocument();
+        expect(screen.getByText(/50% complete/)).toBeInTheDocument();
+    });
+
+    it("does not rediscover a stale running job whose unit rollup is already terminal", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({
+            data: [
+                buildJob({
+                    status: "running",
+                    sync_run: buildEnrichment({
+                        total_units: 4,
+                        completed_units: 4,
+                        failed_units: 0,
+                    }),
+                }),
+            ],
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(getSyncJobs).toHaveBeenCalledWith("cfg-1", 25);
+        expect(getSyncRunStatus).not.toHaveBeenCalled();
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("keeps active-run progress non-terminal when unit rows are incomplete", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ completed_units: 0, failed_units: 0, total_units: 4 }),
+        });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({
+            data: buildSummary({
+                by_status: { success: 1 },
+                unit_count: 1,
+                units: [buildUnit({ status: "success" })],
+            }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(screen.getByText("Syncing...")).toBeInTheDocument();
+        expect(screen.getByText(/1 \/ 4/)).toBeInTheDocument();
+        expect(screen.getByText(/25% complete/)).toBeInTheDocument();
+    });
+
+    it("uses unit rows over a stale terminal run status", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({
+                status: "success",
+                completed_units: 4,
+                failed_units: 0,
+                total_units: 4,
+            }),
+        });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({
+            data: buildSummary({
+                by_status: { success: 1, running: 3 },
+                unit_count: 4,
+                units: [
+                    buildUnit({ id: "unit-success", status: "success" }),
+                    buildUnit({ id: "unit-running-1", status: "running" }),
+                    buildUnit({ id: "unit-running-2", status: "running" }),
+                    buildUnit({ id: "unit-running-3", status: "running" }),
+                ],
+            }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(screen.getByText("Syncing...")).toBeInTheDocument();
+        expect(screen.getByText(/1 \/ 4/)).toBeInTheDocument();
     });
 
     it("discovers a scheduled (not-yet-started) run via a pending job", async () => {
